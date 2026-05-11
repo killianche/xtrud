@@ -172,34 +172,64 @@ export type Database = {
           bio: string | null;
           closed_deals: number;
           created_at: string;
+          experience_years: number | null;
+          has_tools: boolean;
+          has_transport: boolean;
+          home_clients_policy: Database["public"]["Enums"]["home_clients_policy"] | null;
+          inn: string | null;
+          languages: string[];
           rating_overall_avg: number | null;
           rating_overall_count: number;
+          service_radius_km: number;
           status: Database["public"]["Enums"]["master_status"];
+          tax_status: Database["public"]["Enums"]["tax_status"] | null;
+          team_size: number;
           updated_at: string;
           user_id: string;
           verification_level: number;
+          work_schedule: Json;
         };
         Insert: {
           bio?: string | null;
           closed_deals?: number;
           created_at?: string;
+          experience_years?: number | null;
+          has_tools?: boolean;
+          has_transport?: boolean;
+          home_clients_policy?: Database["public"]["Enums"]["home_clients_policy"] | null;
+          inn?: string | null;
+          languages?: string[];
           rating_overall_avg?: number | null;
           rating_overall_count?: number;
+          service_radius_km?: number;
           status?: Database["public"]["Enums"]["master_status"];
+          tax_status?: Database["public"]["Enums"]["tax_status"] | null;
+          team_size?: number;
           updated_at?: string;
           user_id: string;
           verification_level?: number;
+          work_schedule?: Json;
         };
         Update: {
           bio?: string | null;
           closed_deals?: number;
           created_at?: string;
+          experience_years?: number | null;
+          has_tools?: boolean;
+          has_transport?: boolean;
+          home_clients_policy?: Database["public"]["Enums"]["home_clients_policy"] | null;
+          inn?: string | null;
+          languages?: string[];
           rating_overall_avg?: number | null;
           rating_overall_count?: number;
+          service_radius_km?: number;
           status?: Database["public"]["Enums"]["master_status"];
+          tax_status?: Database["public"]["Enums"]["tax_status"] | null;
+          team_size?: number;
           updated_at?: string;
           user_id?: string;
           verification_level?: number;
+          work_schedule?: Json;
         };
         Relationships: [
           {
@@ -317,7 +347,9 @@ export type Database = {
     Enums: {
       category_seasonality: "year_round" | "summer" | "winter" | "wedding_season";
       category_urgency: "urgent" | "week" | "month";
+      home_clients_policy: "anytime" | "with_male_present" | "women_only";
       master_status: "draft" | "pending" | "active" | "suspended" | "archived";
+      tax_status: "individual" | "self_employed" | "individual_entrepreneur" | "legal_entity";
       user_active_role: "client" | "master";
       user_gender: "male" | "female" | "unspecified";
       user_status: "active" | "suspended" | "banned" | "deleted";
@@ -430,7 +462,14 @@ export const Constants = {
     Enums: {
       category_seasonality: ["year_round", "summer", "winter", "wedding_season"],
       category_urgency: ["urgent", "week", "month"],
+      home_clients_policy: ["anytime", "with_male_present", "women_only"],
       master_status: ["draft", "pending", "active", "suspended", "archived"],
+      tax_status: [
+        "individual",
+        "self_employed",
+        "individual_entrepreneur",
+        "legal_entity",
+      ],
       user_active_role: ["client", "master"],
       user_gender: ["male", "female", "unspecified"],
       user_status: ["active", "suspended", "banned", "deleted"],

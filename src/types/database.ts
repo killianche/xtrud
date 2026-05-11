@@ -14,8 +14,6 @@ export type Json =
   | Json[];
 
 export type Database = {
-  // Allows to automatically instantiate createClient with right options
-  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "14.5";
   };
@@ -215,6 +213,7 @@ export type Database = {
       };
       users: {
         Row: {
+          active_role: Database["public"]["Enums"]["user_active_role"];
           avatar_url: string | null;
           city_id: string | null;
           created_at: string;
@@ -224,12 +223,14 @@ export type Database = {
           is_client: boolean;
           is_master: boolean;
           last_name: string | null;
+          onboarding_completed_at: string | null;
           rating_as_client_avg: number | null;
           rating_as_client_count: number;
           status: Database["public"]["Enums"]["user_status"];
           updated_at: string;
         };
         Insert: {
+          active_role?: Database["public"]["Enums"]["user_active_role"];
           avatar_url?: string | null;
           city_id?: string | null;
           created_at?: string;
@@ -239,12 +240,14 @@ export type Database = {
           is_client?: boolean;
           is_master?: boolean;
           last_name?: string | null;
+          onboarding_completed_at?: string | null;
           rating_as_client_avg?: number | null;
           rating_as_client_count?: number;
           status?: Database["public"]["Enums"]["user_status"];
           updated_at?: string;
         };
         Update: {
+          active_role?: Database["public"]["Enums"]["user_active_role"];
           avatar_url?: string | null;
           city_id?: string | null;
           created_at?: string;
@@ -254,6 +257,7 @@ export type Database = {
           is_client?: boolean;
           is_master?: boolean;
           last_name?: string | null;
+          onboarding_completed_at?: string | null;
           rating_as_client_avg?: number | null;
           rating_as_client_count?: number;
           status?: Database["public"]["Enums"]["user_status"];
@@ -314,6 +318,7 @@ export type Database = {
       category_seasonality: "year_round" | "summer" | "winter" | "wedding_season";
       category_urgency: "urgent" | "week" | "month";
       master_status: "draft" | "pending" | "active" | "suspended" | "archived";
+      user_active_role: "client" | "master";
       user_gender: "male" | "female" | "unspecified";
       user_status: "active" | "suspended" | "banned" | "deleted";
     };
@@ -426,6 +431,7 @@ export const Constants = {
       category_seasonality: ["year_round", "summer", "winter", "wedding_season"],
       category_urgency: ["urgent", "week", "month"],
       master_status: ["draft", "pending", "active", "suspended", "archived"],
+      user_active_role: ["client", "master"],
       user_gender: ["male", "female", "unspecified"],
       user_status: ["active", "suspended", "banned", "deleted"],
     },

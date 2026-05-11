@@ -14,6 +14,7 @@ import { useEffect, useState } from "react";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import "react-native-reanimated";
 import { useAuthSession } from "@/features/auth/use-auth-session";
+import { useUserRecord } from "@/features/auth/use-user-record";
 
 // Не скрывать splash до загрузки шрифтов + резолва auth-сессии.
 SplashScreen.preventAutoHideAsync().catch(() => {
@@ -22,23 +23,57 @@ SplashScreen.preventAutoHideAsync().catch(() => {
 
 /**
  * Protected route gate.
- * Редиректит между /(auth)/ и /(tabs)/ в зависимости от наличия сессии.
+ * 3 группы маршрутов:
+ *   - (auth)         — без сессии
+ *   - (onboarding)   — с сессией, но onboarding_completed_at IS NULL
+ *   - (tabs)         — с сессией и завершённым онбордингом
  */
 function AuthGate({ children }: { children: React.ReactNode }) {
-  const { status } = useAuthSession();
+  const { status, session } = useAuthSession();
+  const userId = session?.user?.id;
+  const { data: userRecord, isLoading: userLoading } = useUserRecord(userId);
+
   const segments = useSegments();
   const router = useRouter();
 
   useEffect(() => {
     if (status === "loading") return;
-    const inAuthGroup = segments[0] === "(auth)";
 
-    if (status === "unauthenticated" && !inAuthGroup) {
-      router.replace("/(auth)/phone");
-    } else if (status === "authenticated" && inAuthGroup) {
+    const group = segments[0] as string | undefined;
+    const inAuth = group === "(auth)";
+    const inOnboarding = group === "(onboarding)";
+    const inTabs = group === "(tabs)";
+
+    // Нет сессии — должен быть в (auth)
+    if (status === "unauthenticated") {
+      if (!inAuth) router.replace("/(auth)/phone");
+      return;
+    }
+
+    // Авторизован, но user record ещё грузится — ждём
+    if (userLoading) return;
+
+    // Edge case: сессия есть, но запись users не дотянулась (NULL).
+    // Триггер handle_new_auth_user должен был её создать. Если нет — что-то сломано.
+    // Не редиректим, чтобы не зациклить. Логируем и оставляем как есть.
+    if (!userRecord) {
+      // Возможен race condition сразу после signInAnonymously — записываем диагностику.
+      // В sprint 3 добавим toast/retry.
+      return;
+    }
+
+    const onboardingDone = userRecord.onboarding_completed_at !== null;
+
+    if (!onboardingDone) {
+      if (!inOnboarding) router.replace("/(onboarding)/role");
+      return;
+    }
+
+    // Онбординг пройден — отправляем в /(tabs) если в (auth) или (onboarding)
+    if (inAuth || inOnboarding || (!inTabs && !inAuth && !inOnboarding)) {
       router.replace("/(tabs)");
     }
-  }, [status, segments, router]);
+  }, [status, userLoading, userRecord, segments, router]);
 
   return <>{children}</>;
 }
@@ -70,7 +105,6 @@ export default function RootLayout() {
       }),
   );
 
-  // Скрываем splash когда шрифты загружены (или ошибка — всё равно показываем UI с фолбэком).
   useEffect(() => {
     if (fontsLoaded || fontsError) {
       SplashScreen.hideAsync().catch(() => {
@@ -80,7 +114,6 @@ export default function RootLayout() {
   }, [fontsLoaded, fontsError]);
 
   if (!fontsLoaded && !fontsError) {
-    // Splash остаётся видимым
     return null;
   }
 

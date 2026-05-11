@@ -6,9 +6,13 @@
 
 ## Текущее состояние
 
-**Sprint 2 (онбординг + каталог клиента) закрыт.** В дополнение к sprint 1 (фундамент + auth) появились: 3-группный AuthGate (`(auth)` / `(onboarding)` / `(tabs)`), миграция 0003 с `onboarding_completed_at` + `active_role`, экран выбора роли «Я ищу мастера» / «Я мастер», и главный экран клиента с сеткой из 26 visible категорий (lucide-иконки + surface-2 фоны, без атмосферных фото пока).
+**Sprint 3 (master path + category detail + role switcher) закрыт.** Полный flow обеих ролей готов в коде:
+- Client путь: phone → role «Я ищу мастера» → каталог из 26 visible L2 → детали категории с L3 услугами
+- Master путь: phone → role «Я мастер» → master profile wizard → каталог + role switcher в хедере для переключения между client/master view
 
-**Готов к sprint 3** (master onboarding wizard, реальный SMS-провайдер, навигация в category detail, фото-инфра).
+База расширена: 6 миграций, RPC `complete_master_onboarding` для атомарного завершения мастер-онбординга, 0 lints у advisor security.
+
+**Готов к sprint 4** (атмосферные фото категорий + master_categories link table + order flow + реальный SMS-OTP).
 
 ---
 
@@ -114,21 +118,33 @@ xtrud/
 ### Sprint 2 (онбординг + каталог клиента)
 - [x] **2026-05-11** — **2.1** Migration 0003 + AuthGate routing (commit `2c2f25f`): `users.onboarding_completed_at` + `users.active_role` enum + CHECK constraint (active_role='master' ⇒ is_master=true) + partial index. `useUserRecord` hook (TanStack Query, staleTime 5 мин). AuthGate переписан под 3 группы — `(auth)` / `(onboarding)` / `(tabs)`. Advisor security = 0 lints.
 - [x] **2026-05-11** — **2.2** Role selection screen (commit `eb42338`): полноценный UI с 2 карточками (lucide Search/Briefcase), accessibilityState selected, accent-soft фон выбранной, CTA "Продолжить", error display. `useCompleteOnboarding` mutation обновляет `users.{is_master, active_role, onboarding_completed_at}` + invalidates query.
-- [x] **2026-05-11** — **2.3** Main client screen (commit `5d394c8`): `useVisibleCategories` для 26 L2, `CategoryTile` компонент с iconMap (~50 lucide icons), grid 2/3/4-кол. адаптивный, ScrollView без виртуализации, loading/error/empty states, header с приветствием по first_name + role badge + signOut. **Без атмосферных фото — sprint 3+.**
+- [x] **2026-05-11** — **2.3** Main client screen (commit `5d394c8`): `useVisibleCategories` для 26 L2, `CategoryTile` компонент с iconMap (~50 lucide icons), grid 2/3/4-кол. адаптивный, ScrollView без виртуализации, loading/error/empty states, header с приветствием по first_name + role badge + signOut. **Без атмосферных фото — sprint 4+.**
+
+### Sprint 3 (master path + category detail + role switcher)
+- [x] **2026-05-11** — **3.1** Category detail screen (commit `544838a`): динамический роут `app/(tabs)/category/[id].tsx` с `href:null` в Tabs (скрыт из таб-бара). `useCategoryDetail` загружает L2 + L3. Список услуг через `ServiceRow` с lucide Shield для requires_license, формат "от X ₽" через Intl.NumberFormat ru-RU, urgency на русском (Срочно/На неделе/В течение месяца), правильное склонение «услуга/услуги/услуг» с учётом 11-19. Tap по плитке теперь реально навигирует.
+- [x] **2026-05-11** — **3.2** Migration 0004 — extended master_profile fields (commit `b4af8e1`): добавлены 11 полей в master_profiles (experience_years, has_tools, has_transport, service_radius_km, work_schedule jsonb, languages text[], tax_status, inn, team_size, home_clients_policy), 2 enums (tax_status, home_clients_policy), CHECK на bio.length≤500 и ИНН.length∈{10,12}, partial index по (status, service_radius_km).
+- [x] **2026-05-11** — **3.3** Master onboarding wizard (commits `3680ec9`):
+  - Migration 0005 + 0006 — RPC `complete_master_onboarding(...)`. Изначально SECURITY DEFINER, advisor предупредил → 0006 переключает на SECURITY INVOKER (RLS уже даёт нужные права, plpgsql функция сама по себе транзакция). Advisor security = 0 lints.
+  - `useCities` hook (staleTime 1ч), `useSubmitMasterProfile` mutation через `supabase.rpc`.
+  - `app/(onboarding)/master-profile.tsx` — single-screen form: имя/фамилия (validation regex Unicode letters), город (pills из cities), район (опц.), bio (multiline 500 max), experience_years + service_radius_km (number inputs side-by-side), has_tools/has_transport (RN Switch с accent track).
+  - role.tsx обновлён: master → push на master-profile, client → completeOnboarding сразу.
+  - Zod схема без `.optional().default()` (иначе IN vs OUT тип конфликтует с Control<T>).
+- [x] **2026-05-11** — **3.4** Role switcher pill (commit `ac5626a`): `RoleSwitcher` компонент с двумя pill-кнопками («Клиент» / «Мастер»), показывается только если is_master=true. `useSetActiveRole` mutation UPDATE users.active_role + invalidate userRecord. Контент главной по active_role пока не меняется (sprint 4).
 
 ---
 
-## Что дальше (Sprint 3 — приоритет)
+## Что дальше (Sprint 4 — приоритет)
 
-1. **🟢 Включить Anonymous Sign-Ins в Supabase Dashboard** (5 минут): Authentication → Sign In/Up → "Allow anonymous sign-ins" = ON. Без этого `signInAnonymously()` падает. После — E2E тест полного auth + onboarding + каталог flow на iOS Simulator + Web + Android.
-2. **Category detail экран** — `app/(tabs)/category/[id].tsx`: открывается тапом по плитке, показывает L3 услуги внутри L2 + (позже) мастеров по категории.
-3. **Master onboarding wizard** — 7 шагов из CATEGORIES_AND_PROFILES.md §2.1 (фото, город, категории, цены, радиус, график). Нужна миграция `0004_master_profile_fields.sql` с experience_years, has_tools, work_schedule jsonb, etc. + создание master_profiles записи при `active_role='master'`.
-4. **Role switcher** — pill-переключатель `[Клиент | Мастер]` в хедере для пользователей с is_master=true. Mutation обновляет users.active_role.
-5. **Атмосферные фото категорий** — `categories_l1.cover_image_url`, рендер `<Image source={uri}>` поверх с tile-overlay (overlay gradient + лейбл белым) — сигнатурный паттерн DESIGN_SYSTEM §9.1. Источники: Unsplash, Pexels.
-6. **Реальный phone OTP** — заменить anon sign-in на `supabase.auth.signInWithOtp` + `verifyOtp`. Включить phone провайдера в Supabase + добавить тестовые номера. Кода в `use-auth-mutations.ts` менять 2-3 строки.
-7. **Альтернативный логин: Telegram Login** — рекомендация AUDIT.md (бесплатно, 100% покрытие в регионе).
-8. **Test runner setup** — Vitest для unit (validation.ts, storage.ts чанкинг), Maestro для mobile E2E (auth → onboarding → каталог).
-9. **EAS Build setup** — `eas.json`, первый dev-build для iOS/Android Simulator.
+1. **🟢 Включить Anonymous Sign-Ins в Supabase Dashboard** (5 минут): Authentication → Sign In/Up → "Allow anonymous sign-ins" = ON. Без этого ВЕСЬ flow не запустится в Simulator.
+2. **Master view главного экрана** — другой контент при active_role='master': лента заявок (или заглушка «Заявки скоро»), переключатель уже на месте.
+3. **Master_categories link table** — миграция 0007 для many-to-many master ↔ L2 категорий (max 5 per master, см. CATEGORIES_AND_PROFILES §4). Без этого мастер не появляется в каталоге.
+4. **Атмосферные фото категорий** — `categories_l1.cover_image_url` + сигнатурный паттерн DESIGN_SYSTEM §9.1 (тёмное фото + overlay-gradient + лейбл белым). Источники: Unsplash/Pexels.
+5. **Фото-инфра** — Supabase Storage bucket «portfolio» с RLS + клиентский resize через expo-image-manipulator (CATEGORIES_AND_PROFILES §6). При >50GB → миграция на R2 (zero egress).
+6. **Order flow (заявки клиента)** — миграция 0008 для `orders` таблицы из CATEGORIES_AND_PROFILES §8.2 + create-order wizard + лента в /(tabs)/orders.
+7. **Реальный phone OTP** — заменить anon на signInWithOtp/verifyOtp. Включить SMS-провайдера в Dashboard.
+8. **Альтернативный логин: Telegram Login Widget** — бесплатно, 100% покрытие в регионе (AUDIT.md).
+9. **Test runner setup** — Vitest для unit (validation, storage чанкинг), Maestro mobile E2E.
+10. **EAS Build setup** — eas.json, первый dev-build.
 
 ---
 
@@ -140,6 +156,20 @@ xtrud/
 ---
 
 ## История ключевых решений
+
+### 2026-05-11 — Sprint 3.3: RPC complete_master_onboarding с SECURITY INVOKER
+**Выбрано:** функция SECURITY INVOKER (не DEFINER), хотя оба варианта работают функционально.
+
+**Обоснование:** Supabase advisor flag'ает SECURITY DEFINER функции callable authenticated через RPC как WARN (lint 0029). Поскольку RLS на public.users (auth.uid()=id) и public.master_profiles (auth.uid()=user_id) уже разрешает нужные операции, bypass через DEFINER не нужен. PL/pgSQL функция атомарна сама по себе — UPDATE + UPSERT в одной транзакции. Advisor = 0 lints.
+
+**Migration history:** 0005 (изначально DEFINER) + 0006 (CREATE OR REPLACE на INVOKER) — оставлены оба чтобы сохранить immutable migration history.
+
+### 2026-05-11 — Sprint 3.3: Master wizard на одном экране, не многошаговый
+**Выбрано:** все поля master profile (имя, фамилия, город, район, bio, опыт, инструмент, транспорт, радиус) на одном экране через ScrollView + KeyboardAvoidingView.
+
+**Альтернатива (отброшена):** 7-шаговый wizard из CATEGORIES_AND_PROFILES §2.1. Многошаговый flow добавляет step navigation, draft persistence, indicator UI — серьёзный overhead для sprint 3 scope. На одном экране пользователь видит всё, может скроллить и поправить — UX простой.
+
+**Условие пересмотра:** sprint 4+ если масштаб полей вырастет (категории, портфолио, график) — разбить на 3-4 шага.
 
 ### 2026-05-11 — Sprint 2.3: bento-grid без фото в первой итерации
 **Выбрано:** упрощённая сетка плиток с lucide-иконкой + surface-2 фоном вместо сигнатурного DESIGN_SYSTEM §9.1 паттерна (тёмное атмосферное фото + overlay-gradient + лейбл).

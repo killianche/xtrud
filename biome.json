@@ -21,7 +21,8 @@
       "!**/.next",
       "!**/.git",
       "!**/expo-env.d.ts",
-      "!**/nativewind-env.d.ts"
+      "!**/nativewind-env.d.ts",
+      "!src/types/database.ts"
     ]
   },
   "formatter": {

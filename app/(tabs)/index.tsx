@@ -1,3 +1,4 @@
+import { useRouter } from "expo-router";
 import { LogOut } from "lucide-react-native";
 import { ActivityIndicator, Pressable, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -10,6 +11,7 @@ import { signOut } from "@/lib/auth";
 
 export default function HomeTab() {
   const insets = useSafeAreaInsets();
+  const router = useRouter();
   const { session } = useAuthSession();
   const { data: user } = useUserRecord(session?.user?.id);
   const { data: categories, isLoading, error, refetch } = useVisibleCategories();
@@ -88,10 +90,7 @@ export default function HomeTab() {
               <CategoryTile
                 name={cat.name_ru}
                 iconName={cat.icon}
-                onPress={() => {
-                  // Sprint 3 — навигация к /(tabs)/category/[id]
-                  // Sprint 2.3 — no-op (логировать опасно: попадает в production-логи)
-                }}
+                onPress={() => router.push(`/category/${cat.id}` as never)}
               />
             </View>
           ))}

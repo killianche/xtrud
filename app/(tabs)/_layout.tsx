@@ -16,6 +16,8 @@ export default function TabsLayout() {
           tabBarIcon: ({ color, size }) => <Home color={color} size={size} strokeWidth={1.75} />,
         }}
       />
+      {/* Detail-экран категории — НЕ показываем в нижней панели табов. */}
+      <Tabs.Screen name="category/[id]" options={{ href: null }} />
     </Tabs>
   );
 }

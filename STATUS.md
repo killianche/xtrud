@@ -6,11 +6,9 @@
 
 ## Текущее состояние
 
-**Sprint 4 (master categories + master view + safety banner) закрыт.** Master теперь видит **другой контент** при active_role='master' — safety banner, чипы своих категорий или CTA «Добавьте категории», и empty state ленты заявок. Категории мастера выбираются на отдельном экране до 5 L2 через атомарный RPC `set_master_categories` (diff-sync). База: 8 миграций, 9 таблиц с RLS, 3 RPC (`complete_master_onboarding`, `set_master_categories`, `handle_new_auth_user`).
+**Sprint 5 (orders + responses E2E) закрыт.** Заработал полный цикл маркетплейса: клиент создаёт заявку → мастер видит её в фиде (по своим категориям) → шлёт отклик с ценой+сроком+сообщением → клиент видит список откликов на своей заявке. База: 9 миграций, 11 таблиц с RLS, 3 RPC, 4 trigger functions. Bottom-tabs стало двумя: «Главная» + «Заказы».
 
-Применён референс UX из Яндекс Исполнителей: safety banner о фроде, profile completion CTA pattern.
-
-**Готов к sprint 5** (атмосферные фото + orders table + order flow + реальный SMS-OTP + Telegram Login).
+**Готов к sprint 6** (chat между client↔master выбранного отклика, accept/reject responses, real OTP, photo uploads).
 
 ---
 
@@ -118,6 +116,12 @@ xtrud/
 - [x] **2026-05-11** — **2.2** Role selection screen (commit `eb42338`): полноценный UI с 2 карточками (lucide Search/Briefcase), accessibilityState selected, accent-soft фон выбранной, CTA "Продолжить", error display. `useCompleteOnboarding` mutation обновляет `users.{is_master, active_role, onboarding_completed_at}` + invalidates query.
 - [x] **2026-05-11** — **2.3** Main client screen (commit `5d394c8`): `useVisibleCategories` для 26 L2, `CategoryTile` компонент с iconMap (~50 lucide icons), grid 2/3/4-кол. адаптивный, ScrollView без виртуализации, loading/error/empty states, header с приветствием по first_name + role badge + signOut. **Без атмосферных фото — sprint 4+.**
 
+### Sprint 5 (orders + responses, E2E маркетплейса)
+- [x] **2026-05-12** — **5.1** Migration 0009 orders + order_responses (commit `3859a6c`): 2 таблицы + 6 enums (urgency, budget_mode, executor_type, contact_mode, order_status, response_status). orders: title (5-120) + description (10-2000) с length CHECK, budget_min/max + budget_mode, picked_master_id paired with status constraint, responses_count cached + auto-increment trigger, expires_at +30 days. order_responses: UNIQUE(order_id, master_id), price_mode, message (10-1000), status enum. Trigger check_response_not_self (мастер не откликается на свой заказ) и update_order_responses_count. RLS: orders SELECT={open|in_progress|completed|own|picked}, owner-only INSERT/UPDATE/DELETE; responses SELECT=participants (master или client). Advisor 0 lints.
+- [x] **2026-05-12** — **5.2** Client orders tab + create-order (commit `5ebc19c`): новая вкладка `ClipboardList`. Hooks: `useMyOrders` (JOIN на L2 и cities), `useCreateOrder` (insert). `OrderRow` компонент (tag-chip → title → meta с timeAgo и responsesLabel склонениями). `new.tsx` screen: категория pills, title, description multiline, city pills, district, urgency 4 pills, budget с 3 pills (exact/range/negotiable) и conditional min/max. FAB-style «Создать заказ» с safe-area.
+- [x] **2026-05-12** — **5.3** Master orders feed (commit `6ca76ed`): `useMasterFeed({userId, l2Ids})` — WHERE status='open' AND l2_id IN master's categories AND client_id != userId. Master view в `/(tabs)/orders/index.tsx`: SafetyBanner + список или CTA «Сначала добавьте категории» если 0 L2 / empty state «Пока нет заявок».
+- [x] **2026-05-12** — **5.4** Order detail + response flow (commit `ff0b969`): динамический роут `[id].tsx`. Hooks: `useOrderDetail` (JOIN L2+city+client), `useOrderResponses` (для owner), `useMyResponseForOrder` (для master), `useSubmitResponse`. Branching: OrderInfoBlock для всех + ClientResponsesSection для owner + MasterResponseSection для master (форма или статус существующего отклика). Intl.NumberFormat ru-RU для цен.
+
 ### Sprint 4 (master categories + master view)
 - [x] **2026-05-11** — **4.1** Migration 0007 master_categories (commit `526bad4`): many-to-many master↔L2 таблица с pricing_mode enum, l3_ids text[], JSONB pricing/attributes, UNIQUE(master_id, l2_id). Triggers: updated_at + check_master_categories_limit (max 5 на мастера, RAISE EXCEPTION при превышении). RLS: read public, write owner-only. 4 индекса (master_id, l2_id, composite l2_id+rating DESC, GIN attributes). Advisor 0 lints.
 - [x] **2026-05-11** — **4.2** Master categories selection (commit `8bb8d08`): migration 0008 — RPC `set_master_categories(text[])` SECURITY INVOKER для атомарной DELETE-not-in + INSERT-new синхронизации. Экран `/(onboarding)/master-categories.tsx` с многосекционным списком 26 visible L2, локальный Set<string> selected, disable остальных при достижении 5, sticky bottom CTA "Сохранить", router.back() после save. `useMyMasterCategories` (с JOIN на L2 в одном запросе) + `useSetMasterCategories` mutation.
@@ -136,19 +140,20 @@ xtrud/
 
 ---
 
-## Что дальше (Sprint 5 — приоритет)
+## Что дальше (Sprint 6 — приоритет)
 
-1. **🟢 Включить Anonymous Sign-Ins в Supabase Dashboard** (5 минут): Authentication → Sign In/Up → "Allow anonymous sign-ins" = ON. Без этого ничего не запустится.
-2. **Orders table** — миграция 0009 для `orders` из CATEGORIES_AND_PROFILES §8.2 (client_id, l2_id, l3_ids, title, description, city_id, geo, urgency, budget, executor_type, gender_filter, attributes JSONB, status, picked_master_id, expires_at) + `order_responses` (отклики мастеров).
-3. **Order create flow для клиента** — wizard 5 шагов: категория → описание → срок → город → контакт. Создаёт row в orders, появляется в master ленте при совпадении категорий.
-4. **3-таб структура /(tabs)/orders** — «Новые / Я откликнулся / Меня пригласили» (паттерн Яндекса). Запускаемся, когда orders table готов.
-5. **Атмосферные фото категорий** — `categories_l1.cover_image_url` + сигнатурный category-tile паттерн (DESIGN_SYSTEM §9.1).
-6. **Фото-инфра** — Supabase Storage bucket «portfolio» + клиентский resize через expo-image-manipulator. При >50GB → миграция на Cloudflare R2.
-7. **Реальный phone OTP** — replace anon на signInWithOtp/verifyOtp. SMS-провайдер в Dashboard.
-8. **Telegram Login Widget** — бесплатный альтернативный login (AUDIT.md рекомендация).
-9. **Outcome tracking modal** — feedback loop после контакта мастер↔клиент: «Беру заказ / Не договорились» (Яндекс паттерн, см. AUDIT.md edge case).
-10. **Test runner** — Vitest для unit (validation, storage), Maestro mobile E2E.
-11. **EAS Build setup** — eas.json для dev-build на iOS/Android.
+1. **🟢 Включить Anonymous Sign-Ins в Supabase Dashboard** (5 мин). Без этого ничего не запустится в Simulator.
+2. **Accept/reject responses** — кнопки клиенту: принять отклик мастера → UPDATE response status='accepted', UPDATE orders status='in_progress' + picked_master_id. Атомарный RPC.
+3. **Chat между client↔picked_master** — после accept'а появляется общение. Migration 0010 для `chats` + `messages` таблиц. WebSocket через Supabase Realtime.
+4. **Master view orders 3-таб** (Яндекс паттерн): «Новые» (feed) / «Я откликнулся» (свои responses) / «Меня выбрали» (orders где picked_master_id = userId).
+5. **Атмосферные фото категорий** — `categories_l1.cover_image_url` + сигнатурный category-tile паттерн.
+6. **Фото-инфра + клиентский resize** — Supabase Storage portfolio bucket, expo-image-manipulator. Sprint когда дойдём до master portfolio.
+7. **Реальный phone OTP** — replace anon на signInWithOtp/verifyOtp. SMS-провайдер.
+8. **Telegram Login Widget** — бесплатный альтернативный login.
+9. **Outcome tracking modal** — «Беру заказ / Не договорились» после контакта (Яндекс паттерн).
+10. **Order edit/delete для client'а** — нет в sprint 5, draft статус существует, но без UI редактирования. Sprint 6.
+11. **Test runner** — Vitest unit + Maestro E2E.
+12. **EAS Build setup** — eas.json для первого dev-build.
 
 ---
 
@@ -160,6 +165,18 @@ xtrud/
 ---
 
 ## История ключевых решений
+
+### 2026-05-12 — Sprint 5: orders без PostGIS/address_exact/attributes JSONB на старте
+**Выбрано:** минимальные orders + order_responses таблицы без geo_point, address_exact, gender_filter, requires_tags, is_anonymous, attributes JSONB.
+
+**Обоснование:** PostGIS требует extension setup + конвертация address→coords (Geocoding API, платный). attributes JSONB требует metadata table category_fields с UI рендерингом форм. Эти усложнения добавим в sprint 6+ когда базовый E2E цикл orders подтвердит свою ценность.
+
+**Sprint 6+ план:** добавить эти поля как ALTER TABLE, без миграций существующих строк (новые поля nullable).
+
+### 2026-05-12 — Sprint 5.3: master feed без city/radius фильтрации в первой итерации
+**Выбрано:** match только по l2_id (категории), не по city + service_radius.
+
+**Обоснование:** В Ингушетии 5 городов на радиусе ~50 км — большинство мастеров логично работают по всему региону. City-фильтр на 5 городах добавит UI complexity без значимой пользы. Когда расширимся в другие регионы — добавим.
 
 ### 2026-05-11 — Sprint 4: применены 3 UX-паттерна из Яндекс Исполнители
 **Что взято:**

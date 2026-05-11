@@ -25,7 +25,7 @@ export default function TabsLayout() {
           ),
         }}
       />
-      {/* Detail-экран категории — НЕ показываем в нижней панели табов. */}
+      {/* Detail-экраны — НЕ показываем в нижней панели табов. */}
       <Tabs.Screen name="category/[id]" options={{ href: null }} />
     </Tabs>
   );

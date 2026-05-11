@@ -91,6 +91,12 @@ const config: Config = {
         tight: "-1px",
         snug: "-0.5px",
       },
+      fontFamily: {
+        // Inter загружается в app/_layout.tsx через @expo-google-fonts/inter.
+        // По умолчанию AppText использует Inter_400Regular через prop weight.
+        // Эти классы — для случаев, когда нужно применить вручную в style/className.
+        sans: ["Inter_400Regular", "system-ui"],
+      },
     },
   },
   plugins: [],

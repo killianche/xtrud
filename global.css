@@ -1,3 +1,91 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/*
+ * Дизайн-токены цветов как CSS-переменные.
+ * Формат "R G B" триплет нужен для Tailwind alpha-modifier: bg-canvas/50.
+ *
+ * Источник истины — src/lib/colors.ts. При изменении палитры синхронизируй оба файла.
+ * WCAG-фиксы (light): muted-soft #9ca3af→#71717a, accent #3b82f6→#2563eb.
+ */
+
+@layer base {
+  :root {
+    /* Фоны и поверхности */
+    --canvas: 255 255 255;
+    --surface-1: 250 250 250;
+    --surface-2: 245 245 245;
+    --surface-3: 229 231 235;
+    --surface-dark: 10 10 10;
+
+    /* Линии */
+    --hairline: 229 231 235;
+    --hairline-soft: 243 244 246;
+
+    /* Текст */
+    --ink: 10 10 10;
+    --body: 55 65 81;
+    --muted: 107 114 128;
+    --muted-soft: 113 113 122; /* zinc-500, WCAG-fix */
+
+    /* Текст на dark */
+    --on-primary: 255 255 255;
+    --on-dark: 255 255 255;
+    --on-dark-soft: 161 161 170;
+
+    /* Брендовые */
+    --primary: 10 10 10;
+    --accent: 37 99 235; /* blue-600, WCAG-fix */
+    --accent-soft: 219 234 254;
+
+    /* Semantic */
+    --success: 16 185 129;
+    --success-soft: 209 250 229;
+    --warning: 245 158 11;
+    --warning-soft: 254 243 199;
+    --error: 239 68 68;
+    --error-soft: 254 226 226;
+
+    /* Badge / avatar пастели */
+    --badge-orange: 251 146 60;
+    --badge-pink: 236 72 153;
+    --badge-violet: 139 92 246;
+    --badge-emerald: 52 211 153;
+    --badge-sky: 56 189 248;
+    --badge-amber: 251 191 36;
+  }
+
+  .dark:root,
+  :root.dark,
+  .dark {
+    --canvas: 10 10 10;
+    --surface-1: 17 17 17;
+    --surface-2: 23 23 23;
+    --surface-3: 38 38 38;
+    --surface-dark: 10 10 10;
+
+    --hairline: 38 38 38;
+    --hairline-soft: 31 31 31;
+
+    --ink: 250 250 250;
+    --body: 212 212 216;
+    --muted: 161 161 170;
+    --muted-soft: 113 113 122;
+
+    --on-primary: 10 10 10; /* primary в dark = светлый, текст тёмный */
+    --on-dark: 255 255 255;
+    --on-dark-soft: 161 161 170;
+
+    --primary: 250 250 250;
+    --accent: 59 130 246; /* blue-500 на чёрном работает (5.7:1) */
+    --accent-soft: 30 58 138;
+
+    --success: 16 185 129;
+    --success-soft: 6 78 59;
+    --warning: 245 158 11;
+    --warning-soft: 120 53 15;
+    --error: 239 68 68;
+    --error-soft: 127 29 29;
+  }
+}

@@ -6,13 +6,11 @@
 
 ## Текущее состояние
 
-**Sprint 3 (master path + category detail + role switcher) закрыт.** Полный flow обеих ролей готов в коде:
-- Client путь: phone → role «Я ищу мастера» → каталог из 26 visible L2 → детали категории с L3 услугами
-- Master путь: phone → role «Я мастер» → master profile wizard → каталог + role switcher в хедере для переключения между client/master view
+**Sprint 4 (master categories + master view + safety banner) закрыт.** Master теперь видит **другой контент** при active_role='master' — safety banner, чипы своих категорий или CTA «Добавьте категории», и empty state ленты заявок. Категории мастера выбираются на отдельном экране до 5 L2 через атомарный RPC `set_master_categories` (diff-sync). База: 8 миграций, 9 таблиц с RLS, 3 RPC (`complete_master_onboarding`, `set_master_categories`, `handle_new_auth_user`).
 
-База расширена: 6 миграций, RPC `complete_master_onboarding` для атомарного завершения мастер-онбординга, 0 lints у advisor security.
+Применён референс UX из Яндекс Исполнителей: safety banner о фроде, profile completion CTA pattern.
 
-**Готов к sprint 4** (атмосферные фото категорий + master_categories link table + order flow + реальный SMS-OTP).
+**Готов к sprint 5** (атмосферные фото + orders table + order flow + реальный SMS-OTP + Telegram Login).
 
 ---
 
@@ -120,6 +118,11 @@ xtrud/
 - [x] **2026-05-11** — **2.2** Role selection screen (commit `eb42338`): полноценный UI с 2 карточками (lucide Search/Briefcase), accessibilityState selected, accent-soft фон выбранной, CTA "Продолжить", error display. `useCompleteOnboarding` mutation обновляет `users.{is_master, active_role, onboarding_completed_at}` + invalidates query.
 - [x] **2026-05-11** — **2.3** Main client screen (commit `5d394c8`): `useVisibleCategories` для 26 L2, `CategoryTile` компонент с iconMap (~50 lucide icons), grid 2/3/4-кол. адаптивный, ScrollView без виртуализации, loading/error/empty states, header с приветствием по first_name + role badge + signOut. **Без атмосферных фото — sprint 4+.**
 
+### Sprint 4 (master categories + master view)
+- [x] **2026-05-11** — **4.1** Migration 0007 master_categories (commit `526bad4`): many-to-many master↔L2 таблица с pricing_mode enum, l3_ids text[], JSONB pricing/attributes, UNIQUE(master_id, l2_id). Triggers: updated_at + check_master_categories_limit (max 5 на мастера, RAISE EXCEPTION при превышении). RLS: read public, write owner-only. 4 индекса (master_id, l2_id, composite l2_id+rating DESC, GIN attributes). Advisor 0 lints.
+- [x] **2026-05-11** — **4.2** Master categories selection (commit `8bb8d08`): migration 0008 — RPC `set_master_categories(text[])` SECURITY INVOKER для атомарной DELETE-not-in + INSERT-new синхронизации. Экран `/(onboarding)/master-categories.tsx` с многосекционным списком 26 visible L2, локальный Set<string> selected, disable остальных при достижении 5, sticky bottom CTA "Сохранить", router.back() после save. `useMyMasterCategories` (с JOIN на L2 в одном запросе) + `useSetMasterCategories` mutation.
+- [x] **2026-05-11** — **4.3** Master home view + SafetyBanner (commit `37840c9`): branching контента главной по `active_role`. `MasterHomeContent` секции: SafetyBanner («Без аванса и эскроу») → «Ваши категории» (CTA-карточка если 0 / pill-чипы + edit-link если есть) → empty state «Заявок пока нет» с Inbox иконкой. `ClientHomeContent` извлечён как inner component, рендерит каталог как было. SafetyBanner — переиспользуемый компонент (ShieldAlert в warning-soft кружке).
+
 ### Sprint 3 (master path + category detail + role switcher)
 - [x] **2026-05-11** — **3.1** Category detail screen (commit `544838a`): динамический роут `app/(tabs)/category/[id].tsx` с `href:null` в Tabs (скрыт из таб-бара). `useCategoryDetail` загружает L2 + L3. Список услуг через `ServiceRow` с lucide Shield для requires_license, формат "от X ₽" через Intl.NumberFormat ru-RU, urgency на русском (Срочно/На неделе/В течение месяца), правильное склонение «услуга/услуги/услуг» с учётом 11-19. Tap по плитке теперь реально навигирует.
 - [x] **2026-05-11** — **3.2** Migration 0004 — extended master_profile fields (commit `b4af8e1`): добавлены 11 полей в master_profiles (experience_years, has_tools, has_transport, service_radius_km, work_schedule jsonb, languages text[], tax_status, inn, team_size, home_clients_policy), 2 enums (tax_status, home_clients_policy), CHECK на bio.length≤500 и ИНН.length∈{10,12}, partial index по (status, service_radius_km).
@@ -133,18 +136,19 @@ xtrud/
 
 ---
 
-## Что дальше (Sprint 4 — приоритет)
+## Что дальше (Sprint 5 — приоритет)
 
-1. **🟢 Включить Anonymous Sign-Ins в Supabase Dashboard** (5 минут): Authentication → Sign In/Up → "Allow anonymous sign-ins" = ON. Без этого ВЕСЬ flow не запустится в Simulator.
-2. **Master view главного экрана** — другой контент при active_role='master': лента заявок (или заглушка «Заявки скоро»), переключатель уже на месте.
-3. **Master_categories link table** — миграция 0007 для many-to-many master ↔ L2 категорий (max 5 per master, см. CATEGORIES_AND_PROFILES §4). Без этого мастер не появляется в каталоге.
-4. **Атмосферные фото категорий** — `categories_l1.cover_image_url` + сигнатурный паттерн DESIGN_SYSTEM §9.1 (тёмное фото + overlay-gradient + лейбл белым). Источники: Unsplash/Pexels.
-5. **Фото-инфра** — Supabase Storage bucket «portfolio» с RLS + клиентский resize через expo-image-manipulator (CATEGORIES_AND_PROFILES §6). При >50GB → миграция на R2 (zero egress).
-6. **Order flow (заявки клиента)** — миграция 0008 для `orders` таблицы из CATEGORIES_AND_PROFILES §8.2 + create-order wizard + лента в /(tabs)/orders.
-7. **Реальный phone OTP** — заменить anon на signInWithOtp/verifyOtp. Включить SMS-провайдера в Dashboard.
-8. **Альтернативный логин: Telegram Login Widget** — бесплатно, 100% покрытие в регионе (AUDIT.md).
-9. **Test runner setup** — Vitest для unit (validation, storage чанкинг), Maestro mobile E2E.
-10. **EAS Build setup** — eas.json, первый dev-build.
+1. **🟢 Включить Anonymous Sign-Ins в Supabase Dashboard** (5 минут): Authentication → Sign In/Up → "Allow anonymous sign-ins" = ON. Без этого ничего не запустится.
+2. **Orders table** — миграция 0009 для `orders` из CATEGORIES_AND_PROFILES §8.2 (client_id, l2_id, l3_ids, title, description, city_id, geo, urgency, budget, executor_type, gender_filter, attributes JSONB, status, picked_master_id, expires_at) + `order_responses` (отклики мастеров).
+3. **Order create flow для клиента** — wizard 5 шагов: категория → описание → срок → город → контакт. Создаёт row в orders, появляется в master ленте при совпадении категорий.
+4. **3-таб структура /(tabs)/orders** — «Новые / Я откликнулся / Меня пригласили» (паттерн Яндекса). Запускаемся, когда orders table готов.
+5. **Атмосферные фото категорий** — `categories_l1.cover_image_url` + сигнатурный category-tile паттерн (DESIGN_SYSTEM §9.1).
+6. **Фото-инфра** — Supabase Storage bucket «portfolio» + клиентский resize через expo-image-manipulator. При >50GB → миграция на Cloudflare R2.
+7. **Реальный phone OTP** — replace anon на signInWithOtp/verifyOtp. SMS-провайдер в Dashboard.
+8. **Telegram Login Widget** — бесплатный альтернативный login (AUDIT.md рекомендация).
+9. **Outcome tracking modal** — feedback loop после контакта мастер↔клиент: «Беру заказ / Не договорились» (Яндекс паттерн, см. AUDIT.md edge case).
+10. **Test runner** — Vitest для unit (validation, storage), Maestro mobile E2E.
+11. **EAS Build setup** — eas.json для dev-build на iOS/Android.
 
 ---
 
@@ -156,6 +160,35 @@ xtrud/
 ---
 
 ## История ключевых решений
+
+### 2026-05-11 — Sprint 4: применены 3 UX-паттерна из Яндекс Исполнители
+**Что взято:**
+1. **SafetyBanner** — «Без аванса и эскроу. Не переходите в сторонние мессенджеры». Защита от типового фрода. AUDIT.md риск №1.
+2. **Profile completion CTA** — карточка «Добавьте категории» с правой accent-кнопкой Plus, если master_categories пуста.
+3. **3-таб структура orders** — Новые / Я откликнулся / Меня пригласили. Заложено в backlog sprint 5, реализуется когда будет orders table.
+
+**Что НЕ взято:**
+- Промо-карточки с яркими градиентами (Cal.com стиль монохром).
+- Платный «безлимит откликов» 199₽/неделя — наш проект «бесплатно для всех» (memory/project_xtrud.md).
+- «Подключить продвижение» CTA — у Яндекса платная подписка за топ выдачи, у нас другая модель.
+
+**В backlog sprint 5+:**
+- Outcome tracking modal после контакта (обязательная разметка беру/не_договорились).
+- Daily response limits (как опция монетизации, если реклама не пойдёт — AUDIT.md риск №2).
+
+### 2026-05-11 — Sprint 4.2: master_categories optional после wizard, а не обязательный шаг онбординга
+**Выбрано:** master_profiles создаётся в wizard (sprint 3.3, RPC complete_master_onboarding), `onboarding_completed_at` ставится сразу. master_categories — пустые в первый момент, master сам добавляет через CTA «Добавьте категории» в master view.
+
+**Альтернатива (отброшена):** включить категории в wizard как обязательный шаг 2/2. Усложняет flow, не позволяет master'у быстро попасть в приложение и посмотреть UI «как клиент».
+
+**Trade-off:** мастер может оказаться в приложении без категорий → не получать заявки. Решено через явный CTA-баннер в master view, который объясняет необходимость категорий.
+
+### 2026-05-11 — Sprint 4.2: RPC set_master_categories для diff-sync
+**Выбрано:** атомарный RPC `set_master_categories(p_l2_ids text[])` — `DELETE WHERE l2_id != ALL(p_l2_ids)` + `INSERT ON CONFLICT DO NOTHING`.
+
+**Обоснование:** UI-операция «сохранить выбор» концептуально — установка состояния (список категорий), не множество разрозненных insert/delete. Atomic transaction в плpgsql функции гарантирует консистентность даже при race condition. SECURITY INVOKER + проверка auth.uid() внутри — без нужды в DEFINER (RLS уже даёт права).
+
+**Альтернатива (отброшена):** клиент делает DELETE all + INSERT new подряд. Не атомарно — если INSERT упадёт, у мастера 0 категорий и нужно восстанавливать вручную.
 
 ### 2026-05-11 — Sprint 3.3: RPC complete_master_onboarding с SECURITY INVOKER
 **Выбрано:** функция SECURITY INVOKER (не DEFINER), хотя оба варианта работают функционально.

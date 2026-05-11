@@ -6,9 +6,9 @@
 
 ## Текущее состояние
 
-**Sprint 1 (фундамент + auth) закрыт.** Каркас приложения собран: Expo SDK 54 + Expo Router v6 + NativeWind 4 + Supabase. Auth-flow по телефону работает с anonymous-сессией под капотом (UI готов под реальный OTP в sprint 2). БД с полной таксономией категорий (10 L1 / 66 L2 / 262 L3) и RLS. GitHub Actions с typecheck + biome зелёный.
+**Sprint 2 (онбординг + каталог клиента) закрыт.** В дополнение к sprint 1 (фундамент + auth) появились: 3-группный AuthGate (`(auth)` / `(onboarding)` / `(tabs)`), миграция 0003 с `onboarding_completed_at` + `active_role`, экран выбора роли «Я ищу мастера» / «Я мастер», и главный экран клиента с сеткой из 26 visible категорий (lucide-иконки + surface-2 фоны, без атмосферных фото пока).
 
-**Готов к sprint 2** (бизнес-фичи: role selection, master onboarding wizard, реальный SMS-провайдер).
+**Готов к sprint 3** (master onboarding wizard, реальный SMS-провайдер, навигация в category detail, фото-инфра).
 
 ---
 
@@ -111,19 +111,24 @@ xtrud/
 - [x] **2026-05-11** — **1.7** CI (commit `619083c`): GitHub Actions с typecheck + biome ci. Первый прогон ✅ 31 секунда. concurrency cancel-in-progress.
 - [x] **2026-05-11** — `.claude/settings.json` с permissions allowlist для смягчения подтверждений.
 
+### Sprint 2 (онбординг + каталог клиента)
+- [x] **2026-05-11** — **2.1** Migration 0003 + AuthGate routing (commit `2c2f25f`): `users.onboarding_completed_at` + `users.active_role` enum + CHECK constraint (active_role='master' ⇒ is_master=true) + partial index. `useUserRecord` hook (TanStack Query, staleTime 5 мин). AuthGate переписан под 3 группы — `(auth)` / `(onboarding)` / `(tabs)`. Advisor security = 0 lints.
+- [x] **2026-05-11** — **2.2** Role selection screen (commit `eb42338`): полноценный UI с 2 карточками (lucide Search/Briefcase), accessibilityState selected, accent-soft фон выбранной, CTA "Продолжить", error display. `useCompleteOnboarding` mutation обновляет `users.{is_master, active_role, onboarding_completed_at}` + invalidates query.
+- [x] **2026-05-11** — **2.3** Main client screen (commit `5d394c8`): `useVisibleCategories` для 26 L2, `CategoryTile` компонент с iconMap (~50 lucide icons), grid 2/3/4-кол. адаптивный, ScrollView без виртуализации, loading/error/empty states, header с приветствием по first_name + role badge + signOut. **Без атмосферных фото — sprint 3+.**
+
 ---
 
-## Что дальше (Sprint 2 — приоритет)
+## Что дальше (Sprint 3 — приоритет)
 
-1. **🟢 Включить Anonymous Sign-Ins в Supabase Dashboard** (5 минут): Authentication → Sign In/Up → "Allow anonymous sign-ins" = ON. Без этого `signInAnonymously()` падает. После — E2E тест полного auth-flow на iOS Simulator + Web + Android.
-2. **Role selection экран** — после первого логина: «Я ищу мастера» / «Я мастер». Обновляет `users.is_client` / `users.is_master` через UPDATE с RLS.
-3. **Role switcher** — pill-переключатель `[Клиент | Мастер]` в хедере. Состояние active_role в Zustand store + persist.
-4. **Master onboarding wizard** — 7 шагов из CATEGORIES_AND_PROFILES.md §2.1 (фото, город, категории, цены, радиус, график). Нужна миграция `0003_master_profile_fields.sql` с experience_years, has_tools, work_schedule jsonb, etc.
-5. **Реальный phone OTP** — заменить anon sign-in на `supabase.auth.signInWithOtp` + `verifyOtp`. Включить phone провайдера в Supabase (Twilio/MessageBird/Vonage/Smsc.ru) + добавить тестовые номера. Кода в `use-auth-mutations.ts` менять 2-3 строки — архитектура готова.
-6. **Альтернативный логин: Telegram Login** — рекомендация AUDIT.md (бесплатно, 100% покрытие в регионе).
-7. **Каталог категорий клиента** — главный экран после логина: bento-grid с visible L2 категориями (26 шт). `category-tile` компонент с тёмным фото + лейблом.
-8. **`src/types/database.ts` regen** — после каждой миграции через MCP `generate_typescript_types`.
-9. **Test runner setup** — Vitest для unit (validation.ts, storage.ts чанкинг), Maestro для mobile E2E (auth-flow).
+1. **🟢 Включить Anonymous Sign-Ins в Supabase Dashboard** (5 минут): Authentication → Sign In/Up → "Allow anonymous sign-ins" = ON. Без этого `signInAnonymously()` падает. После — E2E тест полного auth + onboarding + каталог flow на iOS Simulator + Web + Android.
+2. **Category detail экран** — `app/(tabs)/category/[id].tsx`: открывается тапом по плитке, показывает L3 услуги внутри L2 + (позже) мастеров по категории.
+3. **Master onboarding wizard** — 7 шагов из CATEGORIES_AND_PROFILES.md §2.1 (фото, город, категории, цены, радиус, график). Нужна миграция `0004_master_profile_fields.sql` с experience_years, has_tools, work_schedule jsonb, etc. + создание master_profiles записи при `active_role='master'`.
+4. **Role switcher** — pill-переключатель `[Клиент | Мастер]` в хедере для пользователей с is_master=true. Mutation обновляет users.active_role.
+5. **Атмосферные фото категорий** — `categories_l1.cover_image_url`, рендер `<Image source={uri}>` поверх с tile-overlay (overlay gradient + лейбл белым) — сигнатурный паттерн DESIGN_SYSTEM §9.1. Источники: Unsplash, Pexels.
+6. **Реальный phone OTP** — заменить anon sign-in на `supabase.auth.signInWithOtp` + `verifyOtp`. Включить phone провайдера в Supabase + добавить тестовые номера. Кода в `use-auth-mutations.ts` менять 2-3 строки.
+7. **Альтернативный логин: Telegram Login** — рекомендация AUDIT.md (бесплатно, 100% покрытие в регионе).
+8. **Test runner setup** — Vitest для unit (validation.ts, storage.ts чанкинг), Maestro для mobile E2E (auth → onboarding → каталог).
+9. **EAS Build setup** — `eas.json`, первый dev-build для iOS/Android Simulator.
 
 ---
 
@@ -135,6 +140,18 @@ xtrud/
 ---
 
 ## История ключевых решений
+
+### 2026-05-11 — Sprint 2.3: bento-grid без фото в первой итерации
+**Выбрано:** упрощённая сетка плиток с lucide-иконкой + surface-2 фоном вместо сигнатурного DESIGN_SYSTEM §9.1 паттерна (тёмное атмосферное фото + overlay-gradient + лейбл).
+
+**Обоснование:** атмосферные фото для 26 категорий — это (а) 30-50 МБ assets, (б) подбор/curation/правовая чистка, (в) загрузка в Supabase Storage / R2 + клиентский resize через expo-image-manipulator. Это полноценная задача sprint 3+ с фото-инфрой. Сейчас лучше показать MVP-сетку, чем застрять.
+
+**Условие пересмотра:** sprint 3 когда настроим R2 + источник фото.
+
+### 2026-05-11 — Sprint 2.1: split-table подход к "приватный/публичный" профиль расширен на onboarding state
+**Выбрано:** `users.onboarding_completed_at: timestamptz NULL` как маркер "выбрал ли пользователь роль" — публичная инфа.
+
+**Альтернатива (отброшена):** хранить в `users_private` чтобы не было видно другим — overkill, статус онбординга семантически такой же публичный как `is_master`.
 
 ### 2026-05-11 — Sprint 1: anonymous-сессия как первичный auth механизм
 **Выбрано:** anonymous sign-in под капотом + phone сохраняется в `users_private` без OTP-верификации.

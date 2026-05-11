@@ -233,6 +233,171 @@ export type Database = {
           },
         ];
       };
+      orders: {
+        Row: {
+          budget_max: number | null;
+          budget_min: number | null;
+          budget_mode: Database["public"]["Enums"]["order_budget_mode"];
+          city_id: string;
+          client_id: string;
+          contact_mode: Database["public"]["Enums"]["order_contact_mode"];
+          created_at: string;
+          description: string;
+          district: string | null;
+          executor_type: Database["public"]["Enums"]["order_executor_type"];
+          expires_at: string;
+          id: string;
+          l2_id: string;
+          l3_ids: string[];
+          picked_master_id: string | null;
+          responses_count: number;
+          status: Database["public"]["Enums"]["order_status"];
+          title: string;
+          updated_at: string;
+          urgency: Database["public"]["Enums"]["order_urgency"];
+        };
+        Insert: {
+          budget_max?: number | null;
+          budget_min?: number | null;
+          budget_mode?: Database["public"]["Enums"]["order_budget_mode"];
+          city_id: string;
+          client_id: string;
+          contact_mode?: Database["public"]["Enums"]["order_contact_mode"];
+          created_at?: string;
+          description: string;
+          district?: string | null;
+          executor_type?: Database["public"]["Enums"]["order_executor_type"];
+          expires_at?: string;
+          id?: string;
+          l2_id: string;
+          l3_ids?: string[];
+          picked_master_id?: string | null;
+          responses_count?: number;
+          status?: Database["public"]["Enums"]["order_status"];
+          title: string;
+          updated_at?: string;
+          urgency?: Database["public"]["Enums"]["order_urgency"];
+        };
+        Update: {
+          budget_max?: number | null;
+          budget_min?: number | null;
+          budget_mode?: Database["public"]["Enums"]["order_budget_mode"];
+          city_id?: string;
+          client_id?: string;
+          contact_mode?: Database["public"]["Enums"]["order_contact_mode"];
+          created_at?: string;
+          description?: string;
+          district?: string | null;
+          executor_type?: Database["public"]["Enums"]["order_executor_type"];
+          expires_at?: string;
+          id?: string;
+          l2_id?: string;
+          l3_ids?: string[];
+          picked_master_id?: string | null;
+          responses_count?: number;
+          status?: Database["public"]["Enums"]["order_status"];
+          title?: string;
+          updated_at?: string;
+          urgency?: Database["public"]["Enums"]["order_urgency"];
+        };
+        Relationships: [
+          {
+            foreignKeyName: "orders_city_id_fkey";
+            columns: ["city_id"];
+            isOneToOne: false;
+            referencedRelation: "cities";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "orders_client_id_fkey";
+            columns: ["client_id"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "orders_l2_id_fkey";
+            columns: ["l2_id"];
+            isOneToOne: false;
+            referencedRelation: "categories_l2";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "orders_picked_master_id_fkey";
+            columns: ["picked_master_id"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      order_responses: {
+        Row: {
+          created_at: string;
+          id: string;
+          l2_id: string;
+          lead_time: string | null;
+          master_id: string;
+          message: string;
+          order_id: string;
+          price_max: number | null;
+          price_min: number | null;
+          price_mode: Database["public"]["Enums"]["order_budget_mode"];
+          status: Database["public"]["Enums"]["response_status"];
+          updated_at: string;
+        };
+        Insert: {
+          created_at?: string;
+          id?: string;
+          l2_id: string;
+          lead_time?: string | null;
+          master_id: string;
+          message: string;
+          order_id: string;
+          price_max?: number | null;
+          price_min?: number | null;
+          price_mode?: Database["public"]["Enums"]["order_budget_mode"];
+          status?: Database["public"]["Enums"]["response_status"];
+          updated_at?: string;
+        };
+        Update: {
+          created_at?: string;
+          id?: string;
+          l2_id?: string;
+          lead_time?: string | null;
+          master_id?: string;
+          message?: string;
+          order_id?: string;
+          price_max?: number | null;
+          price_min?: number | null;
+          price_mode?: Database["public"]["Enums"]["order_budget_mode"];
+          status?: Database["public"]["Enums"]["response_status"];
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "order_responses_l2_id_fkey";
+            columns: ["l2_id"];
+            isOneToOne: false;
+            referencedRelation: "categories_l2";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "order_responses_master_id_fkey";
+            columns: ["master_id"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "order_responses_order_id_fkey";
+            columns: ["order_id"];
+            isOneToOne: false;
+            referencedRelation: "orders";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       master_profiles: {
         Row: {
           bio: string | null;
@@ -425,9 +590,7 @@ export type Database = {
         Returns: undefined;
       };
       set_master_categories: {
-        Args: {
-          p_l2_ids: string[];
-        };
+        Args: { p_l2_ids: string[] };
         Returns: undefined;
       };
     };
@@ -437,6 +600,12 @@ export type Database = {
       home_clients_policy: "anytime" | "with_male_present" | "women_only";
       master_pricing_mode: "per_hour" | "per_unit" | "negotiable" | "on_quote";
       master_status: "draft" | "pending" | "active" | "suspended" | "archived";
+      order_budget_mode: "exact" | "range" | "negotiable";
+      order_contact_mode: "chat_only" | "phone_open" | "phone_masked";
+      order_executor_type: "any" | "solo" | "brigade" | "company";
+      order_status: "draft" | "open" | "in_progress" | "completed" | "cancelled" | "expired";
+      order_urgency: "urgent" | "this_week" | "this_month" | "flexible";
+      response_status: "sent" | "viewed" | "accepted" | "rejected" | "withdrawn";
       tax_status: "individual" | "self_employed" | "individual_entrepreneur" | "legal_entity";
       user_active_role: "client" | "master";
       user_gender: "male" | "female" | "unspecified";
@@ -553,6 +722,12 @@ export const Constants = {
       home_clients_policy: ["anytime", "with_male_present", "women_only"],
       master_pricing_mode: ["per_hour", "per_unit", "negotiable", "on_quote"],
       master_status: ["draft", "pending", "active", "suspended", "archived"],
+      order_budget_mode: ["exact", "range", "negotiable"],
+      order_contact_mode: ["chat_only", "phone_open", "phone_masked"],
+      order_executor_type: ["any", "solo", "brigade", "company"],
+      order_status: ["draft", "open", "in_progress", "completed", "cancelled", "expired"],
+      order_urgency: ["urgent", "this_week", "this_month", "flexible"],
+      response_status: ["sent", "viewed", "accepted", "rejected", "withdrawn"],
       tax_status: [
         "individual",
         "self_employed",

@@ -167,6 +167,72 @@ export type Database = {
         };
         Relationships: [];
       };
+      master_categories: {
+        Row: {
+          attributes: Json;
+          category_bio: string | null;
+          category_radius_km: number | null;
+          closed_deals: number;
+          created_at: string;
+          id: string;
+          l2_id: string;
+          l3_ids: string[];
+          master_id: string;
+          pricing: Json;
+          pricing_mode: Database["public"]["Enums"]["master_pricing_mode"];
+          rating_avg: number | null;
+          rating_count: number;
+          updated_at: string;
+        };
+        Insert: {
+          attributes?: Json;
+          category_bio?: string | null;
+          category_radius_km?: number | null;
+          closed_deals?: number;
+          created_at?: string;
+          id?: string;
+          l2_id: string;
+          l3_ids?: string[];
+          master_id: string;
+          pricing?: Json;
+          pricing_mode?: Database["public"]["Enums"]["master_pricing_mode"];
+          rating_avg?: number | null;
+          rating_count?: number;
+          updated_at?: string;
+        };
+        Update: {
+          attributes?: Json;
+          category_bio?: string | null;
+          category_radius_km?: number | null;
+          closed_deals?: number;
+          created_at?: string;
+          id?: string;
+          l2_id?: string;
+          l3_ids?: string[];
+          master_id?: string;
+          pricing?: Json;
+          pricing_mode?: Database["public"]["Enums"]["master_pricing_mode"];
+          rating_avg?: number | null;
+          rating_count?: number;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "master_categories_l2_id_fkey";
+            columns: ["l2_id"];
+            isOneToOne: false;
+            referencedRelation: "categories_l2";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "master_categories_master_id_fkey";
+            columns: ["master_id"];
+            isOneToOne: false;
+            referencedRelation: "master_profiles";
+            referencedColumns: ["user_id"];
+          },
+        ];
+      };
       master_profiles: {
         Row: {
           bio: string | null;
@@ -363,6 +429,7 @@ export type Database = {
       category_seasonality: "year_round" | "summer" | "winter" | "wedding_season";
       category_urgency: "urgent" | "week" | "month";
       home_clients_policy: "anytime" | "with_male_present" | "women_only";
+      master_pricing_mode: "per_hour" | "per_unit" | "negotiable" | "on_quote";
       master_status: "draft" | "pending" | "active" | "suspended" | "archived";
       tax_status: "individual" | "self_employed" | "individual_entrepreneur" | "legal_entity";
       user_active_role: "client" | "master";
@@ -478,6 +545,7 @@ export const Constants = {
       category_seasonality: ["year_round", "summer", "winter", "wedding_season"],
       category_urgency: ["urgent", "week", "month"],
       home_clients_policy: ["anytime", "with_male_present", "women_only"],
+      master_pricing_mode: ["per_hour", "per_unit", "negotiable", "on_quote"],
       master_status: ["draft", "pending", "active", "suspended", "archived"],
       tax_status: [
         "individual",

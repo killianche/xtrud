@@ -1,3 +1,4 @@
+import { useRouter } from "expo-router";
 import { Briefcase, Search } from "lucide-react-native";
 import { useState } from "react";
 import { Pressable, View } from "react-native";
@@ -50,6 +51,7 @@ function RoleCard({ selected, disabled, title, description, Icon, onPress }: Rol
 
 export default function RoleScreen() {
   const insets = useSafeAreaInsets();
+  const router = useRouter();
   const { session } = useAuthSession();
   const userId = session?.user?.id;
   const completeOnboarding = useCompleteOnboarding();
@@ -58,9 +60,15 @@ export default function RoleScreen() {
 
   const onSubmit = async () => {
     if (!selected || !userId) return;
+    if (selected === "master") {
+      // Master: ведём в визард для заполнения профиля. onboarding_completed_at
+      // выставляется по завершению визарда через RPC complete_master_onboarding.
+      router.push("/(onboarding)/master-profile");
+      return;
+    }
+    // Client: онбординг завершён немедленно.
     try {
       await completeOnboarding.mutateAsync({ userId, role: selected });
-      // После invalidate AuthGate увидит onboarding_completed_at и редиректнет в (tabs).
     } catch (_e) {
       // Ошибка показывается через completeOnboarding.error в UI ниже.
     }

@@ -343,7 +343,22 @@ export type Database = {
       };
     };
     Views: Record<string, never>;
-    Functions: Record<string, never>;
+    Functions: {
+      complete_master_onboarding: {
+        Args: {
+          p_bio: string;
+          p_city_id: string;
+          p_district: string;
+          p_experience_years: number;
+          p_first_name: string;
+          p_has_tools: boolean;
+          p_has_transport: boolean;
+          p_last_name: string;
+          p_service_radius_km: number;
+        };
+        Returns: undefined;
+      };
+    };
     Enums: {
       category_seasonality: "year_round" | "summer" | "winter" | "wedding_season";
       category_urgency: "urgent" | "week" | "month";

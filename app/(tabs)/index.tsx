@@ -9,6 +9,7 @@ import { useAuthSession } from "@/features/auth/use-auth-session";
 import { useSetActiveRole } from "@/features/auth/use-set-active-role";
 import { useUserRecord } from "@/features/auth/use-user-record";
 import { useVisibleCategories } from "@/features/categories/use-visible-categories";
+import { MasterHomeContent } from "@/features/master-view/MasterHomeContent";
 import { signOut } from "@/lib/auth";
 
 export default function HomeTab() {
@@ -17,10 +18,10 @@ export default function HomeTab() {
   const { session } = useAuthSession();
   const userId = session?.user?.id;
   const { data: user } = useUserRecord(userId);
-  const { data: categories, isLoading, error, refetch } = useVisibleCategories();
   const setActiveRole = useSetActiveRole();
 
   const greeting = user?.first_name ? `Привет, ${user.first_name}` : "С чего начнём?";
+  const activeRole = user?.active_role ?? "client";
 
   return (
     <ScrollView
@@ -59,15 +60,40 @@ export default function HomeTab() {
         </Pressable>
       </View>
 
-      {/* Section title */}
-      <View className="mt-10 px-6">
+      {/* Branching контент: master vs client */}
+      <View className="mt-10">
+        {activeRole === "master" && userId ? (
+          <MasterHomeContent userId={userId} />
+        ) : (
+          <ClientHomeContent
+            onCategoryPress={(catId) => router.push(`/category/${catId}` as never)}
+          />
+        )}
+      </View>
+    </ScrollView>
+  );
+}
+
+// ----------------------------------------------------------------------------
+// Client home content — каталог категорий (как было в sprint 2.3 + 3.4).
+// ----------------------------------------------------------------------------
+
+interface ClientHomeContentProps {
+  onCategoryPress: (catId: string) => void;
+}
+
+function ClientHomeContent({ onCategoryPress }: ClientHomeContentProps) {
+  const { data: categories, isLoading, error, refetch } = useVisibleCategories();
+
+  return (
+    <View>
+      <View className="px-6">
         <AppText weight="semibold" className="text-title-lg text-ink">
           Категории
         </AppText>
         <AppText className="mt-1 text-body-sm text-muted">Выберите, какой мастер вам нужен</AppText>
       </View>
 
-      {/* Loading / error / grid */}
       {isLoading && (
         <View className="mt-8 items-center px-6">
           <ActivityIndicator />
@@ -98,7 +124,7 @@ export default function HomeTab() {
               <CategoryTile
                 name={cat.name_ru}
                 iconName={cat.icon}
-                onPress={() => router.push(`/category/${cat.id}` as never)}
+                onPress={() => onCategoryPress(cat.id)}
               />
             </View>
           ))}
@@ -112,6 +138,6 @@ export default function HomeTab() {
           </AppText>
         </View>
       )}
-    </ScrollView>
+    </View>
   );
 }

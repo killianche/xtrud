@@ -33,6 +33,9 @@
 - [x] **2026-05-11** — Supabase-проект `xtrud` создан, ключи получены, записаны в `.env.local`
 - [x] **2026-05-11** — git инициализирован, первый коммит сделан, репо запушен на GitHub
 - [x] **2026-05-11** — закоммичены документы от параллельного агента: `PROJECT_MAP.md`, `DESIGN_SYSTEM.md`, `CROSS_PLATFORM_RULES.md`, `DESIGN_REFERENCE_CALCOM.md`
+- [x] **2026-05-11** — спроектирована полная таксономия и профили: [CATEGORIES_AND_PROFILES.md](CATEGORIES_AND_PROFILES.md) — L1=10/L2=64/L3≈290, dual-role one-account, multi-category до 5 L2, JSONB-attributes, фото-инфра R2 + клиентский ресайз
+- [x] **2026-05-11** — параллельный аудит и разведка: [AUDIT.md](AUDIT.md) (риски, edge-cases, переприоритезация), [COMPETITOR_INSIGHTS.md](COMPETITOR_INSIGHTS.md) (~70 идей с 20 платформ + AI-фичи), [PRODUCT_BLINDSPOTS.md](PRODUCT_BLINDSPOTS.md) (UX/код/onboarding)
+- [x] **2026-05-11** — решение пользователя: исключить из проекта юридическое/правовое поле и WhatsApp Business как канал уведомлений; правило закреплено в `memory/feedback_scope_discipline.md`. Все упоминания удалены из 4 документов и `PROJECT_MAP.md` §5.3/§5.10.
 
 ---
 

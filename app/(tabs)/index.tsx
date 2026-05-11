@@ -4,7 +4,9 @@ import { ActivityIndicator, Pressable, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
 import { CategoryTile } from "@/components/CategoryTile";
+import { RoleSwitcher } from "@/components/RoleSwitcher";
 import { useAuthSession } from "@/features/auth/use-auth-session";
+import { useSetActiveRole } from "@/features/auth/use-set-active-role";
 import { useUserRecord } from "@/features/auth/use-user-record";
 import { useVisibleCategories } from "@/features/categories/use-visible-categories";
 import { signOut } from "@/lib/auth";
@@ -13,8 +15,10 @@ export default function HomeTab() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { session } = useAuthSession();
-  const { data: user } = useUserRecord(session?.user?.id);
+  const userId = session?.user?.id;
+  const { data: user } = useUserRecord(userId);
   const { data: categories, isLoading, error, refetch } = useVisibleCategories();
+  const setActiveRole = useSetActiveRole();
 
   const greeting = user?.first_name ? `Привет, ${user.first_name}` : "С чего начнём?";
 
@@ -33,10 +37,14 @@ export default function HomeTab() {
           <AppText weight="bold" className="text-display-md tracking-tight text-ink">
             {greeting}
           </AppText>
-          {user?.active_role && (
-            <AppText className="mt-2 text-caption text-muted">
-              Режим: {user.active_role === "client" ? "Клиент" : "Мастер"}
-            </AppText>
+          {user?.is_master && user.active_role && userId && (
+            <View className="mt-3">
+              <RoleSwitcher
+                activeRole={user.active_role}
+                disabled={setActiveRole.isPending}
+                onChange={(role) => setActiveRole.mutate({ userId, role })}
+              />
+            </View>
           )}
         </View>
 

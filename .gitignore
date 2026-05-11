@@ -1,0 +1,79 @@
+# Node / package managers
+node_modules/
+.pnpm-store/
+.npm/
+.yarn/
+
+# Expo
+.expo/
+.expo-shared/
+dist/
+web-build/
+expo-env.d.ts
+
+# React Native / iOS
+ios/Pods/
+ios/build/
+*.xcworkspace/xcuserdata/
+*.xcodeproj/xcuserdata/
+
+# React Native / Android
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+*.keystore
+!debug.keystore
+
+# Next.js (на случай если переключимся на monorepo)
+.next/
+out/
+
+# Builds
+build/
+dist/
+
+# Env / secrets — НИКОГДА не коммитим
+.env
+.env.local
+.env.*.local
+.env.development
+.env.production
+
+# Supabase локальное состояние
+supabase/.branches/
+supabase/.temp/
+
+# Логи
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+*.swp
+
+# Тесты / покрытие
+coverage/
+.nyc_output/
+
+# TypeScript build
+*.tsbuildinfo
+
+# Внешний учебный репо — не наш код
+claude-code-best-practice-main/
+
+# Внутренняя auto-memory Claude — личный контекст, не проектные артефакты
+memory/
+
+# Claude Code локальные настройки — личные, не команды
+.claude/settings.local.json

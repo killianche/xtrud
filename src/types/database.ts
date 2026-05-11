@@ -424,6 +424,12 @@ export type Database = {
         };
         Returns: undefined;
       };
+      set_master_categories: {
+        Args: {
+          p_l2_ids: string[];
+        };
+        Returns: undefined;
+      };
     };
     Enums: {
       category_seasonality: "year_round" | "summer" | "winter" | "wedding_season";

@@ -37,6 +37,7 @@ import {
 } from "@/features/orders/use-order-responses";
 import { useMarkResponsesViewed } from "@/features/orders/use-unread-responses";
 import { useMyReviewForOrder, useSubmitReview } from "@/features/reviews/use-reviews";
+import { useThemeColors } from "@/lib/use-theme-color";
 import type { Tables } from "@/types/database";
 
 // ============================================================================
@@ -68,6 +69,7 @@ export default function OrderDetailScreen() {
 
   const isOwner = !!userId && !!order && order.client_id === userId;
   const isMasterRole = user?.active_role === "master";
+  const tc = useThemeColors(["ink", "muted-soft"]);
 
   // Sprint 12.3 — при open order detail (если owner) помечаем отклики просмотренными.
   const markResponsesViewed = useMarkResponsesViewed(userId);
@@ -105,7 +107,7 @@ export default function OrderDetailScreen() {
           hitSlop={12}
           className="h-10 w-10 items-center justify-center rounded-full active:opacity-70"
         >
-          <ChevronLeft size={24} strokeWidth={1.75} color="#0a0a0a" />
+          <ChevronLeft size={24} strokeWidth={1.75} color={tc.ink} />
         </Pressable>
         {isOwner && order?.status === "open" && id && (
           <Pressable
@@ -217,6 +219,7 @@ function OrderInfoBlock({ order }: OrderInfoBlockProps) {
     [order.client?.first_name, order.client?.last_name].filter(Boolean).join(" ") || "Клиент";
   const clientRating = order.client?.rating_as_client_avg;
   const clientRatingCount = order.client?.rating_as_client_count ?? 0;
+  const tc = useThemeColors(["muted-soft"]);
 
   return (
     <View className="px-6">
@@ -235,7 +238,7 @@ function OrderInfoBlock({ order }: OrderInfoBlockProps) {
       <View className="mt-3 flex-row flex-wrap items-center gap-x-3 gap-y-1">
         <AppText className="text-caption text-muted">{urgencyLabel(order.urgency)}</AppText>
         <View className="flex-row items-center gap-1">
-          <MapPin size={12} strokeWidth={1.75} color="#71717a" />
+          <MapPin size={12} strokeWidth={1.75} color={tc["muted-soft"]} />
           <AppText className="text-caption text-muted">
             {order.city?.name ?? order.city_id}
             {order.district ? ` · ${order.district}` : ""}
@@ -493,6 +496,7 @@ function MasterResponseSection({
 }: MasterResponseSectionProps) {
   const { data: myResponse, isLoading } = useMyResponseForOrder(orderId, masterId);
   const submitResponse = useSubmitResponse();
+  const tc = useThemeColors(["muted-soft"]);
 
   const isPickedMaster = pickedMasterId === masterId;
   const orderClosed = orderStatus !== "open";
@@ -647,7 +651,7 @@ function MasterResponseSection({
                       onChange(cleaned === "" ? null : Number.parseInt(cleaned, 10));
                     }}
                     placeholder={priceMode === "exact" ? "Сумма, ₽" : "От, ₽"}
-                    placeholderTextColor="#71717a"
+                    placeholderTextColor={tc["muted-soft"]}
                     keyboardType="number-pad"
                     inputMode="numeric"
                     maxFontSizeMultiplier={1.3}
@@ -671,7 +675,7 @@ function MasterResponseSection({
                         onChange(cleaned === "" ? null : Number.parseInt(cleaned, 10));
                       }}
                       placeholder="До, ₽"
-                      placeholderTextColor="#71717a"
+                      placeholderTextColor={tc["muted-soft"]}
                       keyboardType="number-pad"
                       inputMode="numeric"
                       maxFontSizeMultiplier={1.3}
@@ -701,7 +705,7 @@ function MasterResponseSection({
                 onBlur={onBlur}
                 onChangeText={onChange}
                 placeholder="Завтра / 2-3 дня / на следующей неделе"
-                placeholderTextColor="#71717a"
+                placeholderTextColor={tc["muted-soft"]}
                 maxLength={100}
                 maxFontSizeMultiplier={1.3}
                 className="mt-2 h-12 rounded-md border border-hairline bg-canvas px-3 text-body-md text-ink"
@@ -727,7 +731,7 @@ function MasterResponseSection({
                 onBlur={onBlur}
                 onChangeText={onChange}
                 placeholder="Здравствуйте, готов взять. Опыт в этой задаче..."
-                placeholderTextColor="#71717a"
+                placeholderTextColor={tc["muted-soft"]}
                 multiline
                 numberOfLines={4}
                 maxLength={1000}
@@ -846,6 +850,7 @@ function ClientReviewSection({ orderId, clientId, masterId, l2Id }: ClientReview
   const submitReview = useSubmitReview();
   const [rating, setRating] = useState<number>(0);
   const [text, setText] = useState("");
+  const tc = useThemeColors(["muted-soft"]);
 
   if (isLoading) return null;
 
@@ -929,7 +934,7 @@ function ClientReviewSection({ orderId, clientId, masterId, l2Id }: ClientReview
         value={text}
         onChangeText={setText}
         placeholder="Расскажите о работе мастера (опц.)"
-        placeholderTextColor="#71717a"
+        placeholderTextColor={tc["muted-soft"]}
         multiline
         numberOfLines={3}
         maxLength={2000}
@@ -977,6 +982,7 @@ function MasterReviewSection({ orderId, masterId, clientId, l2Id }: MasterReview
   const submitReview = useSubmitReview();
   const [rating, setRating] = useState<number>(0);
   const [text, setText] = useState("");
+  const tc = useThemeColors(["muted-soft"]);
 
   if (isLoading) return null;
 
@@ -1060,7 +1066,7 @@ function MasterReviewSection({ orderId, masterId, clientId, l2Id }: MasterReview
         value={text}
         onChangeText={setText}
         placeholder="Каким был клиент? Корректно ли описал задачу, оплатил вовремя? (опц.)"
-        placeholderTextColor="#71717a"
+        placeholderTextColor={tc["muted-soft"]}
         multiline
         numberOfLines={3}
         maxLength={2000}

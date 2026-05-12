@@ -65,6 +65,7 @@ import {
 } from "lucide-react-native";
 import { Pressable, View } from "react-native";
 import { AppText } from "@/components/AppText";
+import { useThemeColor } from "@/lib/use-theme-color";
 
 const iconMap: Record<string, LucideIcon> = {
   Antenna,
@@ -135,6 +136,7 @@ export interface CategoryTileProps {
 }
 
 export function CategoryTile({ name, iconName, coverUrl, onPress }: CategoryTileProps) {
+  const inkColor = useThemeColor("ink");
   if (coverUrl) {
     return (
       <Pressable
@@ -174,7 +176,7 @@ export function CategoryTile({ name, iconName, coverUrl, onPress }: CategoryTile
       className="aspect-square overflow-hidden rounded-xl bg-surface-2 p-4 active:opacity-80"
     >
       <View className="h-10 w-10 items-center justify-center rounded-md bg-canvas">
-        <Icon size={20} strokeWidth={1.75} color="#0a0a0a" />
+        <Icon size={20} strokeWidth={1.75} color={inkColor} />
       </View>
       <View className="flex-1 justify-end">
         <AppText weight="semibold" className="text-title-sm text-ink" numberOfLines={2}>

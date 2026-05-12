@@ -11,6 +11,7 @@ import { useCities } from "@/features/cities/use-cities";
 import { OrderFormBody } from "@/features/orders/OrderFormBody";
 import { type CreateOrderFormValues, createOrderSchema } from "@/features/orders/order-schema";
 import { useCreateOrder } from "@/features/orders/use-create-order";
+import { useThemeColor } from "@/lib/use-theme-color";
 
 export default function NewOrderScreen() {
   const insets = useSafeAreaInsets();
@@ -21,6 +22,7 @@ export default function NewOrderScreen() {
   const { data: categories } = useVisibleCategories();
   const { data: cities } = useCities();
   const createOrder = useCreateOrder();
+  const inkColor = useThemeColor("ink");
 
   const {
     control,
@@ -83,7 +85,7 @@ export default function NewOrderScreen() {
           hitSlop={12}
           className="h-10 w-10 items-center justify-center rounded-full active:opacity-70"
         >
-          <ChevronLeft size={24} strokeWidth={1.75} color="#0a0a0a" />
+          <ChevronLeft size={24} strokeWidth={1.75} color={inkColor} />
         </Pressable>
       </View>
 

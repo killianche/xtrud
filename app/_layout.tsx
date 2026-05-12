@@ -14,6 +14,7 @@ import { StatusBar } from "expo-status-bar";
 import { useEffect, useState } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
+import CalSansSemiBold from "../assets/fonts/CalSans-SemiBold.ttf";
 import "react-native-reanimated";
 import { useAuthSession } from "@/features/auth/use-auth-session";
 import { useUserRecord } from "@/features/auth/use-user-record";
@@ -100,6 +101,7 @@ export default function RootLayout() {
     Inter_500Medium,
     Inter_600SemiBold,
     Inter_700Bold,
+    CalSans_600SemiBold: CalSansSemiBold,
   });
 
   const [queryClient] = useState(

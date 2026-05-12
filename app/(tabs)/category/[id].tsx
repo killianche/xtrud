@@ -13,9 +13,11 @@ import {
 import { type MasterInCategory, useMastersByL2 } from "@/features/master-view/use-masters-by-l2";
 import { usePullToRefresh } from "@/hooks/use-pull-to-refresh";
 import { pluralizeServices, pluralizeYears } from "@/lib/pluralize";
+import { useThemeColor, useThemeColors } from "@/lib/use-theme-color";
 
 function ServiceRow({ service }: { service: CategoryL3 }) {
   const urgencyText = urgencyLabel(service.urgency_typical);
+  const warningColor = useThemeColor("warning");
 
   return (
     <Pressable
@@ -29,7 +31,7 @@ function ServiceRow({ service }: { service: CategoryL3 }) {
           <AppText weight="medium" className="text-body-md text-ink" numberOfLines={2}>
             {service.name_ru}
           </AppText>
-          {service.requires_license && <Shield size={14} strokeWidth={1.75} color="#f59e0b" />}
+          {service.requires_license && <Shield size={14} strokeWidth={1.75} color={warningColor} />}
         </View>
         <AppText className="mt-1 text-caption text-muted">{urgencyText}</AppText>
       </View>
@@ -47,6 +49,7 @@ export default function CategoryDetailScreen() {
   const { data, isLoading, error, refetch } = useCategoryDetail(id);
   const masters = useMastersByL2(id);
   const refresh = usePullToRefresh();
+  const tc = useThemeColors(["ink", "warning"]);
 
   return (
     <View className="flex-1 bg-canvas" style={{ paddingTop: insets.top }}>
@@ -59,7 +62,7 @@ export default function CategoryDetailScreen() {
           hitSlop={12}
           className="h-10 w-10 items-center justify-center rounded-full active:opacity-70"
         >
-          <ChevronLeft size={24} strokeWidth={1.75} color="#0a0a0a" />
+          <ChevronLeft size={24} strokeWidth={1.75} color={tc.ink} />
         </Pressable>
       </View>
 
@@ -165,6 +168,7 @@ export default function CategoryDetailScreen() {
 }
 
 function MasterCardRow({ master, onPress }: { master: MasterInCategory; onPress: () => void }) {
+  const warningColor = useThemeColor("warning");
   const fullName =
     [master.user.first_name, master.user.last_name].filter(Boolean).join(" ") || "Мастер";
   const rating = master.profile?.rating_overall_avg;
@@ -186,7 +190,7 @@ function MasterCardRow({ master, onPress }: { master: MasterInCategory; onPress:
         <View className="mt-1 flex-row items-center gap-2">
           {rating != null && ratingCount > 0 ? (
             <View className="flex-row items-center gap-1">
-              <Star size={12} strokeWidth={2} color="#f59e0b" fill="#f59e0b" />
+              <Star size={12} strokeWidth={2} color={warningColor} fill={warningColor} />
               <AppText weight="semibold" className="text-caption text-ink">
                 {rating.toFixed(1)}
               </AppText>

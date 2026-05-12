@@ -11,11 +11,13 @@ import {
   type PhoneFormValues,
   phoneFormSchema,
 } from "@/features/auth/validation";
+import { useThemeColor } from "@/lib/use-theme-color";
 
 export default function PhoneScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const sendOtp = useSendOtp();
+  const mutedSoftColor = useThemeColor("muted-soft");
 
   const {
     control,
@@ -67,7 +69,7 @@ export default function PhoneScreen() {
                   onBlur={onBlur}
                   onChangeText={(raw) => onChange(formatPhoneMask(raw))}
                   placeholder="+7 ___ ___-__-__"
-                  placeholderTextColor="#71717a"
+                  placeholderTextColor={mutedSoftColor}
                   keyboardType="phone-pad"
                   autoComplete="tel"
                   textContentType="telephoneNumber"

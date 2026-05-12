@@ -15,6 +15,7 @@ import { useMyResponses } from "@/features/orders/use-my-responses";
 import { useOrdersAssignedToMe } from "@/features/orders/use-orders-assigned-to-me";
 import { useMarkFeedSeen } from "@/features/orders/use-unread-feed";
 import { usePullToRefresh } from "@/hooks/use-pull-to-refresh";
+import { useThemeColor, useThemeColors } from "@/lib/use-theme-color";
 
 export default function OrdersScreen() {
   const { session } = useAuthSession();
@@ -41,6 +42,7 @@ function ClientOrdersView({ userId }: ClientOrdersViewProps) {
   const router = useRouter();
   const { data: orders, isLoading, error, refetch } = useMyOrders(userId);
   const hasOrders = (orders?.length ?? 0) > 0;
+  const tc = useThemeColors(["muted-soft", "on-primary"]);
   const refresh = usePullToRefresh();
 
   return (
@@ -107,7 +109,7 @@ function ClientOrdersView({ userId }: ClientOrdersViewProps) {
         {!isLoading && !error && !hasOrders && (
           <View className="mt-12 items-center rounded-lg bg-surface-2 mx-6 px-6 py-10">
             <View className="h-12 w-12 items-center justify-center rounded-full bg-surface-3">
-              <ClipboardList size={24} strokeWidth={1.75} color="#71717a" />
+              <ClipboardList size={24} strokeWidth={1.75} color={tc["muted-soft"]} />
             </View>
             <AppText weight="semibold" className="mt-4 text-title-md text-ink">
               Заказов пока нет
@@ -125,7 +127,7 @@ function ClientOrdersView({ userId }: ClientOrdersViewProps) {
         className="absolute right-6 bottom-6 h-14 flex-row items-center gap-2 rounded-pill bg-primary px-5 active:opacity-80"
         style={{ marginBottom: insets.bottom + 12 }}
       >
-        <Plus size={20} strokeWidth={2.25} color="#ffffff" />
+        <Plus size={20} strokeWidth={2.25} color={tc["on-primary"]} />
         <AppText weight="semibold" className="text-button text-on-primary">
           Создать заказ
         </AppText>
@@ -345,6 +347,7 @@ function NewOrdersTab({
   onCategoryCta,
   onOrderPress,
 }: NewOrdersTabProps) {
+  const onPrimaryColor = useThemeColor("on-primary");
   if (isLoading) {
     return (
       <View className="mt-8 items-center px-6">
@@ -370,7 +373,7 @@ function NewOrdersTab({
             </AppText>
           </View>
           <View className="h-10 w-10 items-center justify-center rounded-full bg-accent">
-            <Plus size={20} strokeWidth={2} color="#ffffff" />
+            <Plus size={20} strokeWidth={2} color={onPrimaryColor} />
           </View>
         </Pressable>
       </View>
@@ -533,10 +536,11 @@ interface EmptyCardProps {
 }
 
 function EmptyCard({ title, subtitle }: EmptyCardProps) {
+  const mutedSoftColor = useThemeColor("muted-soft");
   return (
     <View className="items-center rounded-lg bg-surface-2 px-6 py-10">
       <View className="h-12 w-12 items-center justify-center rounded-full bg-surface-3">
-        <ClipboardList size={24} strokeWidth={1.75} color="#71717a" />
+        <ClipboardList size={24} strokeWidth={1.75} color={mutedSoftColor} />
       </View>
       <AppText weight="semibold" className="mt-4 text-title-md text-ink">
         {title}

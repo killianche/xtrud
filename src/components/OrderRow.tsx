@@ -6,6 +6,7 @@ import { Pressable, View } from "react-native";
 import { AppText } from "@/components/AppText";
 import { urgencyLabel } from "@/features/orders/order-schema";
 import type { OrderUrgency } from "@/features/orders/use-create-order";
+import { useThemeColor } from "@/lib/use-theme-color";
 
 export interface OrderRowProps {
   id: string;
@@ -43,6 +44,7 @@ function responsesLabel(n: number): string {
 }
 
 export function OrderRow(props: OrderRowProps) {
+  const mutedSoftColor = useThemeColor("muted-soft");
   return (
     <Pressable
       accessibilityRole="button"
@@ -68,7 +70,7 @@ export function OrderRow(props: OrderRowProps) {
       <View className="mt-2 flex-row flex-wrap items-center gap-x-3 gap-y-1">
         <AppText className="text-caption text-muted">{urgencyLabel(props.urgency)}</AppText>
         <View className="flex-row items-center gap-1">
-          <MapPin size={12} strokeWidth={1.75} color="#71717a" />
+          <MapPin size={12} strokeWidth={1.75} color={mutedSoftColor} />
           <AppText className="text-caption text-muted">
             {props.cityName}
             {props.district ? ` · ${props.district}` : ""}

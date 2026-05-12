@@ -13,6 +13,7 @@ import { Controller } from "react-hook-form";
 import { ActivityIndicator, Pressable, Switch, TextInput, View } from "react-native";
 import { AppText } from "@/components/AppText";
 import type { MasterProfileFormValues } from "@/features/auth/master-profile-schema";
+import { useThemeColor } from "@/lib/use-theme-color";
 import type { Tables } from "@/types/database";
 
 type FormControl = Control<MasterProfileFormValues>;
@@ -30,6 +31,7 @@ export function MasterProfileFormBody({
   isBusy,
   cities,
 }: MasterProfileFormBodyProps) {
+  const mutedSoftColor = useThemeColor("muted-soft");
   return (
     <>
       {/* Имя / Фамилия */}
@@ -132,7 +134,7 @@ export function MasterProfileFormBody({
                 onBlur={onBlur}
                 onChangeText={onChange}
                 placeholder="Опыт в стройке от фундамента до кровли..."
-                placeholderTextColor="#71717a"
+                placeholderTextColor={mutedSoftColor}
                 multiline
                 numberOfLines={4}
                 maxLength={500}
@@ -230,6 +232,7 @@ interface FormFieldProps {
 }
 
 function FormField(props: FormFieldProps) {
+  const mutedSoftColor = useThemeColor("muted-soft");
   return (
     <Controller
       control={props.control}
@@ -244,7 +247,7 @@ function FormField(props: FormFieldProps) {
             onBlur={onBlur}
             onChangeText={onChange}
             placeholder={props.placeholder}
-            placeholderTextColor="#71717a"
+            placeholderTextColor={mutedSoftColor}
             autoCapitalize={props.autoCapitalize ?? "none"}
             maxFontSizeMultiplier={1.3}
             className={`mt-2 h-12 rounded-md border bg-canvas px-3 text-body-md text-ink ${
@@ -273,6 +276,7 @@ interface NumberFieldProps {
 }
 
 function NumberField(props: NumberFieldProps) {
+  const mutedSoftColor = useThemeColor("muted-soft");
   return (
     <Controller
       control={props.control}
@@ -290,7 +294,7 @@ function NumberField(props: NumberFieldProps) {
               onChange(cleaned === "" ? 0 : Number.parseInt(cleaned, 10));
             }}
             placeholder={props.placeholder}
-            placeholderTextColor="#71717a"
+            placeholderTextColor={mutedSoftColor}
             keyboardType="number-pad"
             inputMode="numeric"
             maxFontSizeMultiplier={1.3}

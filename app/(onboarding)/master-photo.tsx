@@ -8,6 +8,7 @@ import { OnboardingProgress } from "@/components/OnboardingProgress";
 import { useAuthSession } from "@/features/auth/use-auth-session";
 import { useUserRecord } from "@/features/auth/use-user-record";
 import { useUpdateMyAvatar } from "@/features/profile/use-update-my-avatar";
+import { useThemeColor } from "@/lib/use-theme-color";
 
 // Master onboarding flow: role → categories → photo → profile.
 // Этот экран — шаг 3 из 4. Фото — опциональное (skip разрешён), но мотивируем
@@ -20,6 +21,7 @@ export default function MasterPhotoScreen() {
   const userId = session?.user?.id;
   const { data: user } = useUserRecord(userId);
   const updateAvatar = useUpdateMyAvatar(userId);
+  const mutedSoftColor = useThemeColor("muted-soft");
 
   const avatarUrl = user?.avatar_url ?? null;
   const hasPhoto = !!avatarUrl;
@@ -65,7 +67,7 @@ export default function MasterPhotoScreen() {
               ) : isBusy ? (
                 <ActivityIndicator />
               ) : (
-                <Camera size={36} strokeWidth={1.5} color="#71717a" />
+                <Camera size={36} strokeWidth={1.5} color={mutedSoftColor} />
               )}
             </Pressable>
 

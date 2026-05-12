@@ -9,6 +9,7 @@ import { useAuthSession } from "@/features/auth/use-auth-session";
 import { useVisibleCategories } from "@/features/categories/use-visible-categories";
 import { useMyMasterCategories } from "@/features/master-categories/use-my-categories";
 import { useSetMasterCategories } from "@/features/master-categories/use-set-categories";
+import { useThemeColors } from "@/lib/use-theme-color";
 
 const MAX_CATEGORIES = 5;
 
@@ -27,6 +28,7 @@ export default function MasterCategoriesScreen() {
   const { data: visible, isLoading: visibleLoading } = useVisibleCategories();
   const { data: myCats, isLoading: myCatsLoading } = useMyMasterCategories(userId);
   const setCategories = useSetMasterCategories();
+  const tc = useThemeColors(["ink", "accent"]);
 
   // Локальный selected — инициализируется из myCats при первой загрузке
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -89,7 +91,7 @@ export default function MasterCategoriesScreen() {
             hitSlop={12}
             className="h-10 w-10 items-center justify-center rounded-full active:opacity-70"
           >
-            <ChevronLeft size={24} strokeWidth={1.75} color="#0a0a0a" />
+            <ChevronLeft size={24} strokeWidth={1.75} color={tc.ink} />
           </Pressable>
         </View>
       )}
@@ -142,7 +144,7 @@ export default function MasterCategoriesScreen() {
                   >
                     {cat.name_ru}
                   </AppText>
-                  {isSelected && <Check size={20} strokeWidth={2.25} color="#2563eb" />}
+                  {isSelected && <Check size={20} strokeWidth={2.25} color={tc.accent} />}
                 </Pressable>
               );
             })}

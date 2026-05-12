@@ -21,6 +21,7 @@ import {
 import { useMarkChatRead } from "@/features/chat/use-mark-chat-read";
 import { useMyChats } from "@/features/chat/use-my-chats";
 import { useSendMessage } from "@/features/chat/use-send-message";
+import { useThemeColors } from "@/lib/use-theme-color";
 
 export default function ChatThreadScreen() {
   const insets = useSafeAreaInsets();
@@ -38,6 +39,7 @@ export default function ChatThreadScreen() {
   const sendMessage = useSendMessage();
   const markRead = useMarkChatRead(userId);
   const markReadMutate = markRead.mutate;
+  const tc = useThemeColors(["ink", "muted-soft", "on-primary"]);
 
   // Помечаем чат прочитанным при открытии thread и при появлении новых сообщений.
   // biome-ignore lint/correctness/useExhaustiveDependencies: messages?.length — намеренный trigger.
@@ -98,7 +100,7 @@ export default function ChatThreadScreen() {
           hitSlop={12}
           className="h-10 w-10 items-center justify-center rounded-full active:opacity-70"
         >
-          <ChevronLeft size={24} strokeWidth={1.75} color="#0a0a0a" />
+          <ChevronLeft size={24} strokeWidth={1.75} color={tc.ink} />
         </Pressable>
         <Pressable
           accessibilityRole="button"
@@ -170,7 +172,7 @@ export default function ChatThreadScreen() {
           value={text}
           onChangeText={setText}
           placeholder="Сообщение"
-          placeholderTextColor="#71717a"
+          placeholderTextColor={tc["muted-soft"]}
           multiline
           maxLength={4000}
           maxFontSizeMultiplier={1.3}
@@ -185,7 +187,7 @@ export default function ChatThreadScreen() {
             canSend ? "bg-primary active:opacity-80" : "bg-surface-3"
           }`}
         >
-          <Send size={20} strokeWidth={2} color={canSend ? "#ffffff" : "#71717a"} />
+          <Send size={20} strokeWidth={2} color={canSend ? tc["on-primary"] : tc["muted-soft"]} />
         </Pressable>
       </View>
     </KeyboardAvoidingView>

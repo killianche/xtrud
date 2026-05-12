@@ -10,6 +10,7 @@ import {
   useRealtimeMyResponses,
   useUnreadResponsesCount,
 } from "@/features/orders/use-unread-responses";
+import { useThemeColors } from "@/lib/use-theme-color";
 
 function badgeLabel(n: number): string | undefined {
   if (n <= 0) return undefined;
@@ -48,6 +49,9 @@ export default function TabsLayout() {
 
   const ordersBadge = badgeLabel(isClientRole ? unreadResponses : unreadFeed);
 
+  const tc = useThemeColors(["error", "on-primary"]);
+  const badgeStyle = { backgroundColor: tc.error, color: tc["on-primary"] };
+
   return (
     <Tabs
       screenOptions={{
@@ -70,7 +74,7 @@ export default function TabsLayout() {
             <ClipboardList color={color} size={size} strokeWidth={1.75} />
           ),
           tabBarBadge: ordersBadge,
-          tabBarBadgeStyle: { backgroundColor: "#ef4444", color: "#ffffff" },
+          tabBarBadgeStyle: badgeStyle,
         }}
       />
       <Tabs.Screen
@@ -81,7 +85,7 @@ export default function TabsLayout() {
             <MessageCircle color={color} size={size} strokeWidth={1.75} />
           ),
           tabBarBadge: chatsBadge,
-          tabBarBadgeStyle: { backgroundColor: "#ef4444", color: "#ffffff" },
+          tabBarBadgeStyle: badgeStyle,
         }}
       />
       {/* Detail-экраны — НЕ показываем в нижней панели табов. */}

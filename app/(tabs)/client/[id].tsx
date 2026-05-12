@@ -22,6 +22,7 @@ import { ReviewsSection } from "@/features/master-view/ReviewsSection";
 import { useReviewsForTarget } from "@/features/master-view/use-master-public";
 import { usePullToRefresh } from "@/hooks/use-pull-to-refresh";
 import { pluralizeClosedOrders as pluralizeCompleted, pluralizeReviews } from "@/lib/pluralize";
+import { useThemeColors } from "@/lib/use-theme-color";
 
 export default function ClientPublicScreen() {
   const insets = useSafeAreaInsets();
@@ -32,6 +33,7 @@ export default function ClientPublicScreen() {
   const profile = useClientPublicProfile(clientId);
   const reviews = useReviewsForTarget(clientId, "master_to_client");
   const refresh = usePullToRefresh();
+  const tc = useThemeColors(["ink", "muted-soft", "error", "success", "warning"]);
 
   const fullName = useMemo(() => {
     if (!profile.data?.user) return "";
@@ -50,7 +52,7 @@ export default function ClientPublicScreen() {
           hitSlop={12}
           className="h-10 w-10 items-center justify-center rounded-full active:opacity-70"
         >
-          <ChevronLeft size={24} strokeWidth={1.75} color="#0a0a0a" />
+          <ChevronLeft size={24} strokeWidth={1.75} color={tc.ink} />
         </Pressable>
       </View>
 
@@ -67,7 +69,7 @@ export default function ClientPublicScreen() {
 
         {profile.error && (
           <View className="mt-20 items-center px-6">
-            <CircleAlert size={32} strokeWidth={1.5} color="#ef4444" />
+            <CircleAlert size={32} strokeWidth={1.5} color={tc.error} />
             <AppText className="mt-3 text-body-sm text-error">
               Не удалось загрузить профиль. {profile.error.message}
             </AppText>
@@ -102,7 +104,7 @@ export default function ClientPublicScreen() {
                 </View>
                 {profile.data.completedOrdersCount > 0 && (
                   <View className="flex-row items-center gap-1 rounded-pill bg-success-soft px-2.5 py-1">
-                    <CheckCircle2 size={12} strokeWidth={2} color="#10b981" />
+                    <CheckCircle2 size={12} strokeWidth={2} color={tc.success} />
                     <AppText weight="medium" className="text-caption-xs text-success">
                       {pluralizeCompleted(profile.data.completedOrdersCount)}
                     </AppText>
@@ -114,7 +116,7 @@ export default function ClientPublicScreen() {
                 {profile.data.user.rating_as_client_avg != null &&
                 profile.data.user.rating_as_client_count > 0 ? (
                   <>
-                    <Star size={16} strokeWidth={2} color="#f59e0b" fill="#f59e0b" />
+                    <Star size={16} strokeWidth={2} color={tc.warning} fill={tc.warning} />
                     <AppText weight="semibold" className="text-body-md text-ink">
                       {profile.data.user.rating_as_client_avg.toFixed(1)}
                     </AppText>
@@ -131,7 +133,7 @@ export default function ClientPublicScreen() {
 
               {profile.data.city && (
                 <View className="mt-2 flex-row items-center gap-1">
-                  <MapPin size={14} strokeWidth={1.75} color="#71717a" />
+                  <MapPin size={14} strokeWidth={1.75} color={tc["muted-soft"]} />
                   <AppText className="text-body-sm text-muted">
                     {profile.data.city.name}
                     {profile.data.user.district ? `, ${profile.data.user.district}` : ""}

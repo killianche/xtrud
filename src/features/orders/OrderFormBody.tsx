@@ -18,6 +18,7 @@ import {
   orderUrgencyOptions,
   urgencyLabel,
 } from "@/features/orders/order-schema";
+import { useThemeColor } from "@/lib/use-theme-color";
 import type { Tables } from "@/types/database";
 
 export function budgetModeLabel(m: (typeof orderBudgetModeOptions)[number]): string {
@@ -53,6 +54,7 @@ export function OrderFormBody({
   cities,
   lockCategory,
 }: OrderFormBodyProps) {
+  const mutedSoftColor = useThemeColor("muted-soft");
   return (
     <>
       {/* Категория */}
@@ -142,7 +144,7 @@ export function OrderFormBody({
                 onBlur={onBlur}
                 onChangeText={onChange}
                 placeholder="Что нужно сделать, в какие сроки, особенности задачи..."
-                placeholderTextColor="#71717a"
+                placeholderTextColor={mutedSoftColor}
                 multiline
                 numberOfLines={5}
                 maxLength={2000}
@@ -352,6 +354,7 @@ interface TextFieldProps {
 }
 
 function TextField(props: TextFieldProps) {
+  const mutedSoftColor = useThemeColor("muted-soft");
   return (
     <Controller
       control={props.control}
@@ -366,7 +369,7 @@ function TextField(props: TextFieldProps) {
             onBlur={onBlur}
             onChangeText={onChange}
             placeholder={props.placeholder}
-            placeholderTextColor="#71717a"
+            placeholderTextColor={mutedSoftColor}
             autoCapitalize={props.autoCapitalize ?? "none"}
             maxFontSizeMultiplier={1.3}
             className={`mt-2 h-12 rounded-md border bg-canvas px-3 text-body-md text-ink ${
@@ -395,6 +398,7 @@ interface NumberFieldProps {
 }
 
 function NumberField(props: NumberFieldProps) {
+  const mutedSoftColor = useThemeColor("muted-soft");
   return (
     <Controller
       control={props.control}
@@ -412,7 +416,7 @@ function NumberField(props: NumberFieldProps) {
               onChange(cleaned === "" ? null : Number.parseInt(cleaned, 10));
             }}
             placeholder={props.placeholder}
-            placeholderTextColor="#71717a"
+            placeholderTextColor={mutedSoftColor}
             keyboardType="number-pad"
             inputMode="numeric"
             maxFontSizeMultiplier={1.3}

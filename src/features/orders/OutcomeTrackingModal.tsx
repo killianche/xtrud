@@ -13,6 +13,7 @@
 import { CheckCircle2, X, XCircle } from "lucide-react-native";
 import { Modal, Pressable, View } from "react-native";
 import { AppText } from "@/components/AppText";
+import { useThemeColor } from "@/lib/use-theme-color";
 
 export {
   SNOOZE_MS,
@@ -35,6 +36,7 @@ export function OutcomeTrackingModal({
   onNoDeal,
   onSnooze,
 }: OutcomeTrackingModalProps) {
+  const mutedSoftColor = useThemeColor("muted-soft");
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onSnooze}>
       <View className="flex-1 items-center justify-center bg-black/50 px-6">
@@ -50,7 +52,7 @@ export function OutcomeTrackingModal({
               hitSlop={8}
               className="ml-2 active:opacity-70"
             >
-              <X size={20} strokeWidth={1.75} color="#71717a" />
+              <X size={20} strokeWidth={1.75} color={mutedSoftColor} />
             </Pressable>
           </View>
           <AppText className="text-body-sm text-muted">

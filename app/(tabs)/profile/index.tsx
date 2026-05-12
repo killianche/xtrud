@@ -32,6 +32,7 @@ import { useRemoveMyAvatar, useUpdateMyAvatar } from "@/features/profile/use-upd
 import { useUploadPortfolioImage } from "@/features/uploads/use-upload-image";
 import { signOut } from "@/lib/auth";
 import { supabase } from "@/lib/supabase";
+import { useThemeColors } from "@/lib/use-theme-color";
 import type { Tables } from "@/types/database";
 
 export default function ProfileScreen() {
@@ -58,6 +59,7 @@ export default function ProfileScreen() {
 
   const canAddPortfolio = (portfolio.data?.length ?? 0) < PORTFOLIO_MAX;
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+  const themeColors = useThemeColors(["ink", "muted-soft", "on-primary", "warning"]);
 
   const onChangeAvatar = () => {
     if (updateAvatar.isPending) return;
@@ -135,7 +137,7 @@ export default function ProfileScreen() {
           hitSlop={12}
           className="h-10 w-10 items-center justify-center rounded-full active:opacity-70"
         >
-          <ChevronLeft size={24} strokeWidth={1.75} color="#0a0a0a" />
+          <ChevronLeft size={24} strokeWidth={1.75} color={themeColors.ink} />
         </Pressable>
         <AppText weight="semibold" className="text-title-md text-ink">
           Профиль
@@ -160,9 +162,9 @@ export default function ProfileScreen() {
               className="-bottom-1 -right-1 absolute h-9 w-9 items-center justify-center rounded-full border-2 border-canvas bg-accent active:opacity-80"
             >
               {updateAvatar.isPending ? (
-                <ActivityIndicator size="small" color="#ffffff" />
+                <ActivityIndicator size="small" color={themeColors["on-primary"]} />
               ) : (
-                <Pencil size={16} strokeWidth={2} color="#ffffff" />
+                <Pencil size={16} strokeWidth={2} color={themeColors["on-primary"]} />
               )}
             </Pressable>
           </View>
@@ -192,7 +194,12 @@ export default function ProfileScreen() {
             </View>
             {ratingAvg != null && ratingCount > 0 && (
               <View className="flex-row items-center gap-1">
-                <Star size={14} strokeWidth={2} color="#f59e0b" fill="#f59e0b" />
+                <Star
+                  size={14}
+                  strokeWidth={2}
+                  color={themeColors.warning}
+                  fill={themeColors.warning}
+                />
                 <AppText weight="semibold" className="text-caption text-ink">
                   {ratingAvg.toFixed(1)}
                 </AppText>
@@ -226,7 +233,7 @@ export default function ProfileScreen() {
                   Имя, город, bio, опыт, инструмент и транспорт
                 </AppText>
               </View>
-              <ChevronRight size={20} strokeWidth={1.75} color="#71717a" />
+              <ChevronRight size={20} strokeWidth={1.75} color={themeColors["muted-soft"]} />
             </Pressable>
 
             {/* Categories shortcut */}
@@ -243,7 +250,7 @@ export default function ProfileScreen() {
                   Выбор L2 услуг, которые вы предлагаете
                 </AppText>
               </View>
-              <ChevronRight size={20} strokeWidth={1.75} color="#71717a" />
+              <ChevronRight size={20} strokeWidth={1.75} color={themeColors["muted-soft"]} />
             </Pressable>
 
             {/* Portfolio section */}

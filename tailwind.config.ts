@@ -96,6 +96,10 @@ const config: Config = {
         // По умолчанию AppText использует Inter_400Regular через prop weight.
         // Эти классы — для случаев, когда нужно применить вручную в style/className.
         sans: ["Inter_400Regular", "system-ui"],
+        // Cal Sans — display-шрифт (заголовки, hero). Только SemiBold-вес.
+        // Загружается в app/_layout.tsx через expo-font (assets/fonts/).
+        // Используется через AppText weight="display" либо font-display утилитой.
+        display: ["CalSans_600SemiBold", "Inter_700Bold", "system-ui"],
       },
     },
   },

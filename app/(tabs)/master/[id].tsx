@@ -43,6 +43,7 @@ import {
   pluralizeReviews,
   pluralizeYears,
 } from "@/lib/pluralize";
+import { useThemeColors } from "@/lib/use-theme-color";
 
 export default function MasterPublicScreen() {
   const insets = useSafeAreaInsets();
@@ -56,6 +57,7 @@ export default function MasterPublicScreen() {
   const reviews = useReviewsForTarget(masterId, "client_to_master");
   const refresh = usePullToRefresh();
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+  const tc = useThemeColors(["ink", "muted-soft", "body", "success", "warning", "error"]);
 
   const fullName = useMemo(() => {
     if (!profile.data?.user) return "";
@@ -74,7 +76,7 @@ export default function MasterPublicScreen() {
           hitSlop={12}
           className="h-10 w-10 items-center justify-center rounded-full active:opacity-70"
         >
-          <ChevronLeft size={24} strokeWidth={1.75} color="#0a0a0a" />
+          <ChevronLeft size={24} strokeWidth={1.75} color={tc.ink} />
         </Pressable>
       </View>
 
@@ -91,7 +93,7 @@ export default function MasterPublicScreen() {
 
         {profile.error && (
           <View className="mt-20 items-center px-6">
-            <CircleAlert size={32} strokeWidth={1.5} color="#ef4444" />
+            <CircleAlert size={32} strokeWidth={1.5} color={tc.error} />
             <AppText className="mt-3 text-body-sm text-error">
               Не удалось загрузить профиль. {profile.error.message}
             </AppText>
@@ -126,7 +128,7 @@ export default function MasterPublicScreen() {
                 </View>
                 {profile.data.master?.status === "active" && (
                   <View className="flex-row items-center gap-1 rounded-pill bg-success-soft px-2.5 py-1">
-                    <CheckCircle2 size={12} strokeWidth={2} color="#10b981" />
+                    <CheckCircle2 size={12} strokeWidth={2} color={tc.success} />
                     <AppText weight="medium" className="text-caption-xs text-success">
                       Активен
                     </AppText>
@@ -138,7 +140,7 @@ export default function MasterPublicScreen() {
                 {profile.data.master?.rating_overall_avg != null &&
                 profile.data.master.rating_overall_count > 0 ? (
                   <>
-                    <Star size={16} strokeWidth={2} color="#f59e0b" fill="#f59e0b" />
+                    <Star size={16} strokeWidth={2} color={tc.warning} fill={tc.warning} />
                     <AppText weight="semibold" className="text-body-md text-ink">
                       {profile.data.master.rating_overall_avg.toFixed(1)}
                     </AppText>
@@ -162,7 +164,7 @@ export default function MasterPublicScreen() {
 
               {profile.data.city && (
                 <View className="mt-2 flex-row items-center gap-1">
-                  <MapPin size={14} strokeWidth={1.75} color="#71717a" />
+                  <MapPin size={14} strokeWidth={1.75} color={tc["muted-soft"]} />
                   <AppText className="text-body-sm text-muted">
                     {profile.data.city.name}
                     {profile.data.user.district ? `, ${profile.data.user.district}` : ""}
@@ -177,25 +179,25 @@ export default function MasterPublicScreen() {
                 {profile.data.master.experience_years != null &&
                   profile.data.master.experience_years > 0 && (
                     <StatChip
-                      icon={<Briefcase size={14} strokeWidth={1.75} color="#374151" />}
+                      icon={<Briefcase size={14} strokeWidth={1.75} color={tc.body} />}
                       label={`Опыт ${pluralizeYears(profile.data.master.experience_years)}`}
                     />
                   )}
                 {profile.data.master.service_radius_km > 0 && (
                   <StatChip
-                    icon={<MapPin size={14} strokeWidth={1.75} color="#374151" />}
+                    icon={<MapPin size={14} strokeWidth={1.75} color={tc.body} />}
                     label={`Радиус ${profile.data.master.service_radius_km} км`}
                   />
                 )}
                 {profile.data.master.has_tools && (
                   <StatChip
-                    icon={<Wrench size={14} strokeWidth={1.75} color="#374151" />}
+                    icon={<Wrench size={14} strokeWidth={1.75} color={tc.body} />}
                     label="Свой инструмент"
                   />
                 )}
                 {profile.data.master.has_transport && (
                   <StatChip
-                    icon={<Truck size={14} strokeWidth={1.75} color="#374151" />}
+                    icon={<Truck size={14} strokeWidth={1.75} color={tc.body} />}
                     label="Свой транспорт"
                   />
                 )}

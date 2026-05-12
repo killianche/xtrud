@@ -6,6 +6,18 @@
 
 ## Текущее состояние
 
+**Sprint 23 закрыт — Design-system foundation (P0).** Тёмная тема перестала быть «блокером DESIGN.md», `<Skeleton>` / `<EmptyState>` / `<OrderStatusBadge>` готовы к подключению.
+
+Что вошло:
+- **`useThemeColor` + `useThemeColors` хуки** (`src/lib/use-theme-color.ts`) — резолвят токен в hex текущей темы через NativeWind `useColorScheme` + `lightColors`/`darkColors`.
+- **Рефакторинг 22+ файлов хардкод-цветов** на `useThemeColor`: tabBarBadge, ChevronLeft/MapPin/Star/Plus в Lucide-иконках, placeholderTextColor в TextInput. PortfolioLightbox остался с `#ffffff` (исключение — всегда тёмный backdrop).
+- **`<Skeleton>` + composables** (`src/components/Skeleton.tsx`): pulse-анимация через `react-native-reanimated`, варианты `text|circle|rect`, готовые `CardRowSkeleton`/`CardListSkeleton`/`TileSkeleton`/`HeroSkeleton`. Подключение к экранам — отдельной итерацией (cross-cutting C1 не пройден полностью, только инфраструктура).
+- **`<EmptyState>`** (`src/components/EmptyState.tsx`) — единый шаблон icon+title+hint+CTA.
+- **`<OrderStatusBadge>`** (`src/components/OrderStatusBadge.tsx`) — pill-плашки для 6 статусов state-machine, готов к подключению в Sprint 27.
+- **Cal Sans display-шрифт** — npm-пакет `cal-sans@1.0.1` установлен, TTF скопирован в `assets/fonts/CalSans-SemiBold.ttf`, зарегистрирован в `_layout.tsx` через `expo-font`. `AppText` теперь поддерживает `weight="display"` → Cal Sans SemiBold. Tailwind config расширен `font-display`. `assets.d.ts` — типизация TTF-импорта.
+
+Проверки: `tsc --noEmit` ✅, `biome check` ✅ (119 файлов), `vitest` 47/47 ✅.
+
 **Sprint 22 закрыт — Auth & Onboarding fix (P0).** Первое впечатление о продукте больше не сбивает доверие, master-онбординг — полноценный 4-шаговый wizard.
 
 Что вошло:
@@ -42,24 +54,22 @@
 - **После Sprint 31** (~6 недель) — конкурент Profi.ru/TaskRabbit по UX.
 - **После Sprint 33** (~8 недель) — полноценное web-приложение, не растянутое mobile.
 
-### 🚀 Следующий шаг — Sprint 23
+### 🚀 Следующий шаг — Sprint 24
 
-**Design-system foundation** (P0, 2-3 дня) — фундамент, без которого все последующие UI-спринты сделают двойную работу. Закрывает 4🔴 + 1🟡 из `cross-cutting.md`. Что делать (детально в [`ROADMAP_2026-05-12.md`](ROADMAP_2026-05-12.md) § Sprint 23):
+**Master card (Thumbtack pattern)** (P1, 3-5 дней) — главный conversion-экран продукта. Закрывает 3🔴 + 4🟡 из `discovery.md`. Что делать (детально в [`ROADMAP_2026-05-12.md`](ROADMAP_2026-05-12.md) § Sprint 24):
 
-1. **`useThemeColor(token: ColorToken): string` хук** на базе Zustand `useTheme` + `lightColors`/`darkColors` из `src/lib/colors.ts`.
-2. Механический рефакторинг 26+ файлов с хардкод-цветами (полный пофайловый список в `.claude/audit-2026-05-12/cross-cutting.md` 🔴 B1-B3).
-3. **Cal Sans display-шрифт** в `_layout.tsx`. ⚠️ Открытый вопрос: npm `cal-sans` или self-host через `expo-font`?
-4. **`<Skeleton variant>` + 4 composable** (`MasterCardSkeleton`, `OrderRowSkeleton`, `ChatRowSkeleton`, `CategoryTileSkeleton`).
-5. **`<EmptyState icon title hint cta />`** единый компонент, подставить везде.
-6. **`<OrderStatusBadge status>`** — готовим к Sprint 27.
+1. **Hero-фото 16:9** вверху `master/[id].tsx` (вместо круглой аватарки 96px). Gradient overlay снизу для читаемости имени.
+2. **Sticky bottom-bar с CTA «Написать в чат»** + «Создать заказ» (опционально). Реф: TaskRabbit Tasker, Airbnb host detail.
+3. **Trust-сигналы блоками:** рейтинг → «выполнено N работ» → FAQ → большая photo-галерея портфолио (не пятый блок).
+4. **Skeleton-загрузка** на месте `ActivityIndicator` (после Sprint 23 готов).
 
 ### Решённые открытые вопросы
 
-- ✅ **Услуги мастера = отдельная таблица `master_services`** (нормальная форма). Применим в Sprint 31. Решение от пользователя 2026-05-12.
+- ✅ **Услуги мастера = отдельная таблица `master_services`** (Sprint 31).
+- ✅ **Cal Sans = npm-пакет `cal-sans`** — установлен в Sprint 23.
 
 ### Открытые вопросы (ждут ответа)
 
-- Cal Sans: npm `cal-sans` или self-host через `expo-font`? (нужно для Sprint 23)
 - `react-native-maps` подключен? (нужно для Sprint 31, радиус выезда мастера)
 
 **Sprint 20 закрыт — Order state-machine design-doc.**

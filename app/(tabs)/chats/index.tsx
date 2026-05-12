@@ -6,6 +6,7 @@ import { AppText } from "@/components/AppText";
 import { useAuthSession } from "@/features/auth/use-auth-session";
 import { isChatUnread, type MyChatWithRefs, useMyChats } from "@/features/chat/use-my-chats";
 import { usePullToRefresh } from "@/hooks/use-pull-to-refresh";
+import { useThemeColor } from "@/lib/use-theme-color";
 
 export default function ChatsListScreen() {
   const insets = useSafeAreaInsets();
@@ -16,6 +17,7 @@ export default function ChatsListScreen() {
 
   const hasChats = (chats?.length ?? 0) > 0;
   const refresh = usePullToRefresh();
+  const mutedSoftColor = useThemeColor("muted-soft");
 
   return (
     <ScrollView
@@ -70,7 +72,7 @@ export default function ChatsListScreen() {
       {!isLoading && !error && !hasChats && (
         <View className="mx-6 mt-12 items-center rounded-lg bg-surface-2 px-6 py-10">
           <View className="h-12 w-12 items-center justify-center rounded-full bg-surface-3">
-            <MessageCircle size={24} strokeWidth={1.75} color="#71717a" />
+            <MessageCircle size={24} strokeWidth={1.75} color={mutedSoftColor} />
           </View>
           <AppText weight="semibold" className="mt-4 text-title-md text-ink">
             Чатов пока нет

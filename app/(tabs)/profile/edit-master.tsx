@@ -31,6 +31,7 @@ import { useCities } from "@/features/cities/use-cities";
 import { MasterProfileFormBody } from "@/features/master-profile/MasterProfileFormBody";
 import { useUpdateMasterProfile } from "@/features/master-profile/use-update-master-profile";
 import { supabase } from "@/lib/supabase";
+import { useThemeColor } from "@/lib/use-theme-color";
 import type { Tables } from "@/types/database";
 
 export default function EditMasterScreen() {
@@ -43,6 +44,7 @@ export default function EditMasterScreen() {
   const { data: masterProfile, isLoading: profileLoading } = useMyMasterProfile(userId);
   const { data: cities, isLoading: citiesLoading } = useCities();
   const updateMaster = useUpdateMasterProfile();
+  const inkColor = useThemeColor("ink");
 
   const isMaster = user?.is_master === true;
 
@@ -109,7 +111,7 @@ export default function EditMasterScreen() {
           hitSlop={12}
           className="h-10 w-10 items-center justify-center rounded-full active:opacity-70"
         >
-          <ChevronLeft size={24} strokeWidth={1.75} color="#0a0a0a" />
+          <ChevronLeft size={24} strokeWidth={1.75} color={inkColor} />
         </Pressable>
       </View>
 

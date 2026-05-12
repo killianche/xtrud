@@ -7,6 +7,7 @@ import { ActivityIndicator, Pressable, View } from "react-native";
 import { AppText } from "@/components/AppText";
 import { SafetyBanner } from "@/components/SafetyBanner";
 import { useMyMasterCategories } from "@/features/master-categories/use-my-categories";
+import { useThemeColors } from "@/lib/use-theme-color";
 
 interface MasterHomeContentProps {
   userId: string;
@@ -15,6 +16,7 @@ interface MasterHomeContentProps {
 export function MasterHomeContent({ userId }: MasterHomeContentProps) {
   const router = useRouter();
   const { data: myCats, isLoading } = useMyMasterCategories(userId);
+  const tc = useThemeColors(["accent", "muted-soft", "on-primary"]);
 
   const hasCategories = (myCats?.length ?? 0) > 0;
 
@@ -50,7 +52,7 @@ export function MasterHomeContent({ userId }: MasterHomeContentProps) {
               </AppText>
             </View>
             <View className="h-10 w-10 items-center justify-center rounded-full bg-accent">
-              <Plus size={20} strokeWidth={2} color="#ffffff" />
+              <Plus size={20} strokeWidth={2} color={tc["on-primary"]} />
             </View>
           </Pressable>
         )}
@@ -75,7 +77,7 @@ export function MasterHomeContent({ userId }: MasterHomeContentProps) {
               <AppText weight="medium" className="text-caption text-accent">
                 Редактировать ({myCats?.length}/5)
               </AppText>
-              <ChevronRight size={14} strokeWidth={2} color="#2563eb" />
+              <ChevronRight size={14} strokeWidth={2} color={tc.accent} />
             </Pressable>
           </View>
         )}
@@ -84,7 +86,7 @@ export function MasterHomeContent({ userId }: MasterHomeContentProps) {
       {/* Empty state ленты заявок */}
       <View className="items-center rounded-lg bg-surface-2 px-6 py-10">
         <View className="h-12 w-12 items-center justify-center rounded-full bg-surface-3">
-          <Inbox size={24} strokeWidth={1.75} color="#71717a" />
+          <Inbox size={24} strokeWidth={1.75} color={tc["muted-soft"]} />
         </View>
         <AppText weight="semibold" className="mt-4 text-title-md text-ink">
           Заявок пока нет

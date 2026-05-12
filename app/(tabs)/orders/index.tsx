@@ -1,6 +1,6 @@
 import { useRouter } from "expo-router";
 import { ClipboardList, Plus } from "lucide-react-native";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
@@ -13,6 +13,7 @@ import { useMasterFeed } from "@/features/orders/use-master-feed";
 import { useMyOrders } from "@/features/orders/use-my-orders";
 import { useMyResponses } from "@/features/orders/use-my-responses";
 import { useOrdersAssignedToMe } from "@/features/orders/use-orders-assigned-to-me";
+import { useMarkFeedSeen } from "@/features/orders/use-unread-feed";
 import { usePullToRefresh } from "@/hooks/use-pull-to-refresh";
 
 export default function OrdersScreen() {
@@ -147,6 +148,14 @@ function MasterOrdersView({ userId }: MasterOrdersViewProps) {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const [tab, setTab] = useState<MasterTab>("new");
+
+  // Sprint 13.1 — помечаем feed просмотренным при mount, чтобы tab-badge обнулился.
+  const markFeedSeen = useMarkFeedSeen(userId);
+  const markFeedSeenMutate = markFeedSeen.mutate;
+  useEffect(() => {
+    if (!userId) return;
+    markFeedSeenMutate();
+  }, [userId, markFeedSeenMutate]);
 
   const { data: myCats, isLoading: catsLoading } = useMyMasterCategories(userId);
   const l2Ids = myCats?.map((c) => c.l2_id) ?? [];

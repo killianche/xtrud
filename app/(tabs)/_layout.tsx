@@ -4,6 +4,8 @@ import { useAuthSession } from "@/features/auth/use-auth-session";
 import { useUserRecord } from "@/features/auth/use-user-record";
 import { unreadChatsCount, useMyChats } from "@/features/chat/use-my-chats";
 import { useRealtimeMyChats } from "@/features/chat/use-realtime-my-chats";
+import { useMyMasterCategories } from "@/features/master-categories/use-my-categories";
+import { useRealtimeFeed, useUnreadFeedCount } from "@/features/orders/use-unread-feed";
 import {
   useRealtimeMyResponses,
   useUnreadResponsesCount,
@@ -19,6 +21,7 @@ export default function TabsLayout() {
   const userId = session?.user?.id;
   const { data: user } = useUserRecord(userId);
   const isClientRole = (user?.active_role ?? "client") === "client";
+  const isMasterRole = !isClientRole;
 
   useRealtimeMyChats(userId);
   useRealtimeMyResponses(isClientRole ? userId : null);
@@ -26,8 +29,24 @@ export default function TabsLayout() {
   const { data: chats } = useMyChats(userId);
   const chatsBadge = badgeLabel(unreadChatsCount(chats, userId));
 
+  // Client-side: unread responses on my orders.
   const { data: unreadResponses = 0 } = useUnreadResponsesCount(isClientRole ? userId : null);
-  const ordersBadge = badgeLabel(unreadResponses);
+
+  // Master-side: unread feed orders by my L2 categories since last_seen_feed_at.
+  const { data: myCats } = useMyMasterCategories(isMasterRole ? userId : undefined);
+  const masterL2Ids = myCats?.map((c) => c.l2_id) ?? [];
+  const lastSeenFeedAt = user?.last_seen_feed_at ?? null;
+  useRealtimeFeed({
+    userId: isMasterRole ? userId : null,
+    l2Ids: masterL2Ids,
+  });
+  const { data: unreadFeed = 0 } = useUnreadFeedCount({
+    userId: isMasterRole ? userId : null,
+    l2Ids: masterL2Ids,
+    lastSeenAt: lastSeenFeedAt,
+  });
+
+  const ordersBadge = badgeLabel(isClientRole ? unreadResponses : unreadFeed);
 
   return (
     <Tabs

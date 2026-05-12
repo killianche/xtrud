@@ -740,6 +740,7 @@ export type Database = {
           is_client: boolean;
           is_master: boolean;
           last_name: string | null;
+          last_seen_feed_at: string | null;
           onboarding_completed_at: string | null;
           rating_as_client_avg: number | null;
           rating_as_client_count: number;
@@ -757,6 +758,7 @@ export type Database = {
           is_client?: boolean;
           is_master?: boolean;
           last_name?: string | null;
+          last_seen_feed_at?: string | null;
           onboarding_completed_at?: string | null;
           rating_as_client_avg?: number | null;
           rating_as_client_count?: number;
@@ -774,6 +776,7 @@ export type Database = {
           is_client?: boolean;
           is_master?: boolean;
           last_name?: string | null;
+          last_seen_feed_at?: string | null;
           onboarding_completed_at?: string | null;
           rating_as_client_avg?: number | null;
           rating_as_client_count?: number;
@@ -835,6 +838,7 @@ export type Database = {
     Functions: {
       accept_response: { Args: { p_response_id: string }; Returns: undefined };
       mark_chat_read: { Args: { p_chat_id: string }; Returns: undefined };
+      mark_feed_seen: { Args: Record<string, never>; Returns: undefined };
       mark_order_responses_viewed: { Args: { p_order_id: string }; Returns: undefined };
       complete_master_onboarding: {
         Args: {

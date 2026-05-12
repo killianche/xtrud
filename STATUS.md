@@ -6,7 +6,7 @@
 
 ## Текущее состояние
 
-**Sprint 15 в работе.** Закрыты 15.1 (outcome prompt тесты) + 15.2 (responses sort: accepted → sent/viewed → rejected/withdrawn, тестируется). Vitest 28/28 зелёные.
+**Sprint 16 закрыт — Maestro E2E smoke-test.** В `.maestro/` лежат три flow (auth → onboarding-client → create-order) + `smoke.yaml` объединяющий happy-path, + README с setup и зависимостями от seed/OTP-заглушки. CI пока не подключён (нужен macOS-runner). Vitest 28/28 зелёные.
 
 **База:** 23 миграции, 15 таблиц с RLS + 3 Storage bucket, 8 RPC, 12 trigger functions, 17 enums, 1 edge function.
 
@@ -119,6 +119,14 @@ xtrud/
 - [x] **2026-05-11** — **2.1** Migration 0003 + AuthGate routing (commit `2c2f25f`): `users.onboarding_completed_at` + `users.active_role` enum + CHECK constraint (active_role='master' ⇒ is_master=true) + partial index. `useUserRecord` hook (TanStack Query, staleTime 5 мин). AuthGate переписан под 3 группы — `(auth)` / `(onboarding)` / `(tabs)`. Advisor security = 0 lints.
 - [x] **2026-05-11** — **2.2** Role selection screen (commit `eb42338`): полноценный UI с 2 карточками (lucide Search/Briefcase), accessibilityState selected, accent-soft фон выбранной, CTA "Продолжить", error display. `useCompleteOnboarding` mutation обновляет `users.{is_master, active_role, onboarding_completed_at}` + invalidates query.
 - [x] **2026-05-11** — **2.3** Main client screen (commit `5d394c8`): `useVisibleCategories` для 26 L2, `CategoryTile` компонент с iconMap (~50 lucide icons), grid 2/3/4-кол. адаптивный, ScrollView без виртуализации, loading/error/empty states, header с приветствием по first_name + role badge + signOut. **Без атмосферных фото — sprint 4+.**
+
+### Sprint 16 (E2E страховка)
+- [x] **2026-05-12** — **16.1–16.5** Maestro E2E smoke-test (commit pending): `.maestro/` каталог с тремя YAML-flow:
+  - `flows/01-auth.yaml` — phone input → OTP (Sprint-1 simulation, любой 6-знач код) → попадание в (onboarding)/role
+  - `flows/02-onboarding-client.yaml` — выбор «Я ищу мастера» → выход на (tabs) с каталогом категорий
+  - `flows/03-create-order.yaml` — таб «Заказы» → FAB «Создать заказ» → заполнение формы (категория/название/описание/город, urgency+budget по дефолту) → проверка карточки в списке
+  
+  `smoke.yaml` объединяет всё в один прогон. `config.yaml` хранит env-defaults (TEST_PHONE, TEST_OTP, TEST_CATEGORY="Сантехника", TEST_CITY="Назрань"), переопределяемые через `maestro test --env`. README.md описывает install CLI, подготовку iOS/Android билдов, зависимости от заглушки OTP, нюанс с накапливанием тестовых users в БД, бэклог покрытия (master flow / chat / reviews / push). CI намеренно не подключён (нужен macOS runner ≈8× дороже linux) — гоняем локально перед релизами.
 
 ### Sprint 15 (quality + UX)
 - [x] **2026-05-12** — **15.2** Sort откликов: picked → newest active → rejected (commit pending): новый `src/features/orders/sort-responses.ts` — pure generic `sortResponses<T extends {status; created_at}>(rows)`, STATUS_RANK таблица (accepted=0, sent/viewed=1, withdrawn/rejected=2), внутри одного ранга created_at DESC. Подключён в `useOrderResponses`. 5 unit-тестов покрывают edge cases + immutability контракт.

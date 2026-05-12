@@ -1,0 +1,13 @@
+# Shared Maestro env. Подгружается во все flows через `env:` или вручную через
+# переменную окружения MAESTRO_APP_ID. Bundle id и package совпадают —
+# см. app.json (`com.xtrud.app`).
+appId: com.xtrud.app
+
+# Дефолтные тестовые данные для happy path. Изменяй через `--env` при запуске.
+env:
+  TEST_PHONE: "+7 999 111-22-33"
+  TEST_OTP: "123456"
+  # Имена должны точно совпадать с name_ru из categories_l2 / cities в твоей среде.
+  # См. supabase/seed.sql или дашборд Supabase.
+  TEST_CATEGORY: "Сантехника"
+  TEST_CITY: "Назрань"

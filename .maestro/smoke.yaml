@@ -1,0 +1,15 @@
+# Sprint 16.4 — Полный happy-path smoke-test.
+#
+# Запуск: `maestro test .maestro/smoke.yaml` (после `expo run:ios` / `run:android`).
+# Каждый из трёх sub-flow можно прогнать и отдельно через
+# `maestro test .maestro/flows/01-auth.yaml`.
+appId: com.xtrud.app
+env:
+  TEST_PHONE: "+7 999 111-22-33"
+  TEST_OTP: "123456"
+  TEST_CATEGORY: "Сантехника"
+  TEST_CITY: "Назрань"
+---
+- runFlow: flows/01-auth.yaml
+- runFlow: flows/02-onboarding-client.yaml
+- runFlow: flows/03-create-order.yaml

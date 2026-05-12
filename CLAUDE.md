@@ -114,7 +114,8 @@ git push
 |------|------------|
 | `CLAUDE.md` | Этот файл — точка входа, контекст, критические правила инфры |
 | `STATUS.md` | Где мы сейчас, что готово, что дальше, блокеры, история решений |
-| `DESIGN.md` | Дизайн-система (палитра, типографика, компоненты) — появится после получения дизайна |
+| `DESIGN.md` | **Текущая дизайн-система — Cal.com-inspired** (Cal Sans + Inter, white canvas + black CTA, cards 12px). Поставлена через `npx getdesign@latest add cal` 2026-05-12. Это ВЕДУЩИЙ источник истины по визуалу. |
+| `DESIGN_SYSTEM.md`, `DESIGN_REFERENCE_CALCOM.md` | **Legacy** — оставлены для истории, новые экраны делать по `DESIGN.md` |
 | `.claude/rules/working-rules.md` | Базовые правила работы AI-агента (автозагружаются) |
 | `.claude/rules/lazyweb-rules.md` | Когда и как использовать Lazyweb MCP для дизайн-референсов |
 | `.claude/rules/*.md` | Доп. правила, привязанные к конкретным путям через `paths:` frontmatter |

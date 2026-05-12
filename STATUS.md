@@ -6,6 +6,10 @@
 
 ## Текущее состояние
 
+**В работе — Sprint 21: UX/UI аудит с Lazyweb (in progress).** Подключён Lazyweb MCP (плагин Claude Code `lazyweb@lazyweb`, токен в `~/.lazyweb/`). Дизайн обновлён: установлен `DESIGN.md` (Cal.com-inspired, Cal Sans + Inter, white canvas + black CTA) через `npx getdesign@latest add cal` — это новый источник истины (старые `DESIGN_SYSTEM.md` / `DESIGN_REFERENCE_CALCOM.md` legacy). Бриф для агентов лежит в `.claude/audit-2026-05-12/BRIEF.md` (5 групп экранов × 4 шляпы UX/Visual/Conversion/A11y, web≠mobile differentiation, light+dark обязательно).
+
+**Первая попытка запустить 5 параллельных аудит-агентов прервана** — в текущей сессии MCP-инструменты Lazyweb не успели подгрузиться + у фоновых агентов были permission-блоки на Write/WebFetch. Все 5 агентов остановлены до сохранения отчётов. **Следующий шаг — рестарт Claude Code и повторный запуск аудита уже с Lazyweb-инструментами.**
+
 **Sprint 20 закрыт — Order state-machine design-doc.** Новый файл `docs/order-states.md` фиксирует все 6 статусов order, 7 переходов между ними, 6 RLS-policy + 1 RPC, которые их защищают, side effects (push, review window, rating recalc), и 5 известных пробелов с планами (expired-cron, draft-UI, re-open, отказ от мастера до completion, push на open→cancelled). Это контракт-документ: любая будущая фича, меняющая enum/RLS/RPC заказов, должна сначала появиться там. **Sprint 19 (image-resize + feed-page тесты, 47/47)** ранее закрыт. **Sprint 18 (master Maestro smoke)** закрыт. **Sprint 17 (web prod)** — `https://alanbani.ru/xtrud/` живой.
 
 **База:** 23 миграции, 15 таблиц с RLS + 3 Storage bucket, 8 RPC, 12 trigger functions, 17 enums, 1 edge function.

@@ -13,6 +13,7 @@ import { useMasterFeed } from "@/features/orders/use-master-feed";
 import { useMyOrders } from "@/features/orders/use-my-orders";
 import { useMyResponses } from "@/features/orders/use-my-responses";
 import { useOrdersAssignedToMe } from "@/features/orders/use-orders-assigned-to-me";
+import { usePullToRefresh } from "@/hooks/use-pull-to-refresh";
 
 export default function OrdersScreen() {
   const { session } = useAuthSession();
@@ -39,6 +40,7 @@ function ClientOrdersView({ userId }: ClientOrdersViewProps) {
   const router = useRouter();
   const { data: orders, isLoading, error, refetch } = useMyOrders(userId);
   const hasOrders = (orders?.length ?? 0) > 0;
+  const refresh = usePullToRefresh();
 
   return (
     <View className="flex-1 bg-canvas">
@@ -48,6 +50,7 @@ function ClientOrdersView({ userId }: ClientOrdersViewProps) {
           paddingBottom: insets.bottom + 100,
         }}
         showsVerticalScrollIndicator={false}
+        refreshControl={refresh.control}
       >
         <View className="px-6">
           <AppText weight="bold" className="text-display-md tracking-tight text-ink">
@@ -165,6 +168,7 @@ function MasterOrdersView({ userId }: MasterOrdersViewProps) {
   const newFeed = feed?.filter((o) => !respondedOrderIds.has(o.id)) ?? [];
 
   const hasCategories = l2Ids.length > 0;
+  const refresh = usePullToRefresh();
 
   return (
     <ScrollView
@@ -174,6 +178,7 @@ function MasterOrdersView({ userId }: MasterOrdersViewProps) {
         paddingBottom: insets.bottom + 24,
       }}
       showsVerticalScrollIndicator={false}
+      refreshControl={refresh.control}
     >
       {/* Header */}
       <View className="px-6">

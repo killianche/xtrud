@@ -10,6 +10,7 @@ import { useSetActiveRole } from "@/features/auth/use-set-active-role";
 import { useUserRecord } from "@/features/auth/use-user-record";
 import { useVisibleCategories } from "@/features/categories/use-visible-categories";
 import { MasterHomeContent } from "@/features/master-view/MasterHomeContent";
+import { usePullToRefresh } from "@/hooks/use-pull-to-refresh";
 
 export default function HomeTab() {
   const insets = useSafeAreaInsets();
@@ -21,6 +22,7 @@ export default function HomeTab() {
 
   const greeting = user?.first_name ? `Привет, ${user.first_name}` : "С чего начнём?";
   const activeRole = user?.active_role ?? "client";
+  const refresh = usePullToRefresh();
 
   return (
     <ScrollView
@@ -30,6 +32,7 @@ export default function HomeTab() {
         paddingBottom: insets.bottom + 24,
       }}
       showsVerticalScrollIndicator={false}
+      refreshControl={refresh.control}
     >
       {/* Header */}
       <View className="flex-row items-start justify-between px-6">

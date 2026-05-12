@@ -36,6 +36,7 @@ import {
 } from "@/features/master-view/use-master-public";
 import { PortfolioGrid } from "@/features/profile/PortfolioGrid";
 import { useMasterPortfolio } from "@/features/profile/use-my-portfolio";
+import { usePullToRefresh } from "@/hooks/use-pull-to-refresh";
 
 export default function MasterPublicScreen() {
   const insets = useSafeAreaInsets();
@@ -47,6 +48,7 @@ export default function MasterPublicScreen() {
   const categories = useMasterCategoriesPublic(masterId);
   const portfolio = useMasterPortfolio(masterId);
   const reviews = useReviewsForTarget(masterId, "client_to_master");
+  const refresh = usePullToRefresh();
 
   const fullName = useMemo(() => {
     if (!profile.data?.user) return "";
@@ -72,6 +74,7 @@ export default function MasterPublicScreen() {
       <ScrollView
         contentContainerStyle={{ paddingBottom: insets.bottom + 32 }}
         showsVerticalScrollIndicator={false}
+        refreshControl={refresh.control}
       >
         {profile.isLoading && (
           <View className="mt-20 items-center">

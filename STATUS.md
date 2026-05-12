@@ -6,11 +6,9 @@
 
 ## Текущее состояние
 
-**Sprint 10 в работе.** Закрыты 10.1 (masters list в category-detail) + 10.2 (DB-level RLS guards на edit/cancel/complete order). Клиент тапает категорию → видит услуги (L3) и список мастеров с рейтингом/опытом/городом. Direct-API изменение полей заказа после `accept_response` теперь невозможно — RLS отделяет редактирование (open/draft) от перехода статуса (in_progress → cancelled/completed).
+**Sprint 11 в работе.** Закрыт 11.1 — pull-to-refresh на всех list-экранах (Главная, orders client+master, чаты, category detail, master public, client public). Универсальный хук `usePullToRefresh()` отдаёт готовый `RefreshControl` и refetch'ит все активные TanStack queries — DRY 6 строк на экран.
 
 **База:** 20 миграций, 15 таблиц с RLS + 3 Storage bucket, 5 RPC, 11 trigger functions, 17 enums, 1 edge function.
-
-**Backlog Sprint 11:** live-тест dev-build; admin-tool для category-covers; real OTP / Telegram Login (снимет advisor anonymous warnings); test runner (Vitest + Maestro); pagination/refresh-control на длинных listах (orders feed, master public reviews); category cover seed-pack.
 
 **База:** 19 миграций, 15 таблиц с RLS + 3 Storage bucket, 5 RPC, 11 trigger functions, 17 enums, 1 edge function. Приоритетные кандидаты: live-тест на dev-build (push, image-picker, category covers); admin-tool для загрузки category-covers и portfolio-привязки; full master profile edit (bio/опыт/радиус/город после онбординга); real OTP / Telegram Login (snimaeт advisor anonymous warnings); outcome tracking modal; test runner (Vitest + Maestro).
 
@@ -120,8 +118,11 @@ xtrud/
 - [x] **2026-05-11** — **2.2** Role selection screen (commit `eb42338`): полноценный UI с 2 карточками (lucide Search/Briefcase), accessibilityState selected, accent-soft фон выбранной, CTA "Продолжить", error display. `useCompleteOnboarding` mutation обновляет `users.{is_master, active_role, onboarding_completed_at}` + invalidates query.
 - [x] **2026-05-11** — **2.3** Main client screen (commit `5d394c8`): `useVisibleCategories` для 26 L2, `CategoryTile` компонент с iconMap (~50 lucide icons), grid 2/3/4-кол. адаптивный, ScrollView без виртуализации, loading/error/empty states, header с приветствием по first_name + role badge + signOut. **Без атмосферных фото — sprint 4+.**
 
+### Sprint 11 (UX polish)
+- [x] **2026-05-12** — **11.1** Pull-to-refresh (commit pending): новый хук `src/hooks/use-pull-to-refresh.tsx` — возвращает `{ refreshing, onRefresh, control }`, где control — готовый `<RefreshControl tintColor="#2563eb" />`. Refetch'ит все активные queries через `qc.refetchQueries({ type: "active" })`. Подключён в Главную, orders client+master, chats list, category/[id], master/[id], client/[id]. Никакой бизнес-логики переписывать не пришлось — каждый экран сам решает что монтировать, refresh охватывает все queries автоматически.
+
 ### Sprint 10 (discovery + защита данных)
-- [x] **2026-05-12** — **10.2** DB-level RLS guards на orders (commit pending): migration 0020 заменяет общую `orders_update_own` на две узких policy. `orders_owner_edit_open` — UPDATE полей только при `status IN ('open','draft')`, WITH CHECK допускает переход в (open/draft/in_progress/cancelled) — это даёт работать accept_response RPC (open→in_progress) и cancelOrder из open. `orders_owner_change_status_in_progress` — UPDATE только при status='in_progress', WITH CHECK ограничивает финальный статус (cancelled/completed). Изменение других полей при in_progress теперь невозможно через прямой API. Не трогаем picked_master/picked_complete (sprint 7.3) и read-policy. Advisor: 0 новых lints.
+- [x] **2026-05-12** — **10.2** DB-level RLS guards на orders (commit `a29bf99`): migration 0020 заменяет общую `orders_update_own` на две узких policy. `orders_owner_edit_open` — UPDATE полей только при `status IN ('open','draft')`, WITH CHECK допускает переход в (open/draft/in_progress/cancelled) — это даёт работать accept_response RPC (open→in_progress) и cancelOrder из open. `orders_owner_change_status_in_progress` — UPDATE только при status='in_progress', WITH CHECK ограничивает финальный статус (cancelled/completed). Изменение других полей при in_progress теперь невозможно через прямой API. Не трогаем picked_master/picked_complete (sprint 7.3) и read-policy. Advisor: 0 новых lints.
 - [x] **2026-05-12** — **10.1** Masters list в category-detail (commit `2327ca2`): новый `useMastersByL2(l2Id)` — 2-step query (master_categories+users+master_profiles, потом cities по уникальным city_ids). Сортировка rating_overall_avg DESC NULLS LAST → closed_deals DESC → experience_years DESC. Carrier-карточки на category screen: Avatar + name + Star рейтинг + опыт + город + bio превью; тап → `/master/[id]`. Empty/loading состояния.
 
 ### Sprint 9 (post-launch improvements)

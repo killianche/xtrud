@@ -5,6 +5,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
 import { useAuthSession } from "@/features/auth/use-auth-session";
 import { type MyChatWithRefs, useMyChats } from "@/features/chat/use-my-chats";
+import { usePullToRefresh } from "@/hooks/use-pull-to-refresh";
 
 export default function ChatsListScreen() {
   const insets = useSafeAreaInsets();
@@ -14,12 +15,14 @@ export default function ChatsListScreen() {
   const { data: chats, isLoading, error, refetch } = useMyChats(userId);
 
   const hasChats = (chats?.length ?? 0) > 0;
+  const refresh = usePullToRefresh();
 
   return (
     <ScrollView
       className="flex-1 bg-canvas"
       contentContainerStyle={{ paddingTop: insets.top + 24, paddingBottom: insets.bottom + 24 }}
       showsVerticalScrollIndicator={false}
+      refreshControl={refresh.control}
     >
       <View className="px-6">
         <AppText weight="bold" className="text-display-md tracking-tight text-ink">

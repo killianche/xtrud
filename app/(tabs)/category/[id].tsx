@@ -11,6 +11,7 @@ import {
   useCategoryDetail,
 } from "@/features/categories/use-category-detail";
 import { type MasterInCategory, useMastersByL2 } from "@/features/master-view/use-masters-by-l2";
+import { usePullToRefresh } from "@/hooks/use-pull-to-refresh";
 
 function ServiceRow({ service }: { service: CategoryL3 }) {
   const urgencyText = urgencyLabel(service.urgency_typical);
@@ -44,6 +45,7 @@ export default function CategoryDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { data, isLoading, error, refetch } = useCategoryDetail(id);
   const masters = useMastersByL2(id);
+  const refresh = usePullToRefresh();
 
   return (
     <View className="flex-1 bg-canvas" style={{ paddingTop: insets.top }}>
@@ -93,6 +95,7 @@ export default function CategoryDetailScreen() {
         <ScrollView
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ paddingBottom: insets.bottom + 24 }}
+          refreshControl={refresh.control}
         >
           {/* Title block */}
           <View className="px-6 pt-2 pb-6">

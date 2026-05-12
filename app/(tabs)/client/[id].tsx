@@ -19,6 +19,7 @@ import { AppText } from "@/components/AppText";
 import { Avatar } from "@/components/Avatar";
 import { useClientPublicProfile } from "@/features/client-view/use-client-public";
 import { useReviewsForTarget } from "@/features/master-view/use-master-public";
+import { usePullToRefresh } from "@/hooks/use-pull-to-refresh";
 
 export default function ClientPublicScreen() {
   const insets = useSafeAreaInsets();
@@ -28,6 +29,7 @@ export default function ClientPublicScreen() {
 
   const profile = useClientPublicProfile(clientId);
   const reviews = useReviewsForTarget(clientId, "master_to_client");
+  const refresh = usePullToRefresh();
 
   const fullName = useMemo(() => {
     if (!profile.data?.user) return "";
@@ -53,6 +55,7 @@ export default function ClientPublicScreen() {
       <ScrollView
         contentContainerStyle={{ paddingBottom: insets.bottom + 32 }}
         showsVerticalScrollIndicator={false}
+        refreshControl={refresh.control}
       >
         {profile.isLoading && (
           <View className="mt-20 items-center">

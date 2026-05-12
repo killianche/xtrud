@@ -6,6 +6,19 @@
 
 ## Текущее состояние
 
+**Sprint 24 закрыт — Master card (Thumbtack pattern, P1).** Главный conversion-экран продукта переделан.
+
+Что вошло (`app/(tabs)/master/[id].tsx`):
+- **Hero 16:9** вверху — большая cover-фотография мастера (`avatar_url`) с gradient-overlay снизу для читаемости имени и бейджей. Если `avatar_url` нет — fallback на placeholder Avatar.
+- **Имя + бейджи поверх gradient** (white-on-dark) — Cal Sans display-шрифт для имени, glass-pill «Мастер»/«Активен» снизу.
+- **Back-button** на hero — circle с `bg-black/40` (видна на любом фото).
+- **Trust-row** компактной строкой сразу под hero: рейтинг (★ + число) + кол-во работ + город. Без вложенности.
+- **Sticky bottom CTA** «Создать заказ» — primary-кнопка фикс. внизу + safe-area padding. Скрыта на собственном профиле (`currentUserId === masterId`). Pre-fill: `/orders/new?l2=<first-master-category>`.
+- **Переупорядоченные блоки:** Hero → Trust → Bio → Stats chips → Категории → Портфолио → Отзывы.
+- **Skeleton** при загрузке (`<HeroSkeleton>` + `<CardListSkeleton count=3>`) вместо `ActivityIndicator` — наконец используем design-system из Sprint 23.
+
+Проверки: `tsc --noEmit` ✅, `biome check` ✅, `vitest` 47/47 ✅.
+
 **Sprint 23 закрыт — Design-system foundation (P0).** Тёмная тема перестала быть «блокером DESIGN.md», `<Skeleton>` / `<EmptyState>` / `<OrderStatusBadge>` готовы к подключению.
 
 Что вошло:
@@ -54,14 +67,13 @@
 - **После Sprint 31** (~6 недель) — конкурент Profi.ru/TaskRabbit по UX.
 - **После Sprint 33** (~8 недель) — полноценное web-приложение, не растянутое mobile.
 
-### 🚀 Следующий шаг — Sprint 24
+### 🚀 Следующий шаг — Sprint 25
 
-**Master card (Thumbtack pattern)** (P1, 3-5 дней) — главный conversion-экран продукта. Закрывает 3🔴 + 4🟡 из `discovery.md`. Что делать (детально в [`ROADMAP_2026-05-12.md`](ROADMAP_2026-05-12.md) § Sprint 24):
+**Feed & category list** (P1, 2-3 дня) — путь к карточке мастера. Закрывает 2🔴 + 3🟡 из `discovery.md`. Что делать (детально в [`ROADMAP_2026-05-12.md`](ROADMAP_2026-05-12.md) § Sprint 25):
 
-1. **Hero-фото 16:9** вверху `master/[id].tsx` (вместо круглой аватарки 96px). Gradient overlay снизу для читаемости имени.
-2. **Sticky bottom-bar с CTA «Написать в чат»** + «Создать заказ» (опционально). Реф: TaskRabbit Tasker, Airbnb host detail.
-3. **Trust-сигналы блоками:** рейтинг → «выполнено N работ» → FAQ → большая photo-галерея портфолио (не пятый блок).
-4. **Skeleton-загрузка** на месте `ActivityIndicator` (после Sprint 23 готов).
+1. **Главная (`tabs/index.tsx`):** search-bar в шапке, городской селектор, top-recommended-мастера в карусели, компактнее сетка категорий.
+2. **Категория-листинг (`category/[id].tsx`):** карточки 88-104px высотой с фото работ + hourly rate + «выполнено N задач» (TaskRabbit Select-a-Tasker pattern). Услуги в chip-фильтры под мастеров.
+3. **Skeleton-загрузка** на feed (`<CardListSkeleton>`).
 
 ### Решённые открытые вопросы
 

@@ -155,6 +155,9 @@ function MasterOrdersView({ userId }: MasterOrdersViewProps) {
     data: feed,
     isLoading: feedLoading,
     error: feedError,
+    hasNextPage: feedHasNext,
+    fetchNextPage: feedFetchNext,
+    isFetchingNextPage: feedFetchingNext,
   } = useMasterFeed({
     userId,
     l2Ids,
@@ -165,7 +168,8 @@ function MasterOrdersView({ userId }: MasterOrdersViewProps) {
   const respondedOrderIds = new Set(myResponses?.map((r) => r.order.id) ?? []);
 
   // "Новые" = feed без тех, на что я уже откликнулся
-  const newFeed = feed?.filter((o) => !respondedOrderIds.has(o.id)) ?? [];
+  const feedRows = feed?.pages.flatMap((p) => p.rows) ?? [];
+  const newFeed = feedRows.filter((o) => !respondedOrderIds.has(o.id));
 
   const hasCategories = l2Ids.length > 0;
   const refresh = usePullToRefresh();
@@ -224,6 +228,9 @@ function MasterOrdersView({ userId }: MasterOrdersViewProps) {
           isLoading={catsLoading || (hasCategories && feedLoading)}
           hasCategories={hasCategories}
           error={feedError}
+          hasNextPage={feedHasNext}
+          isFetchingNextPage={feedFetchingNext}
+          onLoadMore={() => feedFetchNext()}
           onCategoryCta={() => router.push("/(onboarding)/master-categories")}
           onOrderPress={(id) => router.push(`/(tabs)/orders/${id}` as never)}
         />
@@ -311,6 +318,9 @@ interface NewOrdersTabProps {
   isLoading: boolean;
   hasCategories: boolean;
   error: Error | null;
+  hasNextPage: boolean;
+  isFetchingNextPage: boolean;
+  onLoadMore: () => void;
   onCategoryCta: () => void;
   onOrderPress: (id: string) => void;
 }
@@ -320,6 +330,9 @@ function NewOrdersTab({
   isLoading,
   hasCategories,
   error,
+  hasNextPage,
+  isFetchingNextPage,
+  onLoadMore,
   onCategoryCta,
   onOrderPress,
 }: NewOrdersTabProps) {
@@ -392,6 +405,23 @@ function NewOrdersTab({
           onPress={() => onOrderPress(o.id)}
         />
       ))}
+
+      {hasNextPage && (
+        <Pressable
+          accessibilityRole="button"
+          disabled={isFetchingNextPage}
+          onPress={onLoadMore}
+          className="mt-2 h-11 flex-row items-center justify-center rounded-md border border-hairline active:opacity-70"
+        >
+          {isFetchingNextPage ? (
+            <ActivityIndicator size="small" />
+          ) : (
+            <AppText weight="medium" className="text-button text-body">
+              Показать ещё
+            </AppText>
+          )}
+        </Pressable>
+      )}
     </View>
   );
 }

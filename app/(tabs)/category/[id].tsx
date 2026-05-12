@@ -1,14 +1,16 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { ChevronLeft, Shield } from "lucide-react-native";
+import { ChevronLeft, Shield, Star } from "lucide-react-native";
 import { ActivityIndicator, Pressable, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
+import { Avatar } from "@/components/Avatar";
 import {
   type CategoryL3,
   formatAvgCheck,
   urgencyLabel,
   useCategoryDetail,
 } from "@/features/categories/use-category-detail";
+import { type MasterInCategory, useMastersByL2 } from "@/features/master-view/use-masters-by-l2";
 
 function ServiceRow({ service }: { service: CategoryL3 }) {
   const urgencyText = urgencyLabel(service.urgency_typical);
@@ -41,6 +43,7 @@ export default function CategoryDetailScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { data, isLoading, error, refetch } = useCategoryDetail(id);
+  const masters = useMastersByL2(id);
 
   return (
     <View className="flex-1 bg-canvas" style={{ paddingTop: insets.top }}>
@@ -119,10 +122,106 @@ export default function CategoryDetailScreen() {
               </AppText>
             </View>
           )}
+
+          {/* Masters section */}
+          <View className="mt-10 px-6">
+            <AppText weight="semibold" className="text-title-lg text-ink">
+              Мастера
+            </AppText>
+            <AppText className="mt-1 text-body-sm text-muted">
+              {masters.isLoading
+                ? "Загружаем…"
+                : (masters.data?.length ?? 0) === 0
+                  ? "Пока никто не работает в этой категории."
+                  : "Тапните карточку, чтобы открыть профиль."}
+            </AppText>
+
+            {masters.isLoading && (
+              <View className="mt-4 items-start">
+                <ActivityIndicator />
+              </View>
+            )}
+
+            {!masters.isLoading && (masters.data?.length ?? 0) > 0 && (
+              <View className="mt-4 gap-3">
+                {masters.data?.map((m) => (
+                  <MasterCardRow
+                    key={m.master_id}
+                    master={m}
+                    onPress={() => router.push(`/master/${m.master_id}` as never)}
+                  />
+                ))}
+              </View>
+            )}
+          </View>
         </ScrollView>
       )}
     </View>
   );
+}
+
+function MasterCardRow({ master, onPress }: { master: MasterInCategory; onPress: () => void }) {
+  const fullName =
+    [master.user.first_name, master.user.last_name].filter(Boolean).join(" ") || "Мастер";
+  const rating = master.profile?.rating_overall_avg;
+  const ratingCount = master.profile?.rating_overall_count ?? 0;
+  const years = master.profile?.experience_years ?? 0;
+
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`Профиль мастера ${fullName}`}
+      onPress={onPress}
+      className="flex-row items-center gap-3 rounded-lg border border-hairline bg-canvas p-3 active:opacity-70"
+    >
+      <Avatar url={master.user.avatar_url} name={fullName} seed={master.user.id} size="md" />
+      <View className="flex-1">
+        <AppText weight="semibold" className="text-body-md text-ink" numberOfLines={1}>
+          {fullName}
+        </AppText>
+        <View className="mt-1 flex-row items-center gap-2">
+          {rating != null && ratingCount > 0 ? (
+            <View className="flex-row items-center gap-1">
+              <Star size={12} strokeWidth={2} color="#f59e0b" fill="#f59e0b" />
+              <AppText weight="semibold" className="text-caption text-ink">
+                {rating.toFixed(1)}
+              </AppText>
+              <AppText className="text-caption-xs text-muted">({ratingCount})</AppText>
+            </View>
+          ) : (
+            <AppText className="text-caption-xs text-muted">Без отзывов</AppText>
+          )}
+          {years > 0 && (
+            <>
+              <AppText className="text-caption-xs text-muted">·</AppText>
+              <AppText className="text-caption-xs text-muted">{pluralizeYears(years)}</AppText>
+            </>
+          )}
+          {master.city?.name && (
+            <>
+              <AppText className="text-caption-xs text-muted">·</AppText>
+              <AppText className="flex-shrink text-caption-xs text-muted" numberOfLines={1}>
+                {master.city.name}
+              </AppText>
+            </>
+          )}
+        </View>
+        {master.profile?.bio && (
+          <AppText className="mt-1 text-caption text-muted" numberOfLines={2}>
+            {master.profile.bio}
+          </AppText>
+        )}
+      </View>
+    </Pressable>
+  );
+}
+
+function pluralizeYears(count: number): string {
+  const mod10 = count % 10;
+  const mod100 = count % 100;
+  if (mod10 === 1 && mod100 !== 11) return `${count} год опыта`;
+  if ([2, 3, 4].includes(mod10) && ![12, 13, 14].includes(mod100)) return `${count} года`;
+  return `${count} лет`;
 }
 
 /**

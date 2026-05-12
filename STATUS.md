@@ -6,7 +6,7 @@
 
 ## Текущее состояние
 
-**Sprint 18 закрыт — Master happy-path Maestro flow.** E2E-покрытие расширено на сторону мастера: `flows/04-onboarding-master.yaml` (роль мастера → master-profile форма → submit) + `flows/05-master-feed.yaml` (3-табочный master-view: Новые / Я откликнулся / Меня выбрали). Отдельный runner `master-smoke.yaml` использует другой тестовый телефон (`+7 999 222-33-44`), чтобы master и client не конфликтовали при последовательных прогонах. README обновлён. **Sprint 17 (web prod deploy)** ранее закрыт — `https://alanbani.ru/xtrud/` живой. **Sprint 16 (Maestro client smoke)** тоже закрыт. Vitest 28/28 зелёные.
+**Sprint 19 закрыт — доп. unit-тесты (image-resize + master-feed cursor).** Извлечена pure-логика resize-расчётов в `src/lib/image-resize.ts` (calcResizedDimensions) + pure-логика keyset pagination в `src/features/orders/feed-page.ts` (masterFeedKey, buildFeedPage). Старые модули (`image-upload.ts`, `use-master-feed.ts`) теперь импортируют этих helpers — публичный API не сломан. Vitest **47/47 зелёные** (+19 новых: 8 на resize, 11 на feed-page). **Sprint 18 (master Maestro smoke)** ранее закрыт. **Sprint 17 (web prod deploy)** — `https://alanbani.ru/xtrud/` живой.
 
 **База:** 23 миграции, 15 таблиц с RLS + 3 Storage bucket, 8 RPC, 12 trigger functions, 17 enums, 1 edge function.
 
@@ -119,6 +119,14 @@ xtrud/
 - [x] **2026-05-11** — **2.1** Migration 0003 + AuthGate routing (commit `2c2f25f`): `users.onboarding_completed_at` + `users.active_role` enum + CHECK constraint (active_role='master' ⇒ is_master=true) + partial index. `useUserRecord` hook (TanStack Query, staleTime 5 мин). AuthGate переписан под 3 группы — `(auth)` / `(onboarding)` / `(tabs)`. Advisor security = 0 lints.
 - [x] **2026-05-11** — **2.2** Role selection screen (commit `eb42338`): полноценный UI с 2 карточками (lucide Search/Briefcase), accessibilityState selected, accent-soft фон выбранной, CTA "Продолжить", error display. `useCompleteOnboarding` mutation обновляет `users.{is_master, active_role, onboarding_completed_at}` + invalidates query.
 - [x] **2026-05-11** — **2.3** Main client screen (commit `5d394c8`): `useVisibleCategories` для 26 L2, `CategoryTile` компонент с iconMap (~50 lucide icons), grid 2/3/4-кол. адаптивный, ScrollView без виртуализации, loading/error/empty states, header с приветствием по first_name + role badge + signOut. **Без атмосферных фото — sprint 4+.**
+
+### Sprint 19 (доп. unit-тесты)
+- [x] **2026-05-12** — **19.1–19.4** image-resize + master-feed cursor тесты (commit pending):
+  - `src/lib/image-resize.ts` — pure `calcResizedDimensions(source, bounds)`, выделен из `image-upload.ts`. Возвращает `{width, height}` либо null если largest ≤ maxDimension. `image-upload.ts` теперь импортирует и использует helper — без изменения публичного API.
+  - `image-resize.test.ts` — 8 кейсов: null при small/exactly-max, portrait/landscape/square scale, 1px-over-max граница, AVATAR_PRESET vs PORTFOLIO_PRESET сценарии.
+  - `src/features/orders/feed-page.ts` — pure `masterFeedKey` + `buildFeedPage(rows, pageSize)`. `use-master-feed.ts` рефакторен на использование helpers.
+  - `feed-page.test.ts` — 11 кейсов: masterFeedKey стабильность (6) + buildFeedPage edge cases (5: empty/partial/full/overfilled/default-pageSize).
+  - Vitest 47/47 зелёные. Typecheck + biome lint чистые.
 
 ### Sprint 18 (E2E страховка — master ветка)
 - [x] **2026-05-12** — **18.1–18.5** Maestro master happy-path (commit pending):

@@ -11,6 +11,7 @@
 import * as ImageManipulator from "expo-image-manipulator";
 import * as ImagePicker from "expo-image-picker";
 import { Alert } from "react-native";
+import { calcResizedDimensions } from "./image-resize";
 import { supabase } from "./supabase";
 
 // ============================================================================
@@ -121,18 +122,8 @@ export async function resizeImage(
   source: PickedImage,
   preset: ResizePreset,
 ): Promise<{ uri: string; width: number; height: number }> {
-  const largest = Math.max(source.width, source.height);
-  const actions: ImageManipulator.Action[] = [];
-
-  if (largest > preset.maxDimension) {
-    const scale = preset.maxDimension / largest;
-    actions.push({
-      resize: {
-        width: Math.round(source.width * scale),
-        height: Math.round(source.height * scale),
-      },
-    });
-  }
+  const resized = calcResizedDimensions(source, { maxDimension: preset.maxDimension });
+  const actions: ImageManipulator.Action[] = resized ? [{ resize: resized }] : [];
 
   const result = await ImageManipulator.manipulateAsync(source.uri, actions, {
     compress: preset.compress,

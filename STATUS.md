@@ -6,9 +6,9 @@
 
 ## Текущее состояние
 
-**Sprint 6 (accept + master 3-tab) закрыт.** Маркетплейс-цикл закрылся полностью: клиент создаёт заявку → мастер шлёт отклик → клиент жмёт «Принять» → атомарный RPC меняет order в in_progress и picked_master_id, остальные отклики автоматически становятся rejected. Master view orders теперь pill-табы «Новые / Я откликнулся / Меня выбрали» с count-бейджами. База: 10 миграций, 11 таблиц с RLS, 4 RPC, 4 trigger functions.
+**Sprint 7 (chat + reviews + order completion) закрыт.** Полный жизненный цикл сделки покрыт кодом: клиент создаёт → мастер откликается → клиент принимает → автоматически создаётся чат через Realtime → стороны общаются → одна из сторон жмёт «Работа выполнена» → клиент оставляет отзыв → master_profiles.rating_overall_avg пересчитывается триггером. База: **12 миграций, 13 таблиц с RLS, 4 RPC, 7 trigger functions, 17 enums**. Bottom-tabs: «Главная / Заказы / Чаты». Anonymous Sign-Ins включён в Dashboard — flow работает E2E.
 
-**Готов к sprint 7** (chat между client↔picked_master через Realtime, real OTP, photo uploads, EAS dev-build).
+**Готов к sprint 8** (real OTP / Telegram Login, photo uploads, master profile public view, EAS dev-build).
 
 ---
 
@@ -116,6 +116,11 @@ xtrud/
 - [x] **2026-05-11** — **2.2** Role selection screen (commit `eb42338`): полноценный UI с 2 карточками (lucide Search/Briefcase), accessibilityState selected, accent-soft фон выбранной, CTA "Продолжить", error display. `useCompleteOnboarding` mutation обновляет `users.{is_master, active_role, onboarding_completed_at}` + invalidates query.
 - [x] **2026-05-11** — **2.3** Main client screen (commit `5d394c8`): `useVisibleCategories` для 26 L2, `CategoryTile` компонент с iconMap (~50 lucide icons), grid 2/3/4-кол. адаптивный, ScrollView без виртуализации, loading/error/empty states, header с приветствием по first_name + role badge + signOut. **Без атмосферных фото — sprint 4+.**
 
+### Sprint 7 (chat + reviews + completion = E2E lifecycle)
+- [x] **2026-05-12** — **7.1** Migration 0011 chats + messages (commit `ebc4989`): tables `chats` (UNIQUE order_id, client_id + master_id) и `messages` (chat_id FK, sender_id, text 1-4000). 4 indexes. RLS: только участники. Trigger update_chat_last_message при INSERT message. **Расширен accept_response RPC** — теперь INSERT в chats ON CONFLICT DO NOTHING. ALTER PUBLICATION supabase_realtime — подписка на messages и chats для live-обновлений.
+- [x] **2026-05-12** — **7.2** Chat UI + Realtime (commit `5450e31`): hooks `useMyChats` (JOIN orders + users партнёр), `useChatMessages` + `useRealtimeChatMessages` (Supabase Realtime channel `chat:{id}` с postgres_changes INSERT, setQueryData с dedup), `useSendMessage`. Screens: `chats/index.tsx` (список с аватаром-инициалом + последняя активность), `chats/[id].tsx` (thread с MessageBubble, автоскролл, KeyboardAvoidingView, Send button с conditional disable). Bottom-tab «Чаты» добавлен.
+- [x] **2026-05-12** — **7.3** Reviews + order completion (commit `3c431e1`): migration 0012 — reviews table (UNIQUE order+author, rating 1-5 CHECK, status enum), trigger `recalc_master_rating` авто-обновляет `master_profiles.rating_overall_avg/count` после INSERT/UPDATE/DELETE отзыва. Новая policy `orders_picked_master_can_complete` (picked_master может сменить `in_progress`→`completed`). UI: CompletionSection (success-button «Работа выполнена» обеим сторонам), ClientReviewSection (5 интерактивных звёзд + multiline text, после submit — read-only display).
+
 ### Sprint 6 (accept-loop + master 3-tab orders)
 - [x] **2026-05-12** — **6.1+6.2** accept_response RPC + UI (commit `3b639f2`): migration 0010 — RPC `accept_response(p_response_id)` SECURITY INVOKER. Атомарно UPDATE'ит выбранный response=accepted, остальные sent/viewed=rejected, order=in_progress+picked_master_id. Проверки: auth.uid()=order.client_id, status='open'. Advisor 0 lints. UI: `useAcceptResponse` mutation + `ClientResponsesSection` с условной кнопкой «Принять отклик» (если order.status=open и response.status=sent), success-border для picked мастера, info-banner если другой выбран. MasterResponseSection теперь знает picked_master_id и orderStatus: показывает «Клиент выбрал вас 🎉» (success вариант) или «Клиент уже выбрал мастера» (read-only).
 - [x] **2026-05-12** — **6.3** Master 3-tab orders (commit `326a0c2`): pill-табы (как RoleSwitcher pattern) с count-бейджами. Tabs «Новые», «Я откликнулся», «Меня выбрали». Новые hooks: `useMyResponses` (JOIN orders+L2+city за один запрос), `useOrdersAssignedToMe` (orders WHERE picked_master_id=me). Фильтрация «Новые»=feed-кроме-orderIds-где-я-откликнулся (client-side через Set). Каждый таб: NewOrdersTab/RespondedTab/AssignedTab с EmptyCard переиспользуемым компонентом. SafetyBanner отображается над контентом всех табов.
@@ -144,20 +149,19 @@ xtrud/
 
 ---
 
-## Что дальше (Sprint 7 — приоритет)
+## Что дальше (Sprint 8 — приоритет)
 
-1. **🟢 Включить Anonymous Sign-Ins в Supabase Dashboard** (5 мин). Без этого ничего не запустится в Simulator.
-2. **Chat между client↔picked_master** — после accept появляется чат. Migration 0011 для `chats` + `messages`. Supabase Realtime для live-обновлений. UI: список чатов в отдельной вкладке «Чаты» + thread screen.
-3. **Order completion + reviews** — кнопка «Работа выполнена» обеим сторонам. После double-confirm → order=completed + UI отзыва (rating 1-5 + текст). Migration 0012 для `reviews` таблицы.
-4. **Outcome tracking modal** — «Беру заказ / Не договорились» через 7/14/30 дней (Яндекс паттерн).
-5. **Реальный phone OTP** — replace anon на signInWithOtp/verifyOtp. SMS-провайдер.
-6. **Telegram Login Widget** — бесплатный альтернативный login.
-7. **Атмосферные фото категорий** + сигнатурный category-tile.
-8. **Фото-инфра + клиентский resize** — Supabase Storage portfolio bucket + expo-image-manipulator.
-9. **Order edit для client'а** — draft статус есть, нет UI редактирования. Sprint 7+.
-10. **Реалтайм-уведомления** через Supabase Realtime — toast «Новый отклик», «Вас выбрали».
-11. **Test runner** — Vitest unit + Maestro E2E.
-12. **EAS Build setup** — eas.json для dev-build на iOS/Android.
+1. **Real phone OTP** — replace `signInAnonymously` на `signInWithOtp` + `verifyOtp`. Нужен SMS-провайдер в Dashboard (Twilio/MessageBird/Smsc.ru) + тестовые номера. После — убрать симуляцию из `use-auth-mutations`. Это закроет advisor warnings про anonymous policies.
+2. **Telegram Login Widget** — бесплатная альтернатива SMS (AUDIT.md recommends, 100% покрытие региона).
+3. **Master profile public view** — отдельная страница `/master/[id]` с публичной карточкой, отзывами, категориями. Используется когда тапаешь имя мастера в OrderRow / response / chat.
+4. **Master-to-client review** — двунаправленный рейтинг. Расширить direction='master_to_client' в reviews + UI на стороне мастера.
+5. **Атмосферные фото категорий** — `categories_l1.cover_image_url` + сигнатурный category-tile паттерн.
+6. **Фото-инфра** — Supabase Storage `portfolio` bucket + `avatars` bucket + клиентский resize через expo-image-manipulator. R2 миграция при >50GB.
+7. **Order edit для client'а** — draft статус существует, UI редактирования нет.
+8. **Outcome tracking modal** — «Беру заказ / Не договорились» через 7/14/30 дней (Яндекс паттерн).
+9. **Push-уведомления** — Expo Push для «новый отклик», «вас выбрали», «новое сообщение».
+10. **Test runner** — Vitest unit + Maestro E2E.
+11. **EAS Build setup** — eas.json для dev-build на iOS/Android.
 
 ---
 
@@ -169,6 +173,30 @@ xtrud/
 ---
 
 ## История ключевых решений
+
+### 2026-05-12 — Sprint 7.1: чат автоматически создаётся в accept_response RPC
+**Выбрано:** при принятии отклика мастера RPC сразу создаёт chats row (INSERT ON CONFLICT DO NOTHING). Не нужен отдельный шаг «начать чат».
+
+**Обоснование:** двусторонний акт принятия = старт коммуникации. UX-логично сразу показать чат обоим. Альтернатива (создавать чат лениво при первом сообщении) добавляла бы пустые состояния и race conditions.
+
+### 2026-05-12 — Sprint 7.2: Realtime подписка только на INSERT, не SELECT
+**Выбрано:** подписка через `postgres_changes` event=INSERT с фильтром `chat_id=eq.X`, новые сообщения добавляются в TanStack Query cache через setQueryData с dedup по id.
+
+**Альтернатива (отброшена):** перезагружать messages через `invalidateQueries` при каждом Realtime событии. Это вызывает full refetch — лишний трафик.
+
+**Trade-off:** UPDATE/DELETE сообщений не покрываются. Для sprint 7 это OK (нет редактирования). Sprint 8+ добавим UPDATE подписку если понадобится edit/delete.
+
+### 2026-05-12 — Sprint 7.3: master rating через DB trigger вместо edge function
+**Выбрано:** `recalc_master_rating` trigger в plpgsql AFTER INSERT/UPDATE/DELETE на reviews. Пересчёт AVG/COUNT, UPDATE master_profiles.
+
+**Альтернатива (отброшена):** Edge Function с подпиской на изменения reviews. Дороже (network roundtrip), не атомарно, требует логики retry.
+
+**Bonus:** trigger корректно обрабатывает DELETE/UPDATE отзывов — рейтинг автоматически пересчитывается.
+
+### 2026-05-12 — Sprint 7.3: master→client review отложен в sprint 8
+**Выбрано:** В sprint 7 только direction='client_to_master'. Master-to-client поле есть в enum, но UI и flow не реализованы.
+
+**Обоснование:** двунаправленный рейтинг (мастер тоже оценивает клиента) — отдельная UX-проблема: где master её оставляет, как клиент видит свою репутацию, нужно ли скрывать от других мастеров и т.д. Лучше сделать качественно в sprint 8 чем поспешно сейчас.
 
 ### 2026-05-12 — Sprint 6.1: accept_response — атомарное reject остальных откликов
 **Выбрано:** при accept одного отклика, остальные открытые (status IN sent/viewed) автоматически становятся rejected внутри одного RPC.

@@ -6,6 +6,22 @@
 
 ## Текущее состояние
 
+**Sprint 25 закрыт — Feed & category list (P1).**
+
+Что вошло:
+- **Новый хук `useTopMasters(limit)`** (`src/features/master-view/use-top-masters.ts`) — глобальный топ мастеров по rating → closed_deals → experience, фильтр на `onboarding_completed_at NOT NULL` и `status='active'`.
+- **`<MasterPreviewCard>`** (`src/components/MasterPreviewCard.tsx`) — два варианта: `horizontal` для главной (180px width, square фото 1:1), `row` для category-list (92×92 фото, TaskRabbit Select-a-Tasker pattern). Универсальный компонент, переиспользуется в обоих местах.
+- **Главная (`tabs/index.tsx`):** добавлена секция «Лучшие мастера» с горизонтальным карусели поверх категорий. Skeleton при загрузке. Скрывается если нет данных — экран не показывает пустой блок.
+- **`category/[id].tsx`**: старый `MasterCardRow` (48px-аватарка) заменён на `<MasterPreviewCard variant="row">` (92×92 фото). Skeleton-загрузка через `<CardListSkeleton>`.
+- **Skeleton везде** где был `ActivityIndicator` — категории (TileSkeleton×6 в сетке), мастера (CardListSkeleton).
+
+**Допущения (выполнены частично от ROADMAP § Sprint 25):**
+- Search-bar пропущен — требует новой инфраструктуры (search API, full-screen search экран). Помечен как Sprint 25.5/future.
+- City selector пропущен — требует city-state Zustand + UI смены. Также Sprint 25.5/future.
+- Услуги-как-prices в category/[id].tsx сейчас остались над мастерами (а не chip-фильтры под). Это требует более глубокого UI-рефакторинга экрана — отложено.
+
+Проверки: `tsc --noEmit` ✅, `biome check` ✅ (121 файл), `vitest` 47/47 ✅.
+
 **Sprint 24 закрыт — Master card (Thumbtack pattern, P1).** Главный conversion-экран продукта переделан.
 
 Что вошло (`app/(tabs)/master/[id].tsx`):
@@ -67,13 +83,15 @@
 - **После Sprint 31** (~6 недель) — конкурент Profi.ru/TaskRabbit по UX.
 - **После Sprint 33** (~8 недель) — полноценное web-приложение, не растянутое mobile.
 
-### 🚀 Следующий шаг — Sprint 25
+### 🚀 Следующий шаг — Sprint 26
 
-**Feed & category list** (P1, 2-3 дня) — путь к карточке мастера. Закрывает 2🔴 + 3🟡 из `discovery.md`. Что делать (детально в [`ROADMAP_2026-05-12.md`](ROADMAP_2026-05-12.md) § Sprint 25):
+**Order create wizard** (P1, 2-4 дня) — клиент решил создать заказ, пик мотивации. Закрывает 1🔴 + 2🟡 из `orders.md`. Что делать (детально в [`ROADMAP_2026-05-12.md`](ROADMAP_2026-05-12.md) § Sprint 26):
 
-1. **Главная (`tabs/index.tsx`):** search-bar в шапке, городской селектор, top-recommended-мастера в карусели, компактнее сетка категорий.
-2. **Категория-листинг (`category/[id].tsx`):** карточки 88-104px высотой с фото работ + hourly rate + «выполнено N задач» (TaskRabbit Select-a-Tasker pattern). Услуги в chip-фильтры под мастеров.
-3. **Skeleton-загрузка** на feed (`<CardListSkeleton>`).
+1. **3-шаговый wizard** в `orders/new.tsx`: категория+подкатегория → описание+фото → бюджет+срок+город.
+2. **Progress-indicator** «Шаг N из 3» сверху (переиспользуем `<OnboardingProgress>` или новый `<WizardProgress>`).
+3. **Trust-сигнал** на финальном шаге: «Обычно отвечают за ~30 минут» (TaskRabbit pattern).
+4. **Submitted-экран** «Заявка отправлена → ожидайте откликов» с кнопкой перехода. Сейчас вместо этого — голый `router.back()`.
+5. Сохранение draft в Zustand (опционально, если пользователь вышел — продолжает).
 
 ### Решённые открытые вопросы
 

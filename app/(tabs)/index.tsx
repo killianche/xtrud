@@ -1,15 +1,18 @@
 import { useRouter } from "expo-router";
-import { ActivityIndicator, Pressable, ScrollView, View } from "react-native";
+import { FlatList, Pressable, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
 import { Avatar } from "@/components/Avatar";
 import { CategoryTile } from "@/components/CategoryTile";
+import { MasterPreviewCard } from "@/components/MasterPreviewCard";
 import { RoleSwitcher } from "@/components/RoleSwitcher";
+import { Skeleton, TileSkeleton } from "@/components/Skeleton";
 import { useAuthSession } from "@/features/auth/use-auth-session";
 import { useSetActiveRole } from "@/features/auth/use-set-active-role";
 import { useUserRecord } from "@/features/auth/use-user-record";
 import { useVisibleCategories } from "@/features/categories/use-visible-categories";
 import { MasterHomeContent } from "@/features/master-view/MasterHomeContent";
+import { useTopMasters } from "@/features/master-view/use-top-masters";
 import { usePullToRefresh } from "@/hooks/use-pull-to-refresh";
 
 export default function HomeTab() {
@@ -74,6 +77,7 @@ export default function HomeTab() {
         ) : (
           <ClientHomeContent
             onCategoryPress={(catId) => router.push(`/category/${catId}` as never)}
+            onMasterPress={(masterId) => router.push(`/master/${masterId}` as never)}
           />
         )}
       </View>
@@ -87,14 +91,63 @@ export default function HomeTab() {
 
 interface ClientHomeContentProps {
   onCategoryPress: (catId: string) => void;
+  onMasterPress: (masterId: string) => void;
 }
 
-function ClientHomeContent({ onCategoryPress }: ClientHomeContentProps) {
+function ClientHomeContent({ onCategoryPress, onMasterPress }: ClientHomeContentProps) {
   const { data: categories, isLoading, error, refetch } = useVisibleCategories();
+  const topMasters = useTopMasters(7);
+  const showMasters = (topMasters.data?.length ?? 0) > 0 || topMasters.isLoading;
 
   return (
     <View>
-      <View className="px-6">
+      {/* Top-recommended masters — горизонтальный карусель (TaskRabbit Browse). */}
+      {showMasters && (
+        <View>
+          <View className="px-6">
+            <AppText weight="semibold" className="text-title-lg text-ink">
+              Лучшие мастера
+            </AppText>
+            <AppText className="mt-1 text-body-sm text-muted">
+              По рейтингу и количеству завершённых работ
+            </AppText>
+          </View>
+
+          {topMasters.isLoading ? (
+            <View className="mt-4 flex-row gap-3 px-6">
+              <Skeleton variant="rect" width={180} height={232} radius={12} />
+              <Skeleton variant="rect" width={180} height={232} radius={12} />
+              <Skeleton variant="rect" width={180} height={232} radius={12} />
+            </View>
+          ) : (
+            <FlatList
+              data={topMasters.data ?? []}
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{ paddingHorizontal: 24, gap: 12 }}
+              className="mt-4"
+              keyExtractor={(m) => m.user.id}
+              renderItem={({ item }) => (
+                <MasterPreviewCard
+                  id={item.user.id}
+                  avatarUrl={item.user.avatar_url}
+                  firstName={item.user.first_name}
+                  lastName={item.user.last_name}
+                  ratingAvg={item.profile.rating_overall_avg}
+                  ratingCount={item.profile.rating_overall_count}
+                  closedDeals={item.profile.closed_deals}
+                  experienceYears={item.profile.experience_years}
+                  cityName={item.city?.name ?? null}
+                  variant="horizontal"
+                  onPress={() => onMasterPress(item.user.id)}
+                />
+              )}
+            />
+          )}
+        </View>
+      )}
+
+      <View className={`px-6 ${showMasters ? "mt-10" : ""}`}>
         <AppText weight="semibold" className="text-title-lg text-ink">
           Категории
         </AppText>
@@ -102,8 +155,14 @@ function ClientHomeContent({ onCategoryPress }: ClientHomeContentProps) {
       </View>
 
       {isLoading && (
-        <View className="mt-8 items-center px-6">
-          <ActivityIndicator />
+        <View className="mt-4 flex-row flex-wrap gap-3 px-6">
+          {Array.from({ length: 6 }).map((_, i) => (
+            // Индекс позиции, не идентификатор — порядок плиток-скелетонов фиксирован.
+            // biome-ignore lint/suspicious/noArrayIndexKey: stable position-based key
+            <View key={i} className="w-[48%] md:w-[31%] lg:w-[23%]">
+              <TileSkeleton />
+            </View>
+          ))}
         </View>
       )}
 

@@ -1,9 +1,10 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { ChevronLeft, Shield, Star } from "lucide-react-native";
-import { ActivityIndicator, Pressable, ScrollView, View } from "react-native";
+import { ChevronLeft, Shield } from "lucide-react-native";
+import { Pressable, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
-import { Avatar } from "@/components/Avatar";
+import { MasterPreviewCard } from "@/components/MasterPreviewCard";
+import { CardListSkeleton, Skeleton } from "@/components/Skeleton";
 import {
   type CategoryL3,
   formatAvgCheck,
@@ -12,7 +13,7 @@ import {
 } from "@/features/categories/use-category-detail";
 import { type MasterInCategory, useMastersByL2 } from "@/features/master-view/use-masters-by-l2";
 import { usePullToRefresh } from "@/hooks/use-pull-to-refresh";
-import { pluralizeServices, pluralizeYears } from "@/lib/pluralize";
+import { pluralizeServices } from "@/lib/pluralize";
 import { useThemeColor, useThemeColors } from "@/lib/use-theme-color";
 
 function ServiceRow({ service }: { service: CategoryL3 }) {
@@ -67,8 +68,11 @@ export default function CategoryDetailScreen() {
       </View>
 
       {isLoading && (
-        <View className="mt-8 items-center px-6">
-          <ActivityIndicator />
+        <View className="mt-8 gap-2 px-6">
+          <Skeleton height={20} width="50%" />
+          <Skeleton height={14} width="80%" />
+          <Skeleton variant="rect" height={48} className="mt-3" radius={8} />
+          <Skeleton variant="rect" height={48} radius={8} />
         </View>
       )}
 
@@ -144,8 +148,8 @@ export default function CategoryDetailScreen() {
             </AppText>
 
             {masters.isLoading && (
-              <View className="mt-4 items-start">
-                <ActivityIndicator />
+              <View className="mt-4">
+                <CardListSkeleton count={3} />
               </View>
             )}
 
@@ -168,60 +172,19 @@ export default function CategoryDetailScreen() {
 }
 
 function MasterCardRow({ master, onPress }: { master: MasterInCategory; onPress: () => void }) {
-  const warningColor = useThemeColor("warning");
-  const fullName =
-    [master.user.first_name, master.user.last_name].filter(Boolean).join(" ") || "Мастер";
-  const rating = master.profile?.rating_overall_avg;
-  const ratingCount = master.profile?.rating_overall_count ?? 0;
-  const years = master.profile?.experience_years ?? 0;
-
   return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={`Профиль мастера ${fullName}`}
+    <MasterPreviewCard
+      id={master.user.id}
+      avatarUrl={master.user.avatar_url}
+      firstName={master.user.first_name}
+      lastName={master.user.last_name}
+      ratingAvg={master.profile?.rating_overall_avg ?? null}
+      ratingCount={master.profile?.rating_overall_count ?? 0}
+      closedDeals={master.profile?.closed_deals ?? 0}
+      experienceYears={master.profile?.experience_years ?? null}
+      cityName={master.city?.name ?? null}
+      variant="row"
       onPress={onPress}
-      className="flex-row items-center gap-3 rounded-lg border border-hairline bg-canvas p-3 active:opacity-70"
-    >
-      <Avatar url={master.user.avatar_url} name={fullName} seed={master.user.id} size="md" />
-      <View className="flex-1">
-        <AppText weight="semibold" className="text-body-md text-ink" numberOfLines={1}>
-          {fullName}
-        </AppText>
-        <View className="mt-1 flex-row items-center gap-2">
-          {rating != null && ratingCount > 0 ? (
-            <View className="flex-row items-center gap-1">
-              <Star size={12} strokeWidth={2} color={warningColor} fill={warningColor} />
-              <AppText weight="semibold" className="text-caption text-ink">
-                {rating.toFixed(1)}
-              </AppText>
-              <AppText className="text-caption-xs text-muted">({ratingCount})</AppText>
-            </View>
-          ) : (
-            <AppText className="text-caption-xs text-muted">Без отзывов</AppText>
-          )}
-          {years > 0 && (
-            <>
-              <AppText className="text-caption-xs text-muted">·</AppText>
-              <AppText className="text-caption-xs text-muted">
-                {pluralizeYears(years)} опыта
-              </AppText>
-            </>
-          )}
-          {master.city?.name && (
-            <>
-              <AppText className="text-caption-xs text-muted">·</AppText>
-              <AppText className="flex-shrink text-caption-xs text-muted" numberOfLines={1}>
-                {master.city.name}
-              </AppText>
-            </>
-          )}
-        </View>
-        {master.profile?.bio && (
-          <AppText className="mt-1 text-caption text-muted" numberOfLines={2}>
-            {master.profile.bio}
-          </AppText>
-        )}
-      </View>
-    </Pressable>
+    />
   );
 }

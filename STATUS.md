@@ -6,11 +6,11 @@
 
 ## Текущее состояние
 
-**Sprint 14 в работе.** Закрыт 14.1 — Vitest setup и первые unit-тесты для chat unread-helpers. `npm test` зелёный (7/7). Architecture-improvement: вынес pure helpers (`isChatUnread`, `unreadChatsCount`) в отдельный модуль `unread-helpers.ts` без RN-зависимостей, чтобы тесты могли запускаться в Node.
+**Sprint 14 в работе.** Закрыты 14.1 (Vitest setup) + 14.2 (CI test integration + shared pluralize lib + 14 тестов всего). Дубликаты `pluralizeReviews`/`pluralizeYears`/`pluralizeDeals`/`pluralizeCompleted`/`pluralizeServices` из 3 файлов сведены в `src/lib/pluralize.ts` с общей `pluralizeRu(count, forms)` функцией; покрыто 14 unit-тестов; CI теперь падает на failed tests.
 
 **База:** 23 миграции, 15 таблиц с RLS + 3 Storage bucket, 8 RPC, 12 trigger functions, 17 enums, 1 edge function.
 
-**Backlog Sprint 14+:** больше unit-тестов (rls policies через mock, util функции); Maestro E2E; live-тест dev-build; admin-tool для category-covers; real OTP / Telegram Login.
+**Backlog Sprint 14+:** Maestro E2E smoke; live-тест dev-build; admin-tool для category-covers; real OTP / Telegram Login.
 
 **База:** 19 миграций, 15 таблиц с RLS + 3 Storage bucket, 5 RPC, 11 trigger functions, 17 enums, 1 edge function. Приоритетные кандидаты: live-тест на dev-build (push, image-picker, category covers); admin-tool для загрузки category-covers и portfolio-привязки; full master profile edit (bio/опыт/радиус/город после онбординга); real OTP / Telegram Login (snimaeт advisor anonymous warnings); outcome tracking modal; test runner (Vitest + Maestro).
 
@@ -121,7 +121,8 @@ xtrud/
 - [x] **2026-05-11** — **2.3** Main client screen (commit `5d394c8`): `useVisibleCategories` для 26 L2, `CategoryTile` компонент с iconMap (~50 lucide icons), grid 2/3/4-кол. адаптивный, ScrollView без виртуализации, loading/error/empty states, header с приветствием по first_name + role badge + signOut. **Без атмосферных фото — sprint 4+.**
 
 ### Sprint 14 (quality)
-- [x] **2026-05-12** — **14.1** Vitest setup + первые unit-тесты (commit pending): `vitest 4.1.6` поставлен как devDependency. `vitest.config.ts` с `environment: "node"`, `@`-alias, include `src/**/*.test.ts*`. npm scripts `test` и `test:watch`. Архитектурная правка: pure functions `isChatUnread` + `unreadChatsCount` вынесены в `src/features/chat/unread-helpers.ts` (zero RN imports), `use-my-chats.ts` re-export'ит для backward compatibility. Первый тестовый файл `unread-helpers.test.ts` — 7 кейсов: null last_message, NULL last_read для каждой роли, корректная роль-маркер выбора, edge case 0 chats. CI потребует `npm test` шаг — следующий шаг.
+- [x] **2026-05-12** — **14.2** CI test integration + shared pluralize lib (commit pending): GitHub Actions workflow получил `npm test` шаг (Vitest). DRY-refactor: создан `src/lib/pluralize.ts` с базовой `pluralizeRu(count, forms)` + 5 готовых helpers (Reviews/Years/ClosedDeals/ClosedOrders/Services). Дублированные локальные функции удалены из master/[id], client/[id], category/[id]. `pluralize.test.ts` — 7 кейсов: edge cases с 11-14, 21, 101, exception periods. Total tests 14/14 зелёные.
+- [x] **2026-05-12** — **14.1** Vitest setup + первые unit-тесты (commit `7f98d58`): `vitest 4.1.6` поставлен как devDependency. `vitest.config.ts` с `environment: "node"`, `@`-alias, include `src/**/*.test.ts*`. npm scripts `test` и `test:watch`. Архитектурная правка: pure functions `isChatUnread` + `unreadChatsCount` вынесены в `src/features/chat/unread-helpers.ts` (zero RN imports), `use-my-chats.ts` re-export'ит для backward compatibility. Первый тестовый файл `unread-helpers.test.ts` — 7 кейсов: null last_message, NULL last_read для каждой роли, корректная роль-маркер выбора, edge case 0 chats. CI потребует `npm test` шаг — следующий шаг.
 
 ### Sprint 13 (badges parity)
 - [x] **2026-05-12** — **13.2** Swipe-between-photos в lightbox (commit `fea4189`): расширил Pan-жест в `PortfolioLightbox`. При scale=1× pan = horizontal swipe для переключения фото — `swipeX` shared value двигает картинку за пальцем (visual feedback). При `|translationX| > width × 0.18` и onEnd — completion-animation (`withTiming(±width, 180ms)` → callback меняет index через `runOnJS(onChangeIndex)` → swipeX сбрасывается в 0). Иначе spring-back в 0. При scale > 1× swipeX игнорируется, pan работает как раньше для рассматривания фото внутри. `animatedStyle` суммирует `translateX + (scale<=1 ? swipeX : 0)`. UseEffect на index сбрасывает все shared values для надёжности.

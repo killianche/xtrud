@@ -13,7 +13,7 @@ concurrency:
 
 jobs:
   check:
-    name: Typecheck + Lint
+    name: Typecheck + Lint + Tests
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
@@ -35,3 +35,6 @@ jobs:
 
       - name: Biome lint + format
         run: npx biome ci .
+
+      - name: Unit tests (Vitest)
+        run: npm test

@@ -21,6 +21,7 @@ import { useClientPublicProfile } from "@/features/client-view/use-client-public
 import { ReviewsSection } from "@/features/master-view/ReviewsSection";
 import { useReviewsForTarget } from "@/features/master-view/use-master-public";
 import { usePullToRefresh } from "@/hooks/use-pull-to-refresh";
+import { pluralizeClosedOrders as pluralizeCompleted, pluralizeReviews } from "@/lib/pluralize";
 
 export default function ClientPublicScreen() {
   const insets = useSafeAreaInsets();
@@ -163,20 +164,4 @@ function formatJoinDate(iso: string): string {
     month: "long",
     year: "numeric",
   }).format(new Date(iso));
-}
-
-function pluralizeReviews(count: number): string {
-  const mod10 = count % 10;
-  const mod100 = count % 100;
-  if (mod10 === 1 && mod100 !== 11) return `${count} отзыв`;
-  if ([2, 3, 4].includes(mod10) && ![12, 13, 14].includes(mod100)) return `${count} отзыва`;
-  return `${count} отзывов`;
-}
-
-function pluralizeCompleted(count: number): string {
-  const mod10 = count % 10;
-  const mod100 = count % 100;
-  if (mod10 === 1 && mod100 !== 11) return `${count} заказ закрыт`;
-  if ([2, 3, 4].includes(mod10) && ![12, 13, 14].includes(mod100)) return `${count} заказа закрыто`;
-  return `${count} заказов закрыто`;
 }

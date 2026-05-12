@@ -12,6 +12,7 @@ import {
 } from "@/features/categories/use-category-detail";
 import { type MasterInCategory, useMastersByL2 } from "@/features/master-view/use-masters-by-l2";
 import { usePullToRefresh } from "@/hooks/use-pull-to-refresh";
+import { pluralizeServices, pluralizeYears } from "@/lib/pluralize";
 
 function ServiceRow({ service }: { service: CategoryL3 }) {
   const urgencyText = urgencyLabel(service.urgency_typical);
@@ -105,7 +106,7 @@ export default function CategoryDetailScreen() {
             <AppText className="mt-2 text-body-md text-muted">
               {data.services.length === 0
                 ? "В этой категории пока нет услуг."
-                : `${data.services.length} ${pluralizeServices(data.services.length)}`}
+                : pluralizeServices(data.services.length)}
             </AppText>
           </View>
 
@@ -197,7 +198,9 @@ function MasterCardRow({ master, onPress }: { master: MasterInCategory; onPress:
           {years > 0 && (
             <>
               <AppText className="text-caption-xs text-muted">·</AppText>
-              <AppText className="text-caption-xs text-muted">{pluralizeYears(years)}</AppText>
+              <AppText className="text-caption-xs text-muted">
+                {pluralizeYears(years)} опыта
+              </AppText>
             </>
           )}
           {master.city?.name && (
@@ -217,25 +220,4 @@ function MasterCardRow({ master, onPress }: { master: MasterInCategory; onPress:
       </View>
     </Pressable>
   );
-}
-
-function pluralizeYears(count: number): string {
-  const mod10 = count % 10;
-  const mod100 = count % 100;
-  if (mod10 === 1 && mod100 !== 11) return `${count} год опыта`;
-  if ([2, 3, 4].includes(mod10) && ![12, 13, 14].includes(mod100)) return `${count} года`;
-  return `${count} лет`;
-}
-
-/**
- * Склонение слова "услуга" по количеству.
- * 1 — услуга, 2-4 — услуги, 5+ — услуг (с учётом особенностей >20).
- */
-function pluralizeServices(n: number): string {
-  const mod10 = n % 10;
-  const mod100 = n % 100;
-  if (mod100 >= 11 && mod100 <= 19) return "услуг";
-  if (mod10 === 1) return "услуга";
-  if (mod10 >= 2 && mod10 <= 4) return "услуги";
-  return "услуг";
 }

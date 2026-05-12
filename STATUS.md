@@ -6,11 +6,11 @@
 
 ## Текущее состояние
 
-**Sprint 8 в работе.** Закрыты 8.1–8.7: фото-инфра, аватары/портфолио, master public view, двунаправленный рейтинг, редактирование заказа, push-уведомления, фото категорий. CategoryTile теперь полноразмерный cover + bottom-gradient + лейбл когда `cover_image_url` есть; иначе fallback на icon-режим. Storage bucket `category-covers` создан, write через service_role/admin Dashboard.
+**Sprint 8 закрыт.** 8.1–8.8 готовы: фото-инфра, аватары/портфолио, master public view, двунаправленный рейтинг, редактирование заказа, push-уведомления, фото категорий, EAS build config. `eas.json` с development / development-device / preview / production профилями + base block с EXPO_PUBLIC_SUPABASE_URL. Готов к запуску `eas init` + `eas build --profile development`.
 
 **База:** 19 миграций, 15 таблиц с RLS + 3 Storage bucket, 5 RPC, 11 trigger functions, 17 enums, 1 edge function.
 
-**Дальше в sprint 8:** 8.8 (EAS dev-build).
+**Готов к Sprint 9.** Приоритетные кандидаты: live-тест на dev-build (push, image-picker, category covers); admin-tool для загрузки category-covers и portfolio-привязки; full master profile edit (bio/опыт/радиус/город после онбординга); real OTP / Telegram Login (snimaeт advisor anonymous warnings); outcome tracking modal; test runner (Vitest + Maestro).
 
 ---
 
@@ -119,7 +119,20 @@ xtrud/
 - [x] **2026-05-11** — **2.3** Main client screen (commit `5d394c8`): `useVisibleCategories` для 26 L2, `CategoryTile` компонент с iconMap (~50 lucide icons), grid 2/3/4-кол. адаптивный, ScrollView без виртуализации, loading/error/empty states, header с приветствием по first_name + role badge + signOut. **Без атмосферных фото — sprint 4+.**
 
 ### Sprint 8 (photo infra + master profile public view + dual reviews)
-- [x] **2026-05-12** — **8.7** Атмосферные фото категорий (commit pending): migration 0019 — `categories_l2.cover_image_url text CHECK length ≤ 500` + Storage bucket `category-covers` (public read, ≤5MB, jpeg/png/webp, admin-only write через service_role). `expo-linear-gradient` поставлен. `CategoryTile` переписан в две ветки: при наличии `cover_image_url` рендерит expo-image `contentFit="cover"` + `LinearGradient` (`rgba(0,0,0,0)` → `rgba(0,0,0,0.65)`, locations [0.45, 1]) + label в text-on-dark снизу — DESIGN_SYSTEM §9.1 паттерн. При NULL — icon-режим как было. `useVisibleCategories.cover_image_url` теперь прокидывается из БД в плитку. Sprint 2.3 trade-off закрыт. Само naполнение бакета (фото-файлы) — admin задача через Dashboard, обновление `cover_image_url` через UPDATE.
+- [x] **2026-05-12** — **8.8** EAS Build dev profile (commit pending): `eas.json` с 4 профилями. `base` (общий node 20.18.0 + EXPO_PUBLIC_SUPABASE_URL env) → расширяется через `extends` в остальных. `development` — internal distribution с developmentClient=true, iOS simulator=true, Android apk; `development-device` — тот же что development но для реального iOS-устройства (simulator=false); `preview` — internal release-build для тестировщиков; `production` — store-ready с auto-increment + Android app-bundle. Resource class `m-medium`/`medium` для разумной скорости/стоимости (Free Tier MVP).
+
+**Запуск (после первого `eas login`):**
+- `npx eas-cli@latest init` — создаст EAS project, впишет `extra.eas.projectId` в app.json, нужно для push-tokens.
+- `eas secret:create --name EXPO_PUBLIC_SUPABASE_ANON_KEY --value <publishable_key>` — anon-key из .env.local.
+- `eas build --profile development --platform ios` (или `--platform android`) — собирает первый dev-build.
+- После установки на устройство: `npx expo start --dev-client` — открыть приложение через dev-build вместо Expo Go.
+
+**Что закроет live-тест dev-build:**
+- expo-image-picker (sprint 8.1/8.2) — Expo Go не выдаёт нативные camera/photo permissions полностью корректно.
+- expo-notifications push token (sprint 8.6) — Expo Go в SDK 53+ блокирует remote push.
+- category-covers рендер (sprint 8.7) — нужно сначала залить хотя бы одну обложку через Supabase Dashboard.
+
+- [x] **2026-05-12** — **8.7** Атмосферные фото категорий (commit `c80f3ec`): migration 0019 — `categories_l2.cover_image_url text CHECK length ≤ 500` + Storage bucket `category-covers` (public read, ≤5MB, jpeg/png/webp, admin-only write через service_role). `expo-linear-gradient` поставлен. `CategoryTile` переписан в две ветки: при наличии `cover_image_url` рендерит expo-image `contentFit="cover"` + `LinearGradient` (`rgba(0,0,0,0)` → `rgba(0,0,0,0.65)`, locations [0.45, 1]) + label в text-on-dark снизу — DESIGN_SYSTEM §9.1 паттерн. При NULL — icon-режим как было. `useVisibleCategories.cover_image_url` теперь прокидывается из БД в плитку. Sprint 2.3 trade-off закрыт. Само naполнение бакета (фото-файлы) — admin задача через Dashboard, обновление `cover_image_url` через UPDATE.
 - [x] **2026-05-12** — **8.6** Push-уведомления через Expo Push (commit `5cf1312`): migration 0017 — `pg_net` extension + `notification_tokens` table (user_id, expo_token UNIQUE, platform, device_name) с RLS owner-only. Migration 0018 — `vault.create_secret('notify_secret', ...)` (shared secret для DB↔Edge), helper function `public.notify_user(p_user_id, p_title, p_body, p_data)` SECURITY DEFINER вызывает edge function через pg_net.http_post с header `x-notify-secret`. 3 триггера: `messages_notify_recipient` (новое сообщение → партнёр), `order_responses_notify_owner` (новый отклик → клиент), `orders_notify_picked_master` (status=in_progress → выбранному мастеру). Все трое — AFTER INSERT/UPDATE, SECURITY DEFINER. Edge function `notify` (verify_jwt=false, v2): читает secret из vault.decrypted_secrets через service_role, проверяет `x-notify-secret`, грузит токены из notification_tokens, шлёт batch на `https://exp.host/--/api/v2/push/send`. Client: `expo-notifications 0.32.17` + `expo-device 8.0.10`, plugin в app.json (брендовый color #2563eb). `useRegisterPushToken(userId)` в AuthGate — запрашивает permission, получает Expo token через `getExpoPushTokenAsync()`, upsert по `expo_token` (UNIQUE) в БД. На signOut → `unregisterCurrentPushToken()` чистит row перед auth.signOut (порядок важен — после signOut RLS не пустит). `Notifications.setNotificationHandler` показывает push даже в foreground.
 - [x] **2026-05-12** — **8.5** Order edit для client'а (commit `4397d13`): новый экран `app/(tabs)/orders/edit/[id].tsx`. Доступен только владельцу заказа при `status='open'`; иначе показывает explanation-screen («после принятия отклика нельзя редактировать»). Pencil-иконка в шапке `orders/[id].tsx` — отображается условно (isOwner && status='open'). Extract: общий компонент `src/features/orders/OrderFormBody.tsx` с полями category/title/description/city/district/urgency/budget — теперь шарится между `new.tsx` и `edit/[id].tsx`. Hook `useUpdateOrder` — RLS `orders_update_own` уже разрешает (sprint 5.1 закладывал). Поле `lockCategory` в OrderFormBody подготовлено для будущего (если решим фризить категорию у редактирования — пока не активно). Никакой миграции, всё на существующих RLS.
 - [x] **2026-05-12** — **8.4** Двунаправленный рейтинг master↔client (commit `b5b1bb5`): migration 0016 — `recalc_master_rating` trigger function переписана с IF v_direction = 'client_to_master' / 'master_to_client'. Теперь обе стороны автоматически пересчитываются (master_profiles или users.rating_as_client_*). UI: новая `MasterReviewSection` — клон ClientReviewSection с direction='master_to_client' и текстами «Оцените клиента» / «Каким был клиент? Корректно ли описал задачу, оплатил вовремя?». Отображается под CompletionSection при `!isOwner && isMasterRole && status='completed' && picked_master_id===userId`. `OrderDetail` тип расширен — `client` JOIN теперь включает `avatar_url`, `rating_as_client_avg`, `rating_as_client_count`. В OrderInfoBlock пере-сделан блок «Заказчик» — теперь Avatar (sm) + имя + Star-рейтинг (если есть отзывы). Мастер до отклика видит репутацию клиента, как у Profi.
@@ -160,9 +173,15 @@ xtrud/
 
 ---
 
-## Что дальше (Sprint 8 — остаток)
+## Что дальше (Sprint 9 — кандидаты)
 
-1. (next) **8.8 EAS Build dev profile** — `eas.json` для dev-build на iOS+Android. Real device testing: push-уведомления (8.6 не проверены live), expo-image-picker (8.1/8.2), category covers (8.7). После first build получим `eas.projectId` который надо засеять в app.json (для `getExpoPushTokenAsync`).
+1. **Live-тест на dev-build** — push, image-picker, category covers (см. инструкции выше).
+2. **Admin-tool для category-covers** — Node-скрипт со service_role: читает `assets/category-covers/<l2_id>.jpg`, грузит в bucket, UPDATE'ит `categories_l2.cover_image_url`.
+3. **Full master profile edit** — bio, опыт, радиус, город меняются только в onboarding. Sprint 9 — отдельный экран `/profile/edit-master`.
+4. **Real OTP / Telegram Login** — снимет 12 advisor warnings про anonymous policies.
+5. **Outcome tracking modal** — «Беру / Не договорились» через 7/14/30 дней (Яндекс паттерн).
+6. **Test runner** — Vitest для unit + Maestro для E2E.
+7. **Master→client review в публичной странице клиента** — отложено в 8.4, требует `/client/[id]`.
 3. **8.4 Master→client review** — расширить UI на `direction='master_to_client'`. Добавить `users.rating_avg numeric(2,1)` + trigger пересчёта. На странице клиента (отдельная задача) показывать его рейтинг.
 4. **8.5 Order edit для client'а** — UI редактирования заказа со `status='open'`. Reuse new.tsx логику.
 5. **8.6 Push-уведомления** — Expo Push для «новый отклик», «вас выбрали», «новое сообщение». DB trigger создаёт notifications row → edge function рассылает push.

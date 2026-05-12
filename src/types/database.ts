@@ -149,6 +149,8 @@ export type Database = {
           created_at: string;
           id: string;
           last_message_at: string | null;
+          last_read_client_at: string | null;
+          last_read_master_at: string | null;
           master_id: string;
           order_id: string;
         };
@@ -157,6 +159,8 @@ export type Database = {
           created_at?: string;
           id?: string;
           last_message_at?: string | null;
+          last_read_client_at?: string | null;
+          last_read_master_at?: string | null;
           master_id: string;
           order_id: string;
         };
@@ -165,6 +169,8 @@ export type Database = {
           created_at?: string;
           id?: string;
           last_message_at?: string | null;
+          last_read_client_at?: string | null;
+          last_read_master_at?: string | null;
           master_id?: string;
           order_id?: string;
         };
@@ -828,6 +834,7 @@ export type Database = {
     };
     Functions: {
       accept_response: { Args: { p_response_id: string }; Returns: undefined };
+      mark_chat_read: { Args: { p_chat_id: string }; Returns: undefined };
       complete_master_onboarding: {
         Args: {
           p_bio: string;

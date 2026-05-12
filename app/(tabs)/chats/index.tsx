@@ -4,7 +4,7 @@ import { ActivityIndicator, Pressable, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
 import { useAuthSession } from "@/features/auth/use-auth-session";
-import { type MyChatWithRefs, useMyChats } from "@/features/chat/use-my-chats";
+import { isChatUnread, type MyChatWithRefs, useMyChats } from "@/features/chat/use-my-chats";
 import { usePullToRefresh } from "@/hooks/use-pull-to-refresh";
 
 export default function ChatsListScreen() {
@@ -101,12 +101,15 @@ function ChatListRow({ chat, userId, onPress }: ChatListRowProps) {
         month: "short",
       })
     : "Нет сообщений";
+  const unread = userId ? isChatUnread(chat, userId) : false;
 
   return (
     <Pressable
       accessibilityRole="button"
       onPress={onPress}
-      className="flex-row items-center gap-3 rounded-lg border border-hairline bg-canvas p-4 active:opacity-70"
+      className={`flex-row items-center gap-3 rounded-lg border p-4 active:opacity-70 ${
+        unread ? "border-accent bg-accent-soft" : "border-hairline bg-canvas"
+      }`}
     >
       <View className="h-12 w-12 items-center justify-center rounded-full bg-surface-2">
         <AppText weight="semibold" className="text-title-sm text-body">
@@ -114,14 +117,30 @@ function ChatListRow({ chat, userId, onPress }: ChatListRowProps) {
         </AppText>
       </View>
       <View className="flex-1">
-        <AppText weight="semibold" className="text-body-md text-ink" numberOfLines={1}>
-          {partnerName}
-        </AppText>
-        <AppText className="mt-0.5 text-caption text-muted" numberOfLines={1}>
+        <View className="flex-row items-center gap-2">
+          <AppText
+            weight={unread ? "bold" : "semibold"}
+            className="flex-shrink text-body-md text-ink"
+            numberOfLines={1}
+          >
+            {partnerName}
+          </AppText>
+          {unread && <View className="h-2 w-2 rounded-full bg-accent" />}
+        </View>
+        <AppText
+          className={`mt-0.5 text-caption ${unread ? "text-ink" : "text-muted"}`}
+          weight={unread ? "medium" : "regular"}
+          numberOfLines={1}
+        >
           {chat.order?.title ?? "Заказ"}
         </AppText>
       </View>
-      <AppText className="text-caption-xs text-muted-soft">{lastActivity}</AppText>
+      <AppText
+        className={`text-caption-xs ${unread ? "text-accent" : "text-muted-soft"}`}
+        weight={unread ? "semibold" : "regular"}
+      >
+        {lastActivity}
+      </AppText>
     </Pressable>
   );
 }

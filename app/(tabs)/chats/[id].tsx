@@ -18,6 +18,7 @@ import {
   useChatMessages,
   useRealtimeChatMessages,
 } from "@/features/chat/use-chat-messages";
+import { useMarkChatRead } from "@/features/chat/use-mark-chat-read";
 import { useMyChats } from "@/features/chat/use-my-chats";
 import { useSendMessage } from "@/features/chat/use-send-message";
 
@@ -35,6 +36,15 @@ export default function ChatThreadScreen() {
   const { data: messages, isLoading, error } = useChatMessages(id);
   useRealtimeChatMessages(id);
   const sendMessage = useSendMessage();
+  const markRead = useMarkChatRead(userId);
+  const markReadMutate = markRead.mutate;
+
+  // Помечаем чат прочитанным при открытии thread и при появлении новых сообщений.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: messages?.length — намеренный trigger.
+  useEffect(() => {
+    if (!id || !userId) return;
+    markReadMutate(id);
+  }, [id, userId, messages?.length, markReadMutate]);
 
   const [text, setText] = useState("");
   const scrollRef = useRef<ScrollView>(null);

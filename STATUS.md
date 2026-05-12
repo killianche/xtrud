@@ -6,11 +6,11 @@
 
 ## Текущее состояние
 
-**Sprint 12 в работе.** Закрыт 12.1 — full-screen lightbox для портфолио. Тап по фото в `/master/[id]` и в собственном `/profile` открывает modal на чёрном фоне с навигацией prev/next (wrap-around), счётчиком, caption, безопасными insets. `PortfolioGrid.onOpen` зарезервированный с Sprint 8.2 наконец заведён.
+**Sprint 12 в работе.** Закрыты 12.1 (lightbox) + 12.2 (unread badges на табе Чаты, live через Realtime UPDATE chats). Per-participant `last_read_*_at` поля + RPC `mark_chat_read` + DB trigger авто-помечает sender's own messages как прочитанные. ChatRow в списке подсвечивается accent-soft + жирным шрифтом при наличии непрочитанных.
 
-**База:** 20 миграций, 15 таблиц с RLS + 3 Storage bucket, 5 RPC, 11 trigger functions, 17 enums, 1 edge function.
+**База:** 21 миграция, 15 таблиц с RLS + 3 Storage bucket, 6 RPC, 12 trigger functions, 17 enums, 1 edge function.
 
-**Backlog Sprint 12 (осталось):** orders feed pagination; unread badges в табах; live-тест dev-build; admin-tool для category-covers; real OTP / Telegram Login; pinch-to-zoom + swipe-gestures в lightbox.
+**Backlog Sprint 12 (осталось):** orders feed pagination; live-тест dev-build; admin-tool для category-covers; real OTP / Telegram Login; pinch-to-zoom + swipe-gestures в lightbox.
 
 **База:** 19 миграций, 15 таблиц с RLS + 3 Storage bucket, 5 RPC, 11 trigger functions, 17 enums, 1 edge function. Приоритетные кандидаты: live-тест на dev-build (push, image-picker, category covers); admin-tool для загрузки category-covers и portfolio-привязки; full master profile edit (bio/опыт/радиус/город после онбординга); real OTP / Telegram Login (snimaeт advisor anonymous warnings); outcome tracking modal; test runner (Vitest + Maestro).
 
@@ -121,7 +121,10 @@ xtrud/
 - [x] **2026-05-11** — **2.3** Main client screen (commit `5d394c8`): `useVisibleCategories` для 26 L2, `CategoryTile` компонент с iconMap (~50 lucide icons), grid 2/3/4-кол. адаптивный, ScrollView без виртуализации, loading/error/empty states, header с приветствием по first_name + role badge + signOut. **Без атмосферных фото — sprint 4+.**
 
 ### Sprint 12 (UX polish продолжение)
-- [x] **2026-05-12** — **12.1** Portfolio lightbox (commit pending): новый `src/features/profile/PortfolioLightbox.tsx` — Modal `transparent + statusBarTranslucent`, чёрный фон, expo-image `contentFit="contain"`. Tap-out overlay закрывает; X-кнопка в правом верхнем углу с safe-area insets; счётчик «n / total» слева. Стрелки ChevronLeft / ChevronRight по бокам (wrap-around), скрываются при total=1. Caption снизу полупрозрачным черным фоном если есть. Подключён в `master/[id]` (публичный просмотр) и в `/profile/index.tsx` (мастер смотрит свои фото) — оба экрана держат `useState<number | null>(lightboxIndex)` и передают в PortfolioGrid.onOpen → setIndex. Pinch-to-zoom + swipe-жесты отложены — требуют gesture-handler worklet, sprint 13+.
+- [x] **2026-05-12** — **12.2** Unread badges на табе Чаты (commit pending): migration 0021 — поля `chats.last_read_client_at` / `last_read_master_at` (timestamptz NULL), RLS UPDATE policy `chats_participant_update` (оба участника могут писать), RPC `mark_chat_read(p_chat_id)` SECURITY INVOKER, trigger `messages_mark_sender_read` (свой sender автоматически помечен прочитанным — свои сообщения не считаются unread). Client: `isChatUnread(chat, userId)` + `unreadChatsCount` хелперы; `useMarkChatRead` mutation вызывается в `(tabs)/chats/[id]` при mount и при каждом изменении `messages.length`; `useRealtimeMyChats(userId)` подписывается на UPDATE/INSERT `public.chats` и инвалидирует cache → tab badge обновляется live. `(tabs)/_layout` динамически отдаёт `tabBarBadge` (red bg) и stable cap «99+». `(tabs)/chats/index.tsx` подсвечивает unread row accent-soft фоном + жирным шрифтом + accent-dot после имени.
+
+### Sprint 12 (UX polish продолжение)
+- [x] **2026-05-12** — **12.1** Portfolio lightbox (commit `21db7b3`): новый `src/features/profile/PortfolioLightbox.tsx` — Modal `transparent + statusBarTranslucent`, чёрный фон, expo-image `contentFit="contain"`. Tap-out overlay закрывает; X-кнопка в правом верхнем углу с safe-area insets; счётчик «n / total» слева. Стрелки ChevronLeft / ChevronRight по бокам (wrap-around), скрываются при total=1. Caption снизу полупрозрачным черным фоном если есть. Подключён в `master/[id]` (публичный просмотр) и в `/profile/index.tsx` (мастер смотрит свои фото) — оба экрана держат `useState<number | null>(lightboxIndex)` и передают в PortfolioGrid.onOpen → setIndex. Pinch-to-zoom + swipe-жесты отложены — требуют gesture-handler worklet, sprint 13+.
 
 ### Sprint 11 (UX polish)
 - [x] **2026-05-12** — **11.2** Infinite scroll reviews (commit `8885945`): `useReviewsForTarget` мигрирован с `useQuery(limit=50)` на `useInfiniteQuery` с keyset pagination — `ORDER BY created_at DESC, LIMIT 20`, курсор = `created_at` последней строки страницы, продолжение через `.lt('created_at', cursor)`. Извлечён общий компонент `src/features/master-view/ReviewsSection.tsx` — рендерит заголовок (с count + «+» если есть ещё страницы), loading/empty/list, кнопку «Показать ещё» (ActivityIndicator при fetching next page). Использован и в master/[id], и в client/[id] — удалена дубликат-разметка ReviewRow / formatDate в обоих файлах. Orders-feed pagination отложил в Sprint 12 — там пока нет лимита и low rate.

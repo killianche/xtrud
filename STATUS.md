@@ -6,9 +6,9 @@
 
 ## Текущее состояние
 
-**Sprint 5 (orders + responses E2E) закрыт.** Заработал полный цикл маркетплейса: клиент создаёт заявку → мастер видит её в фиде (по своим категориям) → шлёт отклик с ценой+сроком+сообщением → клиент видит список откликов на своей заявке. База: 9 миграций, 11 таблиц с RLS, 3 RPC, 4 trigger functions. Bottom-tabs стало двумя: «Главная» + «Заказы».
+**Sprint 6 (accept + master 3-tab) закрыт.** Маркетплейс-цикл закрылся полностью: клиент создаёт заявку → мастер шлёт отклик → клиент жмёт «Принять» → атомарный RPC меняет order в in_progress и picked_master_id, остальные отклики автоматически становятся rejected. Master view orders теперь pill-табы «Новые / Я откликнулся / Меня выбрали» с count-бейджами. База: 10 миграций, 11 таблиц с RLS, 4 RPC, 4 trigger functions.
 
-**Готов к sprint 6** (chat между client↔master выбранного отклика, accept/reject responses, real OTP, photo uploads).
+**Готов к sprint 7** (chat между client↔picked_master через Realtime, real OTP, photo uploads, EAS dev-build).
 
 ---
 
@@ -116,6 +116,10 @@ xtrud/
 - [x] **2026-05-11** — **2.2** Role selection screen (commit `eb42338`): полноценный UI с 2 карточками (lucide Search/Briefcase), accessibilityState selected, accent-soft фон выбранной, CTA "Продолжить", error display. `useCompleteOnboarding` mutation обновляет `users.{is_master, active_role, onboarding_completed_at}` + invalidates query.
 - [x] **2026-05-11** — **2.3** Main client screen (commit `5d394c8`): `useVisibleCategories` для 26 L2, `CategoryTile` компонент с iconMap (~50 lucide icons), grid 2/3/4-кол. адаптивный, ScrollView без виртуализации, loading/error/empty states, header с приветствием по first_name + role badge + signOut. **Без атмосферных фото — sprint 4+.**
 
+### Sprint 6 (accept-loop + master 3-tab orders)
+- [x] **2026-05-12** — **6.1+6.2** accept_response RPC + UI (commit `3b639f2`): migration 0010 — RPC `accept_response(p_response_id)` SECURITY INVOKER. Атомарно UPDATE'ит выбранный response=accepted, остальные sent/viewed=rejected, order=in_progress+picked_master_id. Проверки: auth.uid()=order.client_id, status='open'. Advisor 0 lints. UI: `useAcceptResponse` mutation + `ClientResponsesSection` с условной кнопкой «Принять отклик» (если order.status=open и response.status=sent), success-border для picked мастера, info-banner если другой выбран. MasterResponseSection теперь знает picked_master_id и orderStatus: показывает «Клиент выбрал вас 🎉» (success вариант) или «Клиент уже выбрал мастера» (read-only).
+- [x] **2026-05-12** — **6.3** Master 3-tab orders (commit `326a0c2`): pill-табы (как RoleSwitcher pattern) с count-бейджами. Tabs «Новые», «Я откликнулся», «Меня выбрали». Новые hooks: `useMyResponses` (JOIN orders+L2+city за один запрос), `useOrdersAssignedToMe` (orders WHERE picked_master_id=me). Фильтрация «Новые»=feed-кроме-orderIds-где-я-откликнулся (client-side через Set). Каждый таб: NewOrdersTab/RespondedTab/AssignedTab с EmptyCard переиспользуемым компонентом. SafetyBanner отображается над контентом всех табов.
+
 ### Sprint 5 (orders + responses, E2E маркетплейса)
 - [x] **2026-05-12** — **5.1** Migration 0009 orders + order_responses (commit `3859a6c`): 2 таблицы + 6 enums (urgency, budget_mode, executor_type, contact_mode, order_status, response_status). orders: title (5-120) + description (10-2000) с length CHECK, budget_min/max + budget_mode, picked_master_id paired with status constraint, responses_count cached + auto-increment trigger, expires_at +30 days. order_responses: UNIQUE(order_id, master_id), price_mode, message (10-1000), status enum. Trigger check_response_not_self (мастер не откликается на свой заказ) и update_order_responses_count. RLS: orders SELECT={open|in_progress|completed|own|picked}, owner-only INSERT/UPDATE/DELETE; responses SELECT=participants (master или client). Advisor 0 lints.
 - [x] **2026-05-12** — **5.2** Client orders tab + create-order (commit `5ebc19c`): новая вкладка `ClipboardList`. Hooks: `useMyOrders` (JOIN на L2 и cities), `useCreateOrder` (insert). `OrderRow` компонент (tag-chip → title → meta с timeAgo и responsesLabel склонениями). `new.tsx` screen: категория pills, title, description multiline, city pills, district, urgency 4 pills, budget с 3 pills (exact/range/negotiable) и conditional min/max. FAB-style «Создать заказ» с safe-area.
@@ -140,20 +144,20 @@ xtrud/
 
 ---
 
-## Что дальше (Sprint 6 — приоритет)
+## Что дальше (Sprint 7 — приоритет)
 
 1. **🟢 Включить Anonymous Sign-Ins в Supabase Dashboard** (5 мин). Без этого ничего не запустится в Simulator.
-2. **Accept/reject responses** — кнопки клиенту: принять отклик мастера → UPDATE response status='accepted', UPDATE orders status='in_progress' + picked_master_id. Атомарный RPC.
-3. **Chat между client↔picked_master** — после accept'а появляется общение. Migration 0010 для `chats` + `messages` таблиц. WebSocket через Supabase Realtime.
-4. **Master view orders 3-таб** (Яндекс паттерн): «Новые» (feed) / «Я откликнулся» (свои responses) / «Меня выбрали» (orders где picked_master_id = userId).
-5. **Атмосферные фото категорий** — `categories_l1.cover_image_url` + сигнатурный category-tile паттерн.
-6. **Фото-инфра + клиентский resize** — Supabase Storage portfolio bucket, expo-image-manipulator. Sprint когда дойдём до master portfolio.
-7. **Реальный phone OTP** — replace anon на signInWithOtp/verifyOtp. SMS-провайдер.
-8. **Telegram Login Widget** — бесплатный альтернативный login.
-9. **Outcome tracking modal** — «Беру заказ / Не договорились» после контакта (Яндекс паттерн).
-10. **Order edit/delete для client'а** — нет в sprint 5, draft статус существует, но без UI редактирования. Sprint 6.
+2. **Chat между client↔picked_master** — после accept появляется чат. Migration 0011 для `chats` + `messages`. Supabase Realtime для live-обновлений. UI: список чатов в отдельной вкладке «Чаты» + thread screen.
+3. **Order completion + reviews** — кнопка «Работа выполнена» обеим сторонам. После double-confirm → order=completed + UI отзыва (rating 1-5 + текст). Migration 0012 для `reviews` таблицы.
+4. **Outcome tracking modal** — «Беру заказ / Не договорились» через 7/14/30 дней (Яндекс паттерн).
+5. **Реальный phone OTP** — replace anon на signInWithOtp/verifyOtp. SMS-провайдер.
+6. **Telegram Login Widget** — бесплатный альтернативный login.
+7. **Атмосферные фото категорий** + сигнатурный category-tile.
+8. **Фото-инфра + клиентский resize** — Supabase Storage portfolio bucket + expo-image-manipulator.
+9. **Order edit для client'а** — draft статус есть, нет UI редактирования. Sprint 7+.
+10. **Реалтайм-уведомления** через Supabase Realtime — toast «Новый отклик», «Вас выбрали».
 11. **Test runner** — Vitest unit + Maestro E2E.
-12. **EAS Build setup** — eas.json для первого dev-build.
+12. **EAS Build setup** — eas.json для dev-build на iOS/Android.
 
 ---
 
@@ -165,6 +169,20 @@ xtrud/
 ---
 
 ## История ключевых решений
+
+### 2026-05-12 — Sprint 6.1: accept_response — атомарное reject остальных откликов
+**Выбрано:** при accept одного отклика, остальные открытые (status IN sent/viewed) автоматически становятся rejected внутри одного RPC.
+
+**Альтернатива (отброшена):** оставить остальные в status='sent', никого не отклонять явно. Master тогда не понимает что произошло — заказ просто пропал из ленты «Новые», но статус его отклика остался «sent» (ввдящее в заблуждение).
+
+**Обоснование:** explicit rejection даёт masterу понятную ux-обратную связь — он видит status «rejected» с надписью «Клиент выбрал другого мастера». Это вежливо и понятно. Аналогичный паттерн используют Profi.ru, Thumbtack.
+
+### 2026-05-12 — Sprint 6.3: master 3-tab вместо top-tabs navigator
+**Выбрано:** простые pill-табы внутри single screen с conditional rendering. State хранится в useState.
+
+**Альтернатива (отброшена):** установка `@react-navigation/material-top-tabs` библиотеки. Это даёт swipe gestures и nicer transitions, но добавляет дополнительную зависимость, layout shim, отдельный navigator.
+
+**Trade-off:** pill-табы не дают swipe — меньше нативно для mobile. Но для 3 коротких списков заказов swipe не критичен; пользователь жмёт pills. Если в sprint 7+ окажется, что swipe заметно влияет на UX — перейдём на material-top-tabs.
 
 ### 2026-05-12 — Sprint 5: orders без PostGIS/address_exact/attributes JSONB на старте
 **Выбрано:** минимальные orders + order_responses таблицы без geo_point, address_exact, gender_filter, requires_tags, is_anonymous, attributes JSONB.

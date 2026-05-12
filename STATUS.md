@@ -6,23 +6,32 @@
 
 ## Текущее состояние
 
-**В работе — Sprint 21: UX/UI аудит с Lazyweb (подготовка завершена, аудит ждёт рестарта).**
+**Sprint 21 закрыт — UX/UI аудит с Lazyweb.** Сводный документ `AUDIT_2026-05-12.md` в корне репозитория + 6 deep-dive отчётов в `.claude/audit-2026-05-12/`.
 
-**Подготовительная фаза закрыта:**
-- Подключён Lazyweb MCP (плагин Claude Code `lazyweb@lazyweb`, токен в `~/.lazyweb/`). MCP-сервер `✓ Connected`, но инструменты в текущую сессию не загрузились (нужен полный рестарт Claude Code, не `/clear`).
-- Установлен `DESIGN.md` (Cal.com-inspired) через `npx getdesign@latest add cal` — новый источник истины по визуалу. Старые `DESIGN_SYSTEM.md` / `DESIGN_REFERENCE_CALCOM.md` — legacy.
-- Создан `PRODUCT_CONTEXT.md` — короткий бриф о продукте, 4 главных функциональных референсах (**Profi.ru, Яндекс.Услуги, TaskRabbit, Thumbtack**), 6 дизайн-принципах (минимализм, фото, удобство, скорость, современность, функциональность), scope guard.
-- Бриф аудита для агентов: `.claude/audit-2026-05-12/BRIEF.md` (5 групп экранов × 4 шляпы UX/Visual/Conversion/A11y, web≠mobile differentiation, light+dark обязательно, привязка к 4 главным референсам).
+**Результат:** 113 находок (33 🔴 / 47 🟡 / 33 🟢) по 23 экранам, 37 Lazyweb-поисков, 100+ просмотренных скриншотов. Все рекомендации привязаны к 4 главным функциональным референсам (Profi.ru / Яндекс.Услуги / TaskRabbit / Thumbtack) и проходят через 6 дизайн-принципов из `PRODUCT_CONTEXT.md`.
 
-**Первая попытка запустить 5 параллельных аудит-агентов прервана** — без Lazyweb и с permission-блоками на Write/WebFetch результат был бы слабым. Все 5 агентов остановлены до сохранения отчётов.
+**Три системных корня, объясняющих половину находок:**
+1. **Dark theme** — палитра `darkColors` в `src/lib/colors.ts` есть, но 40+ мест хардкодят hex прямо в `color={...}` Lucide и `placeholderTextColor`. Решается одним рефакторингом «подключить через `useThemeColor` хук» — см. `cross-cutting.md` B1-B3.
+2. **Web = растянутое mobile** — ноль `Platform.OS === "web"` для структурного выбора layout. Theme-toggle на web невидим, max-width отсутствует, sidebar+main для чата нет. Это отдельная большая работа — Sprint 28 в рекомендациях.
+3. **Принцип №4 «скорость» не реализован** — 0 skeleton-loaders, 46 `ActivityIndicator`. Принцип №2 «фото — главный визуальный нерв» тоже сломан: hero-фото нет, аватарки 40–96px вместо больших блоков, portfolio upload без crop/ratio.
 
-### 🚀 Следующий шаг (для агента в новой сессии после рестарта Claude Code)
+**Хронология Sprint 21:**
+- Подготовительная фаза: Lazyweb MCP подключён, `DESIGN.md` (Cal.com-inspired) поставлен через `npx getdesign@latest add cal`, `PRODUCT_CONTEXT.md` создан с 4 главными референсами + 6 принципами + scope guard, бриф `.claude/audit-2026-05-12/BRIEF.md` подготовлен.
+- Запуск 5 параллельных аудит-агентов (Auth+Onboarding, Discovery, Orders, Chats, Profile) — все 5 вернулись с deep-dive отчётами + executive summary. Каждый сделал 6-8 Lazyweb-поисков.
+- 6-й cross-cutting агент упал с `out of extra usage` (resets 18:30 МСК) — выполнен в main session: read 5 отчётов + DESIGN.md + colors.ts + grep по 26 файлам с хардкод-цветами + 3 Lazyweb-запроса. Это зафиксировано как дисклеймер в `AUDIT_2026-05-12.md`.
 
-1. Проверь `lazyweb_health` — должно вернуть OK + список инструментов (`lazyweb_search`, `lazyweb_compare_image`, `lazyweb_find_similar`).
-2. Прочитай `CLAUDE.md` → `PRODUCT_CONTEXT.md` → `DESIGN.md` → `.claude/audit-2026-05-12/BRIEF.md` именно в этом порядке.
-3. Запусти 5 параллельных аудит-агентов по группам экранов (Auth+Onboarding, Discovery, Orders, Chats, Profile) — каждому передай бриф и эти 4 файла для чтения, у каждого через Lazyweb minимум 5 курированных референсов.
-4. Когда вернутся первые 5 — запусти 6-го (cross-cutting: Responsive Web ≠ Mobile + Dark theme).
-5. Сведи всё в `AUDIT_2026-05-12.md`. Обнови этот STATUS.md и закоммить.
+### 🚀 Следующий шаг
+
+Sprint 22 — **Dark fix + Cal Sans + Skeleton** (low-risk, 2-3 дня, закрывает 8-10 🔴 одним рефакторингом). Что делать:
+
+1. Завести `useThemeColor(token: ColorToken): string` хук на базе Zustand `useTheme` + `lightColors`/`darkColors` из `src/lib/colors.ts`.
+2. Прогнать механический рефакторинг по 26 файлам (полный список в `.claude/audit-2026-05-12/cross-cutting.md` B1-B3): заменить `color="#0a0a0a"` → `color={useThemeColor("ink")}`, `placeholderTextColor="#71717a"` → токен, `tabBarBadgeStyle backgroundColor: "#ef4444"` → токен.
+3. Добавить Cal Sans через `expo-font` в `app/_layout.tsx` (10 минут, прописано в `cross-cutting.md` C7).
+4. Завести `<Skeleton variant="text|circle|rect">` + composable `MasterCardSkeleton` / `OrderRowSkeleton` / `ChatRowSkeleton` / `CategoryTileSkeleton`. Заменить `ActivityIndicator` на skeleton в первичной загрузке list-экранов.
+5. Завести `<EmptyState icon hint title cta>` единый компонент, подставить везде.
+6. `OrderStatusBadge` компонент (orders.md 🔴#1) — этим же спринтом, потому что часть design-system.
+
+**Sprint 23+ план** см. в `AUDIT_2026-05-12.md` § «Sprint-roadmap».
 
 **Sprint 20 закрыт — Order state-machine design-doc.** Новый файл `docs/order-states.md` фиксирует все 6 статусов order, 7 переходов между ними, 6 RLS-policy + 1 RPC, которые их защищают, side effects (push, review window, rating recalc), и 5 известных пробелов с планами (expired-cron, draft-UI, re-open, отказ от мастера до completion, push на open→cancelled). Это контракт-документ: любая будущая фича, меняющая enum/RLS/RPC заказов, должна сначала появиться там. **Sprint 19 (image-resize + feed-page тесты, 47/47)** ранее закрыт. **Sprint 18 (master Maestro smoke)** закрыт. **Sprint 17 (web prod)** — `https://alanbani.ru/xtrud/` живой.
 

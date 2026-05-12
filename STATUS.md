@@ -6,7 +6,7 @@
 
 ## Текущее состояние
 
-**Sprint 16 закрыт — Maestro E2E smoke-test.** В `.maestro/` лежат три flow (auth → onboarding-client → create-order) + `smoke.yaml` объединяющий happy-path, + README с setup и зависимостями от seed/OTP-заглушки. CI пока не подключён (нужен macOS-runner). Vitest 28/28 зелёные.
+**Sprint 17 закрыт — Web prod deploy.** Expo web export баженный с `baseUrl=/xtrud` живёт на `https://alanbani.ru/xtrud/`. Сервер: VPS alanskie-bani (62.113.106.30, Ubuntu 24.04, Caddy 2.11.2 reverse-proxy). Бандл в `/var/www/xtrud` (~13 MB), Caddy `handle_path /xtrud/*` отдаёт статикой с try_files-fallback на index.html для SPA-роутов. Скрипт повторного деплоя: `./deploy/web.sh`. Это временное размещение **до миграции на Vercel/CF Pages** (план из CLAUDE.md). Sprint 16 (Maestro E2E) тоже закрыт. Vitest 28/28 зелёные.
 
 **База:** 23 миграции, 15 таблиц с RLS + 3 Storage bucket, 8 RPC, 12 trigger functions, 17 enums, 1 edge function.
 
@@ -119,6 +119,9 @@ xtrud/
 - [x] **2026-05-11** — **2.1** Migration 0003 + AuthGate routing (commit `2c2f25f`): `users.onboarding_completed_at` + `users.active_role` enum + CHECK constraint (active_role='master' ⇒ is_master=true) + partial index. `useUserRecord` hook (TanStack Query, staleTime 5 мин). AuthGate переписан под 3 группы — `(auth)` / `(onboarding)` / `(tabs)`. Advisor security = 0 lints.
 - [x] **2026-05-11** — **2.2** Role selection screen (commit `eb42338`): полноценный UI с 2 карточками (lucide Search/Briefcase), accessibilityState selected, accent-soft фон выбранной, CTA "Продолжить", error display. `useCompleteOnboarding` mutation обновляет `users.{is_master, active_role, onboarding_completed_at}` + invalidates query.
 - [x] **2026-05-11** — **2.3** Main client screen (commit `5d394c8`): `useVisibleCategories` для 26 L2, `CategoryTile` компонент с iconMap (~50 lucide icons), grid 2/3/4-кол. адаптивный, ScrollView без виртуализации, loading/error/empty states, header с приветствием по first_name + role badge + signOut. **Без атмосферных фото — sprint 4+.**
+
+### Sprint 17 (production deploy — web)
+- [x] **2026-05-12** — **17.1–17.6** Web prod deploy на VPS (commit pending): `app.json` получил `experiments.baseUrl: "/xtrud"` (нужно, чтобы `<script src=...>` ссылались на `/xtrud/_expo/...` вместо корня). `expo export --platform web` собирает 12 MB статики в `dist/`. На сервере 62.113.106.30 создан `/var/www/xtrud` (owner www-data), бандл распакован. `/etc/caddy/Caddyfile` отрефакторен: основной reverse_proxy на :3000 теперь в `handle { }`-блоке, а `handle_path /xtrud/*` отдаёт статику с `try_files {path} {path}.html {path}/index.html /index.html` (SPA-fallback для `[id]`-маршрутов). Бэкап старого конфига в `/etc/caddy/Caddyfile.bak.before-xtrud`. `caddy validate` + `systemctl reload caddy` без ошибок. Smoke-проверка: `/xtrud/` → 200 HTML, `/xtrud/_expo/...css` → 200 css, `/xtrud/phone` → 200 (SPA route), `alanbani.ru/` → 307 (без регрессии). Скрипт `./deploy/web.sh` автоматизирует build + scp + extract для повторных деплоев. Когда мигрируем на Vercel/CF Pages (план из CLAUDE.md) — этот скрипт удалить + handle_path из Caddyfile убрать.
 
 ### Sprint 16 (E2E страховка)
 - [x] **2026-05-12** — **16.1–16.5** Maestro E2E smoke-test (commit pending): `.maestro/` каталог с тремя YAML-flow:

@@ -5,56 +5,20 @@
  * «Работа выполнена», спрашиваем результат:
  *  - «Всё хорошо, работаем» → snooze на 3 дня
  *  - «Договорились вне сервиса» → закрыть заказ как completed
- *    (без отзывов — клиент не пользовался платформой для сделки)
  *  - «Не договорились» → cancelled
  *
- * Dismissal — в Zustand (in-memory). После перезапуска показывается снова —
- * приемлемо: клиент быстро прокликнет.
+ * Pure-логика и store вынесены в `outcome-store.ts` (тестируется в Node).
  */
-
-import { create } from "zustand";
-
-interface OutcomeStore {
-  dismissed: Record<string, number>; // orderId → unix timestamp dismissed until
-  dismissFor: (orderId: string, ms: number) => void;
-  isDismissed: (orderId: string) => boolean;
-}
-
-export const useOutcomeStore = create<OutcomeStore>((set, get) => ({
-  dismissed: {},
-  dismissFor: (orderId, ms) =>
-    set((s) => ({
-      dismissed: { ...s.dismissed, [orderId]: Date.now() + ms },
-    })),
-  isDismissed: (orderId) => (get().dismissed[orderId] ?? 0) > Date.now(),
-}));
-
-const PROMPT_THRESHOLD_MS = 3 * 24 * 60 * 60 * 1000; // 3 дня
-const SNOOZE_MS = 3 * 24 * 60 * 60 * 1000;
 
 import { CheckCircle2, X, XCircle } from "lucide-react-native";
 import { Modal, Pressable, View } from "react-native";
 import { AppText } from "@/components/AppText";
 
-/**
- * @returns true если modal нужно показать клиенту прямо сейчас.
- */
-export function shouldShowOutcomePrompt(opts: {
-  isOwner: boolean;
-  orderStatus: string;
-  pickedMasterId: string | null;
-  updatedAt: string;
-  orderId: string;
-}): boolean {
-  if (!opts.isOwner) return false;
-  if (opts.orderStatus !== "in_progress") return false;
-  if (!opts.pickedMasterId) return false;
-  const updated = new Date(opts.updatedAt).getTime();
-  if (Number.isNaN(updated)) return false;
-  if (Date.now() - updated < PROMPT_THRESHOLD_MS) return false;
-  if (useOutcomeStore.getState().isDismissed(opts.orderId)) return false;
-  return true;
-}
+export {
+  SNOOZE_MS,
+  shouldShowOutcomePrompt,
+  useOutcomeStore,
+} from "./outcome-store";
 
 interface OutcomeTrackingModalProps {
   visible: boolean;
@@ -145,5 +109,3 @@ export function OutcomeTrackingModal({
     </Modal>
   );
 }
-
-export { SNOOZE_MS };

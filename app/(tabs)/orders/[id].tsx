@@ -1,6 +1,6 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { ChevronLeft, MapPin, MessageSquare, Star } from "lucide-react-native";
+import { ChevronLeft, MapPin, MessageSquare, Pencil, Star } from "lucide-react-native";
 import { useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import {
@@ -67,7 +67,7 @@ export default function OrderDetailScreen() {
       className="flex-1 bg-canvas"
       style={{ paddingTop: insets.top }}
     >
-      <View className="flex-row items-center px-3 py-2">
+      <View className="flex-row items-center justify-between px-3 py-2">
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Назад"
@@ -77,6 +77,17 @@ export default function OrderDetailScreen() {
         >
           <ChevronLeft size={24} strokeWidth={1.75} color="#0a0a0a" />
         </Pressable>
+        {isOwner && order?.status === "open" && id && (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Редактировать заказ"
+            onPress={() => router.push(`/orders/edit/${id}` as never)}
+            hitSlop={12}
+            className="h-10 w-10 items-center justify-center rounded-full bg-surface-2 active:opacity-70"
+          >
+            <Pencil size={16} strokeWidth={1.75} color="#374151" />
+          </Pressable>
+        )}
       </View>
 
       {isLoading && (

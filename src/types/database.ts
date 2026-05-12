@@ -51,6 +51,7 @@ export type Database = {
       };
       categories_l2: {
         Row: {
+          cover_image_url: string | null;
           created_at: string;
           icon: string;
           id: string;
@@ -61,6 +62,7 @@ export type Database = {
           sort_order: number;
         };
         Insert: {
+          cover_image_url?: string | null;
           created_at?: string;
           icon: string;
           id: string;
@@ -71,6 +73,7 @@ export type Database = {
           sort_order?: number;
         };
         Update: {
+          cover_image_url?: string | null;
           created_at?: string;
           icon?: string;
           id?: string;

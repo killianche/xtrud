@@ -128,6 +128,7 @@ function ClientHomeContent({ onCategoryPress }: ClientHomeContentProps) {
               <CategoryTile
                 name={cat.name_ru}
                 iconName={cat.icon}
+                coverUrl={cat.cover_image_url}
                 onPress={() => onCategoryPress(cat.id)}
               />
             </View>

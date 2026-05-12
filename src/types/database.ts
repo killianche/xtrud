@@ -563,6 +563,77 @@ export type Database = {
           },
         ];
       };
+      reviews: {
+        Row: {
+          author_id: string;
+          created_at: string;
+          direction: Database["public"]["Enums"]["review_direction"];
+          id: string;
+          l2_id: string;
+          order_id: string;
+          rating: number;
+          status: Database["public"]["Enums"]["review_status"];
+          target_id: string;
+          text: string | null;
+          updated_at: string;
+        };
+        Insert: {
+          author_id: string;
+          created_at?: string;
+          direction: Database["public"]["Enums"]["review_direction"];
+          id?: string;
+          l2_id: string;
+          order_id: string;
+          rating: number;
+          status?: Database["public"]["Enums"]["review_status"];
+          target_id: string;
+          text?: string | null;
+          updated_at?: string;
+        };
+        Update: {
+          author_id?: string;
+          created_at?: string;
+          direction?: Database["public"]["Enums"]["review_direction"];
+          id?: string;
+          l2_id?: string;
+          order_id?: string;
+          rating?: number;
+          status?: Database["public"]["Enums"]["review_status"];
+          target_id?: string;
+          text?: string | null;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "reviews_order_id_fkey";
+            columns: ["order_id"];
+            isOneToOne: false;
+            referencedRelation: "orders";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "reviews_author_id_fkey";
+            columns: ["author_id"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "reviews_target_id_fkey";
+            columns: ["target_id"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "reviews_l2_id_fkey";
+            columns: ["l2_id"];
+            isOneToOne: false;
+            referencedRelation: "categories_l2";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       users: {
         Row: {
           active_role: Database["public"]["Enums"]["user_active_role"];
@@ -701,6 +772,8 @@ export type Database = {
       order_status: "draft" | "open" | "in_progress" | "completed" | "cancelled" | "expired";
       order_urgency: "urgent" | "this_week" | "this_month" | "flexible";
       response_status: "sent" | "viewed" | "accepted" | "rejected" | "withdrawn";
+      review_direction: "client_to_master" | "master_to_client";
+      review_status: "visible" | "hidden" | "pending";
       tax_status: "individual" | "self_employed" | "individual_entrepreneur" | "legal_entity";
       user_active_role: "client" | "master";
       user_gender: "male" | "female" | "unspecified";
@@ -823,6 +896,8 @@ export const Constants = {
       order_status: ["draft", "open", "in_progress", "completed", "cancelled", "expired"],
       order_urgency: ["urgent", "this_week", "this_month", "flexible"],
       response_status: ["sent", "viewed", "accepted", "rejected", "withdrawn"],
+      review_direction: ["client_to_master", "master_to_client"],
+      review_status: ["visible", "hidden", "pending"],
       tax_status: [
         "individual",
         "self_employed",

@@ -1,6 +1,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { ChevronLeft, MapPin, MessageSquare } from "lucide-react-native";
+import { useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import {
   ActivityIndicator,
@@ -18,6 +19,7 @@ import { useAuthSession } from "@/features/auth/use-auth-session";
 import { useUserRecord } from "@/features/auth/use-user-record";
 import { orderBudgetModeOptions, urgencyLabel } from "@/features/orders/order-schema";
 import { useAcceptResponse } from "@/features/orders/use-accept-response";
+import { useCompleteOrder } from "@/features/orders/use-complete-order";
 import { type OrderDetail, useOrderDetail } from "@/features/orders/use-order-detail";
 import {
   type OrderResponseWithMaster,
@@ -25,6 +27,7 @@ import {
   useOrderResponses,
   useSubmitResponse,
 } from "@/features/orders/use-order-responses";
+import { useMyReviewForOrder, useSubmitReview } from "@/features/reviews/use-reviews";
 import type { Tables } from "@/types/database";
 
 // ============================================================================
@@ -97,6 +100,8 @@ export default function OrderDetailScreen() {
         >
           <OrderInfoBlock order={order} />
 
+          {userId && id && <CompletionSection orderId={id} order={order} userId={userId} />}
+
           {isOwner && id && order && <ClientResponsesSection orderId={id} order={order} />}
           {!isOwner && isMasterRole && userId && id && (
             <MasterResponseSection
@@ -105,6 +110,15 @@ export default function OrderDetailScreen() {
               l2Id={order.l2_id}
               orderStatus={order.status}
               pickedMasterId={order.picked_master_id}
+            />
+          )}
+
+          {isOwner && id && order.status === "completed" && userId && order.picked_master_id && (
+            <ClientReviewSection
+              orderId={id}
+              clientId={userId}
+              masterId={order.picked_master_id}
+              l2Id={order.l2_id}
             />
           )}
         </ScrollView>
@@ -654,4 +668,180 @@ function responseStatusLabel(s: Tables<"order_responses">["status"]): string {
     case "withdrawn":
       return "Отклик отозван";
   }
+}
+
+// ============================================================================
+// Completion section — кнопка "Работа выполнена" для in_progress (обе стороны)
+// ============================================================================
+
+interface CompletionSectionProps {
+  orderId: string;
+  order: OrderDetail;
+  userId: string;
+}
+
+function CompletionSection({ orderId, order, userId }: CompletionSectionProps) {
+  const completeOrder = useCompleteOrder();
+  const canComplete =
+    order.status === "in_progress" &&
+    (order.client_id === userId || order.picked_master_id === userId);
+
+  if (!canComplete) return null;
+
+  const isBusy = completeOrder.isPending;
+
+  return (
+    <View className="mt-6 px-6">
+      <Pressable
+        accessibilityRole="button"
+        disabled={isBusy}
+        onPress={() => completeOrder.mutate({ orderId, userId })}
+        className={`h-12 items-center justify-center rounded-md border ${
+          isBusy
+            ? "border-hairline bg-surface-3"
+            : "border-success bg-success-soft active:opacity-80"
+        }`}
+      >
+        <AppText weight="semibold" className="text-button text-success">
+          {isBusy ? "Сохраняем..." : "Работа выполнена"}
+        </AppText>
+      </Pressable>
+      {completeOrder.error && (
+        <AppText weight="medium" className="mt-2 text-caption text-error">
+          {completeOrder.error.message}
+        </AppText>
+      )}
+    </View>
+  );
+}
+
+// ============================================================================
+// Client review section — после завершения, форма отзыва
+// ============================================================================
+
+interface ClientReviewSectionProps {
+  orderId: string;
+  clientId: string;
+  masterId: string;
+  l2Id: string;
+}
+
+function ClientReviewSection({ orderId, clientId, masterId, l2Id }: ClientReviewSectionProps) {
+  const { data: myReview, isLoading } = useMyReviewForOrder(orderId, clientId);
+  const submitReview = useSubmitReview();
+  const [rating, setRating] = useState<number>(0);
+  const [text, setText] = useState("");
+
+  if (isLoading) return null;
+
+  if (myReview) {
+    return (
+      <View className="mt-10 px-6">
+        <AppText weight="semibold" className="text-title-lg text-ink">
+          Ваш отзыв
+        </AppText>
+        <View className="mt-3 rounded-lg border border-hairline bg-surface-2 p-4">
+          <View className="flex-row gap-1">
+            {[1, 2, 3, 4, 5].map((s) => (
+              <AppText
+                key={s}
+                weight="bold"
+                className={s <= myReview.rating ? "text-warning" : "text-muted-soft"}
+              >
+                ★
+              </AppText>
+            ))}
+          </View>
+          {myReview.text && (
+            <AppText className="mt-2 text-body-sm text-body">{myReview.text}</AppText>
+          )}
+        </View>
+      </View>
+    );
+  }
+
+  const isBusy = submitReview.isPending;
+  const canSubmit = rating >= 1 && rating <= 5 && !isBusy;
+
+  const onSubmit = async () => {
+    if (!canSubmit) return;
+    try {
+      await submitReview.mutateAsync({
+        orderId,
+        authorId: clientId,
+        targetId: masterId,
+        l2Id,
+        rating,
+        text,
+        direction: "client_to_master",
+      });
+    } catch (_e) {
+      // через submitReview.error
+    }
+  };
+
+  return (
+    <View className="mt-10 px-6">
+      <AppText weight="semibold" className="text-title-lg text-ink">
+        Оцените мастера
+      </AppText>
+      <AppText className="mt-1 text-body-sm text-muted">
+        Ваш отзыв помогает другим клиентам выбрать.
+      </AppText>
+
+      <View className="mt-4 flex-row gap-2">
+        {[1, 2, 3, 4, 5].map((s) => (
+          <Pressable
+            key={s}
+            accessibilityRole="button"
+            accessibilityLabel={`${s} звёзд`}
+            onPress={() => setRating(s)}
+            disabled={isBusy}
+            hitSlop={4}
+            className="active:opacity-70"
+          >
+            <AppText
+              weight="bold"
+              className={`text-display-md ${s <= rating ? "text-warning" : "text-muted-soft"}`}
+            >
+              ★
+            </AppText>
+          </Pressable>
+        ))}
+      </View>
+
+      <TextInput
+        value={text}
+        onChangeText={setText}
+        placeholder="Расскажите о работе мастера (опц.)"
+        placeholderTextColor="#71717a"
+        multiline
+        numberOfLines={3}
+        maxLength={2000}
+        textAlignVertical="top"
+        maxFontSizeMultiplier={1.3}
+        className="mt-4 min-h-24 rounded-md border border-hairline bg-canvas px-3 py-3 text-body-md text-ink"
+        editable={!isBusy}
+      />
+
+      {submitReview.error && (
+        <AppText weight="medium" className="mt-2 text-caption text-error">
+          {submitReview.error.message}
+        </AppText>
+      )}
+
+      <Pressable
+        accessibilityRole="button"
+        disabled={!canSubmit}
+        onPress={onSubmit}
+        className={`mt-4 h-12 items-center justify-center rounded-md ${
+          canSubmit ? "bg-primary active:opacity-80" : "bg-surface-3"
+        }`}
+      >
+        <AppText weight="semibold" className="text-button text-on-primary">
+          {isBusy ? "Сохраняем..." : "Оставить отзыв"}
+        </AppText>
+      </Pressable>
+    </View>
+  );
 }

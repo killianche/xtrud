@@ -1,9 +1,10 @@
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { Check, ChevronLeft } from "lucide-react-native";
 import { useEffect, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
+import { OnboardingProgress } from "@/components/OnboardingProgress";
 import { useAuthSession } from "@/features/auth/use-auth-session";
 import { useVisibleCategories } from "@/features/categories/use-visible-categories";
 import { useMyMasterCategories } from "@/features/master-categories/use-my-categories";
@@ -14,6 +15,12 @@ const MAX_CATEGORIES = 5;
 export default function MasterCategoriesScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const { mode } = useLocalSearchParams<{ mode?: string }>();
+  // mode=onboarding → шаг визарда: save → push на photo. Иначе settings-режим:
+  // save → router.back(). Видимая разница: progress-индикатор сверху, скрытая
+  // back-кнопка, обязательный выбор ≥1 категории, кнопка "Продолжить".
+  const isOnboarding = mode === "onboarding";
+
   const { session } = useAuthSession();
   const userId = session?.user?.id;
 
@@ -51,7 +58,11 @@ export default function MasterCategoriesScreen() {
         userId,
         l2Ids: Array.from(selected),
       });
-      router.back();
+      if (isOnboarding) {
+        router.push("/(onboarding)/master-photo");
+      } else {
+        router.back();
+      }
     } catch (_e) {
       // Ошибка отрендерится через setCategories.error ниже
     }
@@ -64,18 +75,24 @@ export default function MasterCategoriesScreen() {
 
   return (
     <View className="flex-1 bg-canvas" style={{ paddingTop: insets.top }}>
-      {/* Top bar */}
-      <View className="flex-row items-center px-3 py-2">
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Назад"
-          onPress={() => router.back()}
-          hitSlop={12}
-          className="h-10 w-10 items-center justify-center rounded-full active:opacity-70"
-        >
-          <ChevronLeft size={24} strokeWidth={1.75} color="#0a0a0a" />
-        </Pressable>
-      </View>
+      {/* Top bar: в onboarding — progress, в settings — back. */}
+      {isOnboarding ? (
+        <View className="py-4">
+          <OnboardingProgress step={2} total={4} />
+        </View>
+      ) : (
+        <View className="flex-row items-center px-3 py-2">
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Назад"
+            onPress={() => router.back()}
+            hitSlop={12}
+            className="h-10 w-10 items-center justify-center rounded-full active:opacity-70"
+          >
+            <ChevronLeft size={24} strokeWidth={1.75} color="#0a0a0a" />
+          </Pressable>
+        </View>
+      )}
 
       <ScrollView
         contentContainerStyle={{ paddingBottom: insets.bottom + 96 }}
@@ -141,21 +158,23 @@ export default function MasterCategoriesScreen() {
         )}
       </ScrollView>
 
-      {/* Sticky bottom CTA */}
+      {/* Sticky bottom CTA. В onboarding — обязательный выбор ≥1 категории. */}
       <View
         className="border-hairline-soft border-t bg-canvas px-6 pt-3"
         style={{ paddingBottom: insets.bottom + 12 }}
       >
         <Pressable
           accessibilityRole="button"
-          disabled={isBusy || !userId || initialLoading}
+          disabled={isBusy || !userId || initialLoading || (isOnboarding && selected.size === 0)}
           onPress={onSave}
           className={`h-12 items-center justify-center rounded-md ${
-            !isBusy && userId && !initialLoading ? "bg-primary active:opacity-80" : "bg-surface-3"
+            !isBusy && userId && !initialLoading && !(isOnboarding && selected.size === 0)
+              ? "bg-primary active:opacity-80"
+              : "bg-surface-3"
           }`}
         >
           <AppText weight="semibold" className="text-button text-on-primary">
-            {isBusy ? "Сохраняем..." : "Сохранить"}
+            {isBusy ? "Сохраняем..." : isOnboarding ? "Продолжить" : "Сохранить"}
           </AppText>
         </Pressable>
       </View>

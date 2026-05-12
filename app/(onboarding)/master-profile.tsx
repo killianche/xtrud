@@ -1,10 +1,9 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useRouter } from "expo-router";
-import { ChevronLeft } from "lucide-react-native";
 import { useForm } from "react-hook-form";
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
+import { OnboardingProgress } from "@/components/OnboardingProgress";
 import {
   type MasterProfileFormValues,
   masterProfileSchema,
@@ -16,7 +15,6 @@ import { MasterProfileFormBody } from "@/features/master-profile/MasterProfileFo
 
 export default function MasterProfileScreen() {
   const insets = useSafeAreaInsets();
-  const router = useRouter();
   const { session } = useAuthSession();
   const userId = session?.user?.id;
 
@@ -63,16 +61,8 @@ export default function MasterProfileScreen() {
       className="flex-1 bg-canvas"
       style={{ paddingTop: insets.top }}
     >
-      <View className="flex-row items-center px-3 py-2">
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Назад"
-          onPress={() => router.back()}
-          hitSlop={12}
-          className="h-10 w-10 items-center justify-center rounded-full active:opacity-70"
-        >
-          <ChevronLeft size={24} strokeWidth={1.75} color="#0a0a0a" />
-        </Pressable>
+      <View className="py-4">
+        <OnboardingProgress step={4} total={4} />
       </View>
 
       <ScrollView
@@ -82,10 +72,10 @@ export default function MasterProfileScreen() {
       >
         <View className="px-6 pb-6">
           <AppText weight="bold" className="text-display-sm tracking-tight text-ink">
-            Профиль мастера
+            Последний шаг
           </AppText>
           <AppText className="mt-2 text-body-md text-muted">
-            Заполните основные поля. Категории и фото настроите позже.
+            Расскажите о себе — это поможет клиентам выбрать вас.
           </AppText>
         </View>
 

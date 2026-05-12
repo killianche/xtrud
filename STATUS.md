@@ -6,6 +6,18 @@
 
 ## Текущее состояние
 
+**Sprint 22 закрыт — Auth & Onboarding fix (P0).** Первое впечатление о продукте больше не сбивает доверие, master-онбординг — полноценный 4-шаговый wizard.
+
+Что вошло:
+- **Disclaimer «Sprint 1: код принимается любой» убран** из `app/(auth)/phone.tsx`. Заменён нейтральным «Продолжая, вы соглашаетесь с Условиями использования и Политикой конфиденциальности» (без onPress — страниц Terms/Privacy ещё нет, обернём в `Linking.openURL` когда появятся).
+- **OTP — 6 раздельных боксов** (`src/components/OtpInput.tsx`). Скрытый capture-TextInput для iOS `oneTimeCode` autofill + Android `sms-otp`, 6 видимых боксов в Cal-эстетике (rounded-md, hairline-border → ink при фокусе). API совместим с `react-hook-form Controller`.
+- **OnboardingProgress компонент** (`src/components/OnboardingProgress.tsx`) — минималистичная Cal-линия из N сегментов, accessibility-progressbar.
+- **Новый шаг master-photo** (`app/(onboarding)/master-photo.tsx`) — переиспользует существующий `useUpdateMyAvatar` (bucket `avatars`, crop 1:1, resize до 512px). Фото опциональное, есть кнопка «Пропустить». Используем `expo-image` (cross-cutting C4 заранее).
+- **Master onboarding теперь 4-шаговый wizard:** role → categories → photo → profile. `master-categories.tsx` стал dual-mode: `?mode=onboarding` query-param меняет save-поведение (push на photo вместо `router.back()`), скрывает back-кнопку и требует ≥1 категорию. В settings-режиме (3 места вызова из profile/orders/master-view) поведение не сломано — продолжает делать `router.back()`.
+- `master-profile.tsx` — финальный шаг wizard'а (step 4/4), убрал back-кнопку (некуда возвращаться при `gestureEnabled: false`), переписал интро («Последний шаг. Расскажите о себе — это поможет клиентам выбрать вас» вместо устаревшего «Категории и фото настроите позже»).
+
+Проверки: `tsc --noEmit` ✅, `biome check` ✅, `vitest` 47/47 ✅.
+
 **Sprint 21 закрыт — UX/UI аудит с Lazyweb.** Сводный документ `AUDIT_2026-05-12.md` в корне репозитория + 6 deep-dive отчётов в `.claude/audit-2026-05-12/`.
 
 **Результат:** 113 находок (33 🔴 / 47 🟡 / 33 🟢) по 23 экранам, 37 Lazyweb-поисков, 100+ просмотренных скриншотов. Все рекомендации привязаны к 4 главным функциональным референсам (Profi.ru / Яндекс.Услуги / TaskRabbit / Thumbtack) и проходят через 6 дизайн-принципов из `PRODUCT_CONTEXT.md`.
@@ -30,24 +42,25 @@
 - **После Sprint 31** (~6 недель) — конкурент Profi.ru/TaskRabbit по UX.
 - **После Sprint 33** (~8 недель) — полноценное web-приложение, не растянутое mobile.
 
-### 🚀 Следующий шаг — Sprint 22
+### 🚀 Следующий шаг — Sprint 23
 
-**Auth & Onboarding fix** (P0, 2-3 дня) — первое впечатление о продукте. Закрывает 5 🔴 из `auth-onboarding.md`. Что делать (детально в [`ROADMAP_2026-05-12.md`](ROADMAP_2026-05-12.md) § Sprint 22):
+**Design-system foundation** (P0, 2-3 дня) — фундамент, без которого все последующие UI-спринты сделают двойную работу. Закрывает 4🔴 + 1🟡 из `cross-cutting.md`. Что делать (детально в [`ROADMAP_2026-05-12.md`](ROADMAP_2026-05-12.md) § Sprint 23):
 
-1. Убрать disclaimer «Sprint 1: код принимается любой» из `app/(auth)/phone.tsx` и `verify.tsx`. Заменить нейтральной строкой Terms/Privacy.
-2. **OTP — 6 раздельных боксов** (новый компонент `src/components/OtpInput.tsx`) с auto-paste из SMS (`textContentType="oneTimeCode"`).
-3. **Master onboarding wizard с progress-indicator** — новый `<OnboardingProgress step total />` поверх всех 3 шагов.
-4. **Шаг «фото профиля»** в визард — новый `app/(onboarding)/master-photo.tsx`.
-5. Встроить master-categories в основной wizard-flow (сейчас отдельно, мастер может пропустить).
+1. **`useThemeColor(token: ColorToken): string` хук** на базе Zustand `useTheme` + `lightColors`/`darkColors` из `src/lib/colors.ts`.
+2. Механический рефакторинг 26+ файлов с хардкод-цветами (полный пофайловый список в `.claude/audit-2026-05-12/cross-cutting.md` 🔴 B1-B3).
+3. **Cal Sans display-шрифт** в `_layout.tsx`. ⚠️ Открытый вопрос: npm `cal-sans` или self-host через `expo-font`?
+4. **`<Skeleton variant>` + 4 composable** (`MasterCardSkeleton`, `OrderRowSkeleton`, `ChatRowSkeleton`, `CategoryTileSkeleton`).
+5. **`<EmptyState icon title hint cta />`** единый компонент, подставить везде.
+6. **`<OrderStatusBadge status>`** — готовим к Sprint 27.
 
-### Открытые вопросы перед Sprint 22
+### Решённые открытые вопросы
 
-Эти вопросы (см. [`ROADMAP_2026-05-12.md`](ROADMAP_2026-05-12.md) § «Что нужно решить до старта»):
-- Cal Sans: npm `cal-sans` или self-host через `expo-font`?
-- `react-native-maps` подключен (нужен для Sprint 31)?
-- Хранение услуг мастера: `master_profiles.services jsonb` или отдельная таблица `master_services`?
+- ✅ **Услуги мастера = отдельная таблица `master_services`** (нормальная форма). Применим в Sprint 31. Решение от пользователя 2026-05-12.
 
-Не блокирует Sprint 22, но нужно для 23+.
+### Открытые вопросы (ждут ответа)
+
+- Cal Sans: npm `cal-sans` или self-host через `expo-font`? (нужно для Sprint 23)
+- `react-native-maps` подключен? (нужно для Sprint 31, радиус выезда мастера)
 
 **Sprint 20 закрыт — Order state-machine design-doc.**
 

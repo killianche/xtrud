@@ -105,7 +105,7 @@ export default function PhoneScreen() {
           </Pressable>
 
           <AppText className="mt-4 text-center text-caption-xs text-muted-soft">
-            Sprint 1: код принимается любой. Sprint 2 — реальный SMS/OTP.
+            Продолжая, вы соглашаетесь с Условиями использования и Политикой конфиденциальности.
           </AppText>
         </View>
       </View>

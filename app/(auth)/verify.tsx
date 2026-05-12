@@ -2,9 +2,10 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
-import { KeyboardAvoidingView, Platform, Pressable, TextInput, View } from "react-native";
+import { KeyboardAvoidingView, Platform, Pressable, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
+import { OtpInput, type OtpInputHandle } from "@/components/OtpInput";
 import { useSendOtp, useVerifyOtp } from "@/features/auth/use-auth-mutations";
 import { type OtpFormValues, otpFormSchema } from "@/features/auth/validation";
 
@@ -15,7 +16,7 @@ export default function VerifyScreen() {
   const router = useRouter();
   const { phone } = useLocalSearchParams<{ phone: string }>();
 
-  const inputRef = useRef<TextInput>(null);
+  const inputRef = useRef<OtpInputHandle>(null);
   const [cooldown, setCooldown] = useState(COOLDOWN_SEC);
 
   const sendOtp = useSendOtp();
@@ -101,34 +102,24 @@ export default function VerifyScreen() {
           </AppText>
 
           <View className="mt-10">
-            <AppText weight="medium" className="text-caption text-muted">
+            <AppText weight="medium" className="mb-3 text-caption text-muted">
               Код из СМС
             </AppText>
             <Controller
               control={control}
               name="code"
-              render={({ field: { value, onChange, onBlur } }) => (
-                <TextInput
+              render={({ field: { value, onChange } }) => (
+                <OtpInput
                   ref={inputRef}
                   value={value}
-                  onBlur={onBlur}
-                  onChangeText={(raw) => onChange(raw.replace(/\D/g, "").slice(0, 6))}
-                  placeholder="000000"
-                  placeholderTextColor="#71717a"
-                  keyboardType="number-pad"
-                  autoComplete="sms-otp"
-                  textContentType="oneTimeCode"
-                  inputMode="numeric"
-                  maxFontSizeMultiplier={1.3}
-                  className={`mt-2 h-14 rounded-md border bg-canvas px-3 text-center text-2xl tracking-[8px] text-ink ${
-                    error ? "border-error" : "border-hairline"
-                  }`}
-                  editable={!isBusy}
+                  onChangeText={onChange}
+                  hasError={!!error}
+                  disabled={isBusy}
                 />
               )}
             />
             {error && (
-              <AppText weight="medium" className="mt-2 text-caption text-error">
+              <AppText weight="medium" className="mt-3 text-caption text-error">
                 {error}
               </AppText>
             )}

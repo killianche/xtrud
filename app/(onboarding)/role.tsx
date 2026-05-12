@@ -61,9 +61,11 @@ export default function RoleScreen() {
   const onSubmit = async () => {
     if (!selected || !userId) return;
     if (selected === "master") {
-      // Master: ведём в визард для заполнения профиля. onboarding_completed_at
+      // Master wizard: categories → photo → profile. onboarding_completed_at
       // выставляется по завершению визарда через RPC complete_master_onboarding.
-      router.push("/(onboarding)/master-profile");
+      // mode=onboarding меняет поведение master-categories.tsx: save → push next,
+      // а не router.back() как в settings-режиме.
+      router.push("/(onboarding)/master-categories?mode=onboarding");
       return;
     }
     // Client: онбординг завершён немедленно.

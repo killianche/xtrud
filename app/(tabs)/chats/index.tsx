@@ -1,12 +1,15 @@
 import { useRouter } from "expo-router";
 import { MessageCircle } from "lucide-react-native";
-import { ActivityIndicator, Pressable, ScrollView, View } from "react-native";
+import { Pressable, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
+import { Avatar } from "@/components/Avatar";
+import { EmptyState } from "@/components/EmptyState";
+import { OrderStatusBadge, type OrderStatusValue } from "@/components/OrderStatusBadge";
+import { CardListSkeleton } from "@/components/Skeleton";
 import { useAuthSession } from "@/features/auth/use-auth-session";
 import { isChatUnread, type MyChatWithRefs, useMyChats } from "@/features/chat/use-my-chats";
 import { usePullToRefresh } from "@/hooks/use-pull-to-refresh";
-import { useThemeColor } from "@/lib/use-theme-color";
 
 export default function ChatsListScreen() {
   const insets = useSafeAreaInsets();
@@ -17,7 +20,6 @@ export default function ChatsListScreen() {
 
   const hasChats = (chats?.length ?? 0) > 0;
   const refresh = usePullToRefresh();
-  const mutedSoftColor = useThemeColor("muted-soft");
 
   return (
     <ScrollView
@@ -34,8 +36,8 @@ export default function ChatsListScreen() {
       </View>
 
       {isLoading && (
-        <View className="mt-8 items-center px-6">
-          <ActivityIndicator />
+        <View className="mt-6 px-6">
+          <CardListSkeleton count={4} />
         </View>
       )}
 
@@ -70,16 +72,12 @@ export default function ChatsListScreen() {
       )}
 
       {!isLoading && !error && !hasChats && (
-        <View className="mx-6 mt-12 items-center rounded-lg bg-surface-2 px-6 py-10">
-          <View className="h-12 w-12 items-center justify-center rounded-full bg-surface-3">
-            <MessageCircle size={24} strokeWidth={1.75} color={mutedSoftColor} />
-          </View>
-          <AppText weight="semibold" className="mt-4 text-title-md text-ink">
-            Чатов пока нет
-          </AppText>
-          <AppText className="mt-2 text-center text-body-sm text-muted">
-            Чат появится автоматически, когда вы примете отклик мастера или клиент выберет вас.
-          </AppText>
+        <View className="mt-12">
+          <EmptyState
+            icon={MessageCircle}
+            title="Чатов пока нет"
+            hint="Чат появится автоматически, когда вы примете отклик мастера или клиент выберет вас."
+          />
         </View>
       )}
     </ScrollView>
@@ -113,11 +111,12 @@ function ChatListRow({ chat, userId, onPress }: ChatListRowProps) {
         unread ? "border-accent bg-accent-soft" : "border-hairline bg-canvas"
       }`}
     >
-      <View className="h-12 w-12 items-center justify-center rounded-full bg-surface-2">
-        <AppText weight="semibold" className="text-title-sm text-body">
-          {(partner?.first_name?.[0] || "?").toUpperCase()}
-        </AppText>
-      </View>
+      <Avatar
+        url={partner?.avatar_url ?? null}
+        name={partnerName}
+        seed={partner?.id ?? null}
+        size="md"
+      />
       <View className="flex-1">
         <View className="flex-row items-center gap-2">
           <AppText
@@ -129,13 +128,18 @@ function ChatListRow({ chat, userId, onPress }: ChatListRowProps) {
           </AppText>
           {unread && <View className="h-2 w-2 rounded-full bg-accent" />}
         </View>
-        <AppText
-          className={`mt-0.5 text-caption ${unread ? "text-ink" : "text-muted"}`}
-          weight={unread ? "medium" : "regular"}
-          numberOfLines={1}
-        >
-          {chat.order?.title ?? "Заказ"}
-        </AppText>
+        <View className="mt-1 flex-row items-center gap-2">
+          {chat.order?.status && (
+            <OrderStatusBadge status={chat.order.status as OrderStatusValue} />
+          )}
+          <AppText
+            className={`flex-1 text-caption ${unread ? "text-ink" : "text-muted"}`}
+            weight={unread ? "medium" : "regular"}
+            numberOfLines={1}
+          >
+            {chat.order?.title ?? "Заказ"}
+          </AppText>
+        </View>
       </View>
       <AppText
         className={`text-caption-xs ${unread ? "text-accent" : "text-muted-soft"}`}

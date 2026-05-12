@@ -12,6 +12,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
+import { Avatar } from "@/components/Avatar";
 import { OrderStatusBadge, type OrderStatusValue } from "@/components/OrderStatusBadge";
 import { useAuthSession } from "@/features/auth/use-auth-session";
 import {
@@ -158,9 +159,7 @@ export default function ChatThreadScreen() {
           </View>
         )}
 
-        {messages?.map((m) => (
-          <MessageBubble key={m.id} message={m} isMine={m.sender_id === userId} />
-        ))}
+        {messages && renderMessagesWithSeparators(messages, userId, partner)}
 
         {sendMessage.error && (
           <AppText weight="medium" className="mt-2 text-caption text-error">
@@ -200,22 +199,116 @@ export default function ChatThreadScreen() {
   );
 }
 
-function MessageBubble({ message, isMine }: { message: ChatMessage; isMine: boolean }) {
+type ChatPartner =
+  | {
+      id: string;
+      first_name: string | null;
+      last_name: string | null;
+      avatar_url: string | null;
+    }
+  | null
+  | undefined;
+
+function MessageBubble({
+  message,
+  isMine,
+  partner,
+}: {
+  message: ChatMessage;
+  isMine: boolean;
+  partner: ChatPartner;
+}) {
   const time = new Date(message.created_at).toLocaleTimeString("ru-RU", {
     hour: "2-digit",
     minute: "2-digit",
   });
+  const partnerName = partner
+    ? [partner.first_name, partner.last_name].filter(Boolean).join(" ") || "Собеседник"
+    : "Собеседник";
 
-  return (
-    <View className={`max-w-[80%] ${isMine ? "self-end" : "self-start"}`}>
-      <View className={`rounded-2xl px-4 py-2 ${isMine ? "bg-primary" : "bg-surface-2"}`}>
-        <AppText className={`text-body-md ${isMine ? "text-on-primary" : "text-ink"}`}>
-          {message.text}
-        </AppText>
+  if (isMine) {
+    return (
+      <View className="max-w-[80%] self-end">
+        <View className="rounded-2xl bg-primary px-4 py-2">
+          <AppText className="text-body-md text-on-primary">{message.text}</AppText>
+        </View>
+        <AppText className="mt-1 text-right text-caption-xs text-muted-soft">{time}</AppText>
       </View>
-      <AppText className={`mt-1 text-caption-xs text-muted-soft ${isMine ? "text-right" : ""}`}>
-        {time}
-      </AppText>
+    );
+  }
+
+  // Чужие — с аватаром слева (нарушение принципа №2 «фото — главный нерв»
+  // было: только буква-инициал).
+  return (
+    <View className="max-w-[85%] flex-row items-end gap-2 self-start">
+      <Avatar
+        url={partner?.avatar_url ?? null}
+        name={partnerName}
+        seed={partner?.id ?? null}
+        size="sm"
+      />
+      <View className="flex-shrink">
+        <View className="rounded-2xl bg-surface-2 px-4 py-2">
+          <AppText className="text-body-md text-ink">{message.text}</AppText>
+        </View>
+        <AppText className="mt-1 text-caption-xs text-muted-soft">{time}</AppText>
+      </View>
     </View>
   );
+}
+
+// Рендерит сообщения с date-separators между группами по дням.
+function renderMessagesWithSeparators(
+  messages: ChatMessage[],
+  userId: string | undefined,
+  partner: ChatPartner,
+): React.ReactNode[] {
+  let lastDateKey: string | null = null;
+  const items: React.ReactNode[] = [];
+  for (const m of messages) {
+    const d = new Date(m.created_at);
+    const dateKey = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+    if (dateKey !== lastDateKey) {
+      items.push(<DateSeparator key={`d:${dateKey}:${m.id}`} date={d} />);
+      lastDateKey = dateKey;
+    }
+    items.push(
+      <MessageBubble key={m.id} message={m} isMine={m.sender_id === userId} partner={partner} />,
+    );
+  }
+  return items;
+}
+
+function DateSeparator({ date }: { date: Date }) {
+  const label = formatDateLabel(date);
+  return (
+    <View className="my-3 flex-row items-center gap-3 self-center">
+      <View className="h-px w-12 bg-hairline" />
+      <AppText weight="medium" className="text-caption-xs text-muted-soft">
+        {label}
+      </AppText>
+      <View className="h-px w-12 bg-hairline" />
+    </View>
+  );
+}
+
+function formatDateLabel(date: Date): string {
+  const today = new Date();
+  const yesterday = new Date(today);
+  yesterday.setDate(today.getDate() - 1);
+  const isSameDay = (a: Date, b: Date) =>
+    a.getFullYear() === b.getFullYear() &&
+    a.getMonth() === b.getMonth() &&
+    a.getDate() === b.getDate();
+
+  if (isSameDay(date, today)) return "Сегодня";
+  if (isSameDay(date, yesterday)) return "Вчера";
+  if (date.getFullYear() === today.getFullYear()) {
+    return date.toLocaleDateString("ru-RU", { day: "numeric", month: "long" });
+  }
+  return date.toLocaleDateString("ru-RU", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
 }

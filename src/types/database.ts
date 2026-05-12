@@ -575,6 +575,10 @@ export type Database = {
     };
     Views: Record<string, never>;
     Functions: {
+      accept_response: {
+        Args: { p_response_id: string };
+        Returns: undefined;
+      };
       complete_master_onboarding: {
         Args: {
           p_bio: string;

@@ -17,7 +17,8 @@ import { AppText } from "@/components/AppText";
 import { useAuthSession } from "@/features/auth/use-auth-session";
 import { useUserRecord } from "@/features/auth/use-user-record";
 import { orderBudgetModeOptions, urgencyLabel } from "@/features/orders/order-schema";
-import { useOrderDetail } from "@/features/orders/use-order-detail";
+import { useAcceptResponse } from "@/features/orders/use-accept-response";
+import { type OrderDetail, useOrderDetail } from "@/features/orders/use-order-detail";
 import {
   type OrderResponseWithMaster,
   useMyResponseForOrder,
@@ -96,9 +97,15 @@ export default function OrderDetailScreen() {
         >
           <OrderInfoBlock order={order} />
 
-          {isOwner && id && <ClientResponsesSection orderId={id} />}
+          {isOwner && id && order && <ClientResponsesSection orderId={id} order={order} />}
           {!isOwner && isMasterRole && userId && id && (
-            <MasterResponseSection orderId={id} masterId={userId} l2Id={order.l2_id} />
+            <MasterResponseSection
+              orderId={id}
+              masterId={userId}
+              l2Id={order.l2_id}
+              orderStatus={order.status}
+              pickedMasterId={order.picked_master_id}
+            />
           )}
         </ScrollView>
       )}
@@ -183,17 +190,29 @@ function formatBudget(o: {
 
 interface ClientResponsesSectionProps {
   orderId: string;
+  order: OrderDetail;
 }
 
-function ClientResponsesSection({ orderId }: ClientResponsesSectionProps) {
+function ClientResponsesSection({ orderId, order }: ClientResponsesSectionProps) {
   const { data: responses, isLoading, error } = useOrderResponses(orderId);
+  const acceptResponse = useAcceptResponse();
+
   const hasResponses = (responses?.length ?? 0) > 0;
+  const isOpen = order.status === "open";
 
   return (
     <View className="mt-10 px-6">
       <AppText weight="semibold" className="text-title-lg text-ink">
         Отклики
       </AppText>
+
+      {!isOpen && order.status === "in_progress" && (
+        <View className="mt-3 rounded-lg border border-success/30 bg-success-soft p-3">
+          <AppText weight="medium" className="text-body-sm text-ink">
+            Вы выбрали мастера. Заказ в работе.
+          </AppText>
+        </View>
+      )}
 
       {isLoading && (
         <View className="mt-3 items-start">
@@ -216,24 +235,73 @@ function ClientResponsesSection({ orderId }: ClientResponsesSectionProps) {
       {hasResponses && (
         <View className="mt-4 gap-3">
           {responses?.map((r) => (
-            <ResponseRow key={r.id} response={r} />
+            <ClientResponseRow
+              key={r.id}
+              response={r}
+              isPicked={r.master_id === order.picked_master_id}
+              canAccept={isOpen && r.status === "sent"}
+              isBusy={acceptResponse.isPending}
+              onAccept={() =>
+                acceptResponse.mutate({
+                  responseId: r.id,
+                  orderId,
+                  clientId: order.client_id,
+                })
+              }
+            />
           ))}
         </View>
+      )}
+
+      {acceptResponse.error && (
+        <AppText weight="medium" className="mt-3 text-caption text-error">
+          Не удалось принять отклик. {acceptResponse.error.message}
+        </AppText>
       )}
     </View>
   );
 }
 
-function ResponseRow({ response }: { response: OrderResponseWithMaster }) {
+interface ClientResponseRowProps {
+  response: OrderResponseWithMaster;
+  isPicked: boolean;
+  canAccept: boolean;
+  isBusy: boolean;
+  onAccept: () => void;
+}
+
+function ClientResponseRow({
+  response,
+  isPicked,
+  canAccept,
+  isBusy,
+  onAccept,
+}: ClientResponseRowProps) {
   const masterDisplay =
     [response.master?.first_name, response.master?.last_name].filter(Boolean).join(" ") || "Мастер";
 
   return (
-    <View className="rounded-lg border border-hairline bg-canvas p-4">
-      <View className="flex-row items-start justify-between">
-        <AppText weight="semibold" className="text-body-md text-ink">
-          {masterDisplay}
-        </AppText>
+    <View
+      className={`rounded-lg border p-4 ${
+        isPicked ? "border-success bg-success-soft" : "border-hairline bg-canvas"
+      }`}
+    >
+      <View className="flex-row items-start justify-between gap-2">
+        <View className="flex-1">
+          <AppText weight="semibold" className="text-body-md text-ink">
+            {masterDisplay}
+          </AppText>
+          {isPicked && (
+            <AppText weight="medium" className="mt-1 text-caption-xs text-success">
+              ВЫБРАН
+            </AppText>
+          )}
+          {response.status === "rejected" && !isPicked && (
+            <AppText weight="medium" className="mt-1 text-caption-xs text-muted-soft">
+              Выбран другой мастер
+            </AppText>
+          )}
+        </View>
         <AppText weight="medium" className="text-caption text-accent">
           {formatResponsePrice(response)}
         </AppText>
@@ -242,6 +310,21 @@ function ResponseRow({ response }: { response: OrderResponseWithMaster }) {
         <AppText className="mt-1 text-caption text-muted">Срок: {response.lead_time}</AppText>
       )}
       <AppText className="mt-2 text-body-sm text-body">{response.message}</AppText>
+
+      {canAccept && (
+        <Pressable
+          accessibilityRole="button"
+          disabled={isBusy}
+          onPress={onAccept}
+          className={`mt-3 h-10 items-center justify-center rounded-md ${
+            isBusy ? "bg-surface-3" : "bg-primary active:opacity-80"
+          }`}
+        >
+          <AppText weight="semibold" className="text-button text-on-primary">
+            {isBusy ? "Принимаем..." : "Принять отклик"}
+          </AppText>
+        </Pressable>
+      )}
     </View>
   );
 }
@@ -268,11 +351,22 @@ interface MasterResponseSectionProps {
   orderId: string;
   masterId: string;
   l2Id: string;
+  orderStatus: Tables<"orders">["status"];
+  pickedMasterId: string | null;
 }
 
-function MasterResponseSection({ orderId, masterId, l2Id }: MasterResponseSectionProps) {
+function MasterResponseSection({
+  orderId,
+  masterId,
+  l2Id,
+  orderStatus,
+  pickedMasterId,
+}: MasterResponseSectionProps) {
   const { data: myResponse, isLoading } = useMyResponseForOrder(orderId, masterId);
   const submitResponse = useSubmitResponse();
+
+  const isPickedMaster = pickedMasterId === masterId;
+  const orderClosed = orderStatus !== "open";
 
   const {
     control,
@@ -322,16 +416,22 @@ function MasterResponseSection({ orderId, masterId, l2Id }: MasterResponseSectio
 
   // Уже есть отклик — показываем статус
   if (myResponse) {
+    const accentClass = isPickedMaster
+      ? "border-success bg-success-soft"
+      : "border-accent bg-accent-soft";
+    const iconColor = isPickedMaster ? "#10b981" : "#2563eb";
+    const textColor = isPickedMaster ? "text-success" : "text-accent";
+
     return (
       <View className="mt-10 px-6">
         <AppText weight="semibold" className="text-title-lg text-ink">
           Ваш отклик
         </AppText>
-        <View className="mt-3 rounded-lg border border-accent bg-accent-soft p-4">
+        <View className={`mt-3 rounded-lg border ${accentClass} p-4`}>
           <View className="flex-row items-center gap-2">
-            <MessageSquare size={16} strokeWidth={2} color="#2563eb" />
-            <AppText weight="semibold" className="text-body-md text-accent">
-              {responseStatusLabel(myResponse.status)}
+            <MessageSquare size={16} strokeWidth={2} color={iconColor} />
+            <AppText weight="semibold" className={`text-body-md ${textColor}`}>
+              {isPickedMaster ? "Клиент выбрал вас 🎉" : responseStatusLabel(myResponse.status)}
             </AppText>
           </View>
           <AppText weight="medium" className="mt-2 text-body-md text-ink">
@@ -341,6 +441,19 @@ function MasterResponseSection({ orderId, masterId, l2Id }: MasterResponseSectio
             <AppText className="mt-1 text-caption text-muted">Срок: {myResponse.lead_time}</AppText>
           )}
           <AppText className="mt-2 text-body-sm text-body">{myResponse.message}</AppText>
+        </View>
+      </View>
+    );
+  }
+
+  // Заказ закрыт (in_progress/completed/cancelled), мастер не откликался → CTA отключён
+  if (orderClosed) {
+    return (
+      <View className="mt-10 px-6">
+        <View className="rounded-lg bg-surface-2 p-4">
+          <AppText weight="medium" className="text-body-sm text-muted">
+            Клиент уже выбрал мастера. Отклики больше не принимаются.
+          </AppText>
         </View>
       </View>
     );

@@ -1,7 +1,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { ChevronLeft, MapPin, MessageSquare, Pencil, Star } from "lucide-react-native";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import {
   ActivityIndicator,
@@ -35,6 +35,7 @@ import {
   useOrderResponses,
   useSubmitResponse,
 } from "@/features/orders/use-order-responses";
+import { useMarkResponsesViewed } from "@/features/orders/use-unread-responses";
 import { useMyReviewForOrder, useSubmitReview } from "@/features/reviews/use-reviews";
 import type { Tables } from "@/types/database";
 
@@ -67,6 +68,13 @@ export default function OrderDetailScreen() {
 
   const isOwner = !!userId && !!order && order.client_id === userId;
   const isMasterRole = user?.active_role === "master";
+
+  // Sprint 12.3 — при open order detail (если owner) помечаем отклики просмотренными.
+  const markResponsesViewed = useMarkResponsesViewed(userId);
+  const markResponsesMutate = markResponsesViewed.mutate;
+  useEffect(() => {
+    if (isOwner && id) markResponsesMutate(id);
+  }, [isOwner, id, markResponsesMutate]);
 
   // Outcome tracking modal — Sprint 9.3.
   const cancelOrder = useCancelOrder();

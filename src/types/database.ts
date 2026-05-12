@@ -835,6 +835,7 @@ export type Database = {
     Functions: {
       accept_response: { Args: { p_response_id: string }; Returns: undefined };
       mark_chat_read: { Args: { p_chat_id: string }; Returns: undefined };
+      mark_order_responses_viewed: { Args: { p_order_id: string }; Returns: undefined };
       complete_master_onboarding: {
         Args: {
           p_bio: string;

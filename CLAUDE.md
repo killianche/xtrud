@@ -6,7 +6,7 @@
 
 ## TL;DR
 
-- **Проект:** TBD (название и детали готовит другой агент)
+- **Проект:** **xtrud** — маркетплейс услуг (мастера ↔ клиенты) для Республики Ингушетия. Полный бриф о продукте и функциональных референсах — в [`PRODUCT_CONTEXT.md`](PRODUCT_CONTEXT.md).
 - **Платформы:** web-сайт + мобильное приложение для iOS и Android (одна кодовая база)
 - **Бэкенд:** Supabase (Postgres + Auth + Storage + Edge Functions)
 - **Стек фронтенда:** TBD (выбираем — приоритетный кандидат: Expo + Expo Router + Next.js в monorepo)
@@ -113,6 +113,7 @@ git push
 | Файл | Назначение |
 |------|------------|
 | `CLAUDE.md` | Этот файл — точка входа, контекст, критические правила инфры |
+| `PRODUCT_CONTEXT.md` | **Короткий бриф о продукте и функциональных референсах** (Profi.ru, YouDo, Avito Услуги, TaskRabbit, Thumbtack, Airbnb…). Читать вторым после CLAUDE.md. |
 | `STATUS.md` | Где мы сейчас, что готово, что дальше, блокеры, история решений |
 | `DESIGN.md` | **Текущая дизайн-система — Cal.com-inspired** (Cal Sans + Inter, white canvas + black CTA, cards 12px). Поставлена через `npx getdesign@latest add cal` 2026-05-12. Это ВЕДУЩИЙ источник истины по визуалу. |
 | `DESIGN_SYSTEM.md`, `DESIGN_REFERENCE_CALCOM.md` | **Legacy** — оставлены для истории, новые экраны делать по `DESIGN.md` |

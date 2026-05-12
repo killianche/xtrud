@@ -7,7 +7,15 @@ import type { Tables } from "@/types/database";
 export interface OrderDetail extends Tables<"orders"> {
   l2: Pick<Tables<"categories_l2">, "id" | "name_ru" | "icon"> | null;
   city: Pick<Tables<"cities">, "id" | "name"> | null;
-  client: Pick<Tables<"users">, "id" | "first_name" | "last_name"> | null;
+  client: Pick<
+    Tables<"users">,
+    | "id"
+    | "first_name"
+    | "last_name"
+    | "avatar_url"
+    | "rating_as_client_avg"
+    | "rating_as_client_count"
+  > | null;
 }
 
 export function orderDetailKey(orderId: string | undefined) {
@@ -22,7 +30,7 @@ export function useOrderDetail(orderId: string | undefined) {
       const { data, error } = await supabase
         .from("orders")
         .select(
-          "*, l2:categories_l2(id, name_ru, icon), city:cities(id, name), client:users!orders_client_id_fkey(id, first_name, last_name)",
+          "*, l2:categories_l2(id, name_ru, icon), city:cities(id, name), client:users!orders_client_id_fkey(id, first_name, last_name, avatar_url, rating_as_client_avg, rating_as_client_count)",
         )
         .eq("id", orderId)
         .maybeSingle();

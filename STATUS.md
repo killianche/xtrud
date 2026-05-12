@@ -6,11 +6,11 @@
 
 ## Текущее состояние
 
-**Sprint 8 в работе.** Закрыты 8.1 (фото-инфра) + 8.2 (аватары и портфолио) + 8.3 (публичная страница мастера). Клиент в карточке отклика может тапнуть на имя мастера → открывается `/master/[id]` с hero, опытом, bio, категориями, портфолио и отзывами. Из чат-треда (если собеседник-мастер) тоже ведёт на профиль. Все public RLS уже разрешают чтение без дополнительных миграций.
+**Sprint 8 в работе.** Закрыты 8.1–8.4 — фото-инфра, аватары/портфолио, публичная страница мастера, двунаправленный рейтинг. Полный цикл reputation: клиент оценивает мастера (`rating_overall_avg` в master_profiles), мастер оценивает клиента (`rating_as_client_avg` в users) — оба пересчитываются одним trigger'ом по `direction`. В UI: в шапке заказа теперь Avatar + рейтинг клиента (видно мастерам), а под секцией «Заказ выполнен» появляется форма «Оцените клиента» для picked_master.
 
-**База:** 15 миграций, 14 таблиц с RLS + 2 Storage bucket, 4 RPC, 8 trigger functions, 17 enums.
+**База:** 16 миграций, 14 таблиц с RLS + 2 Storage bucket, 4 RPC, 8 trigger functions, 17 enums.
 
-**Дальше в sprint 8:** 8.4 (master→client reviews + клиент public view) → 8.5 (order edit) → 8.6 (Expo Push) → 8.7 (фото категорий) → 8.8 (EAS dev-build).
+**Дальше в sprint 8:** 8.5 (order edit) → 8.6 (Expo Push) → 8.7 (фото категорий) → 8.8 (EAS dev-build).
 
 ---
 
@@ -119,7 +119,8 @@ xtrud/
 - [x] **2026-05-11** — **2.3** Main client screen (commit `5d394c8`): `useVisibleCategories` для 26 L2, `CategoryTile` компонент с iconMap (~50 lucide icons), grid 2/3/4-кол. адаптивный, ScrollView без виртуализации, loading/error/empty states, header с приветствием по first_name + role badge + signOut. **Без атмосферных фото — sprint 4+.**
 
 ### Sprint 8 (photo infra + master profile public view + dual reviews)
-- [x] **2026-05-12** — **8.3** Master public view `/master/[id]` (commit pending): новый экран `app/(tabs)/master/[id].tsx` (скрыт из таб-бара через `href:null`). Структура Profi/Thumbtack-style: hero (Avatar xl + имя + Role pill + Активен-badge + рейтинг с count + город) → stats chips (опыт, радиус, инструмент, транспорт) → bio → categories chips → portfolio grid (reuse `PortfolioGrid` без onDelete) → reviews list (Avatar sm автора, ★★★★★ строка + l2 категория, дата, текст). `src/features/master-view/use-master-public.ts`: `useMasterPublicProfile` (3 запроса users+master_profiles+cities), `useMasterCategoriesPublic` (JOIN на L2), `useReviewsForTarget(targetId, direction)` (JOIN author + l2, status='visible', desc 50). Корректные ru-склонения для отзывов/заказов/лет. Интеграция тапов: имя мастера в `ClientResponseRow` → push `/master/{master_id}`, шапка чата (если собеседник-мастер) → `/master/{chat.master_id}`. Линки accent-цветом для discoverability.
+- [x] **2026-05-12** — **8.4** Двунаправленный рейтинг master↔client (commit pending): migration 0016 — `recalc_master_rating` trigger function переписана с IF v_direction = 'client_to_master' / 'master_to_client'. Теперь обе стороны автоматически пересчитываются (master_profiles или users.rating_as_client_*). UI: новая `MasterReviewSection` — клон ClientReviewSection с direction='master_to_client' и текстами «Оцените клиента» / «Каким был клиент? Корректно ли описал задачу, оплатил вовремя?». Отображается под CompletionSection при `!isOwner && isMasterRole && status='completed' && picked_master_id===userId`. `OrderDetail` тип расширен — `client` JOIN теперь включает `avatar_url`, `rating_as_client_avg`, `rating_as_client_count`. В OrderInfoBlock пере-сделан блок «Заказчик» — теперь Avatar (sm) + имя + Star-рейтинг (если есть отзывы). Мастер до отклика видит репутацию клиента, как у Profi.
+- [x] **2026-05-12** — **8.3** Master public view `/master/[id]` (commit `0916da1`): новый экран `app/(tabs)/master/[id].tsx` (скрыт из таб-бара через `href:null`). Структура Profi/Thumbtack-style: hero (Avatar xl + имя + Role pill + Активен-badge + рейтинг с count + город) → stats chips (опыт, радиус, инструмент, транспорт) → bio → categories chips → portfolio grid (reuse `PortfolioGrid` без onDelete) → reviews list (Avatar sm автора, ★★★★★ строка + l2 категория, дата, текст). `src/features/master-view/use-master-public.ts`: `useMasterPublicProfile` (3 запроса users+master_profiles+cities), `useMasterCategoriesPublic` (JOIN на L2), `useReviewsForTarget(targetId, direction)` (JOIN author + l2, status='visible', desc 50). Корректные ru-склонения для отзывов/заказов/лет. Интеграция тапов: имя мастера в `ClientResponseRow` → push `/master/{master_id}`, шапка чата (если собеседник-мастер) → `/master/{chat.master_id}`. Линки accent-цветом для discoverability.
 - [x] **2026-05-12** — **8.2** Avatar + portfolio_items + /profile экран (commit `a757cf7`): migration 0015 — `portfolio_items` (id, master_id, url, storage_path, width, height, caption, sort_order, created_at, updated_at) с RLS (read public, owner-only writes) + trigger `check_portfolio_items_limit` (≤12) + индекс `(master_id, sort_order, created_at)`. Также length-CHECK на `users.avatar_url` (≤500, поле было в 0001). `src/features/profile/`: `use-my-portfolio` (read/add/delete + storage cleanup), `use-update-my-avatar` (full pipeline pick→upload→UPDATE→invalidate userRecord), `PortfolioGrid` (3-col grid с onDelete/onOpen, expo-image transition 150ms). Новый экран `app/(tabs)/profile.tsx` (скрыт из таб-бара через `href:null`): hero c аватаром (xl, edit-overlay, «убрать фото»), имя + role-pill + рейтинг (Star если есть отзывы) + город; master-only — ссылка на категории + portfolio-section с counter `n/12` и Add CTA с loading-state; «Выйти» внизу с confirm-Alert. Шапка Главной: avatar-кнопка (md) вместо LogOut → переход на /profile. TS типы регенерированы (portfolio_items появилась). Advisor: 0 новых lints.
 - [x] **2026-05-12** — **8.1** Photo infrastructure (commit `4e80f27`): migrations 0013 + 0014 — Storage buckets `avatars` (public, ≤2MB) и `portfolio` (public, ≤5MB) с RLS на `storage.objects`. Folder structure `{user_id}/...`. SELECT-policy узкий — листинг только своей папки (advisor lint 0025 `public_bucket_allows_listing` устранён). Чтение public-объектов идёт через прямой URL `/storage/v1/object/public/{bucket}/{path}`, RLS не вмешивается. `expo-image-picker` 17.0.11 поставлен, permissions в app.json (фото + камера, ru-копирайт). `src/lib/image-upload.ts`: AVATAR_PRESET 512px q0.82 jpeg / PORTFOLIO_PRESET 1600px q0.85 jpeg, `pickImage(aspect, title)` единая точка с Alert-actionsheet «Камера / Галерея / Отмена», `resizeImage` через ImageManipulator, `uploadImage` через ArrayBuffer (fetch().arrayBuffer()) — RN-safe против FormData bugs. Public URL отдаётся с `?v=<timestamp>` cache-bust. `useUploadAvatar(userId)` / `useUploadPortfolioImage(userId)` mutations — pick+resize+upload, БЕЗ обновления доменных таблиц (это уйдёт в 8.2). `Avatar` компонент: 5 размеров xs/sm/md/lg/xl, expo-image с transition 150ms, инициалы-fallback с детерминированной 8-цветовой пастельной палитрой (slate-800 текст, AA-контраст).
 
@@ -158,7 +159,7 @@ xtrud/
 
 ## Что дальше (Sprint 8 — остаток)
 
-1. (next) **8.4 Master→client review + клиент public view** — `useSubmitReview` обновить с direction param, в order detail при completed мастеру показать форму оценки клиента (как у Profi). users.rating_as_client_avg уже пересчитается через recalc_master_rating? — нет, тот trigger только client_to_master. Нужно расширить trigger чтобы пересчитывать и rating_as_client_avg на target (когда direction='master_to_client'). Опционально — экран `/client/[id]` с публичной карточкой клиента (рейтинг, история выполненных заказов).
+1. (next) **8.5 Order edit для client'а** — UI редактирования заказа со `status='open'`. Поля: title, description, urgency, budget, district. После accept (status='in_progress') редактирование запрещено через RLS (orders_update_own работает только пока owner). Будет переиспользовать new.tsx форму через extraction в shared компонент.
 3. **8.4 Master→client review** — расширить UI на `direction='master_to_client'`. Добавить `users.rating_avg numeric(2,1)` + trigger пересчёта. На странице клиента (отдельная задача) показывать его рейтинг.
 4. **8.5 Order edit для client'а** — UI редактирования заказа со `status='open'`. Reuse new.tsx логику.
 5. **8.6 Push-уведомления** — Expo Push для «новый отклик», «вас выбрали», «новое сообщение». DB trigger создаёт notifications row → edge function рассылает push.
@@ -182,6 +183,20 @@ xtrud/
 ---
 
 ## История ключевых решений
+
+### 2026-05-12 — Sprint 8.4: один trigger function для обеих направлений рейтинга
+**Выбрано:** одна функция `recalc_master_rating` с условием `IF v_direction = 'client_to_master' THEN UPDATE master_profiles ELSIF 'master_to_client' THEN UPDATE users`.
+
+**Альтернатива (отброшена):** отдельный trigger function `recalc_client_rating` для другого направления. Тогда `reviews_recalc` стал бы парой триггеров с условиями. Это размывает ответственность — пересчёт идёт по одной таблице `reviews`, branch по direction логически живёт в одном месте.
+
+**Trade-off:** имя `recalc_master_rating` теперь technically inaccurate (тоже clients), но переименование сломало бы immutable migration history. Comment обновили.
+
+### 2026-05-12 — Sprint 8.4: рейтинг клиента в шапке заказа (не отдельный экран)
+**Выбрано:** показывать `rating_as_client_avg/count` маленьким Star-чипом рядом с именем клиента в OrderInfoBlock.
+
+**Альтернатива (отброшена):** отдельная публичная страница `/client/[id]`. Профиль клиента — это не «выставка работ», как у мастера. Клиенту нет смысла иметь портфолио / категории / bio. Полезный сигнал — рейтинг + число завершённых заказов. Это укладывается в один inline-чип.
+
+**Trade-off:** мастер не может тапнуть имя клиента и посмотреть его историю заказов. Если соберём фидбэк что нужно — добавим в Sprint 9.
 
 ### 2026-05-12 — Sprint 8.2: единый `users.avatar_url` (а не `master_profiles.avatar_url`)
 **Выбрано:** аватар хранится в `public.users.avatar_url` — общее поле для клиентов и мастеров.

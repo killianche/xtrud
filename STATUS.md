@@ -19,19 +19,37 @@
 - Подготовительная фаза: Lazyweb MCP подключён, `DESIGN.md` (Cal.com-inspired) поставлен через `npx getdesign@latest add cal`, `PRODUCT_CONTEXT.md` создан с 4 главными референсами + 6 принципами + scope guard, бриф `.claude/audit-2026-05-12/BRIEF.md` подготовлен.
 - Запуск 5 параллельных аудит-агентов (Auth+Onboarding, Discovery, Orders, Chats, Profile) — все 5 вернулись с deep-dive отчётами + executive summary. Каждый сделал 6-8 Lazyweb-поисков.
 - 6-й cross-cutting агент упал с `out of extra usage` (resets 18:30 МСК) — выполнен в main session: read 5 отчётов + DESIGN.md + colors.ts + grep по 26 файлам с хардкод-цветами + 3 Lazyweb-запроса. Это зафиксировано как дисклеймер в `AUDIT_2026-05-12.md`.
+- Итог сведён в `AUDIT_2026-05-12.md` (master-документ) и `ROADMAP_2026-05-12.md` (план внедрения).
 
-### 🚀 Следующий шаг
+### 📋 План внедрения
 
-Sprint 22 — **Dark fix + Cal Sans + Skeleton** (low-risk, 2-3 дня, закрывает 8-10 🔴 одним рефакторингом). Что делать:
+Полный план в [`ROADMAP_2026-05-12.md`](ROADMAP_2026-05-12.md) — 13 спринтов (22-34+) упорядочены **по импакту, не по сложности**. 5 фаз: P0 (доверие+фундамент) → P1 (conversion-воронка) → P2 (core-loop) → P3 (мастер UX) → P4 (image+web) → P5 (polish).
 
-1. Завести `useThemeColor(token: ColorToken): string` хук на базе Zustand `useTheme` + `lightColors`/`darkColors` из `src/lib/colors.ts`.
-2. Прогнать механический рефакторинг по 26 файлам (полный список в `.claude/audit-2026-05-12/cross-cutting.md` B1-B3): заменить `color="#0a0a0a"` → `color={useThemeColor("ink")}`, `placeholderTextColor="#71717a"` → токен, `tabBarBadgeStyle backgroundColor: "#ef4444"` → токен.
-3. Добавить Cal Sans через `expo-font` в `app/_layout.tsx` (10 минут, прописано в `cross-cutting.md` C7).
-4. Завести `<Skeleton variant="text|circle|rect">` + composable `MasterCardSkeleton` / `OrderRowSkeleton` / `ChatRowSkeleton` / `CategoryTileSkeleton`. Заменить `ActivityIndicator` на skeleton в первичной загрузке list-экранов.
-5. Завести `<EmptyState icon hint title cta>` единый компонент, подставить везде.
-6. `OrderStatusBadge` компонент (orders.md 🔴#1) — этим же спринтом, потому что часть design-system.
+Контрольные точки:
+- **После Sprint 26** (~3 недели) — продукт пригоден к публичному запуску без визуального стыда.
+- **После Sprint 31** (~6 недель) — конкурент Profi.ru/TaskRabbit по UX.
+- **После Sprint 33** (~8 недель) — полноценное web-приложение, не растянутое mobile.
 
-**Sprint 23+ план** см. в `AUDIT_2026-05-12.md` § «Sprint-roadmap».
+### 🚀 Следующий шаг — Sprint 22
+
+**Auth & Onboarding fix** (P0, 2-3 дня) — первое впечатление о продукте. Закрывает 5 🔴 из `auth-onboarding.md`. Что делать (детально в [`ROADMAP_2026-05-12.md`](ROADMAP_2026-05-12.md) § Sprint 22):
+
+1. Убрать disclaimer «Sprint 1: код принимается любой» из `app/(auth)/phone.tsx` и `verify.tsx`. Заменить нейтральной строкой Terms/Privacy.
+2. **OTP — 6 раздельных боксов** (новый компонент `src/components/OtpInput.tsx`) с auto-paste из SMS (`textContentType="oneTimeCode"`).
+3. **Master onboarding wizard с progress-indicator** — новый `<OnboardingProgress step total />` поверх всех 3 шагов.
+4. **Шаг «фото профиля»** в визард — новый `app/(onboarding)/master-photo.tsx`.
+5. Встроить master-categories в основной wizard-flow (сейчас отдельно, мастер может пропустить).
+
+### Открытые вопросы перед Sprint 22
+
+Эти вопросы (см. [`ROADMAP_2026-05-12.md`](ROADMAP_2026-05-12.md) § «Что нужно решить до старта»):
+- Cal Sans: npm `cal-sans` или self-host через `expo-font`?
+- `react-native-maps` подключен (нужен для Sprint 31)?
+- Хранение услуг мастера: `master_profiles.services jsonb` или отдельная таблица `master_services`?
+
+Не блокирует Sprint 22, но нужно для 23+.
+
+**Sprint 20 закрыт — Order state-machine design-doc.**
 
 **Sprint 20 закрыт — Order state-machine design-doc.** Новый файл `docs/order-states.md` фиксирует все 6 статусов order, 7 переходов между ними, 6 RLS-policy + 1 RPC, которые их защищают, side effects (push, review window, rating recalc), и 5 известных пробелов с планами (expired-cron, draft-UI, re-open, отказ от мастера до completion, push на open→cancelled). Это контракт-документ: любая будущая фича, меняющая enum/RLS/RPC заказов, должна сначала появиться там. **Sprint 19 (image-resize + feed-page тесты, 47/47)** ранее закрыт. **Sprint 18 (master Maestro smoke)** закрыт. **Sprint 17 (web prod)** — `https://alanbani.ru/xtrud/` живой.
 

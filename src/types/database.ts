@@ -140,33 +140,6 @@ export type Database = {
           },
         ];
       };
-      cities: {
-        Row: {
-          created_at: string;
-          id: string;
-          is_active: boolean;
-          name: string;
-          region: string;
-          sort_order: number;
-        };
-        Insert: {
-          created_at?: string;
-          id: string;
-          is_active?: boolean;
-          name: string;
-          region?: string;
-          sort_order?: number;
-        };
-        Update: {
-          created_at?: string;
-          id?: string;
-          is_active?: boolean;
-          name?: string;
-          region?: string;
-          sort_order?: number;
-        };
-        Relationships: [];
-      };
       chats: {
         Row: {
           client_id: string;
@@ -216,47 +189,32 @@ export type Database = {
           },
         ];
       };
-      messages: {
+      cities: {
         Row: {
-          chat_id: string;
           created_at: string;
           id: string;
-          read_at: string | null;
-          sender_id: string;
-          text: string;
+          is_active: boolean;
+          name: string;
+          region: string;
+          sort_order: number;
         };
         Insert: {
-          chat_id: string;
           created_at?: string;
-          id?: string;
-          read_at?: string | null;
-          sender_id: string;
-          text: string;
+          id: string;
+          is_active?: boolean;
+          name: string;
+          region?: string;
+          sort_order?: number;
         };
         Update: {
-          chat_id?: string;
           created_at?: string;
           id?: string;
-          read_at?: string | null;
-          sender_id?: string;
-          text?: string;
+          is_active?: boolean;
+          name?: string;
+          region?: string;
+          sort_order?: number;
         };
-        Relationships: [
-          {
-            foreignKeyName: "messages_chat_id_fkey";
-            columns: ["chat_id"];
-            isOneToOne: false;
-            referencedRelation: "chats";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "messages_sender_id_fkey";
-            columns: ["sender_id"];
-            isOneToOne: false;
-            referencedRelation: "users";
-            referencedColumns: ["id"];
-          },
-        ];
+        Relationships: [];
       };
       master_categories: {
         Row: {
@@ -321,6 +279,189 @@ export type Database = {
             isOneToOne: false;
             referencedRelation: "master_profiles";
             referencedColumns: ["user_id"];
+          },
+        ];
+      };
+      master_profiles: {
+        Row: {
+          bio: string | null;
+          closed_deals: number;
+          created_at: string;
+          experience_years: number | null;
+          has_tools: boolean;
+          has_transport: boolean;
+          home_clients_policy: Database["public"]["Enums"]["home_clients_policy"] | null;
+          inn: string | null;
+          languages: string[];
+          rating_overall_avg: number | null;
+          rating_overall_count: number;
+          service_radius_km: number;
+          status: Database["public"]["Enums"]["master_status"];
+          tax_status: Database["public"]["Enums"]["tax_status"] | null;
+          team_size: number;
+          updated_at: string;
+          user_id: string;
+          verification_level: number;
+          work_schedule: Json;
+        };
+        Insert: {
+          bio?: string | null;
+          closed_deals?: number;
+          created_at?: string;
+          experience_years?: number | null;
+          has_tools?: boolean;
+          has_transport?: boolean;
+          home_clients_policy?: Database["public"]["Enums"]["home_clients_policy"] | null;
+          inn?: string | null;
+          languages?: string[];
+          rating_overall_avg?: number | null;
+          rating_overall_count?: number;
+          service_radius_km?: number;
+          status?: Database["public"]["Enums"]["master_status"];
+          tax_status?: Database["public"]["Enums"]["tax_status"] | null;
+          team_size?: number;
+          updated_at?: string;
+          user_id: string;
+          verification_level?: number;
+          work_schedule?: Json;
+        };
+        Update: {
+          bio?: string | null;
+          closed_deals?: number;
+          created_at?: string;
+          experience_years?: number | null;
+          has_tools?: boolean;
+          has_transport?: boolean;
+          home_clients_policy?: Database["public"]["Enums"]["home_clients_policy"] | null;
+          inn?: string | null;
+          languages?: string[];
+          rating_overall_avg?: number | null;
+          rating_overall_count?: number;
+          service_radius_km?: number;
+          status?: Database["public"]["Enums"]["master_status"];
+          tax_status?: Database["public"]["Enums"]["tax_status"] | null;
+          team_size?: number;
+          updated_at?: string;
+          user_id?: string;
+          verification_level?: number;
+          work_schedule?: Json;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "master_profiles_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: true;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      messages: {
+        Row: {
+          chat_id: string;
+          created_at: string;
+          id: string;
+          read_at: string | null;
+          sender_id: string;
+          text: string;
+        };
+        Insert: {
+          chat_id: string;
+          created_at?: string;
+          id?: string;
+          read_at?: string | null;
+          sender_id: string;
+          text: string;
+        };
+        Update: {
+          chat_id?: string;
+          created_at?: string;
+          id?: string;
+          read_at?: string | null;
+          sender_id?: string;
+          text?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "messages_chat_id_fkey";
+            columns: ["chat_id"];
+            isOneToOne: false;
+            referencedRelation: "chats";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "messages_sender_id_fkey";
+            columns: ["sender_id"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      order_responses: {
+        Row: {
+          created_at: string;
+          id: string;
+          l2_id: string;
+          lead_time: string | null;
+          master_id: string;
+          message: string;
+          order_id: string;
+          price_max: number | null;
+          price_min: number | null;
+          price_mode: Database["public"]["Enums"]["order_budget_mode"];
+          status: Database["public"]["Enums"]["response_status"];
+          updated_at: string;
+        };
+        Insert: {
+          created_at?: string;
+          id?: string;
+          l2_id: string;
+          lead_time?: string | null;
+          master_id: string;
+          message: string;
+          order_id: string;
+          price_max?: number | null;
+          price_min?: number | null;
+          price_mode?: Database["public"]["Enums"]["order_budget_mode"];
+          status?: Database["public"]["Enums"]["response_status"];
+          updated_at?: string;
+        };
+        Update: {
+          created_at?: string;
+          id?: string;
+          l2_id?: string;
+          lead_time?: string | null;
+          master_id?: string;
+          message?: string;
+          order_id?: string;
+          price_max?: number | null;
+          price_min?: number | null;
+          price_mode?: Database["public"]["Enums"]["order_budget_mode"];
+          status?: Database["public"]["Enums"]["response_status"];
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "order_responses_l2_id_fkey";
+            columns: ["l2_id"];
+            isOneToOne: false;
+            referencedRelation: "categories_l2";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "order_responses_master_id_fkey";
+            columns: ["master_id"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "order_responses_order_id_fkey";
+            columns: ["order_id"];
+            isOneToOne: false;
+            referencedRelation: "orders";
+            referencedColumns: ["id"];
           },
         ];
       };
@@ -422,142 +563,48 @@ export type Database = {
           },
         ];
       };
-      order_responses: {
+      portfolio_items: {
         Row: {
+          caption: string | null;
           created_at: string;
+          height: number | null;
           id: string;
-          l2_id: string;
-          lead_time: string | null;
           master_id: string;
-          message: string;
-          order_id: string;
-          price_max: number | null;
-          price_min: number | null;
-          price_mode: Database["public"]["Enums"]["order_budget_mode"];
-          status: Database["public"]["Enums"]["response_status"];
+          sort_order: number;
+          storage_path: string;
           updated_at: string;
+          url: string;
+          width: number | null;
         };
         Insert: {
+          caption?: string | null;
           created_at?: string;
+          height?: number | null;
           id?: string;
-          l2_id: string;
-          lead_time?: string | null;
           master_id: string;
-          message: string;
-          order_id: string;
-          price_max?: number | null;
-          price_min?: number | null;
-          price_mode?: Database["public"]["Enums"]["order_budget_mode"];
-          status?: Database["public"]["Enums"]["response_status"];
+          sort_order?: number;
+          storage_path: string;
           updated_at?: string;
+          url: string;
+          width?: number | null;
         };
         Update: {
+          caption?: string | null;
           created_at?: string;
+          height?: number | null;
           id?: string;
-          l2_id?: string;
-          lead_time?: string | null;
           master_id?: string;
-          message?: string;
-          order_id?: string;
-          price_max?: number | null;
-          price_min?: number | null;
-          price_mode?: Database["public"]["Enums"]["order_budget_mode"];
-          status?: Database["public"]["Enums"]["response_status"];
+          sort_order?: number;
+          storage_path?: string;
           updated_at?: string;
+          url?: string;
+          width?: number | null;
         };
         Relationships: [
           {
-            foreignKeyName: "order_responses_l2_id_fkey";
-            columns: ["l2_id"];
-            isOneToOne: false;
-            referencedRelation: "categories_l2";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "order_responses_master_id_fkey";
+            foreignKeyName: "portfolio_items_master_id_fkey";
             columns: ["master_id"];
             isOneToOne: false;
-            referencedRelation: "users";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "order_responses_order_id_fkey";
-            columns: ["order_id"];
-            isOneToOne: false;
-            referencedRelation: "orders";
-            referencedColumns: ["id"];
-          },
-        ];
-      };
-      master_profiles: {
-        Row: {
-          bio: string | null;
-          closed_deals: number;
-          created_at: string;
-          experience_years: number | null;
-          has_tools: boolean;
-          has_transport: boolean;
-          home_clients_policy: Database["public"]["Enums"]["home_clients_policy"] | null;
-          inn: string | null;
-          languages: string[];
-          rating_overall_avg: number | null;
-          rating_overall_count: number;
-          service_radius_km: number;
-          status: Database["public"]["Enums"]["master_status"];
-          tax_status: Database["public"]["Enums"]["tax_status"] | null;
-          team_size: number;
-          updated_at: string;
-          user_id: string;
-          verification_level: number;
-          work_schedule: Json;
-        };
-        Insert: {
-          bio?: string | null;
-          closed_deals?: number;
-          created_at?: string;
-          experience_years?: number | null;
-          has_tools?: boolean;
-          has_transport?: boolean;
-          home_clients_policy?: Database["public"]["Enums"]["home_clients_policy"] | null;
-          inn?: string | null;
-          languages?: string[];
-          rating_overall_avg?: number | null;
-          rating_overall_count?: number;
-          service_radius_km?: number;
-          status?: Database["public"]["Enums"]["master_status"];
-          tax_status?: Database["public"]["Enums"]["tax_status"] | null;
-          team_size?: number;
-          updated_at?: string;
-          user_id: string;
-          verification_level?: number;
-          work_schedule?: Json;
-        };
-        Update: {
-          bio?: string | null;
-          closed_deals?: number;
-          created_at?: string;
-          experience_years?: number | null;
-          has_tools?: boolean;
-          has_transport?: boolean;
-          home_clients_policy?: Database["public"]["Enums"]["home_clients_policy"] | null;
-          inn?: string | null;
-          languages?: string[];
-          rating_overall_avg?: number | null;
-          rating_overall_count?: number;
-          service_radius_km?: number;
-          status?: Database["public"]["Enums"]["master_status"];
-          tax_status?: Database["public"]["Enums"]["tax_status"] | null;
-          team_size?: number;
-          updated_at?: string;
-          user_id?: string;
-          verification_level?: number;
-          work_schedule?: Json;
-        };
-        Relationships: [
-          {
-            foreignKeyName: "master_profiles_user_id_fkey";
-            columns: ["user_id"];
-            isOneToOne: true;
             referencedRelation: "users";
             referencedColumns: ["id"];
           },
@@ -605,22 +652,8 @@ export type Database = {
         };
         Relationships: [
           {
-            foreignKeyName: "reviews_order_id_fkey";
-            columns: ["order_id"];
-            isOneToOne: false;
-            referencedRelation: "orders";
-            referencedColumns: ["id"];
-          },
-          {
             foreignKeyName: "reviews_author_id_fkey";
             columns: ["author_id"];
-            isOneToOne: false;
-            referencedRelation: "users";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "reviews_target_id_fkey";
-            columns: ["target_id"];
             isOneToOne: false;
             referencedRelation: "users";
             referencedColumns: ["id"];
@@ -630,6 +663,20 @@ export type Database = {
             columns: ["l2_id"];
             isOneToOne: false;
             referencedRelation: "categories_l2";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "reviews_order_id_fkey";
+            columns: ["order_id"];
+            isOneToOne: false;
+            referencedRelation: "orders";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "reviews_target_id_fkey";
+            columns: ["target_id"];
+            isOneToOne: false;
+            referencedRelation: "users";
             referencedColumns: ["id"];
           },
         ];
@@ -735,12 +782,11 @@ export type Database = {
         ];
       };
     };
-    Views: Record<string, never>;
+    Views: {
+      [_ in never]: never;
+    };
     Functions: {
-      accept_response: {
-        Args: { p_response_id: string };
-        Returns: undefined;
-      };
+      accept_response: { Args: { p_response_id: string }; Returns: undefined };
       complete_master_onboarding: {
         Args: {
           p_bio: string;
@@ -779,13 +825,15 @@ export type Database = {
       user_gender: "male" | "female" | "unspecified";
       user_status: "active" | "suspended" | "banned" | "deleted";
     };
-    CompositeTypes: Record<string, never>;
+    CompositeTypes: {
+      [_ in never]: never;
+    };
   };
 };
 
 type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">;
 
-type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">];
+type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]; // eslint-disable-line
 
 export type Tables<
   DefaultSchemaTableNameOrOptions extends
@@ -807,8 +855,7 @@ export type Tables<
     ? R
     : never
   : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
-    ? (DefaultSchema["Tables"] &
-        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
+    ? (DefaultSchema["Tables"] & DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
         Row: infer R;
       }
       ? R
@@ -882,6 +929,23 @@ export type Enums<
     ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
     : never;
 
+export type CompositeTypes<
+  PublicCompositeTypeNameOrOptions extends
+    | keyof DefaultSchema["CompositeTypes"]
+    | { schema: keyof DatabaseWithoutInternals },
+  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals;
+  }
+    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+    : never = never,
+> = PublicCompositeTypeNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals;
+}
+  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
+  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
+    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
+    : never;
+
 export const Constants = {
   public: {
     Enums: {
@@ -898,12 +962,7 @@ export const Constants = {
       response_status: ["sent", "viewed", "accepted", "rejected", "withdrawn"],
       review_direction: ["client_to_master", "master_to_client"],
       review_status: ["visible", "hidden", "pending"],
-      tax_status: [
-        "individual",
-        "self_employed",
-        "individual_entrepreneur",
-        "legal_entity",
-      ],
+      tax_status: ["individual", "self_employed", "individual_entrepreneur", "legal_entity"],
       user_active_role: ["client", "master"],
       user_gender: ["male", "female", "unspecified"],
       user_status: ["active", "suspended", "banned", "deleted"],

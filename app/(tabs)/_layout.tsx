@@ -36,6 +36,7 @@ export default function TabsLayout() {
       />
       {/* Detail-экраны — НЕ показываем в нижней панели табов. */}
       <Tabs.Screen name="category/[id]" options={{ href: null }} />
+      <Tabs.Screen name="profile" options={{ href: null }} />
     </Tabs>
   );
 }

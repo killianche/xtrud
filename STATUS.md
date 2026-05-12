@@ -6,11 +6,11 @@
 
 ## Текущее состояние
 
-**Sprint 8 в работе.** Закрыт 8.1 — фото-инфраструктура: 2 Storage buckets с RLS (`avatars` ≤2MB, `portfolio` ≤5MB), клиентский resize через expo-image-manipulator (avatar 512px / portfolio 1600px), ArrayBuffer-upload в Supabase, переиспользуемый `Avatar` компонент с инициалами-fallback и детерминированным цветом по seed. Все типовые pipelines (`pickResizeUploadAvatar` / `pickResizeUploadPortfolio`) — единая точка входа. Advisor security = 0 новых lints (старые pre-existing anonymous-warnings остались).
+**Sprint 8 в работе.** Закрыты 8.1 (фото-инфра) + 8.2 (аватары и портфолио в UI). Любой пользователь может загрузить аватар на экране `/profile` (тап по аватару в шапке Главной). Мастера дополнительно ведут портфолио (до 12 фото) и видят свой рейтинг. Db: portfolio_items table с RLS + trigger лимита. Hooks разделены по слоям — `useUploadAvatar/useUploadPortfolioImage` (storage), `useUpdateMyAvatar/useAddPortfolioItem/useDeletePortfolioItem` (domain + invalidate).
 
-**База:** 14 миграций, 13 таблиц с RLS + 2 Storage bucket, 4 RPC, 7 trigger functions, 17 enums.
+**База:** 15 миграций, 14 таблиц с RLS + 2 Storage bucket, 4 RPC, 8 trigger functions, 17 enums.
 
-**Дальше в sprint 8:** 8.2 (avatar_url + portfolio_items таблица + UI в master-profile) → 8.3 (публичная страница /master/[id]) → 8.4 (master→client reviews) → 8.5 (order edit) → 8.6 (Expo Push) → 8.7 (фото категорий) → 8.8 (EAS dev-build).
+**Дальше в sprint 8:** 8.3 (публичная страница /master/[id]) → 8.4 (master→client reviews) → 8.5 (order edit) → 8.6 (Expo Push) → 8.7 (фото категорий) → 8.8 (EAS dev-build).
 
 ---
 
@@ -119,7 +119,8 @@ xtrud/
 - [x] **2026-05-11** — **2.3** Main client screen (commit `5d394c8`): `useVisibleCategories` для 26 L2, `CategoryTile` компонент с iconMap (~50 lucide icons), grid 2/3/4-кол. адаптивный, ScrollView без виртуализации, loading/error/empty states, header с приветствием по first_name + role badge + signOut. **Без атмосферных фото — sprint 4+.**
 
 ### Sprint 8 (photo infra + master profile public view + dual reviews)
-- [x] **2026-05-12** — **8.1** Photo infrastructure (commit pending): migrations 0013 + 0014 — Storage buckets `avatars` (public, ≤2MB) и `portfolio` (public, ≤5MB) с RLS на `storage.objects`. Folder structure `{user_id}/...`. SELECT-policy узкий — листинг только своей папки (advisor lint 0025 `public_bucket_allows_listing` устранён). Чтение public-объектов идёт через прямой URL `/storage/v1/object/public/{bucket}/{path}`, RLS не вмешивается. `expo-image-picker` 17.0.11 поставлен, permissions в app.json (фото + камера, ru-копирайт). `src/lib/image-upload.ts`: AVATAR_PRESET 512px q0.82 jpeg / PORTFOLIO_PRESET 1600px q0.85 jpeg, `pickImage(aspect, title)` единая точка с Alert-actionsheet «Камера / Галерея / Отмена», `resizeImage` через ImageManipulator, `uploadImage` через ArrayBuffer (fetch().arrayBuffer()) — RN-safe против FormData bugs. Public URL отдаётся с `?v=<timestamp>` cache-bust. `useUploadAvatar(userId)` / `useUploadPortfolioImage(userId)` mutations — pick+resize+upload, БЕЗ обновления доменных таблиц (это уйдёт в 8.2). `Avatar` компонент: 5 размеров xs/sm/md/lg/xl, expo-image с transition 150ms, инициалы-fallback с детерминированной 8-цветовой пастельной палитрой (slate-800 текст, AA-контраст).
+- [x] **2026-05-12** — **8.2** Avatar + portfolio_items + /profile экран (commit pending): migration 0015 — `portfolio_items` (id, master_id, url, storage_path, width, height, caption, sort_order, created_at, updated_at) с RLS (read public, owner-only writes) + trigger `check_portfolio_items_limit` (≤12) + индекс `(master_id, sort_order, created_at)`. Также length-CHECK на `users.avatar_url` (≤500, поле было в 0001). `src/features/profile/`: `use-my-portfolio` (read/add/delete + storage cleanup), `use-update-my-avatar` (full pipeline pick→upload→UPDATE→invalidate userRecord), `PortfolioGrid` (3-col grid с onDelete/onOpen, expo-image transition 150ms). Новый экран `app/(tabs)/profile.tsx` (скрыт из таб-бара через `href:null`): hero c аватаром (xl, edit-overlay, «убрать фото»), имя + role-pill + рейтинг (Star если есть отзывы) + город; master-only — ссылка на категории + portfolio-section с counter `n/12` и Add CTA с loading-state; «Выйти» внизу с confirm-Alert. Шапка Главной: avatar-кнопка (md) вместо LogOut → переход на /profile. TS типы регенерированы (portfolio_items появилась). Advisor: 0 новых lints.
+- [x] **2026-05-12** — **8.1** Photo infrastructure (commit `4e80f27`): migrations 0013 + 0014 — Storage buckets `avatars` (public, ≤2MB) и `portfolio` (public, ≤5MB) с RLS на `storage.objects`. Folder structure `{user_id}/...`. SELECT-policy узкий — листинг только своей папки (advisor lint 0025 `public_bucket_allows_listing` устранён). Чтение public-объектов идёт через прямой URL `/storage/v1/object/public/{bucket}/{path}`, RLS не вмешивается. `expo-image-picker` 17.0.11 поставлен, permissions в app.json (фото + камера, ru-копирайт). `src/lib/image-upload.ts`: AVATAR_PRESET 512px q0.82 jpeg / PORTFOLIO_PRESET 1600px q0.85 jpeg, `pickImage(aspect, title)` единая точка с Alert-actionsheet «Камера / Галерея / Отмена», `resizeImage` через ImageManipulator, `uploadImage` через ArrayBuffer (fetch().arrayBuffer()) — RN-safe против FormData bugs. Public URL отдаётся с `?v=<timestamp>` cache-bust. `useUploadAvatar(userId)` / `useUploadPortfolioImage(userId)` mutations — pick+resize+upload, БЕЗ обновления доменных таблиц (это уйдёт в 8.2). `Avatar` компонент: 5 размеров xs/sm/md/lg/xl, expo-image с transition 150ms, инициалы-fallback с детерминированной 8-цветовой пастельной палитрой (slate-800 текст, AA-контраст).
 
 ### Sprint 7 (chat + reviews + completion = E2E lifecycle)
 - [x] **2026-05-12** — **7.1** Migration 0011 chats + messages (commit `ebc4989`): tables `chats` (UNIQUE order_id, client_id + master_id) и `messages` (chat_id FK, sender_id, text 1-4000). 4 indexes. RLS: только участники. Trigger update_chat_last_message при INSERT message. **Расширен accept_response RPC** — теперь INSERT в chats ON CONFLICT DO NOTHING. ALTER PUBLICATION supabase_realtime — подписка на messages и chats для live-обновлений.
@@ -156,8 +157,7 @@ xtrud/
 
 ## Что дальше (Sprint 8 — остаток)
 
-1. **8.2 Avatar + portfolio в master_profiles** — migration: добавить `master_profiles.avatar_url text` + новая таблица `portfolio_items (id, master_id, url, storage_path, caption, sort_order, created_at)` с RLS. UI: интерактивный аватар в master-profile экране (tap → useUploadAvatar → setAvatar mutation). Portfolio-grid в том же экране (до 12 фото, drag-reorder отложить, sort_order через ↑↓ кнопки).
-2. **8.3 Master profile public view** — `/master/[id]` страница: hero (avatar+name+city+rating+reviewsCount), bio, categories chips, portfolio grid (полноэкранный просмотр по тапу), reviews list (paginated). Тап по имени мастера в OrderRow/response/chat → открывается профиль.
+1. **8.3 Master profile public view** — `/master/[id]` страница: hero (avatar+name+city+rating+reviewsCount), bio, categories chips, portfolio grid (полноэкранный просмотр по тапу), reviews list (paginated). Тап по имени мастера в OrderRow/response/chat → открывается профиль.
 3. **8.4 Master→client review** — расширить UI на `direction='master_to_client'`. Добавить `users.rating_avg numeric(2,1)` + trigger пересчёта. На странице клиента (отдельная задача) показывать его рейтинг.
 4. **8.5 Order edit для client'а** — UI редактирования заказа со `status='open'`. Reuse new.tsx логику.
 5. **8.6 Push-уведомления** — Expo Push для «новый отклик», «вас выбрали», «новое сообщение». DB trigger создаёт notifications row → edge function рассылает push.
@@ -181,6 +181,32 @@ xtrud/
 ---
 
 ## История ключевых решений
+
+### 2026-05-12 — Sprint 8.2: единый `users.avatar_url` (а не `master_profiles.avatar_url`)
+**Выбрано:** аватар хранится в `public.users.avatar_url` — общее поле для клиентов и мастеров.
+
+**Альтернатива (отброшена):** разделить — клиент в `users_private.avatar_url`, мастер в `master_profiles.avatar_url`. Это даёт два пути загрузки, две зоны RLS, дублирование Avatar-логики во всех местах где показывается участник (OrderRow, chat, response, master public view).
+
+**Бонус:** колонка уже существовала в 0001 (создана изначально как nullable для future-use), просто не использовалась — теперь добавили length-CHECK и подключили в UI.
+
+### 2026-05-12 — Sprint 8.2: portfolio лимит 12 через DB trigger
+**Выбрано:** trigger `check_portfolio_items_limit` BEFORE INSERT RAISE при COUNT≥12.
+
+**Альтернатива (отброшена):** только клиентская проверка перед mutate. Это легко обходится прямым PostgREST-запросом или race-condition с двумя устройствами.
+
+**Trade-off:** trigger делает дополнительный SELECT на каждый INSERT. На 12-row scope это микросекунды, для лимита целостности приемлемо.
+
+### 2026-05-12 — Sprint 8.2: /profile экран один для клиента и мастера
+**Выбрано:** единый `app/(tabs)/profile.tsx` (скрытый из таб-бара через `href:null`) с условным рендером portfolio-секции по `user.is_master`.
+
+**Альтернатива (отброшена):** два отдельных экрана `/client-profile` и `/master-profile`. Дублирование top-bar, avatar-секции, sign-out — без выигрыша. Условные секции дёшево и легко читать.
+
+**Trade-off:** при смене active_role через RoleSwitcher экран не реагирует — мастер всегда видит portfolio-секцию (показывается по `is_master=true`, а не по active_role). Это правильно: portfolio — это атрибут мастер-стороны, который существует пока is_master.
+
+### 2026-05-12 — Sprint 8.2: storage cleanup при удалении portfolio_item — best-effort
+**Выбрано:** `useDeletePortfolioItem` делает DELETE из БД, потом `try/catch` storage.remove. Storage-ошибка не пропагируется наружу.
+
+**Обоснование:** UI важнее всего показать «удалено». Если файл осиротеет в bucket — это проблема стоимости хранения, а не данных. Periodic cleanup job (sprint 9+) подберёт осиротевшие файлы по diff `storage.list` vs `portfolio_items.storage_path`.
 
 ### 2026-05-12 — Sprint 8.1: public-buckets без broad SELECT policy
 **Выбрано:** для `avatars` и `portfolio` SELECT policy узкая — только своя папка. Чтение объектов клиентами идёт через прямой public URL `/storage/v1/object/public/{bucket}/{path}`, который обслуживается storage-сервисом БЕЗ обращения к RLS (так устроены public buckets в Supabase).

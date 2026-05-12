@@ -1,8 +1,8 @@
 import { useRouter } from "expo-router";
-import { LogOut } from "lucide-react-native";
 import { ActivityIndicator, Pressable, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
+import { Avatar } from "@/components/Avatar";
 import { CategoryTile } from "@/components/CategoryTile";
 import { RoleSwitcher } from "@/components/RoleSwitcher";
 import { useAuthSession } from "@/features/auth/use-auth-session";
@@ -10,7 +10,6 @@ import { useSetActiveRole } from "@/features/auth/use-set-active-role";
 import { useUserRecord } from "@/features/auth/use-user-record";
 import { useVisibleCategories } from "@/features/categories/use-visible-categories";
 import { MasterHomeContent } from "@/features/master-view/MasterHomeContent";
-import { signOut } from "@/lib/auth";
 
 export default function HomeTab() {
   const insets = useSafeAreaInsets();
@@ -51,12 +50,17 @@ export default function HomeTab() {
 
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Выйти"
-          onPress={() => signOut()}
+          accessibilityLabel="Профиль"
+          onPress={() => router.push("/(tabs)/profile" as never)}
           hitSlop={12}
-          className="h-10 w-10 items-center justify-center rounded-full bg-surface-2 active:opacity-70"
+          className="active:opacity-70"
         >
-          <LogOut size={18} strokeWidth={1.75} color="#374151" />
+          <Avatar
+            url={user?.avatar_url}
+            name={user?.first_name ?? null}
+            seed={userId ?? null}
+            size="md"
+          />
         </Pressable>
       </View>
 

@@ -6,11 +6,11 @@
 
 ## Текущее состояние
 
-**Sprint 11 закрыт.** 11.1 (pull-to-refresh) + 11.2 (infinite scroll отзывов через `useInfiniteQuery`, keyset pagination 20/page по created_at DESC). Reviews унифицированы в shared `ReviewsSection` — используется и в master/[id], и в client/[id]. Master with 100+ отзывов теперь lazy-loadable; раньше хардкоженный limit 50 обрезал хвост.
+**Sprint 12 в работе.** Закрыт 12.1 — full-screen lightbox для портфолио. Тап по фото в `/master/[id]` и в собственном `/profile` открывает modal на чёрном фоне с навигацией prev/next (wrap-around), счётчиком, caption, безопасными insets. `PortfolioGrid.onOpen` зарезервированный с Sprint 8.2 наконец заведён.
 
 **База:** 20 миграций, 15 таблиц с RLS + 3 Storage bucket, 5 RPC, 11 trigger functions, 17 enums, 1 edge function.
 
-**Backlog Sprint 12:** orders feed pagination; lightbox для портфолио; unread badges в табах; live-тест dev-build; admin-tool для category-covers; real OTP / Telegram Login.
+**Backlog Sprint 12 (осталось):** orders feed pagination; unread badges в табах; live-тест dev-build; admin-tool для category-covers; real OTP / Telegram Login; pinch-to-zoom + swipe-gestures в lightbox.
 
 **База:** 19 миграций, 15 таблиц с RLS + 3 Storage bucket, 5 RPC, 11 trigger functions, 17 enums, 1 edge function. Приоритетные кандидаты: live-тест на dev-build (push, image-picker, category covers); admin-tool для загрузки category-covers и portfolio-привязки; full master profile edit (bio/опыт/радиус/город после онбординга); real OTP / Telegram Login (snimaeт advisor anonymous warnings); outcome tracking modal; test runner (Vitest + Maestro).
 
@@ -120,8 +120,11 @@ xtrud/
 - [x] **2026-05-11** — **2.2** Role selection screen (commit `eb42338`): полноценный UI с 2 карточками (lucide Search/Briefcase), accessibilityState selected, accent-soft фон выбранной, CTA "Продолжить", error display. `useCompleteOnboarding` mutation обновляет `users.{is_master, active_role, onboarding_completed_at}` + invalidates query.
 - [x] **2026-05-11** — **2.3** Main client screen (commit `5d394c8`): `useVisibleCategories` для 26 L2, `CategoryTile` компонент с iconMap (~50 lucide icons), grid 2/3/4-кол. адаптивный, ScrollView без виртуализации, loading/error/empty states, header с приветствием по first_name + role badge + signOut. **Без атмосферных фото — sprint 4+.**
 
+### Sprint 12 (UX polish продолжение)
+- [x] **2026-05-12** — **12.1** Portfolio lightbox (commit pending): новый `src/features/profile/PortfolioLightbox.tsx` — Modal `transparent + statusBarTranslucent`, чёрный фон, expo-image `contentFit="contain"`. Tap-out overlay закрывает; X-кнопка в правом верхнем углу с safe-area insets; счётчик «n / total» слева. Стрелки ChevronLeft / ChevronRight по бокам (wrap-around), скрываются при total=1. Caption снизу полупрозрачным черным фоном если есть. Подключён в `master/[id]` (публичный просмотр) и в `/profile/index.tsx` (мастер смотрит свои фото) — оба экрана держат `useState<number | null>(lightboxIndex)` и передают в PortfolioGrid.onOpen → setIndex. Pinch-to-zoom + swipe-жесты отложены — требуют gesture-handler worklet, sprint 13+.
+
 ### Sprint 11 (UX polish)
-- [x] **2026-05-12** — **11.2** Infinite scroll reviews (commit pending): `useReviewsForTarget` мигрирован с `useQuery(limit=50)` на `useInfiniteQuery` с keyset pagination — `ORDER BY created_at DESC, LIMIT 20`, курсор = `created_at` последней строки страницы, продолжение через `.lt('created_at', cursor)`. Извлечён общий компонент `src/features/master-view/ReviewsSection.tsx` — рендерит заголовок (с count + «+» если есть ещё страницы), loading/empty/list, кнопку «Показать ещё» (ActivityIndicator при fetching next page). Использован и в master/[id], и в client/[id] — удалена дубликат-разметка ReviewRow / formatDate в обоих файлах. Orders-feed pagination отложил в Sprint 12 — там пока нет лимита и low rate.
+- [x] **2026-05-12** — **11.2** Infinite scroll reviews (commit `8885945`): `useReviewsForTarget` мигрирован с `useQuery(limit=50)` на `useInfiniteQuery` с keyset pagination — `ORDER BY created_at DESC, LIMIT 20`, курсор = `created_at` последней строки страницы, продолжение через `.lt('created_at', cursor)`. Извлечён общий компонент `src/features/master-view/ReviewsSection.tsx` — рендерит заголовок (с count + «+» если есть ещё страницы), loading/empty/list, кнопку «Показать ещё» (ActivityIndicator при fetching next page). Использован и в master/[id], и в client/[id] — удалена дубликат-разметка ReviewRow / formatDate в обоих файлах. Orders-feed pagination отложил в Sprint 12 — там пока нет лимита и low rate.
 - [x] **2026-05-12** — **11.1** Pull-to-refresh (commit `9833ab5`): новый хук `src/hooks/use-pull-to-refresh.tsx` — возвращает `{ refreshing, onRefresh, control }`, где control — готовый `<RefreshControl tintColor="#2563eb" />`. Refetch'ит все активные queries через `qc.refetchQueries({ type: "active" })`. Подключён в Главную, orders client+master, chats list, category/[id], master/[id], client/[id]. Никакой бизнес-логики переписывать не пришлось — каждый экран сам решает что монтировать, refresh охватывает все queries автоматически.
 
 ### Sprint 10 (discovery + защита данных)

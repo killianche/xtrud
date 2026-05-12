@@ -13,7 +13,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
 import { ChevronLeft, ChevronRight, LogOut, Pencil, Plus, Star } from "lucide-react-native";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { ActivityIndicator, Alert, Pressable, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
@@ -21,6 +21,7 @@ import { Avatar } from "@/components/Avatar";
 import { useAuthSession } from "@/features/auth/use-auth-session";
 import { useUserRecord } from "@/features/auth/use-user-record";
 import { PortfolioGrid } from "@/features/profile/PortfolioGrid";
+import { PortfolioLightbox } from "@/features/profile/PortfolioLightbox";
 import {
   PORTFOLIO_MAX,
   useAddPortfolioItem,
@@ -56,6 +57,7 @@ export default function ProfileScreen() {
   }, [user]);
 
   const canAddPortfolio = (portfolio.data?.length ?? 0) < PORTFOLIO_MAX;
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
 
   const onChangeAvatar = () => {
     if (updateAvatar.isPending) return;
@@ -262,6 +264,10 @@ export default function ProfileScreen() {
                 <PortfolioGrid
                   items={portfolio.data ?? []}
                   onDelete={onDeletePortfolio}
+                  onOpen={(item) => {
+                    const idx = (portfolio.data ?? []).findIndex((p) => p.id === item.id);
+                    if (idx >= 0) setLightboxIndex(idx);
+                  }}
                   isLoading={portfolio.isLoading}
                 />
               </View>
@@ -325,6 +331,13 @@ export default function ProfileScreen() {
           </Pressable>
         </View>
       </ScrollView>
+
+      <PortfolioLightbox
+        items={portfolio.data ?? []}
+        index={lightboxIndex}
+        onClose={() => setLightboxIndex(null)}
+        onChangeIndex={setLightboxIndex}
+      />
     </View>
   );
 }

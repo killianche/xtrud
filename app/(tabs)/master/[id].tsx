@@ -23,7 +23,7 @@ import {
   Truck,
   Wrench,
 } from "lucide-react-native";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
@@ -35,6 +35,7 @@ import {
   useReviewsForTarget,
 } from "@/features/master-view/use-master-public";
 import { PortfolioGrid } from "@/features/profile/PortfolioGrid";
+import { PortfolioLightbox } from "@/features/profile/PortfolioLightbox";
 import { useMasterPortfolio } from "@/features/profile/use-my-portfolio";
 import { usePullToRefresh } from "@/hooks/use-pull-to-refresh";
 
@@ -49,6 +50,7 @@ export default function MasterPublicScreen() {
   const portfolio = useMasterPortfolio(masterId);
   const reviews = useReviewsForTarget(masterId, "client_to_master");
   const refresh = usePullToRefresh();
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
 
   const fullName = useMemo(() => {
     if (!profile.data?.user) return "";
@@ -230,7 +232,13 @@ export default function MasterPublicScreen() {
                   Портфолио
                 </AppText>
                 <View className="mt-4">
-                  <PortfolioGrid items={portfolio.data ?? []} />
+                  <PortfolioGrid
+                    items={portfolio.data ?? []}
+                    onOpen={(item) => {
+                      const idx = (portfolio.data ?? []).findIndex((p) => p.id === item.id);
+                      if (idx >= 0) setLightboxIndex(idx);
+                    }}
+                  />
                 </View>
               </View>
             )}
@@ -240,6 +248,13 @@ export default function MasterPublicScreen() {
           </>
         )}
       </ScrollView>
+
+      <PortfolioLightbox
+        items={portfolio.data ?? []}
+        index={lightboxIndex}
+        onClose={() => setLightboxIndex(null)}
+        onChangeIndex={setLightboxIndex}
+      />
     </View>
   );
 }

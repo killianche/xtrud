@@ -162,6 +162,7 @@ interface OrderInfoBlockProps {
 }
 
 function OrderInfoBlock({ order }: OrderInfoBlockProps) {
+  const router = useRouter();
   const clientDisplay =
     [order.client?.first_name, order.client?.last_name].filter(Boolean).join(" ") || "Клиент";
   const clientRating = order.client?.rating_as_client_avg;
@@ -203,7 +204,12 @@ function OrderInfoBlock({ order }: OrderInfoBlockProps) {
       <AppText className="mt-6 text-body-md text-body">{order.description}</AppText>
 
       {/* Author */}
-      <View className="mt-6 flex-row items-center gap-3">
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={`Профиль клиента ${clientDisplay}`}
+        onPress={() => router.push(`/client/${order.client_id}` as never)}
+        className="mt-6 flex-row items-center gap-3 active:opacity-70"
+      >
         <Avatar
           url={order.client?.avatar_url ?? null}
           name={clientDisplay}
@@ -212,7 +218,7 @@ function OrderInfoBlock({ order }: OrderInfoBlockProps) {
         />
         <View className="flex-1">
           <AppText className="text-caption text-muted-soft">Заказчик</AppText>
-          <AppText weight="medium" className="text-body-sm text-ink">
+          <AppText weight="medium" className="text-body-sm text-accent">
             {clientDisplay}
           </AppText>
         </View>
@@ -225,7 +231,7 @@ function OrderInfoBlock({ order }: OrderInfoBlockProps) {
             <AppText className="text-caption-xs text-muted">({clientRatingCount})</AppText>
           </View>
         )}
-      </View>
+      </Pressable>
     </View>
   );
 }

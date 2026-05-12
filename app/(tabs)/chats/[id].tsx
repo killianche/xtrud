@@ -49,8 +49,11 @@ export default function ChatThreadScreen() {
   const partner = chat?.client_id === userId ? chat?.master : chat?.client;
   const partnerName =
     [partner?.first_name, partner?.last_name].filter(Boolean).join(" ") || "Собеседник";
-  // Открываем профиль только если собеседник — мастер (публичная стр клиента появится в 8.4).
+  // Если userId === client → partner = master → /master/[id].
+  // Иначе userId === master → partner = client → /client/[id] (Sprint 9.2).
   const partnerIsMaster = !!chat && chat.client_id === userId;
+  const partnerHref =
+    chat && (partnerIsMaster ? `/master/${chat.master_id}` : `/client/${chat.client_id}`);
 
   const canSend = text.trim().length > 0 && !sendMessage.isPending && !!userId && !!id;
 
@@ -89,15 +92,15 @@ export default function ChatThreadScreen() {
         </Pressable>
         <Pressable
           accessibilityRole="button"
-          disabled={!partnerIsMaster || !chat}
+          disabled={!partnerHref}
           onPress={() => {
-            if (chat?.master_id) router.push(`/master/${chat.master_id}` as never);
+            if (partnerHref) router.push(partnerHref as never);
           }}
           className="flex-1 active:opacity-70"
         >
           <AppText
             weight="semibold"
-            className={`text-body-md ${partnerIsMaster ? "text-accent" : "text-ink"}`}
+            className={`text-body-md ${partnerHref ? "text-accent" : "text-ink"}`}
             numberOfLines={1}
           >
             {partnerName}

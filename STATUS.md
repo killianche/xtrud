@@ -6,6 +6,19 @@
 
 ## Текущее состояние
 
+**Sprint 26 закрыт — Order create wizard (P1).**
+
+Что вошло:
+- **3-шаговый wizard** в `app/(tabs)/orders/new.tsx`: Шаг 1 (категория) → Шаг 2 (название + описание) → Шаг 3 (бюджет + город + район + срочность + Trust-баннер).
+- **`<OnboardingProgress step total={3}>`** переиспользован поверх wizard. Per-step валидация через `react-hook-form trigger()`: «Далее» disabled пока поля шага не валидны.
+- **`OrderFormBody` расширен** опциональным `step?: 1 | 2 | 3` prop. В edit-режиме (`step=undefined`) рендерит все секции — backward-совместимо.
+- **Trust-баннер «Обычно мастера отвечают за 15–60 минут»** на финальном шаге (TaskRabbit pattern) с иконкой Clock в success-цвете.
+- **Success-экран** после публикации — CheckCircle2 + «Заявка опубликована» + 2 кнопки («К моим заказам» / «Закрыть»). Заменяет голый `router.back()`.
+- **Pre-fill категории** через `?l2=<l2_id>` query-param — приходит с master-card CTA «Создать заказ» (Sprint 24).
+- **Back** на шаге 1 = router.back(), на шагах 2-3 = вернуться на предыдущий шаг.
+
+Проверки: `tsc --noEmit` ✅, `biome check` ✅, `vitest` 47/47 ✅.
+
 **Sprint 25 закрыт — Feed & category list (P1).**
 
 Что вошло:
@@ -83,15 +96,14 @@
 - **После Sprint 31** (~6 недель) — конкурент Profi.ru/TaskRabbit по UX.
 - **После Sprint 33** (~8 недель) — полноценное web-приложение, не растянутое mobile.
 
-### 🚀 Следующий шаг — Sprint 26
+### 🚀 Следующий шаг — Sprint 27
 
-**Order create wizard** (P1, 2-4 дня) — клиент решил создать заказ, пик мотивации. Закрывает 1🔴 + 2🟡 из `orders.md`. Что делать (детально в [`ROADMAP_2026-05-12.md`](ROADMAP_2026-05-12.md) § Sprint 26):
+**Order status visibility + cancel** (P2, 2-3 дня). Закрывает 2🔴 + 3🟡 из `orders.md`. Что делать:
 
-1. **3-шаговый wizard** в `orders/new.tsx`: категория+подкатегория → описание+фото → бюджет+срок+город.
-2. **Progress-indicator** «Шаг N из 3» сверху (переиспользуем `<OnboardingProgress>` или новый `<WizardProgress>`).
-3. **Trust-сигнал** на финальном шаге: «Обычно отвечают за ~30 минут» (TaskRabbit pattern).
-4. **Submitted-экран** «Заявка отправлена → ожидайте откликов» с кнопкой перехода. Сейчас вместо этого — голый `router.back()`.
-5. Сохранение draft в Zustand (опционально, если пользователь вышел — продолжает).
+1. Подключить `<OrderStatusBadge>` (готов с Sprint 23) везде: `orders/index.tsx`, `orders/[id].tsx`, `OrderRow`, header чата.
+2. **Кнопка «Отменить заказ»** в `orders/[id].tsx` через kebab-меню (⋮) + bottom-sheet confirm. Видна если status ∈ {open, in_progress} — state-machine T2/T6.
+3. Звёзды-рейтинг: текстовый `★` → Lucide `<Star fill>`.
+4. Минорно: bg-accent на TabPill счётчике → нейтральный фон.
 
 ### Решённые открытые вопросы
 

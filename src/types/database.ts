@@ -167,6 +167,97 @@ export type Database = {
         };
         Relationships: [];
       };
+      chats: {
+        Row: {
+          client_id: string;
+          created_at: string;
+          id: string;
+          last_message_at: string | null;
+          master_id: string;
+          order_id: string;
+        };
+        Insert: {
+          client_id: string;
+          created_at?: string;
+          id?: string;
+          last_message_at?: string | null;
+          master_id: string;
+          order_id: string;
+        };
+        Update: {
+          client_id?: string;
+          created_at?: string;
+          id?: string;
+          last_message_at?: string | null;
+          master_id?: string;
+          order_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "chats_client_id_fkey";
+            columns: ["client_id"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "chats_master_id_fkey";
+            columns: ["master_id"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "chats_order_id_fkey";
+            columns: ["order_id"];
+            isOneToOne: true;
+            referencedRelation: "orders";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      messages: {
+        Row: {
+          chat_id: string;
+          created_at: string;
+          id: string;
+          read_at: string | null;
+          sender_id: string;
+          text: string;
+        };
+        Insert: {
+          chat_id: string;
+          created_at?: string;
+          id?: string;
+          read_at?: string | null;
+          sender_id: string;
+          text: string;
+        };
+        Update: {
+          chat_id?: string;
+          created_at?: string;
+          id?: string;
+          read_at?: string | null;
+          sender_id?: string;
+          text?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "messages_chat_id_fkey";
+            columns: ["chat_id"];
+            isOneToOne: false;
+            referencedRelation: "chats";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "messages_sender_id_fkey";
+            columns: ["sender_id"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       master_categories: {
         Row: {
           attributes: Json;

@@ -159,7 +159,7 @@ export default function ProfileScreen() {
               onPress={onChangeAvatar}
               disabled={updateAvatar.isPending}
               hitSlop={6}
-              className="-bottom-1 -right-1 absolute h-9 w-9 items-center justify-center rounded-full border-2 border-canvas bg-accent active:opacity-80"
+              className="-bottom-1 -right-1 absolute h-9 w-9 items-center justify-center rounded-full border-2 border-canvas bg-primary active:opacity-80"
             >
               {updateAvatar.isPending ? (
                 <ActivityIndicator size="small" color={themeColors["on-primary"]} />
@@ -219,11 +219,31 @@ export default function ProfileScreen() {
         {/* Master-only sections */}
         {user.is_master && (
           <>
+            {/* «Посмотреть как клиент» — Airbnb showcase pattern. */}
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => router.push(`/(tabs)/master/${user.id}` as never)}
+              className="mx-6 mt-8 flex-row items-center justify-between rounded-lg border border-ink bg-ink p-4 active:opacity-80"
+            >
+              <View className="flex-1">
+                <AppText weight="semibold" className="text-body-md text-on-primary">
+                  Посмотреть как клиент
+                </AppText>
+                <AppText
+                  className="mt-0.5 text-body-sm"
+                  style={{ color: themeColors["on-primary"], opacity: 0.7 }}
+                >
+                  Так вашу карточку видят клиенты в каталоге.
+                </AppText>
+              </View>
+              <ChevronRight size={20} strokeWidth={1.75} color={themeColors["on-primary"]} />
+            </Pressable>
+
             {/* Edit master profile shortcut */}
             <Pressable
               accessibilityRole="button"
               onPress={() => router.push("/(tabs)/profile/edit-master" as never)}
-              className="mx-6 mt-8 flex-row items-center justify-between rounded-lg border border-hairline bg-canvas p-4 active:opacity-70"
+              className="mx-6 mt-3 flex-row items-center justify-between rounded-lg border border-hairline bg-canvas p-4 active:opacity-70"
             >
               <View className="flex-1">
                 <AppText weight="semibold" className="text-body-md text-ink">

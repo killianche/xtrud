@@ -6,6 +6,20 @@
 
 ## Текущее состояние
 
+**Sprint 30 закрыт — Profile showcase + portfolio upload UX (P3).**
+
+Что вошло:
+- **«Посмотреть как клиент»** — primary-кнопка `bg-ink` в `profile/index.tsx` для мастеров. Открывает `/master/{userId}` — там уже работает `isOwnProfile === true` (Sprint 24), который скрывает sticky CTA «Создать заказ». Получается живой preview публичной карточки.
+- **Portfolio upload — crop с aspect `[4, 3]`** в `pickResizeUploadPortfolio` (`src/lib/image-upload.ts`). Thumbtack/Airbnb-стандарт горизонтальных work-фото. allowsEditing уже было в `pickImage`.
+- **Минимальное разрешение 1200×900** — non-blocking Alert «Фото небольшое, продолжить?» если меньше. Экспортированы константы `PORTFOLIO_MIN_WIDTH/HEIGHT`.
+- **Avatar pencil-кнопка** синий `bg-accent` → монохром `bg-primary` (вписывается в Cal.com-эстетику, нарушение монохрома устранено).
+
+Допущения (отложено):
+- Tile-skeleton при upload отдельной плитки портфолио — это требует доработки PortfolioGrid (Sprint 30.5/future). На месте: existing `ActivityIndicator` в кнопке Add.
+- Portfolio EmptyState — существующий empty уже технический, можно полировать в Sprint 34+.
+
+Проверки: `tsc --noEmit` ✅, `biome check` ✅ (122 файла), `vitest` 47/47 ✅.
+
 **Sprint 29 закрыт — Chat templates + EmptyState (P2).**
 
 Что вошло:
@@ -130,14 +144,14 @@ Templates статичные, без user-defined. В будущем — `chat_t
 - **После Sprint 31** (~6 недель) — конкурент Profi.ru/TaskRabbit по UX.
 - **После Sprint 33** (~8 недель) — полноценное web-приложение, не растянутое mobile.
 
-### 🚀 Следующий шаг — Sprint 30
+### 🚀 Следующий шаг — Sprint 31
 
-**Profile showcase mode + portfolio upload UX** (P3, 3-4 дня). Закрывает 2🔴 + 2🟡 из `profile.md`. Что делать:
+**Master full edit + radius map** (P3, 2-4 дня). Закрывает 2🔴 + 2🟡 из `profile.md`. Что делать:
 
-1. **Режим «Посмотреть как клиент»** в `profile/index.tsx` — toggle/кнопка в шапке, открывает превью карточки мастера (как видит другой клиент).
-2. **Portfolio upload — crop с aspect-ratio** через `expo-image-picker allowsEditing:true, aspect:[4,3]`. Проверка минимального разрешения 1200×900. Tile-skeleton при загрузке.
-3. **Portfolio empty state** через `<EmptyState>` с CTA «Загрузить первое фото».
-4. **Avatar pencil-button** синий accent → нейтральный (bg surface-2, иконка ink) — нарушает монохром Cal.com.
+1. **Поля контактов** в edit-master.tsx: телефон (отдельно от auth), WhatsApp, кнопка «Скопировать» рядом.
+2. **`master_services` — отдельная таблица** (нормальная форма, решение пользователя 2026-05-12). Миграция + CRUD-блок в edit (название услуги + цена + единица).
+3. **Радиус выезда: слайдер + мини-карта** с radius-circle (Яндекс.Услуги pattern). ⚠️ Открытый вопрос: `react-native-maps` подключён? Если нет — будет статичная карта-картинка от Yandex/OSM tile.
+4. **Char-counter для bio**, Cancel/Done + dirty-check.
 
 ### Решённые открытые вопросы
 

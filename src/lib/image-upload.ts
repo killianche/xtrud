@@ -221,13 +221,34 @@ export async function pickResizeUploadAvatar(userId: string): Promise<{
 /**
  * Полный pipeline портфолио-фото: pick → resize → upload в {userId}/{uuid}.jpg.
  * Возвращает null если отменили.
+ *
+ * aspect [4, 3] — Thumbtack/Airbnb-стандарт для work-фото. Минимальное
+ * разрешение 1200×900 проверяется опционально (см. Alert ниже).
  */
+export const PORTFOLIO_MIN_WIDTH = 1200;
+export const PORTFOLIO_MIN_HEIGHT = 900;
+
 export async function pickResizeUploadPortfolio(userId: string): Promise<{
   path: string;
   publicUrl: string;
 } | null> {
-  const picked = await pickImage({ title: "Фото работы" });
+  const picked = await pickImage({ aspect: [4, 3], title: "Фото работы" });
   if (!picked) return null;
+
+  // Предупреждение о слабом разрешении — non-blocking.
+  if (picked.width < PORTFOLIO_MIN_WIDTH || picked.height < PORTFOLIO_MIN_HEIGHT) {
+    const proceed = await new Promise<boolean>((resolve) => {
+      Alert.alert(
+        "Фото небольшое",
+        `Рекомендуем минимум ${PORTFOLIO_MIN_WIDTH}×${PORTFOLIO_MIN_HEIGHT} пикселей — иначе работа будет выглядеть размыто. Продолжить?`,
+        [
+          { text: "Отмена", style: "cancel", onPress: () => resolve(false) },
+          { text: "Продолжить", onPress: () => resolve(true) },
+        ],
+      );
+    });
+    if (!proceed) return null;
+  }
 
   const resized = await resizeImage(picked, PORTFOLIO_PRESET);
   const filename = `${randomId()}.${PORTFOLIO_PRESET.extension}`;

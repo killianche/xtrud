@@ -1,5 +1,6 @@
 import { useRouter } from "expo-router";
 import { ClipboardList, Plus } from "lucide-react-native";
+import { useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
@@ -10,6 +11,8 @@ import { useUserRecord } from "@/features/auth/use-user-record";
 import { useMyMasterCategories } from "@/features/master-categories/use-my-categories";
 import { useMasterFeed } from "@/features/orders/use-master-feed";
 import { useMyOrders } from "@/features/orders/use-my-orders";
+import { useMyResponses } from "@/features/orders/use-my-responses";
+import { useOrdersAssignedToMe } from "@/features/orders/use-orders-assigned-to-me";
 
 export default function OrdersScreen() {
   const { session } = useAuthSession();
@@ -18,13 +21,13 @@ export default function OrdersScreen() {
   const activeRole = user?.active_role ?? "client";
 
   if (activeRole === "master") {
-    return <MasterFeedView userId={userId} />;
+    return <MasterOrdersView userId={userId} />;
   }
   return <ClientOrdersView userId={userId} />;
 }
 
 // ----------------------------------------------------------------------------
-// Client view: список собственных заказов + FAB "Создать заказ"
+// Client view
 // ----------------------------------------------------------------------------
 
 interface ClientOrdersViewProps {
@@ -35,7 +38,6 @@ function ClientOrdersView({ userId }: ClientOrdersViewProps) {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { data: orders, isLoading, error, refetch } = useMyOrders(userId);
-
   const hasOrders = (orders?.length ?? 0) > 0;
 
   return (
@@ -99,7 +101,7 @@ function ClientOrdersView({ userId }: ClientOrdersViewProps) {
         )}
 
         {!isLoading && !error && !hasOrders && (
-          <View className="mt-12 items-center rounded-lg bg-surface-2 px-6 py-10">
+          <View className="mt-12 items-center rounded-lg bg-surface-2 mx-6 px-6 py-10">
             <View className="h-12 w-12 items-center justify-center rounded-full bg-surface-3">
               <ClipboardList size={24} strokeWidth={1.75} color="#71717a" />
             </View>
@@ -129,23 +131,40 @@ function ClientOrdersView({ userId }: ClientOrdersViewProps) {
 }
 
 // ----------------------------------------------------------------------------
-// Master view: лента заявок матчащихся под master_categories
+// Master view — с 3 секциями (Новые / Я откликнулся / Меня выбрали)
 // ----------------------------------------------------------------------------
 
-interface MasterFeedViewProps {
+type MasterTab = "new" | "responded" | "assigned";
+
+interface MasterOrdersViewProps {
   userId: string | undefined;
 }
 
-function MasterFeedView({ userId }: MasterFeedViewProps) {
+function MasterOrdersView({ userId }: MasterOrdersViewProps) {
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const [tab, setTab] = useState<MasterTab>("new");
+
   const { data: myCats, isLoading: catsLoading } = useMyMasterCategories(userId);
   const l2Ids = myCats?.map((c) => c.l2_id) ?? [];
-  const { data: feed, isLoading: feedLoading, error, refetch } = useMasterFeed({ userId, l2Ids });
+
+  const {
+    data: feed,
+    isLoading: feedLoading,
+    error: feedError,
+  } = useMasterFeed({
+    userId,
+    l2Ids,
+  });
+  const { data: myResponses, isLoading: respLoading } = useMyResponses(userId);
+  const { data: assigned, isLoading: assignedLoading } = useOrdersAssignedToMe(userId);
+
+  const respondedOrderIds = new Set(myResponses?.map((r) => r.order.id) ?? []);
+
+  // "Новые" = feed без тех, на что я уже откликнулся
+  const newFeed = feed?.filter((o) => !respondedOrderIds.has(o.id)) ?? [];
 
   const hasCategories = l2Ids.length > 0;
-  const isLoading = catsLoading || (hasCategories && feedLoading);
-  const hasFeed = (feed?.length ?? 0) > 0;
 
   return (
     <ScrollView
@@ -156,96 +175,329 @@ function MasterFeedView({ userId }: MasterFeedViewProps) {
       }}
       showsVerticalScrollIndicator={false}
     >
+      {/* Header */}
       <View className="px-6">
         <AppText weight="bold" className="text-display-md tracking-tight text-ink">
           Заявки
         </AppText>
-        <AppText className="mt-2 text-body-md text-muted">
-          Новые объявления в ваших категориях. Отправьте отклик, если подходит.
-        </AppText>
       </View>
 
-      <View className="mt-6 px-6">
+      {/* Tab pills */}
+      <View className="mt-4 px-6">
+        <View className="flex-row gap-1 self-start rounded-pill bg-surface-2 p-1">
+          <TabPill
+            label="Новые"
+            count={newFeed.length}
+            selected={tab === "new"}
+            onPress={() => setTab("new")}
+          />
+          <TabPill
+            label="Я откликнулся"
+            count={myResponses?.length ?? 0}
+            selected={tab === "responded"}
+            onPress={() => setTab("responded")}
+          />
+          <TabPill
+            label="Меня выбрали"
+            count={assigned?.length ?? 0}
+            selected={tab === "assigned"}
+            onPress={() => setTab("assigned")}
+          />
+        </View>
+      </View>
+
+      {/* Safety banner */}
+      <View className="mt-4 px-6">
         <SafetyBanner />
       </View>
 
-      {isLoading && (
-        <View className="mt-8 items-center px-6">
-          <ActivityIndicator />
-        </View>
+      {/* Tab content */}
+      {tab === "new" && (
+        <NewOrdersTab
+          userId={userId}
+          orders={newFeed}
+          isLoading={catsLoading || (hasCategories && feedLoading)}
+          hasCategories={hasCategories}
+          error={feedError}
+          onCategoryCta={() => router.push("/(onboarding)/master-categories")}
+          onOrderPress={(id) => router.push(`/(tabs)/orders/${id}` as never)}
+        />
       )}
 
-      {!catsLoading && !hasCategories && (
-        <View className="mt-6 px-6">
-          <Pressable
-            accessibilityRole="button"
-            onPress={() => router.push("/(onboarding)/master-categories")}
-            className="flex-row items-center justify-between rounded-lg border border-hairline bg-canvas p-4 active:opacity-70"
-          >
-            <View className="flex-1">
-              <AppText weight="semibold" className="text-body-md text-ink">
-                Сначала добавьте категории
-              </AppText>
-              <AppText className="mt-1 text-body-sm text-muted">
-                Без категорий заявки не появятся в ленте.
-              </AppText>
-            </View>
-            <View className="h-10 w-10 items-center justify-center rounded-full bg-accent">
-              <Plus size={20} strokeWidth={2} color="#ffffff" />
-            </View>
-          </Pressable>
-        </View>
+      {tab === "responded" && (
+        <RespondedTab
+          responses={myResponses ?? []}
+          isLoading={respLoading}
+          onOrderPress={(id) => router.push(`/(tabs)/orders/${id}` as never)}
+        />
       )}
 
-      {hasCategories && error && (
-        <View className="mt-6 px-6">
-          <AppText weight="medium" className="text-caption text-error">
-            Не удалось загрузить ленту. {error.message}
-          </AppText>
-          <Pressable
-            accessibilityRole="button"
-            onPress={() => refetch()}
-            className="mt-3 h-10 items-center justify-center rounded-md border border-hairline px-4 active:opacity-70"
-          >
-            <AppText weight="medium" className="text-caption text-ink">
-              Повторить
-            </AppText>
-          </Pressable>
-        </View>
-      )}
-
-      {!isLoading && hasCategories && !error && hasFeed && (
-        <View className="mt-6 gap-3 px-6">
-          {feed?.map((o) => (
-            <OrderRow
-              key={o.id}
-              id={o.id}
-              title={o.title}
-              categoryName={o.l2?.name_ru ?? o.l2_id}
-              cityName={o.city?.name ?? o.city_id}
-              district={o.district}
-              urgency={o.urgency}
-              responsesCount={o.responses_count}
-              createdAt={o.created_at}
-              onPress={() => router.push(`/(tabs)/orders/${o.id}` as never)}
-            />
-          ))}
-        </View>
-      )}
-
-      {!isLoading && hasCategories && !error && !hasFeed && (
-        <View className="mt-12 items-center rounded-lg bg-surface-2 mx-6 px-6 py-10">
-          <View className="h-12 w-12 items-center justify-center rounded-full bg-surface-3">
-            <ClipboardList size={24} strokeWidth={1.75} color="#71717a" />
-          </View>
-          <AppText weight="semibold" className="mt-4 text-title-md text-ink">
-            Пока нет заявок
-          </AppText>
-          <AppText className="mt-2 text-center text-body-sm text-muted">
-            Новые заявки в ваших категориях появятся здесь.
-          </AppText>
-        </View>
+      {tab === "assigned" && (
+        <AssignedTab
+          orders={assigned ?? []}
+          isLoading={assignedLoading}
+          onOrderPress={(id) => router.push(`/(tabs)/orders/${id}` as never)}
+        />
       )}
     </ScrollView>
+  );
+}
+
+interface TabPillProps {
+  label: string;
+  count: number;
+  selected: boolean;
+  onPress: () => void;
+}
+
+function TabPill({ label, count, selected, onPress }: TabPillProps) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityState={{ selected }}
+      onPress={onPress}
+      disabled={selected}
+      className={`h-9 flex-row items-center justify-center gap-1.5 rounded-pill px-3 ${
+        selected ? "bg-canvas" : "active:opacity-60"
+      }`}
+    >
+      <AppText
+        weight={selected ? "semibold" : "medium"}
+        className={`text-caption ${selected ? "text-ink" : "text-muted"}`}
+      >
+        {label}
+      </AppText>
+      {count > 0 && (
+        <View
+          className={`h-5 min-w-5 items-center justify-center rounded-full px-1.5 ${
+            selected ? "bg-accent" : "bg-surface-3"
+          }`}
+        >
+          <AppText
+            weight="semibold"
+            className={`text-caption-xs ${selected ? "text-on-primary" : "text-muted"}`}
+          >
+            {count}
+          </AppText>
+        </View>
+      )}
+    </Pressable>
+  );
+}
+
+// ----------------------------------------------------------------------------
+// Tab content components
+// ----------------------------------------------------------------------------
+
+interface NewOrdersTabProps {
+  userId: string | undefined;
+  orders: {
+    id: string;
+    title: string;
+    l2: { name_ru: string } | null;
+    l2_id: string;
+    city: { name: string } | null;
+    city_id: string;
+    district: string | null;
+    urgency: import("@/features/orders/use-create-order").OrderUrgency;
+    responses_count: number;
+    created_at: string;
+  }[];
+  isLoading: boolean;
+  hasCategories: boolean;
+  error: Error | null;
+  onCategoryCta: () => void;
+  onOrderPress: (id: string) => void;
+}
+
+function NewOrdersTab({
+  orders,
+  isLoading,
+  hasCategories,
+  error,
+  onCategoryCta,
+  onOrderPress,
+}: NewOrdersTabProps) {
+  if (isLoading) {
+    return (
+      <View className="mt-8 items-center px-6">
+        <ActivityIndicator />
+      </View>
+    );
+  }
+
+  if (!hasCategories) {
+    return (
+      <View className="mt-6 px-6">
+        <Pressable
+          accessibilityRole="button"
+          onPress={onCategoryCta}
+          className="flex-row items-center justify-between rounded-lg border border-hairline bg-canvas p-4 active:opacity-70"
+        >
+          <View className="flex-1">
+            <AppText weight="semibold" className="text-body-md text-ink">
+              Сначала добавьте категории
+            </AppText>
+            <AppText className="mt-1 text-body-sm text-muted">
+              Без категорий заявки не появятся в ленте.
+            </AppText>
+          </View>
+          <View className="h-10 w-10 items-center justify-center rounded-full bg-accent">
+            <Plus size={20} strokeWidth={2} color="#ffffff" />
+          </View>
+        </Pressable>
+      </View>
+    );
+  }
+
+  if (error) {
+    return (
+      <View className="mt-6 px-6">
+        <AppText weight="medium" className="text-caption text-error">
+          {error.message}
+        </AppText>
+      </View>
+    );
+  }
+
+  if (orders.length === 0) {
+    return (
+      <View className="mt-6 px-6">
+        <EmptyCard
+          title="Новых заявок нет"
+          subtitle="Когда появятся заявки в ваших категориях — увидите их здесь."
+        />
+      </View>
+    );
+  }
+
+  return (
+    <View className="mt-6 gap-3 px-6">
+      {orders.map((o) => (
+        <OrderRow
+          key={o.id}
+          id={o.id}
+          title={o.title}
+          categoryName={o.l2?.name_ru ?? o.l2_id}
+          cityName={o.city?.name ?? o.city_id}
+          district={o.district}
+          urgency={o.urgency}
+          responsesCount={o.responses_count}
+          createdAt={o.created_at}
+          onPress={() => onOrderPress(o.id)}
+        />
+      ))}
+    </View>
+  );
+}
+
+interface RespondedTabProps {
+  responses: import("@/features/orders/use-my-responses").MyResponseWithOrder[];
+  isLoading: boolean;
+  onOrderPress: (id: string) => void;
+}
+
+function RespondedTab({ responses, isLoading, onOrderPress }: RespondedTabProps) {
+  if (isLoading) {
+    return (
+      <View className="mt-8 items-center px-6">
+        <ActivityIndicator />
+      </View>
+    );
+  }
+
+  if (responses.length === 0) {
+    return (
+      <View className="mt-6 px-6">
+        <EmptyCard
+          title="Вы пока не откликались"
+          subtitle="Найдите интересную заявку и отправьте отклик из вкладки «Новые»."
+        />
+      </View>
+    );
+  }
+
+  return (
+    <View className="mt-6 gap-3 px-6">
+      {responses.map(({ order, response }) => (
+        <OrderRow
+          key={response.id}
+          id={order.id}
+          title={order.title}
+          categoryName={order.l2?.name_ru ?? order.l2_id}
+          cityName={order.city?.name ?? order.city_id}
+          district={order.district}
+          urgency={order.urgency}
+          responsesCount={order.responses_count}
+          createdAt={response.created_at}
+          onPress={() => onOrderPress(order.id)}
+        />
+      ))}
+    </View>
+  );
+}
+
+interface AssignedTabProps {
+  orders: import("@/features/orders/use-my-orders").OrderWithRefs[];
+  isLoading: boolean;
+  onOrderPress: (id: string) => void;
+}
+
+function AssignedTab({ orders, isLoading, onOrderPress }: AssignedTabProps) {
+  if (isLoading) {
+    return (
+      <View className="mt-8 items-center px-6">
+        <ActivityIndicator />
+      </View>
+    );
+  }
+
+  if (orders.length === 0) {
+    return (
+      <View className="mt-6 px-6">
+        <EmptyCard
+          title="Вас пока не выбрали"
+          subtitle="Заявки, где клиент выбрал именно вас, появятся здесь."
+        />
+      </View>
+    );
+  }
+
+  return (
+    <View className="mt-6 gap-3 px-6">
+      {orders.map((o) => (
+        <OrderRow
+          key={o.id}
+          id={o.id}
+          title={o.title}
+          categoryName={o.l2?.name_ru ?? o.l2_id}
+          cityName={o.city?.name ?? o.city_id}
+          district={o.district}
+          urgency={o.urgency}
+          responsesCount={o.responses_count}
+          createdAt={o.created_at}
+          onPress={() => onOrderPress(o.id)}
+        />
+      ))}
+    </View>
+  );
+}
+
+interface EmptyCardProps {
+  title: string;
+  subtitle: string;
+}
+
+function EmptyCard({ title, subtitle }: EmptyCardProps) {
+  return (
+    <View className="items-center rounded-lg bg-surface-2 px-6 py-10">
+      <View className="h-12 w-12 items-center justify-center rounded-full bg-surface-3">
+        <ClipboardList size={24} strokeWidth={1.75} color="#71717a" />
+      </View>
+      <AppText weight="semibold" className="mt-4 text-title-md text-ink">
+        {title}
+      </AppText>
+      <AppText className="mt-2 text-center text-body-sm text-muted">{subtitle}</AppText>
+    </View>
   );
 }

@@ -18,6 +18,7 @@ import { ActivityIndicator, Alert, Pressable, ScrollView, View } from "react-nat
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
 import { Avatar } from "@/components/Avatar";
+import { ThemeSwitcher } from "@/components/ThemeSwitcher";
 import { useAuthSession } from "@/features/auth/use-auth-session";
 import { useUserRecord } from "@/features/auth/use-user-record";
 import { PortfolioGrid } from "@/features/profile/PortfolioGrid";
@@ -59,7 +60,7 @@ export default function ProfileScreen() {
 
   const canAddPortfolio = (portfolio.data?.length ?? 0) < PORTFOLIO_MAX;
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
-  const themeColors = useThemeColors(["ink", "muted-soft", "on-primary", "warning"]);
+  const themeColors = useThemeColors(["ink", "muted-soft", "on-primary", "warning", "body"]);
 
   const onChangeAvatar = () => {
     if (updateAvatar.isPending) return;
@@ -339,8 +340,16 @@ export default function ProfileScreen() {
           </>
         )}
 
+        {/* Theme switcher */}
+        <View className="mt-10 px-6">
+          <AppText weight="semibold" className="mb-3 text-title-md text-ink">
+            Тема
+          </AppText>
+          <ThemeSwitcher />
+        </View>
+
         {/* Sign out */}
-        <View className="mt-12 px-6">
+        <View className="mt-10 px-6">
           <Pressable
             accessibilityRole="button"
             onPress={() =>
@@ -351,7 +360,7 @@ export default function ProfileScreen() {
             }
             className="h-12 flex-row items-center justify-center gap-2 rounded-md border border-hairline bg-canvas active:opacity-70"
           >
-            <LogOut size={18} strokeWidth={1.75} color="#374151" />
+            <LogOut size={18} strokeWidth={1.75} color={themeColors.body} />
             <AppText weight="semibold" className="text-button text-body">
               Выйти
             </AppText>

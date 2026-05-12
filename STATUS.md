@@ -6,6 +6,24 @@
 
 ## Текущее состояние
 
+**Sprint 33 закрыт — Theme switcher UI (часть Web Shell).** + **Sprint 31 (UI-only) закрыт.**
+
+Sprint 33:
+- **Новый `<ThemeSwitcher>`** (`src/components/ThemeSwitcher.tsx`) — segmented-radio «Системная / Светлая / Тёмная» с Lucide-иконками (Smartphone/Sun/Moon). Использует существующий `useColorScheme` хук + Zustand `setPreference`. Закрывает cross-cutting.md A3 (theme-toggle на web visible) на mobile-side; web-side с top-nav заголовком — Sprint 33.5.
+- Подключён в `profile/index.tsx` — секция «Тема» между portfolio и Logout-кнопкой.
+- Logout-иконка теперь `themeColors.body` через токен (не хардкод `#374151`).
+
+Sprint 31 (UI-only):
+- **Char-counter `{len} / 500`** в bio-поле (`MasterProfileFormBody`) — показывает `text-warning` при >450.
+- **Dirty-check** в `edit-master.tsx` — back-кнопка показывает Alert «Есть несохранённые изменения, выйти?». Submit-кнопка disabled пока `!isDirty`.
+
+**Отложено** (требует миграции БД или новой инфраструктуры):
+- Sprint 31.5: `master_services` таблица + radius map (нужна миграция, `react-native-maps` если есть).
+- Sprint 32: image pipeline с blurhash (миграция БД + edge function для генерации hash при upload).
+- Sprint 33.5: полный Web Shell (top-nav + sidebar для chats + max-width контейнер) — самый большой пакет, требует ~5-7 дней.
+
+Проверки: `tsc --noEmit` ✅, `biome check` ✅ (123 файла), `vitest` 47/47 ✅.
+
 **Sprint 30 закрыт — Profile showcase + portfolio upload UX (P3).**
 
 Что вошло:
@@ -144,14 +162,18 @@ Templates статичные, без user-defined. В будущем — `chat_t
 - **После Sprint 31** (~6 недель) — конкурент Profi.ru/TaskRabbit по UX.
 - **После Sprint 33** (~8 недель) — полноценное web-приложение, не растянутое mobile.
 
-### 🚀 Следующий шаг — Sprint 31
+### 🚀 Следующий шаг — Sprint 31.5 или 33.5 (на выбор)
 
-**Master full edit + radius map** (P3, 2-4 дня). Закрывает 2🔴 + 2🟡 из `profile.md`. Что делать:
+Sprint 31.5 — **`master_services` + radius**:
+1. Миграция `0024_master_services.sql` — таблица `master_services (id, master_id FK, title, price_min, price_max, unit enum, created_at, updated_at)` + RLS (own CRUD).
+2. CRUD-блок в `edit-master.tsx` (список + add-bottom-sheet + delete swipe).
+3. `react-native-maps` подключение либо OSM/Yandex tile-картинка для radius preview.
 
-1. **Поля контактов** в edit-master.tsx: телефон (отдельно от auth), WhatsApp, кнопка «Скопировать» рядом.
-2. **`master_services` — отдельная таблица** (нормальная форма, решение пользователя 2026-05-12). Миграция + CRUD-блок в edit (название услуги + цена + единица).
-3. **Радиус выезда: слайдер + мини-карта** с radius-circle (Яндекс.Услуги pattern). ⚠️ Открытый вопрос: `react-native-maps` подключён? Если нет — будет статичная карта-картинка от Yandex/OSM tile.
-4. **Char-counter для bio**, Cancel/Done + dirty-check.
+Sprint 33.5 — **полный Web Shell**:
+1. `<WebShell>` компонент с top-nav (logo + ссылки + theme-toggle + avatar) на `Platform.OS === "web" && width >= 768`.
+2. Chats split-layout на desktop (sidebar+main).
+3. Max-width контейнер 1120px.
+4. Hover/focus-ring через NativeWind `web:` префикс.
 
 ### Решённые открытые вопросы
 

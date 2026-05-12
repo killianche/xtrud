@@ -13,6 +13,7 @@ import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import {
   ActivityIndicator,
+  Alert,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -52,7 +53,7 @@ export default function EditMasterScreen() {
     control,
     handleSubmit,
     reset,
-    formState: { errors, isValid },
+    formState: { errors, isValid, isDirty },
   } = useForm<MasterProfileFormValues>({
     resolver: zodResolver(masterProfileSchema),
     defaultValues: {
@@ -107,7 +108,20 @@ export default function EditMasterScreen() {
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Назад"
-          onPress={() => router.back()}
+          onPress={() => {
+            if (isDirty && !isBusy) {
+              Alert.alert("Есть несохранённые изменения", "Выйти без сохранения?", [
+                { text: "Остаться", style: "cancel" },
+                {
+                  text: "Выйти",
+                  style: "destructive",
+                  onPress: () => router.back(),
+                },
+              ]);
+              return;
+            }
+            router.back();
+          }}
           hitSlop={12}
           className="h-10 w-10 items-center justify-center rounded-full active:opacity-70"
         >
@@ -170,10 +184,12 @@ export default function EditMasterScreen() {
           <View className="mt-8 px-6">
             <Pressable
               accessibilityRole="button"
-              disabled={!isValid || isBusy || !cities}
+              disabled={!isValid || !isDirty || isBusy || !cities}
               onPress={onSubmit}
               className={`h-12 items-center justify-center rounded-md ${
-                isValid && !isBusy && cities ? "bg-primary active:opacity-80" : "bg-surface-3"
+                isValid && isDirty && !isBusy && cities
+                  ? "bg-primary active:opacity-80"
+                  : "bg-surface-3"
               }`}
             >
               <AppText weight="semibold" className="text-button text-on-primary">

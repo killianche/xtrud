@@ -119,39 +119,49 @@ export function MasterProfileFormBody({
         />
       </View>
 
-      {/* Bio */}
+      {/* Bio с char-counter */}
       <View className="mt-6 px-6">
         <Controller
           control={control}
           name="bio"
-          render={({ field: { value, onChange, onBlur } }) => (
-            <View>
-              <AppText weight="medium" className="text-caption text-muted">
-                О себе (опц., до 500 символов)
-              </AppText>
-              <TextInput
-                value={value ?? ""}
-                onBlur={onBlur}
-                onChangeText={onChange}
-                placeholder="Опыт в стройке от фундамента до кровли..."
-                placeholderTextColor={mutedSoftColor}
-                multiline
-                numberOfLines={4}
-                maxLength={500}
-                textAlignVertical="top"
-                maxFontSizeMultiplier={1.3}
-                className={`mt-2 min-h-24 rounded-md border bg-canvas px-3 py-3 text-body-md text-ink ${
-                  errors.bio ? "border-error" : "border-hairline"
-                }`}
-                editable={!isBusy}
-              />
-              {errors.bio && (
-                <AppText weight="medium" className="mt-2 text-caption text-error">
-                  {errors.bio.message}
-                </AppText>
-              )}
-            </View>
-          )}
+          render={({ field: { value, onChange, onBlur } }) => {
+            const len = (value ?? "").length;
+            return (
+              <View>
+                <View className="flex-row items-center justify-between">
+                  <AppText weight="medium" className="text-caption text-muted">
+                    О себе (опц.)
+                  </AppText>
+                  <AppText
+                    className={`text-caption-xs ${len > 450 ? "text-warning" : "text-muted-soft"}`}
+                  >
+                    {len} / 500
+                  </AppText>
+                </View>
+                <TextInput
+                  value={value ?? ""}
+                  onBlur={onBlur}
+                  onChangeText={onChange}
+                  placeholder="Опыт в стройке от фундамента до кровли..."
+                  placeholderTextColor={mutedSoftColor}
+                  multiline
+                  numberOfLines={4}
+                  maxLength={500}
+                  textAlignVertical="top"
+                  maxFontSizeMultiplier={1.3}
+                  className={`mt-2 min-h-24 rounded-md border bg-canvas px-3 py-3 text-body-md text-ink ${
+                    errors.bio ? "border-error" : "border-hairline"
+                  }`}
+                  editable={!isBusy}
+                />
+                {errors.bio && (
+                  <AppText weight="medium" className="mt-2 text-caption text-error">
+                    {errors.bio.message}
+                  </AppText>
+                )}
+              </View>
+            );
+          }}
         />
       </View>
 

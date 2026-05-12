@@ -28,8 +28,8 @@ import { ActivityIndicator, Pressable, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
 import { Avatar } from "@/components/Avatar";
+import { ReviewsSection } from "@/features/master-view/ReviewsSection";
 import {
-  type ReviewWithAuthor,
   useMasterCategoriesPublic,
   useMasterPublicProfile,
   useReviewsForTarget,
@@ -236,33 +236,7 @@ export default function MasterPublicScreen() {
             )}
 
             {/* Reviews */}
-            <View className="mt-8 px-6">
-              <AppText weight="semibold" className="text-title-lg text-ink">
-                Отзывы {reviews.data && reviews.data.length > 0 ? `(${reviews.data.length})` : ""}
-              </AppText>
-
-              {reviews.isLoading && (
-                <View className="mt-4 items-start">
-                  <ActivityIndicator />
-                </View>
-              )}
-
-              {!reviews.isLoading && (reviews.data?.length ?? 0) === 0 && (
-                <View className="mt-4 rounded-md bg-surface-2 px-4 py-6">
-                  <AppText className="text-center text-body-sm text-muted">
-                    У мастера ещё нет отзывов.
-                  </AppText>
-                </View>
-              )}
-
-              {(reviews.data?.length ?? 0) > 0 && (
-                <View className="mt-4 gap-4">
-                  {reviews.data?.map((r) => (
-                    <ReviewRow key={r.id} review={r} />
-                  ))}
-                </View>
-              )}
-            </View>
+            <ReviewsSection title="Отзывы" emptyText="У мастера ещё нет отзывов." query={reviews} />
           </>
         )}
       </ScrollView>
@@ -281,63 +255,6 @@ function StatChip({ icon, label }: { icon: React.ReactNode; label: string }) {
       </AppText>
     </View>
   );
-}
-
-function ReviewRow({ review }: { review: ReviewWithAuthor }) {
-  const authorName =
-    [review.author?.first_name, review.author?.last_name].filter(Boolean).join(" ") || "Клиент";
-
-  return (
-    <View className="border-hairline-soft border-b pb-4">
-      <View className="flex-row items-start gap-3">
-        <Avatar
-          url={review.author?.avatar_url ?? null}
-          name={authorName}
-          seed={review.author?.id ?? review.author_id}
-          size="sm"
-        />
-        <View className="flex-1">
-          <View className="flex-row items-center justify-between">
-            <AppText weight="semibold" className="text-body-md text-ink">
-              {authorName}
-            </AppText>
-            <AppText className="text-caption-xs text-muted">
-              {formatDate(review.created_at)}
-            </AppText>
-          </View>
-
-          <View className="mt-1 flex-row items-center gap-1.5">
-            <View className="flex-row">
-              {[1, 2, 3, 4, 5].map((n) => (
-                <Star
-                  key={n}
-                  size={12}
-                  strokeWidth={2}
-                  color={n <= review.rating ? "#f59e0b" : "#e5e7eb"}
-                  fill={n <= review.rating ? "#f59e0b" : "transparent"}
-                />
-              ))}
-            </View>
-            {review.l2?.name_ru && (
-              <AppText className="text-caption-xs text-muted">· {review.l2.name_ru}</AppText>
-            )}
-          </View>
-
-          {review.text && <AppText className="mt-2 text-body-sm text-body">{review.text}</AppText>}
-        </View>
-      </View>
-    </View>
-  );
-}
-
-function formatDate(iso: string): string {
-  const d = new Date(iso);
-  const formatter = new Intl.DateTimeFormat("ru-RU", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  });
-  return formatter.format(d);
 }
 
 function pluralizeReviews(count: number): string {

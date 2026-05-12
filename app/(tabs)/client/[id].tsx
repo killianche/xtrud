@@ -18,6 +18,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
 import { Avatar } from "@/components/Avatar";
 import { useClientPublicProfile } from "@/features/client-view/use-client-public";
+import { ReviewsSection } from "@/features/master-view/ReviewsSection";
 import { useReviewsForTarget } from "@/features/master-view/use-master-public";
 import { usePullToRefresh } from "@/hooks/use-pull-to-refresh";
 
@@ -143,79 +144,11 @@ export default function ClientPublicScreen() {
             </View>
 
             {/* Reviews */}
-            <View className="mt-8 px-6">
-              <AppText weight="semibold" className="text-title-lg text-ink">
-                Отзывы мастеров{" "}
-                {reviews.data && reviews.data.length > 0 ? `(${reviews.data.length})` : ""}
-              </AppText>
-
-              {reviews.isLoading && (
-                <View className="mt-4 items-start">
-                  <ActivityIndicator />
-                </View>
-              )}
-
-              {!reviews.isLoading && (reviews.data?.length ?? 0) === 0 && (
-                <View className="mt-4 rounded-md bg-surface-2 px-4 py-6">
-                  <AppText className="text-center text-body-sm text-muted">
-                    Пока никто не оставил отзыв.
-                  </AppText>
-                </View>
-              )}
-
-              {(reviews.data?.length ?? 0) > 0 && (
-                <View className="mt-4 gap-4">
-                  {reviews.data?.map((r) => {
-                    const authorName =
-                      [r.author?.first_name, r.author?.last_name].filter(Boolean).join(" ") ||
-                      "Мастер";
-                    return (
-                      <View key={r.id} className="border-hairline-soft border-b pb-4">
-                        <View className="flex-row items-start gap-3">
-                          <Avatar
-                            url={r.author?.avatar_url ?? null}
-                            name={authorName}
-                            seed={r.author?.id ?? r.author_id}
-                            size="sm"
-                          />
-                          <View className="flex-1">
-                            <View className="flex-row items-center justify-between">
-                              <AppText weight="semibold" className="text-body-md text-ink">
-                                {authorName}
-                              </AppText>
-                              <AppText className="text-caption-xs text-muted">
-                                {formatDate(r.created_at)}
-                              </AppText>
-                            </View>
-                            <View className="mt-1 flex-row items-center gap-1.5">
-                              <View className="flex-row">
-                                {[1, 2, 3, 4, 5].map((n) => (
-                                  <Star
-                                    key={n}
-                                    size={12}
-                                    strokeWidth={2}
-                                    color={n <= r.rating ? "#f59e0b" : "#e5e7eb"}
-                                    fill={n <= r.rating ? "#f59e0b" : "transparent"}
-                                  />
-                                ))}
-                              </View>
-                              {r.l2?.name_ru && (
-                                <AppText className="text-caption-xs text-muted">
-                                  · {r.l2.name_ru}
-                                </AppText>
-                              )}
-                            </View>
-                            {r.text && (
-                              <AppText className="mt-2 text-body-sm text-body">{r.text}</AppText>
-                            )}
-                          </View>
-                        </View>
-                      </View>
-                    );
-                  })}
-                </View>
-              )}
-            </View>
+            <ReviewsSection
+              title="Отзывы мастеров"
+              emptyText="Пока никто не оставил отзыв."
+              query={reviews}
+            />
           </>
         )}
       </ScrollView>
@@ -224,14 +157,6 @@ export default function ClientPublicScreen() {
 }
 
 // ----------------------------------------------------------------------------
-
-function formatDate(iso: string): string {
-  return new Intl.DateTimeFormat("ru-RU", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  }).format(new Date(iso));
-}
 
 function formatJoinDate(iso: string): string {
   return new Intl.DateTimeFormat("ru-RU", {

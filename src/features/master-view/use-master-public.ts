@@ -11,9 +11,11 @@
  * и тот же набор данных.
  */
 
-import { useQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import type { Tables } from "@/types/database";
+
+const REVIEWS_PAGE_SIZE = 20;
 
 export type MasterPublicProfile = {
   user: Pick<
@@ -111,15 +113,23 @@ export type ReviewWithAuthor = Tables<"reviews"> & {
   l2: Pick<Tables<"categories_l2">, "id" | "name_ru"> | null;
 };
 
+type ReviewsPage = { rows: ReviewWithAuthor[]; nextCursor: string | null };
+
+/**
+ * Видимые отзывы на target_id, keyset pagination по created_at DESC.
+ * Возвращает useInfiniteQuery — caller использует `data.pages.flatMap(p => p.rows)`
+ * и `fetchNextPage` / `hasNextPage` для UI кнопки «Показать ещё».
+ */
 export function useReviewsForTarget(
   targetId: string | null | undefined,
   direction: Tables<"reviews">["direction"] = "client_to_master",
 ) {
-  return useQuery<ReviewWithAuthor[]>({
+  return useInfiniteQuery<ReviewsPage>({
     queryKey: ["reviews-for-target", targetId, direction],
-    queryFn: async () => {
-      if (!targetId) return [];
-      const { data, error } = await supabase
+    initialPageParam: null as string | null,
+    queryFn: async ({ pageParam }) => {
+      if (!targetId) return { rows: [], nextCursor: null };
+      let q = supabase
         .from("reviews")
         .select(
           "*, author:users!reviews_author_id_fkey(id, first_name, last_name, avatar_url), l2:categories_l2(id, name_ru)",
@@ -128,10 +138,18 @@ export function useReviewsForTarget(
         .eq("direction", direction)
         .eq("status", "visible")
         .order("created_at", { ascending: false })
-        .limit(50);
+        .limit(REVIEWS_PAGE_SIZE);
+      if (typeof pageParam === "string") {
+        q = q.lt("created_at", pageParam);
+      }
+      const { data, error } = await q;
       if (error) throw error;
-      return (data as ReviewWithAuthor[] | null) ?? [];
+      const rows = (data as ReviewWithAuthor[] | null) ?? [];
+      const last = rows[rows.length - 1];
+      const nextCursor = rows.length === REVIEWS_PAGE_SIZE ? (last?.created_at ?? null) : null;
+      return { rows, nextCursor };
     },
+    getNextPageParam: (last) => last.nextCursor,
     enabled: !!targetId,
     staleTime: 30_000,
   });

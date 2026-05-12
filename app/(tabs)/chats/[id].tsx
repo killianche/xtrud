@@ -12,6 +12,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
+import { OrderStatusBadge, type OrderStatusValue } from "@/components/OrderStatusBadge";
 import { useAuthSession } from "@/features/auth/use-auth-session";
 import {
   type ChatMessage,
@@ -117,11 +118,16 @@ export default function ChatThreadScreen() {
           >
             {partnerName}
           </AppText>
-          {chat?.order?.title && (
-            <AppText className="text-caption text-muted" numberOfLines={1}>
-              {chat.order.title}
-            </AppText>
-          )}
+          <View className="mt-0.5 flex-row items-center gap-2">
+            {chat?.order?.status && (
+              <OrderStatusBadge status={chat.order.status as OrderStatusValue} />
+            )}
+            {chat?.order?.title && (
+              <AppText className="flex-1 text-caption text-muted" numberOfLines={1}>
+                {chat.order.title}
+              </AppText>
+            )}
+          </View>
         </Pressable>
       </View>
 

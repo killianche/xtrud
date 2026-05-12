@@ -6,6 +6,16 @@
 
 ## Текущее состояние
 
+**Sprint 27 закрыт — Order status visibility + cancel (P2).**
+
+Что вошло:
+- **`<OrderStatusBadge>` подключён везде:** `OrderRow` (в шапке карточки рядом с категорией), `orders/[id].tsx` (size="md" в шапке детали заказа), `chats/[id].tsx` (header чата — контекст заказа).
+- **Кнопка «Отменить заказ»** в `orders/[id].tsx` — MoreVertical (⋮) в шапке, Alert.alert confirm. Видна только владельцу заказа когда статус ∈ {open, in_progress}. Использует существующий `useCancelOrder` (RLS T2/T6).
+- **Звёзды-рейтинг → Lucide `<Star fill>`** — 4 места в orders/[id].tsx (read-only myReview ×2 + interactive setRating ×2). Цвет через токен `tc.warning`, неактивные — `tc["muted-soft"]` с `fill="transparent"`.
+- **OrderRow расширен `status` prop** — передаётся из всех мест использования. Master feed жёстко передаёт `"open"` (use-master-feed фильтрует по этому статусу).
+
+Проверки: `tsc --noEmit` ✅, `biome check` ✅ (121 файл), `vitest` 47/47 ✅.
+
 **Sprint 26 закрыт — Order create wizard (P1).**
 
 Что вошло:
@@ -96,14 +106,15 @@
 - **После Sprint 31** (~6 недель) — конкурент Profi.ru/TaskRabbit по UX.
 - **После Sprint 33** (~8 недель) — полноценное web-приложение, не растянутое mobile.
 
-### 🚀 Следующий шаг — Sprint 27
+### 🚀 Следующий шаг — Sprint 28
 
-**Order status visibility + cancel** (P2, 2-3 дня). Закрывает 2🔴 + 3🟡 из `orders.md`. Что делать:
+**Chat context + базовая гигиена мессенджера** (P2, 2-3 дня). Закрывает 1🔴 + 4🟡 из `chats.md`. Что делать:
 
-1. Подключить `<OrderStatusBadge>` (готов с Sprint 23) везде: `orders/index.tsx`, `orders/[id].tsx`, `OrderRow`, header чата.
-2. **Кнопка «Отменить заказ»** в `orders/[id].tsx` через kebab-меню (⋮) + bottom-sheet confirm. Видна если status ∈ {open, in_progress} — state-machine T2/T6.
-3. Звёзды-рейтинг: текстовый `★` → Lucide `<Star fill>`.
-4. Минорно: bg-accent на TabPill счётчике → нейтральный фон.
+1. **Inbox карточка** (`chats/index.tsx`): аватар 48px собеседника слева, status-badge заказа на карточке, превью последнего сообщения, время.
+2. **Header чата** (уже частично сделан в Sprint 27): добавить тап по shape → открыть карточку заказа.
+3. **Date-separator** «Сегодня / Вчера / 5 мая» между группами сообщений.
+4. **Group-by-sender** — последовательные сообщения от одного человека группируются (один аватар вверху).
+5. **Аватары собеседника в треде** (сейчас только буква).
 
 ### Решённые открытые вопросы
 

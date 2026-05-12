@@ -1,10 +1,18 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { ChevronLeft, MapPin, MessageSquare, Pencil, Star } from "lucide-react-native";
+import {
+  ChevronLeft,
+  MapPin,
+  MessageSquare,
+  MoreVertical,
+  Pencil,
+  Star,
+} from "lucide-react-native";
 import { useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import {
   ActivityIndicator,
+  Alert,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -16,6 +24,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { z } from "zod";
 import { AppText } from "@/components/AppText";
 import { Avatar } from "@/components/Avatar";
+import { OrderStatusBadge } from "@/components/OrderStatusBadge";
 import { useAuthSession } from "@/features/auth/use-auth-session";
 import { useUserRecord } from "@/features/auth/use-user-record";
 import {
@@ -69,7 +78,7 @@ export default function OrderDetailScreen() {
 
   const isOwner = !!userId && !!order && order.client_id === userId;
   const isMasterRole = user?.active_role === "master";
-  const tc = useThemeColors(["ink", "muted-soft"]);
+  const tc = useThemeColors(["ink", "muted-soft", "body"]);
 
   // Sprint 12.3 — при open order detail (если owner) помечаем отклики просмотренными.
   const markResponsesViewed = useMarkResponsesViewed(userId);
@@ -109,17 +118,56 @@ export default function OrderDetailScreen() {
         >
           <ChevronLeft size={24} strokeWidth={1.75} color={tc.ink} />
         </Pressable>
-        {isOwner && order?.status === "open" && id && (
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Редактировать заказ"
-            onPress={() => router.push(`/orders/edit/${id}` as never)}
-            hitSlop={12}
-            className="h-10 w-10 items-center justify-center rounded-full bg-surface-2 active:opacity-70"
-          >
-            <Pencil size={16} strokeWidth={1.75} color="#374151" />
-          </Pressable>
-        )}
+        <View className="flex-row items-center gap-2">
+          {order && <OrderStatusBadge status={order.status} size="md" />}
+          {isOwner && order?.status === "open" && id && (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Редактировать заказ"
+              onPress={() => router.push(`/orders/edit/${id}` as never)}
+              hitSlop={12}
+              className="h-10 w-10 items-center justify-center rounded-full bg-surface-2 active:opacity-70"
+            >
+              <Pencil size={16} strokeWidth={1.75} color={tc.body} />
+            </Pressable>
+          )}
+          {isOwner &&
+            order &&
+            (order.status === "open" || order.status === "in_progress") &&
+            id &&
+            userId && (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Действия с заказом"
+                onPress={() => {
+                  // T2/T6 cancel: open/in_progress → cancelled. RLS uses auth.uid()=client_id.
+                  Alert.alert(
+                    "Отменить заказ?",
+                    "Отменённый заказ нельзя восстановить. Мастера больше не смогут откликнуться.",
+                    [
+                      { text: "Назад", style: "cancel" },
+                      {
+                        text: "Отменить заказ",
+                        style: "destructive",
+                        onPress: () => {
+                          cancelOrder.mutate(
+                            { orderId: id, clientId: userId },
+                            {
+                              onError: (e) => Alert.alert("Не удалось отменить", e.message),
+                            },
+                          );
+                        },
+                      },
+                    ],
+                  );
+                }}
+                hitSlop={12}
+                className="h-10 w-10 items-center justify-center rounded-full bg-surface-2 active:opacity-70"
+              >
+                <MoreVertical size={18} strokeWidth={1.75} color={tc.body} />
+              </Pressable>
+            )}
+        </View>
       </View>
 
       {isLoading && (
@@ -850,7 +898,7 @@ function ClientReviewSection({ orderId, clientId, masterId, l2Id }: ClientReview
   const submitReview = useSubmitReview();
   const [rating, setRating] = useState<number>(0);
   const [text, setText] = useState("");
-  const tc = useThemeColors(["muted-soft"]);
+  const tc = useThemeColors(["muted-soft", "warning"]);
 
   if (isLoading) return null;
 
@@ -862,15 +910,18 @@ function ClientReviewSection({ orderId, clientId, masterId, l2Id }: ClientReview
         </AppText>
         <View className="mt-3 rounded-lg border border-hairline bg-surface-2 p-4">
           <View className="flex-row gap-1">
-            {[1, 2, 3, 4, 5].map((s) => (
-              <AppText
-                key={s}
-                weight="bold"
-                className={s <= myReview.rating ? "text-warning" : "text-muted-soft"}
-              >
-                ★
-              </AppText>
-            ))}
+            {[1, 2, 3, 4, 5].map((s) => {
+              const filled = s <= myReview.rating;
+              return (
+                <Star
+                  key={s}
+                  size={18}
+                  strokeWidth={1.75}
+                  color={filled ? tc.warning : tc["muted-soft"]}
+                  fill={filled ? tc.warning : "transparent"}
+                />
+              );
+            })}
           </View>
           {myReview.text && (
             <AppText className="mt-2 text-body-sm text-body">{myReview.text}</AppText>
@@ -920,12 +971,12 @@ function ClientReviewSection({ orderId, clientId, masterId, l2Id }: ClientReview
             hitSlop={4}
             className="active:opacity-70"
           >
-            <AppText
-              weight="bold"
-              className={`text-display-md ${s <= rating ? "text-warning" : "text-muted-soft"}`}
-            >
-              ★
-            </AppText>
+            <Star
+              size={36}
+              strokeWidth={1.75}
+              color={s <= rating ? tc.warning : tc["muted-soft"]}
+              fill={s <= rating ? tc.warning : "transparent"}
+            />
           </Pressable>
         ))}
       </View>
@@ -982,7 +1033,7 @@ function MasterReviewSection({ orderId, masterId, clientId, l2Id }: MasterReview
   const submitReview = useSubmitReview();
   const [rating, setRating] = useState<number>(0);
   const [text, setText] = useState("");
-  const tc = useThemeColors(["muted-soft"]);
+  const tc = useThemeColors(["muted-soft", "warning"]);
 
   if (isLoading) return null;
 
@@ -994,15 +1045,18 @@ function MasterReviewSection({ orderId, masterId, clientId, l2Id }: MasterReview
         </AppText>
         <View className="mt-3 rounded-lg border border-hairline bg-surface-2 p-4">
           <View className="flex-row gap-1">
-            {[1, 2, 3, 4, 5].map((s) => (
-              <AppText
-                key={s}
-                weight="bold"
-                className={s <= myReview.rating ? "text-warning" : "text-muted-soft"}
-              >
-                ★
-              </AppText>
-            ))}
+            {[1, 2, 3, 4, 5].map((s) => {
+              const filled = s <= myReview.rating;
+              return (
+                <Star
+                  key={s}
+                  size={18}
+                  strokeWidth={1.75}
+                  color={filled ? tc.warning : tc["muted-soft"]}
+                  fill={filled ? tc.warning : "transparent"}
+                />
+              );
+            })}
           </View>
           {myReview.text && (
             <AppText className="mt-2 text-body-sm text-body">{myReview.text}</AppText>
@@ -1052,12 +1106,12 @@ function MasterReviewSection({ orderId, masterId, clientId, l2Id }: MasterReview
             hitSlop={4}
             className="active:opacity-70"
           >
-            <AppText
-              weight="bold"
-              className={`text-display-md ${s <= rating ? "text-warning" : "text-muted-soft"}`}
-            >
-              ★
-            </AppText>
+            <Star
+              size={36}
+              strokeWidth={1.75}
+              color={s <= rating ? tc.warning : tc["muted-soft"]}
+              fill={s <= rating ? tc.warning : "transparent"}
+            />
           </Pressable>
         ))}
       </View>

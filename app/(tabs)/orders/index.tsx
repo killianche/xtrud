@@ -100,6 +100,7 @@ function ClientOrdersView({ userId }: ClientOrdersViewProps) {
                 urgency={o.urgency}
                 responsesCount={o.responses_count}
                 createdAt={o.created_at}
+                status={o.status}
                 onPress={() => router.push(`/(tabs)/orders/${o.id}` as never)}
               />
             ))}
@@ -414,6 +415,8 @@ function NewOrdersTab({
           urgency={o.urgency}
           responsesCount={o.responses_count}
           createdAt={o.created_at}
+          // Master feed показывает только status='open' (см. use-master-feed).
+          status="open"
           onPress={() => onOrderPress(o.id)}
         />
       ))}
@@ -477,6 +480,7 @@ function RespondedTab({ responses, isLoading, onOrderPress }: RespondedTabProps)
           urgency={order.urgency}
           responsesCount={order.responses_count}
           createdAt={response.created_at}
+          status={order.status}
           onPress={() => onOrderPress(order.id)}
         />
       ))}
@@ -523,6 +527,7 @@ function AssignedTab({ orders, isLoading, onOrderPress }: AssignedTabProps) {
           urgency={o.urgency}
           responsesCount={o.responses_count}
           createdAt={o.created_at}
+          status={o.status}
           onPress={() => onOrderPress(o.id)}
         />
       ))}

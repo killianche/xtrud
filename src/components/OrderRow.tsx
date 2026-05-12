@@ -4,6 +4,7 @@
 import { MapPin } from "lucide-react-native";
 import { Pressable, View } from "react-native";
 import { AppText } from "@/components/AppText";
+import { OrderStatusBadge, type OrderStatusValue } from "@/components/OrderStatusBadge";
 import { urgencyLabel } from "@/features/orders/order-schema";
 import type { OrderUrgency } from "@/features/orders/use-create-order";
 import { useThemeColor } from "@/lib/use-theme-color";
@@ -17,6 +18,7 @@ export interface OrderRowProps {
   urgency: OrderUrgency;
   responsesCount: number;
   createdAt: string;
+  status?: OrderStatusValue;
   onPress?: () => void;
 }
 
@@ -51,12 +53,15 @@ export function OrderRow(props: OrderRowProps) {
       onPress={props.onPress}
       className="rounded-lg border border-hairline bg-canvas p-4 active:opacity-70"
     >
-      {/* Категория chip + время */}
-      <View className="flex-row items-center justify-between">
-        <View className="self-start rounded-pill bg-surface-2 px-3 py-1">
-          <AppText weight="medium" className="text-caption-xs text-body">
-            {props.categoryName}
-          </AppText>
+      {/* Категория chip + статус + время */}
+      <View className="flex-row items-center justify-between gap-2">
+        <View className="flex-1 flex-row items-center gap-2">
+          <View className="rounded-pill bg-surface-2 px-3 py-1">
+            <AppText weight="medium" className="text-caption-xs text-body">
+              {props.categoryName}
+            </AppText>
+          </View>
+          {props.status && <OrderStatusBadge status={props.status} />}
         </View>
         <AppText className="text-caption-xs text-muted-soft">{timeAgo(props.createdAt)}</AppText>
       </View>

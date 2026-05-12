@@ -9,6 +9,7 @@
 // Если выключено — signInAnonymously() вернёт error "Anonymous sign-ins are disabled".
 // Это обрабатывается в use-auth-mutations с понятным сообщением.
 
+import { unregisterCurrentPushToken } from "@/features/notifications/use-register-push-token";
 import { supabase } from "./supabase";
 
 /**
@@ -58,9 +59,13 @@ export async function signInAnonymouslyWithPhone(
 }
 
 /**
- * Logout — обнуляет сессию.
+ * Logout — снимает push-токен этого устройства, затем обнуляет сессию.
+ *
+ * Порядок важен: токен удаляется ДО auth.signOut, пока ещё есть auth.uid()
+ * (RLS notification_tokens требует владельца).
  */
 export async function signOut(): Promise<{ ok: true } | { ok: false; error: string }> {
+  await unregisterCurrentPushToken();
   const { error } = await supabase.auth.signOut();
   if (error) return { ok: false, error: error.message };
   return { ok: true };

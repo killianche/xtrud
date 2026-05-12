@@ -398,6 +398,44 @@ export type Database = {
           },
         ];
       };
+      notification_tokens: {
+        Row: {
+          created_at: string;
+          device_name: string | null;
+          expo_token: string;
+          id: string;
+          platform: string;
+          updated_at: string;
+          user_id: string;
+        };
+        Insert: {
+          created_at?: string;
+          device_name?: string | null;
+          expo_token: string;
+          id?: string;
+          platform: string;
+          updated_at?: string;
+          user_id: string;
+        };
+        Update: {
+          created_at?: string;
+          device_name?: string | null;
+          expo_token?: string;
+          id?: string;
+          platform?: string;
+          updated_at?: string;
+          user_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "notification_tokens_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       order_responses: {
         Row: {
           created_at: string;
@@ -798,6 +836,15 @@ export type Database = {
           p_has_transport: boolean;
           p_last_name: string;
           p_service_radius_km: number;
+        };
+        Returns: undefined;
+      };
+      notify_user: {
+        Args: {
+          p_body: string;
+          p_data?: Json;
+          p_title: string;
+          p_user_id: string;
         };
         Returns: undefined;
       };

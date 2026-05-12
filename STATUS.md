@@ -6,11 +6,11 @@
 
 ## Текущее состояние
 
-**Sprint 8 в работе.** Закрыты 8.1–8.5: фото-инфра, аватары/портфолио, master public view, двунаправленный рейтинг, редактирование заказа. Клиент может править заказ через Pencil-иконку в шапке (доступна только при `status='open'`); при `in_progress` и далее экран показывает «Заказ нельзя редактировать после принятия отклика». Форма создания и редактирования теперь общий компонент `OrderFormBody`.
+**Sprint 8 в работе.** Закрыты 8.1–8.6: фото-инфра, аватары/портфолио, master public view, двунаправленный рейтинг, редактирование заказа, push-уведомления. E2E push: новый отклик → клиенту, выбор мастера → мастеру, новое сообщение → партнёру. Триггеры в БД → pg_net.http_post → edge function `notify` → Expo Push API. Shared secret в Vault.
 
-**База:** 16 миграций, 14 таблиц с RLS + 2 Storage bucket, 4 RPC, 8 trigger functions, 17 enums.
+**База:** 18 миграций, 15 таблиц с RLS + 2 Storage bucket, 5 RPC (включая `notify_user`), 11 trigger functions, 17 enums, 1 edge function (`notify`).
 
-**Дальше в sprint 8:** 8.6 (Expo Push) → 8.7 (фото категорий) → 8.8 (EAS dev-build).
+**Дальше в sprint 8:** 8.7 (фото категорий) → 8.8 (EAS dev-build).
 
 ---
 
@@ -119,7 +119,8 @@ xtrud/
 - [x] **2026-05-11** — **2.3** Main client screen (commit `5d394c8`): `useVisibleCategories` для 26 L2, `CategoryTile` компонент с iconMap (~50 lucide icons), grid 2/3/4-кол. адаптивный, ScrollView без виртуализации, loading/error/empty states, header с приветствием по first_name + role badge + signOut. **Без атмосферных фото — sprint 4+.**
 
 ### Sprint 8 (photo infra + master profile public view + dual reviews)
-- [x] **2026-05-12** — **8.5** Order edit для client'а (commit pending): новый экран `app/(tabs)/orders/edit/[id].tsx`. Доступен только владельцу заказа при `status='open'`; иначе показывает explanation-screen («после принятия отклика нельзя редактировать»). Pencil-иконка в шапке `orders/[id].tsx` — отображается условно (isOwner && status='open'). Extract: общий компонент `src/features/orders/OrderFormBody.tsx` с полями category/title/description/city/district/urgency/budget — теперь шарится между `new.tsx` и `edit/[id].tsx`. Hook `useUpdateOrder` — RLS `orders_update_own` уже разрешает (sprint 5.1 закладывал). Поле `lockCategory` в OrderFormBody подготовлено для будущего (если решим фризить категорию у редактирования — пока не активно). Никакой миграции, всё на существующих RLS.
+- [x] **2026-05-12** — **8.6** Push-уведомления через Expo Push (commit pending): migration 0017 — `pg_net` extension + `notification_tokens` table (user_id, expo_token UNIQUE, platform, device_name) с RLS owner-only. Migration 0018 — `vault.create_secret('notify_secret', ...)` (shared secret для DB↔Edge), helper function `public.notify_user(p_user_id, p_title, p_body, p_data)` SECURITY DEFINER вызывает edge function через pg_net.http_post с header `x-notify-secret`. 3 триггера: `messages_notify_recipient` (новое сообщение → партнёр), `order_responses_notify_owner` (новый отклик → клиент), `orders_notify_picked_master` (status=in_progress → выбранному мастеру). Все трое — AFTER INSERT/UPDATE, SECURITY DEFINER. Edge function `notify` (verify_jwt=false, v2): читает secret из vault.decrypted_secrets через service_role, проверяет `x-notify-secret`, грузит токены из notification_tokens, шлёт batch на `https://exp.host/--/api/v2/push/send`. Client: `expo-notifications 0.32.17` + `expo-device 8.0.10`, plugin в app.json (брендовый color #2563eb). `useRegisterPushToken(userId)` в AuthGate — запрашивает permission, получает Expo token через `getExpoPushTokenAsync()`, upsert по `expo_token` (UNIQUE) в БД. На signOut → `unregisterCurrentPushToken()` чистит row перед auth.signOut (порядок важен — после signOut RLS не пустит). `Notifications.setNotificationHandler` показывает push даже в foreground.
+- [x] **2026-05-12** — **8.5** Order edit для client'а (commit `4397d13`): новый экран `app/(tabs)/orders/edit/[id].tsx`. Доступен только владельцу заказа при `status='open'`; иначе показывает explanation-screen («после принятия отклика нельзя редактировать»). Pencil-иконка в шапке `orders/[id].tsx` — отображается условно (isOwner && status='open'). Extract: общий компонент `src/features/orders/OrderFormBody.tsx` с полями category/title/description/city/district/urgency/budget — теперь шарится между `new.tsx` и `edit/[id].tsx`. Hook `useUpdateOrder` — RLS `orders_update_own` уже разрешает (sprint 5.1 закладывал). Поле `lockCategory` в OrderFormBody подготовлено для будущего (если решим фризить категорию у редактирования — пока не активно). Никакой миграции, всё на существующих RLS.
 - [x] **2026-05-12** — **8.4** Двунаправленный рейтинг master↔client (commit `b5b1bb5`): migration 0016 — `recalc_master_rating` trigger function переписана с IF v_direction = 'client_to_master' / 'master_to_client'. Теперь обе стороны автоматически пересчитываются (master_profiles или users.rating_as_client_*). UI: новая `MasterReviewSection` — клон ClientReviewSection с direction='master_to_client' и текстами «Оцените клиента» / «Каким был клиент? Корректно ли описал задачу, оплатил вовремя?». Отображается под CompletionSection при `!isOwner && isMasterRole && status='completed' && picked_master_id===userId`. `OrderDetail` тип расширен — `client` JOIN теперь включает `avatar_url`, `rating_as_client_avg`, `rating_as_client_count`. В OrderInfoBlock пере-сделан блок «Заказчик» — теперь Avatar (sm) + имя + Star-рейтинг (если есть отзывы). Мастер до отклика видит репутацию клиента, как у Profi.
 - [x] **2026-05-12** — **8.3** Master public view `/master/[id]` (commit `0916da1`): новый экран `app/(tabs)/master/[id].tsx` (скрыт из таб-бара через `href:null`). Структура Profi/Thumbtack-style: hero (Avatar xl + имя + Role pill + Активен-badge + рейтинг с count + город) → stats chips (опыт, радиус, инструмент, транспорт) → bio → categories chips → portfolio grid (reuse `PortfolioGrid` без onDelete) → reviews list (Avatar sm автора, ★★★★★ строка + l2 категория, дата, текст). `src/features/master-view/use-master-public.ts`: `useMasterPublicProfile` (3 запроса users+master_profiles+cities), `useMasterCategoriesPublic` (JOIN на L2), `useReviewsForTarget(targetId, direction)` (JOIN author + l2, status='visible', desc 50). Корректные ru-склонения для отзывов/заказов/лет. Интеграция тапов: имя мастера в `ClientResponseRow` → push `/master/{master_id}`, шапка чата (если собеседник-мастер) → `/master/{chat.master_id}`. Линки accent-цветом для discoverability.
 - [x] **2026-05-12** — **8.2** Avatar + portfolio_items + /profile экран (commit `a757cf7`): migration 0015 — `portfolio_items` (id, master_id, url, storage_path, width, height, caption, sort_order, created_at, updated_at) с RLS (read public, owner-only writes) + trigger `check_portfolio_items_limit` (≤12) + индекс `(master_id, sort_order, created_at)`. Также length-CHECK на `users.avatar_url` (≤500, поле было в 0001). `src/features/profile/`: `use-my-portfolio` (read/add/delete + storage cleanup), `use-update-my-avatar` (full pipeline pick→upload→UPDATE→invalidate userRecord), `PortfolioGrid` (3-col grid с onDelete/onOpen, expo-image transition 150ms). Новый экран `app/(tabs)/profile.tsx` (скрыт из таб-бара через `href:null`): hero c аватаром (xl, edit-overlay, «убрать фото»), имя + role-pill + рейтинг (Star если есть отзывы) + город; master-only — ссылка на категории + portfolio-section с counter `n/12` и Add CTA с loading-state; «Выйти» внизу с confirm-Alert. Шапка Главной: avatar-кнопка (md) вместо LogOut → переход на /profile. TS типы регенерированы (portfolio_items появилась). Advisor: 0 новых lints.
@@ -160,7 +161,7 @@ xtrud/
 
 ## Что дальше (Sprint 8 — остаток)
 
-1. (next) **8.6 Push-уведомления Expo Push** — `expo-notifications` setup, миграция `notification_tokens` table (user_id, expo_token, platform), edge function `dispatch-push` для пересылки. DB triggers: на INSERT в `order_responses` (новый отклик клиенту), на UPDATE в `orders` (`picked_master_id` set → выбранному мастеру), на INSERT в `messages` (новое сообщение партнёру).
+1. (next) **8.7 Атмосферные фото категорий** — добавить bucket `category-covers` (или re-use portfolio с admin-namespace), seed-script для загрузки фото 26 visible L2 (1600×900), `categories_l1.cover_image_url` → `categories_l2.cover_image_url` (миграция). CategoryTile перейдёт на cover+overlay-gradient+лейбл вместо иконки на surface-2 (Sprint 2.3 trade-off закроется).
 3. **8.4 Master→client review** — расширить UI на `direction='master_to_client'`. Добавить `users.rating_avg numeric(2,1)` + trigger пересчёта. На странице клиента (отдельная задача) показывать его рейтинг.
 4. **8.5 Order edit для client'а** — UI редактирования заказа со `status='open'`. Reuse new.tsx логику.
 5. **8.6 Push-уведомления** — Expo Push для «новый отклик», «вас выбрали», «новое сообщение». DB trigger создаёт notifications row → edge function рассылает push.
@@ -184,6 +185,25 @@ xtrud/
 ---
 
 ## История ключевых решений
+
+### 2026-05-12 — Sprint 8.6: pg_net + edge function (а не Database Webhooks)
+**Выбрано:** DB triggers → `extensions.http_post` (pg_net) → edge function `notify` → Expo Push API.
+
+**Альтернатива (отброшена):** Supabase Database Webhooks (UI-driven). Это самый чистый паттерн, но конфигурация лежит вне миграций — невозможна через MCP, ломает версионирование инфраструктуры в git.
+
+**Trade-off:** pg_net.http_post fire-and-forget, без retry. Если edge function недоступна — push потерян. Приемлемо для уведомлений (не сообщений). Sprint 9+ — можно добавить outbox-таблицу + cron для гарантированной доставки.
+
+### 2026-05-12 — Sprint 8.6: shared secret в Vault, secret-value хардкод в миграции
+**Выбрано:** `vault.create_secret('xtrud-notify-...', 'notify_secret', ...)` через миграцию 0018. Edge function читает через `vault.decrypted_secrets` service_role-запросом. Trigger function читает аналогично, передаёт в header `x-notify-secret`.
+
+**Trade-off:** plain secret value сидит в файле миграции в git. Репозиторий private — допустимо для MVP. Перед публичным релизом — UPDATE vault.secrets WHERE name='notify_secret' через UI Dashboard.
+
+**Альтернатива (отброшена):** Edge Functions secrets (env var). UI-only. Не управляется через MCP. Та же проблема версионирования.
+
+### 2026-05-12 — Sprint 8.6: cancel push при signOut — best-effort
+**Выбрано:** `signOut()` сначала вызывает `unregisterCurrentPushToken()` (DELETE token row), потом `auth.signOut()`. Если первая операция упала — продолжаем, не блокируем выход.
+
+**Обоснование:** оставшийся token-row не критичен — при следующем login другого user'а UNIQUE-конфликт на `expo_token` обновит `user_id` через upsert. Просто гипотетический промежуток времени, когда чужие push идут на это устройство — минимизируется через сам процесс delete на signOut.
 
 ### 2026-05-12 — Sprint 8.4: один trigger function для обеих направлений рейтинга
 **Выбрано:** одна функция `recalc_master_rating` с условием `IF v_direction = 'client_to_master' THEN UPDATE master_profiles ELSIF 'master_to_client' THEN UPDATE users`.

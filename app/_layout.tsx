@@ -7,6 +7,7 @@ import {
   useFonts,
 } from "@expo-google-fonts/inter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import * as Notifications from "expo-notifications";
 import { Slot, useRouter, useSegments } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
@@ -15,6 +16,17 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import "react-native-reanimated";
 import { useAuthSession } from "@/features/auth/use-auth-session";
 import { useUserRecord } from "@/features/auth/use-user-record";
+import { useRegisterPushToken } from "@/features/notifications/use-register-push-token";
+
+// Глобальный handler — показывать push даже когда app в foreground.
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowBanner: true,
+    shouldShowList: true,
+    shouldPlaySound: true,
+    shouldSetBadge: false,
+  }),
+});
 
 // Не скрывать splash до загрузки шрифтов + резолва auth-сессии.
 SplashScreen.preventAutoHideAsync().catch(() => {
@@ -32,6 +44,9 @@ function AuthGate({ children }: { children: React.ReactNode }) {
   const { status, session } = useAuthSession();
   const userId = session?.user?.id;
   const { data: userRecord, isLoading: userLoading } = useUserRecord(userId);
+
+  // Регистрируем Expo push token для авторизованных пользователей.
+  useRegisterPushToken(userId ?? null);
 
   const segments = useSegments();
   const router = useRouter();

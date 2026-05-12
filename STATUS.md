@@ -6,7 +6,7 @@
 
 ## Текущее состояние
 
-**Sprint 14 в работе.** Закрыты 14.1 (Vitest setup) + 14.2 (CI test integration + shared pluralize lib + 14 тестов всего). Дубликаты `pluralizeReviews`/`pluralizeYears`/`pluralizeDeals`/`pluralizeCompleted`/`pluralizeServices` из 3 файлов сведены в `src/lib/pluralize.ts` с общей `pluralizeRu(count, forms)` функцией; покрыто 14 unit-тестов; CI теперь падает на failed tests.
+**Sprint 15 в работе.** Закрыты 15.1 (outcome prompt тесты) + 15.2 (responses sort: accepted → sent/viewed → rejected/withdrawn, тестируется). Vitest 28/28 зелёные.
 
 **База:** 23 миграции, 15 таблиц с RLS + 3 Storage bucket, 8 RPC, 12 trigger functions, 17 enums, 1 edge function.
 
@@ -120,8 +120,12 @@ xtrud/
 - [x] **2026-05-11** — **2.2** Role selection screen (commit `eb42338`): полноценный UI с 2 карточками (lucide Search/Briefcase), accessibilityState selected, accent-soft фон выбранной, CTA "Продолжить", error display. `useCompleteOnboarding` mutation обновляет `users.{is_master, active_role, onboarding_completed_at}` + invalidates query.
 - [x] **2026-05-11** — **2.3** Main client screen (commit `5d394c8`): `useVisibleCategories` для 26 L2, `CategoryTile` компонент с iconMap (~50 lucide icons), grid 2/3/4-кол. адаптивный, ScrollView без виртуализации, loading/error/empty states, header с приветствием по first_name + role badge + signOut. **Без атмосферных фото — sprint 4+.**
 
+### Sprint 15 (quality + UX)
+- [x] **2026-05-12** — **15.2** Sort откликов: picked → newest active → rejected (commit pending): новый `src/features/orders/sort-responses.ts` — pure generic `sortResponses<T extends {status; created_at}>(rows)`, STATUS_RANK таблица (accepted=0, sent/viewed=1, withdrawn/rejected=2), внутри одного ранга created_at DESC. Подключён в `useOrderResponses`. 5 unit-тестов покрывают edge cases + immutability контракт.
+- [x] **2026-05-12** — **15.1** Outcome prompt unit-тесты (commit `8bcbcf2`): `shouldShowOutcomePrompt` + `useOutcomeStore` вынесены в `outcome-store.ts` (zero RN imports), `OutcomeTrackingModal.tsx` теперь только UI + re-export. Inject-points `now` и `isDismissed` для детерминированных тестов с frozen-clock. 9 тестов покрывают все 7 guards + store dismissFor/isDismissed.
+
 ### Sprint 14 (quality)
-- [x] **2026-05-12** — **14.2** CI test integration + shared pluralize lib (commit pending): GitHub Actions workflow получил `npm test` шаг (Vitest). DRY-refactor: создан `src/lib/pluralize.ts` с базовой `pluralizeRu(count, forms)` + 5 готовых helpers (Reviews/Years/ClosedDeals/ClosedOrders/Services). Дублированные локальные функции удалены из master/[id], client/[id], category/[id]. `pluralize.test.ts` — 7 кейсов: edge cases с 11-14, 21, 101, exception periods. Total tests 14/14 зелёные.
+- [x] **2026-05-12** — **14.2** CI test integration + shared pluralize lib (commit `3447afb`): GitHub Actions workflow получил `npm test` шаг (Vitest). DRY-refactor: создан `src/lib/pluralize.ts` с базовой `pluralizeRu(count, forms)` + 5 готовых helpers (Reviews/Years/ClosedDeals/ClosedOrders/Services). Дублированные локальные функции удалены из master/[id], client/[id], category/[id]. `pluralize.test.ts` — 7 кейсов: edge cases с 11-14, 21, 101, exception periods. Total tests 14/14 зелёные.
 - [x] **2026-05-12** — **14.1** Vitest setup + первые unit-тесты (commit `7f98d58`): `vitest 4.1.6` поставлен как devDependency. `vitest.config.ts` с `environment: "node"`, `@`-alias, include `src/**/*.test.ts*`. npm scripts `test` и `test:watch`. Архитектурная правка: pure functions `isChatUnread` + `unreadChatsCount` вынесены в `src/features/chat/unread-helpers.ts` (zero RN imports), `use-my-chats.ts` re-export'ит для backward compatibility. Первый тестовый файл `unread-helpers.test.ts` — 7 кейсов: null last_message, NULL last_read для каждой роли, корректная роль-маркер выбора, edge case 0 chats. CI потребует `npm test` шаг — следующий шаг.
 
 ### Sprint 13 (badges parity)

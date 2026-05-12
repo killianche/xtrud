@@ -6,9 +6,11 @@
 
 ## Текущее состояние
 
-**Sprint 7 (chat + reviews + order completion) закрыт.** Полный жизненный цикл сделки покрыт кодом: клиент создаёт → мастер откликается → клиент принимает → автоматически создаётся чат через Realtime → стороны общаются → одна из сторон жмёт «Работа выполнена» → клиент оставляет отзыв → master_profiles.rating_overall_avg пересчитывается триггером. База: **12 миграций, 13 таблиц с RLS, 4 RPC, 7 trigger functions, 17 enums**. Bottom-tabs: «Главная / Заказы / Чаты». Anonymous Sign-Ins включён в Dashboard — flow работает E2E.
+**Sprint 8 в работе.** Закрыт 8.1 — фото-инфраструктура: 2 Storage buckets с RLS (`avatars` ≤2MB, `portfolio` ≤5MB), клиентский resize через expo-image-manipulator (avatar 512px / portfolio 1600px), ArrayBuffer-upload в Supabase, переиспользуемый `Avatar` компонент с инициалами-fallback и детерминированным цветом по seed. Все типовые pipelines (`pickResizeUploadAvatar` / `pickResizeUploadPortfolio`) — единая точка входа. Advisor security = 0 новых lints (старые pre-existing anonymous-warnings остались).
 
-**Готов к sprint 8** (real OTP / Telegram Login, photo uploads, master profile public view, EAS dev-build).
+**База:** 14 миграций, 13 таблиц с RLS + 2 Storage bucket, 4 RPC, 7 trigger functions, 17 enums.
+
+**Дальше в sprint 8:** 8.2 (avatar_url + portfolio_items таблица + UI в master-profile) → 8.3 (публичная страница /master/[id]) → 8.4 (master→client reviews) → 8.5 (order edit) → 8.6 (Expo Push) → 8.7 (фото категорий) → 8.8 (EAS dev-build).
 
 ---
 
@@ -116,6 +118,9 @@ xtrud/
 - [x] **2026-05-11** — **2.2** Role selection screen (commit `eb42338`): полноценный UI с 2 карточками (lucide Search/Briefcase), accessibilityState selected, accent-soft фон выбранной, CTA "Продолжить", error display. `useCompleteOnboarding` mutation обновляет `users.{is_master, active_role, onboarding_completed_at}` + invalidates query.
 - [x] **2026-05-11** — **2.3** Main client screen (commit `5d394c8`): `useVisibleCategories` для 26 L2, `CategoryTile` компонент с iconMap (~50 lucide icons), grid 2/3/4-кол. адаптивный, ScrollView без виртуализации, loading/error/empty states, header с приветствием по first_name + role badge + signOut. **Без атмосферных фото — sprint 4+.**
 
+### Sprint 8 (photo infra + master profile public view + dual reviews)
+- [x] **2026-05-12** — **8.1** Photo infrastructure (commit pending): migrations 0013 + 0014 — Storage buckets `avatars` (public, ≤2MB) и `portfolio` (public, ≤5MB) с RLS на `storage.objects`. Folder structure `{user_id}/...`. SELECT-policy узкий — листинг только своей папки (advisor lint 0025 `public_bucket_allows_listing` устранён). Чтение public-объектов идёт через прямой URL `/storage/v1/object/public/{bucket}/{path}`, RLS не вмешивается. `expo-image-picker` 17.0.11 поставлен, permissions в app.json (фото + камера, ru-копирайт). `src/lib/image-upload.ts`: AVATAR_PRESET 512px q0.82 jpeg / PORTFOLIO_PRESET 1600px q0.85 jpeg, `pickImage(aspect, title)` единая точка с Alert-actionsheet «Камера / Галерея / Отмена», `resizeImage` через ImageManipulator, `uploadImage` через ArrayBuffer (fetch().arrayBuffer()) — RN-safe против FormData bugs. Public URL отдаётся с `?v=<timestamp>` cache-bust. `useUploadAvatar(userId)` / `useUploadPortfolioImage(userId)` mutations — pick+resize+upload, БЕЗ обновления доменных таблиц (это уйдёт в 8.2). `Avatar` компонент: 5 размеров xs/sm/md/lg/xl, expo-image с transition 150ms, инициалы-fallback с детерминированной 8-цветовой пастельной палитрой (slate-800 текст, AA-контраст).
+
 ### Sprint 7 (chat + reviews + completion = E2E lifecycle)
 - [x] **2026-05-12** — **7.1** Migration 0011 chats + messages (commit `ebc4989`): tables `chats` (UNIQUE order_id, client_id + master_id) и `messages` (chat_id FK, sender_id, text 1-4000). 4 indexes. RLS: только участники. Trigger update_chat_last_message при INSERT message. **Расширен accept_response RPC** — теперь INSERT в chats ON CONFLICT DO NOTHING. ALTER PUBLICATION supabase_realtime — подписка на messages и chats для live-обновлений.
 - [x] **2026-05-12** — **7.2** Chat UI + Realtime (commit `5450e31`): hooks `useMyChats` (JOIN orders + users партнёр), `useChatMessages` + `useRealtimeChatMessages` (Supabase Realtime channel `chat:{id}` с postgres_changes INSERT, setQueryData с dedup), `useSendMessage`. Screens: `chats/index.tsx` (список с аватаром-инициалом + последняя активность), `chats/[id].tsx` (thread с MessageBubble, автоскролл, KeyboardAvoidingView, Send button с conditional disable). Bottom-tab «Чаты» добавлен.
@@ -149,19 +154,22 @@ xtrud/
 
 ---
 
-## Что дальше (Sprint 8 — приоритет)
+## Что дальше (Sprint 8 — остаток)
 
-1. **Real phone OTP** — replace `signInAnonymously` на `signInWithOtp` + `verifyOtp`. Нужен SMS-провайдер в Dashboard (Twilio/MessageBird/Smsc.ru) + тестовые номера. После — убрать симуляцию из `use-auth-mutations`. Это закроет advisor warnings про anonymous policies.
-2. **Telegram Login Widget** — бесплатная альтернатива SMS (AUDIT.md recommends, 100% покрытие региона).
-3. **Master profile public view** — отдельная страница `/master/[id]` с публичной карточкой, отзывами, категориями. Используется когда тапаешь имя мастера в OrderRow / response / chat.
-4. **Master-to-client review** — двунаправленный рейтинг. Расширить direction='master_to_client' в reviews + UI на стороне мастера.
-5. **Атмосферные фото категорий** — `categories_l1.cover_image_url` + сигнатурный category-tile паттерн.
-6. **Фото-инфра** — Supabase Storage `portfolio` bucket + `avatars` bucket + клиентский resize через expo-image-manipulator. R2 миграция при >50GB.
-7. **Order edit для client'а** — draft статус существует, UI редактирования нет.
-8. **Outcome tracking modal** — «Беру заказ / Не договорились» через 7/14/30 дней (Яндекс паттерн).
-9. **Push-уведомления** — Expo Push для «новый отклик», «вас выбрали», «новое сообщение».
-10. **Test runner** — Vitest unit + Maestro E2E.
-11. **EAS Build setup** — eas.json для dev-build на iOS/Android.
+1. **8.2 Avatar + portfolio в master_profiles** — migration: добавить `master_profiles.avatar_url text` + новая таблица `portfolio_items (id, master_id, url, storage_path, caption, sort_order, created_at)` с RLS. UI: интерактивный аватар в master-profile экране (tap → useUploadAvatar → setAvatar mutation). Portfolio-grid в том же экране (до 12 фото, drag-reorder отложить, sort_order через ↑↓ кнопки).
+2. **8.3 Master profile public view** — `/master/[id]` страница: hero (avatar+name+city+rating+reviewsCount), bio, categories chips, portfolio grid (полноэкранный просмотр по тапу), reviews list (paginated). Тап по имени мастера в OrderRow/response/chat → открывается профиль.
+3. **8.4 Master→client review** — расширить UI на `direction='master_to_client'`. Добавить `users.rating_avg numeric(2,1)` + trigger пересчёта. На странице клиента (отдельная задача) показывать его рейтинг.
+4. **8.5 Order edit для client'а** — UI редактирования заказа со `status='open'`. Reuse new.tsx логику.
+5. **8.6 Push-уведомления** — Expo Push для «новый отклик», «вас выбрали», «новое сообщение». DB trigger создаёт notifications row → edge function рассылает push.
+6. **8.7 Атмосферные фото категорий** — `categories_l1.cover_image_url` (уже Sprint 8.1 загружаем фото в Storage, добавим в seed admin bucket).
+7. **8.8 EAS Build setup** — eas.json для dev-build на iOS/Android.
+
+## Backlog (Sprint 9+)
+
+- **Real phone OTP / Telegram Login** — заблокировано выбором SMS-провайдера (Twilio/MessageBird/Smsc.ru) либо Telegram Login Widget (бесплатно). Уберёт advisor warnings про anonymous policies.
+- **Outcome tracking modal** — «Беру заказ / Не договорились» через 7/14/30 дней (Яндекс паттерн).
+- **Test runner** — Vitest unit + Maestro E2E.
+- **Дашборд клиента** — публичная карточка клиента с рейтингом и историей отзывов (зависит от 8.4).
 
 ---
 
@@ -173,6 +181,25 @@ xtrud/
 ---
 
 ## История ключевых решений
+
+### 2026-05-12 — Sprint 8.1: public-buckets без broad SELECT policy
+**Выбрано:** для `avatars` и `portfolio` SELECT policy узкая — только своя папка. Чтение объектов клиентами идёт через прямой public URL `/storage/v1/object/public/{bucket}/{path}`, который обслуживается storage-сервисом БЕЗ обращения к RLS (так устроены public buckets в Supabase).
+
+**Альтернатива (отброшена):** broad `USING (bucket_id = '...')` SELECT. Advisor lint 0025 `public_bucket_allows_listing` — даёт анонимам право листать всю папку bucket и читать любой объект по пути, что раскрывает user_id всех мастеров. Public bucket уже даёт чтение по URL без RLS — broad SELECT избыточен и опасен.
+
+**Trade-off:** `supabase.storage.list()` для bucket-листинга работает только в собственной папке пользователя. Для admin-сценариев в будущем понадобится service_role.
+
+### 2026-05-12 — Sprint 8.1: upload через ArrayBuffer, не FormData/Blob
+**Выбрано:** `fetch(localUri).then(r => r.arrayBuffer())` → передача ArrayBuffer в `supabase.storage.upload`.
+
+**Альтернатива (отброшена):** FormData с `{ uri, type, name }` либо `fetch().blob()`. В React Native эти подходы исторически глючат — blob иногда возвращает 0 байт, FormData кривит multipart boundary. Supabase-docs прямо рекомендуют ArrayBuffer для RN.
+
+### 2026-05-12 — Sprint 8.1: client-side resize обязателен, не отложен на edge function
+**Выбрано:** resize на клиенте через expo-image-manipulator до upload (avatar 512px q0.82 / portfolio 1600px q0.85 jpeg).
+
+**Альтернатива (отброшена):** грузить оригинал → Supabase Image Transformations (pro feature) или edge function ресайз. Это (1) платная фича, (2) каждый просмотр триггерит transformation = доп стоимость, (3) клиентский upload оригинала 5MB+ съедает мобильный трафик на ~10× больше.
+
+**Trade-off:** теряем доступ к оригиналу для будущих ремастеров. Считаю это приемлемым — портфолио-фото не печатают в типографии.
 
 ### 2026-05-12 — Sprint 7.1: чат автоматически создаётся в accept_response RPC
 **Выбрано:** при принятии отклика мастера RPC сразу создаёт chats row (INSERT ON CONFLICT DO NOTHING). Не нужен отдельный шаг «начать чат».

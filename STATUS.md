@@ -6,11 +6,11 @@
 
 ## Текущее состояние
 
-**Sprint 13 в работе.** Закрыт 13.1 — master-side badge на «Заказы» (новые orders в feed по моим L2 категориям, поверх sprint 12.4 infinite scroll). Now both sides (client + master) видят счётчик новых событий.
+**Sprint 13 в работе.** Закрыты 13.1 (master-side badge) + 13.2 (swipe-between-photos в lightbox). Both badges work; lightbox теперь поддерживает swipe-left/right, pinch+pan, double-tap.
 
 **База:** 23 миграции, 15 таблиц с RLS + 3 Storage bucket, 8 RPC, 12 trigger functions, 17 enums, 1 edge function.
 
-**Backlog Sprint 13+:** live-тест dev-build; admin-tool для category-covers; real OTP / Telegram Login; swipe-between-photos в lightbox.
+**Backlog Sprint 13+:** live-тест dev-build; admin-tool для category-covers; real OTP / Telegram Login.
 
 **База:** 19 миграций, 15 таблиц с RLS + 3 Storage bucket, 5 RPC, 11 trigger functions, 17 enums, 1 edge function. Приоритетные кандидаты: live-тест на dev-build (push, image-picker, category covers); admin-tool для загрузки category-covers и portfolio-привязки; full master profile edit (bio/опыт/радиус/город после онбординга); real OTP / Telegram Login (snimaeт advisor anonymous warnings); outcome tracking modal; test runner (Vitest + Maestro).
 
@@ -121,7 +121,8 @@ xtrud/
 - [x] **2026-05-11** — **2.3** Main client screen (commit `5d394c8`): `useVisibleCategories` для 26 L2, `CategoryTile` компонент с iconMap (~50 lucide icons), grid 2/3/4-кол. адаптивный, ScrollView без виртуализации, loading/error/empty states, header с приветствием по first_name + role badge + signOut. **Без атмосферных фото — sprint 4+.**
 
 ### Sprint 13 (badges parity)
-- [x] **2026-05-12** — **13.1** Master-side badge на Заказы (commit pending): migration 0023 — `users.last_seen_feed_at timestamptz` + RPC `mark_feed_seen()` (SECURITY INVOKER, UPDATE users SET last_seen_feed_at=now() WHERE id=auth.uid()). Hook `useUnreadFeedCount({userId, l2Ids, lastSeenAt})` — head:exact COUNT orders WHERE status='open' AND l2_id IN l2Ids AND client_id != me AND created_at > lastSeenAt. `useMarkFeedSeen` mutation вызывается в `MasterOrdersView` при mount. `useRealtimeFeed` подписывается на INSERT orders с фильтрацией по l2Ids — live-обновление badge. `(tabs)/_layout` рендерит ordersBadge с учётом active_role: для client = unreadResponses, для master = unreadFeed. Без вычитания уже-откликнутых orders — minor over-count приемлем, избегает сложного NOT IN запроса.
+- [x] **2026-05-12** — **13.2** Swipe-between-photos в lightbox (commit pending): расширил Pan-жест в `PortfolioLightbox`. При scale=1× pan = horizontal swipe для переключения фото — `swipeX` shared value двигает картинку за пальцем (visual feedback). При `|translationX| > width × 0.18` и onEnd — completion-animation (`withTiming(±width, 180ms)` → callback меняет index через `runOnJS(onChangeIndex)` → swipeX сбрасывается в 0). Иначе spring-back в 0. При scale > 1× swipeX игнорируется, pan работает как раньше для рассматривания фото внутри. `animatedStyle` суммирует `translateX + (scale<=1 ? swipeX : 0)`. UseEffect на index сбрасывает все shared values для надёжности.
+- [x] **2026-05-12** — **13.1** Master-side badge на Заказы (commit `4c88f1f`): migration 0023 — `users.last_seen_feed_at timestamptz` + RPC `mark_feed_seen()` (SECURITY INVOKER, UPDATE users SET last_seen_feed_at=now() WHERE id=auth.uid()). Hook `useUnreadFeedCount({userId, l2Ids, lastSeenAt})` — head:exact COUNT orders WHERE status='open' AND l2_id IN l2Ids AND client_id != me AND created_at > lastSeenAt. `useMarkFeedSeen` mutation вызывается в `MasterOrdersView` при mount. `useRealtimeFeed` подписывается на INSERT orders с фильтрацией по l2Ids — live-обновление badge. `(tabs)/_layout` рендерит ordersBadge с учётом active_role: для client = unreadResponses, для master = unreadFeed. Без вычитания уже-откликнутых orders — minor over-count приемлем, избегает сложного NOT IN запроса.
 
 ### Sprint 12 (UX polish продолжение)
 - [x] **2026-05-12** — **12.5** Pinch + double-tap в lightbox (commit `c036df6`): добавлен `GestureHandlerRootView` в `app/_layout` для всего приложения. `PortfolioLightbox` оборачивает Image в `GestureDetector` с `Gesture.Simultaneous(pinch, pan, Gesture.Exclusive(doubleTap, singleTap))`. Pinch 1×–4×, pan активен только при scale > 1×, double-tap toggle 1× ↔ 2.5×, single-tap закрывает только при scale=1× (чтобы не закрывать zoom-юзеру). При смене index zoom + pan плавно сбрасываются через `withTiming(200ms)`. Использованы Reanimated 4 `useSharedValue` + `useAnimatedStyle`.

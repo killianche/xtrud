@@ -71,7 +71,7 @@ export function PortfolioLightbox({
   const baseTranslateX = useSharedValue(0);
   const baseTranslateY = useSharedValue(0);
 
-  // Сброс zoom + pan при смене index или закрытии.
+  // Сброс zoom + pan + swipe при смене index или закрытии.
   // biome-ignore lint/correctness/useExhaustiveDependencies: index — намеренный trigger; shared values стабильны.
   useEffect(() => {
     scale.value = withTiming(1, { duration: 200 });
@@ -80,6 +80,7 @@ export function PortfolioLightbox({
     translateY.value = withTiming(0, { duration: 200 });
     baseTranslateX.value = 0;
     baseTranslateY.value = 0;
+    swipeX.value = 0;
   }, [index]);
 
   const pinchGesture = Gesture.Pinch()
@@ -97,17 +98,42 @@ export function PortfolioLightbox({
       }
     });
 
+  // Swipe-translation для visual feedback при перелистывании (scale=1x).
+  const swipeX = useSharedValue(0);
+
   const panGesture = Gesture.Pan()
     .minPointers(1)
     .maxPointers(2)
     .onUpdate((e) => {
-      if (scale.value <= MIN_SCALE) return; // pan только когда zoomed
-      translateX.value = baseTranslateX.value + e.translationX;
-      translateY.value = baseTranslateY.value + e.translationY;
+      if (scale.value > MIN_SCALE) {
+        // Zoomed — двигаем картинку внутри.
+        translateX.value = baseTranslateX.value + e.translationX;
+        translateY.value = baseTranslateY.value + e.translationY;
+      } else {
+        // Scale=1 — горизонтальный swipe для prev/next с follow-finger feedback.
+        swipeX.value = e.translationX;
+      }
     })
-    .onEnd(() => {
-      baseTranslateX.value = translateX.value;
-      baseTranslateY.value = translateY.value;
+    .onEnd((e) => {
+      if (scale.value > MIN_SCALE) {
+        baseTranslateX.value = translateX.value;
+        baseTranslateY.value = translateY.value;
+        return;
+      }
+      const threshold = width * 0.18;
+      if (e.translationX < -threshold && canNav) {
+        swipeX.value = withTiming(-width, { duration: 180 }, () => {
+          runOnJS(onChangeIndex)((index ?? 0) + 1 < total ? (index ?? 0) + 1 : 0);
+          swipeX.value = 0;
+        });
+      } else if (e.translationX > threshold && canNav) {
+        swipeX.value = withTiming(width, { duration: 180 }, () => {
+          runOnJS(onChangeIndex)((index ?? 0) - 1 >= 0 ? (index ?? 0) - 1 : total - 1);
+          swipeX.value = 0;
+        });
+      } else {
+        swipeX.value = withTiming(0, { duration: 180 });
+      }
     });
 
   const doubleTap = Gesture.Tap()
@@ -141,7 +167,7 @@ export function PortfolioLightbox({
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [
-      { translateX: translateX.value },
+      { translateX: translateX.value + (scale.value <= MIN_SCALE ? swipeX.value : 0) },
       { translateY: translateY.value },
       { scale: scale.value },
     ],

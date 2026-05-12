@@ -6,6 +6,17 @@
 
 ## Текущее состояние
 
+**Sprint 29 закрыт — Chat templates + EmptyState (P2).**
+
+Что вошло:
+- **Новый `<QuickReplyChips>`** (`src/features/chat/QuickReplyChips.tsx`) — горизонтальная FlatList с pill-шаблонами. Разные templates по роли: master (6 templates типа «Когда удобно подъехать?», «Подъеду через час») и client (5 templates типа «Когда сможете?», «Спасибо!»).
+- **Подключение в `chats/[id].tsx`** — над input, под messages-list. При тапе шаблон добавляется в text-state (не отправляется автоматически), пользователь редактирует и шлёт сам.
+- **Empty thread state** через `<EmptyState icon={MessageSquare} title="Начните диалог" hint="...">` — заменяет голую строку. Подсказка ссылается на quick-replies внизу.
+
+Templates статичные, без user-defined. В будущем — `chat_templates jsonb` в master_profiles (отложено).
+
+Проверки: `tsc --noEmit` ✅, `biome check` ✅ (122 файла), `vitest` 47/47 ✅.
+
 **Sprint 28 закрыт — Chat context + базовая гигиена мессенджера (P2).**
 
 Что вошло:
@@ -119,12 +130,14 @@
 - **После Sprint 31** (~6 недель) — конкурент Profi.ru/TaskRabbit по UX.
 - **После Sprint 33** (~8 недель) — полноценное web-приложение, не растянутое mobile.
 
-### 🚀 Следующий шаг — Sprint 29
+### 🚀 Следующий шаг — Sprint 30
 
-**Chat templates + improvements** (P2, 2-3 дня). Закрывает 1🔴 из `chats.md`. Что делать:
+**Profile showcase mode + portfolio upload UX** (P3, 3-4 дня). Закрывает 2🔴 + 2🟡 из `profile.md`. Что делать:
 
-1. **Шаблоны быстрых ответов** над клавиатурой — горизонтальная полоса chip'ов с предложениями («Когда удобно?», «Сколько это стоит?», «Я подъеду через час»). Разные для мастера/клиента. Тап → текст в input (не отправляется сразу).
-2. **Empty state чата** с CTA «Найти мастеров» через `<EmptyState>` (после Sprint 23 готов).
+1. **Режим «Посмотреть как клиент»** в `profile/index.tsx` — toggle/кнопка в шапке, открывает превью карточки мастера (как видит другой клиент).
+2. **Portfolio upload — crop с aspect-ratio** через `expo-image-picker allowsEditing:true, aspect:[4,3]`. Проверка минимального разрешения 1200×900. Tile-skeleton при загрузке.
+3. **Portfolio empty state** через `<EmptyState>` с CTA «Загрузить первое фото».
+4. **Avatar pencil-button** синий accent → нейтральный (bg surface-2, иконка ink) — нарушает монохром Cal.com.
 
 ### Решённые открытые вопросы
 

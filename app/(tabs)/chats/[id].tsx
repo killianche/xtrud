@@ -1,5 +1,5 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { ChevronLeft, Send } from "lucide-react-native";
+import { ChevronLeft, MessageSquare, Send } from "lucide-react-native";
 import { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -13,8 +13,10 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
 import { Avatar } from "@/components/Avatar";
+import { EmptyState } from "@/components/EmptyState";
 import { OrderStatusBadge, type OrderStatusValue } from "@/components/OrderStatusBadge";
 import { useAuthSession } from "@/features/auth/use-auth-session";
+import { QuickReplyChips } from "@/features/chat/QuickReplyChips";
 import {
   type ChatMessage,
   useChatMessages,
@@ -152,10 +154,12 @@ export default function ChatThreadScreen() {
         )}
 
         {!isLoading && !error && messages?.length === 0 && (
-          <View className="mt-8 items-center">
-            <AppText className="text-center text-body-sm text-muted">
-              Напишите первое сообщение — поздоровайтесь, уточните детали.
-            </AppText>
+          <View className="mt-8">
+            <EmptyState
+              icon={MessageSquare}
+              title="Начните диалог"
+              hint="Поздоровайтесь и уточните детали — подсказки внизу помогут."
+            />
           </View>
         )}
 
@@ -167,6 +171,13 @@ export default function ChatThreadScreen() {
           </AppText>
         )}
       </ScrollView>
+
+      {/* Quick reply chips. role: я client → отвечаю в роли client; я master → master. */}
+      <QuickReplyChips
+        role={chat?.client_id === userId ? "client" : "master"}
+        onSelect={(template) => setText((prev) => (prev ? `${prev} ${template}` : template))}
+        className="border-hairline-soft border-t py-2"
+      />
 
       {/* Input */}
       <View

@@ -6,11 +6,9 @@
 
 ## Текущее состояние
 
-**Sprint 8 закрыт.** 8.1–8.8 готовы: фото-инфра, аватары/портфолио, master public view, двунаправленный рейтинг, редактирование заказа, push-уведомления, фото категорий, EAS build config. `eas.json` с development / development-device / preview / production профилями + base block с EXPO_PUBLIC_SUPABASE_URL. Готов к запуску `eas init` + `eas build --profile development`.
+**Sprint 9 в работе.** Закрыт 9.1 — full master profile edit. Мастер теперь меняет имя/город/bio/опыт/радиус/инструмент/транспорт через отдельный экран `/profile/edit-master`, без необходимости проходить онбординг заново. Форма вынесена в shared `MasterProfileFormBody` — используется и в (onboarding)/master-profile.tsx, и в edit-screen.
 
-**База:** 19 миграций, 15 таблиц с RLS + 3 Storage bucket, 5 RPC, 11 trigger functions, 17 enums, 1 edge function.
-
-**Готов к Sprint 9.** Приоритетные кандидаты: live-тест на dev-build (push, image-picker, category covers); admin-tool для загрузки category-covers и portfolio-привязки; full master profile edit (bio/опыт/радиус/город после онбординга); real OTP / Telegram Login (snimaeт advisor anonymous warnings); outcome tracking modal; test runner (Vitest + Maestro).
+**База:** 19 миграций, 15 таблиц с RLS + 3 Storage bucket, 5 RPC, 11 trigger functions, 17 enums, 1 edge function. Приоритетные кандидаты: live-тест на dev-build (push, image-picker, category covers); admin-tool для загрузки category-covers и portfolio-привязки; full master profile edit (bio/опыт/радиус/город после онбординга); real OTP / Telegram Login (snimaeт advisor anonymous warnings); outcome tracking modal; test runner (Vitest + Maestro).
 
 ---
 
@@ -118,8 +116,11 @@ xtrud/
 - [x] **2026-05-11** — **2.2** Role selection screen (commit `eb42338`): полноценный UI с 2 карточками (lucide Search/Briefcase), accessibilityState selected, accent-soft фон выбранной, CTA "Продолжить", error display. `useCompleteOnboarding` mutation обновляет `users.{is_master, active_role, onboarding_completed_at}` + invalidates query.
 - [x] **2026-05-11** — **2.3** Main client screen (commit `5d394c8`): `useVisibleCategories` для 26 L2, `CategoryTile` компонент с iconMap (~50 lucide icons), grid 2/3/4-кол. адаптивный, ScrollView без виртуализации, loading/error/empty states, header с приветствием по first_name + role badge + signOut. **Без атмосферных фото — sprint 4+.**
 
+### Sprint 9 (post-launch improvements)
+- [x] **2026-05-12** — **9.1** Full master profile edit (commit pending): новый экран `app/(tabs)/profile/edit-master.tsx` для редактирования полного профиля мастера после онбординга. Extract `src/features/master-profile/MasterProfileFormBody.tsx` — все поля (firstName, lastName, cityId pills, district, bio, experienceYears, serviceRadiusKm, hasTools, hasTransport) шарятся между onboarding (`master-profile.tsx`) и новым edit-screen. `useUpdateMasterProfile` — простая 2-step mutation (UPDATE users → UPDATE master_profiles), без RPC (онбординг-маркер `onboarding_completed_at` уже стоит). Инвалидирует userRecord + master-profile + master-public кэши. Раздельная `profile` папка (`profile/index.tsx`, `profile/_layout.tsx` Stack, `profile/edit-master.tsx`) — чистая URL-схема. Pre-fill через `reset()` в useEffect после загрузки данных. Guards: 401 если is_master=false; loading-state если master_profiles row нет (edge case после миграции).
+
 ### Sprint 8 (photo infra + master profile public view + dual reviews)
-- [x] **2026-05-12** — **8.8** EAS Build dev profile (commit pending): `eas.json` с 4 профилями. `base` (общий node 20.18.0 + EXPO_PUBLIC_SUPABASE_URL env) → расширяется через `extends` в остальных. `development` — internal distribution с developmentClient=true, iOS simulator=true, Android apk; `development-device` — тот же что development но для реального iOS-устройства (simulator=false); `preview` — internal release-build для тестировщиков; `production` — store-ready с auto-increment + Android app-bundle. Resource class `m-medium`/`medium` для разумной скорости/стоимости (Free Tier MVP).
+- [x] **2026-05-12** — **8.8** EAS Build dev profile (commit `f48f75f`): `eas.json` с 4 профилями. `base` (общий node 20.18.0 + EXPO_PUBLIC_SUPABASE_URL env) → расширяется через `extends` в остальных. `development` — internal distribution с developmentClient=true, iOS simulator=true, Android apk; `development-device` — тот же что development но для реального iOS-устройства (simulator=false); `preview` — internal release-build для тестировщиков; `production` — store-ready с auto-increment + Android app-bundle. Resource class `m-medium`/`medium` для разумной скорости/стоимости (Free Tier MVP).
 
 **Запуск (после первого `eas login`):**
 - `npx eas-cli@latest init` — создаст EAS project, впишет `extra.eas.projectId` в app.json, нужно для push-tokens.

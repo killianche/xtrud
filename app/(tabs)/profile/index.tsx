@@ -210,11 +210,28 @@ export default function ProfileScreen() {
         {/* Master-only sections */}
         {user.is_master && (
           <>
+            {/* Edit master profile shortcut */}
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => router.push("/(tabs)/profile/edit-master" as never)}
+              className="mx-6 mt-8 flex-row items-center justify-between rounded-lg border border-hairline bg-canvas p-4 active:opacity-70"
+            >
+              <View className="flex-1">
+                <AppText weight="semibold" className="text-body-md text-ink">
+                  Редактировать профиль
+                </AppText>
+                <AppText className="mt-0.5 text-body-sm text-muted">
+                  Имя, город, bio, опыт, инструмент и транспорт
+                </AppText>
+              </View>
+              <ChevronRight size={20} strokeWidth={1.75} color="#71717a" />
+            </Pressable>
+
             {/* Categories shortcut */}
             <Pressable
               accessibilityRole="button"
               onPress={() => router.push("/(onboarding)/master-categories")}
-              className="mx-6 mt-8 flex-row items-center justify-between rounded-lg border border-hairline bg-canvas p-4 active:opacity-70"
+              className="mx-6 mt-3 flex-row items-center justify-between rounded-lg border border-hairline bg-canvas p-4 active:opacity-70"
             >
               <View className="flex-1">
                 <AppText weight="semibold" className="text-body-md text-ink">

@@ -6,9 +6,23 @@
 
 ## Текущее состояние
 
-**В работе — Sprint 21: UX/UI аудит с Lazyweb (in progress).** Подключён Lazyweb MCP (плагин Claude Code `lazyweb@lazyweb`, токен в `~/.lazyweb/`). Дизайн обновлён: установлен `DESIGN.md` (Cal.com-inspired, Cal Sans + Inter, white canvas + black CTA) через `npx getdesign@latest add cal` — это новый источник истины (старые `DESIGN_SYSTEM.md` / `DESIGN_REFERENCE_CALCOM.md` legacy). Бриф для агентов лежит в `.claude/audit-2026-05-12/BRIEF.md` (5 групп экранов × 4 шляпы UX/Visual/Conversion/A11y, web≠mobile differentiation, light+dark обязательно).
+**В работе — Sprint 21: UX/UI аудит с Lazyweb (подготовка завершена, аудит ждёт рестарта).**
 
-**Первая попытка запустить 5 параллельных аудит-агентов прервана** — в текущей сессии MCP-инструменты Lazyweb не успели подгрузиться + у фоновых агентов были permission-блоки на Write/WebFetch. Все 5 агентов остановлены до сохранения отчётов. **Следующий шаг — рестарт Claude Code и повторный запуск аудита уже с Lazyweb-инструментами.**
+**Подготовительная фаза закрыта:**
+- Подключён Lazyweb MCP (плагин Claude Code `lazyweb@lazyweb`, токен в `~/.lazyweb/`). MCP-сервер `✓ Connected`, но инструменты в текущую сессию не загрузились (нужен полный рестарт Claude Code, не `/clear`).
+- Установлен `DESIGN.md` (Cal.com-inspired) через `npx getdesign@latest add cal` — новый источник истины по визуалу. Старые `DESIGN_SYSTEM.md` / `DESIGN_REFERENCE_CALCOM.md` — legacy.
+- Создан `PRODUCT_CONTEXT.md` — короткий бриф о продукте, 4 главных функциональных референсах (**Profi.ru, Яндекс.Услуги, TaskRabbit, Thumbtack**), 6 дизайн-принципах (минимализм, фото, удобство, скорость, современность, функциональность), scope guard.
+- Бриф аудита для агентов: `.claude/audit-2026-05-12/BRIEF.md` (5 групп экранов × 4 шляпы UX/Visual/Conversion/A11y, web≠mobile differentiation, light+dark обязательно, привязка к 4 главным референсам).
+
+**Первая попытка запустить 5 параллельных аудит-агентов прервана** — без Lazyweb и с permission-блоками на Write/WebFetch результат был бы слабым. Все 5 агентов остановлены до сохранения отчётов.
+
+### 🚀 Следующий шаг (для агента в новой сессии после рестарта Claude Code)
+
+1. Проверь `lazyweb_health` — должно вернуть OK + список инструментов (`lazyweb_search`, `lazyweb_compare_image`, `lazyweb_find_similar`).
+2. Прочитай `CLAUDE.md` → `PRODUCT_CONTEXT.md` → `DESIGN.md` → `.claude/audit-2026-05-12/BRIEF.md` именно в этом порядке.
+3. Запусти 5 параллельных аудит-агентов по группам экранов (Auth+Onboarding, Discovery, Orders, Chats, Profile) — каждому передай бриф и эти 4 файла для чтения, у каждого через Lazyweb minимум 5 курированных референсов.
+4. Когда вернутся первые 5 — запусти 6-го (cross-cutting: Responsive Web ≠ Mobile + Dark theme).
+5. Сведи всё в `AUDIT_2026-05-12.md`. Обнови этот STATUS.md и закоммить.
 
 **Sprint 20 закрыт — Order state-machine design-doc.** Новый файл `docs/order-states.md` фиксирует все 6 статусов order, 7 переходов между ними, 6 RLS-policy + 1 RPC, которые их защищают, side effects (push, review window, rating recalc), и 5 известных пробелов с планами (expired-cron, draft-UI, re-open, отказ от мастера до completion, push на open→cancelled). Это контракт-документ: любая будущая фича, меняющая enum/RLS/RPC заказов, должна сначала появиться там. **Sprint 19 (image-resize + feed-page тесты, 47/47)** ранее закрыт. **Sprint 18 (master Maestro smoke)** закрыт. **Sprint 17 (web prod)** — `https://alanbani.ru/xtrud/` живой.
 

@@ -49,6 +49,8 @@ export default function ChatThreadScreen() {
   const partner = chat?.client_id === userId ? chat?.master : chat?.client;
   const partnerName =
     [partner?.first_name, partner?.last_name].filter(Boolean).join(" ") || "Собеседник";
+  // Открываем профиль только если собеседник — мастер (публичная стр клиента появится в 8.4).
+  const partnerIsMaster = !!chat && chat.client_id === userId;
 
   const canSend = text.trim().length > 0 && !sendMessage.isPending && !!userId && !!id;
 
@@ -85,8 +87,19 @@ export default function ChatThreadScreen() {
         >
           <ChevronLeft size={24} strokeWidth={1.75} color="#0a0a0a" />
         </Pressable>
-        <View className="flex-1">
-          <AppText weight="semibold" className="text-body-md text-ink" numberOfLines={1}>
+        <Pressable
+          accessibilityRole="button"
+          disabled={!partnerIsMaster || !chat}
+          onPress={() => {
+            if (chat?.master_id) router.push(`/master/${chat.master_id}` as never);
+          }}
+          className="flex-1 active:opacity-70"
+        >
+          <AppText
+            weight="semibold"
+            className={`text-body-md ${partnerIsMaster ? "text-accent" : "text-ink"}`}
+            numberOfLines={1}
+          >
             {partnerName}
           </AppText>
           {chat?.order?.title && (
@@ -94,7 +107,7 @@ export default function ChatThreadScreen() {
               {chat.order.title}
             </AppText>
           )}
-        </View>
+        </Pressable>
       </View>
 
       {/* Messages */}

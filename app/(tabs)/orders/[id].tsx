@@ -208,6 +208,7 @@ interface ClientResponsesSectionProps {
 }
 
 function ClientResponsesSection({ orderId, order }: ClientResponsesSectionProps) {
+  const router = useRouter();
   const { data: responses, isLoading, error } = useOrderResponses(orderId);
   const acceptResponse = useAcceptResponse();
 
@@ -262,6 +263,7 @@ function ClientResponsesSection({ orderId, order }: ClientResponsesSectionProps)
                   clientId: order.client_id,
                 })
               }
+              onOpenMaster={() => router.push(`/master/${r.master_id}` as never)}
             />
           ))}
         </View>
@@ -282,6 +284,7 @@ interface ClientResponseRowProps {
   canAccept: boolean;
   isBusy: boolean;
   onAccept: () => void;
+  onOpenMaster: () => void;
 }
 
 function ClientResponseRow({
@@ -290,6 +293,7 @@ function ClientResponseRow({
   canAccept,
   isBusy,
   onAccept,
+  onOpenMaster,
 }: ClientResponseRowProps) {
   const masterDisplay =
     [response.master?.first_name, response.master?.last_name].filter(Boolean).join(" ") || "Мастер";
@@ -301,8 +305,13 @@ function ClientResponseRow({
       }`}
     >
       <View className="flex-row items-start justify-between gap-2">
-        <View className="flex-1">
-          <AppText weight="semibold" className="text-body-md text-ink">
+        <Pressable
+          accessibilityRole="button"
+          onPress={onOpenMaster}
+          hitSlop={4}
+          className="flex-1 active:opacity-70"
+        >
+          <AppText weight="semibold" className="text-body-md text-accent">
             {masterDisplay}
           </AppText>
           {isPicked && (
@@ -315,7 +324,7 @@ function ClientResponseRow({
               Выбран другой мастер
             </AppText>
           )}
-        </View>
+        </Pressable>
         <AppText weight="medium" className="text-caption text-accent">
           {formatResponsePrice(response)}
         </AppText>

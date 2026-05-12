@@ -18,8 +18,15 @@ import { AppText } from "@/components/AppText";
 import { Avatar } from "@/components/Avatar";
 import { useAuthSession } from "@/features/auth/use-auth-session";
 import { useUserRecord } from "@/features/auth/use-user-record";
+import {
+  OutcomeTrackingModal,
+  SNOOZE_MS,
+  shouldShowOutcomePrompt,
+  useOutcomeStore,
+} from "@/features/orders/OutcomeTrackingModal";
 import { orderBudgetModeOptions, urgencyLabel } from "@/features/orders/order-schema";
 import { useAcceptResponse } from "@/features/orders/use-accept-response";
+import { useCancelOrder } from "@/features/orders/use-cancel-order";
 import { useCompleteOrder } from "@/features/orders/use-complete-order";
 import { type OrderDetail, useOrderDetail } from "@/features/orders/use-order-detail";
 import {
@@ -60,6 +67,21 @@ export default function OrderDetailScreen() {
 
   const isOwner = !!userId && !!order && order.client_id === userId;
   const isMasterRole = user?.active_role === "master";
+
+  // Outcome tracking modal — Sprint 9.3.
+  const cancelOrder = useCancelOrder();
+  const completeOrder = useCompleteOrder();
+  const dismissFor = useOutcomeStore((s) => s.dismissFor);
+  const showOutcomePrompt =
+    !!order &&
+    !!id &&
+    shouldShowOutcomePrompt({
+      isOwner,
+      orderStatus: order.status,
+      pickedMasterId: order.picked_master_id,
+      updatedAt: order.updated_at,
+      orderId: id,
+    });
 
   return (
     <KeyboardAvoidingView
@@ -148,6 +170,26 @@ export default function OrderDetailScreen() {
               />
             )}
         </ScrollView>
+      )}
+
+      {id && order && userId && (
+        <OutcomeTrackingModal
+          visible={showOutcomePrompt}
+          isBusy={cancelOrder.isPending || completeOrder.isPending}
+          onCompletedOffline={() => {
+            completeOrder.mutate(
+              { orderId: id, userId },
+              { onSuccess: () => dismissFor(id, SNOOZE_MS) },
+            );
+          }}
+          onNoDeal={() => {
+            cancelOrder.mutate(
+              { orderId: id, clientId: order.client_id },
+              { onSuccess: () => dismissFor(id, SNOOZE_MS) },
+            );
+          }}
+          onSnooze={() => dismissFor(id, SNOOZE_MS)}
+        />
       )}
     </KeyboardAvoidingView>
   );

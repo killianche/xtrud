@@ -4,18 +4,27 @@ import type { PropsWithChildren } from "react";
 // Web-only HTML shell, см. CROSS_PLATFORM_RULES.md правила 10 и 17.
 // 1. Viewport-fit=cover — фикс «мелкого iOS Safari» на мобильном web.
 // 2. Inline theme-guard script — устраняет flash of wrong theme при гидрации.
-//    Читает localStorage(`theme`) до парсинга body и ставит class="dark" на <html>.
+//    Читает localStorage('xtrud-theme') (Zustand persist JSON), резолвит preference
+//    в light/dark и ставит class="dark" на <html> ДО первого рендера body.
+//    Это устраняет SSR colorScheme race — после этого useColorScheme() может
+//    спокойно опираться на тот же store без DOM/matchMedia-фолбэков.
 //
 // Этот файл рендерится ТОЛЬКО на web build, см. https://docs.expo.dev/router/reference/static-rendering/
 
 const themeGuardScript = `
 (function () {
   try {
-    var t = localStorage.getItem('theme') || 'system';
+    var raw = localStorage.getItem('xtrud-theme');
+    var pref = 'system';
+    if (raw) {
+      // Zustand persist format: { state: { preference: 'dark' }, version: 1 }
+      var parsed = JSON.parse(raw);
+      pref = (parsed && parsed.state && parsed.state.preference) || 'system';
+    }
     var prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-    var dark = t === 'dark' || (t === 'system' && prefersDark);
+    var dark = pref === 'dark' || (pref === 'system' && prefersDark);
     if (dark) document.documentElement.classList.add('dark');
-  } catch (_) { /* SSR / no localStorage — ничего не делаем */ }
+  } catch (_) { /* SSR / no localStorage / parse error — ничего не делаем */ }
 })();
 `;
 

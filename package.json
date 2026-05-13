@@ -13,7 +13,9 @@
     "format": "biome format --write .",
     "check": "biome check .",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "tokens": "node scripts/generate-css-tokens.mjs",
+    "tokens:check": "node scripts/generate-css-tokens.mjs --check"
   },
   "dependencies": {
     "@expo-google-fonts/inter": "^0.4.1",

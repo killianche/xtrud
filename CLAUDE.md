@@ -115,6 +115,7 @@ git push
 | `CLAUDE.md` | Этот файл — точка входа, контекст, критические правила инфры |
 | `PRODUCT_CONTEXT.md` | **Короткий бриф о продукте и функциональных референсах** (Profi.ru, YouDo, Avito Услуги, TaskRabbit, Thumbtack, Airbnb…). Читать вторым после CLAUDE.md. |
 | `STATUS.md` | Где мы сейчас, что готово, что дальше, блокеры, история решений |
+| `TASKS.md` | **Трекер всех задач — главный файл для отслеживания работы**. Открытые / в работе / закрытые / отложенные. Обновляется на каждое сообщение пользователя с задачей. |
 | `DESIGN.md` | **Текущая дизайн-система — Vercel-based** (Geist + Inter fallback, near-white canvas + ink primary, pill buttons, 12px card radius override). Поставлена через `npx getdesign@latest add vercel` 2026-05-13. См. блок «xtrud overrides» в начале файла. Это ВЕДУЩИЙ источник истины по визуалу. |
 | `legacy/DESIGN_CALCOM.md`, `legacy/DESIGN_SYSTEM.md`, `legacy/DESIGN_REFERENCE_CALCOM.md` | **Legacy.** Cal.com-inspired система, заменена 2026-05-13. Оставлено для истории решений. Не использовать. |
 | `.claude/rules/working-rules.md` | Базовые правила работы AI-агента (автозагружаются) |

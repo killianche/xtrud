@@ -27,6 +27,8 @@ import {
   HardHat,
   type LucideIcon,
   Paintbrush,
+  Search,
+  SlidersHorizontal,
   Sparkles,
   Square,
   User,
@@ -171,14 +173,110 @@ interface ClientHomeProps {
 function ClientHome({ onCategoryPress, onMasterPress, onDescribeTask }: ClientHomeProps) {
   const cityId = useCityStore((s) => s.cityId);
   const cityName = getCityName(cityId);
+  const router = useRouter();
 
   return (
     <View>
+      {/* PASSIVE PATH — «опишите задачу, мастера откликнутся» */}
       <Hero cityName={cityName} onDescribeTask={onDescribeTask} />
+
+      {/* Визуальный разделитель: тонкая линия + заголовок второго пути */}
+      <BrowseDivider />
+
+      {/* ACTIVE PATH — «найдите мастера сами» через поиск + фильтры + категории */}
+      <BrowseSearchAndFilters
+        onSearchPress={() => router.push("/search" as never)}
+      />
       <FeaturedVerticals onPress={onCategoryPress} />
       <TopMasters onMasterPress={onMasterPress} />
       <AllCategories onCategoryPress={onCategoryPress} />
     </View>
+  );
+}
+
+// ----------------------------------------------------------------------------
+// BrowseDivider — визуальное разделение двух entry points главной.
+// ----------------------------------------------------------------------------
+
+function BrowseDivider() {
+  return (
+    <View className="mt-10 px-5">
+      <View className="flex-row items-center gap-3">
+        <View className="flex-1 h-px bg-hairline" />
+        <AppText weight="medium" className="text-mute text-body-sm uppercase tracking-wider">
+          или
+        </AppText>
+        <View className="flex-1 h-px bg-hairline" />
+      </View>
+      <View className="mt-6">
+        <AppText weight="display" className="text-display-md tracking-tight text-ink">
+          Найдите мастера сами
+        </AppText>
+        <AppText className="mt-2 text-body-md text-body">
+          Поиск по имени, категории или сразу выбирайте из списка ниже.
+        </AppText>
+      </View>
+    </View>
+  );
+}
+
+// ----------------------------------------------------------------------------
+// BrowseSearchAndFilters — search bar для мастеров + горизонтальные фильтры.
+//
+// MVP: SearchBar — кнопка-плейсхолдер, тап → переход на /search экран
+// (будет реализован отдельной задачей). Filter chips — UI-only stubs
+// показывают плановые фильтры (Категория / Город / Рейтинг / Опыт).
+// При нажатии на любой — пока no-op, потом подключим BottomSheet с выбором.
+// ----------------------------------------------------------------------------
+
+function BrowseSearchAndFilters({ onSearchPress }: { onSearchPress: () => void }) {
+  return (
+    <View className="mt-6">
+      {/* Search-кнопка-плейсхолдер (как кликабельный input) */}
+      <View className="px-5">
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Поиск мастеров"
+          onPress={onSearchPress}
+          className="flex-row items-center gap-2 h-12 rounded-md border border-hairline bg-canvas px-4 active:opacity-70"
+        >
+          <Search size={18} strokeWidth={1.75} color="currentColor" className="text-mute" />
+          <AppText className="text-body-md text-mute">
+            Имя или категория мастера
+          </AppText>
+        </Pressable>
+      </View>
+
+      {/* Filter chips — горизонтальный scroll */}
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={{ paddingHorizontal: 20, gap: 8, paddingTop: 12 }}
+      >
+        <FilterChip label="Категория" />
+        <FilterChip label="Город" />
+        <FilterChip label="★ 4+" />
+        <FilterChip label="Опыт от 3 лет" />
+        <FilterChip label="С инструментом" />
+      </ScrollView>
+    </View>
+  );
+}
+
+function FilterChip({ label }: { label: string }) {
+  // Stub: пока no-op. В следующей итерации подключим BottomSheet выбора.
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`Фильтр: ${label}`}
+      onPress={() => {}}
+      className="flex-row items-center gap-1.5 h-8 px-3 rounded-full bg-canvas border border-hairline active:opacity-70"
+    >
+      <AppText weight="medium" className="text-body-sm text-ink">
+        {label}
+      </AppText>
+      <SlidersHorizontal size={12} strokeWidth={1.75} color="currentColor" className="text-mute" />
+    </Pressable>
   );
 }
 

@@ -15,11 +15,14 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
 import { userRecordKey } from "@/features/auth/use-user-record";
+import {
+  type OrderRowMinimal,
+  shouldInvalidateFeedOnInsert,
+  unreadFeedKey,
+} from "@/features/orders/unread-feed-helpers";
 import { supabase } from "@/lib/supabase";
 
-export function unreadFeedKey(userId: string | undefined, l2Ids: string[]) {
-  return ["unread-feed", userId, l2Ids.slice().sort().join(",")] as const;
-}
+export { unreadFeedKey };
 
 export function useUnreadFeedCount(opts: {
   userId: string | null | undefined;
@@ -68,13 +71,8 @@ export function useRealtimeFeed(opts: { userId: string | null | undefined; l2Ids
     const channel = supabase
       .channel(`feed:${opts.userId}`)
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "orders" }, (payload) => {
-        const row = payload.new as { l2_id?: string; client_id?: string; status?: string };
-        if (
-          row.status === "open" &&
-          row.client_id !== opts.userId &&
-          row.l2_id &&
-          opts.l2Ids.includes(row.l2_id)
-        ) {
+        const row = payload.new as OrderRowMinimal;
+        if (opts.userId && shouldInvalidateFeedOnInsert(row, opts.userId, opts.l2Ids)) {
           qc.invalidateQueries({
             queryKey: unreadFeedKey(opts.userId ?? undefined, opts.l2Ids),
           });

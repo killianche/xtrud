@@ -8,21 +8,7 @@
  * Owner-каждый screen решает что показывать выше и ниже формы + сам submit-логика.
  */
 
-import {
-  Armchair,
-  Check,
-  DoorOpen,
-  Droplet,
-  Flame,
-  HardHat,
-  type LucideIcon,
-  Paintbrush,
-  Sparkles,
-  Square,
-  Wind,
-  Wrench,
-  Zap,
-} from "lucide-react-native";
+import { Check } from "lucide-react-native";
 import type { Control, FieldErrors, FieldPath } from "react-hook-form";
 import { Controller } from "react-hook-form";
 import { ActivityIndicator, Pressable, TextInput, View } from "react-native";
@@ -33,24 +19,9 @@ import {
   orderUrgencyOptions,
   urgencyLabel,
 } from "@/features/orders/order-schema";
+import { getCategoryIcon } from "@/lib/category-icons";
 import { useThemeColor } from "@/lib/use-theme-color";
 import type { Tables } from "@/types/database";
-
-// Маппинг icon-имени из categories_l2.icon → Lucide-компонент.
-// Дублирует то что есть на главной — потом вынести в общий модуль.
-const CATEGORY_ICONS: Record<string, LucideIcon> = {
-  HardHat,
-  Paintbrush,
-  Zap,
-  Droplet,
-  DoorOpen,
-  Square,
-  Flame,
-  Wind,
-  Armchair,
-  Wrench,
-  Sparkles,
-};
 
 export function budgetModeLabel(m: (typeof orderBudgetModeOptions)[number]): string {
   switch (m) {
@@ -175,7 +146,7 @@ export function OrderFormBody({
                   {categories.map((cat) => {
                     const selected = value === cat.id;
                     const interactive = !lockCategory;
-                    const Icon = CATEGORY_ICONS[cat.icon] ?? Wrench;
+                    const Icon = getCategoryIcon(cat.icon);
                     return (
                       <Pressable
                         key={cat.id}

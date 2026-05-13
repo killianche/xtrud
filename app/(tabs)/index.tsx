@@ -19,46 +19,15 @@
  */
 
 import { useRouter } from "expo-router";
-import {
-  Armchair,
-  DoorOpen,
-  Droplet,
-  Flame,
-  HardHat,
-  type LucideIcon,
-  Paintbrush,
-  Search,
-  Sparkles,
-  Square,
-  User,
-  Wind,
-  Wrench,
-  Zap,
-} from "lucide-react-native";
+import { ChevronRight, Search, User } from "lucide-react-native";
 import { FlatList, Pressable, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-
-// Маппинг имён иконок из БД (categories_l2.icon) → Lucide-компоненты.
-// Используется в плитках категорий на главной.
-const CATEGORY_ICONS: Record<string, LucideIcon> = {
-  HardHat,
-  Paintbrush,
-  Zap,
-  Droplet,
-  DoorOpen,
-  Square,
-  Flame,
-  Wind,
-  Armchair,
-  Wrench,
-  Sparkles,
-};
+import { getCategoryIcon } from "@/lib/category-icons";
 import { AppText } from "@/components/AppText";
 import { CitySelector, useCityStore, getCityName } from "@/components/CitySelector";
 import { Avatar, Button, Card } from "@/components/ui";
 import { useAuthSession } from "@/features/auth/use-auth-session";
 import { useUserRecord } from "@/features/auth/use-user-record";
-import { useFeaturedCategories } from "@/features/categories/use-featured-categories";
 import { useVisibleCategories } from "@/features/categories/use-visible-categories";
 import { MasterHomeContent } from "@/features/master-view/MasterHomeContent";
 import { useTopMasters } from "@/features/master-view/use-top-masters";
@@ -180,7 +149,6 @@ function ClientHome({ onCategoryPress, onMasterPress, onDescribeTask }: ClientHo
   return (
     <View>
       <Hero cityName={cityName} />
-      <FeaturedVerticals onPress={onCategoryPress} />
       <TopMasters onMasterPress={onMasterPress} />
       <AllCategories onCategoryPress={onCategoryPress} />
     </View>
@@ -222,87 +190,6 @@ function Hero({
         </Pressable>
       </View>
 
-    </View>
-  );
-}
-
-// ----------------------------------------------------------------------------
-// Featured verticals — categories_l2 с is_featured=true.
-// На MVP в базе помечены: cleaning (Клининг) + plumbing (Сантехника).
-// Подаются 2-мя крупными plate-карточками в hero-зоне над обычной сеткой.
-// ----------------------------------------------------------------------------
-
-// Стилевые палитры (фон + foreground для каждой featured-категории).
-// Маппится по id → палитра. Новые featured-категории получают дефолтную палитру.
-const FEATURED_PALETTE: Record<string, { bg: string; fg: string; sub?: string }> = {
-  cleaning: { bg: "bg-violet-soft", fg: "text-violet-deep", sub: "Уборка, окна, химчистка" },
-  plumbing: {
-    bg: "bg-cyan-soft",
-    fg: "text-cyan-deep",
-    sub: "Сантехник, электрик, мастер на час",
-  },
-};
-const DEFAULT_PALETTE: { bg: string; fg: string; sub?: string } = {
-  bg: "bg-canvas-soft-2",
-  fg: "text-ink",
-};
-
-// Legacy hardcoded fallback (если is_featured ещё не приехал из БД или 0 категорий).
-const FEATURED_FALLBACK = [
-  {
-    id: "cleaning",
-    title: "Клининг",
-    subtitle: "Уборка, окна, химчистка",
-    bg: "bg-violet-soft",
-    fg: "text-violet-deep",
-  },
-  {
-    id: "plumbing",
-    title: "Срочный ремонт",
-    subtitle: "Сантехник, электрик, мастер на час",
-    bg: "bg-cyan-soft",
-    fg: "text-cyan-deep",
-  },
-] as const;
-
-function FeaturedVerticals({ onPress }: { onPress: (id: string) => void }) {
-  const { data: featured } = useFeaturedCategories();
-  // Если БД ещё не отвечает или не вернула featured — используем fallback (не show empty).
-  const items =
-    featured && featured.length > 0
-      ? featured.map((c) => {
-          const palette = FEATURED_PALETTE[c.id] ?? DEFAULT_PALETTE;
-          return {
-            id: c.id,
-            title: c.name_ru,
-            subtitle: palette.sub ?? "",
-            bg: palette.bg,
-            fg: palette.fg,
-          };
-        })
-      : FEATURED_FALLBACK;
-
-  return (
-    <View className="mt-12 px-5">
-      <View className="flex-row gap-3">
-        {items.map((f) => (
-          <Pressable
-            key={f.id}
-            onPress={() => onPress(f.id)}
-            accessibilityRole="button"
-            accessibilityLabel={f.title}
-            className={`flex-1 ${f.bg} rounded-xl p-4 active:opacity-80`}
-            style={{ minHeight: 124 }}
-          >
-            <AppText weight="semibold" className={`text-title-lg ${f.fg}`}>
-              {f.title}
-            </AppText>
-            {f.subtitle ? (
-              <AppText className={`mt-1 text-body-sm ${f.fg}`}>{f.subtitle}</AppText>
-            ) : null}
-          </Pressable>
-        ))}
-      </View>
     </View>
   );
 }
@@ -429,12 +316,17 @@ function AllCategories({ onCategoryPress }: { onCategoryPress: (id: string) => v
         </AppText>
       </View>
 
+      {/* Vertical list-view 32 категории — Vercel-стиль: монохром, hairline
+          разделители между строками, иконка-в-круге слева + название + chevron.
+          Lazyweb: Yelp/TaskRabbit/Booksy используют этот паттерн для длинных
+          списков категорий (читается лучше grid'а при N > 12). */}
       {isLoading ? (
-        <View className="mt-4 flex-row flex-wrap gap-3 px-5">
-          {Array.from({ length: 6 }).map((_, i) => (
+        <View className="mt-4">
+          {Array.from({ length: 10 }).map((_, i) => (
             // biome-ignore lint/suspicious/noArrayIndexKey: stable position-based key
-            <View key={i} className="w-[48%] md:w-[31%] lg:w-[23%]">
-              <View className="rounded-xl bg-canvas-soft-2" style={{ aspectRatio: 2 }} />
+            <View key={i} className="px-5 py-3 flex-row items-center gap-3">
+              <View className="h-10 w-10 rounded-full bg-canvas-soft-2" />
+              <View className="h-4 flex-1 max-w-[200px] rounded bg-canvas-soft-2" />
             </View>
           ))}
         </View>
@@ -451,34 +343,30 @@ function AllCategories({ onCategoryPress }: { onCategoryPress: (id: string) => v
           </AppText>
         </View>
       ) : (
-        <View className="mt-4 flex-row flex-wrap gap-3 px-5">
-          {categories.map((cat) => {
-            const Icon = CATEGORY_ICONS[cat.icon] ?? Wrench;
+        <View className="mt-4">
+          {categories.map((cat, idx) => {
+            const Icon = getCategoryIcon(cat.icon);
+            const isLast = idx === categories.length - 1;
             return (
               <Pressable
                 key={cat.id}
                 onPress={() => onCategoryPress(cat.id)}
                 accessibilityRole="button"
                 accessibilityLabel={cat.name_ru}
-                className="w-[48%] md:w-[31%] lg:w-[23%] active:opacity-70"
+                className={`flex-row items-center gap-3 px-5 py-3 active:bg-canvas-soft-2 ${
+                  isLast ? "" : "border-b border-hairline"
+                }`}
               >
-                <Card variant="soft" padding="md" style={{ aspectRatio: 2 }}>
-                  {/* Горизонтальный layout: иконка слева, текст справа.
-                      При высоте x2 меньше (aspect 2:1) вертикальный layout
-                      icon-top/text-bottom больше не помещается красиво. */}
-                  <View className="flex-1 flex-row items-center gap-2">
-                    <View className="text-ink shrink-0">
-                      <Icon size={20} strokeWidth={1.75} color="currentColor" />
-                    </View>
-                    <AppText
-                      weight="semibold"
-                      className="flex-1 text-body-sm text-ink"
-                      numberOfLines={2}
-                    >
-                      {cat.name_ru}
-                    </AppText>
-                  </View>
-                </Card>
+                {/* Иконка в soft-круге слева. text-ink через className → currentColor наследуется. */}
+                <View className="h-10 w-10 items-center justify-center rounded-full bg-canvas-soft text-ink">
+                  <Icon size={20} strokeWidth={1.5} color="currentColor" />
+                </View>
+                <AppText weight="semibold" className="flex-1 text-body-md text-ink">
+                  {cat.name_ru}
+                </AppText>
+                <View className="text-mute">
+                  <ChevronRight size={20} strokeWidth={1.5} color="currentColor" />
+                </View>
               </Pressable>
             );
           })}

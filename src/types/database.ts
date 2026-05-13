@@ -295,6 +295,7 @@ export type Database = {
       }
       master_profiles: {
         Row: {
+          account_type: Database["public"]["Enums"]["master_account_type"]
           bio: string | null
           closed_deals: number
           created_at: string
@@ -306,6 +307,8 @@ export type Database = {
             | null
           inn: string | null
           languages: string[]
+          legal_name: string | null
+          ogrn: string | null
           rating_overall_avg: number | null
           rating_overall_count: number
           service_radius_km: number
@@ -318,6 +321,7 @@ export type Database = {
           work_schedule: Json
         }
         Insert: {
+          account_type?: Database["public"]["Enums"]["master_account_type"]
           bio?: string | null
           closed_deals?: number
           created_at?: string
@@ -329,6 +333,8 @@ export type Database = {
             | null
           inn?: string | null
           languages?: string[]
+          legal_name?: string | null
+          ogrn?: string | null
           rating_overall_avg?: number | null
           rating_overall_count?: number
           service_radius_km?: number
@@ -341,6 +347,7 @@ export type Database = {
           work_schedule?: Json
         }
         Update: {
+          account_type?: Database["public"]["Enums"]["master_account_type"]
           bio?: string | null
           closed_deals?: number
           created_at?: string
@@ -352,6 +359,8 @@ export type Database = {
             | null
           inn?: string | null
           languages?: string[]
+          legal_name?: string | null
+          ogrn?: string | null
           rating_overall_avg?: number | null
           rating_overall_count?: number
           service_radius_km?: number
@@ -703,6 +712,77 @@ export type Database = {
           },
         ]
       }
+      team_members: {
+        Row: {
+          joined_at: string
+          role: Database["public"]["Enums"]["team_member_role"]
+          team_id: string
+          user_id: string
+        }
+        Insert: {
+          joined_at?: string
+          role?: Database["public"]["Enums"]["team_member_role"]
+          team_id: string
+          user_id: string
+        }
+        Update: {
+          joined_at?: string
+          role?: Database["public"]["Enums"]["team_member_role"]
+          team_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_members_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "team_members_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      teams: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          owner_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+          owner_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          owner_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "teams_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       portfolio_items: {
         Row: {
           caption: string | null
@@ -1038,6 +1118,7 @@ export type Database = {
         | "wedding_season"
       category_urgency: "urgent" | "week" | "month"
       home_clients_policy: "anytime" | "with_male_present" | "women_only"
+      master_account_type: "solo" | "brigade" | "company"
       master_pricing_mode: "per_hour" | "per_unit" | "negotiable" | "on_quote"
       master_status: "draft" | "pending" | "active" | "suspended" | "archived"
       notification_type:
@@ -1074,6 +1155,7 @@ export type Database = {
       review_direction: "client_to_master" | "master_to_client"
       review_status: "visible" | "hidden" | "pending"
       service_unit: "per_hour" | "per_task" | "per_m2" | "per_day"
+      team_member_role: "owner" | "member"
       tax_status:
         | "individual"
         | "self_employed"
@@ -1217,6 +1299,7 @@ export const Constants = {
       ],
       category_urgency: ["urgent", "week", "month"],
       home_clients_policy: ["anytime", "with_male_present", "women_only"],
+      master_account_type: ["solo", "brigade", "company"],
       master_pricing_mode: ["per_hour", "per_unit", "negotiable", "on_quote"],
       master_status: ["draft", "pending", "active", "suspended", "archived"],
       notification_type: [
@@ -1256,6 +1339,7 @@ export const Constants = {
       review_direction: ["client_to_master", "master_to_client"],
       review_status: ["visible", "hidden", "pending"],
       service_unit: ["per_hour", "per_task", "per_m2", "per_day"],
+      team_member_role: ["owner", "member"],
       tax_status: [
         "individual",
         "self_employed",

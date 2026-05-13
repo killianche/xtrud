@@ -19,13 +19,12 @@
  */
 
 import { useRouter } from "expo-router";
-import { Pencil, User } from "lucide-react-native";
-import { useState } from "react";
+import { User } from "lucide-react-native";
 import { FlatList, Pressable, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
 import { CitySelector, useCityStore, getCityName } from "@/components/CitySelector";
-import { Avatar, Button, Card, Chip, Input } from "@/components/ui";
+import { Avatar, Button, Card, Chip } from "@/components/ui";
 import { useAuthSession } from "@/features/auth/use-auth-session";
 import { useUserRecord } from "@/features/auth/use-user-record";
 import { useFeaturedCategories } from "@/features/categories/use-featured-categories";
@@ -164,54 +163,52 @@ function Hero({
   cityName: string;
   onDescribeTask: (draft?: string) => void;
 }) {
-  const [draft, setDraft] = useState("");
-
-  const handleSubmit = () => {
-    onDescribeTask(draft.trim() || undefined);
-  };
-
   return (
     <View className="px-5 mt-8">
       <AppText weight="display" className="text-display-lg tracking-tight text-ink">
         Услуги в {cityName === "Магас" ? "Ингушетии" : cityName}
       </AppText>
+
+      {/* Subtitle — value-proposition в 2 предложения.
+          Акцент на ключевом отличии («они не знают ваш номер») сделан вложенным
+          AppText с weight="semibold" + ink color, что выделяет ключевую гарантию
+          приватности на фоне обычного body-цвета. */}
       <AppText className="mt-2 text-body-md text-body leading-6">
-        Опишите задачу — мастера откликнутся с ценами. Ваш номер увидит только тот,
-        кому вы напишете сами.
+        Опишите задачу — мастера откликнутся с ценами.{" "}
+        <AppText weight="semibold" className="text-ink">
+          Они не увидят ваш номер
+        </AppText>{" "}
+        — вы сами решаете, с кем связаться.
       </AppText>
 
-      {/* Inline task input: карандаш слева (Pencil = «писать», не «искать») */}
-      <View className="mt-5">
-        <Input
-          size="lg"
-          value={draft}
-          onChangeText={setDraft}
-          placeholder="Например: установить кондиционер"
-          leftIcon={<Pencil size={18} strokeWidth={1.75} color="currentColor" />}
-          returnKeyType="go"
-          onSubmitEditing={handleSubmit}
-          multiline={false}
-        />
-      </View>
-
-      {/* CTA — переходит в визард с draft-текстом (или пустым) */}
-      <View className="mt-3">
-        <Button size="lg" fullWidth onPress={handleSubmit}>
-          {draft.trim() ? "Продолжить" : "Описать задачу"}
-        </Button>
-      </View>
-
-      {/* Trust-чипы: 3 ключевых сигнала value */}
-      <View className="mt-3 flex-row items-center gap-2 flex-wrap">
+      {/* Trust-чипы — 2 ключевых сигнала. «Номер скрыт» удалён, потому что
+          теперь это сообщение уже подсвечено в subtitle. */}
+      <View className="mt-4 flex-row items-center gap-2 flex-wrap">
         <Chip size="sm" mono>
           Бесплатно
         </Chip>
         <Chip size="sm" mono>
-          Номер скрыт
-        </Chip>
-        <Chip size="sm" mono>
           Ответы за 30 мин
         </Chip>
+      </View>
+
+      {/* CTA — единственная точка входа в визард создания заказа.
+          Inline-input скрыт по решению UX: один путь, без неоднозначности. */}
+      <View className="mt-5">
+        <Button size="lg" fullWidth onPress={() => onDescribeTask()}>
+          Описать задачу
+        </Button>
+      </View>
+
+      {/* Примеры задач — подсказка пользователю «что писать». */}
+      <View className="mt-3">
+        <AppText className="text-body-sm text-mute">Например:</AppText>
+        <AppText className="mt-1 text-body-sm text-mute leading-5">
+          • «Починить кондиционер»
+        </AppText>
+        <AppText className="mt-1 text-body-sm text-mute leading-5">
+          • «Нужен плиточник — положить брусчатку 37×20 м во дворе»
+        </AppText>
       </View>
     </View>
   );

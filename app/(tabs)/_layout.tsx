@@ -4,7 +4,7 @@ import {
   ThemeProvider as NavThemeProvider,
 } from "@react-navigation/native";
 import { Slot, Tabs } from "expo-router";
-import { ClipboardList, Home, MessageCircle } from "lucide-react-native";
+import { ClipboardList, Home, MessageCircle, User } from "lucide-react-native";
 import { Platform, useWindowDimensions } from "react-native";
 import { TabBar } from "@/components/TabBar";
 import { WebShell } from "@/components/WebShell";
@@ -124,9 +124,17 @@ export default function TabsLayout() {
           tabBarBadgeStyle: badgeStyle,
         }}
       />
+      <Tabs.Screen
+        name="profile"
+        options={{
+          title: "Профиль",
+          tabBarIcon: ({ color, focused }) => (
+            <User color={color} size={24} strokeWidth={focused ? 2.25 : 1.5} />
+          ),
+        }}
+      />
       {/* Detail-экраны — НЕ показываем в нижней панели табов. */}
       <Tabs.Screen name="category/[id]" options={{ href: null }} />
-      <Tabs.Screen name="profile" options={{ href: null }} />
       <Tabs.Screen name="master/[id]" options={{ href: null }} />
       <Tabs.Screen name="client/[id]" options={{ href: null }} />
       <Tabs.Screen name="notifications" options={{ href: null }} />

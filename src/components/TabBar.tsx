@@ -1,50 +1,151 @@
 /*
- * TabBar v2 — нижний таб-бар (Vercel DESIGN.md).
+ * TabBar v3 — нижний таб-бар с центральной CTA «Создать заказ».
  *
- * Активный таб: ink + semibold.
- * Неактивный:    mute + regular.
- * Различие — ЦВЕТ, не opacity (opacity на dark не работает визуально).
+ * Паттерн: Яндекс.Услуги / Profi.ru / Canva / Avito — 4 таба + центральная
+ * круглая FAB-кнопка primary action поднятая над линией навбара.
  *
- * iOS:    shadow без top-border (Apple/Linear паттерн).
- * Android/web:  0.5px hairline сверху.
+ * Структура:
+ *   [Главная] [Заказы]  ⊕  [Чаты] [Профиль]
+ *                   ↑
+ *           Создать заказ (router.push('/orders/new'))
  *
- * Видимые таб-маршруты: index / orders / chats. Остальные (href:null) пропускаются.
+ * Активный таб: ink + semibold + filled icon (stroke 2.25).
+ * Неактивный:    mute + regular + outline icon (stroke 1.5).
+ * Центральная CTA — bg-primary, всегда яркая (это primary action, не таб).
  *
- * Цвета:
- *  - На web color иконок через **className="text-ink"/"text-mute"** + currentColor
- *    в SVG. CSS-переменные --ink/--mute уже резолвятся правильно через html.dark
- *    класс (inline theme-guard в +html.tsx). Это обходит JS-резолв-баг с useThemeColor.
- *  - На native — hex из useThemeColors (RN Appearance резолвится корректно).
- *
- * Бейджи: из options.tabBarBadge / options.tabBarBadgeStyle.
+ * Lazyweb: посмотрел Canva, Adobe, Duckbill, TaskRabbit — паттерн 5-elements
+ * (2L + FAB + 2R) с приподнятой центральной кнопкой — самый частый для
+ * marketplace/productivity-приложений.
  */
 
-import { type BottomTabBarProps } from "@react-navigation/bottom-tabs";
+import type { BottomTabBarProps } from "@react-navigation/bottom-tabs";
+import { useRouter } from "expo-router";
+import { Plus } from "lucide-react-native";
 import { Platform, Pressable, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
 import { useThemeColors } from "@/lib/use-theme-color";
 
-const VISIBLE_TABS = new Set(["index", "orders", "chats"]);
-const TAB_HEIGHT = 56;
+// Порядок таб-роутов в навбаре. Центральная CTA вставляется между orders и chats.
+const TAB_ORDER = ["index", "orders", "chats", "profile"] as const;
+const TAB_HEIGHT = 60;
+const FAB_SIZE = 56;
 const isWeb = Platform.OS === "web";
 
 export function TabBar({ state, descriptors, navigation }: BottomTabBarProps) {
   const insets = useSafeAreaInsets();
-  // На native canvas/hairline через hex для inline style. На web — Tailwind решает.
-  const tc = useThemeColors(["canvas", "hairline", "ink", "mute"]);
+  const router = useRouter();
+  const tc = useThemeColors(["canvas", "hairline", "ink", "mute", "primary", "on-primary"]);
 
-  const visibleRoutes = state.routes.filter((r) => VISIBLE_TABS.has(r.name));
+  // Берём роуты в нужном порядке, отфильтрованные по существованию.
+  const orderedRoutes = TAB_ORDER.map((name) =>
+    state.routes.find((r) => r.name === name),
+  ).filter((r): r is NonNullable<typeof r> => Boolean(r));
+
+  // Левая часть: index + orders. Правая: chats + profile.
+  const leftRoutes = orderedRoutes.filter((r) => r.name === "index" || r.name === "orders");
+  const rightRoutes = orderedRoutes.filter((r) => r.name === "chats" || r.name === "profile");
+
+  const renderTab = (route: (typeof state.routes)[number]) => {
+    const descriptor = descriptors[route.key];
+    if (!descriptor) return null;
+    const { options } = descriptor;
+    const globalIndex = state.routes.findIndex((r) => r.key === route.key);
+    const isFocused = state.index === globalIndex;
+
+    const label = typeof options.title === "string" ? options.title : route.name;
+    const badge = options.tabBarBadge;
+    const bsRaw = options.tabBarBadgeStyle as
+      | { backgroundColor?: string; color?: string }
+      | null
+      | undefined;
+    const badgeBg = bsRaw?.backgroundColor ?? "#ee0000";
+    const badgeTextColor = bsRaw?.color ?? "#ffffff";
+
+    const tabColorHex = isFocused ? tc.ink : tc.mute;
+    const iconColor = isWeb ? "currentColor" : tabColorHex;
+
+    const onPress = () => {
+      const event = navigation.emit({
+        type: "tabPress",
+        target: route.key,
+        canPreventDefault: true,
+      });
+      if (!isFocused && !event.defaultPrevented) {
+        navigation.navigate(route.name as never);
+      }
+    };
+
+    return (
+      <Pressable
+        key={route.key}
+        onPress={onPress}
+        onLongPress={() => navigation.emit({ type: "tabLongPress", target: route.key })}
+        accessibilityRole="tab"
+        accessibilityState={{ selected: isFocused }}
+        accessibilityLabel={options.tabBarAccessibilityLabel ?? label}
+        className={isWeb ? (isFocused ? "text-ink" : "text-mute") : undefined}
+        style={{
+          flex: 1,
+          alignItems: "center",
+          justifyContent: "center",
+          gap: 3,
+          paddingTop: 6,
+        }}
+      >
+        <View style={{ position: "relative" }}>
+          {options.tabBarIcon?.({ focused: isFocused, color: iconColor, size: 24 })}
+
+          {badge !== undefined && badge !== null && (
+            <View
+              style={{
+                position: "absolute",
+                top: -3,
+                right: -9,
+                backgroundColor: badgeBg,
+                borderRadius: 8,
+                minWidth: 16,
+                height: 16,
+                alignItems: "center",
+                justifyContent: "center",
+                paddingHorizontal: 4,
+              }}
+            >
+              <AppText
+                weight="semibold"
+                style={{ color: badgeTextColor, fontSize: 10, lineHeight: 14 }}
+              >
+                {String(badge)}
+              </AppText>
+            </View>
+          )}
+        </View>
+
+        <AppText
+          weight={isFocused ? "semibold" : "regular"}
+          className={isWeb ? (isFocused ? "text-ink" : "text-mute") : undefined}
+          style={
+            isWeb
+              ? { fontSize: 11, lineHeight: 14 }
+              : { fontSize: 11, lineHeight: 14, color: tabColorHex }
+          }
+        >
+          {label}
+        </AppText>
+      </Pressable>
+    );
+  };
 
   return (
     <View
-      // bg-canvas + border-hairline через Tailwind (web), inline style на native.
+      // Контейнер overflow visible — FAB приподнят над линией навбара.
       className={isWeb ? "flex-row bg-canvas border-t border-hairline" : undefined}
       style={[
         {
           height: TAB_HEIGHT + insets.bottom,
           paddingBottom: insets.bottom,
           flexDirection: "row",
+          overflow: "visible",
         },
         !isWeb && {
           backgroundColor: tc.canvas,
@@ -60,98 +161,65 @@ export function TabBar({ state, descriptors, navigation }: BottomTabBarProps) {
         Platform.OS === "android" && { elevation: 8 },
       ]}
     >
-      {visibleRoutes.map((route) => {
-        const descriptor = descriptors[route.key];
-        if (!descriptor) return null;
-        const { options } = descriptor;
-        const globalIndex = state.routes.findIndex((r) => r.key === route.key);
-        const isFocused = state.index === globalIndex;
+      {/* Левая часть. */}
+      {leftRoutes.map(renderTab)}
 
-        const label = typeof options.title === "string" ? options.title : route.name;
-        const badge = options.tabBarBadge;
-        const bsRaw = options.tabBarBadgeStyle as
-          | { backgroundColor?: string; color?: string }
-          | null
-          | undefined;
-        const badgeBg = bsRaw?.backgroundColor ?? "#ee0000"; // Vercel error
-        const badgeTextColor = bsRaw?.color ?? "#ffffff";
-
-        // Web: цвет через CSS class (currentColor наследуется в SVG icon).
-        // Native: hex из useThemeColors.
-        const tabColorHex = isFocused ? tc.ink : tc.mute;
-        const iconColor = isWeb ? "currentColor" : tabColorHex;
-
-        const onPress = () => {
-          const event = navigation.emit({
-            type: "tabPress",
-            target: route.key,
-            canPreventDefault: true,
-          });
-          if (!isFocused && !event.defaultPrevented) {
-            navigation.navigate(route.name as never);
+      {/* Центральная CTA — slot шириной обычного таба, FAB visually поднят. */}
+      <View
+        style={{
+          flex: 1,
+          alignItems: "center",
+          justifyContent: "flex-start",
+          paddingTop: 0,
+        }}
+      >
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Создать заказ"
+          onPress={() => router.push("/orders/new" as never)}
+          // bg-primary + text-on-primary через NativeWind className —
+          // inline style с CSS-var в RNW не резолвится (design-quality #2).
+          className="bg-primary text-on-primary items-center justify-center active:opacity-85"
+          style={[
+            {
+              width: FAB_SIZE,
+              height: FAB_SIZE,
+              borderRadius: FAB_SIZE / 2,
+              marginTop: -16, // приподнят над линией навбара
+            },
+            Platform.OS === "ios" && {
+              shadowColor: "#000",
+              shadowOffset: { width: 0, height: 4 },
+              shadowOpacity: 0.18,
+              shadowRadius: 12,
+            },
+            Platform.OS === "android" && { elevation: 6 },
+            isWeb && {
+              boxShadow: "0 6px 16px rgba(0,0,0,0.18)",
+            },
+          ]}
+        >
+          <Plus
+            size={28}
+            strokeWidth={2.25}
+            color={isWeb ? "currentColor" : tc["on-primary"]}
+          />
+        </Pressable>
+        <AppText
+          weight="semibold"
+          className={isWeb ? "text-ink" : undefined}
+          style={
+            isWeb
+              ? { fontSize: 11, lineHeight: 14, marginTop: 4 }
+              : { fontSize: 11, lineHeight: 14, marginTop: 4, color: tc.ink }
           }
-        };
+        >
+          Создать
+        </AppText>
+      </View>
 
-        return (
-          <Pressable
-            key={route.key}
-            onPress={onPress}
-            onLongPress={() => navigation.emit({ type: "tabLongPress", target: route.key })}
-            accessibilityRole="tab"
-            accessibilityState={{ selected: isFocused }}
-            accessibilityLabel={options.tabBarAccessibilityLabel ?? label}
-            // На web className устанавливает CSS color для currentColor наследования.
-            className={isWeb ? (isFocused ? "text-ink" : "text-mute") : undefined}
-            style={{
-              flex: 1,
-              alignItems: "center",
-              justifyContent: "center",
-              gap: 3,
-              paddingTop: 6,
-            }}
-          >
-            <View style={{ position: "relative" }}>
-              {options.tabBarIcon?.({ focused: isFocused, color: iconColor, size: 24 })}
-
-              {badge !== undefined && badge !== null && (
-                <View
-                  style={{
-                    position: "absolute",
-                    top: -3,
-                    right: -9,
-                    backgroundColor: badgeBg,
-                    borderRadius: 8,
-                    minWidth: 16,
-                    height: 16,
-                    alignItems: "center",
-                    justifyContent: "center",
-                    paddingHorizontal: 4,
-                  }}
-                >
-                  <AppText
-                    weight="semibold"
-                    style={{ color: badgeTextColor, fontSize: 10, lineHeight: 14 }}
-                  >
-                    {String(badge)}
-                  </AppText>
-                </View>
-              )}
-            </View>
-
-            <AppText
-              weight={isFocused ? "semibold" : "regular"}
-              className={isWeb ? (isFocused ? "text-ink" : "text-mute") : undefined}
-              style={
-                isWeb
-                  ? { fontSize: 11, lineHeight: 14 }
-                  : { fontSize: 11, lineHeight: 14, color: tabColorHex }
-              }
-            >
-              {label}
-            </AppText>
-          </Pressable>
-        );
-      })}
+      {/* Правая часть. */}
+      {rightRoutes.map(renderTab)}
     </View>
   );
 }

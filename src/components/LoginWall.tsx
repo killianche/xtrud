@@ -15,9 +15,9 @@
  */
 
 import { useRouter } from "expo-router";
+import { KeyRound } from "lucide-react-native";
 import { useCallback, useState } from "react";
 import { View } from "react-native";
-import { Illustration } from "@/components/Illustration";
 import { BottomSheet, Button } from "@/components/ui";
 import { useAuthSession } from "@/features/auth/use-auth-session";
 
@@ -43,10 +43,13 @@ export function LoginWall({ open, onClose, reason }: LoginWallProps) {
       title="Войдите чтобы продолжить"
       subtitle={reason ?? "Регистрация занимает 30 секунд по номеру телефона."}
     >
-      {/* Doodle-иллюстрация сверху — сигнал «лёгкое приглашение, не блокер».
-          levitate = парящий персонаж, подходит «всё легко». */}
+      {/* Большая Lucide-иконка KeyRound в soft-круге — нейтральный
+          object-сигнал «вход» (раньше был doodle-человек, заменён по
+          запросу «без людей/живых существ»). */}
       <View className="items-center mt-1 mb-2">
-        <Illustration name="levitate" size={120} className="text-ink" />
+        <View className="h-20 w-20 items-center justify-center rounded-full bg-canvas-soft text-ink">
+          <KeyRound size={36} strokeWidth={1.25} color="currentColor" />
+        </View>
       </View>
       <View className="gap-3 mt-2">
         <Button size="lg" fullWidth onPress={handleLogin}>

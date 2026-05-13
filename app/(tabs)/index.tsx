@@ -19,13 +19,12 @@
  */
 
 import { useRouter } from "expo-router";
-import { ChevronRight, Search, User } from "lucide-react-native";
+import { ChevronRight, Hammer, Search, User } from "lucide-react-native";
 import { FlatList, Pressable, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { getCategoryIcon } from "@/lib/category-icons";
 import { AppText } from "@/components/AppText";
 import { CitySelector, useCityStore, getCityName } from "@/components/CitySelector";
-import { Illustration } from "@/components/Illustration";
 import { Avatar, Button, Card } from "@/components/ui";
 import { useAuthSession } from "@/features/auth/use-auth-session";
 import { useUserRecord } from "@/features/auth/use-user-record";
@@ -184,40 +183,46 @@ const FREQUENT_SEARCHES: { label: string; l2_id: string; icon: string }[] = [
 ];
 
 function FrequentSearches({ onCategoryPress }: { onCategoryPress: (id: string) => void }) {
+  // Берём первые 6 — самые ходовые. Yandex-style: 2-col grid плитки,
+  // bg-canvas-soft, большая Lucide-иконка справа-снизу (декоративно)
+  // + название слева-сверху semibold.
+  const top6 = FREQUENT_SEARCHES.slice(0, 6);
   return (
-    <View className="mt-10">
-      <View className="px-5">
-        <AppText weight="semibold" className="text-title-lg text-ink">
-          Часто ищут
-        </AppText>
-      </View>
-      {/* Chip-pills с иконкой + label. Иконка слева 16px ink, mute hairline
-          border, hover/active — opacity. Vercel-pill style. */}
-      <FlatList
-        data={FREQUENT_SEARCHES}
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={{ paddingHorizontal: 20, gap: 8, paddingTop: 12 }}
-        keyExtractor={(item) => item.l2_id + item.label}
-        renderItem={({ item }) => {
+    <View className="mt-10 px-5">
+      <AppText weight="semibold" className="text-title-lg text-ink">
+        Часто ищут
+      </AppText>
+      <View className="mt-3 flex-row flex-wrap gap-3">
+        {top6.map((item) => {
           const Icon = getCategoryIcon(item.icon);
           return (
             <Pressable
+              key={item.l2_id + item.label}
               accessibilityRole="button"
               accessibilityLabel={item.label}
               onPress={() => onCategoryPress(item.l2_id)}
-              className="flex-row items-center gap-2 h-11 pl-3 pr-4 rounded-full bg-canvas border border-hairline active:opacity-70"
+              className="w-[48%] rounded-xl bg-canvas-soft p-4 active:opacity-70 overflow-hidden"
+              style={{ minHeight: 100 }}
             >
-              <View className="text-ink">
-                <Icon size={16} strokeWidth={1.75} color="currentColor" />
-              </View>
-              <AppText weight="medium" className="text-body-sm text-ink">
+              <AppText
+                weight="semibold"
+                className="text-body-md text-ink"
+                numberOfLines={2}
+              >
                 {item.label}
               </AppText>
+              {/* Большая тематичная иконка справа-снизу — декор, как
+                  «фотка-плитка» у Яндекс.Услуг. */}
+              <View
+                className="text-ink"
+                style={{ position: "absolute", right: 8, bottom: 8, opacity: 0.85 }}
+              >
+                <Icon size={48} strokeWidth={1.25} color="currentColor" />
+              </View>
             </Pressable>
           );
-        }}
-      />
+        })}
+      </View>
     </View>
   );
 }
@@ -232,8 +237,9 @@ function DescribeTaskCallout({ onPress }: { onPress: () => void }) {
   return (
     <View className="mt-10 mx-5 rounded-xl bg-canvas-soft overflow-hidden">
       <View className="flex-row items-center p-5 gap-4">
-        <View className="shrink-0">
-          <Illustration name="unboxing" size={110} className="text-ink" />
+        {/* Большая Lucide-иконка молотка — тематично без человеков/живых. */}
+        <View className="shrink-0 h-24 w-24 items-center justify-center rounded-full bg-canvas text-ink">
+          <Hammer size={44} strokeWidth={1.25} color="currentColor" />
         </View>
         <View className="flex-1">
           <AppText weight="semibold" className="text-title-md text-ink">

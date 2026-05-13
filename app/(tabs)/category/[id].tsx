@@ -11,11 +11,10 @@
  */
 
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { ChevronLeft, Shield, Star } from "lucide-react-native";
+import { ChevronLeft, Search, Shield, Star } from "lucide-react-native";
 import { Pressable, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
-import { Illustration } from "@/components/Illustration";
 import { Avatar, Card, Chip } from "@/components/ui";
 import {
   type CategoryL3,
@@ -88,7 +87,9 @@ export default function CategoryDetailScreen() {
             </View>
           ) : mastersList.length === 0 ? (
             <View className="items-center py-6">
-              <Illustration name="plant" size={140} className="text-ink" />
+              <View className="h-24 w-24 items-center justify-center rounded-full bg-canvas-soft text-ink">
+                <Search size={44} strokeWidth={1.25} color="currentColor" />
+              </View>
               <AppText weight="semibold" className="mt-6 text-title-md text-ink text-center">
                 Пока нет мастеров в этой категории
               </AppText>

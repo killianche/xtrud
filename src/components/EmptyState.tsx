@@ -16,14 +16,13 @@
 import type { LucideIcon } from "lucide-react-native";
 import { Pressable, View } from "react-native";
 import { AppText } from "@/components/AppText";
-import { Illustration, type IllustrationName } from "@/components/Illustration";
 import { useThemeColor } from "@/lib/use-theme-color";
 
 export interface EmptyStateProps {
-  /** Lucide-иконка для верхнего кружка (legacy fallback, если illustration не задан). */
+  /** Lucide-иконка для большого soft-круга вверху. */
   icon: LucideIcon;
-  /** Doodle-иллюстрация из Open Doodles. Если задана — рендерится вместо icon-кружка. */
-  illustration?: IllustrationName;
+  /** @deprecated не используется — оставлен для обратной совместимости. */
+  illustration?: string;
   /** Заголовок одной строкой (semibold, title-md). */
   title: string;
   /** Подсказка-описание (2-3 строки максимум). */
@@ -38,14 +37,14 @@ export interface EmptyStateProps {
 
 export function EmptyState({
   icon: Icon,
-  illustration,
+  illustration: _unused,
   title,
   hint,
   ctaLabel,
   onCtaPress,
   className,
 }: EmptyStateProps) {
-  const mutedSoftColor = useThemeColor("muted-soft");
+  void _unused;
   const onPrimaryColor = useThemeColor("on-primary");
 
   return (
@@ -53,17 +52,13 @@ export function EmptyState({
       className={`items-center px-6 py-10 ${className ?? "mx-6"}`}
       accessibilityRole="summary"
     >
-      {illustration ? (
-        <Illustration name={illustration} size={150} className="text-ink" />
-      ) : (
-        <View className="h-12 w-12 items-center justify-center rounded-full bg-canvas-soft-2">
-          <Icon size={24} strokeWidth={1.75} color={mutedSoftColor} />
-        </View>
-      )}
-      <AppText
-        weight="semibold"
-        className={`text-center text-title-md text-ink ${illustration ? "mt-6" : "mt-4"}`}
-      >
+      {/* Большая тематичная Lucide-иконка в soft-круге.
+          Раньше тут были doodle-человечки (Open Doodles), но user попросил
+          без людей/живых существ — заменено на чистые object-иконки. */}
+      <View className="h-24 w-24 items-center justify-center rounded-full bg-canvas-soft text-ink">
+        <Icon size={44} strokeWidth={1.25} color="currentColor" />
+      </View>
+      <AppText weight="semibold" className="mt-6 text-center text-title-md text-ink">
         {title}
       </AppText>
       {hint && <AppText className="mt-2 text-center text-body-md text-muted">{hint}</AppText>}

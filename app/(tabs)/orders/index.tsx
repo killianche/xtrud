@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
-import { Illustration } from "@/components/Illustration";
 import { OrderRow } from "@/components/OrderRow";
 import { SafetyBanner } from "@/components/SafetyBanner";
 import { useAuthSession } from "@/features/auth/use-auth-session";
@@ -110,7 +109,9 @@ function ClientOrdersView({ userId }: ClientOrdersViewProps) {
 
         {!isLoading && !error && !hasOrders && (
           <View className="mt-12 items-center px-6">
-            <Illustration name="coffee" size={160} className="text-ink" />
+            <View className="h-24 w-24 items-center justify-center rounded-full bg-canvas-soft text-ink">
+              <ClipboardList size={44} strokeWidth={1.25} color="currentColor" />
+            </View>
             <AppText weight="semibold" className="mt-6 text-title-md text-ink text-center">
               Заказов пока нет
             </AppText>
@@ -542,7 +543,9 @@ interface EmptyCardProps {
 function EmptyCard({ title, subtitle }: EmptyCardProps) {
   return (
     <View className="items-center px-6 py-6">
-      <Illustration name="reading" size={150} className="text-ink" />
+      <View className="h-24 w-24 items-center justify-center rounded-full bg-canvas-soft text-ink">
+        <ClipboardList size={44} strokeWidth={1.25} color="currentColor" />
+      </View>
       <AppText weight="semibold" className="mt-6 text-title-md text-ink text-center">
         {title}
       </AppText>

@@ -17,12 +17,11 @@
  */
 
 import { useFocusEffect, useRouter } from "expo-router";
-import { X } from "lucide-react-native";
+import { SearchX, X } from "lucide-react-native";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { FlatList, Pressable, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
-import { Illustration } from "@/components/Illustration";
 import { useSearchableServices } from "@/features/categories/use-searchable-services";
 import { filterServicesByQuery, highlightMatch } from "@/lib/highlight-match";
 
@@ -112,7 +111,9 @@ export default function SearchScreen() {
         </View>
       ) : results.length === 0 ? (
         <View className="flex-1 items-center justify-center px-8">
-          <Illustration name="meditating" size={140} className="text-ink" />
+          <View className="h-24 w-24 items-center justify-center rounded-full bg-canvas-soft text-ink">
+            <SearchX size={44} strokeWidth={1.25} color="currentColor" />
+          </View>
           <AppText weight="semibold" className="mt-5 text-title-md text-ink text-center">
             Ничего не нашли
           </AppText>

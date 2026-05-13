@@ -25,6 +25,7 @@ import { View } from "react-native";
 
 import Coffee from "../../assets/illustrations/coffee.svg";
 import Dancing from "../../assets/illustrations/dancing.svg";
+import Groovy from "../../assets/illustrations/groovy.svg";
 import Levitate from "../../assets/illustrations/levitate.svg";
 import Loving from "../../assets/illustrations/loving.svg";
 import Meditating from "../../assets/illustrations/meditating.svg";
@@ -32,21 +33,27 @@ import Plant from "../../assets/illustrations/plant.svg";
 import Reading from "../../assets/illustrations/reading.svg";
 import Running from "../../assets/illustrations/running.svg";
 import Sitting from "../../assets/illustrations/sitting.svg";
+import Strolling from "../../assets/illustrations/strolling.svg";
+import Unboxing from "../../assets/illustrations/unboxing.svg";
 
 export type IllustrationName =
   | "coffee"
   | "dancing"
+  | "groovy"
   | "levitate"
   | "loving"
   | "meditating"
   | "plant"
   | "reading"
   | "running"
-  | "sitting";
+  | "sitting"
+  | "strolling"
+  | "unboxing";
 
 const COMPONENTS = {
   coffee: Coffee,
   dancing: Dancing,
+  groovy: Groovy,
   levitate: Levitate,
   loving: Loving,
   meditating: Meditating,
@@ -54,6 +61,8 @@ const COMPONENTS = {
   reading: Reading,
   running: Running,
   sitting: Sitting,
+  strolling: Strolling,
+  unboxing: Unboxing,
 } as const;
 
 export interface IllustrationProps {

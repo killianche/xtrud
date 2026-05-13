@@ -25,6 +25,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { getCategoryIcon } from "@/lib/category-icons";
 import { AppText } from "@/components/AppText";
 import { CitySelector, useCityStore, getCityName } from "@/components/CitySelector";
+import { Illustration } from "@/components/Illustration";
 import { Avatar, Button, Card } from "@/components/ui";
 import { useAuthSession } from "@/features/auth/use-auth-session";
 import { useUserRecord } from "@/features/auth/use-user-record";
@@ -150,7 +151,44 @@ function ClientHome({ onCategoryPress, onMasterPress, onDescribeTask }: ClientHo
     <View>
       <Hero cityName={cityName} />
       <TopMasters onMasterPress={onMasterPress} />
+      <DescribeTaskCallout onPress={() => onDescribeTask()} />
       <AllCategories onCategoryPress={onCategoryPress} />
+    </View>
+  );
+}
+
+// ----------------------------------------------------------------------------
+// DescribeTaskCallout — Vercel-card блок «Опишите задачу — мастера найдут вас».
+// Doodle (unboxing — метафора «открыть возможности») + копи + CTA.
+// Размещается между TopMasters и AllCategories на главной.
+// ----------------------------------------------------------------------------
+
+function DescribeTaskCallout({ onPress }: { onPress: () => void }) {
+  return (
+    <View className="mt-10 mx-5 rounded-xl bg-canvas-soft overflow-hidden">
+      <View className="flex-row items-center p-5 gap-4">
+        <View className="shrink-0">
+          <Illustration name="unboxing" size={110} className="text-ink" />
+        </View>
+        <View className="flex-1">
+          <AppText weight="semibold" className="text-title-md text-ink">
+            Опишите задачу — мастера найдут вас
+          </AppText>
+          <AppText className="mt-1 text-body-sm text-mute">
+            Бесплатно. Откликов обычно много, выбираете сами.
+          </AppText>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Создать заказ"
+            onPress={onPress}
+            className="mt-3 self-start h-9 px-4 rounded-full bg-primary active:opacity-85 items-center justify-center"
+          >
+            <AppText weight="semibold" className="text-body-sm text-on-primary">
+              Создать заказ
+            </AppText>
+          </Pressable>
+        </View>
+      </View>
     </View>
   );
 }

@@ -1,0 +1,23 @@
+# Sprint C — Full-cycle smoke (auth → chat → review в одном прогоне).
+#
+# ⚠️  Pre-condition: на dev-БД должен быть прогнан
+#     `supabase/seed-test/chat-fixture.sql`. Он создаёт client +79991110001,
+#     master +79992220002, in_progress order (для chat) + completed order
+#     (для review).
+#
+# Зачем: 4 отдельных smoke (client / master / chat / review) ловят регрессии
+# в своей зоне, но не ловят «навигация поломалась между табами». Этот runner
+# гонит цельный happy-cycle одного юзера: вошёл → пошёл в чат → написал →
+# вернулся → пошёл в заказы → оставил отзыв.
+#
+# Запуск:
+#   psql "$DATABASE_URL" -f supabase/seed-test/chat-fixture.sql
+#   maestro test .maestro/full-cycle-smoke.yaml
+appId: com.xtrud.app
+env:
+  TEST_PHONE: "+7 999 111-00-01"
+  TEST_OTP: "123456"
+---
+- runFlow: flows/01-auth.yaml      # phone → OTP → main
+- runFlow: flows/06-chat.yaml      # таб Чаты → диалог → отправить
+- runFlow: flows/07-review.yaml    # таб Заказы → completed-order → 5★ → submit

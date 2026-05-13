@@ -74,6 +74,13 @@ psql "$DATABASE_URL" -f supabase/seed-test/chat-fixture.sql
 maestro test .maestro/review-smoke.yaml
 ```
 
+**Full-cycle smoke** (auth → chat → review одним прогоном — ловит навигационные регрессии между табами, которые не ловят отдельные smoke):
+
+```bash
+psql "$DATABASE_URL" -f supabase/seed-test/chat-fixture.sql
+maestro test .maestro/full-cycle-smoke.yaml
+```
+
 `DATABASE_URL` — connection string на dev/local Supabase. **Никогда** не
 запускай fixture на проде: он инсертит фейковых юзеров напрямую в `auth.users`.
 
@@ -154,6 +161,7 @@ flow подтвердится локально.
 - **Master happy-path**: телефон → OTP → роль мастера → профиль → просмотр feed (3 таба)
 - **Chat happy-path**: вход в существующий чат → отправка сообщения (требует fixture)
 - **Review happy-path**: открыть completed-заказ → 5★ → текст → submit → assert «Ваш отзыв» (требует fixture)
+- **Full-cycle**: auth → chat → review одним прогоном (требует fixture)
 
 Не покрыто (бэклог):
 

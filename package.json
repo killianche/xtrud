@@ -17,7 +17,8 @@
     "tokens": "node scripts/generate-css-tokens.mjs",
     "tokens:check": "node scripts/generate-css-tokens.mjs --check",
     "web:build": "node scripts/build-web-local.mjs",
-    "web:serve": "npx serve dist -p 8082 -s"
+    "web:serve": "npx serve dist -p 8082 -s",
+    "web:dev": "node scripts/dev-web-local.mjs"
   },
   "dependencies": {
     "@expo-google-fonts/inter": "^0.4.1",

@@ -1,6 +1,6 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
-import { CheckCircle2, ChevronLeft, Clock, type LucideIcon, Pencil, Phone, Users } from "lucide-react-native";
+import { CheckCircle2, ChevronLeft, Clock, Lock, type LucideIcon, Pencil, Phone, Users } from "lucide-react-native";
 import { useCallback, useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, View } from "react-native";
@@ -278,7 +278,12 @@ export default function NewOrderScreen() {
               <View className="h-px bg-hairline mx-4" />
               <HowItWorksRow icon={Users} title="Мастера откликнутся" />
               <View className="h-px bg-hairline mx-4" />
-              <HowItWorksRow icon={Phone} title="Можете позвонить подходящему 📵" />
+              <HowItWorksRow
+                icon={Phone}
+                title="Можете позвонить подходящему"
+                hint="Мастера не видят ваш номер"
+                hintIcon={Lock}
+              />
             </View>
           </View>
         )}
@@ -348,10 +353,13 @@ function HowItWorksRow({
   icon: Icon,
   title,
   hint,
+  hintIcon: HintIcon,
 }: {
   icon: LucideIcon;
   title: string;
   hint?: string;
+  /** Маленькая иконка слева от hint'а — для приватных/важных сигналов (Lock). */
+  hintIcon?: LucideIcon;
 }) {
   return (
     <View className="flex-row items-center gap-4 px-4 py-4">
@@ -362,7 +370,16 @@ function HowItWorksRow({
         <AppText weight="semibold" className="text-body-md text-ink">
           {title}
         </AppText>
-        {hint && <AppText className="mt-1 text-body-sm text-mute">{hint}</AppText>}
+        {hint && (
+          <View className="mt-1 flex-row items-center gap-1.5">
+            {HintIcon && (
+              <View className="text-mute">
+                <HintIcon size={13} strokeWidth={2} color="currentColor" />
+              </View>
+            )}
+            <AppText className="text-body-sm text-mute">{hint}</AppText>
+          </View>
+        )}
       </View>
     </View>
   );

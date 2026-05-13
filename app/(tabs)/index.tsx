@@ -147,12 +147,72 @@ function ClientHome({ onCategoryPress, onMasterPress, onDescribeTask }: ClientHo
   // другого CTA или quick-task сценария.
   void onDescribeTask;
 
+  // onMasterPress пока не используется (TopMasters заменён на FrequentSearches),
+  // но оставляем в props — родительский HomeTab прокидывает, может пригодиться
+  // если вернём «Лучшие мастера» отдельной секцией ниже.
+  void onMasterPress;
+
   return (
     <View>
       <Hero cityName={cityName} />
-      <TopMasters onMasterPress={onMasterPress} />
+      <FrequentSearches onCategoryPress={onCategoryPress} />
       <DescribeTaskCallout onPress={() => onDescribeTask()} />
       <AllCategories onCategoryPress={onCategoryPress} />
+    </View>
+  );
+}
+
+// ----------------------------------------------------------------------------
+// FrequentSearches — «Часто ищут» горизонтальная карусель chip-pills.
+// Заменила «Лучшие мастера рядом» по запросу. Static-список самых популярных
+// услуг для Ингушетии (ремонт), при тапе ведёт на /category/[l2_id].
+// ----------------------------------------------------------------------------
+
+const FREQUENT_SEARCHES: { label: string; l2_id: string }[] = [
+  { label: "Сантехник", l2_id: "plumbing" },
+  { label: "Электрик", l2_id: "electrical" },
+  { label: "Плиточник", l2_id: "tiling" },
+  { label: "Натяжной потолок", l2_id: "tension-ceilings" },
+  { label: "Установка двери", l2_id: "doors" },
+  { label: "Сборка мебели", l2_id: "furniture" },
+  { label: "Замок", l2_id: "locks-security" },
+  { label: "Кондиционер", l2_id: "climate" },
+  { label: "Окна", l2_id: "windows" },
+  { label: "Уборка после ремонта", l2_id: "cleaning-post-renovation" },
+  { label: "Сварка ворот", l2_id: "welding" },
+  { label: "Бурение скважин", l2_id: "drilling-wells" },
+];
+
+function FrequentSearches({ onCategoryPress }: { onCategoryPress: (id: string) => void }) {
+  return (
+    <View className="mt-10">
+      <View className="px-5">
+        <AppText weight="semibold" className="text-title-lg text-ink">
+          Часто ищут
+        </AppText>
+        <AppText className="mt-1 text-body-sm text-mute">
+          Популярные услуги в городе
+        </AppText>
+      </View>
+      <FlatList
+        data={FREQUENT_SEARCHES}
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={{ paddingHorizontal: 20, gap: 8, paddingTop: 12 }}
+        keyExtractor={(item) => item.l2_id + item.label}
+        renderItem={({ item }) => (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={item.label}
+            onPress={() => onCategoryPress(item.l2_id)}
+            className="h-10 px-4 rounded-full bg-canvas-soft border border-hairline items-center justify-center active:opacity-70"
+          >
+            <AppText weight="medium" className="text-body-sm text-ink">
+              {item.label}
+            </AppText>
+          </Pressable>
+        )}
+      />
     </View>
   );
 }

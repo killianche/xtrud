@@ -19,9 +19,12 @@ import { AppText } from "@/components/AppText";
 import { useThemeColor } from "@/lib/use-theme-color";
 
 export interface EmptyStateProps {
-  /** Lucide-иконка для большого soft-круга вверху. */
+  /** Lucide-иконка — fallback если emoji не задан. */
   icon: LucideIcon;
-  /** @deprecated не используется — оставлен для обратной совместимости. */
+  /** Большой emoji-стикер (приоритетен над icon). Используется как
+   *  цветная объёмная «иллюстрация» без doodle-человечков. */
+  emoji?: string;
+  /** @deprecated больше не используется. */
   illustration?: string;
   /** Заголовок одной строкой (semibold, title-md). */
   title: string;
@@ -36,7 +39,8 @@ export interface EmptyStateProps {
 }
 
 export function EmptyState({
-  icon: Icon,
+  icon: _icon,
+  emoji: _emoji,
   illustration: _unused,
   title,
   hint,
@@ -44,6 +48,8 @@ export function EmptyState({
   onCtaPress,
   className,
 }: EmptyStateProps) {
+  void _icon;
+  void _emoji;
   void _unused;
   const onPrimaryColor = useThemeColor("on-primary");
 
@@ -52,13 +58,8 @@ export function EmptyState({
       className={`items-center px-6 py-10 ${className ?? "mx-6"}`}
       accessibilityRole="summary"
     >
-      {/* Большая тематичная Lucide-иконка в soft-круге.
-          Раньше тут были doodle-человечки (Open Doodles), но user попросил
-          без людей/живых существ — заменено на чистые object-иконки. */}
-      <View className="h-24 w-24 items-center justify-center rounded-full bg-canvas-soft text-ink">
-        <Icon size={44} strokeWidth={1.25} color="currentColor" />
-      </View>
-      <AppText weight="semibold" className="mt-6 text-center text-title-md text-ink">
+      {/* По запросу — без emoji/иконок. Чистый минимализм Vercel. */}
+      <AppText weight="bold" className="text-center text-title-lg text-ink">
         {title}
       </AppText>
       {hint && <AppText className="mt-2 text-center text-body-md text-muted">{hint}</AppText>}

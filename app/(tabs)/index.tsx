@@ -19,7 +19,7 @@
  */
 
 import { useRouter } from "expo-router";
-import { ChevronRight, Hammer, Search, User } from "lucide-react-native";
+import { ChevronRight, Search, User } from "lucide-react-native";
 import { FlatList, Pressable, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { getCategoryIcon } from "@/lib/category-icons";
@@ -235,31 +235,23 @@ function FrequentSearches({ onCategoryPress }: { onCategoryPress: (id: string) =
 
 function DescribeTaskCallout({ onPress }: { onPress: () => void }) {
   return (
-    <View className="mt-10 mx-5 rounded-xl bg-canvas-soft overflow-hidden">
-      <View className="flex-row items-center p-5 gap-4">
-        {/* Большая Lucide-иконка молотка — тематично без человеков/живых. */}
-        <View className="shrink-0 h-24 w-24 items-center justify-center rounded-full bg-canvas text-ink">
-          <Hammer size={44} strokeWidth={1.25} color="currentColor" />
-        </View>
-        <View className="flex-1">
-          <AppText weight="semibold" className="text-title-md text-ink">
-            Опишите задачу — мастера ответят:
-          </AppText>
-          <AppText className="mt-1 text-body-sm text-mute">
-            Готов сделать заказ за 1000 ₽! Выберете себе подходящего.
-          </AppText>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Создать заказ"
-            onPress={onPress}
-            className="mt-3 self-start h-9 px-4 rounded-full bg-primary active:opacity-85 items-center justify-center"
-          >
-            <AppText weight="semibold" className="text-body-sm text-on-primary">
-              Создать заказ
-            </AppText>
-          </Pressable>
-        </View>
-      </View>
+    <View className="mt-10 mx-5 rounded-xl bg-ink p-6">
+      <AppText weight="bold" className="text-title-lg text-on-primary">
+        Опишите задачу — мастера ответят:
+      </AppText>
+      <AppText className="mt-2 text-body-md text-on-primary opacity-80">
+        Готов сделать заказ за 1000 ₽! Выберете себе подходящего.
+      </AppText>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Создать заказ"
+        onPress={onPress}
+        className="mt-4 self-start h-11 px-5 rounded-full bg-canvas active:opacity-85 items-center justify-center"
+      >
+        <AppText weight="semibold" className="text-body-md text-ink">
+          Создать заказ
+        </AppText>
+      </Pressable>
     </View>
   );
 }

@@ -11,11 +11,11 @@
  */
 
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { ChevronLeft, Search, Shield, Star } from "lucide-react-native";
+import { ChevronLeft, MessageCircle, Phone, Shield, Star } from "lucide-react-native";
 import { Pressable, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
-import { Avatar, Card, Chip } from "@/components/ui";
+import { Avatar, Card } from "@/components/ui";
 import {
   type CategoryL3,
   formatAvgCheck,
@@ -41,9 +41,9 @@ export default function CategoryDetailScreen() {
 
   return (
     <View className="flex-1 bg-canvas" style={{ paddingTop: insets.top }}>
-      {/* Top bar — только back-кнопка. Заголовок дублировался с H1 ниже,
-          убран по запросу. */}
-      <View className="flex-row items-center px-4 py-2">
+      {/* Top bar: back + название категории справа от стрелки.
+          H1 в content больше не дублируется. */}
+      <View className="flex-row items-center gap-2 px-4 py-2">
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Назад"
@@ -52,6 +52,13 @@ export default function CategoryDetailScreen() {
         >
           <ChevronLeft size={22} strokeWidth={2} color="currentColor" />
         </Pressable>
+        <AppText
+          weight="semibold"
+          className="flex-1 text-body-lg text-ink"
+          numberOfLines={1}
+        >
+          {categoryName}
+        </AppText>
       </View>
 
       <ScrollView
@@ -59,19 +66,6 @@ export default function CategoryDetailScreen() {
         showsVerticalScrollIndicator={false}
         refreshControl={refresh.control}
       >
-        {/* Header */}
-        <View className="px-5 mt-6">
-          <AppText weight="display" className="text-display-md tracking-tight text-ink">
-            {categoryName}
-          </AppText>
-          {!masters.isLoading && mastersList.length > 0 ? (
-            <View className="mt-3">
-              <Chip mono size="sm">
-                {mastersList.length} {mastersList.length === 1 ? "мастер" : "мастеров"} в категории
-              </Chip>
-            </View>
-          ) : null}
-        </View>
 
         {/* Список мастеров */}
         <View className="px-5 mt-6">
@@ -86,11 +80,8 @@ export default function CategoryDetailScreen() {
               ))}
             </View>
           ) : mastersList.length === 0 ? (
-            <View className="items-center py-6">
-              <View className="h-24 w-24 items-center justify-center rounded-full bg-canvas-soft text-ink">
-                <Search size={44} strokeWidth={1.25} color="currentColor" />
-              </View>
-              <AppText weight="semibold" className="mt-6 text-title-md text-ink text-center">
+            <View className="items-center py-10">
+              <AppText weight="bold" className="text-title-lg text-ink text-center">
                 Пока нет мастеров в этой категории
               </AppText>
               <AppText className="mt-2 text-body-md text-mute text-center">
@@ -154,16 +145,40 @@ function MasterRow({
   const rating = profile?.rating_overall_avg ?? null;
   const ratingCount = profile?.rating_overall_count ?? 0;
   const experience = profile?.experience_years ?? null;
+  const accountType = profile?.account_type ?? null;
+  const teamSize = profile?.team_size ?? null;
+  const accountBadge =
+    accountType === "brigade"
+      ? `Бригада${teamSize ? ` · ${teamSize} чел.` : ""}`
+      : accountType === "company"
+        ? "Компания"
+        : null;
+
+  // Звонок/whatsapp — переход на профиль мастера (там есть CTA «Написать в чат»
+  // и контакты после логина через LoginWall).
+  const handleContact = (e: { stopPropagation?: () => void }) => {
+    e.stopPropagation?.();
+    onPress();
+  };
 
   return (
     <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={fullName}>
       <Card variant="default" padding="md">
-        <View className="flex-row items-center gap-3">
+        <View className="flex-row gap-3">
           <Avatar url={u.avatar_url} name={fullName} seed={u.id} size="lg" />
           <View className="flex-1">
-            <AppText weight="semibold" className="text-ink text-body-md" numberOfLines={1}>
-              {fullName}
-            </AppText>
+            <View className="flex-row items-center gap-2 flex-wrap">
+              <AppText weight="semibold" className="text-ink text-body-md" numberOfLines={1}>
+                {fullName}
+              </AppText>
+              {accountBadge && (
+                <View className="h-5 px-2 rounded-full bg-canvas-soft items-center justify-center">
+                  <AppText className="text-caption-xs text-mute" weight="medium">
+                    {accountBadge}
+                  </AppText>
+                </View>
+              )}
+            </View>
             <View className="flex-row items-center gap-2 mt-1 flex-wrap">
               {rating !== null && ratingCount > 0 ? (
                 <View className="flex-row items-center gap-1">
@@ -172,23 +187,49 @@ function MasterRow({
                     {rating.toFixed(1)}
                   </AppText>
                   <AppText weight="mono" className="text-mute text-mono-caption">
-                    ({ratingCount})
+                    ({ratingCount} {ratingCount === 1 ? "отзыв" : "отзывов"})
                   </AppText>
                 </View>
-              ) : null}
+              ) : (
+                <AppText className="text-mute text-caption-xs">Без отзывов</AppText>
+              )}
               {cityName ? (
-                <AppText className="text-mute text-body-sm">{cityName}</AppText>
+                <AppText className="text-mute text-body-sm">· {cityName}</AppText>
               ) : null}
               {experience !== null && experience > 0 ? (
                 <AppText className="text-mute text-body-sm">· {pluralizeYears(experience)}</AppText>
               ) : null}
             </View>
             {profile?.bio ? (
-              <AppText className="text-body text-body-sm mt-1" numberOfLines={1}>
+              <AppText className="text-body text-body-sm mt-2" numberOfLines={3}>
                 {profile.bio}
               </AppText>
             ) : null}
           </View>
+        </View>
+        <View className="flex-row gap-2 mt-3">
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Позвонить"
+            onPress={handleContact}
+            className="flex-1 flex-row items-center justify-center gap-2 h-10 rounded-full bg-canvas-soft border border-hairline active:opacity-70"
+          >
+            <Phone size={16} strokeWidth={1.75} color="currentColor" className="text-ink" />
+            <AppText weight="medium" className="text-body-sm text-ink">
+              Позвонить
+            </AppText>
+          </Pressable>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="WhatsApp"
+            onPress={handleContact}
+            className="flex-1 flex-row items-center justify-center gap-2 h-10 rounded-full bg-canvas-soft border border-hairline active:opacity-70"
+          >
+            <MessageCircle size={16} strokeWidth={1.75} color="currentColor" className="text-ink" />
+            <AppText weight="medium" className="text-body-sm text-ink">
+              WhatsApp
+            </AppText>
+          </Pressable>
         </View>
       </Card>
     </Pressable>

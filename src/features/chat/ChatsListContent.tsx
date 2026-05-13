@@ -99,7 +99,7 @@ export function ChatsListContent({
         <View className={`${isSidebar ? "p-4 pt-12" : "mt-12"}`}>
           <EmptyState
             icon={MessageCircle}
-            illustration="loving"
+            emoji="💬"
             title="Чатов пока нет"
             hint="Напишите мастеру первым с его страницы — диалог появится здесь."
           />

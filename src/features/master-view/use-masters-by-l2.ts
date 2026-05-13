@@ -23,7 +23,13 @@ export type MasterInCategory = {
   >;
   profile: Pick<
     Tables<"master_profiles">,
-    "rating_overall_avg" | "rating_overall_count" | "closed_deals" | "experience_years" | "bio"
+    | "rating_overall_avg"
+    | "rating_overall_count"
+    | "closed_deals"
+    | "experience_years"
+    | "bio"
+    | "account_type"
+    | "team_size"
   > | null;
   city: Pick<Tables<"cities">, "id" | "name"> | null;
 };
@@ -36,7 +42,13 @@ type Row = {
   > | null;
   profile: Pick<
     Tables<"master_profiles">,
-    "rating_overall_avg" | "rating_overall_count" | "closed_deals" | "experience_years" | "bio"
+    | "rating_overall_avg"
+    | "rating_overall_count"
+    | "closed_deals"
+    | "experience_years"
+    | "bio"
+    | "account_type"
+    | "team_size"
   > | null;
 };
 
@@ -56,6 +68,7 @@ export function useMastersByL2(l2Id: string | null | undefined) {
           master_id,
           profile:master_profiles!master_categories_master_id_fkey (
             rating_overall_avg, rating_overall_count, closed_deals, experience_years, bio,
+            account_type, team_size,
             user:users!master_profiles_user_id_fkey (
               id, first_name, last_name, avatar_url, city_id, district
             )
@@ -85,6 +98,8 @@ export function useMastersByL2(l2Id: string | null | undefined) {
               closed_deals: r.profile.closed_deals,
               experience_years: r.profile.experience_years,
               bio: r.profile.bio,
+              account_type: r.profile.account_type,
+              team_size: r.profile.team_size,
             }
           : null,
       }));

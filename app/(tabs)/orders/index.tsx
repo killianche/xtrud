@@ -1,5 +1,5 @@
 import { useRouter } from "expo-router";
-import { ClipboardList, Plus } from "lucide-react-native";
+import { Plus } from "lucide-react-native";
 import { useEffect, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -59,9 +59,6 @@ function ClientOrdersView({ userId }: ClientOrdersViewProps) {
           <AppText weight="bold" className="text-display-md tracking-tight text-ink">
             Мои заказы
           </AppText>
-          <AppText className="mt-2 text-body-md text-muted">
-            Опубликуйте заявку — мастера откликнутся в течение часа.
-          </AppText>
         </View>
 
         {isLoading && (
@@ -108,11 +105,8 @@ function ClientOrdersView({ userId }: ClientOrdersViewProps) {
         )}
 
         {!isLoading && !error && !hasOrders && (
-          <View className="mt-12 items-center px-6">
-            <View className="h-24 w-24 items-center justify-center rounded-full bg-canvas-soft text-ink">
-              <ClipboardList size={44} strokeWidth={1.25} color="currentColor" />
-            </View>
-            <AppText weight="semibold" className="mt-6 text-title-md text-ink text-center">
+          <View className="mt-16 items-center px-6">
+            <AppText weight="bold" className="text-title-lg text-ink text-center">
               Заказов пока нет
             </AppText>
             <AppText className="mt-2 text-center text-body-md text-muted">
@@ -542,11 +536,8 @@ interface EmptyCardProps {
 
 function EmptyCard({ title, subtitle }: EmptyCardProps) {
   return (
-    <View className="items-center px-6 py-6">
-      <View className="h-24 w-24 items-center justify-center rounded-full bg-canvas-soft text-ink">
-        <ClipboardList size={44} strokeWidth={1.25} color="currentColor" />
-      </View>
-      <AppText weight="semibold" className="mt-6 text-title-md text-ink text-center">
+    <View className="items-center px-6 py-10">
+      <AppText weight="bold" className="text-title-lg text-ink text-center">
         {title}
       </AppText>
       <AppText className="mt-2 text-center text-body-md text-muted">{subtitle}</AppText>

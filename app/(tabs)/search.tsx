@@ -17,7 +17,7 @@
  */
 
 import { useFocusEffect, useRouter } from "expo-router";
-import { SearchX, X } from "lucide-react-native";
+import { X } from "lucide-react-native";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { FlatList, Pressable, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -111,10 +111,7 @@ export default function SearchScreen() {
         </View>
       ) : results.length === 0 ? (
         <View className="flex-1 items-center justify-center px-8">
-          <View className="h-24 w-24 items-center justify-center rounded-full bg-canvas-soft text-ink">
-            <SearchX size={44} strokeWidth={1.25} color="currentColor" />
-          </View>
-          <AppText weight="semibold" className="mt-5 text-title-md text-ink text-center">
+          <AppText weight="bold" className="text-title-lg text-ink text-center">
             Ничего не нашли
           </AppText>
           <AppText className="mt-2 text-body-md text-mute text-center">

@@ -192,6 +192,51 @@ VALUES (
   now() - interval '2 hours'
 );
 
+-- ============================================================================
+-- 10. Дополнительный завершённый заказ — для Maestro review smoke (Sprint 22).
+--     Тот же client + master, но status='completed', без отзыва.
+--     Review form должна появиться на странице заказа.
+-- ============================================================================
+
+INSERT INTO public.orders (
+  id, client_id, l2_id,
+  title, description,
+  city_id, urgency, budget_mode,
+  status, picked_master_id,
+  created_at, updated_at
+)
+VALUES (
+  '66666666-6666-6666-6666-666666666666',
+  '11111111-1111-1111-1111-111111111111',
+  'plumbing',
+  'Установка ванны (smoke review)',
+  'Тестовый заказ для проверки UI отзывов — work completed.',
+  'nazran', 'this_week', 'range',
+  'completed',
+  '22222222-2222-2222-2222-222222222222',
+  now() - interval '7 days',
+  now() - interval '1 day'
+);
+
+INSERT INTO public.order_responses (
+  id, order_id, master_id, l2_id,
+  price_min, price_max, price_mode,
+  message, status, created_at
+)
+VALUES (
+  '77777777-7777-7777-7777-777777777777',
+  '66666666-6666-6666-6666-666666666666',
+  '22222222-2222-2222-2222-222222222222',
+  'plumbing',
+  3000, 5000, 'range',
+  'Установлю ванну под ключ. Опыт 5 лет, гарантия на работы.',
+  'accepted',
+  now() - interval '6 days'
+);
+
+-- Намеренно не создаём reviews — клиент должен увидеть форму «Оцените мастера»
+-- и заполнить её через UI в Maestro flow.
+
 COMMIT;
 
 -- ============================================================================

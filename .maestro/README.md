@@ -66,6 +66,14 @@ psql "$DATABASE_URL" -f supabase/seed-test/chat-fixture.sql
 maestro test .maestro/chat-smoke.yaml
 ```
 
+**Review happy-path** (открыть completed-заказ → 5★ → отзыв). Тот же fixture,
+дополнительно создаёт completed order id=6666…:
+
+```bash
+psql "$DATABASE_URL" -f supabase/seed-test/chat-fixture.sql
+maestro test .maestro/review-smoke.yaml
+```
+
 `DATABASE_URL` — connection string на dev/local Supabase. **Никогда** не
 запускай fixture на проде: он инсертит фейковых юзеров напрямую в `auth.users`.
 
@@ -85,6 +93,9 @@ maestro test .maestro/flows/05-master-feed.yaml
 
 # Chat ветка — после fixture.
 maestro test .maestro/flows/06-chat.yaml
+
+# Review ветка — после fixture (тот же скрипт, completed-order 6666…).
+maestro test .maestro/flows/07-review.yaml
 ```
 
 ⚠️ В `master-smoke.yaml` используется **другой тестовый номер**
@@ -142,13 +153,15 @@ flow подтвердится локально.
 - **Client happy-path**: телефон → OTP → роль клиента → создание заказа
 - **Master happy-path**: телефон → OTP → роль мастера → профиль → просмотр feed (3 таба)
 - **Chat happy-path**: вход в существующий чат → отправка сообщения (требует fixture)
+- **Review happy-path**: открыть completed-заказ → 5★ → текст → submit → assert «Ваш отзыв» (требует fixture)
 
 Не покрыто (бэклог):
 
 - **Отправка отклика мастером** — требует сидов с заказом от другого клиента
-- **Realtime получение сообщения** в чате (Sprint 22+ — нужен второй симулятор)
-- **Завершение заказа**: client принимает отклик → master отмечает выполнено → отзыв 5★
+- **Realtime получение сообщения** в чате — нужен второй симулятор / реальное устройство
+- **Полный E2E lifecycle** в одном прогоне (создание → отклик → accept → chat → complete → review) — сейчас покрыто 4 отдельными flow
 - **Push-уведомления** (вне Maestro — нужен отдельный stub)
+- **Master review клиента** — обратное направление, симметрично review smoke
 - **Категории мастера** (master-categories.tsx — отдельный экран, не часть онбординг-визарда)
 
 Покрытие расширяем по мере того, как фичи становятся production-stable.

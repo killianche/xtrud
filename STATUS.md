@@ -220,7 +220,7 @@ Sprint 33.5 — **полный Web Shell**:
 
 **Sprint 20 закрыт — Order state-machine design-doc.**
 
-**Sprint 21 закрыт — Chat seed-fixture + Maestro chat smoke.** Новый каталог `supabase/seed-test/` с `chat-fixture.sql` инсертит фейковых client + master напрямую в `auth.users` (trigger автоматом создаёт `public.users`), плюс полный сценарий: master_profiles + master_categories + order(in_progress) + accepted response + chat + 1 incoming message. `flows/06-chat.yaml` + `chat-smoke.yaml` логинятся под client и проверяют отправку сообщения. README в обоих каталогах + warning «никогда не на проде». **Sprint 20 (order state-machine doc)** ранее закрыт. **Sprint 19 (доп. тесты, 47/47)** закрыт.
+**Sprint 22 закрыт — Review + 5★ Maestro smoke.** Fixture `chat-fixture.sql` расширен вторым order id=6666… со status='completed' (без отзыва). `flows/07-review.yaml` + `review-smoke.yaml` логинятся под client, открывают этот заказ, тапают «5 звёзд» (`accessibilityLabel`), вводят текст и проверяют появление «Ваш отзыв» после submit. С этим закрыт **полный E2E happy-cycle**: auth → onboarding → order-create → accept → chat → review (через 4 отдельных smoke-flow). **Sprint 21 (Chat smoke + fixture)** ранее закрыт. **Sprint 20 (order state-machine doc)** закрыт.
 
 **База:** 23 миграции, 15 таблиц с RLS + 3 Storage bucket, 8 RPC, 12 trigger functions, 17 enums, 1 edge function.
 
@@ -333,6 +333,13 @@ xtrud/
 - [x] **2026-05-11** — **2.1** Migration 0003 + AuthGate routing (commit `2c2f25f`): `users.onboarding_completed_at` + `users.active_role` enum + CHECK constraint (active_role='master' ⇒ is_master=true) + partial index. `useUserRecord` hook (TanStack Query, staleTime 5 мин). AuthGate переписан под 3 группы — `(auth)` / `(onboarding)` / `(tabs)`. Advisor security = 0 lints.
 - [x] **2026-05-11** — **2.2** Role selection screen (commit `eb42338`): полноценный UI с 2 карточками (lucide Search/Briefcase), accessibilityState selected, accent-soft фон выбранной, CTA "Продолжить", error display. `useCompleteOnboarding` mutation обновляет `users.{is_master, active_role, onboarding_completed_at}` + invalidates query.
 - [x] **2026-05-11** — **2.3** Main client screen (commit `5d394c8`): `useVisibleCategories` для 26 L2, `CategoryTile` компонент с iconMap (~50 lucide icons), grid 2/3/4-кол. адаптивный, ScrollView без виртуализации, loading/error/empty states, header с приветствием по first_name + role badge + signOut. **Без атмосферных фото — sprint 4+.**
+
+### Sprint 22 (Review E2E)
+- [x] **2026-05-12** — **22.1–22.4** Review smoke (commit pending):
+  - `supabase/seed-test/chat-fixture.sql` — добавлен блок 10: completed order `66666666-…` + accepted response `77777777-…` от того же client+master. Намеренно без `reviews` записи — клиент должен заполнить через UI.
+  - `.maestro/flows/07-review.yaml` — таб «Заказы» → assert «Мои заказы» → tap по карточке «Установка ванны (smoke review)» → assert «Оцените мастера» → tap `"5 звёзд"` (accessibilityLabel) → ввод текста в TextInput «Расскажите о работе…» → tap «Оставить отзыв» → assert «Ваш отзыв» + текст.
+  - `.maestro/review-smoke.yaml` runner с TEST_PHONE=+79991110001.
+  - README обновлён: Review секция + расширенный backlog (полный E2E lifecycle в одном flow, master review клиента, realtime получение).
 
 ### Sprint 21 (Chat E2E + dev-fixture)
 - [x] **2026-05-12** — **21.1–21.4** Chat smoke (commit pending):

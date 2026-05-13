@@ -17,6 +17,8 @@
 | `order_responses` | `4444…` | status=accepted, 1500-2500₽ |
 | `chats` | `5555…` | client ↔ master по order `3333…` |
 | `messages` | — | 1 incoming от мастера |
+| `orders` | `6666…` | «Установка ванны», status=completed, picked=master (для review smoke) |
+| `order_responses` | `7777…` | status=accepted, 3000-5000₽ |
 
 ### Запуск
 
@@ -52,4 +54,5 @@ delete from auth.users where id in (
 
 ### Используется в
 
-- `.maestro/chat-smoke.yaml` → `.maestro/flows/06-chat.yaml`
+- `.maestro/chat-smoke.yaml` → `.maestro/flows/06-chat.yaml` (order `3333…`)
+- `.maestro/review-smoke.yaml` → `.maestro/flows/07-review.yaml` (order `6666…`)

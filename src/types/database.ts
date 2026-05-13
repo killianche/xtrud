@@ -21,6 +21,66 @@ export type Database = {
   }
   public: {
     Tables: {
+      articles: {
+        Row: {
+          author_id: string | null
+          body_md: string
+          category_l1_id: string | null
+          cover_url: string | null
+          created_at: string
+          excerpt: string | null
+          id: string
+          published_at: string | null
+          slug: string
+          status: Database["public"]["Enums"]["article_status"]
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          author_id?: string | null
+          body_md: string
+          category_l1_id?: string | null
+          cover_url?: string | null
+          created_at?: string
+          excerpt?: string | null
+          id?: string
+          published_at?: string | null
+          slug: string
+          status?: Database["public"]["Enums"]["article_status"]
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          author_id?: string | null
+          body_md?: string
+          category_l1_id?: string | null
+          cover_url?: string | null
+          created_at?: string
+          excerpt?: string | null
+          id?: string
+          published_at?: string | null
+          slug?: string
+          status?: Database["public"]["Enums"]["article_status"]
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "articles_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "articles_category_l1_id_fkey"
+            columns: ["category_l1_id"]
+            isOneToOne: false
+            referencedRelation: "categories_l1"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       categories_l1: {
         Row: {
           cover_image_url: string | null
@@ -748,6 +808,74 @@ export type Database = {
           },
         ]
       }
+      user_contacts: {
+        Row: {
+          created_at: string
+          display_name: string | null
+          phone_normalized: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          display_name?: string | null
+          phone_normalized: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          display_name?: string | null
+          phone_normalized?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_contacts_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vouches: {
+        Row: {
+          comment: string | null
+          created_at: string
+          id: string
+          voucher_id: string
+          vouchee_id: string
+        }
+        Insert: {
+          comment?: string | null
+          created_at?: string
+          id?: string
+          voucher_id: string
+          vouchee_id: string
+        }
+        Update: {
+          comment?: string | null
+          created_at?: string
+          id?: string
+          voucher_id?: string
+          vouchee_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vouches_voucher_id_fkey"
+            columns: ["voucher_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vouches_vouchee_id_fkey"
+            columns: ["vouchee_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       teams: {
         Row: {
           created_at: string
@@ -1087,6 +1215,14 @@ export type Database = {
         }
         Returns: undefined
       }
+      count_common_contacts_with: {
+        Args: { p_other_user_id: string }
+        Returns: number
+      }
+      count_vouches_for: {
+        Args: { p_target_user_id: string }
+        Returns: number
+      }
       expire_old_orders: { Args: never; Returns: number }
       is_current_user_admin: { Args: never; Returns: boolean }
       mark_chat_read: { Args: { p_chat_id: string }; Returns: undefined }
@@ -1111,6 +1247,7 @@ export type Database = {
       }
     }
     Enums: {
+      article_status: "draft" | "published" | "archived"
       category_seasonality:
         | "year_round"
         | "summer"
@@ -1291,6 +1428,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      article_status: ["draft", "published", "archived"],
       category_seasonality: [
         "year_round",
         "summer",

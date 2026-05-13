@@ -7,6 +7,12 @@
 // Реализация: pulse-animation через react-native-reanimated (opacity 0.6 ↔ 1).
 // Это легче и стабильнее чем gradient-shimmer и не требует expo-linear-gradient
 // в зависимостях.
+//
+// ВАЖНО (фикс невидимого скелетона на web): NativeWind не пропускает className
+// через `Animated.View` от react-native-reanimated на web — класс молча теряется,
+// прямоугольник остаётся без фона и сливается с canvas. Поэтому фон ставим
+// **резолвленным цветом из useThemeColor("surface-2")** через inline-style.
+// На native NativeWind работает через jsx-transform, но фон через style тоже корректен.
 
 import { useEffect } from "react";
 import { View, type ViewStyle } from "react-native";
@@ -18,6 +24,7 @@ import Animated, {
   withRepeat,
   withTiming,
 } from "react-native-reanimated";
+import { useThemeColor } from "@/lib/use-theme-color";
 
 export interface SkeletonProps {
   /** Тип формы. text — прямоугольник, circle — круг, rect — произвольный. */
@@ -46,6 +53,7 @@ export function Skeleton({
   style,
 }: SkeletonProps) {
   const opacity = useSharedValue(1);
+  const surface2 = useThemeColor("surface-2");
 
   useEffect(() => {
     opacity.value = withRepeat(
@@ -77,12 +85,13 @@ export function Skeleton({
 
   return (
     <Animated.View
-      className={`bg-surface-2 ${className ?? ""}`}
+      className={className}
       style={[
         {
           width: resolvedWidth as number | `${number}%`,
           height: resolvedHeight,
           borderRadius: resolvedRadius,
+          backgroundColor: surface2,
         },
         animatedStyle,
         style,

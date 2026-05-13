@@ -15,9 +15,9 @@ import { type CreateOrderFormValues, createOrderSchema } from "@/features/orders
 import { useCreateOrder } from "@/features/orders/use-create-order";
 import { useThemeColors } from "@/lib/use-theme-color";
 
-// Sprint 26 — Order create wizard. 3 шага:
-//   1. Категория
-//   2. Описание задачи (название + детали)
+// Sprint 26 — Order create wizard. 3 шага (порядок обновлён под user-запрос):
+//   1. Описание задачи (название + детали) ← сначала просто опиши, что нужно
+//   2. Категория (чтобы заказ дошёл до нужных мастеров)
 //   3. Бюджет, город, район, срочность + Trust «отвечают за ~30 мин»
 // После публикации — success-экран, не голый router.back().
 
@@ -103,12 +103,14 @@ export default function NewOrderScreen() {
 
   const goNext = async () => {
     if (step === 1) {
-      const ok = await trigger("l2Id");
+      // Шаг 1 — описание (название + детали). Сначала: «что нужно сделать».
+      const ok = await trigger(["title", "description"]);
       if (ok) setStep(2);
       return;
     }
     if (step === 2) {
-      const ok = await trigger(["title", "description"]);
+      // Шаг 2 — категория (чтобы заказ дошёл до нужных мастеров).
+      const ok = await trigger("l2Id");
       if (ok) setStep(3);
       return;
     }
@@ -186,19 +188,19 @@ export default function NewOrderScreen() {
   const watchedDesc = watch("description");
   const stepValid =
     step === 1
-      ? watchedL2.length > 0
+      ? watchedTitle.length > 0 && !errors.title && watchedDesc.length > 0 && !errors.description
       : step === 2
-        ? watchedTitle.length > 0 && !errors.title && watchedDesc.length > 0 && !errors.description
+        ? watchedL2.length > 0
         : isValid && !!cities;
 
   const stepTitle =
-    step === 1 ? "Выберите категорию" : step === 2 ? "Опишите задачу" : "Условия и место";
+    step === 1 ? "Что нужно сделать?" : step === 2 ? "Выберите категорию" : "Условия и место";
 
   const stepHint =
     step === 1
-      ? "Это поможет показать заказ нужным мастерам."
+      ? "Просто опишите задачу своими словами — мастера разберутся."
       : step === 2
-        ? "Короткое название + подробности задачи."
+        ? "Чтобы заказ ушёл нужным мастерам."
         : "Бюджет, город, район, срочность.";
 
   return (

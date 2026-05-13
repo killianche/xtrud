@@ -8,6 +8,21 @@
  * Owner-каждый screen решает что показывать выше и ниже формы + сам submit-логика.
  */
 
+import {
+  Armchair,
+  Check,
+  DoorOpen,
+  Droplet,
+  Flame,
+  HardHat,
+  type LucideIcon,
+  Paintbrush,
+  Sparkles,
+  Square,
+  Wind,
+  Wrench,
+  Zap,
+} from "lucide-react-native";
 import type { Control, FieldErrors, FieldPath } from "react-hook-form";
 import { Controller } from "react-hook-form";
 import { ActivityIndicator, Pressable, TextInput, View } from "react-native";
@@ -20,6 +35,22 @@ import {
 } from "@/features/orders/order-schema";
 import { useThemeColor } from "@/lib/use-theme-color";
 import type { Tables } from "@/types/database";
+
+// Маппинг icon-имени из categories_l2.icon → Lucide-компонент.
+// Дублирует то что есть на главной — потом вынести в общий модуль.
+const CATEGORY_ICONS: Record<string, LucideIcon> = {
+  HardHat,
+  Paintbrush,
+  Zap,
+  Droplet,
+  DoorOpen,
+  Square,
+  Flame,
+  Wind,
+  Armchair,
+  Wrench,
+  Sparkles,
+};
 
 export function budgetModeLabel(m: (typeof orderBudgetModeOptions)[number]): string {
   switch (m) {
@@ -39,12 +70,15 @@ interface OrderFormBodyProps {
   errors: FieldErrors<CreateOrderFormValues>;
   budgetMode: CreateOrderFormValues["budgetMode"];
   isBusy: boolean;
-  categories: Pick<Tables<"categories_l2">, "id" | "name_ru">[] | undefined;
+  categories: Pick<Tables<"categories_l2">, "id" | "name_ru" | "icon">[] | undefined;
   cities: Pick<Tables<"cities">, "id" | "name">[] | undefined;
   /** Если задана — категорию нельзя сменить (после создания заказа). */
   lockCategory?: boolean;
   /**
-   * Wizard-режим: 1=категория, 2=описание+срочность, 3=бюджет+город.
+   * Wizard-режим (порядок обновлён под user-запрос):
+   *   1=описание (название + детали)
+   *   2=категория
+   *   3=бюджет+город+срочность
    * Если не задан — рендерим все секции (для edit-экрана).
    */
   step?: 1 | 2 | 3;
@@ -61,75 +95,15 @@ export function OrderFormBody({
   step,
 }: OrderFormBodyProps) {
   const mutedSoftColor = useThemeColor("muted-soft");
-  const showCategory = step === undefined || step === 1;
-  const showContent = step === undefined || step === 2;
+  // Новый порядок (под user-запрос): step 1 = описание, step 2 = категория.
+  const showContent = step === undefined || step === 1;
+  const showCategory = step === undefined || step === 2;
   const showBudgetCity = step === undefined || step === 3;
   return (
     <>
-      {/* Категория — Шаг 1 */}
-      {showCategory && (
-        <View className="px-6">
-          <AppText weight="medium" className="text-caption text-muted">
-            Категория
-          </AppText>
-          {!categories && (
-            <View className="mt-2">
-              <ActivityIndicator />
-            </View>
-          )}
-          {categories && (
-            <Controller
-              control={control}
-              name="l2Id"
-              render={({ field: { value, onChange } }) => (
-                <View className="mt-2 flex-row flex-wrap gap-2">
-                  {categories.map((cat) => {
-                    const selected = value === cat.id;
-                    const interactive = !lockCategory;
-                    return (
-                      <Pressable
-                        key={cat.id}
-                        accessibilityRole="button"
-                        accessibilityState={{ selected }}
-                        disabled={isBusy || !interactive}
-                        onPress={() => interactive && onChange(cat.id)}
-                        className={`h-10 items-center justify-center rounded-pill border px-4 ${
-                          selected
-                            ? "border-accent bg-accent-soft"
-                            : interactive
-                              ? "border-hairline bg-canvas active:opacity-70"
-                              : "border-hairline-soft bg-canvas opacity-40"
-                        }`}
-                      >
-                        <AppText
-                          weight="medium"
-                          className={`text-caption ${selected ? "text-accent" : "text-body"}`}
-                        >
-                          {cat.name_ru}
-                        </AppText>
-                      </Pressable>
-                    );
-                  })}
-                </View>
-              )}
-            />
-          )}
-          {lockCategory && (
-            <AppText className="mt-2 text-caption-xs text-muted">
-              Категорию нельзя сменить после публикации.
-            </AppText>
-          )}
-          {errors.l2Id && (
-            <AppText weight="medium" className="mt-2 text-caption text-error">
-              {errors.l2Id.message}
-            </AppText>
-          )}
-        </View>
-      )}
-
-      {/* Title — Шаг 2 */}
+      {/* Title + Description — Шаг 1 (новый: сначала «что нужно сделать») */}
       {showContent && (
-        <View className={showCategory ? "mt-6 px-6" : "px-6"}>
+        <View className="px-6">
           <TextField
             label="Краткое название"
             placeholder="Заменить смеситель на кухне"
@@ -142,7 +116,6 @@ export function OrderFormBody({
         </View>
       )}
 
-      {/* Description — Шаг 2 */}
       {showContent && (
         <View className="mt-6 px-6">
           <Controller
@@ -177,6 +150,82 @@ export function OrderFormBody({
               </View>
             )}
           />
+        </View>
+      )}
+
+      {/* Категория — Шаг 2 (новый: после описания).
+          UI: 2-колонки grid плиток с Lucide-иконкой + названием. Выбранная
+          плитка — bg-canvas-soft + border-ink (Vercel-стиль, без accent-цвета). */}
+      {showCategory && (
+        <View className={showContent ? "mt-6 px-6" : "px-6"}>
+          <AppText weight="medium" className="text-caption text-muted">
+            Категория
+          </AppText>
+          {!categories && (
+            <View className="mt-3">
+              <ActivityIndicator />
+            </View>
+          )}
+          {categories && (
+            <Controller
+              control={control}
+              name="l2Id"
+              render={({ field: { value, onChange } }) => (
+                <View className="mt-3 flex-row flex-wrap gap-3">
+                  {categories.map((cat) => {
+                    const selected = value === cat.id;
+                    const interactive = !lockCategory;
+                    const Icon = CATEGORY_ICONS[cat.icon] ?? Wrench;
+                    return (
+                      <Pressable
+                        key={cat.id}
+                        accessibilityRole="button"
+                        accessibilityState={{ selected }}
+                        disabled={isBusy || !interactive}
+                        onPress={() => interactive && onChange(cat.id)}
+                        className={`w-[48%] rounded-lg border p-4 ${
+                          selected
+                            ? "bg-canvas-soft border-ink"
+                            : interactive
+                              ? "bg-canvas border-hairline active:opacity-70"
+                              : "bg-canvas border-hairline opacity-40"
+                        }`}
+                        style={{ minHeight: 88 }}
+                      >
+                        <View className="flex-row items-start justify-between">
+                          <View className="text-ink">
+                            <Icon size={22} strokeWidth={1.5} color="currentColor" />
+                          </View>
+                          {selected && (
+                            <View className="text-ink">
+                              <Check size={18} strokeWidth={2.25} color="currentColor" />
+                            </View>
+                          )}
+                        </View>
+                        <AppText
+                          weight="semibold"
+                          className="mt-3 text-body-sm text-ink"
+                          numberOfLines={2}
+                        >
+                          {cat.name_ru}
+                        </AppText>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              )}
+            />
+          )}
+          {lockCategory && (
+            <AppText className="mt-2 text-caption-xs text-muted">
+              Категорию нельзя сменить после публикации.
+            </AppText>
+          )}
+          {errors.l2Id && (
+            <AppText weight="medium" className="mt-2 text-caption text-error">
+              {errors.l2Id.message}
+            </AppText>
+          )}
         </View>
       )}
 

@@ -220,6 +220,8 @@ Sprint 33.5 — **полный Web Shell**:
 
 **Sprint 20 закрыт — Order state-machine design-doc.**
 
+**Sprint H закрыт — Demo dataset на проде.** 30 фейковых пользователей (10 клиентов + 20 мастеров) + 96 фото портфолио + 25 заказов в 5 статусах + 39 откликов + 12 чатов с 55 сообщениями + 11 отзывов (триггер `recalc_master_rating` пересчитал 6 мастеров). Главные тест-аккаунты: client `+7 900 000-00-01` (Алина Тестова) и master `+7 900 000-00-02` (Магомед Тестов) — c наполненной историей: оба связаны через chat и completed-заказ ожидающий отзыва. См. `DEMO_ACCOUNTS.md` в корне для UI-обхода. Аватары через DiceBear, портфолио через Lorem Picsum (внешние URL, без Storage). Source: `supabase/seed-test/demo-fixture.sql`.
+
 **Sprint G закрыт — DRY OrderRow → pluralize lib.** В `OrderRow.tsx` была локальная `responsesLabel` (12 строк русского pluralize). Перенесена в `src/lib/pluralize.ts` как `pluralizeResponses(count)` рядом с `pluralizeReviews/Years/Services/...`. UX-нюанс «0 → 'Нет откликов'» сохранён. Добавлен 1 unit-кейс. **Vitest 63/63 зелёные**, typecheck + lint чистые. **Очередь A-G очищена.**
 
 **Sprint F закрыт — useUnreadResponses/Feed unit-тесты.** Pure-логика вынесена в `src/features/orders/unread-feed-helpers.ts`: `unreadFeedKey` + `unreadResponsesKey` (стабильные TanStack queryKey, сортировка l2Ids) + `shouldInvalidateFeedOnInsert(row, userId, l2Ids)` (фильтр для Realtime payload). `use-unread-feed.ts` и `use-unread-responses.ts` отрефакторены на использование helpers — публичный API не сломан. **Vitest 62/62 зелёные** (+15 новых: 5 для `unreadFeedKey`, 3 для `unreadResponsesKey`, 7 для `shouldInvalidateFeedOnInsert`). Typecheck + biome lint чистые.
@@ -345,6 +347,17 @@ xtrud/
 - [x] **2026-05-11** — **2.1** Migration 0003 + AuthGate routing (commit `2c2f25f`): `users.onboarding_completed_at` + `users.active_role` enum + CHECK constraint (active_role='master' ⇒ is_master=true) + partial index. `useUserRecord` hook (TanStack Query, staleTime 5 мин). AuthGate переписан под 3 группы — `(auth)` / `(onboarding)` / `(tabs)`. Advisor security = 0 lints.
 - [x] **2026-05-11** — **2.2** Role selection screen (commit `eb42338`): полноценный UI с 2 карточками (lucide Search/Briefcase), accessibilityState selected, accent-soft фон выбранной, CTA "Продолжить", error display. `useCompleteOnboarding` mutation обновляет `users.{is_master, active_role, onboarding_completed_at}` + invalidates query.
 - [x] **2026-05-11** — **2.3** Main client screen (commit `5d394c8`): `useVisibleCategories` для 26 L2, `CategoryTile` компонент с iconMap (~50 lucide icons), grid 2/3/4-кол. адаптивный, ScrollView без виртуализации, loading/error/empty states, header с приветствием по first_name + role badge + signOut. **Без атмосферных фото — sprint 4+.**
+
+### Sprint H — Demo dataset (prod-preview)
+- [x] Главные тест-аккаунты (`+79000000001` Алина, `+79000000002` Магомед) с историей: master_profile + portfolio + связаны через 1 in_progress chat + 1 completed (без отзыва, чтобы юзер мог сам).
+- [x] 19 мастеров через jsonb DO-loop: имена/города/категории распределены по 19 разным L2; bio + опыт + has_tools + has_transport + 3-5 фото каждому.
+- [x] 9 клиентов через jsonb DO-loop, разные города.
+- [x] 25 заказов в 5 статусах (10 open + 5 in_progress + 7 completed + 2 cancelled + 1 expired). Test-client имеет «свою» 7-ку всех статусов.
+- [x] 39 откликов: цены случайные но `price_min <= price_max`, статусы соответствуют статусу заказа (open→sent/viewed, in_progress→accepted+rejected, cancelled→withdrawn).
+- [x] 12 чатов с 55 сообщениями (3-7 на чат, чередуются client/master).
+- [x] 11 отзывов (6 client→master + 5 master→client), trigger `recalc_master_rating` обновил 6 master_profiles.
+- [x] `DEMO_ACCOUNTS.md` в корне — инструкция для UI-обхода.
+- [x] `supabase/seed-test/demo-fixture.sql` — единый source-of-truth для перезалива.
 
 ### Sprint G — DRY OrderRow pluralize
 - [x] `pluralizeResponses(count)` добавлена в `src/lib/pluralize.ts` (с UX-edge: 0 → «Нет откликов»).

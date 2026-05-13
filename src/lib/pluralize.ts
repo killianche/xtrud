@@ -59,3 +59,19 @@ export function pluralizeServices(count: number): string {
     many: "услуг",
   })}`;
 }
+
+/**
+ * «5 откликов» / «1 отклик» / «3 отклика» / «Нет откликов» (n=0).
+ *
+ * UX-нюанс: при 0 откликах показываем «Нет откликов» вместо «0 откликов»
+ * — это более естественно по-русски и одновременно помогает клиенту понять
+ * статус заказа.
+ */
+export function pluralizeResponses(count: number): string {
+  if (count === 0) return "Нет откликов";
+  return `${count} ${pluralizeRu(count, {
+    one: "отклик",
+    few: "отклика",
+    many: "откликов",
+  })}`;
+}

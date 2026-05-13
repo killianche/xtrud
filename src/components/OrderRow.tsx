@@ -7,6 +7,7 @@ import { AppText } from "@/components/AppText";
 import { OrderStatusBadge, type OrderStatusValue } from "@/components/OrderStatusBadge";
 import { urgencyLabel } from "@/features/orders/order-schema";
 import type { OrderUrgency } from "@/features/orders/use-create-order";
+import { pluralizeResponses } from "@/lib/pluralize";
 import { useThemeColor } from "@/lib/use-theme-color";
 
 export interface OrderRowProps {
@@ -33,16 +34,6 @@ function timeAgo(iso: string): string {
   if (diffHr < 24) return `${diffHr} ч назад`;
   const diffDay = Math.floor(diffHr / 24);
   return `${diffDay} д назад`;
-}
-
-function responsesLabel(n: number): string {
-  if (n === 0) return "Нет откликов";
-  const mod10 = n % 10;
-  const mod100 = n % 100;
-  if (mod100 >= 11 && mod100 <= 19) return `${n} откликов`;
-  if (mod10 === 1) return `${n} отклик`;
-  if (mod10 >= 2 && mod10 <= 4) return `${n} отклика`;
-  return `${n} откликов`;
 }
 
 export function OrderRow(props: OrderRowProps) {
@@ -82,7 +73,7 @@ export function OrderRow(props: OrderRowProps) {
           </AppText>
         </View>
         <AppText className="text-caption text-muted">
-          {responsesLabel(props.responsesCount)}
+          {pluralizeResponses(props.responsesCount)}
         </AppText>
       </View>
     </Pressable>

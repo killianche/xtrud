@@ -220,6 +220,8 @@ Sprint 33.5 — **полный Web Shell**:
 
 **Sprint 20 закрыт — Order state-machine design-doc.**
 
+**Sprint G закрыт — DRY OrderRow → pluralize lib.** В `OrderRow.tsx` была локальная `responsesLabel` (12 строк русского pluralize). Перенесена в `src/lib/pluralize.ts` как `pluralizeResponses(count)` рядом с `pluralizeReviews/Years/Services/...`. UX-нюанс «0 → 'Нет откликов'» сохранён. Добавлен 1 unit-кейс. **Vitest 63/63 зелёные**, typecheck + lint чистые. **Очередь A-G очищена.**
+
 **Sprint F закрыт — useUnreadResponses/Feed unit-тесты.** Pure-логика вынесена в `src/features/orders/unread-feed-helpers.ts`: `unreadFeedKey` + `unreadResponsesKey` (стабильные TanStack queryKey, сортировка l2Ids) + `shouldInvalidateFeedOnInsert(row, userId, l2Ids)` (фильтр для Realtime payload). `use-unread-feed.ts` и `use-unread-responses.ts` отрефакторены на использование helpers — публичный API не сломан. **Vitest 62/62 зелёные** (+15 новых: 5 для `unreadFeedKey`, 3 для `unreadResponsesKey`, 7 для `shouldInvalidateFeedOnInsert`). Typecheck + biome lint чистые.
 
 **Sprint E закрыт — Order edit Maestro smoke.** Fixture расширен open-заказом id=8888… с title «Edit smoke: проверить трубу». `flows/08-order-edit.yaml` + `order-edit-smoke.yaml`: tap по карточке → tap accessibilityLabel="Редактировать заказ" → eraseText + inputText в title TextInput → tap «Сохранить» → assert новый title на order detail. README обновлён.
@@ -343,6 +345,12 @@ xtrud/
 - [x] **2026-05-11** — **2.1** Migration 0003 + AuthGate routing (commit `2c2f25f`): `users.onboarding_completed_at` + `users.active_role` enum + CHECK constraint (active_role='master' ⇒ is_master=true) + partial index. `useUserRecord` hook (TanStack Query, staleTime 5 мин). AuthGate переписан под 3 группы — `(auth)` / `(onboarding)` / `(tabs)`. Advisor security = 0 lints.
 - [x] **2026-05-11** — **2.2** Role selection screen (commit `eb42338`): полноценный UI с 2 карточками (lucide Search/Briefcase), accessibilityState selected, accent-soft фон выбранной, CTA "Продолжить", error display. `useCompleteOnboarding` mutation обновляет `users.{is_master, active_role, onboarding_completed_at}` + invalidates query.
 - [x] **2026-05-11** — **2.3** Main client screen (commit `5d394c8`): `useVisibleCategories` для 26 L2, `CategoryTile` компонент с iconMap (~50 lucide icons), grid 2/3/4-кол. адаптивный, ScrollView без виртуализации, loading/error/empty states, header с приветствием по first_name + role badge + signOut. **Без атмосферных фото — sprint 4+.**
+
+### Sprint G — DRY OrderRow pluralize
+- [x] `pluralizeResponses(count)` добавлена в `src/lib/pluralize.ts` (с UX-edge: 0 → «Нет откликов»).
+- [x] Локальная `responsesLabel` в `OrderRow.tsx` удалена; компонент импортирует общий helper.
+- [x] Unit-кейс на `pluralizeResponses` (0/1/3/5/11/22) добавлен в `pluralize.test.ts`.
+- [x] Vitest 63/63, typecheck + lint чистые.
 
 ### Sprint F — unread-feed-helpers unit-тесты
 - [x] `src/features/orders/unread-feed-helpers.ts` создан: `unreadFeedKey`, `unreadResponsesKey`, `shouldInvalidateFeedOnInsert`.

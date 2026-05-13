@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   pluralizeClosedDeals,
   pluralizeClosedOrders,
+  pluralizeResponses,
   pluralizeReviews,
   pluralizeRu,
   pluralizeServices,
@@ -64,5 +65,14 @@ describe("pluralize concrete words", () => {
     expect(pluralizeServices(2)).toBe("2 услуги");
     expect(pluralizeServices(5)).toBe("5 услуг");
     expect(pluralizeServices(11)).toBe("11 услуг");
+  });
+
+  it("отклик: 0 → 'Нет откликов', 1, 3, 5, 11, 22", () => {
+    expect(pluralizeResponses(0)).toBe("Нет откликов");
+    expect(pluralizeResponses(1)).toBe("1 отклик");
+    expect(pluralizeResponses(3)).toBe("3 отклика");
+    expect(pluralizeResponses(5)).toBe("5 откликов");
+    expect(pluralizeResponses(11)).toBe("11 откликов");
+    expect(pluralizeResponses(22)).toBe("22 отклика");
   });
 });

@@ -220,6 +220,8 @@ Sprint 33.5 — **полный Web Shell**:
 
 **Sprint 20 закрыт — Order state-machine design-doc.**
 
+**Sprint E закрыт — Order edit Maestro smoke.** Fixture расширен open-заказом id=8888… с title «Edit smoke: проверить трубу». `flows/08-order-edit.yaml` + `order-edit-smoke.yaml`: tap по карточке → tap accessibilityLabel="Редактировать заказ" → eraseText + inputText в title TextInput → tap «Сохранить» → assert новый title на order detail. README обновлён.
+
 **Sprint C закрыт — full-cycle Maestro smoke.** Новый runner `.maestro/full-cycle-smoke.yaml` запускает 01-auth → 06-chat → 07-review одной командой. Ловит навигационные регрессии между табами/экранами, которые отдельные smoke (client / master / chat / review) пропускают. README обновлён.
 
 **Sprint D закрыт — chat-states design-doc.** Новый файл `docs/chat-states.md`: модель таблиц `chats`/`messages`, **5 производных состояний** (unread/read active, completed history, cancelled history, empty), полное отсутствие user-инициируемых state changes (всё деривативно), 6 триггеров изменения (INSERT message, mark_chat_read, accept_response создаёт, FK cascade'ы), матрица «что происходит с чатом при transition order», 6 известных пробелов с планами (write в cancelled чат, archive, per-message read, typing, realtime на chats list, rate-limit). Парный документ к `order-states.md`, ссылается на него.
@@ -339,6 +341,12 @@ xtrud/
 - [x] **2026-05-11** — **2.1** Migration 0003 + AuthGate routing (commit `2c2f25f`): `users.onboarding_completed_at` + `users.active_role` enum + CHECK constraint (active_role='master' ⇒ is_master=true) + partial index. `useUserRecord` hook (TanStack Query, staleTime 5 мин). AuthGate переписан под 3 группы — `(auth)` / `(onboarding)` / `(tabs)`. Advisor security = 0 lints.
 - [x] **2026-05-11** — **2.2** Role selection screen (commit `eb42338`): полноценный UI с 2 карточками (lucide Search/Briefcase), accessibilityState selected, accent-soft фон выбранной, CTA "Продолжить", error display. `useCompleteOnboarding` mutation обновляет `users.{is_master, active_role, onboarding_completed_at}` + invalidates query.
 - [x] **2026-05-11** — **2.3** Main client screen (commit `5d394c8`): `useVisibleCategories` для 26 L2, `CategoryTile` компонент с iconMap (~50 lucide icons), grid 2/3/4-кол. адаптивный, ScrollView без виртуализации, loading/error/empty states, header с приветствием по first_name + role badge + signOut. **Без атмосферных фото — sprint 4+.**
+
+### Sprint E — Order edit Maestro smoke
+- [x] `supabase/seed-test/chat-fixture.sql`: + open order `8888…` для edit smoke.
+- [x] `.maestro/flows/08-order-edit.yaml`: tap карточки → «Редактировать заказ» → eraseText + inputText → «Сохранить» → assert новый title.
+- [x] `.maestro/order-edit-smoke.yaml` runner.
+- [x] README + STATUS обновлены.
 
 ### Sprint C — full-cycle Maestro smoke
 - [x] `.maestro/full-cycle-smoke.yaml` — runner 01-auth → 06-chat → 07-review.

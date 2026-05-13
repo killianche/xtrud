@@ -81,6 +81,13 @@ psql "$DATABASE_URL" -f supabase/seed-test/chat-fixture.sql
 maestro test .maestro/full-cycle-smoke.yaml
 ```
 
+**Order edit smoke** (открыть open-заказ → изменить title → save → assert):
+
+```bash
+psql "$DATABASE_URL" -f supabase/seed-test/chat-fixture.sql
+maestro test .maestro/order-edit-smoke.yaml
+```
+
 `DATABASE_URL` — connection string на dev/local Supabase. **Никогда** не
 запускай fixture на проде: он инсертит фейковых юзеров напрямую в `auth.users`.
 
@@ -162,6 +169,7 @@ flow подтвердится локально.
 - **Chat happy-path**: вход в существующий чат → отправка сообщения (требует fixture)
 - **Review happy-path**: открыть completed-заказ → 5★ → текст → submit → assert «Ваш отзыв» (требует fixture)
 - **Full-cycle**: auth → chat → review одним прогоном (требует fixture)
+- **Order edit**: open-заказ → изменить title → save → assert новый title (требует fixture)
 
 Не покрыто (бэклог):
 

@@ -1,12 +1,17 @@
 /*
  * Кастомный нижний таббар — современный дизайн в стиле cal.com.
  *
- * Активный таб: иконка strokeWidth 2.25 + semibold лейбл цвета ink.
- * Неактивный:   иконка strokeWidth 1.5  + regular  лейбл цвета muted (opacity 0.55).
+ * Активный таб: иконка strokeWidth 2.25 + semibold лейбл, opacity 1.
+ * Неактивный:   иконка strokeWidth 1.5  + regular  лейбл, opacity 0.55.
  * iOS:          shadow без top-border (как в приложениях Apple/Linear/Craft).
  * Android/web:  0.5px hairline сверху.
  * Фон на web:   CSS-переменные, не hex — нет SSR color-scheme race.
  * Маршруты вне VISIBLE_TABS (href: null, detail-экраны) — не рендерятся.
+ *
+ * Цвета иконок и текста:
+ *   Web:    className="text-ink" + color="currentColor" — CSS-переменная, мгновенно
+ *           реагирует на dark-класс без ожидания JS colorScheme.
+ *   Native: useThemeColors hex — через NativeWind colorScheme (надёжен на устройстве).
  *
  * Иконки: читаем из options.tabBarIcon (сигнатура: { focused, color, size }).
  * Бейджи: читаем из options.tabBarBadge / options.tabBarBadgeStyle.
@@ -24,9 +29,13 @@ const VISIBLE_TABS = new Set(["index", "orders", "chats"]);
 /** Высота видимой части таббара — без safe area. */
 const TAB_HEIGHT = 56;
 
+const isWeb = Platform.OS === "web";
+
 export function TabBar({ state, descriptors, navigation }: BottomTabBarProps) {
   const insets = useSafeAreaInsets();
-  const tc = useThemeColors(["canvas", "hairline", "ink", "muted"]);
+  // На native canvas/hairline через hex нужны для фона и границы.
+  // ink нужен только на native для цвета иконок; на web используем currentColor.
+  const tc = useThemeColors(["canvas", "hairline", "ink"]);
 
   const visibleRoutes = state.routes.filter((r) => VISIBLE_TABS.has(r.name));
 
@@ -37,11 +46,11 @@ export function TabBar({ state, descriptors, navigation }: BottomTabBarProps) {
           height: TAB_HEIGHT + insets.bottom,
           paddingBottom: insets.bottom,
           flexDirection: "row",
-          backgroundColor: Platform.OS === "web" ? "rgb(var(--canvas))" : tc.canvas,
-          // iOS: нет линии — её роль берёт shadow (как у Apple Settings, App Store).
-          // Android/web: тонкая hairline.
+          // Web: CSS-переменная обходит JS colorScheme race.
+          // Native: resolved hex из useThemeColors.
+          backgroundColor: isWeb ? "rgb(var(--canvas))" : tc.canvas,
           borderTopWidth: Platform.OS === "ios" ? 0 : 0.5,
-          borderTopColor: Platform.OS === "web" ? "rgb(var(--hairline))" : tc.hairline,
+          borderTopColor: tc.hairline,
         },
         Platform.OS === "ios" && {
           shadowColor: "#000",
@@ -53,7 +62,9 @@ export function TabBar({ state, descriptors, navigation }: BottomTabBarProps) {
       ]}
     >
       {visibleRoutes.map((route) => {
-        const { options } = descriptors[route.key];
+        const descriptor = descriptors[route.key];
+        if (!descriptor) return null;
+        const { options } = descriptor;
         const globalIndex = state.routes.findIndex((r) => r.key === route.key);
         const isFocused = state.index === globalIndex;
 
@@ -66,10 +77,10 @@ export function TabBar({ state, descriptors, navigation }: BottomTabBarProps) {
         const badgeBg = bsRaw?.backgroundColor ?? "#ef4444";
         const badgeTextColor = bsRaw?.color ?? "#ffffff";
 
-        const activeColor = Platform.OS === "web" ? "rgb(var(--ink))" : tc.ink;
-        // Неактивные иконки/лейблы — muted + opacity для "воздушности"
-        const inactiveColor = Platform.OS === "web" ? "rgb(var(--muted))" : tc.muted;
-        const iconColor = isFocused ? activeColor : inactiveColor;
+        // Web:    "currentColor" → SVG наследует CSS color от родительского View.
+        //         Родитель получает цвет через className="text-ink".
+        // Native: resolved hex — useThemeColors всегда синхронен на устройстве.
+        const iconColor = isWeb ? "currentColor" : tc.ink;
 
         const onPress = () => {
           const event = navigation.emit({
@@ -94,16 +105,21 @@ export function TabBar({ state, descriptors, navigation }: BottomTabBarProps) {
             accessibilityRole="tab"
             accessibilityState={{ selected: isFocused }}
             accessibilityLabel={options.tabBarAccessibilityLabel ?? label}
+            // Web: text-ink ставит CSS color = rgb(var(--ink)), корректный в dark/light.
+            // SVG с currentColor и AppText без явного color наследуют это значение.
+            // Native: className игнорируется — цвет задаётся через iconColor ниже.
+            className={isWeb ? "text-ink" : undefined}
             style={{
               flex: 1,
               alignItems: "center",
               justifyContent: "center",
               gap: 3,
               paddingTop: 6,
+              // Неактивный таб: приглушаем через opacity (работает на всех платформах).
               opacity: isFocused ? 1 : 0.55,
             }}
           >
-            {/* Иконка — tabBarIcon из screen options; strokeWidth контролируется там же */}
+            {/* Иконка — tabBarIcon из screen options */}
             <View style={{ position: "relative" }}>
               {options.tabBarIcon?.({ focused: isFocused, color: iconColor, size: 24 })}
 
@@ -133,10 +149,16 @@ export function TabBar({ state, descriptors, navigation }: BottomTabBarProps) {
               )}
             </View>
 
-            {/* Лейбл — semibold для активного, regular для неактивного */}
+            {/* Лейбл — semibold для активного, regular для неактивного.
+                Web: color не задаётся явно — наследуется от родительского className="text-ink".
+                Native: явный цвет через style.color = tc.ink. */}
             <AppText
               weight={isFocused ? "semibold" : "regular"}
-              style={{ fontSize: 11, lineHeight: 14, color: iconColor }}
+              style={
+                isWeb
+                  ? { fontSize: 11, lineHeight: 14 }
+                  : { fontSize: 11, lineHeight: 14, color: tc.ink }
+              }
             >
               {label}
             </AppText>

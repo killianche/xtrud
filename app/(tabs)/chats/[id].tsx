@@ -16,6 +16,7 @@ import { Avatar } from "@/components/Avatar";
 import { EmptyState } from "@/components/EmptyState";
 import { OrderStatusBadge, type OrderStatusValue } from "@/components/OrderStatusBadge";
 import { useAuthSession } from "@/features/auth/use-auth-session";
+import { maskContactsInText } from "@/features/chat/mask-contacts";
 import { QuickReplyChips } from "@/features/chat/QuickReplyChips";
 import {
   type ChatMessage,
@@ -237,11 +238,13 @@ function MessageBubble({
     ? [partner.first_name, partner.last_name].filter(Boolean).join(" ") || "Собеседник"
     : "Собеседник";
 
+  const displayText = maskContactsInText(message.text);
+
   if (isMine) {
     return (
       <View className="max-w-[80%] self-end">
         <View className="rounded-2xl bg-primary px-4 py-2">
-          <AppText className="text-body-md text-on-primary">{message.text}</AppText>
+          <AppText className="text-body-md text-on-primary">{displayText}</AppText>
         </View>
         <AppText className="mt-1 text-right text-caption-xs text-muted-soft">{time}</AppText>
       </View>
@@ -260,7 +263,7 @@ function MessageBubble({
       />
       <View className="flex-shrink">
         <View className="rounded-2xl bg-surface-2 px-4 py-2">
-          <AppText className="text-body-md text-ink">{message.text}</AppText>
+          <AppText className="text-body-md text-ink">{displayText}</AppText>
         </View>
         <AppText className="mt-1 text-caption-xs text-muted-soft">{time}</AppText>
       </View>

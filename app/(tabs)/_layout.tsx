@@ -129,6 +129,7 @@ export default function TabsLayout() {
       <Tabs.Screen name="profile" options={{ href: null }} />
       <Tabs.Screen name="master/[id]" options={{ href: null }} />
       <Tabs.Screen name="client/[id]" options={{ href: null }} />
+      <Tabs.Screen name="notifications" options={{ href: null }} />
     </Tabs>
     </NavThemeProvider>
   );

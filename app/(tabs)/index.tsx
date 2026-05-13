@@ -1,4 +1,5 @@
 import { useRouter } from "expo-router";
+import { Bell, Moon, Sun } from "lucide-react-native";
 import { FlatList, Pressable, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
@@ -13,7 +14,13 @@ import { useUserRecord } from "@/features/auth/use-user-record";
 import { useVisibleCategories } from "@/features/categories/use-visible-categories";
 import { MasterHomeContent } from "@/features/master-view/MasterHomeContent";
 import { useTopMasters } from "@/features/master-view/use-top-masters";
+import {
+  useRealtimeNotifications,
+  useUnreadNotificationsCount,
+} from "@/features/notifications/use-notifications";
+import { useColorScheme } from "@/hooks/use-color-scheme";
 import { usePullToRefresh } from "@/hooks/use-pull-to-refresh";
+import { useThemeColors } from "@/lib/use-theme-color";
 
 export default function HomeTab() {
   const insets = useSafeAreaInsets();
@@ -26,6 +33,12 @@ export default function HomeTab() {
   const greeting = user?.first_name ? `Привет, ${user.first_name}` : "С чего начнём?";
   const activeRole = user?.active_role ?? "client";
   const refresh = usePullToRefresh();
+  const { colorScheme, setPreference } = useColorScheme();
+  const tc = useThemeColors(["ink", "error"]);
+  const isDark = colorScheme === "dark";
+
+  useRealtimeNotifications(userId);
+  const { data: unreadNotifs = 0 } = useUnreadNotificationsCount(userId);
 
   return (
     <ScrollView
@@ -40,7 +53,7 @@ export default function HomeTab() {
       {/* Header */}
       <View className="flex-row items-start justify-between px-6">
         <View className="flex-1">
-          <AppText weight="bold" className="text-display-md tracking-tight text-ink">
+          <AppText weight="display" className="text-display-md tracking-tight text-ink">
             {greeting}
           </AppText>
           {user?.is_master && user.active_role && userId && (
@@ -54,20 +67,58 @@ export default function HomeTab() {
           )}
         </View>
 
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Профиль"
-          onPress={() => router.push("/(tabs)/profile" as never)}
-          hitSlop={12}
-          className="active:opacity-70"
-        >
-          <Avatar
-            url={user?.avatar_url}
-            name={user?.first_name ?? null}
-            seed={userId ?? null}
-            size="md"
-          />
-        </Pressable>
+        {/* Тема + уведомления + профиль */}
+        <View className="flex-row items-center gap-2">
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={isDark ? "Светлая тема" : "Тёмная тема"}
+            onPress={() => setPreference(isDark ? "light" : "dark")}
+            hitSlop={8}
+            className="h-9 w-9 items-center justify-center rounded-full active:opacity-70"
+          >
+            {isDark ? (
+              <Sun size={20} strokeWidth={1.75} color={tc.ink} />
+            ) : (
+              <Moon size={20} strokeWidth={1.75} color={tc.ink} />
+            )}
+          </Pressable>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Уведомления"
+            onPress={() => router.push("/(tabs)/notifications" as never)}
+            hitSlop={8}
+            className="relative h-9 w-9 items-center justify-center rounded-full active:opacity-70"
+          >
+            <Bell size={20} strokeWidth={1.75} color={tc.ink} />
+            {unreadNotifs > 0 && (
+              <View
+                className="absolute -right-0.5 -top-0.5 h-4 min-w-4 items-center justify-center rounded-full px-1"
+                style={{ backgroundColor: tc.error }}
+              >
+                <AppText
+                  weight="bold"
+                  className="text-[10px] leading-[14px] text-white"
+                >
+                  {unreadNotifs > 99 ? "99+" : String(unreadNotifs)}
+                </AppText>
+              </View>
+            )}
+          </Pressable>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Профиль"
+            onPress={() => router.push("/(tabs)/profile" as never)}
+            hitSlop={12}
+            className="active:opacity-70"
+          >
+            <Avatar
+              url={user?.avatar_url}
+              name={user?.first_name ?? null}
+              seed={userId ?? null}
+              size="md"
+            />
+          </Pressable>
+        </View>
       </View>
 
       {/* Branching контент: master vs client */}

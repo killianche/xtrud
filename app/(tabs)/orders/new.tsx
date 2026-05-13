@@ -214,17 +214,16 @@ export default function NewOrderScreen() {
       className="flex-1 bg-canvas"
       style={{ paddingTop: insets.top }}
     >
-      {/* Header: back + progress в одном ряду. Progress занимает оставшееся
-          пространство справа от стрелки. По запросу: было 2 строки, стало 1. */}
-      <View className="flex-row items-center px-3 py-2 gap-3 pb-4">
+      {/* Header: back + progress в одном ряду — компактный (h-9). */}
+      <View className="flex-row items-center px-3 py-1 gap-3 pb-2">
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Назад"
           onPress={goBack}
           hitSlop={12}
-          className="h-10 w-10 items-center justify-center rounded-full active:opacity-70"
+          className="h-9 w-9 items-center justify-center rounded-full active:opacity-70"
         >
-          <ChevronLeft size={24} strokeWidth={1.75} color={tc.ink} />
+          <ChevronLeft size={20} strokeWidth={1.75} color={tc.ink} />
         </Pressable>
         {/* Inline progress без обёртки OnboardingProgress (его px-6 ломает
             горизонтальное выравнивание с back-кнопкой). */}
@@ -289,16 +288,6 @@ export default function NewOrderScreen() {
           cities={cities}
           step={step}
         />
-
-        {/* Trust-сигнал на финальном шаге — TaskRabbit pattern. */}
-        {step === 2 && (
-          <View className="mt-8 mx-6 flex-row items-center gap-3 rounded-lg border border-hairline-soft bg-surface-2 p-4">
-            <Clock size={18} strokeWidth={1.75} color={tc.success} />
-            <AppText weight="medium" className="flex-1 text-caption text-body">
-              Обычно мастера отвечают за 15–60 минут.
-            </AppText>
-          </View>
-        )}
 
         {submitError && (
           <View className="mt-6 px-6">

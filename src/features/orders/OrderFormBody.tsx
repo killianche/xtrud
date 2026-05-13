@@ -8,18 +8,17 @@
  * Owner-каждый screen решает что показывать выше и ниже формы + сам submit-логика.
  */
 
-import { Check } from "lucide-react-native";
 import type { Control, FieldErrors, FieldPath } from "react-hook-form";
 import { Controller } from "react-hook-form";
 import { ActivityIndicator, Pressable, TextInput, View } from "react-native";
 import { AppText } from "@/components/AppText";
+import { CategoryPicker } from "@/components/CategoryPicker";
 import type { CreateOrderFormValues } from "@/features/orders/order-schema";
 import {
   orderBudgetModeOptions,
   orderUrgencyOptions,
   urgencyLabel,
 } from "@/features/orders/order-schema";
-import { getCategoryIcon } from "@/lib/category-icons";
 import { useThemeColor } from "@/lib/use-theme-color";
 import type { Tables } from "@/types/database";
 
@@ -123,77 +122,29 @@ export function OrderFormBody({
         </View>
       )}
 
-      {/* Категория — Шаг 2 (новый: после описания).
-          UI: 2-колонки grid плиток с Lucide-иконкой + названием. Выбранная
-          плитка — bg-canvas-soft + border-ink (Vercel-стиль, без accent-цвета). */}
+      {/* Категория — Шаг 1 (CategoryPicker — compact selector + bottom-sheet
+          с typeahead). 2-col grid плиток выглядел перегружено для 32 категорий.
+          Lazyweb-вывод: Klarna/Profi/Яндекс используют compact + bottom-sheet. */}
       {showCategory && (
         <View className={showContent ? "mt-6 px-6" : "px-6"}>
-          <AppText weight="medium" className="text-caption text-muted">
+          <AppText weight="medium" className="text-caption text-muted mb-3">
             Категория
           </AppText>
-          {!categories && (
-            <View className="mt-3">
-              <ActivityIndicator />
-            </View>
-          )}
-          {categories && (
-            <Controller
-              control={control}
-              name="l2Id"
-              render={({ field: { value, onChange } }) => (
-                <View className="mt-3 flex-row flex-wrap gap-3">
-                  {categories.map((cat) => {
-                    const selected = value === cat.id;
-                    const interactive = !lockCategory;
-                    const Icon = getCategoryIcon(cat.icon);
-                    return (
-                      <Pressable
-                        key={cat.id}
-                        accessibilityRole="button"
-                        accessibilityState={{ selected }}
-                        disabled={isBusy || !interactive}
-                        onPress={() => interactive && onChange(cat.id)}
-                        className={`w-[48%] rounded-lg border p-4 ${
-                          selected
-                            ? "bg-canvas-soft border-ink"
-                            : interactive
-                              ? "bg-canvas border-hairline active:opacity-70"
-                              : "bg-canvas border-hairline opacity-40"
-                        }`}
-                        style={{ minHeight: 88 }}
-                      >
-                        <View className="flex-row items-start justify-between">
-                          <View className="text-ink">
-                            <Icon size={22} strokeWidth={1.5} color="currentColor" />
-                          </View>
-                          {selected && (
-                            <View className="text-ink">
-                              <Check size={18} strokeWidth={2.25} color="currentColor" />
-                            </View>
-                          )}
-                        </View>
-                        <AppText
-                          weight="semibold"
-                          className="mt-3 text-body-sm text-ink"
-                          numberOfLines={2}
-                        >
-                          {cat.name_ru}
-                        </AppText>
-                      </Pressable>
-                    );
-                  })}
-                </View>
-              )}
-            />
-          )}
+          <Controller
+            control={control}
+            name="l2Id"
+            render={({ field: { value, onChange } }) => (
+              <CategoryPicker
+                value={value}
+                onChange={onChange}
+                disabled={isBusy || lockCategory}
+                error={errors.l2Id?.message}
+              />
+            )}
+          />
           {lockCategory && (
             <AppText className="mt-2 text-caption-xs text-muted">
               Категорию нельзя сменить после публикации.
-            </AppText>
-          )}
-          {errors.l2Id && (
-            <AppText weight="medium" className="mt-2 text-caption text-error">
-              {errors.l2Id.message}
             </AppText>
           )}
         </View>
@@ -252,21 +203,7 @@ export function OrderFormBody({
         </View>
       )}
 
-      {/* Район — Шаг 3 */}
-      {showBudgetCity && (
-        <View className="mt-6 px-6">
-          <TextField
-            label="Район (опц.)"
-            placeholder="Центр / Назрань-Юг"
-            control={control}
-            name="district"
-            error={errors.district?.message}
-            disabled={isBusy}
-          />
-        </View>
-      )}
-
-      {/* Срочность — Шаг 3 */}
+      {/* Срочность — Шаг 2 */}
       {showBudgetCity && (
         <View className="mt-6 px-6">
           <AppText weight="medium" className="text-caption text-muted">

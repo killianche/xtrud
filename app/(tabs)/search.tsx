@@ -45,13 +45,11 @@ export default function SearchScreen() {
 
   const { data: services = [], isLoading } = useSearchableServices();
 
-  // Список услуг показываем ТОЛЬКО когда пользователь начал набирать.
-  // Пустой query → пустой экран (без шума из всех 32+248 категорий).
+  // Пустой query → показываем все услуги (browse-mode). Любой ввод → фильтр.
   const results = useMemo(
-    () => (query.trim().length === 0 ? [] : filterServicesByQuery(services, query, 80)),
+    () => filterServicesByQuery(services, query, 80),
     [services, query],
   );
-  const hasQuery = query.trim().length > 0;
 
   return (
     <View className="flex-1 bg-canvas" style={{ paddingTop: insets.top }}>
@@ -71,7 +69,7 @@ export default function SearchScreen() {
             autoFocus
             value={query}
             onChangeText={setQuery}
-            placeholder="Услуга или специалист"
+            placeholder=""
             placeholderTextColor="rgb(var(--mute) / 1)"
             returnKeyType="search"
             className="text-ink"
@@ -101,9 +99,9 @@ export default function SearchScreen() {
       {/* Hairline под инпутом. */}
       <View className="mx-5 h-px bg-hairline" />
 
-      {/* Заголовок + список — только когда пользователь начал печатать.
-          До этого экран остаётся пустым с курсором в инпуте. */}
-      {!hasQuery ? null : isLoading ? (
+      {/* Список услуг. Пустой query → browse (все категории), есть query →
+          фильтр с bold-подсветкой совпадений. */}
+      {isLoading ? (
         <>
           <View className="px-5 mt-6">
             <AppText className="text-body-sm text-mute">

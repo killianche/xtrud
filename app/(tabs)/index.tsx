@@ -168,19 +168,19 @@ function ClientHome({ onCategoryPress, onMasterPress, onDescribeTask }: ClientHo
 // услуг для Ингушетии (ремонт), при тапе ведёт на /category/[l2_id].
 // ----------------------------------------------------------------------------
 
-const FREQUENT_SEARCHES: { label: string; l2_id: string }[] = [
-  { label: "Сантехник", l2_id: "plumbing" },
-  { label: "Электрик", l2_id: "electrical" },
-  { label: "Плиточник", l2_id: "tiling" },
-  { label: "Натяжной потолок", l2_id: "tension-ceilings" },
-  { label: "Установка двери", l2_id: "doors" },
-  { label: "Сборка мебели", l2_id: "furniture" },
-  { label: "Замок", l2_id: "locks-security" },
-  { label: "Кондиционер", l2_id: "climate" },
-  { label: "Окна", l2_id: "windows" },
-  { label: "Уборка после ремонта", l2_id: "cleaning-post-renovation" },
-  { label: "Сварка ворот", l2_id: "welding" },
-  { label: "Бурение скважин", l2_id: "drilling-wells" },
+const FREQUENT_SEARCHES: { label: string; l2_id: string; icon: string }[] = [
+  { label: "Сантехник",          l2_id: "plumbing",                 icon: "Droplet" },
+  { label: "Электрик",           l2_id: "electrical",               icon: "Zap" },
+  { label: "Плиточник",          l2_id: "tiling",                   icon: "Grid3x3" },
+  { label: "Натяжной потолок",   l2_id: "tension-ceilings",         icon: "CloudFog" },
+  { label: "Установка двери",    l2_id: "doors",                    icon: "DoorOpen" },
+  { label: "Сборка мебели",      l2_id: "furniture",                icon: "Armchair" },
+  { label: "Замок",              l2_id: "locks-security",           icon: "Lock" },
+  { label: "Кондиционер",        l2_id: "climate",                  icon: "Thermometer" },
+  { label: "Окна",               l2_id: "windows",                  icon: "RectangleHorizontal" },
+  { label: "Уборка",             l2_id: "cleaning-post-renovation", icon: "Sparkles" },
+  { label: "Сварка ворот",       l2_id: "welding",                  icon: "Flame" },
+  { label: "Бурение скважин",    l2_id: "drilling-wells",           icon: "Drill" },
 ];
 
 function FrequentSearches({ onCategoryPress }: { onCategoryPress: (id: string) => void }) {
@@ -190,28 +190,33 @@ function FrequentSearches({ onCategoryPress }: { onCategoryPress: (id: string) =
         <AppText weight="semibold" className="text-title-lg text-ink">
           Часто ищут
         </AppText>
-        <AppText className="mt-1 text-body-sm text-mute">
-          Популярные услуги в городе
-        </AppText>
       </View>
+      {/* Chip-pills с иконкой + label. Иконка слева 16px ink, mute hairline
+          border, hover/active — opacity. Vercel-pill style. */}
       <FlatList
         data={FREQUENT_SEARCHES}
         horizontal
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={{ paddingHorizontal: 20, gap: 8, paddingTop: 12 }}
         keyExtractor={(item) => item.l2_id + item.label}
-        renderItem={({ item }) => (
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={item.label}
-            onPress={() => onCategoryPress(item.l2_id)}
-            className="h-10 px-4 rounded-full bg-canvas-soft border border-hairline items-center justify-center active:opacity-70"
-          >
-            <AppText weight="medium" className="text-body-sm text-ink">
-              {item.label}
-            </AppText>
-          </Pressable>
-        )}
+        renderItem={({ item }) => {
+          const Icon = getCategoryIcon(item.icon);
+          return (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={item.label}
+              onPress={() => onCategoryPress(item.l2_id)}
+              className="flex-row items-center gap-2 h-11 pl-3 pr-4 rounded-full bg-canvas border border-hairline active:opacity-70"
+            >
+              <View className="text-ink">
+                <Icon size={16} strokeWidth={1.75} color="currentColor" />
+              </View>
+              <AppText weight="medium" className="text-body-sm text-ink">
+                {item.label}
+              </AppText>
+            </Pressable>
+          );
+        }}
       />
     </View>
   );

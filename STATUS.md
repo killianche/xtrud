@@ -220,7 +220,7 @@ Sprint 33.5 — **полный Web Shell**:
 
 **Sprint 20 закрыт — Order state-machine design-doc.**
 
-**Sprint 20 закрыт — Order state-machine design-doc.** Новый файл `docs/order-states.md` фиксирует все 6 статусов order, 7 переходов между ними, 6 RLS-policy + 1 RPC, которые их защищают, side effects (push, review window, rating recalc), и 5 известных пробелов с планами (expired-cron, draft-UI, re-open, отказ от мастера до completion, push на open→cancelled). Это контракт-документ: любая будущая фича, меняющая enum/RLS/RPC заказов, должна сначала появиться там. **Sprint 19 (image-resize + feed-page тесты, 47/47)** ранее закрыт. **Sprint 18 (master Maestro smoke)** закрыт. **Sprint 17 (web prod)** — `https://alanbani.ru/xtrud/` живой.
+**Sprint 21 закрыт — Chat seed-fixture + Maestro chat smoke.** Новый каталог `supabase/seed-test/` с `chat-fixture.sql` инсертит фейковых client + master напрямую в `auth.users` (trigger автоматом создаёт `public.users`), плюс полный сценарий: master_profiles + master_categories + order(in_progress) + accepted response + chat + 1 incoming message. `flows/06-chat.yaml` + `chat-smoke.yaml` логинятся под client и проверяют отправку сообщения. README в обоих каталогах + warning «никогда не на проде». **Sprint 20 (order state-machine doc)** ранее закрыт. **Sprint 19 (доп. тесты, 47/47)** закрыт.
 
 **База:** 23 миграции, 15 таблиц с RLS + 3 Storage bucket, 8 RPC, 12 trigger functions, 17 enums, 1 edge function.
 
@@ -333,6 +333,14 @@ xtrud/
 - [x] **2026-05-11** — **2.1** Migration 0003 + AuthGate routing (commit `2c2f25f`): `users.onboarding_completed_at` + `users.active_role` enum + CHECK constraint (active_role='master' ⇒ is_master=true) + partial index. `useUserRecord` hook (TanStack Query, staleTime 5 мин). AuthGate переписан под 3 группы — `(auth)` / `(onboarding)` / `(tabs)`. Advisor security = 0 lints.
 - [x] **2026-05-11** — **2.2** Role selection screen (commit `eb42338`): полноценный UI с 2 карточками (lucide Search/Briefcase), accessibilityState selected, accent-soft фон выбранной, CTA "Продолжить", error display. `useCompleteOnboarding` mutation обновляет `users.{is_master, active_role, onboarding_completed_at}` + invalidates query.
 - [x] **2026-05-11** — **2.3** Main client screen (commit `5d394c8`): `useVisibleCategories` для 26 L2, `CategoryTile` компонент с iconMap (~50 lucide icons), grid 2/3/4-кол. адаптивный, ScrollView без виртуализации, loading/error/empty states, header с приветствием по first_name + role badge + signOut. **Без атмосферных фото — sprint 4+.**
+
+### Sprint 21 (Chat E2E + dev-fixture)
+- [x] **2026-05-12** — **21.1–21.4** Chat smoke (commit pending):
+  - `supabase/seed-test/chat-fixture.sql` — идемпотентный SQL: 2 auth.users (fixed UUIDs 1111/2222) + UPDATE public.users (онбординг) + master_profiles + master_categories + order in_progress + accepted response + chat + 1 message от мастера. CASCADE-cleanup при повторном запуске.
+  - `supabase/seed-test/README.md` — таблица сущностей, запуск через psql, очистка, зависимости от `cities/categories_l2` seed'ов.
+  - `.maestro/flows/06-chat.yaml` — открыть чат «Магомед Мастеров» → ассерт incoming сообщения → ввод текста в TextInput «Сообщение» → tap по `accessibilityLabel="Отправить"` → ассерт отправленного сообщения в ленте.
+  - `.maestro/chat-smoke.yaml` runner с TEST_PHONE=+79991110001 (совпадает с fixture client).
+  - `.maestro/README.md` — секция Chat happy-path с pre-condition, прод-warning, обновлённый backlog (отправка отклика мастером + realtime — следующие задачи).
 
 ### Sprint 20 (архитектурный design-doc)
 - [x] **2026-05-12** — **20.1–20.3** Order state-machine design-doc (commit pending):

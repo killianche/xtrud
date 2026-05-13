@@ -55,6 +55,20 @@ maestro test .maestro/smoke.yaml
 maestro test .maestro/master-smoke.yaml
 ```
 
+**Chat happy-path** (открыть существующий чат → отправить сообщение). ⚠️ Требует
+seed на dev-БД:
+
+```bash
+# 1. Заполняем dev-БД фикстурой (создаёт client+master+order+chat+message).
+psql "$DATABASE_URL" -f supabase/seed-test/chat-fixture.sql
+
+# 2. Прогоняем smoke.
+maestro test .maestro/chat-smoke.yaml
+```
+
+`DATABASE_URL` — connection string на dev/local Supabase. **Никогда** не
+запускай fixture на проде: он инсертит фейковых юзеров напрямую в `auth.users`.
+
 Отдельные сегменты (после ручного выхода из аккаунта / смены состояния):
 
 ```bash
@@ -68,6 +82,9 @@ maestro test .maestro/flows/03-create-order.yaml
 # Master ветка.
 maestro test .maestro/flows/04-onboarding-master.yaml
 maestro test .maestro/flows/05-master-feed.yaml
+
+# Chat ветка — после fixture.
+maestro test .maestro/flows/06-chat.yaml
 ```
 
 ⚠️ В `master-smoke.yaml` используется **другой тестовый номер**
@@ -124,11 +141,12 @@ flow подтвердится локально.
 
 - **Client happy-path**: телефон → OTP → роль клиента → создание заказа
 - **Master happy-path**: телефон → OTP → роль мастера → профиль → просмотр feed (3 таба)
+- **Chat happy-path**: вход в существующий чат → отправка сообщения (требует fixture)
 
 Не покрыто (бэклог):
 
 - **Отправка отклика мастером** — требует сидов с заказом от другого клиента
-- **Чат**: открытие диалога, отправка сообщения, realtime-получение
+- **Realtime получение сообщения** в чате (Sprint 22+ — нужен второй симулятор)
 - **Завершение заказа**: client принимает отклик → master отмечает выполнено → отзыв 5★
 - **Push-уведомления** (вне Maestro — нужен отдельный stub)
 - **Категории мастера** (master-categories.tsx — отдельный экран, не часть онбординг-визарда)

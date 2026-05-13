@@ -1,0 +1,40 @@
+# Sprint 21.3 — Chat smoke-test: открыть чат → отправить сообщение → проверить.
+#
+# Префикс:
+#   1. На dev-БД прогнан `supabase/seed-test/chat-fixture.sql` —
+#      это создаёт client (+79991110001), master (+79992220002), order,
+#      chat, входящее сообщение от мастера.
+#   2. Maestro логинится под clientом через 01-auth (TEST_PHONE подменён
+#      на +79991110001 в runner chat-smoke.yaml).
+#
+# Постфикс: в чате видно сообщение мастера + наше отправленное сообщение.
+appId: com.xtrud.app
+---
+# После 01-auth попадаем в (tabs). Onboarding пропускается, потому что
+# fixture уже выставил onboarding_completed_at — AuthGate сразу пускает.
+- assertVisible:
+    text: "Заказы"
+    timeout: 15000
+
+# Идём в таб «Чаты».
+- tapOn: "Чаты"
+- assertVisible:
+    text: "Магомед Мастеров"
+    timeout: 10000
+
+# Открываем диалог с мастером.
+- tapOn: "Магомед Мастеров"
+
+# Входящее сообщение из fixture — должно отрисоваться.
+- assertVisible: "Привет! Готов посмотреть смеситель"
+
+# Поле ввода имеет placeholder "Сообщение".
+- tapOn: "Сообщение"
+- inputText: "Maestro smoke: тестовое сообщение клиента."
+- hideKeyboard
+
+# Кнопка Send имеет accessibilityLabel="Отправить" — Maestro находит её.
+- tapOn: "Отправить"
+
+# Наше сообщение должно появиться в ленте.
+- assertVisible: "Maestro smoke: тестовое сообщение клиента."

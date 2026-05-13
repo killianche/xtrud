@@ -1,28 +1,49 @@
-// Обёртка над <Text>:
-// 1. maxFontSizeMultiplier=1.3 (CROSS_PLATFORM_RULES §3 — фикс iOS Dynamic Type)
-// 2. Дефолтный fontFamily — Inter (загруженный в app/_layout через @expo-google-fonts/inter).
-// 3. Prop `weight` переключает между 4 вариантами Inter + Cal Sans display.
+// AppText — обёртка над `<Text>` с правильным шрифтом + Dynamic Type фиксом.
+//
+// Дизайн-система Vercel-based (DESIGN.md): один шрифт Geist для всех весов.
+//
+// На web:    fontFamily = "Geist" (variable font, weight 100-900 в одном файле),
+//            fontWeight задаётся числом → браузер сам выбирает нужный stroke.
+//            Geist подгружается через @font-face в global.css (jsdelivr CDN).
+// На native: пока fallback на Inter (`Inter_400Regular`, ..., `Inter_700Bold`),
+//            потому что Geist в @expo-google-fonts нет.
+//            После `npm install geist` + native font register можно перевести.
+//
+// `weight="display"` исторически = семейство display-шрифта. В новой системе
+// display — это тот же Geist, просто semibold (600). Оставляем prop для совместимости
+// и читаемости вызовов: `<AppText weight="display">Hero</AppText>`.
+//
+// `weight="mono"` (новый) — Geist Mono для метрик в карточках (★ 4.9, цена, расстояние).
+// xtrud override из DESIGN.md.
 //
 // Использование:
-//   <AppText className="text-base">Привет</AppText>            — Inter 400
-//   <AppText weight="bold" className="text-2xl">Заголовок</AppText> — Inter 700
-//   <AppText weight="display" className="text-display-md">Hero</AppText> — Cal Sans SemiBold
-//
-// Использовать ВЕЗДЕ вместо raw <Text>.
+//   <AppText>Обычный текст</AppText>                            — Geist 400
+//   <AppText weight="semibold">Полужирный</AppText>             — Geist 600
+//   <AppText weight="display" className="text-display-lg">Hero</AppText>  — Geist 600 на display-шкале
+//   <AppText weight="mono" className="text-mono-sm">★ 4.9</AppText>       — Geist Mono 500
 
 import { forwardRef } from "react";
-import { Text, type TextProps } from "react-native";
+import { Platform, Text, type TextProps } from "react-native";
 
-export type AppTextWeight = "regular" | "medium" | "semibold" | "bold" | "display";
+export type AppTextWeight = "regular" | "medium" | "semibold" | "bold" | "display" | "mono";
 
-const fontFamilyMap: Record<AppTextWeight, string> = {
+const fontWeightMap: Record<AppTextWeight, "400" | "500" | "600" | "700"> = {
+  regular: "400",
+  medium: "500",
+  semibold: "600",
+  bold: "700",
+  display: "600",
+  mono: "500",
+};
+
+// На native — фиксированные fontFamily-имена (так expo-font регистрирует weights).
+const nativeFontFamilyMap: Record<AppTextWeight, string> = {
   regular: "Inter_400Regular",
   medium: "Inter_500Medium",
   semibold: "Inter_600SemiBold",
   bold: "Inter_700Bold",
-  // Cal Sans SemiBold — display-шрифт для hero/headlines.
-  // Загружается в app/_layout.tsx из assets/fonts/CalSans-SemiBold.ttf.
-  display: "CalSans_600SemiBold",
+  display: "Inter_700Bold", // fallback до установки Geist native
+  mono: "Inter_500Medium", // fallback — нет native Geist Mono
 };
 
 export interface AppTextProps extends TextProps {
@@ -33,12 +54,17 @@ export const AppText = forwardRef<Text, AppTextProps>(function AppText(
   { weight = "regular", style, ...props },
   ref,
 ) {
-  return (
-    <Text
-      ref={ref}
-      maxFontSizeMultiplier={1.3}
-      style={[{ fontFamily: fontFamilyMap[weight] }, style]}
-      {...props}
-    />
-  );
+  const fontStyle =
+    Platform.OS === "web"
+      ? {
+          // Variable font — одно семейство, разные веса через fontWeight.
+          fontFamily:
+            weight === "mono"
+              ? '"Geist Mono", ui-monospace, SFMono-Regular, Menlo, monospace'
+              : '"Geist", "Inter", system-ui, sans-serif',
+          fontWeight: fontWeightMap[weight] as "400",
+        }
+      : { fontFamily: nativeFontFamilyMap[weight] };
+
+  return <Text ref={ref} maxFontSizeMultiplier={1.3} style={[fontStyle, style]} {...props} />;
 });

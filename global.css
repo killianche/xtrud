@@ -1,19 +1,40 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-/* Cal Sans 600 — CDN (jsdelivr зеркало npm-пакета cal-sans@1.0.1). */
+/*
+ * Шрифты — Vercel-based DESIGN system (с 2026-05-13).
+ *
+ * Geist (sans) + Geist Mono — основные шрифты.
+ * Inter оставлен как fallback для native (через @expo-google-fonts/inter).
+ *
+ * Geist на web: variable webfont через jsdelivr (зеркало npm-пакета `geist`).
+ * Geist на native: пока fallback на Inter — отдельной задачей `npm install geist`
+ * + native font registration.
+ */
+
+/* Geist Variable (wght 100-900) */
 @font-face {
-  font-family: 'Cal Sans';
+  font-family: 'Geist';
   font-style: normal;
-  font-weight: 600;
+  font-weight: 100 900;
   font-display: swap;
-  src: url('https://cdn.jsdelivr.net/npm/cal-sans@1.0.1/fonts/webfonts/CalSans-SemiBold.woff2') format('woff2'),
-       url('https://cdn.jsdelivr.net/npm/cal-sans@1.0.1/fonts/webfonts/CalSans-SemiBold.woff') format('woff');
+  src: url('https://cdn.jsdelivr.net/npm/geist@1.4.2/dist/fonts/geist-sans/Geist-Variable.woff2') format('woff2-variations');
 }
+
+/* Geist Mono Variable */
+@font-face {
+  font-family: 'Geist Mono';
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url('https://cdn.jsdelivr.net/npm/geist@1.4.2/dist/fonts/geist-mono/GeistMono-Variable.woff2') format('woff2-variations');
+}
+
+/* Inter fallback (для native совместимости + если Geist не загрузится) */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* Алиасы под RN-style имена шрифтов: AppText использует "Inter_400Regular" / "CalSans_600SemiBold". */
+/* Алиасы под RN-style имена шрифтов: AppText использует "Inter_400Regular" и т.д. */
 @font-face {
   font-family: 'Inter_400Regular';
   src: local('Inter'), local('Inter-Regular');
@@ -38,9 +59,11 @@
   font-weight: 700;
   font-style: normal;
 }
+/* RN-style alias для display: на web AppText weight="display" получает Geist через
+   font-family resolved chain (Tailwind font-display = Geist в tailwind.config). */
 @font-face {
   font-family: 'CalSans_600SemiBold';
-  src: local('Cal Sans');
+  src: local('Geist'), local('Cal Sans');
   font-weight: 600;
   font-style: normal;
 }
@@ -61,68 +84,102 @@
 @layer base {
   :root {
     --canvas: 255 255 255;
-    --surface-1: 250 250 250;
-    --surface-2: 245 245 245;
-    --surface-3: 229 231 235;
-    --surface-dark: 10 10 10;
-    --hairline: 229 231 235;
-    --hairline-soft: 243 244 246;
-    --ink: 10 10 10;
-    --body: 55 65 81;
-    --muted: 107 114 128;
-    --muted-soft: 113 113 122;
+    --canvas-soft: 250 250 250;
+    --canvas-soft-2: 245 245 245;
+    --ink: 23 23 23;
+    --body: 77 77 77;
+    --mute: 136 136 136;
+    --hairline: 235 235 235;
+    --hairline-strong: 161 161 161;
+    --primary: 23 23 23;
     --on-primary: 255 255 255;
-    --on-dark: 255 255 255;
-    --on-dark-soft: 161 161 170;
-    --primary: 10 10 10;
-    --accent: 37 99 235;
-    --accent-soft: 219 234 254;
+    --link: 0 112 243;
+    --link-deep: 7 97 209;
+    --link-bg-soft: 211 229 255;
     --success: 16 185 129;
     --success-soft: 209 250 229;
-    --warning: 245 158 11;
-    --warning-soft: 254 243 199;
-    --error: 239 68 68;
-    --error-soft: 254 226 226;
+    --warning: 245 166 35;
+    --warning-soft: 255 239 207;
+    --warning-deep: 171 87 10;
+    --error: 238 0 0;
+    --error-soft: 247 212 214;
+    --error-deep: 197 0 0;
+    --violet: 121 40 202;
+    --violet-soft: 216 204 241;
+    --violet-deep: 76 40 137;
+    --cyan: 80 227 194;
+    --cyan-soft: 170 255 236;
+    --cyan-deep: 41 188 155;
+    --highlight-pink: 255 0 128;
+    --highlight-magenta: 235 54 127;
+    --surface-dark: 10 10 10;
+    --on-dark: 255 255 255;
+    --on-dark-soft: 161 161 161;
     --badge-orange: 251 146 60;
     --badge-pink: 236 72 153;
     --badge-violet: 139 92 246;
     --badge-emerald: 52 211 153;
     --badge-sky: 56 189 248;
     --badge-amber: 251 191 36;
+    --surface-1: 250 250 250;
+    --surface-2: 245 245 245;
+    --surface-3: 235 235 235;
+    --hairline-soft: 245 245 245;
+    --muted: 136 136 136;
+    --muted-soft: 161 161 161;
+    --accent: 0 112 243;
+    --accent-soft: 211 229 255;
   }
 
   .dark:root,
   :root.dark,
   .dark {
     --canvas: 10 10 10;
-    --surface-1: 17 17 17;
-    --surface-2: 23 23 23;
-    --surface-3: 38 38 38;
-    --surface-dark: 10 10 10;
-    --hairline: 38 38 38;
-    --hairline-soft: 31 31 31;
+    --canvas-soft: 17 17 17;
+    --canvas-soft-2: 26 26 26;
     --ink: 250 250 250;
-    --body: 212 212 216;
-    --muted: 161 161 170;
-    --muted-soft: 113 113 122;
-    --on-primary: 10 10 10;
-    --on-dark: 255 255 255;
-    --on-dark-soft: 161 161 170;
+    --body: 161 161 161;
+    --mute: 107 107 107;
+    --hairline: 38 38 38;
+    --hairline-strong: 64 64 64;
     --primary: 250 250 250;
-    --accent: 59 130 246;
-    --accent-soft: 30 58 138;
-    --success: 16 185 129;
+    --on-primary: 10 10 10;
+    --link: 50 145 255;
+    --link-deep: 85 153 255;
+    --link-bg-soft: 26 58 92;
+    --success: 52 211 153;
     --success-soft: 6 78 59;
-    --warning: 245 158 11;
+    --warning: 251 191 36;
     --warning-soft: 120 53 15;
+    --warning-deep: 253 230 138;
     --error: 239 68 68;
     --error-soft: 127 29 29;
+    --error-deep: 252 165 165;
+    --violet: 167 139 250;
+    --violet-soft: 76 40 137;
+    --violet-deep: 221 214 254;
+    --cyan: 103 232 249;
+    --cyan-soft: 21 94 117;
+    --cyan-deep: 165 243 252;
+    --highlight-pink: 255 77 166;
+    --highlight-magenta: 244 114 182;
+    --surface-dark: 10 10 10;
+    --on-dark: 255 255 255;
+    --on-dark-soft: 161 161 161;
     --badge-orange: 251 146 60;
     --badge-pink: 236 72 153;
     --badge-violet: 139 92 246;
     --badge-emerald: 52 211 153;
     --badge-sky: 56 189 248;
     --badge-amber: 251 191 36;
+    --surface-1: 17 17 17;
+    --surface-2: 26 26 26;
+    --surface-3: 38 38 38;
+    --hairline-soft: 31 31 31;
+    --muted: 107 107 107;
+    --muted-soft: 64 64 64;
+    --accent: 50 145 255;
+    --accent-soft: 26 58 92;
   }
 }
 /* @generated:tokens-end */

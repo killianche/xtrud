@@ -1,102 +1,148 @@
-// Цветовая палитра xtrud — light + dark темы.
+// Цветовая палитра xtrud — Vercel-based light + dark.
 //
-// ИСТОЧНИК ИСТИНЫ — этот файл. Значения зеркалятся в global.css как CSS-переменные
-// (формат `--name: R G B` для поддержки alpha через `rgb(var(--name) / <alpha-value>)` в Tailwind).
+// ИСТОЧНИК ИСТИНЫ — этот файл. CSS-переменные в global.css генерируются
+// автоматически: `npm run tokens`. Не редактируй global.css руками.
 //
-// WCAG-фиксы относительно DESIGN_SYSTEM.md §3 (зафиксировано в STATUS.md):
-// - light/muted-soft: #9ca3af → #71717a (zinc-500). Контраст на #ffffff: 2.95:1 → 4.61:1 ✅ AA
-// - light/accent:    #3b82f6 → #2563eb (blue-600). Контраст на #ffffff: 3.7:1 → 5.6:1 ✅ AA body
-// - dark/accent оставлен #3b82f6 (на #0a0a0a контраст 5.7:1 ✅)
-// - dark/muted-soft #71717a borderline (4.2:1) — допустимо для caption.
+// Структура:
+//   1. Base — основные токены из Vercel DESIGN.md (canvas/ink/body/hairline/primary/...).
+//   2. Semantic — success/warning/error (Vercel в этом dev-tool, у нас marketplace).
+//   3. Brand accents — link/violet/cyan/highlight-pink из Vercel.
+//   4. Badge pastels — для Avatar fallback с seed-цветом.
+//   5. Compat aliases — старые имена (surface-2, muted, accent, …) маппятся в новые,
+//      чтобы не ломать ещё не переписанные экраны. Удаляются после rewrite-фазы.
+//
+// Dark theme — наша интерпретация, в Vercel DESIGN.md только light.
+// Логика: инвертируем canvas/ink/primary, смягчаем link/semantic для контраста на чёрном.
 
 export const lightColors = {
-  // Фоны и поверхности
+  // === BASE (из Vercel DESIGN.md) ===
   canvas: "#ffffff",
-  "surface-1": "#fafafa",
-  "surface-2": "#f5f5f5",
-  "surface-3": "#e5e7eb",
-  "surface-dark": "#0a0a0a", // для тёмных категорийных плиток и футера
-
-  // Линии
-  hairline: "#e5e7eb",
-  "hairline-soft": "#f3f4f6",
-
-  // Текст
-  ink: "#0a0a0a",
-  body: "#374151",
-  muted: "#6b7280",
-  "muted-soft": "#71717a", // WCAG-fix
-
-  // Текст на dark-карточках/CTA
+  "canvas-soft": "#fafafa",
+  "canvas-soft-2": "#f5f5f5",
+  ink: "#171717",
+  body: "#4d4d4d",
+  mute: "#888888",
+  hairline: "#ebebeb",
+  "hairline-strong": "#a1a1a1",
+  primary: "#171717",
   "on-primary": "#ffffff",
-  "on-dark": "#ffffff",
-  "on-dark-soft": "#a1a1aa",
 
-  // Брендовые
-  primary: "#0a0a0a", // primary CTA на light — почти-чёрный
-  accent: "#2563eb", // WCAG-fix (был #3b82f6)
-  "accent-soft": "#dbeafe", // фон info-баннеров, selected чипа
+  // === LINK / ACCENT ===
+  link: "#0070f3",
+  "link-deep": "#0761d1",
+  "link-bg-soft": "#d3e5ff",
 
-  // Semantic
+  // === SEMANTIC (наше расширение) ===
   success: "#10b981",
   "success-soft": "#d1fae5",
-  warning: "#f59e0b",
-  "warning-soft": "#fef3c7",
-  error: "#ef4444",
-  "error-soft": "#fee2e2",
+  warning: "#f5a623",
+  "warning-soft": "#ffefcf",
+  "warning-deep": "#ab570a",
+  error: "#ee0000",
+  "error-soft": "#f7d4d6",
+  "error-deep": "#c50000",
 
-  // Badge / avatar пастели
+  // === BRAND ACCENTS (из Vercel) ===
+  violet: "#7928ca",
+  "violet-soft": "#d8ccf1",
+  "violet-deep": "#4c2889",
+  cyan: "#50e3c2",
+  "cyan-soft": "#aaffec",
+  "cyan-deep": "#29bc9b",
+  "highlight-pink": "#ff0080",
+  "highlight-magenta": "#eb367f",
+
+  // === DARK SURFACES (для тёмных CTA / коллажей на light-теме) ===
+  "surface-dark": "#0a0a0a",
+  "on-dark": "#ffffff",
+  "on-dark-soft": "#a1a1a1",
+
+  // === BADGE PASTELS (Avatar seed-палитра) ===
   "badge-orange": "#fb923c",
   "badge-pink": "#ec4899",
   "badge-violet": "#8b5cf6",
   "badge-emerald": "#34d399",
   "badge-sky": "#38bdf8",
   "badge-amber": "#fbbf24",
+
+  // === COMPAT ALIASES (старые имена, удаляются после rewrite) ===
+  "surface-1": "#fafafa", // = canvas-soft
+  "surface-2": "#f5f5f5", // = canvas-soft-2
+  "surface-3": "#ebebeb", // = hairline
+  "hairline-soft": "#f5f5f5", // = canvas-soft-2
+  muted: "#888888", // = mute
+  "muted-soft": "#a1a1a1", // = hairline-strong
+  accent: "#0070f3", // = link
+  "accent-soft": "#d3e5ff", // = link-bg-soft
 } as const;
 
 export const darkColors = {
+  // === BASE (инверсия light) ===
   canvas: "#0a0a0a",
-  "surface-1": "#111111",
-  "surface-2": "#171717",
-  "surface-3": "#262626",
-  "surface-dark": "#0a0a0a",
-
-  hairline: "#262626",
-  "hairline-soft": "#1f1f1f",
-
+  "canvas-soft": "#111111",
+  "canvas-soft-2": "#1a1a1a",
   ink: "#fafafa",
-  body: "#d4d4d8",
-  muted: "#a1a1aa",
-  "muted-soft": "#71717a",
+  body: "#a1a1a1",
+  mute: "#6b6b6b",
+  hairline: "#262626",
+  "hairline-strong": "#404040",
+  primary: "#fafafa",
+  "on-primary": "#0a0a0a",
 
-  "on-primary": "#0a0a0a", // primary CTA в dark = светлая, текст тёмный
-  "on-dark": "#ffffff",
-  "on-dark-soft": "#a1a1aa",
+  // === LINK / ACCENT (светлее на чёрном для контраста) ===
+  link: "#3291ff",
+  "link-deep": "#5599ff",
+  "link-bg-soft": "#1a3a5c",
 
-  primary: "#fafafa", // primary CTA в dark — почти-белый
-  accent: "#3b82f6", // на чёрном работает (5.7:1)
-  "accent-soft": "#1e3a8a",
-
-  success: "#10b981",
+  // === SEMANTIC ===
+  success: "#34d399",
   "success-soft": "#064e3b",
-  warning: "#f59e0b",
+  warning: "#fbbf24",
   "warning-soft": "#78350f",
+  "warning-deep": "#fde68a",
   error: "#ef4444",
   "error-soft": "#7f1d1d",
+  "error-deep": "#fca5a5",
 
+  // === BRAND ACCENTS ===
+  violet: "#a78bfa",
+  "violet-soft": "#4c2889",
+  "violet-deep": "#ddd6fe",
+  cyan: "#67e8f9",
+  "cyan-soft": "#155e75",
+  "cyan-deep": "#a5f3fc",
+  "highlight-pink": "#ff4da6",
+  "highlight-magenta": "#f472b6",
+
+  // === DARK SURFACES (на dark = тот же canvas) ===
+  "surface-dark": "#0a0a0a",
+  "on-dark": "#ffffff",
+  "on-dark-soft": "#a1a1a1",
+
+  // === BADGE PASTELS ===
   "badge-orange": "#fb923c",
   "badge-pink": "#ec4899",
   "badge-violet": "#8b5cf6",
   "badge-emerald": "#34d399",
   "badge-sky": "#38bdf8",
   "badge-amber": "#fbbf24",
+
+  // === COMPAT ALIASES ===
+  "surface-1": "#111111",
+  "surface-2": "#1a1a1a",
+  "surface-3": "#262626",
+  "hairline-soft": "#1f1f1f",
+  muted: "#6b6b6b",
+  "muted-soft": "#404040",
+  accent: "#3291ff",
+  "accent-soft": "#1a3a5c",
 } as const;
 
 export type ColorToken = keyof typeof lightColors;
 
 /**
  * Утилита для конвертации hex → "R G B" триплет для CSS-переменных.
- * Используется при ручной генерации global.css из этой палитры, если палитра изменится.
+ * Используется в scripts/generate-css-tokens.mjs.
  */
 export function hexToRgbTriplet(hex: string): string {
   const cleaned = hex.replace("#", "");

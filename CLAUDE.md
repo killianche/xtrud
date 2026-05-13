@@ -12,7 +12,7 @@
 - **Стек фронтенда:** TBD (выбираем — приоритетный кандидат: Expo + Expo Router + Next.js в monorepo)
 - **Хостинг кода:** GitHub (обязательно с первой минуты)
 - **Темы:** light + dark с переключателем
-- **Дизайн:** будет получен от пользователя, потом задокументируем в `DESIGN.md`
+- **Дизайн:** Vercel-based (`DESIGN.md`, активирована 2026-05-13). 3 override'а под marketplace перечислены в блоке «xtrud overrides» внутри `DESIGN.md`.
 
 ---
 
@@ -115,8 +115,8 @@ git push
 | `CLAUDE.md` | Этот файл — точка входа, контекст, критические правила инфры |
 | `PRODUCT_CONTEXT.md` | **Короткий бриф о продукте и функциональных референсах** (Profi.ru, YouDo, Avito Услуги, TaskRabbit, Thumbtack, Airbnb…). Читать вторым после CLAUDE.md. |
 | `STATUS.md` | Где мы сейчас, что готово, что дальше, блокеры, история решений |
-| `DESIGN.md` | **Текущая дизайн-система — Cal.com-inspired** (Cal Sans + Inter, white canvas + black CTA, cards 12px). Поставлена через `npx getdesign@latest add cal` 2026-05-12. Это ВЕДУЩИЙ источник истины по визуалу. |
-| `DESIGN_SYSTEM.md`, `DESIGN_REFERENCE_CALCOM.md` | **Legacy** — оставлены для истории, новые экраны делать по `DESIGN.md` |
+| `DESIGN.md` | **Текущая дизайн-система — Vercel-based** (Geist + Inter fallback, near-white canvas + ink primary, pill buttons, 12px card radius override). Поставлена через `npx getdesign@latest add vercel` 2026-05-13. См. блок «xtrud overrides» в начале файла. Это ВЕДУЩИЙ источник истины по визуалу. |
+| `legacy/DESIGN_CALCOM.md`, `legacy/DESIGN_SYSTEM.md`, `legacy/DESIGN_REFERENCE_CALCOM.md` | **Legacy.** Cal.com-inspired система, заменена 2026-05-13. Оставлено для истории решений. Не использовать. |
 | `.claude/rules/working-rules.md` | Базовые правила работы AI-агента (автозагружаются) |
 | `.claude/rules/lazyweb-rules.md` | Когда и как использовать Lazyweb MCP для дизайн-референсов |
 | `.claude/rules/*.md` | Доп. правила, привязанные к конкретным путям через `paths:` frontmatter |

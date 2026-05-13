@@ -143,7 +143,7 @@ export function CategoryTile({ name, iconName, coverUrl, onPress }: CategoryTile
         accessibilityRole="button"
         accessibilityLabel={`Категория ${name}`}
         onPress={onPress}
-        className="aspect-square overflow-hidden rounded-xl bg-surface-dark active:opacity-90"
+        className="aspect-square overflow-hidden rounded-xl bg-surface-dark active:opacity-90 hover:opacity-90"
       >
         <Image
           source={{ uri: coverUrl }}
@@ -173,7 +173,7 @@ export function CategoryTile({ name, iconName, coverUrl, onPress }: CategoryTile
       accessibilityRole="button"
       accessibilityLabel={`Категория ${name}`}
       onPress={onPress}
-      className="aspect-square overflow-hidden rounded-xl bg-surface-2 p-4 active:opacity-80"
+      className="aspect-square overflow-hidden rounded-xl bg-surface-2 p-4 active:opacity-80 hover:bg-surface-3"
     >
       <View className="h-10 w-10 items-center justify-center rounded-md bg-canvas">
         <Icon size={20} strokeWidth={1.75} color={inkColor} />

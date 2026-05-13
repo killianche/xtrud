@@ -51,7 +51,7 @@ export function OrderRow(props: OrderRowProps) {
     <Pressable
       accessibilityRole="button"
       onPress={props.onPress}
-      className="rounded-lg border border-hairline bg-canvas p-4 active:opacity-70"
+      className="rounded-lg border border-hairline bg-canvas p-4 active:opacity-70 hover:bg-surface-2"
     >
       {/* Категория chip + статус + время */}
       <View className="flex-row items-center justify-between gap-2">

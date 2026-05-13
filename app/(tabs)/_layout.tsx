@@ -1,5 +1,7 @@
-import { Tabs } from "expo-router";
+import { Slot, Tabs } from "expo-router";
 import { ClipboardList, Home, MessageCircle } from "lucide-react-native";
+import { Platform, useWindowDimensions } from "react-native";
+import { WebShell } from "@/components/WebShell";
 import { useAuthSession } from "@/features/auth/use-auth-session";
 import { useUserRecord } from "@/features/auth/use-user-record";
 import { unreadChatsCount, useMyChats } from "@/features/chat/use-my-chats";
@@ -51,6 +53,17 @@ export default function TabsLayout() {
 
   const tc = useThemeColors(["error", "on-primary"]);
   const badgeStyle = { backgroundColor: tc.error, color: tc["on-primary"] };
+
+  const { width } = useWindowDimensions();
+  const isDesktopWeb = Platform.OS === "web" && width >= 768;
+
+  if (isDesktopWeb) {
+    return (
+      <WebShell chatsBadge={chatsBadge} ordersBadge={ordersBadge}>
+        <Slot />
+      </WebShell>
+    );
+  }
 
   return (
     <Tabs

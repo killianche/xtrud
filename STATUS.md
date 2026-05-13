@@ -6,6 +6,22 @@
 
 ## Текущее состояние
 
+**Sprint 33.5 закрыт — полный Web Shell (top-nav + chats split-layout + hover).**
+
+Sprint 33.5:
+- **Новый `<WebShell>`** (`src/components/WebShell.tsx`) — desktop-web обёртка с top-nav: logo «xtrud» (Cal Sans), 3 nav-link'а (Главная/Заказы/Чаты) с активным состоянием и badges, theme-toggle (Sun/Moon, переключает напрямую без bottom-sheet), avatar-кнопка → profile. Внутри — max-width контейнер 1120px.
+- **Адаптивный `(tabs)/_layout.tsx`** — на `Platform.OS === "web" && width >= 768` рендерит `<WebShell><Slot /></WebShell>` (без bottom-tab-bar). На mobile / narrow web — оригинальный `<Tabs>`.
+- **Chats split-layout** — `chats/_layout.tsx` на desktop рендерит sidebar 360px (`<ChatsListContent variant="sidebar">`) + main pane (`<Slot />`). Sidebar подсвечивает текущий `selectedChatId` (parse из `usePathname`). `chats/index.tsx` на desktop показывает EmptyState «Выберите чат», на mobile — нормальный page list.
+- **Reusable `<ChatsListContent>`** (`src/features/chat/ChatsListContent.tsx`) — переиспользуется в page + sidebar variants. Sidebar-variant: компактнее, без display-заголовка, подсветка выбранного.
+- **Hover** добавлен в `WebShell` (все nav/theme/avatar), `ChatsListContent` (rows), `CategoryTile` (cover + icon), `OrderRow`, `MasterPreviewCard` (horizontal + row). NativeWind `hover:` префикс — на native игнорируется, на web работает нативно.
+
+Проверки: `tsc --noEmit` ✅, `biome check` ✅ (114 файлов), `vitest` 47/47 ✅.
+
+**Не запускалось вживую — нужно проверить:**
+- На desktop web `https://alanbani.ru/xtrud/` после деплоя: top-nav, переключение route'ов, split-chats при `/chats/{id}`, hover'ы на cards.
+- На mobile (iOS/Android): убедиться что `<Tabs>` рендерится как раньше (изменения в layout условные, по `Platform.OS === "web"`).
+- На narrow web (< 768px): должна работать mobile-логика (bottom-tab-bar, full-page chats).
+
 **Sprint 33 закрыт — Theme switcher UI (часть Web Shell).** + **Sprint 31 (UI-only) закрыт.**
 
 Sprint 33:
@@ -18,9 +34,8 @@ Sprint 31 (UI-only):
 - **Dirty-check** в `edit-master.tsx` — back-кнопка показывает Alert «Есть несохранённые изменения, выйти?». Submit-кнопка disabled пока `!isDirty`.
 
 **Отложено** (требует миграции БД или новой инфраструктуры):
-- Sprint 31.5: `master_services` таблица + radius map (нужна миграция, `react-native-maps` если есть).
+- Sprint 31.5: `master_services` таблица + radius map (нужна миграция, `expo-maps`/`react-native-maps` — оба требуют решения по prebuild).
 - Sprint 32: image pipeline с blurhash (миграция БД + edge function для генерации hash при upload).
-- Sprint 33.5: полный Web Shell (top-nav + sidebar для chats + max-width контейнер) — самый большой пакет, требует ~5-7 дней.
 
 Проверки: `tsc --noEmit` ✅, `biome check` ✅ (123 файла), `vitest` 47/47 ✅.
 

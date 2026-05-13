@@ -53,7 +53,7 @@ export function MasterPreviewCard({
         accessibilityRole="button"
         accessibilityLabel={`Профиль мастера ${fullName}`}
         onPress={onPress}
-        className="w-[180px] rounded-lg border border-hairline bg-canvas p-3 active:opacity-80"
+        className="w-[180px] rounded-lg border border-hairline bg-canvas p-3 active:opacity-80 hover:bg-surface-2"
       >
         <View className="aspect-square w-full overflow-hidden rounded-md bg-surface-2">
           {avatarUrl ? (
@@ -102,7 +102,7 @@ export function MasterPreviewCard({
       accessibilityRole="button"
       accessibilityLabel={`Профиль мастера ${fullName}`}
       onPress={onPress}
-      className="flex-row items-center gap-3 rounded-lg border border-hairline bg-canvas p-3 active:opacity-70"
+      className="flex-row items-center gap-3 rounded-lg border border-hairline bg-canvas p-3 active:opacity-70 hover:bg-surface-2"
     >
       {/* Фото 92×92 cover вместо круглой аватарки */}
       <View className="h-[92px] w-[92px] overflow-hidden rounded-md bg-surface-2">

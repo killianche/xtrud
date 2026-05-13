@@ -7,7 +7,6 @@ import {
   useFonts,
 } from "@expo-google-fonts/inter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import * as Notifications from "expo-notifications";
 import { Slot, useRouter, useSegments } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
@@ -40,15 +39,10 @@ import { useRegisterPushToken } from "@/features/notifications/use-register-push
  *             браузером лениво и не блокируют рендер. Это избавляет от SSR-flash null.
  */
 
-// Push-handler: показывать уведомление в foreground.
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowBanner: true,
-    shouldShowList: true,
-    shouldPlaySound: true,
-    shouldSetBadge: false,
-  }),
-});
+// Push-handler регистрируется в src/features/notifications/use-register-push-token
+// при первом маунте хука. Этот файл не должен импортировать expo-notifications
+// на верхнем уровне — Metro подтягивает модуль в bundle, что на web может ломать
+// гидрацию (нативные нативные модули, имеющие side-effects на import).
 
 // Splash hide отложен до загрузки шрифтов (только native).
 SplashScreen.preventAutoHideAsync().catch(() => {

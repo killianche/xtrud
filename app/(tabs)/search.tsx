@@ -13,6 +13,7 @@ import { useState } from "react";
 import { Pressable, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
+import { Illustration } from "@/components/Illustration";
 import { Input } from "@/components/ui";
 
 export default function SearchScreen() {
@@ -44,10 +45,16 @@ export default function SearchScreen() {
         </View>
       </View>
 
-      {/* Empty / placeholder state */}
+      {/* Empty / placeholder state — doodle + title + hint.
+          Open Doodles «meditating» — спокойный, не «грустный» (как было бы
+          с пустой коробкой). Сигнал «всё спокойно, начни поиск». */}
       <View className="flex-1 items-center justify-center px-8">
-        <AppText className="text-mute text-body-md text-center">
-          Поиск мастеров в работе. Пока используйте категории на главной.
+        <Illustration name="meditating" size={180} className="text-ink" />
+        <AppText weight="semibold" className="mt-6 text-title-md text-ink text-center">
+          Найдите своего мастера
+        </AppText>
+        <AppText className="mt-2 text-body-md text-mute text-center">
+          Введите специальность или имя — например, «сантехник» или «Иса».
         </AppText>
       </View>
     </View>

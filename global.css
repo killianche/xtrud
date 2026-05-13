@@ -1,6 +1,49 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+/* Cal Sans 600 — CDN (jsdelivr зеркало npm-пакета cal-sans@1.0.1). */
+@font-face {
+  font-family: 'Cal Sans';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('https://cdn.jsdelivr.net/npm/cal-sans@1.0.1/fonts/webfonts/CalSans-SemiBold.woff2') format('woff2'),
+       url('https://cdn.jsdelivr.net/npm/cal-sans@1.0.1/fonts/webfonts/CalSans-SemiBold.woff') format('woff');
+}
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Алиасы под RN-style имена шрифтов: AppText использует "Inter_400Regular" / "CalSans_600SemiBold". */
+@font-face {
+  font-family: 'Inter_400Regular';
+  src: local('Inter'), local('Inter-Regular');
+  font-weight: 400;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'Inter_500Medium';
+  src: local('Inter'), local('Inter-Medium');
+  font-weight: 500;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'Inter_600SemiBold';
+  src: local('Inter'), local('Inter-SemiBold');
+  font-weight: 600;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'Inter_700Bold';
+  src: local('Inter'), local('Inter-Bold');
+  font-weight: 700;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'CalSans_600SemiBold';
+  src: local('Cal Sans');
+  font-weight: 600;
+  font-style: normal;
+}
 
 /*
  * Дизайн-токены цветов как CSS-переменные.
@@ -54,6 +97,12 @@
     --badge-emerald: 52 211 153;
     --badge-sky: 56 189 248;
     --badge-amber: 251 191 36;
+
+    /* Шрифтовые CSS-переменные (web-only; native использует fontFamily из tailwind.config) */
+    --font-sans: 'Inter';
+    --font-display: 'Cal Sans';
+    --font-heading: 'Cal Sans';
+    --font-mono: ui-monospace, 'SFMono-Regular', monospace;
   }
 
   .dark:root,
@@ -87,5 +136,16 @@
     --warning-soft: 120 53 15;
     --error: 239 68 68;
     --error-soft: 127 29 29;
+  }
+
+  /* Кириллические OpenType-фичи Inter: cv11 — «к»/«л», ss01 — одностворчатая «а» */
+  html {
+    font-feature-settings: "cv11" 1, "ss01" 1;
+  }
+
+  /* Дополняем tailwind-класс font-display feature settings и весом (font-family — из tailwind.config) */
+  .font-display {
+    font-weight: 600;
+    font-feature-settings: "ss01" 1, "cv01" 1;
   }
 }

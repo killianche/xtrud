@@ -1,7 +1,13 @@
+import {
+  DarkTheme,
+  DefaultTheme,
+  ThemeProvider as NavThemeProvider,
+} from "@react-navigation/native";
 import { Slot, Tabs } from "expo-router";
 import { ClipboardList, Home, MessageCircle } from "lucide-react-native";
 import { Platform, useWindowDimensions } from "react-native";
 import { WebShell } from "@/components/WebShell";
+import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useAuthSession } from "@/features/auth/use-auth-session";
 import { useUserRecord } from "@/features/auth/use-user-record";
 import { unreadChatsCount, useMyChats } from "@/features/chat/use-my-chats";
@@ -51,8 +57,22 @@ export default function TabsLayout() {
 
   const ordersBadge = badgeLabel(isClientRole ? unreadResponses : unreadFeed);
 
-  const tc = useThemeColors(["error", "on-primary"]);
+  const tc = useThemeColors(["error", "on-primary", "canvas", "hairline", "ink", "muted"]);
   const badgeStyle = { backgroundColor: tc.error, color: tc["on-primary"] };
+
+  const { colorScheme } = useColorScheme();
+  const baseNavTheme = colorScheme === "dark" ? DarkTheme : DefaultTheme;
+  const navTheme = {
+    ...baseNavTheme,
+    colors: {
+      ...baseNavTheme.colors,
+      background: tc.canvas,
+      card: tc.canvas,
+      border: tc.hairline,
+      text: tc.ink,
+      primary: tc.ink,
+    },
+  };
 
   const { width } = useWindowDimensions();
   const isDesktopWeb = Platform.OS === "web" && width >= 768;
@@ -66,10 +86,20 @@ export default function TabsLayout() {
   }
 
   return (
+    <NavThemeProvider value={navTheme}>
     <Tabs
       screenOptions={{
         headerShown: false,
         tabBarShowLabel: true,
+        tabBarStyle: {
+          // На web используем CSS-переменные — они реагируют на `.dark` класс мгновенно,
+          // без зависимости от JS colorScheme, который может быть null при SSR/hydration.
+          // На native CSS-vars недоступны, используем JS-значение из palette.
+          backgroundColor: Platform.OS === "web" ? "rgb(var(--canvas))" : tc.canvas,
+          borderTopColor: Platform.OS === "web" ? "rgb(var(--hairline))" : tc.hairline,
+        },
+        tabBarActiveTintColor: tc.ink,
+        tabBarInactiveTintColor: tc.muted,
       }}
     >
       <Tabs.Screen
@@ -107,5 +137,6 @@ export default function TabsLayout() {
       <Tabs.Screen name="master/[id]" options={{ href: null }} />
       <Tabs.Screen name="client/[id]" options={{ href: null }} />
     </Tabs>
+    </NavThemeProvider>
   );
 }

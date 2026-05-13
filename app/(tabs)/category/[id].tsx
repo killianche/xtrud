@@ -15,6 +15,7 @@ import { ChevronLeft, Shield, Star } from "lucide-react-native";
 import { Pressable, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
+import { Illustration } from "@/components/Illustration";
 import { Avatar, Card, Chip } from "@/components/ui";
 import {
   type CategoryL3,
@@ -88,14 +89,15 @@ export default function CategoryDetailScreen() {
               ))}
             </View>
           ) : mastersList.length === 0 ? (
-            <Card variant="soft" padding="md">
-              <AppText className="text-body text-body-md">
-                Пока нет мастеров в этой категории.
+            <View className="items-center py-6">
+              <Illustration name="plant" size={140} className="text-ink" />
+              <AppText weight="semibold" className="mt-6 text-title-md text-ink text-center">
+                Пока нет мастеров в этой категории
               </AppText>
-              <AppText className="text-mute text-body-sm mt-1">
+              <AppText className="mt-2 text-body-md text-mute text-center">
                 Опишите задачу — мастера откликнутся.
               </AppText>
-            </Card>
+            </View>
           ) : (
             <View className="gap-3">
               {mastersList.map((m) => (

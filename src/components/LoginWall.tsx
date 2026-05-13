@@ -17,7 +17,7 @@
 import { useRouter } from "expo-router";
 import { useCallback, useState } from "react";
 import { View } from "react-native";
-import { AppText } from "@/components/AppText";
+import { Illustration } from "@/components/Illustration";
 import { BottomSheet, Button } from "@/components/ui";
 import { useAuthSession } from "@/features/auth/use-auth-session";
 
@@ -43,6 +43,11 @@ export function LoginWall({ open, onClose, reason }: LoginWallProps) {
       title="Войдите чтобы продолжить"
       subtitle={reason ?? "Регистрация занимает 30 секунд по номеру телефона."}
     >
+      {/* Doodle-иллюстрация сверху — сигнал «лёгкое приглашение, не блокер».
+          levitate = парящий персонаж, подходит «всё легко». */}
+      <View className="items-center mt-1 mb-2">
+        <Illustration name="levitate" size={120} className="text-ink" />
+      </View>
       <View className="gap-3 mt-2">
         <Button size="lg" fullWidth onPress={handleLogin}>
           Войти по телефону

@@ -16,6 +16,7 @@ export default function ChatsListScreen() {
       <View className="flex-1 items-center justify-center bg-canvas px-6">
         <EmptyState
           icon={MessageCircle}
+          illustration="sitting"
           title="Выберите чат"
           hint="Выберите диалог слева, чтобы продолжить общение."
         />

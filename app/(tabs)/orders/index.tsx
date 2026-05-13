@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
+import { Illustration } from "@/components/Illustration";
 import { OrderRow } from "@/components/OrderRow";
 import { SafetyBanner } from "@/components/SafetyBanner";
 import { useAuthSession } from "@/features/auth/use-auth-session";
@@ -108,15 +109,13 @@ function ClientOrdersView({ userId }: ClientOrdersViewProps) {
         )}
 
         {!isLoading && !error && !hasOrders && (
-          <View className="mt-12 items-center rounded-lg bg-surface-2 mx-6 px-6 py-10">
-            <View className="h-12 w-12 items-center justify-center rounded-full bg-surface-3">
-              <ClipboardList size={24} strokeWidth={1.75} color={tc["muted-soft"]} />
-            </View>
-            <AppText weight="semibold" className="mt-4 text-title-md text-ink">
+          <View className="mt-12 items-center px-6">
+            <Illustration name="coffee" size={160} className="text-ink" />
+            <AppText weight="semibold" className="mt-6 text-title-md text-ink text-center">
               Заказов пока нет
             </AppText>
-            <AppText className="mt-2 text-center text-body-sm text-muted">
-              Создайте первую заявку — это бесплатно.
+            <AppText className="mt-2 text-center text-body-md text-muted">
+              Опишите задачу — мастера откликнутся за 15–60 минут.
             </AppText>
           </View>
         )}
@@ -541,16 +540,13 @@ interface EmptyCardProps {
 }
 
 function EmptyCard({ title, subtitle }: EmptyCardProps) {
-  const mutedSoftColor = useThemeColor("muted-soft");
   return (
-    <View className="items-center rounded-lg bg-surface-2 px-6 py-10">
-      <View className="h-12 w-12 items-center justify-center rounded-full bg-surface-3">
-        <ClipboardList size={24} strokeWidth={1.75} color={mutedSoftColor} />
-      </View>
-      <AppText weight="semibold" className="mt-4 text-title-md text-ink">
+    <View className="items-center px-6 py-6">
+      <Illustration name="reading" size={150} className="text-ink" />
+      <AppText weight="semibold" className="mt-6 text-title-md text-ink text-center">
         {title}
       </AppText>
-      <AppText className="mt-2 text-center text-body-sm text-muted">{subtitle}</AppText>
+      <AppText className="mt-2 text-center text-body-md text-muted">{subtitle}</AppText>
     </View>
   );
 }

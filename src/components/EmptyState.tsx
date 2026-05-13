@@ -16,11 +16,14 @@
 import type { LucideIcon } from "lucide-react-native";
 import { Pressable, View } from "react-native";
 import { AppText } from "@/components/AppText";
+import { Illustration, type IllustrationName } from "@/components/Illustration";
 import { useThemeColor } from "@/lib/use-theme-color";
 
 export interface EmptyStateProps {
-  /** Lucide-иконка для верхнего кружка. */
+  /** Lucide-иконка для верхнего кружка (legacy fallback, если illustration не задан). */
   icon: LucideIcon;
+  /** Doodle-иллюстрация из Open Doodles. Если задана — рендерится вместо icon-кружка. */
+  illustration?: IllustrationName;
   /** Заголовок одной строкой (semibold, title-md). */
   title: string;
   /** Подсказка-описание (2-3 строки максимум). */
@@ -35,6 +38,7 @@ export interface EmptyStateProps {
 
 export function EmptyState({
   icon: Icon,
+  illustration,
   title,
   hint,
   ctaLabel,
@@ -46,16 +50,23 @@ export function EmptyState({
 
   return (
     <View
-      className={`items-center rounded-lg bg-surface-2 px-6 py-10 ${className ?? "mx-6"}`}
+      className={`items-center px-6 py-10 ${className ?? "mx-6"}`}
       accessibilityRole="summary"
     >
-      <View className="h-12 w-12 items-center justify-center rounded-full bg-surface-3">
-        <Icon size={24} strokeWidth={1.75} color={mutedSoftColor} />
-      </View>
-      <AppText weight="semibold" className="mt-4 text-center text-title-md text-ink">
+      {illustration ? (
+        <Illustration name={illustration} size={150} className="text-ink" />
+      ) : (
+        <View className="h-12 w-12 items-center justify-center rounded-full bg-canvas-soft-2">
+          <Icon size={24} strokeWidth={1.75} color={mutedSoftColor} />
+        </View>
+      )}
+      <AppText
+        weight="semibold"
+        className={`text-center text-title-md text-ink ${illustration ? "mt-6" : "mt-4"}`}
+      >
         {title}
       </AppText>
-      {hint && <AppText className="mt-2 text-center text-body-sm text-muted">{hint}</AppText>}
+      {hint && <AppText className="mt-2 text-center text-body-md text-muted">{hint}</AppText>}
       {ctaLabel && onCtaPress && (
         <Pressable
           accessibilityRole="button"

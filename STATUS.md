@@ -220,7 +220,7 @@ Sprint 33.5 — **полный Web Shell**:
 
 **Sprint 20 закрыт — Order state-machine design-doc.**
 
-**Sprint 22 закрыт — Review + 5★ Maestro smoke.** Fixture `chat-fixture.sql` расширен вторым order id=6666… со status='completed' (без отзыва). `flows/07-review.yaml` + `review-smoke.yaml` логинятся под client, открывают этот заказ, тапают «5 звёзд» (`accessibilityLabel`), вводят текст и проверяют появление «Ваш отзыв» после submit. С этим закрыт **полный E2E happy-cycle**: auth → onboarding → order-create → accept → chat → review (через 4 отдельных smoke-flow). **Sprint 21 (Chat smoke + fixture)** ранее закрыт. **Sprint 20 (order state-machine doc)** закрыт.
+**Sprint 23 закрыт — pg_cron expire job на проде.** Миграция 0024 ставит `pg_cron` extension + создаёт SECURITY DEFINER функцию `public.expire_old_orders()` (UPDATE open → expired WHERE expires_at < now()) + регистрирует cron job `nightly_expire_orders` на 03:00 UTC. Применено на prod Supabase (project wgeimsajvjkzrrnfrnkb), `cron.job` строка видна, smoke вызов вернул affected=0 (как ожидалось — старых заказов нет). Закрывает T7 из `docs/order-states.md`. **База:** 24 миграции, 15 таблиц с RLS, 9 RPC, 13 trigger functions, 18 enums, 1 edge function, 1 cron job. **Sprint 22 (Review smoke)** ранее закрыт. **Sprint 21 (Chat smoke + fixture)** закрыт.
 
 **База:** 23 миграции, 15 таблиц с RLS + 3 Storage bucket, 8 RPC, 12 trigger functions, 17 enums, 1 edge function.
 
@@ -333,6 +333,13 @@ xtrud/
 - [x] **2026-05-11** — **2.1** Migration 0003 + AuthGate routing (commit `2c2f25f`): `users.onboarding_completed_at` + `users.active_role` enum + CHECK constraint (active_role='master' ⇒ is_master=true) + partial index. `useUserRecord` hook (TanStack Query, staleTime 5 мин). AuthGate переписан под 3 группы — `(auth)` / `(onboarding)` / `(tabs)`. Advisor security = 0 lints.
 - [x] **2026-05-11** — **2.2** Role selection screen (commit `eb42338`): полноценный UI с 2 карточками (lucide Search/Briefcase), accessibilityState selected, accent-soft фон выбранной, CTA "Продолжить", error display. `useCompleteOnboarding` mutation обновляет `users.{is_master, active_role, onboarding_completed_at}` + invalidates query.
 - [x] **2026-05-11** — **2.3** Main client screen (commit `5d394c8`): `useVisibleCategories` для 26 L2, `CategoryTile` компонент с iconMap (~50 lucide icons), grid 2/3/4-кол. адаптивный, ScrollView без виртуализации, loading/error/empty states, header с приветствием по first_name + role badge + signOut. **Без атмосферных фото — sprint 4+.**
+
+### Sprint 23 (pg_cron expire job)
+- [x] **2026-05-12** — **23.1–23.5** Closure of T7 `open → expired` (commit pending):
+  - Проверка через `list_extensions`: pg_cron 1.6.4 доступен, не установлен. Ни одного active cron job в проекте до этой миграции.
+  - `supabase/migrations/0024_expire_orders_cron.sql` — `CREATE EXTENSION IF NOT EXISTS pg_cron`, функция `public.expire_old_orders()` (SECURITY DEFINER, REVOKE от anon/authenticated, возвращает число затронутых строк через `GET DIAGNOSTICS ROW_COUNT`), идемпотентный UNSCHEDULE прошлого job по имени + `cron.schedule('nightly_expire_orders', '0 3 * * *', ...)`.
+  - **Применено на prod** через MCP `apply_migration`. Подтверждено: `cron.job` содержит запись `jobid=1, jobname=nightly_expire_orders, schedule=0 3 * * *, active=true`. Smoke-вызов `SELECT public.expire_old_orders()` вернул `affected=0` — на проде нет старых open-заказов, поведение корректное.
+  - `docs/order-states.md` обновлён: статус «expired» из TBD → реализован, T7-строка обогащена RPC + side effects, известный пробел зачёркнут, ссылки в коде дополнены.
 
 ### Sprint 22 (Review E2E)
 - [x] **2026-05-12** — **22.1–22.4** Review smoke (commit pending):

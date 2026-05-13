@@ -15,7 +15,7 @@
 | `in_progress` | Клиент принял отклик одного из мастеров. Заказ заморожен — другие отклики автоматически переходят в `rejected`. | RPC `accept_response` | да (свой) | да (если picked) |
 | `completed` | Работа выполнена. Открывается окно отзыва (`reviews_insert_participant` policy требует `status='completed'`). | picked_master ИЛИ client | да (свой) | да (если picked) |
 | `cancelled` | Клиент отменил заказ (из `open` или из `in_progress`). | client | да (свой) | да (если picked) |
-| `expired` | Истёк `expires_at` без активности. **Перехода в этот статус сейчас нет в коде** — нужен будущий cron / pg_cron job. Зарезервирован. | (TBD: nightly job) | — | — |
+| `expired` | Истёк `expires_at` без активности. | `pg_cron` job `nightly_expire_orders` (03:00 UTC) → `public.expire_old_orders()` | да (свой, как старый archive) | нет (выпадает из feed) |
 
 ---
 
@@ -66,7 +66,7 @@
 | T4 | `in_progress` → `completed` (мастером) | `useCompleteOrder` (UPDATE status='completed') | RLS `orders_picked_master_can_complete` (USING picked_master=auth.uid + status='in_progress'; WITH CHECK status='completed') | Открывает review window (`reviews_insert_participant`) |
 | T5 | `in_progress` → `completed` (клиентом) | `useCompleteOrder` от owner (тот же mutation, разные RLS-paths) | RLS `orders_owner_change_status_in_progress` (USING client_id=auth.uid + status='in_progress'; WITH CHECK status IN ('cancelled','completed')) | Открывает review window |
 | T6 | `in_progress` → `cancelled` | `useCancelOrder` (UPDATE status='cancelled') | RLS `orders_owner_change_status_in_progress` (та же policy, статус cancelled ∈ WITH CHECK) | Заказ закрыт без отзыва |
-| T7 | `open` → `expired` | **TBD** — nightly job, не реализовано | (TBD) | (TBD) |
+| T7 | `open` → `expired` | `pg_cron` job `nightly_expire_orders` (03:00 UTC ежедневно) → `SELECT public.expire_old_orders();` (миграция 0024) | SECURITY DEFINER функция, дёргается postgres-юзером в обход RLS; внутри `UPDATE WHERE status='open' AND expires_at < now()` | Заказ исчезает из master feed (`use-master-feed.ts` фильтрует `status='open'`); владелец видит как архив |
 
 **Важно:** мастер **не может** отменить или вернуть заказ обратно в `open` — это намеренно. Если мастер передумал, он только не выставляет `complete`. Возврат `in_progress → open` исключён архитектурно: T-переходов туда нет, и RLS их бы заблокировала (USING ставит status='in_progress', WITH CHECK ограничивает выход в cancelled/completed).
 
@@ -111,7 +111,7 @@
 
 | Проблема | Влияние | План |
 |---|---|---|
-| `expired` нигде не выставляется | Старые `open` заказы засоряют ленту мастера бесконечно | pg_cron job: `UPDATE orders SET status='expired' WHERE status='open' AND expires_at < now()`. Sprint TBD. |
+| ~~`expired` нигде не выставляется~~ | ~~Старые `open` заказы засоряют ленту мастера бесконечно~~ | **Закрыто Sprint 23 (миграция 0024)** — pg_cron `nightly_expire_orders` 03:00 UTC. |
 | `draft` не используется в UI | Юзер не может сохранить заполненную форму на потом | Низкий приоритет, sprint TBD |
 | Re-open отменённого заказа | Если клиент случайно отменил — нужно создавать заново | По дизайну: cancelled — терминальный. Если станет частой жалобой — обсудить. |
 | Отказ от выбранного мастера до completion | Клиент принял, потом передумал. Сейчас единственный путь — отменить (T6), но это вместо «вернуть в open». | Sprint TBD: либо T8 (in_progress→open с side effect «reject picked response»), либо клиенту явно пишем «Отменить и опубликовать заново». |
@@ -124,6 +124,7 @@
 - **Enum**: `supabase/migrations/0009_orders_and_responses.sql:16-22`
 - **RLS**: `supabase/migrations/0009_orders_and_responses.sql:215-260` + `supabase/migrations/0020_orders_edit_rls_guards.sql` + `supabase/migrations/0012_reviews_and_order_completion.sql:84-93`
 - **RPC accept_response**: `supabase/migrations/0010_accept_response_rpc.sql`
+- **pg_cron expire job (T7)**: `supabase/migrations/0024_expire_orders_cron.sql` + функция `public.expire_old_orders()`
 - **Client mutations**:
   - T1: `src/features/orders/use-create-order.ts`
   - T2/T6: `src/features/orders/use-cancel-order.ts`

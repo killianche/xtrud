@@ -27,6 +27,7 @@ import { CitySelector, useCityStore, getCityName } from "@/components/CitySelect
 import { Avatar, Button, Card, Chip, SearchBar } from "@/components/ui";
 import { useAuthSession } from "@/features/auth/use-auth-session";
 import { useUserRecord } from "@/features/auth/use-user-record";
+import { useFeaturedCategories } from "@/features/categories/use-featured-categories";
 import { useVisibleCategories } from "@/features/categories/use-visible-categories";
 import { MasterHomeContent } from "@/features/master-view/MasterHomeContent";
 import { useTopMasters } from "@/features/master-view/use-top-masters";
@@ -186,10 +187,28 @@ function Hero({ cityName, onDescribeTask }: { cityName: string; onDescribeTask: 
 }
 
 // ----------------------------------------------------------------------------
-// Featured verticals — клининг + срочный ремонт (приоритетные)
+// Featured verticals — categories_l2 с is_featured=true.
+// На MVP в базе помечены: cleaning (Клининг) + plumbing (Сантехника).
+// Подаются 2-мя крупными plate-карточками в hero-зоне над обычной сеткой.
 // ----------------------------------------------------------------------------
 
-const FEATURED = [
+// Стилевые палитры (фон + foreground для каждой featured-категории).
+// Маппится по id → палитра. Новые featured-категории получают дефолтную палитру.
+const FEATURED_PALETTE: Record<string, { bg: string; fg: string; sub?: string }> = {
+  cleaning: { bg: "bg-violet-soft", fg: "text-violet-deep", sub: "Уборка, окна, химчистка" },
+  plumbing: {
+    bg: "bg-cyan-soft",
+    fg: "text-cyan-deep",
+    sub: "Сантехник, электрик, мастер на час",
+  },
+};
+const DEFAULT_PALETTE: { bg: string; fg: string; sub?: string } = {
+  bg: "bg-canvas-soft-2",
+  fg: "text-ink",
+};
+
+// Legacy hardcoded fallback (если is_featured ещё не приехал из БД или 0 категорий).
+const FEATURED_FALLBACK = [
   {
     id: "cleaning",
     title: "Клининг",
@@ -198,7 +217,7 @@ const FEATURED = [
     fg: "text-violet-deep",
   },
   {
-    id: "repair-urgent",
+    id: "plumbing",
     title: "Срочный ремонт",
     subtitle: "Сантехник, электрик, мастер на час",
     bg: "bg-cyan-soft",
@@ -207,10 +226,26 @@ const FEATURED = [
 ] as const;
 
 function FeaturedVerticals({ onPress }: { onPress: (id: string) => void }) {
+  const { data: featured } = useFeaturedCategories();
+  // Если БД ещё не отвечает или не вернула featured — используем fallback (не show empty).
+  const items =
+    featured && featured.length > 0
+      ? featured.map((c) => {
+          const palette = FEATURED_PALETTE[c.id] ?? DEFAULT_PALETTE;
+          return {
+            id: c.id,
+            title: c.name_ru,
+            subtitle: palette.sub ?? "",
+            bg: palette.bg,
+            fg: palette.fg,
+          };
+        })
+      : FEATURED_FALLBACK;
+
   return (
     <View className="mt-8 px-5">
       <View className="flex-row gap-3">
-        {FEATURED.map((f) => (
+        {items.map((f) => (
           <Pressable
             key={f.id}
             onPress={() => onPress(f.id)}
@@ -222,7 +257,9 @@ function FeaturedVerticals({ onPress }: { onPress: (id: string) => void }) {
             <AppText weight="semibold" className={`text-title-lg ${f.fg}`}>
               {f.title}
             </AppText>
-            <AppText className={`mt-1 text-body-sm ${f.fg}`}>{f.subtitle}</AppText>
+            {f.subtitle ? (
+              <AppText className={`mt-1 text-body-sm ${f.fg}`}>{f.subtitle}</AppText>
+            ) : null}
           </Pressable>
         ))}
       </View>

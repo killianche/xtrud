@@ -4,7 +4,99 @@
 
 ---
 
-## Текущее состояние
+## Текущее состояние (2026-05-13, Sprint J — UI rewrite + web hydration fix)
+
+**Главное:** проект **запускается локально на web** с реальными данными прод-Supabase. Главная клиента + master detail + category page переписаны с нуля под Vercel-based DESIGN.md. Hydration на dev сервере был сломан (Hermes-stable Metro transform → `import.meta` в classic script → SyntaxError), решено через production export + sed-патч на `<script type="module">`.
+
+### Sprint J — что сделано
+
+#### Инфра / дизайн (фундамент)
+- **Vercel DESIGN.md активирован** через `npx getdesign@latest add vercel` (2026-05-13). 3 override'а под marketplace в шапке DESIGN.md: 12px card radius / mesh-gradient ограничен hero / mono-caption для метрик. Старые `DESIGN_CALCOM.md`, `DESIGN_SYSTEM.md`, `DESIGN_REFERENCE_CALCOM.md` → `legacy/`.
+- **colors.ts переписан** под Vercel: 46 light + 46 dark токенов. Compat aliases (`surface-2`, `muted`, `accent`, `hairline-soft`, `muted-soft`, `accent-soft`, `surface-1`, `surface-3`) оставлены для не-переписанных экранов; удалить после полного rewrite.
+- **scripts/generate-css-tokens.mjs** — генератор `global.css` из `colors.ts`. `npm run tokens` / `npm run tokens:check`. CSS-vars между маркерами `@generated:tokens-*`. Идемпотентно.
+- **Geist + Geist Mono** через jsdelivr-CDN в `global.css` (variable webfonts). AppText переписан под Geist на web + Inter fallback на native + новый `weight="mono"` для метрик «★ 4.9», «12 км», «от 2 500 ₽».
+- **Tailwind config** под новые токены: pill 100px / md 8px / lg 12px (xtrud override-дефолт карточек). Vercel typography scale (display-xl/lg/md/sm + body-lg/md/sm + caption + mono).
+
+#### Hydration fix (КРИТИЧНО)
+- **КОРНЕВАЯ ПРОБЛЕМА**: Expo SDK 54 emits web bundle с `import.meta` (Metro Hermes-stable transform profile). Browser выполняет classic `<script defer>` как NON-module и при первой встрече с `import.meta` → SyntaxError → весь bundle не выполняется → React не монтируется → 0 запросов к Supabase, ни одного клика.
+- **РЕШЕНИЕ**: production export + sed-патч `<script ... defer>` → `<script ... type="module">`. ESM-синтаксис теперь валидный, bundle стартует.
+- `npm run web:build` — `expo export --platform web` + автопатч.
+- `npm run web:serve` — `npx serve dist -p 8082 -s` (SPA).
+- `app.json`: `web.output: "static"` → `"single"` для локального preview.
+- `app/_layout.tsx`: убран top-level `import * as Notifications` (нативный модуль ломал web bundle). Notifications handler перенесён в `use-register-push-token` (только native, dynamic require).
+- `src/features/notifications/use-register-push-token.ts`: переписан на dynamic require('expo-notifications')/require('expo-device') внутри useEffect только на native. На web — полный no-op. `unregisterCurrentPushToken` сохранён (вызывается из signOut).
+- `app/+html.tsx`: inline theme-guard читает правильный ключ `xtrud-theme` (Zustand persist JSON) — раньше читал несуществующий `theme`, что было root-cause SSR theme-flash.
+
+#### UI atoms (новая папка `src/components/ui/`)
+- **Button** — pill, 4 варианта (primary/secondary/ghost/destructive), 3 размера, loading state. Цвета через NativeWind className (CSS-var resolution через html.dark класс).
+- **Input** — Vercel form-input (6px radius), label/hint/error/leftIcon/rightIcon.
+- **Card** — 12px radius xtrud override, 3 варианта (default/soft/dark).
+- **Chip** — pill badge, 6 вариантов (default/outline/dark/success/warning/error), поддержка mono.
+- **SearchBar** — Input + lucide Search + clear-button, дефолт lg (48px).
+- **Avatar** v2 — 3-стейт fallback: url → инициалы (пастель из `badge-*` токенов) → User-иконка (нейтральная).
+- **BottomSheet** — Modal + slide + drag-handle + backdrop, max-width 480 на web.
+
+Все атомы используют **CSS-var через Tailwind className** (не inline style — RNW не резолвит `rgb(var(--x))` в inline). На native — те же className через NativeWind.
+
+#### Переписанные экраны
+- **`app/(tabs)/index.tsx`** — главная клиента c нуля по TaskRabbit + Thumbtack hybrid:
+  - Top-bar: лого xtrud + CitySelector + Войти/Avatar
+  - Hero: H1 «Услуги в {город}» + SearchBar + primary CTA «Описать задачу» + соцпруф chips
+  - Featured вертикали (loaded from `is_featured=true`): Клининг + Сантехника
+  - Top-rated мастера (горизонтальная карусель, рендерится при ≥3 карточках) — с реальными данными из прод-Supabase
+  - Все категории (сетка 2/3/4 col responsive)
+- **`app/(tabs)/master/[id].tsx`** — master detail с нуля (Thumbtack pattern): 16:9 hero фото + back/flag в углах + рейтинг/город/опыт chips + bio + категории + услуги (через existing MasterServicesList) + портфолио + отзывы. Sticky bottom CTA «Написать в чат» (анону — «Войти и написать», открывает LoginWall).
+- **`app/(tabs)/category/[id].tsx`** — category page с нуля: H1 + counter мастеров + card-row list (avatar + рейтинг + город + опыт + bio) + типичные услуги с avg-чеком в Card-grouping.
+- **`src/components/TabBar.tsx`** v2 — активный/неактивный различаются ЦВЕТОМ (ink vs mute), не opacity.
+
+#### AuthGate + анон
+- `_layout.tsx`: AuthGate переписан — **анон может смотреть `(tabs)`**. Логин запрашивается just-in-time через `<LoginWall>` на действиях (создание заказа, отправка сообщения, оставление отзыва).
+- **`src/components/LoginWall.tsx`** — bottom-sheet с CTA «Войти по телефону». Хук `useLoginWall(reason)` для удобного guard'а действий: `wall.guard(() => doAction())`.
+
+#### Cities + featured
+- **Cities таблица** уже существовала с Sprint 1 (5 городов: Магас/Назрань/Сунжа/Малгобек/Карабулак) — миграция НЕ нужна. Локальный CitySelector совпадает по id.
+- **CitySelector** (`src/components/CitySelector.tsx`) — chip + BottomSheet с городами Ингушетии. Состояние в Zustand `xtrud-city` store.
+- **0034_categories_is_featured.sql** применена на прод: `categories_l2.is_featured boolean` + индекс + помечены cleaning + plumbing.
+- **`src/features/categories/use-featured-categories.ts`** — хук загружает is_featured=true категории. Главная использует его + палитру по id (cleaning → violet, plumbing → cyan).
+
+#### Что НЕ переписывалось из старых экранов (осознанно)
+- `orders/index`, `orders/new`, `orders/[id]`, `orders/edit/[id]` — работают через compat aliases (`surface-2`, `muted`, `accent` → Vercel токены)
+- `chats/*` — работают
+- `profile/*` — работают
+- `(onboarding)/*` — работают
+- `(auth)/phone`, `(auth)/verify` — работают
+
+Они визуально стилизованы под старый Cal.com-стиль через compat aliases, но рендерятся корректно. После rewrite главных экранов их можно переписать постепенно (отдельные спринты).
+
+### История ключевых решений (2026-05-13)
+
+1. **Vercel DESIGN.md вместо Cal.com** — пользователь установил `npx getdesign@latest add vercel`. Cal.com отправлен в `legacy/`. Override'ы под consumer-marketplace в шапке нового DESIGN.md.
+2. **CSS-var через className вместо JS hex** — на web inline style `rgb(var(--x))` не работает (RNW не пробрасывает var). Решение: атомы используют NativeWind className → Tailwind генерирует CSS-классы → CSS-var резолвится из html.dark класса.
+3. **`web.output: single` вместо `static`** — для локалки. SPA-режим. Прод-деплой через `deploy/web.sh` НЕ затронут (он делает свой `expo export` без локального серва).
+4. **`type="module"` patch для web bundle** — обход SDK 54 бага с `import.meta` в classic script. Скрипт `scripts/build-web-local.mjs` автоматизирует.
+5. **AuthGate анон-friendly** — клиент может смотреть каталог + карточку мастера БЕЗ логина. Just-in-time через LoginWall на действиях.
+
+### Как запустить локально
+
+```bash
+npm run web:build && npm run web:serve
+# → http://localhost:8082
+```
+
+После каждой UI-правки повторить `web:build`.
+
+### Дальше
+
+- UI редизайн orders / chats / profile / onboarding (постепенно, при касании)
+- Real OTP SMS-провайдер (РФ-локальный)
+- Master verification UI
+- Master services CRUD UI (DB готова)
+- Welcome onboarding slides
+- Vercel migration для prod web
+
+---
+
+## Старая история (до Sprint J)
 
 **Sprint 31.5 закрыт — `master_services` миграция + CRUD UI (без radius map).**
 

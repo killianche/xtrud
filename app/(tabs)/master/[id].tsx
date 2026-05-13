@@ -1,43 +1,30 @@
 /**
- * Публичная страница мастера `/master/[id]` — Sprint 24 (Thumbtack pattern).
+ * Master detail — публичная карточка мастера, conversion-критичный экран.
  *
- * Структура:
- *   hero 16:9 (avatar_url cover + gradient overlay + имя/бейджи поверх)
- *    → trust-row (рейтинг, кол-во работ, город) — компактно сразу под hero
- *    → bio
- *    → stats chips (опыт / радиус / инструмент / транспорт)
- *    → категории
- *    → портфолио (большой grid)
- *    → отзывы
- *   + sticky bottom CTA «Создать заказ» (скрыта, если открыл свой профиль)
+ * Vercel-based DESIGN.md + Thumbtack/Airbnb pattern:
+ *   - Hero: 16:9 фото (avatar_url cover) с back/share/flag в углах
+ *   - Trust-row сразу под hero: ★ + город + опыт + кол-во работ (mono accent)
+ *   - Имя + bio
+ *   - Категории chips
+ *   - Услуги + прайс (existing MasterServicesList)
+ *   - Портфолио grid (existing PortfolioGrid + lightbox)
+ *   - Отзывы (existing ReviewsSection)
+ *   - Sticky bottom CTA «Написать в чат» (только если не свой профиль)
  *
- * Тап с любого места (отклик, чат, поиск) ведёт сюда.
+ * Анон-friendly: CTA открывает LoginWall на тапе если userId == null.
  */
 
-import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import {
-  Briefcase,
-  CheckCircle2,
-  ChevronLeft,
-  CircleAlert,
-  Flag,
-  MapPin,
-  Star,
-  Truck,
-  Wrench,
-} from "lucide-react-native";
-import { useMemo, useState } from "react";
-import { Pressable, ScrollView, View } from "react-native";
+import { ChevronLeft, Flag, MapPin, Star, Wrench } from "lucide-react-native";
+import { useState } from "react";
+import { Image, Pressable, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
-import { Avatar } from "@/components/Avatar";
-import { CardListSkeleton, HeroSkeleton, Skeleton } from "@/components/Skeleton";
+import { Avatar, Button, Card, Chip } from "@/components/ui";
 import { useAuthSession } from "@/features/auth/use-auth-session";
 import { MasterServicesList } from "@/features/master-services/MasterServicesList";
 import { ReviewsSection } from "@/features/master-view/ReviewsSection";
-import { ReportModal } from "@/features/reports/ReportModal";
 import {
   useMasterCategoriesPublic,
   useMasterPublicProfile,
@@ -46,13 +33,16 @@ import {
 import { PortfolioGrid } from "@/features/profile/PortfolioGrid";
 import { PortfolioLightbox } from "@/features/profile/PortfolioLightbox";
 import { useMasterPortfolio } from "@/features/profile/use-my-portfolio";
+import { ReportModal } from "@/features/reports/ReportModal";
 import { usePullToRefresh } from "@/hooks/use-pull-to-refresh";
 import {
-  pluralizeClosedDeals as pluralizeDeals,
+  pluralizeClosedDeals,
   pluralizeReviews,
   pluralizeYears,
 } from "@/lib/pluralize";
-import { useThemeColors } from "@/lib/use-theme-color";
+
+const HERO_RATIO = 16 / 9;
+const STICKY_BAR_HEIGHT = 64;
 
 export default function MasterPublicScreen() {
   const insets = useSafeAreaInsets();
@@ -63,334 +53,263 @@ export default function MasterPublicScreen() {
   const { session } = useAuthSession();
   const currentUserId = session?.user?.id;
   const isOwnProfile = !!masterId && masterId === currentUserId;
+  const isAnon = !currentUserId;
 
   const profile = useMasterPublicProfile(masterId);
   const categories = useMasterCategoriesPublic(masterId);
   const portfolio = useMasterPortfolio(masterId);
   const reviews = useReviewsForTarget(masterId, "client_to_master");
   const refresh = usePullToRefresh();
+
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const [reportOpen, setReportOpen] = useState(false);
-  // Удобный алиас для проверок ниже (отличается от masterId / id)
-  const userId = currentUserId;
-  const id = masterId;
-  const tc = useThemeColors([
-    "ink",
-    "muted-soft",
-    "body",
-    "success",
-    "warning",
-    "error",
-    "on-primary",
-    "on-dark",
-  ]);
 
-  const fullName = useMemo(() => {
-    if (!profile.data?.user) return "";
-    const u = profile.data.user;
-    return [u.first_name, u.last_name].filter(Boolean).join(" ") || "Мастер";
-  }, [profile.data]);
+  const u = profile.data?.user;
+  const m = profile.data?.master;
+  const fullName =
+    [u?.first_name, u?.last_name].filter(Boolean).join(" ") || "Мастер";
+  const cityName = profile.data?.city?.name ?? null;
+  const ratingAvg = m?.rating_overall_avg ?? null;
+  const ratingCount = m?.rating_overall_count ?? 0;
+  const closedDeals = m?.closed_deals ?? 0;
+  const experienceYears = m?.experience_years ?? null;
 
-  const onCreateOrder = () => {
-    // Pre-filled order create: pre-выбранная категория (первая из L2 мастера).
-    // Когда у master_categories несколько — клиент выберет в форме.
-    const firstL2 = categories.data?.[0]?.l2_id ?? null;
-    if (firstL2) {
-      router.push(`/(tabs)/orders/new?l2=${firstL2}` as never);
-    } else {
-      router.push("/(tabs)/orders/new" as never);
+  const handleContact = () => {
+    if (isAnon) {
+      router.push("/(auth)/phone" as never);
+      return;
     }
+    // Открываем существующий или создаём новый чат: вызов RPC скрыт во flow.
+    // На данном MVP — направляем в orders/new с masterId hint.
+    if (masterId) router.push(`/orders/new?master_id=${masterId}` as never);
   };
+
+  if (profile.isLoading) {
+    return (
+      <View className="flex-1 bg-canvas items-center justify-center">
+        <AppText className="text-mute text-body-md">Загружаем профиль…</AppText>
+      </View>
+    );
+  }
+
+  if (profile.error || !profile.data) {
+    return (
+      <View
+        className="flex-1 bg-canvas items-center justify-center px-6"
+        style={{ paddingTop: insets.top + 24 }}
+      >
+        <AppText weight="semibold" className="text-ink text-title-lg">
+          Не удалось загрузить профиль
+        </AppText>
+        <AppText className="text-body mt-2 text-center">
+          {profile.error?.message ?? "Попробуйте позже"}
+        </AppText>
+        <View className="mt-6">
+          <Button onPress={() => router.back()}>Назад</Button>
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View className="flex-1 bg-canvas">
       <ScrollView
-        contentContainerStyle={{ paddingBottom: insets.bottom + 96 }}
+        contentContainerStyle={{
+          paddingBottom: insets.bottom + (isOwnProfile ? 24 : STICKY_BAR_HEIGHT + 24),
+        }}
         showsVerticalScrollIndicator={false}
         refreshControl={refresh.control}
       >
-        {/* Loading skeleton */}
-        {profile.isLoading && (
-          <>
-            <Skeleton variant="rect" className="aspect-[16/9]" radius={0} />
-            <View className="mt-6">
-              <HeroSkeleton />
-              <View className="mt-8 px-6">
-                <CardListSkeleton count={3} />
-              </View>
+        {/* HERO 16:9 — фото с overlay-кнопками */}
+        <View
+          style={{
+            width: "100%",
+            aspectRatio: HERO_RATIO,
+            backgroundColor: "#1a1a1a",
+            position: "relative",
+          }}
+        >
+          {u?.avatar_url ? (
+            <Image
+              source={{ uri: u.avatar_url }}
+              style={{ width: "100%", height: "100%" }}
+              resizeMode="cover"
+            />
+          ) : (
+            <View className="flex-1 items-center justify-center bg-canvas-soft-2">
+              <Avatar name={fullName} seed={masterId} size="xl" />
             </View>
-          </>
-        )}
-
-        {/* Error */}
-        {profile.error && (
-          <View className="px-6" style={{ paddingTop: insets.top + 32, paddingBottom: 24 }}>
-            <CircleAlert size={32} strokeWidth={1.5} color={tc.error} />
-            <AppText className="mt-3 text-body-sm text-error">
-              Не удалось загрузить профиль. {profile.error.message}
-            </AppText>
-          </View>
-        )}
-
-        {!profile.isLoading && !profile.error && !profile.data && (
-          <View className="items-center px-6" style={{ paddingTop: insets.top + 80 }}>
-            <AppText className="text-body-md text-muted">Профиль не найден.</AppText>
-          </View>
-        )}
-
-        {profile.data?.user && (
-          <>
-            {/* Hero 16:9 — avatar_url как cover + gradient overlay */}
-            <View className="aspect-[16/9] w-full overflow-hidden bg-surface-dark">
-              {profile.data.user.avatar_url ? (
-                <Image
-                  source={{ uri: profile.data.user.avatar_url }}
-                  style={{ width: "100%", height: "100%" }}
-                  contentFit="cover"
-                  transition={200}
-                />
-              ) : (
-                <View className="flex-1 items-center justify-center bg-surface-2">
-                  <Avatar url={null} name={fullName} seed={profile.data.user.id} size="xl" />
-                </View>
-              )}
-              <LinearGradient
-                colors={["rgba(0,0,0,0)", "rgba(0,0,0,0.7)"]}
-                locations={[0.5, 1]}
-                style={{ position: "absolute", inset: 0 }}
-              />
-
-              {/* Back button — на hero, на dark overlay */}
-              <View
-                className="absolute left-3 flex-row items-center"
-                style={{ top: insets.top + 4 }}
+          )}
+          {/* Gradient overlay для читаемости иконок */}
+          <LinearGradient
+            colors={["rgba(0,0,0,0.4)", "transparent"]}
+            style={{ position: "absolute", top: 0, left: 0, right: 0, height: 80 }}
+          />
+          {/* Back + Flag */}
+          <View
+            className="absolute left-0 right-0 flex-row items-center justify-between px-4"
+            style={{ top: insets.top + 8 }}
+          >
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Назад"
+              onPress={() => router.back()}
+              className="h-9 w-9 items-center justify-center rounded-full bg-canvas active:opacity-70"
+            >
+              <ChevronLeft size={20} strokeWidth={2} color="currentColor" />
+            </Pressable>
+            {!isOwnProfile && (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Пожаловаться"
+                onPress={() => setReportOpen(true)}
+                className="h-9 w-9 items-center justify-center rounded-full bg-canvas active:opacity-70"
               >
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel="Назад"
-                  onPress={() => router.back()}
-                  hitSlop={12}
-                  className="h-10 w-10 items-center justify-center rounded-full bg-black/40 active:opacity-70"
-                >
-                  <ChevronLeft size={24} strokeWidth={1.75} color={tc["on-dark"]} />
-                </Pressable>
-              </View>
+                <Flag size={18} strokeWidth={1.75} color="currentColor" />
+              </Pressable>
+            )}
+          </View>
+        </View>
 
-              {/* Report button — справа сверху */}
-              {userId && id && userId !== id && (
-                <View
-                  className="absolute right-3 flex-row items-center"
-                  style={{ top: insets.top + 4 }}
-                >
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel="Пожаловаться на мастера"
-                    onPress={() => setReportOpen(true)}
-                    hitSlop={12}
-                    className="h-10 w-10 items-center justify-center rounded-full bg-black/40 active:opacity-70"
-                  >
-                    <Flag size={20} strokeWidth={1.75} color={tc["on-dark"]} />
-                  </Pressable>
-                </View>
-              )}
+        {/* Trust-row + имя */}
+        <View className="px-5 mt-4">
+          <AppText
+            weight="display"
+            className="text-display-md tracking-tight text-ink"
+          >
+            {fullName}
+          </AppText>
 
-              {/* Имя + бейджи поверх gradient */}
-              <View className="absolute right-6 bottom-5 left-6">
-                <AppText
-                  weight="display"
-                  className="text-display-md tracking-tight text-on-dark"
-                  numberOfLines={2}
-                >
-                  {fullName}
+          <View className="mt-3 flex-row flex-wrap items-center gap-2">
+            {ratingAvg !== null && ratingCount > 0 ? (
+              <View className="flex-row items-center gap-1">
+                <Star size={14} strokeWidth={2} color="currentColor" className="text-ink" />
+                <AppText weight="mono" className="text-ink text-mono-sm">
+                  {ratingAvg.toFixed(1)}
                 </AppText>
-                <View className="mt-2 flex-row flex-wrap items-center gap-2">
-                  <View className="rounded-pill bg-white/15 px-3 py-1">
-                    <AppText weight="medium" className="text-caption text-on-dark">
-                      {profile.data.user.is_master ? "Мастер" : "Пользователь"}
-                    </AppText>
-                  </View>
-                  {profile.data.master?.status === "active" && (
-                    <View className="flex-row items-center gap-1 rounded-pill bg-success-soft px-2.5 py-1">
-                      <CheckCircle2 size={12} strokeWidth={2} color={tc.success} />
-                      <AppText weight="medium" className="text-caption-xs text-success">
-                        Активен
-                      </AppText>
-                    </View>
-                  )}
-                </View>
+                <AppText weight="mono" className="text-mute text-mono-sm">
+                  ({pluralizeReviews(ratingCount)})
+                </AppText>
               </View>
+            ) : null}
+
+            {cityName ? (
+              <View className="flex-row items-center gap-1">
+                <MapPin size={14} strokeWidth={1.75} color="currentColor" className="text-mute" />
+                <AppText className="text-body text-body-sm">{cityName}</AppText>
+              </View>
+            ) : null}
+
+            {experienceYears !== null && experienceYears > 0 ? (
+              <Chip size="sm" mono>
+                {pluralizeYears(experienceYears)} опыта
+              </Chip>
+            ) : null}
+
+            {closedDeals > 0 ? (
+              <Chip size="sm" mono>
+                {pluralizeClosedDeals(closedDeals)}
+              </Chip>
+            ) : null}
+          </View>
+
+          {/* Bio */}
+          {m?.bio ? (
+            <AppText className="text-body text-body-md mt-4 leading-6">{m.bio}</AppText>
+          ) : null}
+        </View>
+
+        {/* Категории */}
+        {categories.data && categories.data.length > 0 ? (
+          <View className="px-5 mt-6">
+            <AppText weight="semibold" className="text-ink text-title-md mb-3">
+              Категории
+            </AppText>
+            <View className="flex-row flex-wrap gap-2">
+              {categories.data.map((c) => (
+                <Chip key={c.l2_id} variant="outline">
+                  {c.l2?.name_ru ?? c.l2_id}
+                </Chip>
+              ))}
             </View>
+          </View>
+        ) : null}
 
-            {/* Trust-row: рейтинг + работы + город — одна строка под hero */}
-            <View className="mt-5 flex-row flex-wrap items-center gap-x-4 gap-y-2 px-6">
-              {profile.data.master?.rating_overall_avg != null &&
-              profile.data.master.rating_overall_count > 0 ? (
-                <View className="flex-row items-center gap-1">
-                  <Star size={16} strokeWidth={2} color={tc.warning} fill={tc.warning} />
-                  <AppText weight="semibold" className="text-body-md text-ink">
-                    {profile.data.master.rating_overall_avg.toFixed(1)}
-                  </AppText>
-                  <AppText className="text-body-sm text-muted">
-                    ({pluralizeReviews(profile.data.master.rating_overall_count)})
-                  </AppText>
-                </View>
-              ) : (
-                <AppText className="text-body-sm text-muted">Пока нет отзывов</AppText>
-              )}
-              {profile.data.master?.closed_deals != null &&
-                profile.data.master.closed_deals > 0 && (
-                  <AppText className="text-body-sm text-muted">
-                    {pluralizeDeals(profile.data.master.closed_deals)}
-                  </AppText>
-                )}
-              {profile.data.city && (
-                <View className="flex-row items-center gap-1">
-                  <MapPin size={14} strokeWidth={1.75} color={tc["muted-soft"]} />
-                  <AppText className="text-body-sm text-muted">
-                    {profile.data.city.name}
-                    {profile.data.user.district ? `, ${profile.data.user.district}` : ""}
-                  </AppText>
-                </View>
-              )}
-            </View>
+        {/* Услуги + прайс */}
+        {masterId ? (
+          <View className="px-5 mt-8">
+            <AppText weight="semibold" className="text-ink text-title-md mb-3">
+              Услуги
+            </AppText>
+            <MasterServicesList masterId={masterId} />
+          </View>
+        ) : null}
 
-            {/* Bio */}
-            {profile.data.master?.bio && (
-              <View className="mt-7 px-6">
-                <AppText weight="semibold" className="text-title-lg text-ink">
-                  О мастере
-                </AppText>
-                <AppText className="mt-2 text-body-md text-body">{profile.data.master.bio}</AppText>
-              </View>
-            )}
+        {/* Портфолио */}
+        {portfolio.data && portfolio.data.length > 0 ? (
+          <View className="px-5 mt-8">
+            <AppText weight="semibold" className="text-ink text-title-md mb-3">
+              Портфолио
+            </AppText>
+            <PortfolioGrid
+              items={portfolio.data}
+              onOpen={(item) =>
+                setLightboxIndex(portfolio.data?.findIndex((p) => p.id === item.id) ?? null)
+              }
+            />
+          </View>
+        ) : null}
 
-            {/* Stats chips */}
-            {profile.data.master && (
-              <View className="mt-7 flex-row flex-wrap gap-2 px-6">
-                {profile.data.master.experience_years != null &&
-                  profile.data.master.experience_years > 0 && (
-                    <StatChip
-                      icon={<Briefcase size={14} strokeWidth={1.75} color={tc.body} />}
-                      label={`Опыт ${pluralizeYears(profile.data.master.experience_years)}`}
-                    />
-                  )}
-                {profile.data.master.service_radius_km > 0 && (
-                  <StatChip
-                    icon={<MapPin size={14} strokeWidth={1.75} color={tc.body} />}
-                    label={`Радиус ${profile.data.master.service_radius_km} км`}
-                  />
-                )}
-                {profile.data.master.has_tools && (
-                  <StatChip
-                    icon={<Wrench size={14} strokeWidth={1.75} color={tc.body} />}
-                    label="Свой инструмент"
-                  />
-                )}
-                {profile.data.master.has_transport && (
-                  <StatChip
-                    icon={<Truck size={14} strokeWidth={1.75} color={tc.body} />}
-                    label="Свой транспорт"
-                  />
-                )}
-              </View>
-            )}
+        {/* Отзывы — ReviewsSection сам рисует свой заголовок и empty-state */}
+        {masterId ? (
+          <ReviewsSection
+            title="Отзывы клиентов"
+            emptyText="Пока нет отзывов"
+            query={reviews}
+          />
+        ) : null}
 
-            {/* Категории */}
-            {(categories.data?.length ?? 0) > 0 && (
-              <View className="mt-8 px-6">
-                <AppText weight="semibold" className="text-title-lg text-ink">
-                  Категории
-                </AppText>
-                <View className="mt-3 flex-row flex-wrap gap-2">
-                  {categories.data?.map((mc) => (
-                    <View key={mc.id} className="rounded-pill bg-accent-soft px-3 py-2">
-                      <AppText weight="medium" className="text-caption text-accent">
-                        {mc.l2?.name_ru ?? mc.l2_id}
-                      </AppText>
-                    </View>
-                  ))}
-                </View>
-              </View>
-            )}
-
-            {/* Прайс-лист */}
-            {masterId && (
-              <View className="mt-8 px-6">
-                <MasterServicesList masterId={masterId} />
-              </View>
-            )}
-
-            {/* Портфолио */}
-            {(portfolio.data?.length ?? 0) > 0 && (
-              <View className="mt-8 px-6">
-                <AppText weight="semibold" className="text-title-lg text-ink">
-                  Портфолио
-                </AppText>
-                <View className="mt-4">
-                  <PortfolioGrid
-                    items={portfolio.data ?? []}
-                    onOpen={(item) => {
-                      const idx = (portfolio.data ?? []).findIndex((p) => p.id === item.id);
-                      if (idx >= 0) setLightboxIndex(idx);
-                    }}
-                  />
-                </View>
-              </View>
-            )}
-
-            {/* Отзывы */}
-            <ReviewsSection title="Отзывы" emptyText="У мастера ещё нет отзывов." query={reviews} />
-          </>
-        )}
+        {/* Wrench-иконка как разделитель — Vercel character */}
+        <View className="items-center mt-12 mb-2">
+          <Wrench size={20} strokeWidth={1.5} color="currentColor" className="text-mute" />
+        </View>
       </ScrollView>
 
-      {/* Sticky bottom CTA — Thumbtack pattern. Скрыта на собственном профиле. */}
-      {!isOwnProfile && profile.data?.user && (
+      {/* Sticky bottom CTA — только не свой профиль */}
+      {!isOwnProfile && (
         <View
-          className="absolute right-0 bottom-0 left-0 border-hairline-soft border-t bg-canvas px-6 pt-3"
-          style={{ paddingBottom: insets.bottom + 12 }}
+          className="absolute left-0 right-0 bottom-0 bg-canvas border-t border-hairline"
+          style={{
+            paddingHorizontal: 16,
+            paddingTop: 10,
+            paddingBottom: insets.bottom + 10,
+          }}
         >
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Создать заказ"
-            onPress={onCreateOrder}
-            className="h-12 items-center justify-center rounded-md bg-primary active:opacity-80"
-          >
-            <AppText weight="semibold" className="text-button" style={{ color: tc["on-primary"] }}>
-              Создать заказ
-            </AppText>
-          </Pressable>
+          <Button size="lg" fullWidth onPress={handleContact}>
+            {isAnon ? "Войти и написать" : "Написать в чат"}
+          </Button>
         </View>
       )}
 
-      <PortfolioLightbox
-        items={portfolio.data ?? []}
-        index={lightboxIndex}
-        onClose={() => setLightboxIndex(null)}
-        onChangeIndex={setLightboxIndex}
-      />
+      {/* Portfolio lightbox */}
+      {portfolio.data ? (
+        <PortfolioLightbox
+          items={portfolio.data}
+          index={lightboxIndex}
+          onChangeIndex={setLightboxIndex}
+          onClose={() => setLightboxIndex(null)}
+        />
+      ) : null}
 
-      {masterId && (
+      {/* Report modal */}
+      {!isOwnProfile && masterId ? (
         <ReportModal
           visible={reportOpen}
+          onClose={() => setReportOpen(false)}
           targetType="user"
           targetId={masterId}
-          onClose={() => setReportOpen(false)}
         />
-      )}
-    </View>
-  );
-}
-
-// ----------------------------------------------------------------------------
-
-function StatChip({ icon, label }: { icon: React.ReactNode; label: string }) {
-  return (
-    <View className="flex-row items-center gap-1.5 rounded-pill bg-surface-2 px-3 py-2">
-      {icon}
-      <AppText weight="medium" className="text-caption text-body">
-        {label}
-      </AppText>
+      ) : null}
     </View>
   );
 }

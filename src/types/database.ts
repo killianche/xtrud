@@ -118,6 +118,7 @@ export type Database = {
           icon: string
           id: string
           is_active: boolean
+          is_featured: boolean
           is_visible: boolean
           l1_id: string
           name_ru: string
@@ -129,6 +130,7 @@ export type Database = {
           icon: string
           id: string
           is_active?: boolean
+          is_featured?: boolean
           is_visible?: boolean
           l1_id: string
           name_ru: string
@@ -140,6 +142,7 @@ export type Database = {
           icon?: string
           id?: string
           is_active?: boolean
+          is_featured?: boolean
           is_visible?: boolean
           l1_id?: string
           name_ru?: string

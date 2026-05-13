@@ -86,3 +86,21 @@ export function useRegisterPushToken(userId: string | null | undefined) {
     };
   }, [userId]);
 }
+
+/**
+ * Удаляет текущий push-токен из notification_tokens (вызов при signOut).
+ * На web — no-op.
+ */
+export async function unregisterCurrentPushToken(): Promise<void> {
+  if (Platform.OS === "web") return;
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const Notifications = require("expo-notifications");
+    const { data: tokenRes } = await Notifications.getExpoPushTokenAsync();
+    const expoToken = tokenRes;
+    if (!expoToken) return;
+    await supabase.from("notification_tokens").delete().eq("expo_token", expoToken);
+  } catch (e) {
+    console.warn("[push] unregister error:", e);
+  }
+}

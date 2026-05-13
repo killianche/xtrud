@@ -198,18 +198,14 @@ function Hero({
   // Город не используется в заголовке, но оставляем для будущего «… в Магасе».
   void cityName;
   return (
-    <View className="px-5 mt-8">
+    <View className="px-5 mt-10">
       <AppText weight="display" className="text-display-lg tracking-tight text-ink">
         Найдутся мастера
       </AppText>
 
-      <AppText className="mt-3 text-body-md text-body leading-6">
-        Опишите задачу — мастера ответят с ценами, не зная вашего номера.
-      </AppText>
-
-      {/* PRIMARY: SearchBar — главное действие. Пользователь чаще всего хочет
-          сразу вбить «сантехник» / «электрик» / «починить туалет» и найти
-          мастера. Паттерн TaskRabbit «I need help with…» — search-first. */}
+      {/* PRIMARY: большой SearchBar — главное действие. По паттерну TaskRabbit
+          search-first: один visual-anchor сверху, никаких отвлекающих
+          элементов вокруг (H1 + search достаточно). */}
       <View className="mt-6">
         <Pressable
           accessibilityRole="button"
@@ -224,13 +220,19 @@ function Hero({
         </Pressable>
       </View>
 
-      {/* SECONDARY: «Описать задачу» — для тех кто не знает, что искать.
-          Outline-кнопка ниже search-бара. */}
-      <View className="mt-3">
-        <Button size="lg" variant="secondary" fullWidth onPress={() => onDescribeTask()}>
-          Или опишите задачу — мастера найдут вас
-        </Button>
-      </View>
+      {/* SECONDARY: ghost text-link «Или опишите задачу →». Без бордера и фона —
+          меньше визуального давления, не конкурирует с primary SearchBar. */}
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Описать задачу"
+        onPress={() => onDescribeTask()}
+        className="mt-4 self-center active:opacity-70"
+        hitSlop={8}
+      >
+        <AppText weight="medium" className="text-body-sm text-link">
+          Или опишите задачу — мастера найдут вас →
+        </AppText>
+      </Pressable>
     </View>
   );
 }
@@ -292,7 +294,7 @@ function FeaturedVerticals({ onPress }: { onPress: (id: string) => void }) {
       : FEATURED_FALLBACK;
 
   return (
-    <View className="mt-8 px-5">
+    <View className="mt-12 px-5">
       <View className="flex-row gap-3">
         {items.map((f) => (
           <Pressable

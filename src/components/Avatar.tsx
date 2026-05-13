@@ -3,16 +3,19 @@
  *
  * Паттерн как у LinkedIn / Notion / Cal.com:
  * - Есть `url` → expo-image с background placeholder
- * - Нет `url` → инициалы (1-2 буквы) на детерминированном цвете по seed
+ * - Нет `url`, есть `name` → инициалы (1-2 буквы) на детерминированном цвете по seed
+ * - Нет ни url ни name → нейтральный круг с иконкой `User` (без жёлтых точек и пастелей)
  *
  * Цвет seed-based, чтобы у одного и того же юзера всегда тот же фон даже
  * без аватара. Палитра — мягкие пастельные с тёмным текстом, AA-контрастные.
  */
 
 import { Image, type ImageContentFit } from "expo-image";
+import { User } from "lucide-react-native";
 import { useMemo } from "react";
 import { View } from "react-native";
 import { AppText } from "@/components/AppText";
+import { useThemeColors } from "@/lib/use-theme-color";
 
 export type AvatarSize = "xs" | "sm" | "md" | "lg" | "xl";
 
@@ -51,6 +54,7 @@ export function Avatar({ url, name, seed, size = "md", contentFit = "cover" }: A
   const dims = SIZE_MAP[size];
   const initials = useMemo(() => extractInitials(name), [name]);
   const bgColor = useMemo(() => pickColor(seed ?? name ?? ""), [seed, name]);
+  const tc = useThemeColors(["surface-2", "muted"]);
 
   if (url) {
     return (
@@ -68,6 +72,23 @@ export function Avatar({ url, name, seed, size = "md", contentFit = "cover" }: A
     );
   }
 
+  // Нет имени — нейтральный кружок с User-иконкой (без пастелей и спецсимволов).
+  if (!initials) {
+    return (
+      <View
+        style={{
+          width: dims.px,
+          height: dims.px,
+          borderRadius: dims.px / 2,
+          backgroundColor: tc["surface-2"],
+        }}
+        className="items-center justify-center"
+      >
+        <User size={dims.px * 0.5} strokeWidth={1.75} color={tc.muted} />
+      </View>
+    );
+  }
+
   return (
     <View
       style={{
@@ -79,7 +100,7 @@ export function Avatar({ url, name, seed, size = "md", contentFit = "cover" }: A
       className="items-center justify-center"
     >
       <AppText weight="semibold" className={`${dims.text} text-slate-800`}>
-        {initials || "·"}
+        {initials}
       </AppText>
     </View>
   );

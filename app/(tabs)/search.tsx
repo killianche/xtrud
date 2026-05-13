@@ -16,9 +16,9 @@
  * (детальная фильтрация по l3 — отдельной задачей).
  */
 
-import { useRouter } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 import { X } from "lucide-react-native";
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { FlatList, Pressable, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
@@ -30,13 +30,28 @@ export default function SearchScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const [query, setQuery] = useState("");
+  const inputRef = useRef<TextInput>(null);
+
+  // Гарантированный autofocus + сброс query при каждом открытии экрана.
+  // RNW autoFocus иногда не срабатывает после navigation/cache — ручной
+  // .focus() через useFocusEffect перекрывает все edge-cases.
+  useFocusEffect(
+    useCallback(() => {
+      setQuery("");
+      const t = setTimeout(() => inputRef.current?.focus(), 50);
+      return () => clearTimeout(t);
+    }, []),
+  );
 
   const { data: services = [], isLoading } = useSearchableServices();
 
+  // Список услуг показываем ТОЛЬКО когда пользователь начал набирать.
+  // Пустой query → пустой экран (без шума из всех 32+248 категорий).
   const results = useMemo(
-    () => filterServicesByQuery(services, query, 80),
+    () => (query.trim().length === 0 ? [] : filterServicesByQuery(services, query, 80)),
     [services, query],
   );
+  const hasQuery = query.trim().length > 0;
 
   return (
     <View className="flex-1 bg-canvas" style={{ paddingTop: insets.top }}>
@@ -52,6 +67,7 @@ export default function SearchScreen() {
       <View className="px-5 mt-4">
         <View className="relative">
           <TextInput
+            ref={inputRef}
             autoFocus
             value={query}
             onChangeText={setQuery}
@@ -85,23 +101,24 @@ export default function SearchScreen() {
       {/* Hairline под инпутом. */}
       <View className="mx-5 h-px bg-hairline" />
 
-      {/* Заголовок секции. */}
-      <View className="px-5 mt-6">
-        <AppText className="text-body-sm text-mute">
-          Подходящие услуги или специалисты
-        </AppText>
-      </View>
-
-      {/* Список — typeahead результаты. */}
-      {isLoading ? (
-        <View className="px-5 mt-4">
-          {Array.from({ length: 6 }).map((_, i) => (
-            // biome-ignore lint/suspicious/noArrayIndexKey: stable position-based
-            <View key={i} className="py-3">
-              <View className="h-5 w-2/3 rounded bg-canvas-soft-2" />
-            </View>
-          ))}
-        </View>
+      {/* Заголовок + список — только когда пользователь начал печатать.
+          До этого экран остаётся пустым с курсором в инпуте. */}
+      {!hasQuery ? null : isLoading ? (
+        <>
+          <View className="px-5 mt-6">
+            <AppText className="text-body-sm text-mute">
+              Подходящие услуги или специалисты
+            </AppText>
+          </View>
+          <View className="px-5 mt-4">
+            {Array.from({ length: 6 }).map((_, i) => (
+              // biome-ignore lint/suspicious/noArrayIndexKey: stable position-based
+              <View key={i} className="py-3">
+                <View className="h-5 w-2/3 rounded bg-canvas-soft-2" />
+              </View>
+            ))}
+          </View>
+        </>
       ) : results.length === 0 ? (
         <View className="flex-1 items-center justify-center px-8">
           <Illustration name="meditating" size={140} className="text-ink" />
@@ -113,11 +130,17 @@ export default function SearchScreen() {
           </AppText>
         </View>
       ) : (
-        <FlatList
-          data={results}
-          keyExtractor={(item) => `${item.type}-${item.id}`}
-          keyboardShouldPersistTaps="handled"
-          contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 8, paddingBottom: 80 }}
+        <>
+          <View className="px-5 mt-6">
+            <AppText className="text-body-sm text-mute">
+              Подходящие услуги или специалисты
+            </AppText>
+          </View>
+          <FlatList
+            data={results}
+            keyExtractor={(item) => `${item.type}-${item.id}`}
+            keyboardShouldPersistTaps="handled"
+            contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 8, paddingBottom: 80 }}
           renderItem={({ item }) => {
             const segments = highlightMatch(item.name_ru, query);
             return (
@@ -142,7 +165,8 @@ export default function SearchScreen() {
               </Pressable>
             );
           }}
-        />
+          />
+        </>
       )}
     </View>
   );

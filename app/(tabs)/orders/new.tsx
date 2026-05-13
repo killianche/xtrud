@@ -333,18 +333,18 @@ function HowItWorksRow({
 }: {
   icon: LucideIcon;
   title: string;
-  hint: string;
+  hint?: string;
 }) {
   return (
-    <View className="flex-row items-start gap-4 px-4 py-4">
+    <View className="flex-row items-center gap-4 px-4 py-4">
       <View className="h-9 w-9 items-center justify-center rounded-full bg-canvas shrink-0 text-ink">
         <Icon size={18} strokeWidth={1.75} color="currentColor" />
       </View>
-      <View className="flex-1 pt-0.5">
+      <View className="flex-1">
         <AppText weight="semibold" className="text-body-md text-ink">
           {title}
         </AppText>
-        <AppText className="mt-1 text-body-sm text-mute">{hint}</AppText>
+        {hint && <AppText className="mt-1 text-body-sm text-mute">{hint}</AppText>}
       </View>
     </View>
   );

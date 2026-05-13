@@ -76,7 +76,7 @@ export function OrderFormBody({
       {showContent && (
         <View className="px-6">
           <TextField
-            label="Краткое название"
+            label="В двух словах"
             placeholder="Заменить смеситель на кухне"
             control={control}
             name="title"
@@ -95,13 +95,13 @@ export function OrderFormBody({
             render={({ field: { value, onChange, onBlur } }) => (
               <View>
                 <AppText weight="medium" className="text-caption text-muted">
-                  Подробное описание (необязательно)
+                  Подробности (необязательно)
                 </AppText>
                 <TextInput
                   value={value}
                   onBlur={onBlur}
                   onChangeText={onChange}
-                  placeholder="Что нужно сделать, в какие сроки, особенности задачи..."
+                  placeholder="Что важно знать мастеру — детали, сроки, особенности…"
                   placeholderTextColor={mutedSoftColor}
                   multiline
                   numberOfLines={5}

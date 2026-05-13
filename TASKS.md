@@ -103,6 +103,8 @@ _Все открытые задачи которые подняли но не з
 - [x] **Мульти-категории + бригада в master detail**: trust-row на карточке мастера получил бейдж `account_type` (Бригада X чел. с Users-иконкой / Компания с Building2-иконкой). Секция «Категории» chip-row → рич-Cards с category_bio + pricing_mode chip + radius. Хук `useMasterPublicProfile` расширен полями `account_type`, `team_size`. На проде главный test-мастер помечен `brigade` + team_size=4.
 - [x] **Hero перестроен под TaskRabbit search-first**: H1 «Найдутся мастера», SearchBar primary («Сантехник, электрик, плитка…», тап → /search), secondary CTA «Или опишите задачу — мастера найдут вас» (variant=outline). Старый разделитель «или» + дублирующий BrowseSearchAndFilters удалены.
 - [x] **Test-data заполнены на проде** (миграция `0036_seed_diverse_master_data`): 6 brigade (Иса Барахоев, Хамзат Цечоев, Бекхан Куштов, Тимур Озиев, Ислам Точиев, Магомед Тестов) + 3 company (ИП Картоев Д.Б., ООО «СтройКом» = Магомед Евлоев, ИП Балкоева Л.А.) + 10 мастеров получили 2-ю категорию (мульти-кат). Все has_tools=true, has_transport заполнен по правилу (всегда у brigade/company, у solo — по чётности id), languages = ['ru'] или ['ru','ing'] для разнообразия.
+- [x] `8b820b0` — placeholder «Специалист или услуга…» + красивая outline-кнопка «Опишите задачу» с Pencil-иконкой (вместо ghost text-link) + `.claude/rules/design-quality.md` — промпт для агента (Lazyweb-first, DESIGN.md, hierarchy, spacing ≥mt-10, empty/loading/error states, no stubs, dark theme, screenshot verification, pre-commit checklist, anti-patterns).
+- [x] `a25e795` — плитки категорий высота x2 меньше (aspect 1:1 → 2:1) + горизонтальный layout (icon-left/text-right) + tight типографика (icon 20, gap-2, text-body-sm) для длинных названий.
 
 ---
 

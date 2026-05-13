@@ -15,13 +15,12 @@ import { useCreateOrder } from "@/features/orders/use-create-order";
 import { useTabBarVisibility } from "@/lib/tabbar-visibility";
 import { useThemeColors } from "@/lib/use-theme-color";
 
-// Sprint 26 — Order create wizard. 3 шага (порядок обновлён под user-запрос):
-//   1. Описание задачи (название + детали) ← сначала просто опиши, что нужно
-//   2. Категория (чтобы заказ дошёл до нужных мастеров)
-//   3. Бюджет, город, район, срочность + Trust «отвечают за ~30 мин»
+// Sprint 26 — Order create wizard. 2 шага:
+//   1. Описание задачи + категория — всё про «что нужно» на одном экране
+//   2. Бюджет, город, район, срочность + Trust «отвечают за ~30 мин»
 // После публикации — success-экран, не голый router.back().
 
-type Step = 1 | 2 | 3;
+type Step = 1 | 2;
 
 export default function NewOrderScreen() {
   const insets = useSafeAreaInsets();
@@ -114,19 +113,13 @@ export default function NewOrderScreen() {
 
   const goNext = async () => {
     if (step === 1) {
-      // Шаг 1 — название обязательно, description опциональный.
-      const ok = await trigger(["title", "description"]);
-      // trigger description тоже — он валидирует max, но min нет → пустая строка OK.
+      // Шаг 1 — описание задачи + выбор категории.
+      const ok = await trigger(["title", "description", "l2Id"]);
       if (ok) setStep(2);
       return;
     }
     if (step === 2) {
-      // Шаг 2 — категория (чтобы заказ дошёл до нужных мастеров).
-      const ok = await trigger("l2Id");
-      if (ok) setStep(3);
-      return;
-    }
-    if (step === 3) {
+      // Шаг 2 — финальный submit (условия и место).
       void onSubmit();
     }
   };
@@ -136,7 +129,7 @@ export default function NewOrderScreen() {
       router.back();
       return;
     }
-    setStep((s) => (s === 2 ? 1 : s === 3 ? 2 : 1));
+    setStep(1);
   };
 
   const isBusy = createOrder.isPending;
@@ -197,24 +190,23 @@ export default function NewOrderScreen() {
   // На шаге 3 используем общий isValid (Zod-схема), чтобы Submit прошёл целиком.
   const watchedL2 = watch("l2Id");
   const watchedTitle = watch("title");
-  // description — необязательное. Step 1 валиден если title заполнен (≥5 символов
-  // по схеме). Поле description проверяется только на верхнюю границу (max).
+  // step 1: title ≥ 5 + категория выбрана. description опционален.
+  // step 2: финальная валидация всей схемы.
   const stepValid =
     step === 1
-      ? watchedTitle.length >= 5 && !errors.title && !errors.description
-      : step === 2
-        ? watchedL2.length > 0
-        : isValid && !!cities;
+      ? watchedTitle.length >= 5 &&
+        watchedL2.length > 0 &&
+        !errors.title &&
+        !errors.description &&
+        !errors.l2Id
+      : isValid && !!cities;
 
-  const stepTitle =
-    step === 1 ? "Что нужно сделать?" : step === 2 ? "Выберите категорию" : "Условия и место";
+  const stepTitle = step === 1 ? "Что нужно сделать?" : "Условия и место";
 
   const stepHint =
     step === 1
       ? "Просто опишите задачу своими словами — мастера разберутся."
-      : step === 2
-        ? "Чтобы заказ ушёл нужным мастерам."
-        : "Бюджет, город, район, срочность.";
+      : "Бюджет, город, район, срочность.";
 
   return (
     <KeyboardAvoidingView
@@ -239,10 +231,10 @@ export default function NewOrderScreen() {
         <View
           className="flex-1 flex-row gap-1.5 pr-3"
           accessibilityRole="progressbar"
-          accessibilityValue={{ min: 1, max: 3, now: step }}
-          accessibilityLabel={`Шаг ${step} из 3`}
+          accessibilityValue={{ min: 1, max: 2, now: step }}
+          accessibilityLabel={`Шаг ${step} из 2`}
         >
-          {[1, 2, 3].map((i) => (
+          {[1, 2].map((i) => (
             <View
               key={i}
               className={`h-1 flex-1 rounded-full ${i <= step ? "bg-ink" : "bg-hairline"}`}
@@ -299,7 +291,7 @@ export default function NewOrderScreen() {
         />
 
         {/* Trust-сигнал на финальном шаге — TaskRabbit pattern. */}
-        {step === 3 && (
+        {step === 2 && (
           <View className="mt-8 mx-6 flex-row items-center gap-3 rounded-lg border border-hairline-soft bg-surface-2 p-4">
             <Clock size={18} strokeWidth={1.75} color={tc.success} />
             <AppText weight="medium" className="flex-1 text-caption text-body">
@@ -317,25 +309,23 @@ export default function NewOrderScreen() {
         )}
 
         <View className="mt-8 px-6">
-          {/* «Далее» (step 1,2) — анон-friendly, требует только валидных полей.
-              «Опубликовать заявку» (step 3) — требует userId+categories,
-              на финальном submit. LoginWall сработает если user анон.
-              Раньше disabled был одинаковый для всех шагов → анон не мог
-              перейти со step 1, кнопка всегда серая. */}
+          {/* «Далее» (step 1) — анон-friendly, требует только валидных полей.
+              «Опубликовать заявку» (step 2) — требует userId+categories,
+              на финальном submit. LoginWall сработает если user анон. */}
           <Pressable
             accessibilityRole="button"
             disabled={
-              !stepValid || isBusy || (step === 3 && (!userId || !categories))
+              !stepValid || isBusy || (step === 2 && (!userId || !categories))
             }
             onPress={goNext}
-            className={`h-12 items-center justify-center rounded-md ${
-              stepValid && !isBusy && (step !== 3 || (userId && categories))
+            className={`h-14 items-center justify-center rounded-full ${
+              stepValid && !isBusy && (step !== 2 || (userId && categories))
                 ? "bg-primary active:opacity-80"
                 : "bg-surface-3"
             }`}
           >
             <AppText weight="semibold" className="text-button" style={{ color: tc["on-primary"] }}>
-              {isBusy ? "Публикуем..." : step === 3 ? "Опубликовать заявку" : "Далее"}
+              {isBusy ? "Публикуем..." : step === 2 ? "Опубликовать заявку" : "Далее"}
             </AppText>
           </Pressable>
         </View>

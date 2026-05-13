@@ -46,10 +46,9 @@ interface OrderFormBodyProps {
   /** Если задана — категорию нельзя сменить (после создания заказа). */
   lockCategory?: boolean;
   /**
-   * Wizard-режим (порядок обновлён под user-запрос):
-   *   1=описание (название + детали)
-   *   2=категория
-   *   3=бюджет+город+срочность
+   * Wizard-режим (2 шага):
+   *   1 = описание (название + детали) + выбор категории на ОДНОМ экране
+   *   2 = бюджет + город + район + срочность
    * Если не задан — рендерим все секции (для edit-экрана).
    */
   step?: 1 | 2 | 3;
@@ -66,10 +65,10 @@ export function OrderFormBody({
   step,
 }: OrderFormBodyProps) {
   const mutedSoftColor = useThemeColor("muted-soft");
-  // Новый порядок (под user-запрос): step 1 = описание, step 2 = категория.
+  // Wizard 2 шага: step 1 = описание + категория на одном экране, step 2 = бюджет/город.
   const showContent = step === undefined || step === 1;
-  const showCategory = step === undefined || step === 2;
-  const showBudgetCity = step === undefined || step === 3;
+  const showCategory = step === undefined || step === 1;
+  const showBudgetCity = step === undefined || step === 2;
   return (
     <>
       {/* Title + Description — Шаг 1 (новый: сначала «что нужно сделать») */}

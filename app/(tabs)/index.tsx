@@ -450,7 +450,7 @@ function AllCategories({ onCategoryPress }: { onCategoryPress: (id: string) => v
           {Array.from({ length: 6 }).map((_, i) => (
             // biome-ignore lint/suspicious/noArrayIndexKey: stable position-based key
             <View key={i} className="w-[48%] md:w-[31%] lg:w-[23%]">
-              <View className="aspect-square rounded-xl bg-canvas-soft-2" />
+              <View className="rounded-xl bg-canvas-soft-2" style={{ aspectRatio: 2 }} />
             </View>
           ))}
         </View>
@@ -478,17 +478,17 @@ function AllCategories({ onCategoryPress }: { onCategoryPress: (id: string) => v
                 accessibilityLabel={cat.name_ru}
                 className="w-[48%] md:w-[31%] lg:w-[23%] active:opacity-70"
               >
-                <Card variant="soft" padding="md" style={{ aspectRatio: 1 }}>
-                  <View className="flex-1 justify-between">
-                    {/* Иконка сверху — крупная, через currentColor наследует
-                        text-ink (тёмный на canvas-soft, светлый в dark theme). */}
-                    <View className="text-ink">
-                      <Icon size={28} strokeWidth={1.5} color="currentColor" />
+                <Card variant="soft" padding="md" style={{ aspectRatio: 2 }}>
+                  {/* Горизонтальный layout: иконка слева, текст справа.
+                      При высоте x2 меньше (aspect 2:1) вертикальный layout
+                      icon-top/text-bottom больше не помещается красиво. */}
+                  <View className="flex-1 flex-row items-center gap-2">
+                    <View className="text-ink shrink-0">
+                      <Icon size={20} strokeWidth={1.75} color="currentColor" />
                     </View>
-                    {/* Название снизу — semibold body-md, max 2 строки. */}
                     <AppText
                       weight="semibold"
-                      className="text-body-md text-ink"
+                      className="flex-1 text-body-sm text-ink"
                       numberOfLines={2}
                     >
                       {cat.name_ru}

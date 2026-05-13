@@ -232,12 +232,16 @@ export default function NewOrderScreen() {
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        <View className="px-6 pb-6">
-          <AppText weight="bold" className="text-display-sm tracking-tight text-ink">
-            {stepTitle}
-          </AppText>
-          <AppText className="mt-2 text-body-md text-muted">{stepHint}</AppText>
-        </View>
+        {/* Заголовок шага — только для step 2/3. На step 1 он дублирует
+            3 «как это работает» строки ниже, удалён по запросу. */}
+        {step !== 1 && (
+          <View className="px-6 pb-6">
+            <AppText weight="bold" className="text-display-sm tracking-tight text-ink">
+              {stepTitle}
+            </AppText>
+            <AppText className="mt-2 text-body-md text-muted">{stepHint}</AppText>
+          </View>
+        )}
 
         {/* 3 шага «как это работает» — показываем только на step 1 (создание заказа).
             Vercel-стиль: ink + canvas-soft фон + mono-цифра в круге, чтобы

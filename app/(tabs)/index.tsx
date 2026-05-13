@@ -31,7 +31,6 @@ import { useVisibleCategories } from "@/features/categories/use-visible-categori
 import { MasterHomeContent } from "@/features/master-view/MasterHomeContent";
 import { useTopMasters } from "@/features/master-view/use-top-masters";
 import { usePullToRefresh } from "@/hooks/use-pull-to-refresh";
-import { useThemeColors } from "@/lib/use-theme-color";
 
 export default function HomeTab() {
   const insets = useSafeAreaInsets();
@@ -341,7 +340,6 @@ function MasterMiniCard({
 
 function AllCategories({ onCategoryPress }: { onCategoryPress: (id: string) => void }) {
   const { data: categories, isLoading, error } = useVisibleCategories();
-  const tc = useThemeColors(["canvas-soft-2", "mute"]);
 
   return (
     <View className="mt-10">
@@ -356,10 +354,7 @@ function AllCategories({ onCategoryPress }: { onCategoryPress: (id: string) => v
           {Array.from({ length: 6 }).map((_, i) => (
             // biome-ignore lint/suspicious/noArrayIndexKey: stable position-based key
             <View key={i} className="w-[48%] md:w-[31%] lg:w-[23%]">
-              <View
-                className="aspect-square rounded-xl"
-                style={{ backgroundColor: tc["canvas-soft-2"] }}
-              />
+              <View className="aspect-square rounded-xl bg-canvas-soft-2" />
             </View>
           ))}
         </View>

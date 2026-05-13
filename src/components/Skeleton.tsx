@@ -24,7 +24,6 @@ import Animated, {
   withRepeat,
   withTiming,
 } from "react-native-reanimated";
-import { useThemeColor } from "@/lib/use-theme-color";
 
 export interface SkeletonProps {
   /** Тип формы. text — прямоугольник, circle — круг, rect — произвольный. */
@@ -53,7 +52,6 @@ export function Skeleton({
   style,
 }: SkeletonProps) {
   const opacity = useSharedValue(1);
-  const surface2 = useThemeColor("surface-2");
 
   useEffect(() => {
     opacity.value = withRepeat(
@@ -83,15 +81,16 @@ export function Skeleton({
     return 8;
   })();
 
+  // Фон через NativeWind className (bg-canvas-soft-2) — CSS-vars резолвятся
+  // правильно через html.dark класс. Inline style для размеров.
   return (
     <Animated.View
-      className={className}
+      className={`bg-canvas-soft-2 ${className ?? ""}`}
       style={[
         {
           width: resolvedWidth as number | `${number}%`,
           height: resolvedHeight,
           borderRadius: resolvedRadius,
-          backgroundColor: surface2,
         },
         animatedStyle,
         style,

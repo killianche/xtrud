@@ -12,15 +12,35 @@ import { Slot, useRouter, useSegments } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 import { useEffect, useState } from "react";
+import { Platform } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
-import CalSansSemiBold from "../assets/fonts/CalSans-SemiBold.ttf";
 import "react-native-reanimated";
 import { useAuthSession } from "@/features/auth/use-auth-session";
 import { useUserRecord } from "@/features/auth/use-user-record";
 import { useRegisterPushToken } from "@/features/notifications/use-register-push-token";
 
-// Глобальный handler — показывать push даже когда app в foreground.
+/*
+ * RootLayout — корень приложения.
+ *
+ * Структура (сверху вниз):
+ *   GestureHandlerRootView (RNGH требование)
+ *   └─ QueryClientProvider
+ *      └─ SafeAreaProvider
+ *         └─ AuthGate          ← маршрутизация по auth-state
+ *            └─ <Slot />        ← дочерние группы маршрутов
+ *
+ * Авторизация — **анонимный доступ к (tabs)** разрешён по дизайну (PRODUCT_CONTEXT.md):
+ * клиент должен видеть каталог + карточку мастера БЕЗ логина. Логин запрашивается
+ * just-in-time через `<LoginWall>` на действиях (создание заказа, отправка сообщения,
+ * оставление отзыва).
+ *
+ * Шрифт-gate: на native ждём загрузку Inter (Geist на native не доставлен, fallback).
+ *             На web рендерим сразу — там Geist + Inter через @font-face подгружаются
+ *             браузером лениво и не блокируют рендер. Это избавляет от SSR-flash null.
+ */
+
+// Push-handler: показывать уведомление в foreground.
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
     shouldShowBanner: true,
@@ -30,24 +50,34 @@ Notifications.setNotificationHandler({
   }),
 });
 
-// Не скрывать splash до загрузки шрифтов + резолва auth-сессии.
+// Splash hide отложен до загрузки шрифтов (только native).
 SplashScreen.preventAutoHideAsync().catch(() => {
-  // На web метод noop / может выбросить — игнорируем.
+  /* web noop */
 });
 
 /**
- * Protected route gate.
- * 3 группы маршрутов:
- *   - (auth)         — без сессии
- *   - (onboarding)   — с сессией, но onboarding_completed_at IS NULL
- *   - (tabs)         — с сессией и завершённым онбордингом
+ * AuthGate — маршрутизация по auth-state.
+ *
+ * Группы маршрутов:
+ *   - (auth)        — экраны логина (phone/verify). Если уже залогинен → /(tabs).
+ *   - (onboarding)  — пост-логин, до onboarding_completed_at IS NULL.
+ *   - (tabs)        — публичные tabs (главная, категории, карточка мастера).
+ *                     Доступны АНОНУ. Personal экраны (orders/chats/profile) сами
+ *                     показывают LoginWall если нет сессии.
+ *
+ * Логика:
+ *   - Анон в (tabs)       → ✅ пропускаем (новое поведение)
+ *   - Анон в (auth)       → ✅ показываем форму логина
+ *   - Анон где-то ещё     → редирект в (tabs) (не в (auth) — это too aggressive)
+ *   - Логин + не онбордил → редирект в (onboarding)
+ *   - Логин в (auth)      → редирект в (tabs)
+ *   - Логин онбордил везде → как есть
  */
 function AuthGate({ children }: { children: React.ReactNode }) {
   const { status, session } = useAuthSession();
   const userId = session?.user?.id;
   const { data: userRecord, isLoading: userLoading } = useUserRecord(userId);
 
-  // Регистрируем Expo push token для авторизованных пользователей.
   useRegisterPushToken(userId ?? null);
 
   const segments = useSegments();
@@ -61,35 +91,47 @@ function AuthGate({ children }: { children: React.ReactNode }) {
     const inOnboarding = group === "(onboarding)";
     const inTabs = group === "(tabs)";
 
-    // Нет сессии — должен быть в (auth)
+    // ============ АНОН ============
     if (status === "unauthenticated") {
-      if (!inAuth) router.replace("/(auth)/phone");
+      // Анон в (tabs) или (auth) — пропускаем.
+      // Анон в (onboarding) — невозможно без сессии, отправляем в (tabs).
+      if (inTabs || inAuth) return;
+      if (inOnboarding) {
+        router.replace("/(tabs)");
+        return;
+      }
+      // Любая нерасклассифицированная страница для анона → главная.
+      router.replace("/(tabs)");
       return;
     }
 
-    // Авторизован, но user record ещё грузится — ждём
+    // ============ ЗАЛОГИНЕН ============
     if (userLoading) return;
 
-    // Edge case: сессия есть, но запись users не дотянулась (NULL).
-    // Триггер handle_new_auth_user должен был её создать. Если нет — что-то сломано.
-    // Не редиректим, чтобы не зациклить. Логируем и оставляем как есть.
     if (!userRecord) {
-      // Возможен race condition сразу после signInAnonymously — записываем диагностику.
-      // В sprint 3 добавим toast/retry.
+      // Сессия есть, но запись users не создалась (триггер handle_new_auth_user
+      // должен был её сделать). Не редиректим, чтобы не зациклить.
+      // TODO: показать toast «не удалось загрузить профиль, попробуйте позже».
       return;
     }
 
     const onboardingDone = userRecord.onboarding_completed_at !== null;
 
-    if (!onboardingDone) {
-      if (!inOnboarding) router.replace("/(onboarding)/role");
+    // Залогинен в (auth) — отправляем туда куда положено.
+    if (inAuth) {
+      if (!onboardingDone) {
+        router.replace("/(onboarding)/role");
+      } else {
+        router.replace("/(tabs)");
+      }
       return;
     }
 
-    // Онбординг пройден — отправляем в /(tabs) если в (auth) или (onboarding)
-    if (inAuth || inOnboarding || (!inTabs && !inAuth && !inOnboarding)) {
-      router.replace("/(tabs)");
+    // Не онбордил — отправляем в (onboarding), кроме (tabs) (анонимный просмотр OK).
+    if (!onboardingDone && !inOnboarding && !inTabs) {
+      router.replace("/(onboarding)/role");
     }
+    // Иначе — оставляем где есть.
   }, [status, userLoading, userRecord, segments, router]);
 
   return <>{children}</>;
@@ -101,7 +143,6 @@ export default function RootLayout() {
     Inter_500Medium,
     Inter_600SemiBold,
     Inter_700Bold,
-    CalSans_600SemiBold: CalSansSemiBold,
   });
 
   const [queryClient] = useState(
@@ -131,7 +172,9 @@ export default function RootLayout() {
     }
   }, [fontsLoaded, fontsError]);
 
-  if (!fontsLoaded && !fontsError) {
+  // На native ждём шрифты (избегаем flash без шрифтов).
+  // На web SSR — рендерим сразу. CSS @font-face подхватит Geist+Inter из global.css.
+  if (Platform.OS !== "web" && !fontsLoaded && !fontsError) {
     return null;
   }
 

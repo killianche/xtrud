@@ -1,22 +1,18 @@
 /**
  * Card — карточка по DESIGN.md (Vercel card-marketing + xtrud override 12px radius).
  *
+ * Цвета через NativeWind className (CSS-var resolution).
+ *
  * Варианты:
- *   - default — bg-canvas + border hairline, 12px радиус
- *   - soft    — bg-canvas-soft (без border), 12px радиус
- *   - dark    — bg-surface-dark + on-dark текст, 12px радиус (для категорий/featured)
+ *   - default — bg-canvas + border-hairline (1px)
+ *   - soft    — bg-canvas-soft (без border)
+ *   - dark    — bg-surface-dark + on-dark текст
  *
- * Padding:
- *   - sm — 12px
- *   - md — 16px (default)
- *   - lg — 24px
- *
- * Не имеет встроенного onPress — оборачивай в Pressable если нужен tap.
+ * Padding: none / sm 12 / md 16 (default) / lg 24
  */
 
 import { type ReactNode } from "react";
 import { View, type ViewStyle } from "react-native";
-import { useThemeColors } from "@/lib/use-theme-color";
 
 export type CardVariant = "default" | "soft" | "dark";
 export type CardPadding = "none" | "sm" | "md" | "lg";
@@ -25,9 +21,7 @@ export interface CardProps {
   children: ReactNode;
   variant?: CardVariant;
   padding?: CardPadding;
-  /** Дополнительный inline style (margin/width и т.п.). Не для bg/border — те через variant. */
   style?: ViewStyle;
-  /** Дополнительный className (NativeWind). Полезно для responsive ширин. */
   className?: string;
 }
 
@@ -38,31 +32,25 @@ const PADDING_MAP: Record<CardPadding, number> = {
   lg: 24,
 };
 
-export function Card({ children, variant = "default", padding = "md", style, className }: CardProps) {
-  const tc = useThemeColors(["canvas", "canvas-soft", "hairline", "surface-dark"]);
+const VARIANT_CLASS: Record<CardVariant, { bg: string; text: string; border: string; borderWidth: number }> = {
+  default: { bg: "bg-canvas", text: "text-ink", border: "border-hairline", borderWidth: 1 },
+  soft: { bg: "bg-canvas-soft", text: "text-ink", border: "", borderWidth: 0 },
+  dark: { bg: "bg-surface-dark", text: "text-on-dark", border: "", borderWidth: 0 },
+};
 
-  const palette = (() => {
-    switch (variant) {
-      case "default":
-        return { bg: tc.canvas, border: tc.hairline, borderWidth: 1 };
-      case "soft":
-        return { bg: tc["canvas-soft"], border: "transparent", borderWidth: 0 };
-      case "dark":
-        return { bg: tc["surface-dark"], border: "transparent", borderWidth: 0 };
-    }
-  })();
+export function Card({ children, variant = "default", padding = "md", style, className }: CardProps) {
+  const vc = VARIANT_CLASS[variant];
+  const composed = ["rounded-xl overflow-hidden", vc.bg, vc.text, vc.border, className]
+    .filter(Boolean)
+    .join(" ");
 
   return (
     <View
-      className={className}
+      className={composed}
       style={[
         {
-          backgroundColor: palette.bg,
-          borderRadius: 12, // xtrud override
-          borderWidth: palette.borderWidth,
-          borderColor: palette.border,
           padding: PADDING_MAP[padding],
-          overflow: "hidden",
+          borderWidth: vc.borderWidth,
         },
         style,
       ]}

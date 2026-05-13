@@ -1,36 +1,58 @@
-// Хук для работы с цветовой схемой — единственная точка резолва темы.
+// Тема: один источник истины, один путь резолва.
 //
-// Объединяет:
-//   - NativeWind useColorScheme (резолвит в `light` | `dark` и применяет `.dark` класс на html)
-//   - пользовательское предпочтение из useThemeStore (`system` | `light` | `dark`)
+// Архитектура:
+//   - Источник истины — Zustand store `useThemeStore` (ключ "xtrud-theme" в storage).
+//   - На web SSR-flash убирается inline theme-guard в `app/+html.tsx` (ставит class="dark"
+//     на <html> ДО первого рендера, читая тот же localStorage ключ).
+//   - JS-резолв для useThemeColor / useThemeColors — этот хук.
 //
-// На web SSR-flash устранён inline theme-guard в `app/+html.tsx` — он ставит
-// класс `dark` на <html> ДО первого рендера, читая Zustand persist напрямую.
-// Так что CSS-переменные правильно резолвятся уже на первом пейнте.
+// КОРНЕВАЯ ПРОБЛЕМА которую решаем:
+//   На web на первом рендере React 18 SSR + hydration работает так:
+//   - SSR не имеет доступа к localStorage → useThemeStore возвращает default 'system'
+//   - matchMedia на сервере отсутствует → 'system' резолвится в 'light'
+//   - Клиент гидрируется с ТАКИМ ЖЕ значением, чтобы избежать hydration mismatch warning
+//   - Zustand persist rehydrate происходит ПОСЛЕ первого рендера → preference обновляется
+//   - Но JS-цвета (Lucide иконки, inline style.color) уже захвачены с неправильной палитры
 //
-// JS-резолв (для Lucide-иконок, placeholderTextColor) на первом рендере:
-//   - если NativeWind уже вернул light|dark — берём его
-//   - иначе резолвим preference сами: 'light'|'dark' напрямую, 'system' → matchMedia (web)
-//   На native NativeWind резолвит сразу, фолбэк не нужен.
+// РЕШЕНИЕ:
+//   На web НЕ ИСПОЛЬЗУЕМ Zustand. Читаем localStorage синхронно при каждом рендере.
+//   Это сахар-неэлегантно, но даёт корректное значение начиная с первого рендера.
+//   Хук всё равно подписан на useThemeStore чтобы тригерить re-render при смене preference.
 //
-// Использование:
-//   const { colorScheme, preference, setPreference } = useColorScheme();
+//   На native localStorage нет — используем Zustand preference (он гидрируется через
+//   SecureStore, который тоже async, но NativeWind colorScheme через RN Appearance даёт
+//   правильное значение синхронно).
 
 import { useColorScheme as useNativeWindColorScheme } from "nativewind";
 import { useEffect } from "react";
 import { Platform } from "react-native";
-import { useThemeStore, type ThemePreference } from "@/lib/theme";
+import { type ThemePreference, useThemeStore } from "@/lib/theme";
 
-function resolveSystemScheme(): "dark" | "light" {
-  if (Platform.OS === "web" && typeof window !== "undefined" && window.matchMedia) {
+/** Синхронно читает preference из localStorage (web only). Возвращает null если нет/ошибка. */
+function readStoredPreferenceWeb(): ThemePreference | null {
+  if (typeof localStorage === "undefined") return null;
+  try {
+    const raw = localStorage.getItem("xtrud-theme");
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    const pref = parsed?.state?.preference;
+    if (pref === "system" || pref === "light" || pref === "dark") return pref;
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+function resolveSystemSchemeWeb(): "dark" | "light" {
+  if (typeof window !== "undefined" && window.matchMedia) {
     return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
   }
   return "light";
 }
 
-function resolvePreference(preference: ThemePreference): "dark" | "light" {
+function resolveScheme(preference: ThemePreference): "dark" | "light" {
   if (preference === "dark" || preference === "light") return preference;
-  return resolveSystemScheme();
+  return resolveSystemSchemeWeb();
 }
 
 export function useColorScheme() {
@@ -38,18 +60,22 @@ export function useColorScheme() {
   const preference = useThemeStore((s) => s.preference);
   const setPreference = useThemeStore((s) => s.setPreference);
 
+  // Синхронизируем NativeWind с preference. Нужно для Tailwind `dark:` префиксов.
   useEffect(() => {
-    // NativeWind принимает 'light' | 'dark' | 'system'. На 'system' она сама
-    // подписывается на matchMedia (web) / Appearance (native) и обновляет класс.
     setColorScheme(preference);
   }, [preference, setColorScheme]);
 
-  // На web NativeWind на первом рендере возвращает Appearance.getColorScheme(),
-  // которое не знает про наш preference из store. Резолвим сами из store, чтобы
-  // JS-цвета (Lucide иконки и т.д.) совпадали с inline theme-guard'ом из +html.tsx.
-  // На native NativeWind работает корректно через RN Appearance, ему доверяем.
-  const colorScheme: "light" | "dark" =
-    Platform.OS === "web" ? resolvePreference(preference) : (nwScheme ?? resolvePreference(preference));
+  // На web: читаем localStorage синхронно — обходит async hydration Zustand persist.
+  // На native: используем NativeWind colorScheme (RN Appearance даёт sync ответ).
+  let colorScheme: "light" | "dark";
+  if (Platform.OS === "web") {
+    const stored = readStoredPreferenceWeb();
+    const effectivePref = stored ?? preference;
+    colorScheme = resolveScheme(effectivePref);
+  } else {
+    colorScheme =
+      nwScheme === "dark" || nwScheme === "light" ? nwScheme : resolveScheme(preference);
+  }
 
   return {
     /** Резолвленная схема: 'light' | 'dark'. */

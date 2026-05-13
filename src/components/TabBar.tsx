@@ -1,19 +1,21 @@
 /*
- * Кастомный нижний таббар — современный дизайн в стиле cal.com / TaskRabbit.
+ * TabBar v2 — нижний таб-бар (Vercel DESIGN.md).
  *
- * Активный таб: цвет `ink` + semibold лейбл + strokeWidth 2.25 у иконки.
- * Неактивный:   цвет `muted` + regular лейбл + strokeWidth 1.5 у иконки.
+ * Активный таб: ink + semibold.
+ * Неактивный:    mute + regular.
+ * Различие — ЦВЕТ, не opacity (opacity на dark не работает визуально).
  *
- * Различие активного/неактивного — ЦВЕТОМ, не opacity. Opacity на dark-теме
- * визуально неотличим от полупрозрачного белого; цвет ink↔muted работает в обеих темах.
+ * iOS:    shadow без top-border (Apple/Linear паттерн).
+ * Android/web:  0.5px hairline сверху.
  *
- * iOS:           shadow без top-border (Apple/Linear/Craft паттерн).
- * Android/web:   0.5px hairline сверху.
+ * Видимые таб-маршруты: index / orders / chats. Остальные (href:null) пропускаются.
  *
- * Цвета через `useThemeColors` единообразно на всех платформах — без web/native fork.
- * Маршруты вне VISIBLE_TABS (href: null, detail-экраны) — не рендерятся.
+ * Цвета:
+ *  - На web color иконок через **className="text-ink"/"text-mute"** + currentColor
+ *    в SVG. CSS-переменные --ink/--mute уже резолвятся правильно через html.dark
+ *    класс (inline theme-guard в +html.tsx). Это обходит JS-резолв-баг с useThemeColor.
+ *  - На native — hex из useThemeColors (RN Appearance резолвится корректно).
  *
- * Иконки: читаем из options.tabBarIcon, цвет приходит из props.
  * Бейджи: из options.tabBarBadge / options.tabBarBadgeStyle.
  */
 
@@ -23,25 +25,28 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
 import { useThemeColors } from "@/lib/use-theme-color";
 
-/** Видимые маршруты. Прочие (detail-экраны) передаются с href: null и пропускаются. */
 const VISIBLE_TABS = new Set(["index", "orders", "chats"]);
-
-/** Высота видимой части таббара — без safe area. */
 const TAB_HEIGHT = 56;
+const isWeb = Platform.OS === "web";
 
 export function TabBar({ state, descriptors, navigation }: BottomTabBarProps) {
   const insets = useSafeAreaInsets();
-  const tc = useThemeColors(["canvas", "hairline", "ink", "muted"]);
+  // На native canvas/hairline через hex для inline style. На web — Tailwind решает.
+  const tc = useThemeColors(["canvas", "hairline", "ink", "mute"]);
 
   const visibleRoutes = state.routes.filter((r) => VISIBLE_TABS.has(r.name));
 
   return (
     <View
+      // bg-canvas + border-hairline через Tailwind (web), inline style на native.
+      className={isWeb ? "flex-row bg-canvas border-t border-hairline" : undefined}
       style={[
         {
           height: TAB_HEIGHT + insets.bottom,
           paddingBottom: insets.bottom,
           flexDirection: "row",
+        },
+        !isWeb && {
           backgroundColor: tc.canvas,
           borderTopWidth: Platform.OS === "ios" ? 0 : 0.5,
           borderTopColor: tc.hairline,
@@ -68,11 +73,13 @@ export function TabBar({ state, descriptors, navigation }: BottomTabBarProps) {
           | { backgroundColor?: string; color?: string }
           | null
           | undefined;
-        const badgeBg = bsRaw?.backgroundColor ?? "#ef4444";
+        const badgeBg = bsRaw?.backgroundColor ?? "#ee0000"; // Vercel error
         const badgeTextColor = bsRaw?.color ?? "#ffffff";
 
-        // Активный/неактивный — РАЗНЫЙ ЦВЕТ, не opacity.
-        const tabColor = isFocused ? tc.ink : tc.muted;
+        // Web: цвет через CSS class (currentColor наследуется в SVG icon).
+        // Native: hex из useThemeColors.
+        const tabColorHex = isFocused ? tc.ink : tc.mute;
+        const iconColor = isWeb ? "currentColor" : tabColorHex;
 
         const onPress = () => {
           const event = navigation.emit({
@@ -85,18 +92,16 @@ export function TabBar({ state, descriptors, navigation }: BottomTabBarProps) {
           }
         };
 
-        const onLongPress = () => {
-          navigation.emit({ type: "tabLongPress", target: route.key });
-        };
-
         return (
           <Pressable
             key={route.key}
             onPress={onPress}
-            onLongPress={onLongPress}
+            onLongPress={() => navigation.emit({ type: "tabLongPress", target: route.key })}
             accessibilityRole="tab"
             accessibilityState={{ selected: isFocused }}
             accessibilityLabel={options.tabBarAccessibilityLabel ?? label}
+            // На web className устанавливает CSS color для currentColor наследования.
+            className={isWeb ? (isFocused ? "text-ink" : "text-mute") : undefined}
             style={{
               flex: 1,
               alignItems: "center",
@@ -105,11 +110,9 @@ export function TabBar({ state, descriptors, navigation }: BottomTabBarProps) {
               paddingTop: 6,
             }}
           >
-            {/* Иконка — tabBarIcon из screen options */}
             <View style={{ position: "relative" }}>
-              {options.tabBarIcon?.({ focused: isFocused, color: tabColor, size: 24 })}
+              {options.tabBarIcon?.({ focused: isFocused, color: iconColor, size: 24 })}
 
-              {/* Бейдж поверх иконки */}
               {badge !== undefined && badge !== null && (
                 <View
                   style={{
@@ -135,10 +138,14 @@ export function TabBar({ state, descriptors, navigation }: BottomTabBarProps) {
               )}
             </View>
 
-            {/* Лейбл — semibold + ink для активного, regular + muted для неактивного. */}
             <AppText
               weight={isFocused ? "semibold" : "regular"}
-              style={{ fontSize: 11, lineHeight: 14, color: tabColor }}
+              className={isWeb ? (isFocused ? "text-ink" : "text-mute") : undefined}
+              style={
+                isWeb
+                  ? { fontSize: 11, lineHeight: 14 }
+                  : { fontSize: 11, lineHeight: 14, color: tabColorHex }
+              }
             >
               {label}
             </AppText>

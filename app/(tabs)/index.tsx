@@ -1,24 +1,35 @@
+/**
+ * Главная клиента — TaskRabbit-style hybrid home.
+ *
+ * Структура (зоны 1-6 из дизайн-плана):
+ *   1. Top-bar (sticky): лого xtrud + CitySelector + Войти/Аватар
+ *   2. Hero: H1 + поиск + CTA "Описать задачу" + соцпруф
+ *   3. Featured вертикали: клининг + срочный ремонт (крупные plate-карточки)
+ *   4. Top-rated мастера (горизонтальная карусель, рендерится только если data >= 3)
+ *   5. Все категории (сетка 2 col на mobile, 3-4 на web)
+ *   6. (опционально) безопасность/доверие футер
+ *
+ * Auth-логика:
+ *   - Анон может всё смотреть.
+ *   - Тап "Описать задачу" → /(tabs)/orders/new (на финальной отправке login wall)
+ *   - Тап карточки мастера → /(tabs)/master/[id]
+ *   - Тап категории → /(tabs)/category/[id]
+ *
+ * Master-режим (если active_role === "master") — отдельный экран MasterHomeContent.
+ */
+
 import { useRouter } from "expo-router";
-import { Bell, Moon, Sun } from "lucide-react-native";
+import { Pencil, User } from "lucide-react-native";
 import { FlatList, Pressable, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
-import { Avatar } from "@/components/Avatar";
-import { CategoryTile } from "@/components/CategoryTile";
-import { MasterPreviewCard } from "@/components/MasterPreviewCard";
-import { RoleSwitcher } from "@/components/RoleSwitcher";
-import { Skeleton, TileSkeleton } from "@/components/Skeleton";
+import { CitySelector, useCityStore, getCityName } from "@/components/CitySelector";
+import { Avatar, Button, Card, Chip, SearchBar } from "@/components/ui";
 import { useAuthSession } from "@/features/auth/use-auth-session";
-import { useSetActiveRole } from "@/features/auth/use-set-active-role";
 import { useUserRecord } from "@/features/auth/use-user-record";
 import { useVisibleCategories } from "@/features/categories/use-visible-categories";
 import { MasterHomeContent } from "@/features/master-view/MasterHomeContent";
 import { useTopMasters } from "@/features/master-view/use-top-masters";
-import {
-  useRealtimeNotifications,
-  useUnreadNotificationsCount,
-} from "@/features/notifications/use-notifications";
-import { useColorScheme } from "@/hooks/use-color-scheme";
 import { usePullToRefresh } from "@/hooks/use-pull-to-refresh";
 import { useThemeColors } from "@/lib/use-theme-color";
 
@@ -28,232 +39,359 @@ export default function HomeTab() {
   const { session } = useAuthSession();
   const userId = session?.user?.id;
   const { data: user } = useUserRecord(userId);
-  const setActiveRole = useSetActiveRole();
 
-  const greeting = user?.first_name ? `Привет, ${user.first_name}` : "С чего начнём?";
   const activeRole = user?.active_role ?? "client";
   const refresh = usePullToRefresh();
-  const { colorScheme, setPreference } = useColorScheme();
-  const tc = useThemeColors(["ink", "error"]);
-  const isDark = colorScheme === "dark";
-
-  useRealtimeNotifications(userId);
-  const { data: unreadNotifs = 0 } = useUnreadNotificationsCount(userId);
 
   return (
     <ScrollView
       className="flex-1 bg-canvas"
       contentContainerStyle={{
-        paddingTop: insets.top + 24,
+        paddingTop: insets.top,
         paddingBottom: insets.bottom + 24,
       }}
       showsVerticalScrollIndicator={false}
       refreshControl={refresh.control}
     >
-      {/* Header */}
-      <View className="flex-row items-start justify-between px-6">
-        <View className="flex-1">
-          <AppText weight="display" className="text-display-md tracking-tight text-ink">
-            {greeting}
-          </AppText>
-          {user?.is_master && user.active_role && userId && (
-            <View className="mt-3">
-              <RoleSwitcher
-                activeRole={user.active_role}
-                disabled={setActiveRole.isPending}
-                onChange={(role) => setActiveRole.mutate({ userId, role })}
-              />
-            </View>
-          )}
-        </View>
+      <TopBar userId={userId} userName={user?.first_name ?? null} avatarUrl={user?.avatar_url ?? null} />
 
-        {/* Тема + уведомления + профиль */}
-        <View className="flex-row items-center gap-2">
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={isDark ? "Светлая тема" : "Тёмная тема"}
-            onPress={() => setPreference(isDark ? "light" : "dark")}
-            hitSlop={8}
-            className="h-9 w-9 items-center justify-center rounded-full active:opacity-70"
-          >
-            {isDark ? (
-              <Sun size={20} strokeWidth={1.75} color={tc.ink} />
-            ) : (
-              <Moon size={20} strokeWidth={1.75} color={tc.ink} />
-            )}
-          </Pressable>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Уведомления"
-            onPress={() => router.push("/(tabs)/notifications" as never)}
-            hitSlop={8}
-            className="relative h-9 w-9 items-center justify-center rounded-full active:opacity-70"
-          >
-            <Bell size={20} strokeWidth={1.75} color={tc.ink} />
-            {unreadNotifs > 0 && (
-              <View
-                className="absolute -right-0.5 -top-0.5 h-4 min-w-4 items-center justify-center rounded-full px-1"
-                style={{ backgroundColor: tc.error }}
-              >
-                <AppText
-                  weight="bold"
-                  className="text-[10px] leading-[14px] text-white"
-                >
-                  {unreadNotifs > 99 ? "99+" : String(unreadNotifs)}
-                </AppText>
-              </View>
-            )}
-          </Pressable>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Профиль"
-            onPress={() => router.push("/(tabs)/profile" as never)}
-            hitSlop={12}
-            className="active:opacity-70"
-          >
-            <Avatar
-              url={user?.avatar_url}
-              name={user?.first_name ?? null}
-              seed={userId ?? null}
-              size="md"
-            />
-          </Pressable>
-        </View>
-      </View>
-
-      {/* Branching контент: master vs client */}
-      <View className="mt-10">
-        {activeRole === "master" && userId ? (
+      {activeRole === "master" && userId ? (
+        <View className="mt-6">
           <MasterHomeContent userId={userId} />
-        ) : (
-          <ClientHomeContent
-            onCategoryPress={(catId) => router.push(`/category/${catId}` as never)}
-            onMasterPress={(masterId) => router.push(`/master/${masterId}` as never)}
-          />
-        )}
-      </View>
+        </View>
+      ) : (
+        <ClientHome
+          onCategoryPress={(id) => router.push(`/category/${id}` as never)}
+          onMasterPress={(id) => router.push(`/master/${id}` as never)}
+          onDescribeTask={() => router.push("/orders/new" as never)}
+        />
+      )}
     </ScrollView>
   );
 }
 
-// ----------------------------------------------------------------------------
-// Client home content — каталог категорий (как было в sprint 2.3 + 3.4).
-// ----------------------------------------------------------------------------
+// ============================================================================
+// Top-bar — logo + city + auth-кнопка
+// ============================================================================
 
-interface ClientHomeContentProps {
-  onCategoryPress: (catId: string) => void;
-  onMasterPress: (masterId: string) => void;
+function TopBar({
+  userId,
+  userName,
+  avatarUrl,
+}: {
+  userId: string | undefined;
+  userName: string | null;
+  avatarUrl: string | null;
+}) {
+  const router = useRouter();
+  return (
+    <View className="flex-row items-center justify-between px-5 py-3">
+      {/* Логотип */}
+      <Pressable onPress={() => router.push("/(tabs)" as never)} hitSlop={8}>
+        <AppText weight="display" className="text-display-sm tracking-tight text-ink">
+          xtrud
+        </AppText>
+      </Pressable>
+
+      <View className="flex-row items-center gap-2">
+        <CitySelector />
+        {userId ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Профиль"
+            onPress={() => router.push("/profile" as never)}
+            hitSlop={8}
+            className="active:opacity-70"
+          >
+            <Avatar url={avatarUrl} name={userName} seed={userId} size="sm" />
+          </Pressable>
+        ) : (
+          <Button
+            size="sm"
+            variant="secondary"
+            leftIcon={<User size={14} strokeWidth={1.75} />}
+            onPress={() => router.push("/(auth)/phone" as never)}
+          >
+            Войти
+          </Button>
+        )}
+      </View>
+    </View>
+  );
 }
 
-function ClientHomeContent({ onCategoryPress, onMasterPress }: ClientHomeContentProps) {
-  const { data: categories, isLoading, error, refetch } = useVisibleCategories();
-  const topMasters = useTopMasters(7);
-  const showMasters = (topMasters.data?.length ?? 0) > 0 || topMasters.isLoading;
+// ============================================================================
+// Client home — Hero + Featured + Categories + Top masters
+// ============================================================================
+
+interface ClientHomeProps {
+  onCategoryPress: (id: string) => void;
+  onMasterPress: (id: string) => void;
+  onDescribeTask: () => void;
+}
+
+function ClientHome({ onCategoryPress, onMasterPress, onDescribeTask }: ClientHomeProps) {
+  const cityId = useCityStore((s) => s.cityId);
+  const cityName = getCityName(cityId);
 
   return (
     <View>
-      {/* Top-recommended masters — горизонтальный карусель (TaskRabbit Browse). */}
-      {showMasters && (
-        <View>
-          <View className="px-6">
-            <AppText weight="semibold" className="text-title-lg text-ink">
-              Лучшие мастера
-            </AppText>
-            <AppText className="mt-1 text-body-sm text-muted">
-              По рейтингу и количеству завершённых работ
-            </AppText>
-          </View>
+      <Hero cityName={cityName} onDescribeTask={onDescribeTask} />
+      <FeaturedVerticals onPress={onCategoryPress} />
+      <TopMasters onMasterPress={onMasterPress} />
+      <AllCategories onCategoryPress={onCategoryPress} />
+    </View>
+  );
+}
 
-          {topMasters.isLoading ? (
-            <View className="mt-4 flex-row gap-3 px-6">
-              <Skeleton variant="rect" width={180} height={232} radius={12} />
-              <Skeleton variant="rect" width={180} height={232} radius={12} />
-              <Skeleton variant="rect" width={180} height={232} radius={12} />
-            </View>
-          ) : (
-            <FlatList
-              data={topMasters.data ?? []}
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={{ paddingHorizontal: 24, gap: 12 }}
-              className="mt-4"
-              keyExtractor={(m) => m.user.id}
-              renderItem={({ item }) => (
-                <MasterPreviewCard
-                  id={item.user.id}
-                  avatarUrl={item.user.avatar_url}
-                  firstName={item.user.first_name}
-                  lastName={item.user.last_name}
-                  ratingAvg={item.profile.rating_overall_avg}
-                  ratingCount={item.profile.rating_overall_count}
-                  closedDeals={item.profile.closed_deals}
-                  experienceYears={item.profile.experience_years}
-                  cityName={item.city?.name ?? null}
-                  variant="horizontal"
-                  onPress={() => onMasterPress(item.user.id)}
-                />
-              )}
-            />
-          )}
-        </View>
-      )}
+// ----------------------------------------------------------------------------
+// Hero — заголовок + поиск + CTA
+// ----------------------------------------------------------------------------
 
-      <View className={`px-6 ${showMasters ? "mt-10" : ""}`}>
-        <AppText weight="semibold" className="text-title-lg text-ink">
-          Категории
-        </AppText>
-        <AppText className="mt-1 text-body-sm text-muted">Выберите, какой мастер вам нужен</AppText>
+function Hero({ cityName, onDescribeTask }: { cityName: string; onDescribeTask: () => void }) {
+  return (
+    <View className="px-5 mt-8">
+      <AppText weight="display" className="text-display-lg tracking-tight text-ink">
+        Услуги в {cityName === "Магас" ? "Ингушетии" : cityName}
+      </AppText>
+      <AppText className="mt-2 text-body-md text-body">
+        Опишите задачу — мастера сами вам напишут
+      </AppText>
+
+      <View className="mt-5">
+        <SearchBar placeholder="Например: установить кондиционер" />
       </View>
 
-      {isLoading && (
-        <View className="mt-4 flex-row flex-wrap gap-3 px-6">
+      <View className="mt-3">
+        <Button
+          size="lg"
+          fullWidth
+          leftIcon={<Pencil size={16} strokeWidth={1.75} color="#ffffff" />}
+          onPress={onDescribeTask}
+        >
+          Описать задачу
+        </Button>
+      </View>
+
+      <View className="mt-3 flex-row items-center gap-2">
+        <Chip size="sm" variant="default" mono>
+          Бесплатно
+        </Chip>
+        <AppText className="text-body-sm text-mute">·</AppText>
+        <Chip size="sm" variant="default" mono>
+          Отвечают за 30 минут
+        </Chip>
+      </View>
+    </View>
+  );
+}
+
+// ----------------------------------------------------------------------------
+// Featured verticals — клининг + срочный ремонт (приоритетные)
+// ----------------------------------------------------------------------------
+
+const FEATURED = [
+  {
+    id: "cleaning",
+    title: "Клининг",
+    subtitle: "Уборка, окна, химчистка",
+    bg: "bg-violet-soft",
+    fg: "text-violet-deep",
+  },
+  {
+    id: "repair-urgent",
+    title: "Срочный ремонт",
+    subtitle: "Сантехник, электрик, мастер на час",
+    bg: "bg-cyan-soft",
+    fg: "text-cyan-deep",
+  },
+] as const;
+
+function FeaturedVerticals({ onPress }: { onPress: (id: string) => void }) {
+  return (
+    <View className="mt-8 px-5">
+      <View className="flex-row gap-3">
+        {FEATURED.map((f) => (
+          <Pressable
+            key={f.id}
+            onPress={() => onPress(f.id)}
+            accessibilityRole="button"
+            accessibilityLabel={f.title}
+            className={`flex-1 ${f.bg} rounded-xl p-4 active:opacity-80`}
+            style={{ minHeight: 124 }}
+          >
+            <AppText weight="semibold" className={`text-title-lg ${f.fg}`}>
+              {f.title}
+            </AppText>
+            <AppText className={`mt-1 text-body-sm ${f.fg}`}>{f.subtitle}</AppText>
+          </Pressable>
+        ))}
+      </View>
+    </View>
+  );
+}
+
+// ----------------------------------------------------------------------------
+// Top masters — горизонтальная карусель, рендерится только если ≥ 3 карточки
+// ----------------------------------------------------------------------------
+
+function TopMasters({ onMasterPress }: { onMasterPress: (id: string) => void }) {
+  const { data: masters, isLoading } = useTopMasters(7);
+
+  // Не показываем секцию если данных нет или их слишком мало (по правилу
+  // "пустую витрину не показываем" из аудита).
+  if (!isLoading && (!masters || masters.length < 3)) return null;
+
+  return (
+    <View className="mt-10">
+      <View className="px-5">
+        <AppText weight="semibold" className="text-title-lg text-ink">
+          Лучшие мастера рядом
+        </AppText>
+        <AppText className="mt-1 text-body-sm text-mute">По рейтингу и отзывам</AppText>
+      </View>
+
+      <FlatList
+        data={masters ?? []}
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={{ paddingHorizontal: 20, gap: 12, paddingTop: 12 }}
+        keyExtractor={(m) => m.user.id}
+        renderItem={({ item }) => (
+          <MasterMiniCard
+            id={item.user.id}
+            avatarUrl={item.user.avatar_url}
+            firstName={item.user.first_name}
+            lastName={item.user.last_name}
+            rating={item.profile.rating_overall_avg}
+            ratingCount={item.profile.rating_overall_count}
+            cityName={item.city?.name ?? null}
+            onPress={() => onMasterPress(item.user.id)}
+          />
+        )}
+      />
+    </View>
+  );
+}
+
+interface MasterMiniCardProps {
+  id: string;
+  avatarUrl: string | null;
+  firstName: string | null;
+  lastName: string | null;
+  rating: number | null;
+  ratingCount: number | null;
+  cityName: string | null;
+  onPress: () => void;
+}
+
+function MasterMiniCard({
+  avatarUrl,
+  firstName,
+  lastName,
+  rating,
+  ratingCount,
+  cityName,
+  onPress,
+}: MasterMiniCardProps) {
+  const fullName = [firstName, lastName].filter(Boolean).join(" ") || "Мастер";
+
+  return (
+    <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={fullName}>
+      <Card variant="default" padding="none" style={{ width: 180 }}>
+        <View
+          style={{
+            width: 180,
+            height: 180,
+            backgroundColor: "transparent",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <Avatar url={avatarUrl} name={fullName} seed={fullName} size="xl" />
+        </View>
+        <View className="px-3 pb-3">
+          <AppText weight="semibold" className="text-body-md text-ink" numberOfLines={1}>
+            {fullName}
+          </AppText>
+          {rating !== null && ratingCount !== null && ratingCount > 0 ? (
+            <View className="mt-1 flex-row items-center gap-1">
+              <AppText weight="mono" className="text-mono-caption text-ink">
+                ★ {rating.toFixed(1)}
+              </AppText>
+              <AppText weight="mono" className="text-mono-caption text-mute">
+                ({ratingCount})
+              </AppText>
+            </View>
+          ) : null}
+          {cityName ? (
+            <AppText className="mt-1 text-caption text-mute" numberOfLines={1}>
+              {cityName}
+            </AppText>
+          ) : null}
+        </View>
+      </Card>
+    </Pressable>
+  );
+}
+
+// ----------------------------------------------------------------------------
+// All categories — сетка
+// ----------------------------------------------------------------------------
+
+function AllCategories({ onCategoryPress }: { onCategoryPress: (id: string) => void }) {
+  const { data: categories, isLoading, error } = useVisibleCategories();
+  const tc = useThemeColors(["canvas-soft-2", "mute"]);
+
+  return (
+    <View className="mt-10">
+      <View className="px-5">
+        <AppText weight="semibold" className="text-title-lg text-ink">
+          Все категории
+        </AppText>
+      </View>
+
+      {isLoading ? (
+        <View className="mt-4 flex-row flex-wrap gap-3 px-5">
           {Array.from({ length: 6 }).map((_, i) => (
-            // Индекс позиции, не идентификатор — порядок плиток-скелетонов фиксирован.
             // biome-ignore lint/suspicious/noArrayIndexKey: stable position-based key
             <View key={i} className="w-[48%] md:w-[31%] lg:w-[23%]">
-              <TileSkeleton />
-            </View>
-          ))}
-        </View>
-      )}
-
-      {error && (
-        <View className="mt-8 px-6">
-          <AppText weight="medium" className="text-caption text-error">
-            Не удалось загрузить категории. {error.message}
-          </AppText>
-          <Pressable
-            accessibilityRole="button"
-            onPress={() => refetch()}
-            className="mt-3 h-10 items-center justify-center rounded-md border border-hairline px-4 active:opacity-70"
-          >
-            <AppText weight="medium" className="text-caption text-ink">
-              Повторить
-            </AppText>
-          </Pressable>
-        </View>
-      )}
-
-      {categories && categories.length > 0 && (
-        <View className="mt-4 flex-row flex-wrap gap-3 px-6">
-          {categories.map((cat) => (
-            <View key={cat.id} className="w-[48%] md:w-[31%] lg:w-[23%]">
-              <CategoryTile
-                name={cat.name_ru}
-                iconName={cat.icon}
-                coverUrl={cat.cover_image_url}
-                onPress={() => onCategoryPress(cat.id)}
+              <View
+                className="aspect-square rounded-xl"
+                style={{ backgroundColor: tc["canvas-soft-2"] }}
               />
             </View>
           ))}
         </View>
-      )}
-
-      {categories && categories.length === 0 && !isLoading && !error && (
-        <View className="mt-8 px-6">
-          <AppText className="text-body-md text-muted">
+      ) : error ? (
+        <View className="mt-4 px-5">
+          <AppText className="text-body-sm text-error">
+            Не удалось загрузить категории.
+          </AppText>
+        </View>
+      ) : !categories || categories.length === 0 ? (
+        <View className="mt-4 px-5">
+          <AppText className="text-body-sm text-mute">
             Категории ещё не настроены. Свяжитесь с поддержкой.
           </AppText>
+        </View>
+      ) : (
+        <View className="mt-4 flex-row flex-wrap gap-3 px-5">
+          {categories.map((cat) => (
+            <Pressable
+              key={cat.id}
+              onPress={() => onCategoryPress(cat.id)}
+              accessibilityRole="button"
+              accessibilityLabel={cat.name_ru}
+              className="w-[48%] md:w-[31%] lg:w-[23%] active:opacity-70"
+            >
+              <Card variant="soft" padding="md" style={{ aspectRatio: 1, justifyContent: "flex-end" }}>
+                <AppText weight="semibold" className="text-body-md text-ink" numberOfLines={2}>
+                  {cat.name_ru}
+                </AppText>
+              </Card>
+            </Pressable>
+          ))}
         </View>
       )}
     </View>

@@ -102,8 +102,11 @@
    - На master_view вкладка «Меня выбрали» отрисовывает заказ с CTA «Отметить выполненным» или «Оставить отзыв».
    - OutcomeTrackingModal (sprint 15.1) перестаёт показывать prompt — он смотрит `pickedMasterId !== null && status === 'in_progress'`, completed его не триггерит.
 
-3. **T2/T6 (→cancelled)**:
-   - Никаких автоматических side effects. Заказ просто исчезает из всех активных лент. Чат остаётся доступен (история).
+3. **T2/T6/T7 (→cancelled / →expired)** — миграция 0026, `trg_notify_order_cancelled_or_expired`:
+   - Все активные `order_responses` этого заказа (status IN ('sent','viewed')) → push мастеру «Клиент отменил заказ» / «Заказ истёк» + перевод их status в `withdrawn` (одной транзакцией).
+   - При T6 (in_progress→cancelled) дополнительно push идёт `picked_master_id`.
+   - `accepted` и `rejected` отклики не трогаются — это история сделки.
+   - Чат остаётся доступен (история).
 
 ---
 
@@ -115,7 +118,7 @@
 | `draft` не используется в UI | Юзер не может сохранить заполненную форму на потом | Низкий приоритет, sprint TBD |
 | Re-open отменённого заказа | Если клиент случайно отменил — нужно создавать заново | По дизайну: cancelled — терминальный. Если станет частой жалобой — обсудить. |
 | Отказ от выбранного мастера до completion | Клиент принял, потом передумал. Сейчас единственный путь — отменить (T6), но это вместо «вернуть в open». | Sprint TBD: либо T8 (in_progress→open с side effect «reject picked response»), либо клиенту явно пишем «Отменить и опубликовать заново». |
-| Side effect на T2 (open→cancelled) с отправленными откликами | Мастера, отправившие отклики, не получают уведомления что заказ снят. Их отклики висят как `sent`. | Sprint TBD: trigger AFTER UPDATE OF status — при status=cancelled пометить ответы как `withdrawn`+push. |
+| ~~Side effect на T2/T6/T7 (cancel/expire) с отправленными откликами~~ | ~~Мастера, отправившие отклики, не получают уведомления что заказ снят. Их отклики висят как `sent`.~~ | **Закрыто Sprint 26 (миграция 0026)** — `trg_notify_order_cancelled_or_expired` push'ит мастеров + withdraw'ит их отклики. |
 
 ---
 
@@ -125,6 +128,7 @@
 - **RLS**: `supabase/migrations/0009_orders_and_responses.sql:215-260` + `supabase/migrations/0020_orders_edit_rls_guards.sql` + `supabase/migrations/0012_reviews_and_order_completion.sql:84-93`
 - **RPC accept_response**: `supabase/migrations/0010_accept_response_rpc.sql`
 - **pg_cron expire job (T7)**: `supabase/migrations/0024_expire_orders_cron.sql` + функция `public.expire_old_orders()`
+- **Push при cancel/expire**: `supabase/migrations/0026_notify_order_cancelled_expired.sql` (триггер) + `0027_fix_notify_user_pgnet_api.sql` (починка pg_net API)
 - **Client mutations**:
   - T1: `src/features/orders/use-create-order.ts`
   - T2/T6: `src/features/orders/use-cancel-order.ts`

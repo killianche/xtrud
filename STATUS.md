@@ -220,6 +220,8 @@ Sprint 33.5 — **полный Web Shell**:
 
 **Sprint 20 закрыт — Order state-machine design-doc.**
 
+**Sprint B закрыт — push при cancel/expire + bugfix notify_user.** Миграция 0026: trigger `trg_notify_order_cancelled_or_expired` (AFTER UPDATE OF status) — при transition в `cancelled`/`expired` push'ит picked_master + всех мастеров с `sent`/`viewed` откликами + переводит их в `withdrawn`. При smoke выявлен **серьёзный prod-bug**: `notify_user` использовал `extensions.http_post(...)`, а pg_net 0.20 требует `net.http_post(url, body, params, headers, timeout)`. Это значит **все push не работали с момента Sprint 8.6** (новый отклик, accept, message). Миграция 0027 чинит сигнатуру + добавляет `EXCEPTION WHEN OTHERS` чтобы любая push-инфра-проблема не валила бизнес-транзакцию. Smoke триггера 0026 в ROLLBACK-транзакции подтвердил withdraw-логику. Закрыты gaps T2/T6/T7 в state-machine doc. **База:** 27 миграций.
+
 **Sprint A закрыт — Supabase advisors audit.** Прогнаны security + performance advisors на проде. Найдено: 22× `auth_allow_anonymous_sign_ins` (false positive — Anonymous Sign-ins выключены, auth.uid()=NULL блокирует анонима), 1× `auth_leaked_password_protection` (N/A для phone-OTP), 2× `unindexed_foreign_keys` (**реальная проблема**), 25× `unused_index` (premature, скип), 4× `multiple_permissive_policies` на orders UPDATE (trade-off, документировано). Миграция 0025 добавила 2 индекса (`messages.sender_id`, `order_responses.l2_id`). Re-run подтвердил: `unindexed_foreign_keys` теперь 0. Создан `docs/audit-2026-05-12-advisors.md` с контрактом для следующих прогонов. **База:** 25 миграций. **Sprint 23 (pg_cron expire)** ранее закрыт.
 
 **База:** 23 миграции, 15 таблиц с RLS + 3 Storage bucket, 8 RPC, 12 trigger functions, 17 enums, 1 edge function.
@@ -333,6 +335,13 @@ xtrud/
 - [x] **2026-05-11** — **2.1** Migration 0003 + AuthGate routing (commit `2c2f25f`): `users.onboarding_completed_at` + `users.active_role` enum + CHECK constraint (active_role='master' ⇒ is_master=true) + partial index. `useUserRecord` hook (TanStack Query, staleTime 5 мин). AuthGate переписан под 3 группы — `(auth)` / `(onboarding)` / `(tabs)`. Advisor security = 0 lints.
 - [x] **2026-05-11** — **2.2** Role selection screen (commit `eb42338`): полноценный UI с 2 карточками (lucide Search/Briefcase), accessibilityState selected, accent-soft фон выбранной, CTA "Продолжить", error display. `useCompleteOnboarding` mutation обновляет `users.{is_master, active_role, onboarding_completed_at}` + invalidates query.
 - [x] **2026-05-11** — **2.3** Main client screen (commit `5d394c8`): `useVisibleCategories` для 26 L2, `CategoryTile` компонент с iconMap (~50 lucide icons), grid 2/3/4-кол. адаптивный, ScrollView без виртуализации, loading/error/empty states, header с приветствием по first_name + role badge + signOut. **Без атмосферных фото — sprint 4+.**
+
+### Sprint B — push при cancel/expire + notify_user fix
+- [x] Миграция `0026_notify_order_cancelled_expired.sql` применена на prod: trigger `trg_notify_order_cancelled_or_expired` AFTER UPDATE OF status → push picked_master + всех `sent`/`viewed` responders + withdraw их responses.
+- [x] **Critical prod-bug найден**: `notify_user` использовал `extensions.http_post(url, body, headers)`, в pg_net 0.20 функция в схеме `net` с сигнатурой `(url, body, params, headers, timeout_milliseconds)`. Все push на проде с Sprint 8.6 падали.
+- [x] Миграция `0027_fix_notify_user_pgnet_api.sql` применена: правильная схема + параметры, EXCEPTION WHEN OTHERS чтобы push-инфра-проблема не валила бизнес-транзакции.
+- [x] Smoke триггера 0026 в ROLLBACK-транзакции: response → `withdrawn` после cancel ✓.
+- [x] `docs/order-states.md`: gap T2/T6/T7 закрыт, side effects секция дополнена, ссылки на новые миграции.
 
 ### Sprint A — advisors audit (2026-05-12)
 - [x] `mcp get_advisors security` → 23 предупреждения, 2 ложных (anonymous_sign_ins x22, leaked_password x1) → задокументированы.

@@ -1,6 +1,6 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { Bell, CheckCircle2, ChevronLeft, Clock, type LucideIcon, Pencil, Phone } from "lucide-react-native";
+import { CheckCircle2, ChevronLeft, Clock, type LucideIcon, Pencil, Phone, Users } from "lucide-react-native";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, View } from "react-native";
@@ -263,7 +263,7 @@ export default function NewOrderScreen() {
               />
               <View className="h-px bg-hairline mx-4" />
               <HowItWorksRow
-                icon={Bell}
+                icon={Users}
                 title="Мастера откликнутся"
                 hint="Напишут цену и сроки прямо в чате."
               />
@@ -306,12 +306,19 @@ export default function NewOrderScreen() {
         )}
 
         <View className="mt-8 px-6">
+          {/* «Далее» (step 1,2) — анон-friendly, требует только валидных полей.
+              «Опубликовать заявку» (step 3) — требует userId+categories,
+              на финальном submit. LoginWall сработает если user анон.
+              Раньше disabled был одинаковый для всех шагов → анон не мог
+              перейти со step 1, кнопка всегда серая. */}
           <Pressable
             accessibilityRole="button"
-            disabled={!stepValid || isBusy || !userId || !categories}
+            disabled={
+              !stepValid || isBusy || (step === 3 && (!userId || !categories))
+            }
             onPress={goNext}
             className={`h-12 items-center justify-center rounded-md ${
-              stepValid && !isBusy && userId && categories
+              stepValid && !isBusy && (step !== 3 || (userId && categories))
                 ? "bg-primary active:opacity-80"
                 : "bg-surface-3"
             }`}

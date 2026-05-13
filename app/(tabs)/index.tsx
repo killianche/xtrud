@@ -24,7 +24,7 @@ import { FlatList, Pressable, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
 import { CitySelector, useCityStore, getCityName } from "@/components/CitySelector";
-import { Avatar, Button, Card, Chip } from "@/components/ui";
+import { Avatar, Button, Card } from "@/components/ui";
 import { useAuthSession } from "@/features/auth/use-auth-session";
 import { useUserRecord } from "@/features/auth/use-user-record";
 import { useFeaturedCategories } from "@/features/categories/use-featured-categories";
@@ -169,47 +169,23 @@ function Hero({
         Мастера для ремонта в {cityName === "Магас" ? "Ингушетии" : cityName}
       </AppText>
 
-      {/* Subtitle — value-proposition в 2 предложения.
-          Акцент на ключевом отличии («они не знают ваш номер») сделан вложенным
-          AppText с weight="semibold" + ink color, что выделяет ключевую гарантию
-          приватности на фоне обычного body-цвета. */}
-      <AppText className="mt-2 text-body-md text-body leading-6">
-        Опишите задачу — мастера откликнутся с ценами.{" "}
-        <AppText weight="semibold" className="text-ink">
-          Они не увидят ваш номер
-        </AppText>{" "}
-        — вы сами решаете, с кем связаться.
+      {/* Subtitle — одна короткая фраза. По паттерну Wander / Yelp / Booksy
+          из Lazyweb: один tagline без выделения, без второго предложения. */}
+      <AppText className="mt-3 text-body-md text-body leading-6">
+        Опишите задачу — мастера ответят с ценами, не зная вашего номера.
       </AppText>
 
-      {/* Trust-чипы — 2 ключевых сигнала. «Номер скрыт» удалён, потому что
-          теперь это сообщение уже подсвечено в subtitle. */}
-      <View className="mt-4 flex-row items-center gap-2 flex-wrap">
-        <Chip size="sm" mono>
-          Бесплатно
-        </Chip>
-        <Chip size="sm" mono>
-          Ответы за 30 мин
-        </Chip>
-      </View>
-
-      {/* CTA — единственная точка входа в визард создания заказа.
-          Inline-input скрыт по решению UX: один путь, без неоднозначности. */}
-      <View className="mt-5">
+      {/* CTA — единственное действие в hero. */}
+      <View className="mt-6">
         <Button size="lg" fullWidth onPress={() => onDescribeTask()}>
           Написать свою задачу
         </Button>
       </View>
 
-      {/* Примеры задач — подсказка пользователю «что писать». */}
-      <View className="mt-3">
-        <AppText className="text-body-sm text-mute">Например:</AppText>
-        <AppText className="mt-1 text-body-sm text-mute leading-5">
-          • «Починить кондиционер»
-        </AppText>
-        <AppText className="mt-1 text-body-sm text-mute leading-5">
-          • «Нужен плиточник — положить брусчатку 37×20 м во дворе»
-        </AppText>
-      </View>
+      {/* Trust — одна muted строка, не чипы. Меньше визуального шума. */}
+      <AppText className="mt-3 text-body-sm text-mute text-center">
+        Бесплатно · Ответы за 30 минут
+      </AppText>
     </View>
   );
 }

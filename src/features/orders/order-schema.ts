@@ -21,7 +21,8 @@ export function urgencyLabel(u: (typeof orderUrgencyOptions)[number]): string {
 export const createOrderSchema = z.object({
   l2Id: z.string().min(1, "Выберите категорию"),
   title: z.string().min(5, "Минимум 5 символов").max(120, "Максимум 120 символов"),
-  description: z.string().min(10, "Минимум 10 символов").max(2000, "Максимум 2000 символов"),
+  // description — необязательное. Пустая строка допустима.
+  description: z.string().max(2000, "Максимум 2000 символов"),
   cityId: z.string().min(1, "Выберите город"),
   district: z.string().max(60, "Максимум 60 символов"),
   urgency: z.enum(orderUrgencyOptions),

@@ -95,7 +95,7 @@ export function OrderFormBody({
             render={({ field: { value, onChange, onBlur } }) => (
               <View>
                 <AppText weight="medium" className="text-caption text-muted">
-                  Подробное описание
+                  Подробное описание (необязательно)
                 </AppText>
                 <TextInput
                   value={value}

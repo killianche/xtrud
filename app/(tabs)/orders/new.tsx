@@ -103,8 +103,9 @@ export default function NewOrderScreen() {
 
   const goNext = async () => {
     if (step === 1) {
-      // Шаг 1 — описание (название + детали). Сначала: «что нужно сделать».
+      // Шаг 1 — название обязательно, description опциональный.
       const ok = await trigger(["title", "description"]);
+      // trigger description тоже — он валидирует max, но min нет → пустая строка OK.
       if (ok) setStep(2);
       return;
     }
@@ -185,10 +186,11 @@ export default function NewOrderScreen() {
   // На шаге 3 используем общий isValid (Zod-схема), чтобы Submit прошёл целиком.
   const watchedL2 = watch("l2Id");
   const watchedTitle = watch("title");
-  const watchedDesc = watch("description");
+  // description — необязательное. Step 1 валиден если title заполнен (≥5 символов
+  // по схеме). Поле description проверяется только на верхнюю границу (max).
   const stepValid =
     step === 1
-      ? watchedTitle.length > 0 && !errors.title && watchedDesc.length > 0 && !errors.description
+      ? watchedTitle.length >= 5 && !errors.title && !errors.description
       : step === 2
         ? watchedL2.length > 0
         : isValid && !!cities;
@@ -237,6 +239,29 @@ export default function NewOrderScreen() {
           <AppText className="mt-2 text-body-md text-muted">{stepHint}</AppText>
         </View>
 
+        {/* 3 шага «как это работает» — показываем только на step 1 (создание заказа).
+            Vercel-стиль: ink + canvas-soft фон + mono-цифра в круге, чтобы
+            пользователь сразу видел весь flow и не боялся публиковать. */}
+        {step === 1 && (
+          <View className="px-6 pb-8 gap-3">
+            <HowItWorksRow
+              n="1"
+              title="Создадим задачу"
+              hint="Опишите что нужно сделать своими словами."
+            />
+            <HowItWorksRow
+              n="2"
+              title="Мастера откликнутся"
+              hint="Напишут цену и сроки прямо в чате."
+            />
+            <HowItWorksRow
+              n="3"
+              title="Выберите своего"
+              hint="Напишите или позвоните мастеру. Ваш номер мастера не видят."
+            />
+          </View>
+        )}
+
         <OrderFormBody
           control={control}
           errors={errors}
@@ -283,5 +308,28 @@ export default function NewOrderScreen() {
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
+  );
+}
+
+// ----------------------------------------------------------------------------
+// HowItWorksRow — строка «1. Заголовок / подсказка» для верхней onboarding-секции
+// на step 1 создания заказа. Vercel-стиль: монохром, mono-цифра в soft-круге.
+// ----------------------------------------------------------------------------
+
+function HowItWorksRow({ n, title, hint }: { n: string; title: string; hint: string }) {
+  return (
+    <View className="flex-row items-start gap-4">
+      <View className="h-10 w-10 items-center justify-center rounded-full bg-canvas-soft shrink-0">
+        <AppText weight="mono" className="text-body-md text-ink">
+          {n}
+        </AppText>
+      </View>
+      <View className="flex-1 pt-1">
+        <AppText weight="semibold" className="text-body-md text-ink">
+          {title}
+        </AppText>
+        <AppText className="mt-1 text-body-sm text-mute">{hint}</AppText>
+      </View>
+    </View>
   );
 }

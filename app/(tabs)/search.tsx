@@ -17,7 +17,7 @@
  */
 
 import { useFocusEffect, useRouter } from "expo-router";
-import { X } from "lucide-react-native";
+import { ChevronLeft, X } from "lucide-react-native";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { FlatList, Pressable, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -52,9 +52,17 @@ export default function SearchScreen() {
 
   return (
     <View className="flex-1 bg-canvas" style={{ paddingTop: insets.top }}>
-      {/* Drag-handle — декорация, сигнал «можно потянуть вниз». */}
-      <View className="items-center pt-2 pb-1">
-        <View className="h-1 w-9 rounded-full bg-canvas-soft-2" />
+      {/* Header: back-кнопка — выйти со страницы поиска. Drag-handle убран. */}
+      <View className="px-3 py-2">
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Назад"
+          onPress={() => router.back()}
+          hitSlop={12}
+          className="h-9 w-9 items-center justify-center rounded-full active:opacity-70 text-ink"
+        >
+          <ChevronLeft size={20} strokeWidth={1.75} color="currentColor" />
+        </Pressable>
       </View>
 
       {/* Большой инпут + X clear.

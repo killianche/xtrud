@@ -166,7 +166,7 @@ function Hero({
   return (
     <View className="px-5 mt-8">
       <AppText weight="display" className="text-display-lg tracking-tight text-ink">
-        Услуги в {cityName === "Магас" ? "Ингушетии" : cityName}
+        Мастера для ремонта в {cityName === "Магас" ? "Ингушетии" : cityName}
       </AppText>
 
       {/* Subtitle — value-proposition в 2 предложения.

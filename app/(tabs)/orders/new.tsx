@@ -256,23 +256,11 @@ export default function NewOrderScreen() {
               Как это работает
             </AppText>
             <View className="mt-3 rounded-xl bg-canvas-soft">
-              <HowItWorksRow
-                icon={Pencil}
-                title="Создадим задачу"
-                hint="Опишите что нужно сделать своими словами."
-              />
+              <HowItWorksRow icon={Pencil} title="Создадим задачу" />
               <View className="h-px bg-hairline mx-4" />
-              <HowItWorksRow
-                icon={Users}
-                title="Мастера откликнутся"
-                hint="Напишут цену и сроки прямо в чате."
-              />
+              <HowItWorksRow icon={Users} title="Мастера откликнутся" />
               <View className="h-px bg-hairline mx-4" />
-              <HowItWorksRow
-                icon={Phone}
-                title="Можете позвонить подходящему"
-                hint="Ваш номер мастера не видят 📵"
-              />
+              <HowItWorksRow icon={Phone} title="Можете позвонить подходящему 📵" />
             </View>
           </View>
         )}

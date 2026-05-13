@@ -1,18 +1,18 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { CheckCircle2, ChevronLeft, Clock, type LucideIcon, Pencil, Phone, Users } from "lucide-react-native";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
-import { OnboardingProgress } from "@/components/OnboardingProgress";
 import { useAuthSession } from "@/features/auth/use-auth-session";
 import { useVisibleCategories } from "@/features/categories/use-visible-categories";
 import { useCities } from "@/features/cities/use-cities";
 import { OrderFormBody } from "@/features/orders/OrderFormBody";
 import { type CreateOrderFormValues, createOrderSchema } from "@/features/orders/order-schema";
 import { useCreateOrder } from "@/features/orders/use-create-order";
+import { useTabBarVisibility } from "@/lib/tabbar-visibility";
 import { useThemeColors } from "@/lib/use-theme-color";
 
 // Sprint 26 — Order create wizard. 3 шага (порядок обновлён под user-запрос):
@@ -27,6 +27,17 @@ export default function NewOrderScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { session } = useAuthSession();
+  const setTabBarHidden = useTabBarVisibility((s) => s.setHidden);
+
+  // Скрываем нижний TabBar на экране создания заказа — фокус на форме,
+  // tabBar отвлекает (это full-screen wizard). Через Zustand-флаг, потому
+  // что наш custom TabBar не читает navigation.setOptions({tabBarStyle}).
+  useFocusEffect(
+    useCallback(() => {
+      setTabBarHidden(true);
+      return () => setTabBarHidden(false);
+    }, [setTabBarHidden]),
+  );
   const userId = session?.user?.id;
   const params = useLocalSearchParams<{ l2?: string; draft?: string }>();
   // Черновик описания, пришедший с главной (Hero inline-input).
@@ -211,8 +222,9 @@ export default function NewOrderScreen() {
       className="flex-1 bg-canvas"
       style={{ paddingTop: insets.top }}
     >
-      {/* Header: back + progress */}
-      <View className="flex-row items-center px-3 py-2">
+      {/* Header: back + progress в одном ряду. Progress занимает оставшееся
+          пространство справа от стрелки. По запросу: было 2 строки, стало 1. */}
+      <View className="flex-row items-center px-3 py-2 gap-3 pb-4">
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Назад"
@@ -222,9 +234,21 @@ export default function NewOrderScreen() {
         >
           <ChevronLeft size={24} strokeWidth={1.75} color={tc.ink} />
         </Pressable>
-      </View>
-      <View className="pb-4">
-        <OnboardingProgress step={step} total={3} />
+        {/* Inline progress без обёртки OnboardingProgress (его px-6 ломает
+            горизонтальное выравнивание с back-кнопкой). */}
+        <View
+          className="flex-1 flex-row gap-1.5 pr-3"
+          accessibilityRole="progressbar"
+          accessibilityValue={{ min: 1, max: 3, now: step }}
+          accessibilityLabel={`Шаг ${step} из 3`}
+        >
+          {[1, 2, 3].map((i) => (
+            <View
+              key={i}
+              className={`h-1 flex-1 rounded-full ${i <= step ? "bg-ink" : "bg-hairline"}`}
+            />
+          ))}
+        </View>
       </View>
 
       <ScrollView
@@ -249,13 +273,7 @@ export default function NewOrderScreen() {
             заголовок ink + подсказка mute. Caption-заголовок сверху. */}
         {step === 1 && (
           <View className="px-6 pb-8">
-            <AppText
-              weight="medium"
-              className="text-caption text-mute uppercase tracking-wider"
-            >
-              Как это работает
-            </AppText>
-            <View className="mt-3 rounded-xl bg-canvas-soft">
+            <View className="rounded-xl bg-canvas-soft">
               <HowItWorksRow icon={Pencil} title="Создадим задачу" />
               <View className="h-px bg-hairline mx-4" />
               <HowItWorksRow icon={Users} title="Мастера откликнутся" />

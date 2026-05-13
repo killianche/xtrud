@@ -24,6 +24,7 @@ import { Plus } from "lucide-react-native";
 import { Platform, Pressable, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
+import { useTabBarVisibility } from "@/lib/tabbar-visibility";
 import { useThemeColors } from "@/lib/use-theme-color";
 
 // Порядок таб-роутов в навбаре. Центральная CTA вставляется между orders и chats.
@@ -36,6 +37,11 @@ export function TabBar({ state, descriptors, navigation }: BottomTabBarProps) {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const tc = useThemeColors(["canvas", "hairline", "ink", "mute", "primary", "on-primary"]);
+  const tabBarHidden = useTabBarVisibility((s) => s.hidden);
+
+  // Скрыт глобальным флагом (используется на full-screen wizard'ах вроде
+  // orders/new — там TabBar отвлекает от формы).
+  if (tabBarHidden) return null;
 
   // Берём роуты в нужном порядке, отфильтрованные по существованию.
   const orderedRoutes = TAB_ORDER.map((name) =>

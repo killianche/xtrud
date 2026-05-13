@@ -69,7 +69,7 @@ export default function SearchScreen() {
             autoFocus
             value={query}
             onChangeText={setQuery}
-            placeholder=""
+            placeholder="Введите…"
             placeholderTextColor="rgb(var(--mute) / 1)"
             returnKeyType="search"
             className="text-ink"
@@ -102,21 +102,14 @@ export default function SearchScreen() {
       {/* Список услуг. Пустой query → browse (все категории), есть query →
           фильтр с bold-подсветкой совпадений. */}
       {isLoading ? (
-        <>
-          <View className="px-5 mt-6">
-            <AppText className="text-body-sm text-mute">
-              Подходящие услуги или специалисты
-            </AppText>
-          </View>
-          <View className="px-5 mt-4">
-            {Array.from({ length: 6 }).map((_, i) => (
-              // biome-ignore lint/suspicious/noArrayIndexKey: stable position-based
-              <View key={i} className="py-3">
-                <View className="h-5 w-2/3 rounded bg-canvas-soft-2" />
-              </View>
-            ))}
-          </View>
-        </>
+        <View className="px-5 mt-4">
+          {Array.from({ length: 6 }).map((_, i) => (
+            // biome-ignore lint/suspicious/noArrayIndexKey: stable position-based
+            <View key={i} className="py-3">
+              <View className="h-5 w-2/3 rounded bg-canvas-soft-2" />
+            </View>
+          ))}
+        </View>
       ) : results.length === 0 ? (
         <View className="flex-1 items-center justify-center px-8">
           <Illustration name="meditating" size={140} className="text-ink" />

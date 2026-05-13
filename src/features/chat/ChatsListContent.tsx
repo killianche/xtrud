@@ -45,7 +45,7 @@ export function ChatsListContent({
           <AppText weight="bold" className="text-display-md tracking-tight text-ink">
             Чаты
           </AppText>
-          <AppText className="mt-2 text-body-md text-muted">Общение по принятым заявкам.</AppText>
+          <AppText className="mt-2 text-body-md text-muted">Общение с мастерами по вашим задачам.</AppText>
         </View>
       )}
 
@@ -101,7 +101,7 @@ export function ChatsListContent({
             icon={MessageCircle}
             illustration="loving"
             title="Чатов пока нет"
-            hint="Чат появится автоматически, когда вы примете отклик мастера или клиент выберет вас."
+            hint="Напишите мастеру первым с его страницы — диалог появится здесь."
           />
         </View>
       )}

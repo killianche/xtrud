@@ -34,6 +34,7 @@ import { AppText } from "@/components/AppText";
 import { Avatar } from "@/components/Avatar";
 import { CardListSkeleton, HeroSkeleton, Skeleton } from "@/components/Skeleton";
 import { useAuthSession } from "@/features/auth/use-auth-session";
+import { MasterServicesList } from "@/features/master-services/MasterServicesList";
 import { ReviewsSection } from "@/features/master-view/ReviewsSection";
 import {
   useMasterCategoriesPublic,
@@ -285,6 +286,13 @@ export default function MasterPublicScreen() {
                     </View>
                   ))}
                 </View>
+              </View>
+            )}
+
+            {/* Прайс-лист */}
+            {masterId && (
+              <View className="mt-8 px-6">
+                <MasterServicesList masterId={masterId} />
               </View>
             )}
 

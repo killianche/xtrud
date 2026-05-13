@@ -6,6 +6,25 @@
 
 ## Текущее состояние
 
+**Sprint 31.5 закрыт — `master_services` миграция + CRUD UI (без radius map).**
+
+Sprint 31.5:
+- **Миграция 0024_master_services** — таблица `master_services (id, master_id FK → master_profiles, title, price_min, price_max, unit, position, created_at, updated_at)`. Enum `service_unit` (per_hour / per_task / per_m2 / per_day). RLS: SELECT public, INSERT/UPDATE/DELETE only own. Trigger: max 20 услуг на мастера. CHECK: title 2–100 chars, price_min ≥ 0, price_max ≥ price_min.
+- **Хуки** `src/features/master-services/use-master-services.ts` — `useMasterServices(masterId)`, `useUpsertMasterService`, `useDeleteMasterService` + `formatPriceRange` helper + `SERVICE_UNIT_LABELS` (RU).
+- **`<MasterServicesSection>`** для `edit-master.tsx` — список (≤20) + Add-кнопка → Modal-форма (title / priceMin / priceMax / unit radio) + edit-pencil + delete-confirm Alert. EmptyState с ListPlus иконкой.
+- **`<MasterServicesList>`** read-only для `master/[id].tsx` — публичная карточка показывает прайс между Категориями и Портфолио. Использует тот же queryKey, обновляется автоматически при правке владельцем.
+- TS-типы регенерированы (`src/types/database.ts`): добавлены `master_services` table + `service_unit` enum.
+
+Карты вынесены из scope осознанно (radius map требует expo-maps или prebuild → отдельный спринт).
+
+Проверки: `tsc --noEmit` ✅, `biome check` ✅ (117 файлов), `vitest` 47/47 ✅.
+
+**Не запускалось вживую — нужно проверить:**
+- В edit-master.tsx: добавить услугу → она появилась в списке; редактировать → значения подтянулись в Modal через `key={initial?.id}`; удалить → Alert + строка пропала.
+- На master/[id].tsx: прайс виден между Категориями и Портфолио, если у мастера ≥1 услуга. У мастера без услуг — секция полностью скрыта (null).
+- RLS: чужой мастер не может писать / удалять чужие master_services (RLS гарантирует, но протестировать в реальной сессии).
+- Trigger 20-limit: попытаться вставить 21-ю → ожидаем error `max_20_services_per_master`.
+
 **Sprint 33.5 закрыт — полный Web Shell (top-nav + chats split-layout + hover).**
 
 Sprint 33.5:
@@ -34,7 +53,7 @@ Sprint 31 (UI-only):
 - **Dirty-check** в `edit-master.tsx` — back-кнопка показывает Alert «Есть несохранённые изменения, выйти?». Submit-кнопка disabled пока `!isDirty`.
 
 **Отложено** (требует миграции БД или новой инфраструктуры):
-- Sprint 31.5: `master_services` таблица + radius map (нужна миграция, `expo-maps`/`react-native-maps` — оба требуют решения по prebuild).
+- Sprint 31.6: radius map для service_radius_km (нужен `expo-maps` или prebuild + `react-native-maps`).
 - Sprint 32: image pipeline с blurhash (миграция БД + edge function для генерации hash при upload).
 
 Проверки: `tsc --noEmit` ✅, `biome check` ✅ (123 файла), `vitest` 47/47 ✅.

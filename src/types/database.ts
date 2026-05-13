@@ -365,6 +365,50 @@ export type Database = {
           },
         ];
       };
+      master_services: {
+        Row: {
+          created_at: string;
+          id: string;
+          master_id: string;
+          position: number;
+          price_max: number | null;
+          price_min: number;
+          title: string;
+          unit: Database["public"]["Enums"]["service_unit"];
+          updated_at: string;
+        };
+        Insert: {
+          created_at?: string;
+          id?: string;
+          master_id: string;
+          position?: number;
+          price_max?: number | null;
+          price_min: number;
+          title: string;
+          unit?: Database["public"]["Enums"]["service_unit"];
+          updated_at?: string;
+        };
+        Update: {
+          created_at?: string;
+          id?: string;
+          master_id?: string;
+          position?: number;
+          price_max?: number | null;
+          price_min?: number;
+          title?: string;
+          unit?: Database["public"]["Enums"]["service_unit"];
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "master_services_master_id_fkey";
+            columns: ["master_id"];
+            isOneToOne: false;
+            referencedRelation: "master_profiles";
+            referencedColumns: ["user_id"];
+          },
+        ];
+      };
       messages: {
         Row: {
           chat_id: string;
@@ -882,6 +926,7 @@ export type Database = {
       response_status: "sent" | "viewed" | "accepted" | "rejected" | "withdrawn";
       review_direction: "client_to_master" | "master_to_client";
       review_status: "visible" | "hidden" | "pending";
+      service_unit: "per_hour" | "per_task" | "per_m2" | "per_day";
       tax_status: "individual" | "self_employed" | "individual_entrepreneur" | "legal_entity";
       user_active_role: "client" | "master";
       user_gender: "male" | "female" | "unspecified";
@@ -1024,6 +1069,7 @@ export const Constants = {
       response_status: ["sent", "viewed", "accepted", "rejected", "withdrawn"],
       review_direction: ["client_to_master", "master_to_client"],
       review_status: ["visible", "hidden", "pending"],
+      service_unit: ["per_hour", "per_task", "per_m2", "per_day"],
       tax_status: ["individual", "self_employed", "individual_entrepreneur", "legal_entity"],
       user_active_role: ["client", "master"],
       user_gender: ["male", "female", "unspecified"],

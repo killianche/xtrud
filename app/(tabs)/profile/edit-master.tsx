@@ -31,6 +31,7 @@ import { useUserRecord } from "@/features/auth/use-user-record";
 import { useCities } from "@/features/cities/use-cities";
 import { MasterProfileFormBody } from "@/features/master-profile/MasterProfileFormBody";
 import { useUpdateMasterProfile } from "@/features/master-profile/use-update-master-profile";
+import { MasterServicesSection } from "@/features/master-services/MasterServicesSection";
 import { supabase } from "@/lib/supabase";
 import { useThemeColor } from "@/lib/use-theme-color";
 import type { Tables } from "@/types/database";
@@ -172,6 +173,10 @@ export default function EditMasterScreen() {
             isBusy={isBusy || citiesLoading}
             cities={cities ?? undefined}
           />
+
+          <View className="mt-8">
+            <MasterServicesSection masterId={userId} />
+          </View>
 
           {submitError && (
             <View className="mt-6 px-6">

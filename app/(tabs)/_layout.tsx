@@ -6,6 +6,7 @@ import {
 import { Slot, Tabs } from "expo-router";
 import { ClipboardList, Home, MessageCircle } from "lucide-react-native";
 import { Platform, useWindowDimensions } from "react-native";
+import { TabBar } from "@/components/TabBar";
 import { WebShell } from "@/components/WebShell";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useAuthSession } from "@/features/auth/use-auth-session";
@@ -57,8 +58,9 @@ export default function TabsLayout() {
 
   const ordersBadge = badgeLabel(isClientRole ? unreadResponses : unreadFeed);
 
-  const tc = useThemeColors(["error", "on-primary", "canvas", "hairline", "ink", "muted"]);
-  const badgeStyle = { backgroundColor: tc.error, color: tc["on-primary"] };
+  const tc = useThemeColors(["error", "canvas", "hairline", "ink"]);
+  // Бейдж всегда на цветном фоне → текст фиксировано белый в обоих режимах.
+  const badgeStyle = { backgroundColor: tc.error, color: "#fff" };
 
   const { colorScheme } = useColorScheme();
   const baseNavTheme = colorScheme === "dark" ? DarkTheme : DefaultTheme;
@@ -88,33 +90,24 @@ export default function TabsLayout() {
   return (
     <NavThemeProvider value={navTheme}>
     <Tabs
-      screenOptions={{
-        headerShown: false,
-        tabBarShowLabel: true,
-        tabBarStyle: {
-          // На web используем CSS-переменные — они реагируют на `.dark` класс мгновенно,
-          // без зависимости от JS colorScheme, который может быть null при SSR/hydration.
-          // На native CSS-vars недоступны, используем JS-значение из palette.
-          backgroundColor: Platform.OS === "web" ? "rgb(var(--canvas))" : tc.canvas,
-          borderTopColor: Platform.OS === "web" ? "rgb(var(--hairline))" : tc.hairline,
-        },
-        tabBarActiveTintColor: tc.ink,
-        tabBarInactiveTintColor: tc.muted,
-      }}
+      tabBar={(props) => <TabBar {...props} />}
+      screenOptions={{ headerShown: false }}
     >
       <Tabs.Screen
         name="index"
         options={{
           title: "Главная",
-          tabBarIcon: ({ color, size }) => <Home color={color} size={size} strokeWidth={1.75} />,
+          tabBarIcon: ({ color, focused }) => (
+            <Home color={color} size={24} strokeWidth={focused ? 2.25 : 1.5} />
+          ),
         }}
       />
       <Tabs.Screen
         name="orders"
         options={{
           title: "Заказы",
-          tabBarIcon: ({ color, size }) => (
-            <ClipboardList color={color} size={size} strokeWidth={1.75} />
+          tabBarIcon: ({ color, focused }) => (
+            <ClipboardList color={color} size={24} strokeWidth={focused ? 2.25 : 1.5} />
           ),
           tabBarBadge: ordersBadge,
           tabBarBadgeStyle: badgeStyle,
@@ -124,8 +117,8 @@ export default function TabsLayout() {
         name="chats"
         options={{
           title: "Чаты",
-          tabBarIcon: ({ color, size }) => (
-            <MessageCircle color={color} size={size} strokeWidth={1.75} />
+          tabBarIcon: ({ color, focused }) => (
+            <MessageCircle color={color} size={24} strokeWidth={focused ? 2.25 : 1.5} />
           ),
           tabBarBadge: chatsBadge,
           tabBarBadgeStyle: badgeStyle,

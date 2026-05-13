@@ -205,17 +205,6 @@ export function TabBar({ state, descriptors, navigation }: BottomTabBarProps) {
             color={isWeb ? "currentColor" : tc["on-primary"]}
           />
         </Pressable>
-        <AppText
-          weight="semibold"
-          className={isWeb ? "text-ink" : undefined}
-          style={
-            isWeb
-              ? { fontSize: 11, lineHeight: 14, marginTop: 4 }
-              : { fontSize: 11, lineHeight: 14, marginTop: 4, color: tc.ink }
-          }
-        >
-          Создать
-        </AppText>
       </View>
 
       {/* Правая часть. */}

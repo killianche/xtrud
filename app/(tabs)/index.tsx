@@ -27,7 +27,6 @@ import {
   HardHat,
   type LucideIcon,
   Paintbrush,
-  Pencil,
   Search,
   Sparkles,
   Square,
@@ -173,10 +172,14 @@ interface ClientHomeProps {
 function ClientHome({ onCategoryPress, onMasterPress, onDescribeTask }: ClientHomeProps) {
   const cityId = useCityStore((s) => s.cityId);
   const cityName = getCityName(cityId);
+  // onDescribeTask пока не используется в hero, но оставляем в props —
+  // родительский HomeTab пробрасывает, в будущем может пригодиться для
+  // другого CTA или quick-task сценария.
+  void onDescribeTask;
 
   return (
     <View>
-      <Hero cityName={cityName} onDescribeTask={onDescribeTask} />
+      <Hero cityName={cityName} />
       <FeaturedVerticals onPress={onCategoryPress} />
       <TopMasters onMasterPress={onMasterPress} />
       <AllCategories onCategoryPress={onCategoryPress} />
@@ -190,10 +193,8 @@ function ClientHome({ onCategoryPress, onMasterPress, onDescribeTask }: ClientHo
 
 function Hero({
   cityName,
-  onDescribeTask,
 }: {
   cityName: string;
-  onDescribeTask: (draft?: string) => void;
 }) {
   const router = useRouter();
   // Город не используется в заголовке, но оставляем для будущего «… в Магасе».
@@ -221,23 +222,6 @@ function Hero({
         </Pressable>
       </View>
 
-      {/* SECONDARY: outline-кнопка «Опишите задачу» с pencil-иконкой.
-          Pill rounded-full перекликается с SearchBar выше — единый визуальный
-          язык. Border hairline + ink text — Vercel button-secondary паттерн.
-          Высота 48px (lg) — меньше чем search (56), естественная иерархия. */}
-      <View className="mt-3">
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Описать задачу"
-          onPress={() => onDescribeTask()}
-          className="flex-row items-center justify-center gap-2 h-12 rounded-full bg-canvas border border-hairline active:opacity-70 px-5"
-        >
-          <Pencil size={16} strokeWidth={1.75} color="currentColor" className="text-ink" />
-          <AppText weight="medium" className="text-body-md text-ink">
-            Опишите задачу
-          </AppText>
-        </Pressable>
-      </View>
     </View>
   );
 }
@@ -438,10 +422,10 @@ function AllCategories({ onCategoryPress }: { onCategoryPress: (id: string) => v
     <View className="mt-10">
       <View className="px-5">
         <AppText weight="semibold" className="text-title-lg text-ink">
-          Категории ремонта
+          Все мастера
         </AppText>
         <AppText className="mt-1 text-body-sm text-mute">
-          Выберите тип работы — увидите мастеров
+          Выберите категорию
         </AppText>
       </View>
 

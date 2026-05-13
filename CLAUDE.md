@@ -120,6 +120,7 @@ git push
 | `legacy/DESIGN_CALCOM.md`, `legacy/DESIGN_SYSTEM.md`, `legacy/DESIGN_REFERENCE_CALCOM.md` | **Legacy.** Cal.com-inspired система, заменена 2026-05-13. Оставлено для истории решений. Не использовать. |
 | `.claude/rules/working-rules.md` | Базовые правила работы AI-агента (автозагружаются) |
 | `.claude/rules/lazyweb-rules.md` | Когда и как использовать Lazyweb MCP для дизайн-референсов |
+| `.claude/rules/design-quality.md` | **Качество UI/UX — обязательно перед каждой UI-задачей.** Чек-лист, anti-patterns, контракт между задачами. |
 | `.claude/rules/*.md` | Доп. правила, привязанные к конкретным путям через `paths:` frontmatter |
 
 ---

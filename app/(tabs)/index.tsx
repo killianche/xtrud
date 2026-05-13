@@ -27,6 +27,7 @@ import {
   HardHat,
   type LucideIcon,
   Paintbrush,
+  Pencil,
   Search,
   Sparkles,
   Square,
@@ -215,24 +216,28 @@ function Hero({
         >
           <Search size={20} strokeWidth={1.75} color="currentColor" className="text-mute" />
           <AppText className="flex-1 text-body-md text-mute">
-            Сантехник, электрик, плитка…
+            Специалист или услуга…
           </AppText>
         </Pressable>
       </View>
 
-      {/* SECONDARY: ghost text-link «Или опишите задачу →». Без бордера и фона —
-          меньше визуального давления, не конкурирует с primary SearchBar. */}
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel="Описать задачу"
-        onPress={() => onDescribeTask()}
-        className="mt-4 self-center active:opacity-70"
-        hitSlop={8}
-      >
-        <AppText weight="medium" className="text-body-sm text-link">
-          Или опишите задачу — мастера найдут вас →
-        </AppText>
-      </Pressable>
+      {/* SECONDARY: outline-кнопка «Опишите задачу» с pencil-иконкой.
+          Pill rounded-full перекликается с SearchBar выше — единый визуальный
+          язык. Border hairline + ink text — Vercel button-secondary паттерн.
+          Высота 48px (lg) — меньше чем search (56), естественная иерархия. */}
+      <View className="mt-3">
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Описать задачу"
+          onPress={() => onDescribeTask()}
+          className="flex-row items-center justify-center gap-2 h-12 rounded-full bg-canvas border border-hairline active:opacity-70 px-5"
+        >
+          <Pencil size={16} strokeWidth={1.75} color="currentColor" className="text-ink" />
+          <AppText weight="medium" className="text-body-md text-ink">
+            Опишите задачу
+          </AppText>
+        </Pressable>
+      </View>
     </View>
   );
 }

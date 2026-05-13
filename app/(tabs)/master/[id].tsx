@@ -16,12 +16,20 @@
 
 import { LinearGradient } from "expo-linear-gradient";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { ChevronLeft, Flag, MapPin, Star, Wrench } from "lucide-react-native";
+import { Building2, ChevronLeft, Flag, MapPin, Star, Users, Wrench } from "lucide-react-native";
 import { useState } from "react";
 import { Image, Pressable, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
 import { Avatar, Button, Card, Chip } from "@/components/ui";
+
+/** Лейблы режимов прайсинга для отображения на карточке категории мастера. */
+const PRICING_MODE_LABELS: Record<string, string> = {
+  per_hour: "Почасовая оплата",
+  per_unit: "За единицу работы",
+  negotiable: "Цена договорная",
+  on_quote: "По смете",
+};
 import { useAuthSession } from "@/features/auth/use-auth-session";
 import { MasterServicesList } from "@/features/master-services/MasterServicesList";
 import { ReviewsSection } from "@/features/master-view/ReviewsSection";
@@ -211,6 +219,26 @@ export default function MasterPublicScreen() {
                 {pluralizeClosedDeals(closedDeals)}
               </Chip>
             ) : null}
+
+            {/* Бейдж бригады/компании — ключевой trust-сигнал для конструкции
+                «работаю не один, есть команда». По умолчанию account_type='solo'
+                и бейдж не показывается. */}
+            {m?.account_type === "brigade" ? (
+              <Chip
+                size="sm"
+                leftIcon={<Users size={12} strokeWidth={1.75} color="currentColor" />}
+              >
+                Бригада{m.team_size && m.team_size > 1 ? ` ${m.team_size} чел.` : ""}
+              </Chip>
+            ) : null}
+            {m?.account_type === "company" ? (
+              <Chip
+                size="sm"
+                leftIcon={<Building2 size={12} strokeWidth={1.75} color="currentColor" />}
+              >
+                Компания
+              </Chip>
+            ) : null}
           </View>
 
           {/* Bio */}
@@ -219,18 +247,52 @@ export default function MasterPublicScreen() {
           ) : null}
         </View>
 
-        {/* Категории */}
+        {/* Что делаю — рич-секция по каждой L2-категории мастера.
+            У одного мастера может быть несколько категорий (Электрика +
+            Сантехника + Отделочные), у каждой свой category_bio, pricing_mode,
+            радиус выезда — это видно явно, а не одним общим chip-rowом. */}
         {categories.data && categories.data.length > 0 ? (
-          <View className="px-5 mt-6">
+          <View className="px-5 mt-8">
             <AppText weight="semibold" className="text-ink text-title-md mb-3">
-              Категории
+              Что делаю
             </AppText>
-            <View className="flex-row flex-wrap gap-2">
-              {categories.data.map((c) => (
-                <Chip key={c.l2_id} variant="outline">
-                  {c.l2?.name_ru ?? c.l2_id}
-                </Chip>
-              ))}
+            <View className="gap-3">
+              {categories.data.map((c) => {
+                const name = c.l2?.name_ru ?? c.l2_id;
+                const pricingLabel = PRICING_MODE_LABELS[c.pricing_mode] ?? null;
+                return (
+                  <Card key={c.l2_id} variant="soft" padding="md">
+                    <View className="flex-row items-center justify-between gap-2">
+                      <AppText weight="semibold" className="text-ink text-body-md">
+                        {name}
+                      </AppText>
+                      {pricingLabel ? (
+                        <Chip size="sm" mono>
+                          {pricingLabel}
+                        </Chip>
+                      ) : null}
+                    </View>
+                    {c.category_bio ? (
+                      <AppText className="text-body text-body-sm mt-2 leading-5">
+                        {c.category_bio}
+                      </AppText>
+                    ) : null}
+                    {c.category_radius_km && c.category_radius_km > 0 ? (
+                      <View className="mt-2 flex-row items-center gap-1">
+                        <MapPin
+                          size={12}
+                          strokeWidth={1.75}
+                          color="currentColor"
+                          className="text-mute"
+                        />
+                        <AppText weight="mono" className="text-mute text-mono-caption">
+                          Радиус выезда: {c.category_radius_km} км
+                        </AppText>
+                      </View>
+                    ) : null}
+                  </Card>
+                );
+              })}
             </View>
           </View>
         ) : null}

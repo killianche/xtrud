@@ -34,6 +34,8 @@ export type MasterPublicProfile = {
     | "closed_deals"
     | "languages"
     | "status"
+    | "account_type"
+    | "team_size"
   > | null;
   city: { id: string; name: string } | null;
 };
@@ -55,7 +57,7 @@ export function useMasterPublicProfile(masterId: string | null | undefined) {
       const { data: masterData, error: masterErr } = await supabase
         .from("master_profiles")
         .select(
-          "bio, experience_years, has_tools, has_transport, service_radius_km, rating_overall_avg, rating_overall_count, closed_deals, languages, status",
+          "bio, experience_years, has_tools, has_transport, service_radius_km, rating_overall_avg, rating_overall_count, closed_deals, languages, status, account_type, team_size",
         )
         .eq("user_id", masterId)
         .maybeSingle();

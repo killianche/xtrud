@@ -98,7 +98,9 @@ _Все открытые задачи которые подняли но не з
 - [x] `cad568e` — удалить «Бесплатно · Ответы за 30 минут» под CTA
 - [x] `dba902a` — `npm run web:dev` watch+rebuild без stop/start preview (`scripts/dev-web-local.mjs`)
 - [x] `b48016a` — TASKS.md как трекер задач между сессиями + CLAUDE.md обновлён указателем
-- [x] **Категории фокус на ремонт**: миграция `0035_focus_repair_categories` применена на прод (11 ремонтных категорий, остальные скрыты). UI плиток получил Lucide-иконку из `categories_l2.icon` поля (HardHat/Paintbrush/Zap/Droplet/DoorOpen/Square/Flame/Wind/Armchair/Wrench/Sparkles). Заголовок «Все категории» → «Категории ремонта» + подзаголовок «Выберите тип работы — увидите мастеров».
+- [x] **Категории фокус на ремонт**: миграция `0035_focus_repair_categories` применена на прод (11 ремонтных категорий, остальные скрыты). UI плиток получил Lucide-иконку из `categories_l2.icon` поля. Заголовок «Все категории» → «Категории ремонта» + подзаголовок.
+- [x] `0a071df` — визуальный split главной (passive: hero+CTA / active: SearchBar+фильтры) + filter chips (Категория/Город/★4+/Опыт/С инструментом) + `/search` route stub. Сделано по Lazyweb-паттерну OpenTable (SearchBar + горизонтальные filter chips).
+- [x] **Мульти-категории + бригада в master detail**: trust-row на карточке мастера получил бейдж `account_type` (Бригада X чел. с Users-иконкой / Компания с Building2-иконкой). Секция «Категории» chip-row → рич-Cards с category_bio + pricing_mode chip + radius. Хук `useMasterPublicProfile` расширен полями `account_type`, `team_size`. На проде главный test-мастер помечен `brigade` + team_size=4.
 
 ---
 

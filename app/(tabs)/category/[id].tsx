@@ -42,8 +42,9 @@ export default function CategoryDetailScreen() {
 
   return (
     <View className="flex-1 bg-canvas" style={{ paddingTop: insets.top }}>
-      {/* Top bar */}
-      <View className="flex-row items-center justify-between px-4 py-2 border-b border-hairline">
+      {/* Top bar — только back-кнопка. Заголовок дублировался с H1 ниже,
+          убран по запросу. */}
+      <View className="flex-row items-center px-4 py-2">
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Назад"
@@ -52,9 +53,6 @@ export default function CategoryDetailScreen() {
         >
           <ChevronLeft size={22} strokeWidth={2} color="currentColor" />
         </Pressable>
-        <AppText weight="semibold" className="text-ink text-body-md flex-1 ml-2" numberOfLines={1}>
-          {categoryName}
-        </AppText>
       </View>
 
       <ScrollView

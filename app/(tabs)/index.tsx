@@ -232,10 +232,10 @@ function DescribeTaskCallout({ onPress }: { onPress: () => void }) {
         </View>
         <View className="flex-1">
           <AppText weight="semibold" className="text-title-md text-ink">
-            Опишите задачу — мастера найдут вас
+            Опишите задачу — мастера ответят:
           </AppText>
           <AppText className="mt-1 text-body-sm text-mute">
-            Бесплатно. Откликов обычно много, выбираете сами.
+            Готов сделать заказ за 1000 ₽! Выберете себе подходящего.
           </AppText>
           <Pressable
             accessibilityRole="button"
@@ -408,9 +408,6 @@ function AllCategories({ onCategoryPress }: { onCategoryPress: (id: string) => v
       <View className="px-5">
         <AppText weight="semibold" className="text-title-lg text-ink">
           Все мастера
-        </AppText>
-        <AppText className="mt-1 text-body-sm text-mute">
-          Выберите категорию
         </AppText>
       </View>
 

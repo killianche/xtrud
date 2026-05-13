@@ -20,11 +20,12 @@
 
 import { useRouter } from "expo-router";
 import { Pencil, User } from "lucide-react-native";
+import { useState } from "react";
 import { FlatList, Pressable, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
 import { CitySelector, useCityStore, getCityName } from "@/components/CitySelector";
-import { Avatar, Button, Card, Chip, SearchBar } from "@/components/ui";
+import { Avatar, Button, Card, Chip, Input } from "@/components/ui";
 import { useAuthSession } from "@/features/auth/use-auth-session";
 import { useUserRecord } from "@/features/auth/use-user-record";
 import { useFeaturedCategories } from "@/features/categories/use-featured-categories";
@@ -63,7 +64,14 @@ export default function HomeTab() {
         <ClientHome
           onCategoryPress={(id) => router.push(`/category/${id}` as never)}
           onMasterPress={(id) => router.push(`/master/${id}` as never)}
-          onDescribeTask={() => router.push("/orders/new" as never)}
+          onDescribeTask={(draft) => {
+            // Передаём текст черновика в визард — orders/new подхватит его как
+            // начальное значение поля description.
+            const url = draft
+              ? `/orders/new?draft=${encodeURIComponent(draft)}`
+              : "/orders/new";
+            router.push(url as never);
+          }}
         />
       )}
     </ScrollView>
@@ -127,7 +135,8 @@ function TopBar({
 interface ClientHomeProps {
   onCategoryPress: (id: string) => void;
   onMasterPress: (id: string) => void;
-  onDescribeTask: () => void;
+  /** Принимает черновик описания задачи (если пользователь начал писать в hero-input). */
+  onDescribeTask: (draft?: string) => void;
 }
 
 function ClientHome({ onCategoryPress, onMasterPress, onDescribeTask }: ClientHomeProps) {
@@ -145,41 +154,63 @@ function ClientHome({ onCategoryPress, onMasterPress, onDescribeTask }: ClientHo
 }
 
 // ----------------------------------------------------------------------------
-// Hero — заголовок + поиск + CTA
+// Hero — заголовок + inline task input + CTA + trust-чипы
 // ----------------------------------------------------------------------------
 
-function Hero({ cityName, onDescribeTask }: { cityName: string; onDescribeTask: () => void }) {
+function Hero({
+  cityName,
+  onDescribeTask,
+}: {
+  cityName: string;
+  onDescribeTask: (draft?: string) => void;
+}) {
+  const [draft, setDraft] = useState("");
+
+  const handleSubmit = () => {
+    onDescribeTask(draft.trim() || undefined);
+  };
+
   return (
     <View className="px-5 mt-8">
       <AppText weight="display" className="text-display-lg tracking-tight text-ink">
         Услуги в {cityName === "Магас" ? "Ингушетии" : cityName}
       </AppText>
-      <AppText className="mt-2 text-body-md text-body">
-        Опишите задачу — мастера сами вам напишут
+      <AppText className="mt-2 text-body-md text-body leading-6">
+        Опишите задачу — мастера откликнутся с ценами. Ваш номер увидит только тот,
+        кому вы напишете сами.
       </AppText>
 
+      {/* Inline task input: карандаш слева (Pencil = «писать», не «искать») */}
       <View className="mt-5">
-        <SearchBar placeholder="Например: установить кондиционер" />
+        <Input
+          size="lg"
+          value={draft}
+          onChangeText={setDraft}
+          placeholder="Например: установить кондиционер"
+          leftIcon={<Pencil size={18} strokeWidth={1.75} color="currentColor" />}
+          returnKeyType="go"
+          onSubmitEditing={handleSubmit}
+          multiline={false}
+        />
       </View>
 
+      {/* CTA — переходит в визард с draft-текстом (или пустым) */}
       <View className="mt-3">
-        <Button
-          size="lg"
-          fullWidth
-          leftIcon={<Pencil size={16} strokeWidth={1.75} color="#ffffff" />}
-          onPress={onDescribeTask}
-        >
-          Описать задачу
+        <Button size="lg" fullWidth onPress={handleSubmit}>
+          {draft.trim() ? "Продолжить" : "Описать задачу"}
         </Button>
       </View>
 
-      <View className="mt-3 flex-row items-center gap-2">
-        <Chip size="sm" variant="default" mono>
+      {/* Trust-чипы: 3 ключевых сигнала value */}
+      <View className="mt-3 flex-row items-center gap-2 flex-wrap">
+        <Chip size="sm" mono>
           Бесплатно
         </Chip>
-        <AppText className="text-body-sm text-mute">·</AppText>
-        <Chip size="sm" variant="default" mono>
-          Отвечают за 30 минут
+        <Chip size="sm" mono>
+          Номер скрыт
+        </Chip>
+        <Chip size="sm" mono>
+          Ответы за 30 мин
         </Chip>
       </View>
     </View>

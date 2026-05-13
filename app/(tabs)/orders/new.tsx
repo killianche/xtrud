@@ -28,7 +28,12 @@ export default function NewOrderScreen() {
   const router = useRouter();
   const { session } = useAuthSession();
   const userId = session?.user?.id;
-  const params = useLocalSearchParams<{ l2?: string }>();
+  const params = useLocalSearchParams<{ l2?: string; draft?: string }>();
+  // Черновик описания, пришедший с главной (Hero inline-input).
+  const initialDraft =
+    typeof params.draft === "string" && params.draft.length > 0
+      ? decodeURIComponent(params.draft)
+      : "";
 
   const { data: categories } = useVisibleCategories();
   const { data: cities } = useCities();
@@ -49,8 +54,8 @@ export default function NewOrderScreen() {
     resolver: zodResolver(createOrderSchema),
     defaultValues: {
       l2Id: "",
-      title: "",
-      description: "",
+      title: initialDraft.slice(0, 80),
+      description: initialDraft,
       cityId: "",
       district: "",
       urgency: "flexible",

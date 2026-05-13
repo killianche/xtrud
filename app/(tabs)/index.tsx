@@ -181,11 +181,6 @@ function Hero({
           Написать свою задачу
         </Button>
       </View>
-
-      {/* Trust — одна muted строка, не чипы. Меньше визуального шума. */}
-      <AppText className="mt-3 text-body-sm text-mute text-center">
-        Бесплатно · Ответы за 30 минут
-      </AppText>
     </View>
   );
 }

@@ -19,9 +19,39 @@
  */
 
 import { useRouter } from "expo-router";
-import { User } from "lucide-react-native";
+import {
+  Armchair,
+  DoorOpen,
+  Droplet,
+  Flame,
+  HardHat,
+  type LucideIcon,
+  Paintbrush,
+  Sparkles,
+  Square,
+  User,
+  Wind,
+  Wrench,
+  Zap,
+} from "lucide-react-native";
 import { FlatList, Pressable, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+
+// Маппинг имён иконок из БД (categories_l2.icon) → Lucide-компоненты.
+// Используется в плитках категорий на главной.
+const CATEGORY_ICONS: Record<string, LucideIcon> = {
+  HardHat,
+  Paintbrush,
+  Zap,
+  Droplet,
+  DoorOpen,
+  Square,
+  Flame,
+  Wind,
+  Armchair,
+  Wrench,
+  Sparkles,
+};
 import { AppText } from "@/components/AppText";
 import { CitySelector, useCityStore, getCityName } from "@/components/CitySelector";
 import { Avatar, Button, Card } from "@/components/ui";
@@ -381,7 +411,10 @@ function AllCategories({ onCategoryPress }: { onCategoryPress: (id: string) => v
     <View className="mt-10">
       <View className="px-5">
         <AppText weight="semibold" className="text-title-lg text-ink">
-          Все категории
+          Категории ремонта
+        </AppText>
+        <AppText className="mt-1 text-body-sm text-mute">
+          Выберите тип работы — увидите мастеров
         </AppText>
       </View>
 
@@ -408,21 +441,36 @@ function AllCategories({ onCategoryPress }: { onCategoryPress: (id: string) => v
         </View>
       ) : (
         <View className="mt-4 flex-row flex-wrap gap-3 px-5">
-          {categories.map((cat) => (
-            <Pressable
-              key={cat.id}
-              onPress={() => onCategoryPress(cat.id)}
-              accessibilityRole="button"
-              accessibilityLabel={cat.name_ru}
-              className="w-[48%] md:w-[31%] lg:w-[23%] active:opacity-70"
-            >
-              <Card variant="soft" padding="md" style={{ aspectRatio: 1, justifyContent: "flex-end" }}>
-                <AppText weight="semibold" className="text-body-md text-ink" numberOfLines={2}>
-                  {cat.name_ru}
-                </AppText>
-              </Card>
-            </Pressable>
-          ))}
+          {categories.map((cat) => {
+            const Icon = CATEGORY_ICONS[cat.icon] ?? Wrench;
+            return (
+              <Pressable
+                key={cat.id}
+                onPress={() => onCategoryPress(cat.id)}
+                accessibilityRole="button"
+                accessibilityLabel={cat.name_ru}
+                className="w-[48%] md:w-[31%] lg:w-[23%] active:opacity-70"
+              >
+                <Card variant="soft" padding="md" style={{ aspectRatio: 1 }}>
+                  <View className="flex-1 justify-between">
+                    {/* Иконка сверху — крупная, через currentColor наследует
+                        text-ink (тёмный на canvas-soft, светлый в dark theme). */}
+                    <View className="text-ink">
+                      <Icon size={28} strokeWidth={1.5} color="currentColor" />
+                    </View>
+                    {/* Название снизу — semibold body-md, max 2 строки. */}
+                    <AppText
+                      weight="semibold"
+                      className="text-body-md text-ink"
+                      numberOfLines={2}
+                    >
+                      {cat.name_ru}
+                    </AppText>
+                  </View>
+                </Card>
+              </Pressable>
+            );
+          })}
         </View>
       )}
     </View>

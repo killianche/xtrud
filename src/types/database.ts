@@ -890,6 +890,7 @@ export type Database = {
           district: string | null
           first_name: string | null
           id: string
+          is_admin: boolean
           is_client: boolean
           is_master: boolean
           last_name: string | null
@@ -908,6 +909,7 @@ export type Database = {
           district?: string | null
           first_name?: string | null
           id: string
+          is_admin?: boolean
           is_client?: boolean
           is_master?: boolean
           last_name?: string | null
@@ -926,6 +928,7 @@ export type Database = {
           district?: string | null
           first_name?: string | null
           id?: string
+          is_admin?: boolean
           is_client?: boolean
           is_master?: boolean
           last_name?: string | null
@@ -1005,6 +1008,7 @@ export type Database = {
         Returns: undefined
       }
       expire_old_orders: { Args: never; Returns: number }
+      is_current_user_admin: { Args: never; Returns: boolean }
       mark_chat_read: { Args: { p_chat_id: string }; Returns: undefined }
       mark_feed_seen: { Args: never; Returns: undefined }
       mark_notifications_read: { Args: { p_ids?: string[] }; Returns: number }

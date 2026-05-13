@@ -12,7 +12,15 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
-import { ChevronLeft, ChevronRight, LogOut, Pencil, Plus, Star } from "lucide-react-native";
+import {
+  ChevronLeft,
+  ChevronRight,
+  LogOut,
+  Pencil,
+  Plus,
+  ShieldCheck,
+  Star,
+} from "lucide-react-native";
 import { useMemo, useState } from "react";
 import { ActivityIndicator, Alert, Pressable, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -347,6 +355,22 @@ export default function ProfileScreen() {
           </AppText>
           <ThemeSwitcher />
         </View>
+
+        {/* Admin entry — видно только админам */}
+        {(user as { is_admin?: boolean } | null)?.is_admin && (
+          <View className="mt-10 px-6">
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => router.push("/(tabs)/admin" as never)}
+              className="h-12 flex-row items-center justify-center gap-2 rounded-md border border-hairline bg-canvas active:opacity-70"
+            >
+              <ShieldCheck size={18} strokeWidth={1.75} color={themeColors.body} />
+              <AppText weight="semibold" className="text-button text-body">
+                Модерация
+              </AppText>
+            </Pressable>
+          </View>
+        )}
 
         {/* Sign out */}
         <View className="mt-10 px-6">

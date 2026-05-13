@@ -68,11 +68,12 @@ export default function CategorySelectScreen() {
         </AppText>
       </View>
 
-      {/* Typeahead инпут */}
+      {/* Typeahead инпут — крупный (h-16 + 20px шрифт), чтобы не было
+          ощущения «инпут размером с шрифт». */}
       <View className="px-5 mt-5">
-        <View className="flex-row items-center gap-2 h-12 rounded-xl bg-canvas-soft px-3">
+        <View className="flex-row items-center gap-3 h-16 rounded-2xl bg-canvas-soft px-4">
           <View className="text-mute">
-            <Search size={18} strokeWidth={1.75} color="currentColor" />
+            <Search size={22} strokeWidth={1.75} color="currentColor" />
           </View>
           <TextInput
             ref={inputRef}
@@ -84,7 +85,8 @@ export default function CategorySelectScreen() {
             className="flex-1 text-ink"
             style={{
               fontFamily: "Geist, Inter, system-ui, sans-serif",
-              fontSize: 16,
+              fontSize: 20,
+              fontWeight: "500",
               paddingVertical: 0,
             }}
           />
@@ -93,9 +95,9 @@ export default function CategorySelectScreen() {
               accessibilityRole="button"
               accessibilityLabel="Очистить"
               onPress={() => setQuery("")}
-              className="h-7 w-7 items-center justify-center rounded-full active:opacity-60 text-mute"
+              className="h-9 w-9 items-center justify-center rounded-full active:opacity-60 text-mute"
             >
-              <X size={16} strokeWidth={2} color="currentColor" />
+              <X size={20} strokeWidth={2} color="currentColor" />
             </Pressable>
           )}
         </View>

@@ -112,6 +112,15 @@ export default function TabsLayout() {
           tabBarBadge: ordersBadge,
           tabBarBadgeStyle: badgeStyle,
         }}
+        listeners={({ navigation }) => ({
+          tabPress: (e) => {
+            // Сбрасываем стек orders/ на корень. Без этого тап «Заказы»
+            // на orders/category-select или orders/new оставлял текущий
+            // экран открытым.
+            e.preventDefault();
+            navigation.navigate("orders", { screen: "index" } as never);
+          },
+        })}
       />
       <Tabs.Screen
         name="chats"

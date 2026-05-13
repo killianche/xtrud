@@ -46,23 +46,48 @@ export function useMastersByL2(l2Id: string | null | undefined) {
     queryFn: async () => {
       if (!l2Id) return [];
 
+      // FK master_categories.master_id ссылается на master_profiles(user_id),
+      // НЕ на users(id). Поэтому JOIN до users делаем через master_profiles:
+      // master_categories → master_profiles → users.
       const { data, error } = await supabase
         .from("master_categories")
         .select(
           `
           master_id,
-          user:users!master_categories_master_id_fkey (
-            id, first_name, last_name, avatar_url, city_id, district
-          ),
           profile:master_profiles!master_categories_master_id_fkey (
-            rating_overall_avg, rating_overall_count, closed_deals, experience_years, bio
+            rating_overall_avg, rating_overall_count, closed_deals, experience_years, bio,
+            user:users!master_profiles_user_id_fkey (
+              id, first_name, last_name, avatar_url, city_id, district
+            )
           )
           `,
         )
         .eq("l2_id", l2Id);
       if (error) throw error;
 
-      const rows = (data ?? []) as unknown as Row[];
+      // Развёртываем nested user из profile → row.user (чтобы дальнейший код
+      // работал с прежним shape).
+      type NestedRow = {
+        master_id: string;
+        profile:
+          | (Omit<NonNullable<Row["profile"]>, never> & {
+              user: Row["user"];
+            })
+          | null;
+      };
+      const rows: Row[] = ((data ?? []) as unknown as NestedRow[]).map((r) => ({
+        master_id: r.master_id,
+        user: r.profile?.user ?? null,
+        profile: r.profile
+          ? {
+              rating_overall_avg: r.profile.rating_overall_avg,
+              rating_overall_count: r.profile.rating_overall_count,
+              closed_deals: r.profile.closed_deals,
+              experience_years: r.profile.experience_years,
+              bio: r.profile.bio,
+            }
+          : null,
+      }));
 
       const cityIds = Array.from(
         new Set(rows.map((r) => r.user?.city_id).filter((v): v is string => !!v)),

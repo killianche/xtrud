@@ -18,6 +18,7 @@
  * Master-режим (если active_role === "master") — отдельный экран MasterHomeContent.
  */
 
+import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import { ChevronRight, Search, User } from "lucide-react-native";
 import { FlatList, Pressable, ScrollView, View } from "react-native";
@@ -154,75 +155,8 @@ function ClientHome({ onCategoryPress, onMasterPress, onDescribeTask }: ClientHo
   return (
     <View>
       <Hero cityName={cityName} />
-      <FrequentSearches onCategoryPress={onCategoryPress} />
       <DescribeTaskCallout onPress={() => onDescribeTask()} />
       <AllCategories onCategoryPress={onCategoryPress} />
-    </View>
-  );
-}
-
-// ----------------------------------------------------------------------------
-// FrequentSearches — «Часто ищут» горизонтальная карусель chip-pills.
-// Заменила «Лучшие мастера рядом» по запросу. Static-список самых популярных
-// услуг для Ингушетии (ремонт), при тапе ведёт на /category/[l2_id].
-// ----------------------------------------------------------------------------
-
-const FREQUENT_SEARCHES: { label: string; l2_id: string; icon: string }[] = [
-  { label: "Сантехник",          l2_id: "plumbing",                 icon: "Droplet" },
-  { label: "Электрик",           l2_id: "electrical",               icon: "Zap" },
-  { label: "Плиточник",          l2_id: "tiling",                   icon: "Grid3x3" },
-  { label: "Натяжной потолок",   l2_id: "tension-ceilings",         icon: "CloudFog" },
-  { label: "Установка двери",    l2_id: "doors",                    icon: "DoorOpen" },
-  { label: "Сборка мебели",      l2_id: "furniture",                icon: "Armchair" },
-  { label: "Замок",              l2_id: "locks-security",           icon: "Lock" },
-  { label: "Кондиционер",        l2_id: "climate",                  icon: "Thermometer" },
-  { label: "Окна",               l2_id: "windows",                  icon: "RectangleHorizontal" },
-  { label: "Уборка",             l2_id: "cleaning-post-renovation", icon: "Sparkles" },
-  { label: "Сварка ворот",       l2_id: "welding",                  icon: "Flame" },
-  { label: "Бурение скважин",    l2_id: "drilling-wells",           icon: "Drill" },
-];
-
-function FrequentSearches({ onCategoryPress }: { onCategoryPress: (id: string) => void }) {
-  // Берём первые 6 — самые ходовые. Yandex-style: 2-col grid плитки,
-  // bg-canvas-soft, большая Lucide-иконка справа-снизу (декоративно)
-  // + название слева-сверху semibold.
-  const top6 = FREQUENT_SEARCHES.slice(0, 6);
-  return (
-    <View className="mt-10 px-5">
-      <AppText weight="semibold" className="text-title-lg text-ink">
-        Часто ищут
-      </AppText>
-      <View className="mt-3 flex-row flex-wrap gap-3">
-        {top6.map((item) => {
-          const Icon = getCategoryIcon(item.icon);
-          return (
-            <Pressable
-              key={item.l2_id + item.label}
-              accessibilityRole="button"
-              accessibilityLabel={item.label}
-              onPress={() => onCategoryPress(item.l2_id)}
-              className="w-[48%] rounded-xl bg-canvas-soft p-4 active:opacity-70 overflow-hidden"
-              style={{ minHeight: 100 }}
-            >
-              <AppText
-                weight="semibold"
-                className="text-body-md text-ink"
-                numberOfLines={2}
-              >
-                {item.label}
-              </AppText>
-              {/* Большая тематичная иконка справа-снизу — декор, как
-                  «фотка-плитка» у Яндекс.Услуг. */}
-              <View
-                className="text-ink"
-                style={{ position: "absolute", right: 8, bottom: 8, opacity: 0.85 }}
-              >
-                <Icon size={48} strokeWidth={1.25} color="currentColor" />
-              </View>
-            </Pressable>
-          );
-        })}
-      </View>
     </View>
   );
 }
@@ -234,24 +168,42 @@ function FrequentSearches({ onCategoryPress }: { onCategoryPress: (id: string) =
 // ----------------------------------------------------------------------------
 
 function DescribeTaskCallout({ onPress }: { onPress: () => void }) {
+  // Mesh-gradient callout — Vercel-style hero (DESIGN.md override #2:
+  // «mesh gradient только в hero на главной»). Preview-палитра Vercel
+  // (violet → pink) — единственный цветной акцент на странице.
   return (
-    <View className="mt-10 mx-5 rounded-xl bg-ink p-6">
-      <AppText weight="bold" className="text-title-lg text-on-primary">
-        Опишите задачу — мастера ответят:
-      </AppText>
-      <AppText className="mt-2 text-body-md text-on-primary opacity-80">
-        Готов сделать заказ за 1000 ₽! Выберете себе подходящего.
-      </AppText>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel="Создать заказ"
-        onPress={onPress}
-        className="mt-4 self-start h-11 px-5 rounded-full bg-canvas active:opacity-85 items-center justify-center"
+    <View className="mt-10 mx-5 rounded-2xl overflow-hidden">
+      <LinearGradient
+        colors={["#7928ca", "#ff0080"]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={{ padding: 28 }}
       >
-        <AppText weight="semibold" className="text-body-md text-ink">
-          Создать заказ
+        <AppText
+          weight="bold"
+          className="text-display-sm tracking-tight"
+          style={{ color: "#ffffff" }}
+        >
+          Опишите задачу — мастера ответят
         </AppText>
-      </Pressable>
+        <AppText
+          className="mt-3 text-body-md"
+          style={{ color: "#ffffff", opacity: 0.9 }}
+        >
+          «Готов за 1000 ₽» — выберете себе подходящего из откликов.
+        </AppText>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Создать заказ"
+          onPress={onPress}
+          className="mt-5 self-start h-12 px-6 rounded-full active:opacity-85 items-center justify-center"
+          style={{ backgroundColor: "#ffffff" }}
+        >
+          <AppText weight="semibold" className="text-body-md" style={{ color: "#7928ca" }}>
+            Создать заказ
+          </AppText>
+        </Pressable>
+      </LinearGradient>
     </View>
   );
 }

@@ -1,6 +1,6 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { CheckCircle2, ChevronLeft, Clock } from "lucide-react-native";
+import { Bell, CheckCircle2, ChevronLeft, Clock, type LucideIcon, Pencil, Phone } from "lucide-react-native";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, View } from "react-native";
@@ -243,26 +243,37 @@ export default function NewOrderScreen() {
           </View>
         )}
 
-        {/* 3 шага «как это работает» — показываем только на step 1 (создание заказа).
-            Vercel-стиль: ink + canvas-soft фон + mono-цифра в круге, чтобы
-            пользователь сразу видел весь flow и не боялся публиковать. */}
+        {/* 3 шага «как это работает» — показываем только на step 1.
+            Vercel-card стиль: единая bg-canvas-soft карточка с rounded-xl +
+            hairline между строк, маленькая иконка в bg-canvas круге +
+            заголовок ink + подсказка mute. Caption-заголовок сверху. */}
         {step === 1 && (
-          <View className="px-6 pb-8 gap-3">
-            <HowItWorksRow
-              n="1"
-              title="Создадим задачу"
-              hint="Опишите что нужно сделать своими словами."
-            />
-            <HowItWorksRow
-              n="2"
-              title="Мастера откликнутся"
-              hint="Напишут цену и сроки прямо в чате."
-            />
-            <HowItWorksRow
-              n="3"
-              title="Выберите своего"
-              hint="Напишите или позвоните мастеру. Ваш номер мастера не видят."
-            />
+          <View className="px-6 pb-8">
+            <AppText
+              weight="medium"
+              className="text-caption text-mute uppercase tracking-wider"
+            >
+              Как это работает
+            </AppText>
+            <View className="mt-3 rounded-xl bg-canvas-soft">
+              <HowItWorksRow
+                icon={Pencil}
+                title="Создадим задачу"
+                hint="Опишите что нужно сделать своими словами."
+              />
+              <View className="h-px bg-hairline mx-4" />
+              <HowItWorksRow
+                icon={Bell}
+                title="Мастера откликнутся"
+                hint="Напишут цену и сроки прямо в чате."
+              />
+              <View className="h-px bg-hairline mx-4" />
+              <HowItWorksRow
+                icon={Phone}
+                title="Можете позвонить подходящему"
+                hint="Ваш номер мастера не видят 📵"
+              />
+            </View>
           </View>
         )}
 
@@ -316,19 +327,25 @@ export default function NewOrderScreen() {
 }
 
 // ----------------------------------------------------------------------------
-// HowItWorksRow — строка «1. Заголовок / подсказка» для верхней onboarding-секции
-// на step 1 создания заказа. Vercel-стиль: монохром, mono-цифра в soft-круге.
+// HowItWorksRow — строка внутри Vercel-card «Как это работает».
+// Маленькая Lucide-иконка в bg-canvas круге + title ink + hint mute.
 // ----------------------------------------------------------------------------
 
-function HowItWorksRow({ n, title, hint }: { n: string; title: string; hint: string }) {
+function HowItWorksRow({
+  icon: Icon,
+  title,
+  hint,
+}: {
+  icon: LucideIcon;
+  title: string;
+  hint: string;
+}) {
   return (
-    <View className="flex-row items-start gap-4">
-      <View className="h-10 w-10 items-center justify-center rounded-full bg-canvas-soft shrink-0">
-        <AppText weight="mono" className="text-body-md text-ink">
-          {n}
-        </AppText>
+    <View className="flex-row items-start gap-4 px-4 py-4">
+      <View className="h-9 w-9 items-center justify-center rounded-full bg-canvas shrink-0 text-ink">
+        <Icon size={18} strokeWidth={1.75} color="currentColor" />
       </View>
-      <View className="flex-1 pt-1">
+      <View className="flex-1 pt-0.5">
         <AppText weight="semibold" className="text-body-md text-ink">
           {title}
         </AppText>

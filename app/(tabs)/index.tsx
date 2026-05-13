@@ -196,7 +196,7 @@ function Hero({
           Inline-input скрыт по решению UX: один путь, без неоднозначности. */}
       <View className="mt-5">
         <Button size="lg" fullWidth onPress={() => onDescribeTask()}>
-          Описать задачу
+          Написать свою задачу
         </Button>
       </View>
 

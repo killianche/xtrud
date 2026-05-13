@@ -22,6 +22,7 @@ import {
   CheckCircle2,
   ChevronLeft,
   CircleAlert,
+  Flag,
   MapPin,
   Star,
   Truck,
@@ -36,6 +37,7 @@ import { CardListSkeleton, HeroSkeleton, Skeleton } from "@/components/Skeleton"
 import { useAuthSession } from "@/features/auth/use-auth-session";
 import { MasterServicesList } from "@/features/master-services/MasterServicesList";
 import { ReviewsSection } from "@/features/master-view/ReviewsSection";
+import { ReportModal } from "@/features/reports/ReportModal";
 import {
   useMasterCategoriesPublic,
   useMasterPublicProfile,
@@ -68,6 +70,10 @@ export default function MasterPublicScreen() {
   const reviews = useReviewsForTarget(masterId, "client_to_master");
   const refresh = usePullToRefresh();
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+  const [reportOpen, setReportOpen] = useState(false);
+  // Удобный алиас для проверок ниже (отличается от masterId / id)
+  const userId = currentUserId;
+  const id = masterId;
   const tc = useThemeColors([
     "ink",
     "muted-soft",
@@ -169,6 +175,24 @@ export default function MasterPublicScreen() {
                   <ChevronLeft size={24} strokeWidth={1.75} color={tc["on-dark"]} />
                 </Pressable>
               </View>
+
+              {/* Report button — справа сверху */}
+              {userId && id && userId !== id && (
+                <View
+                  className="absolute right-3 flex-row items-center"
+                  style={{ top: insets.top + 4 }}
+                >
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="Пожаловаться на мастера"
+                    onPress={() => setReportOpen(true)}
+                    hitSlop={12}
+                    className="h-10 w-10 items-center justify-center rounded-full bg-black/40 active:opacity-70"
+                  >
+                    <Flag size={20} strokeWidth={1.75} color={tc["on-dark"]} />
+                  </Pressable>
+                </View>
+              )}
 
               {/* Имя + бейджи поверх gradient */}
               <View className="absolute right-6 bottom-5 left-6">
@@ -345,6 +369,15 @@ export default function MasterPublicScreen() {
         onClose={() => setLightboxIndex(null)}
         onChangeIndex={setLightboxIndex}
       />
+
+      {masterId && (
+        <ReportModal
+          visible={reportOpen}
+          targetType="user"
+          targetId={masterId}
+          onClose={() => setReportOpen(false)}
+        />
+      )}
     </View>
   );
 }

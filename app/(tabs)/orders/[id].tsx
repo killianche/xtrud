@@ -2,6 +2,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import {
   ChevronLeft,
+  Flag,
   MapPin,
   MessageSquare,
   MoreVertical,
@@ -45,6 +46,7 @@ import {
   useSubmitResponse,
 } from "@/features/orders/use-order-responses";
 import { useMarkResponsesViewed } from "@/features/orders/use-unread-responses";
+import { ReportModal } from "@/features/reports/ReportModal";
 import { useMyReviewForOrder, useSubmitReview } from "@/features/reviews/use-reviews";
 import { useThemeColors } from "@/lib/use-theme-color";
 import type { Tables } from "@/types/database";
@@ -79,6 +81,7 @@ export default function OrderDetailScreen() {
   const isOwner = !!userId && !!order && order.client_id === userId;
   const isMasterRole = user?.active_role === "master";
   const tc = useThemeColors(["ink", "muted-soft", "body"]);
+  const [reportOpen, setReportOpen] = useState(false);
 
   // Sprint 12.3 — при open order detail (если owner) помечаем отклики просмотренными.
   const markResponsesViewed = useMarkResponsesViewed(userId);
@@ -129,6 +132,17 @@ export default function OrderDetailScreen() {
               className="h-10 w-10 items-center justify-center rounded-full bg-surface-2 active:opacity-70"
             >
               <Pencil size={16} strokeWidth={1.75} color={tc.body} />
+            </Pressable>
+          )}
+          {!isOwner && id && userId && order && (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Пожаловаться на заказ"
+              onPress={() => setReportOpen(true)}
+              hitSlop={12}
+              className="h-10 w-10 items-center justify-center rounded-full bg-surface-2 active:opacity-70"
+            >
+              <Flag size={16} strokeWidth={1.75} color={tc.body} />
             </Pressable>
           )}
           {isOwner &&
@@ -247,6 +261,15 @@ export default function OrderDetailScreen() {
             );
           }}
           onSnooze={() => dismissFor(id, SNOOZE_MS)}
+        />
+      )}
+
+      {id && (
+        <ReportModal
+          visible={reportOpen}
+          targetType="order"
+          targetId={id}
+          onClose={() => setReportOpen(false)}
         />
       )}
     </KeyboardAvoidingView>

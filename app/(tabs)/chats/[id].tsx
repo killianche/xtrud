@@ -18,6 +18,7 @@ import { OrderStatusBadge, type OrderStatusValue } from "@/components/OrderStatu
 import { useAuthSession } from "@/features/auth/use-auth-session";
 import { maskContactsInText } from "@/features/chat/mask-contacts";
 import { QuickReplyChips } from "@/features/chat/QuickReplyChips";
+import { ReportModal } from "@/features/reports/ReportModal";
 import {
   type ChatMessage,
   useChatMessages,
@@ -54,6 +55,7 @@ export default function ChatThreadScreen() {
   }, [id, userId, messages?.length, markReadMutate]);
 
   const [text, setText] = useState("");
+  const [reportMessageId, setReportMessageId] = useState<string | null>(null);
   const scrollRef = useRef<ScrollView>(null);
 
   // Автоскролл вниз при появлении новых сообщений
@@ -164,7 +166,8 @@ export default function ChatThreadScreen() {
           </View>
         )}
 
-        {messages && renderMessagesWithSeparators(messages, userId, partner)}
+        {messages &&
+          renderMessagesWithSeparators(messages, userId, partner, setReportMessageId)}
 
         {sendMessage.error && (
           <AppText weight="medium" className="mt-2 text-caption text-error">
@@ -207,6 +210,15 @@ export default function ChatThreadScreen() {
           <Send size={20} strokeWidth={2} color={canSend ? tc["on-primary"] : tc["muted-soft"]} />
         </Pressable>
       </View>
+
+      {reportMessageId && (
+        <ReportModal
+          visible={!!reportMessageId}
+          targetType="message"
+          targetId={reportMessageId}
+          onClose={() => setReportMessageId(null)}
+        />
+      )}
     </KeyboardAvoidingView>
   );
 }
@@ -225,10 +237,12 @@ function MessageBubble({
   message,
   isMine,
   partner,
+  onLongPress,
 }: {
   message: ChatMessage;
   isMine: boolean;
   partner: ChatPartner;
+  onLongPress?: (messageId: string) => void;
 }) {
   const time = new Date(message.created_at).toLocaleTimeString("ru-RU", {
     hour: "2-digit",
@@ -239,6 +253,9 @@ function MessageBubble({
     : "Собеседник";
 
   const displayText = maskContactsInText(message.text);
+  const handleLongPress = () => {
+    if (!isMine && onLongPress) onLongPress(message.id);
+  };
 
   if (isMine) {
     return (
@@ -251,8 +268,7 @@ function MessageBubble({
     );
   }
 
-  // Чужие — с аватаром слева (нарушение принципа №2 «фото — главный нерв»
-  // было: только буква-инициал).
+  // Чужие — с аватаром слева. Long-press → report (если callback задан).
   return (
     <View className="max-w-[85%] flex-row items-end gap-2 self-start">
       <Avatar
@@ -262,9 +278,15 @@ function MessageBubble({
         size="sm"
       />
       <View className="flex-shrink">
-        <View className="rounded-2xl bg-surface-2 px-4 py-2">
-          <AppText className="text-body-md text-ink">{displayText}</AppText>
-        </View>
+        <Pressable
+          onLongPress={handleLongPress}
+          accessibilityHint="Долгое нажатие — пожаловаться на сообщение"
+          delayLongPress={400}
+        >
+          <View className="rounded-2xl bg-surface-2 px-4 py-2">
+            <AppText className="text-body-md text-ink">{displayText}</AppText>
+          </View>
+        </Pressable>
         <AppText className="mt-1 text-caption-xs text-muted-soft">{time}</AppText>
       </View>
     </View>
@@ -276,6 +298,7 @@ function renderMessagesWithSeparators(
   messages: ChatMessage[],
   userId: string | undefined,
   partner: ChatPartner,
+  onLongPress: (messageId: string) => void,
 ): React.ReactNode[] {
   let lastDateKey: string | null = null;
   const items: React.ReactNode[] = [];
@@ -287,7 +310,13 @@ function renderMessagesWithSeparators(
       lastDateKey = dateKey;
     }
     items.push(
-      <MessageBubble key={m.id} message={m} isMine={m.sender_id === userId} partner={partner} />,
+      <MessageBubble
+        key={m.id}
+        message={m}
+        isMine={m.sender_id === userId}
+        partner={partner}
+        onLongPress={onLongPress}
+      />,
     );
   }
   return items;

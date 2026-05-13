@@ -750,6 +750,66 @@ export type Database = {
           },
         ]
       }
+      reports: {
+        Row: {
+          admin_note: string | null
+          created_at: string
+          description: string | null
+          id: string
+          reason: Database["public"]["Enums"]["report_reason"]
+          reporter_id: string
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: Database["public"]["Enums"]["report_status"]
+          target_id: string
+          target_type: Database["public"]["Enums"]["report_target_type"]
+          updated_at: string
+        }
+        Insert: {
+          admin_note?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          reason: Database["public"]["Enums"]["report_reason"]
+          reporter_id: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: Database["public"]["Enums"]["report_status"]
+          target_id: string
+          target_type: Database["public"]["Enums"]["report_target_type"]
+          updated_at?: string
+        }
+        Update: {
+          admin_note?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          reason?: Database["public"]["Enums"]["report_reason"]
+          reporter_id?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: Database["public"]["Enums"]["report_status"]
+          target_id?: string
+          target_type?: Database["public"]["Enums"]["report_target_type"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reports_reporter_id_fkey"
+            columns: ["reporter_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reports_reviewed_by_fkey"
+            columns: ["reviewed_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       reviews: {
         Row: {
           author_id: string
@@ -995,6 +1055,17 @@ export type Database = {
         | "cancelled"
         | "expired"
       order_urgency: "urgent" | "this_week" | "this_month" | "flexible"
+      report_reason:
+        | "spam"
+        | "fraud"
+        | "inappropriate"
+        | "fake_profile"
+        | "fake_review"
+        | "off_platform"
+        | "safety"
+        | "other"
+      report_status: "pending" | "reviewed" | "resolved" | "dismissed"
+      report_target_type: "user" | "order" | "review" | "message"
       response_status: "sent" | "viewed" | "accepted" | "rejected" | "withdrawn"
       review_direction: "client_to_master" | "master_to_client"
       review_status: "visible" | "hidden" | "pending"
@@ -1165,6 +1236,18 @@ export const Constants = {
         "expired",
       ],
       order_urgency: ["urgent", "this_week", "this_month", "flexible"],
+      report_reason: [
+        "spam",
+        "fraud",
+        "inappropriate",
+        "fake_profile",
+        "fake_review",
+        "off_platform",
+        "safety",
+        "other",
+      ],
+      report_status: ["pending", "reviewed", "resolved", "dismissed"],
+      report_target_type: ["user", "order", "review", "message"],
       response_status: ["sent", "viewed", "accepted", "rejected", "withdrawn"],
       review_direction: ["client_to_master", "master_to_client"],
       review_status: ["visible", "hidden", "pending"],

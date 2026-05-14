@@ -1,19 +1,26 @@
-// Карточка заказа в списке (для клиентского "Мои заказы" и master feed).
-// Паттерн: tag-первая chip с категорией → название → meta (срок, локация, время).
+// OrderRow — карточка заказа в списке.
+//
+// Дизайн-паттерн (Lazyweb: Craft / Amie / Asana «My tasks»): inbox-row с
+// tinted category-icon tile слева, title крупно, мета-row снизу со
+// статус-точкой + срочность + локация + N откликов. Время справа сверху,
+// чтобы не сталкиваться с status-pill (раньше «Завершён» наезжал на дату).
 
 import { MapPin } from "lucide-react-native";
 import { Pressable, View } from "react-native";
 import { AppText } from "@/components/AppText";
-import { OrderStatusBadge, type OrderStatusValue } from "@/components/OrderStatusBadge";
+import type { OrderStatusValue } from "@/components/OrderStatusBadge";
+import { getCategoryIcon } from "@/lib/category-icons";
 import { urgencyLabel } from "@/features/orders/order-schema";
 import type { OrderUrgency } from "@/features/orders/use-create-order";
 import { pluralizeResponses } from "@/lib/pluralize";
-import { useThemeColor } from "@/lib/use-theme-color";
+import { useThemeColors } from "@/lib/use-theme-color";
 
 export interface OrderRowProps {
   id: string;
   title: string;
   categoryName: string;
+  /** Lucide-icon ключ из categories_l2.icon. Используется в tinted tile. */
+  categoryIcon?: string | null;
   cityName: string;
   district?: string | null;
   urgency: OrderUrgency;
@@ -23,58 +30,130 @@ export interface OrderRowProps {
   onPress?: () => void;
 }
 
-function timeAgo(iso: string): string {
+/**
+ * Короткая дата: «11 ч», «2 д», «23 мая» — без «назад», т.к. справа в
+ * inbox-row нет места для длинных строк (раньше «11 ч назад» обрезался
+ * status-pill'ом).
+ */
+function timeAgoShort(iso: string): string {
   const created = new Date(iso).getTime();
   const now = Date.now();
   const diffSec = Math.max(0, Math.floor((now - created) / 1000));
-  if (diffSec < 60) return "только что";
+  if (diffSec < 60) return "сейчас";
   const diffMin = Math.floor(diffSec / 60);
-  if (diffMin < 60) return `${diffMin} мин назад`;
+  if (diffMin < 60) return `${diffMin} мин`;
   const diffHr = Math.floor(diffMin / 60);
-  if (diffHr < 24) return `${diffHr} ч назад`;
+  if (diffHr < 24) return `${diffHr} ч`;
   const diffDay = Math.floor(diffHr / 24);
-  return `${diffDay} д назад`;
+  if (diffDay < 7) return `${diffDay} д`;
+  return new Date(iso).toLocaleDateString("ru-RU", { day: "numeric", month: "short" });
 }
 
+/**
+ * Цвет статус-точки + короткий лейбл. Точка маленькая (8px) — статус
+ * читается как inline-метка, не как тяжёлый pill.
+ */
+interface StatusMeta {
+  label: string;
+  dotClass: string;
+  textClass: string;
+  dimmed: boolean; // приглушаем карточку целиком для cancelled / expired
+}
+
+const STATUS_META: Record<OrderStatusValue, StatusMeta> = {
+  draft: { label: "Черновик", dotClass: "bg-muted-soft", textClass: "text-mute", dimmed: true },
+  open: { label: "Открыта", dotClass: "bg-accent", textClass: "text-accent", dimmed: false },
+  in_progress: {
+    label: "В работе",
+    dotClass: "bg-warning",
+    textClass: "text-warning",
+    dimmed: false,
+  },
+  completed: {
+    label: "Завершён",
+    dotClass: "bg-success",
+    textClass: "text-success",
+    dimmed: true,
+  },
+  cancelled: { label: "Отменён", dotClass: "bg-muted-soft", textClass: "text-mute", dimmed: true },
+  expired: { label: "Истёк", dotClass: "bg-muted-soft", textClass: "text-mute", dimmed: true },
+};
+
 export function OrderRow(props: OrderRowProps) {
-  const mutedSoftColor = useThemeColor("muted-soft");
+  const tc = useThemeColors(["ink", "muted-soft", "mute"]);
+  const Icon = getCategoryIcon(props.categoryIcon);
+  const statusMeta = props.status ? STATUS_META[props.status] : null;
+  const dimmed = statusMeta?.dimmed ?? false;
+
   return (
     <Pressable
       accessibilityRole="button"
+      accessibilityLabel={`${props.title} — ${statusMeta?.label ?? ""}`}
       onPress={props.onPress}
-      className="rounded-lg border border-hairline bg-canvas p-4 active:opacity-70 hover:bg-surface-2"
+      className="flex-row items-start gap-3 rounded-xl border border-hairline bg-canvas p-4 active:bg-canvas-soft hover:bg-canvas-soft"
+      style={dimmed ? { opacity: 0.7 } : undefined}
     >
-      {/* Категория chip + статус + время */}
-      <View className="flex-row items-center justify-between gap-2">
-        <View className="flex-1 flex-row items-center gap-2">
-          <View className="rounded-pill bg-surface-2 px-3 py-1">
-            <AppText weight="medium" className="text-caption-xs text-body">
-              {props.categoryName}
-            </AppText>
-          </View>
-          {props.status && <OrderStatusBadge status={props.status} />}
-        </View>
-        <AppText className="text-caption-xs text-muted-soft">{timeAgo(props.createdAt)}</AppText>
+      {/* Category icon tile — Vercel-style tinted square. Заменяет category-pill
+          (раньше «Сантехника» висела как pill сверху, отдельной строкой). */}
+      <View className="h-11 w-11 items-center justify-center rounded-xl bg-canvas-soft-2">
+        <Icon size={20} strokeWidth={1.75} color={tc.ink} />
       </View>
 
-      {/* Title */}
-      <AppText weight="semibold" className="mt-3 text-body-md text-ink" numberOfLines={2}>
-        {props.title}
-      </AppText>
-
-      {/* Meta */}
-      <View className="mt-2 flex-row flex-wrap items-center gap-x-3 gap-y-1">
-        <AppText className="text-caption text-muted">{urgencyLabel(props.urgency)}</AppText>
-        <View className="flex-row items-center gap-1">
-          <MapPin size={12} strokeWidth={1.75} color={mutedSoftColor} />
-          <AppText className="text-caption text-muted">
-            {props.cityName}
-            {props.district ? ` · ${props.district}` : ""}
+      {/* Right column — title + meta */}
+      <View className="flex-1 min-w-0">
+        {/* Row 1: title (semibold body-md) + time (mono caption right) */}
+        <View className="flex-row items-start gap-2">
+          <AppText
+            weight="semibold"
+            className="flex-1 text-body-md text-ink"
+            numberOfLines={2}
+          >
+            {props.title}
+          </AppText>
+          <AppText
+            weight="mono"
+            className="mt-0.5 text-mono-caption text-muted-soft"
+          >
+            {timeAgoShort(props.createdAt)}
           </AppText>
         </View>
-        <AppText className="text-caption text-muted">
-          {pluralizeResponses(props.responsesCount)}
+
+        {/* Row 2: category eyebrow */}
+        <AppText
+          className="mt-1 text-caption text-mute"
+          numberOfLines={1}
+        >
+          {props.categoryName}
         </AppText>
+
+        {/* Row 3: status-dot + status + · + meta. Перенос строк gap-y-1
+            на случай длинных локаций. */}
+        <View className="mt-2 flex-row flex-wrap items-center gap-x-2 gap-y-1">
+          {statusMeta ? (
+            <View className="flex-row items-center gap-1.5">
+              <View className={`h-2 w-2 rounded-full ${statusMeta.dotClass}`} />
+              <AppText weight="semibold" className={`text-caption ${statusMeta.textClass}`}>
+                {statusMeta.label}
+              </AppText>
+            </View>
+          ) : null}
+          {statusMeta ? (
+            <AppText className="text-caption text-muted-soft">·</AppText>
+          ) : null}
+          <AppText className="text-caption text-mute">{urgencyLabel(props.urgency)}</AppText>
+          <AppText className="text-caption text-muted-soft">·</AppText>
+          <View className="flex-row items-center gap-1">
+            <MapPin size={11} strokeWidth={1.75} color={tc["muted-soft"]} />
+            <AppText className="text-caption text-mute" numberOfLines={1}>
+              {props.cityName}
+              {props.district ? ` · ${props.district}` : ""}
+            </AppText>
+          </View>
+          <AppText className="text-caption text-muted-soft">·</AppText>
+          <AppText className="text-caption text-mute">
+            {pluralizeResponses(props.responsesCount)}
+          </AppText>
+        </View>
       </View>
     </Pressable>
   );

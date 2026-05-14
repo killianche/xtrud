@@ -1,8 +1,9 @@
 import { useRouter } from "expo-router";
 import { Plus } from "lucide-react-native";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { scrollViewToTop, useTabScrollResetCounter } from "@/lib/tab-scroll-reset";
 import { AppText } from "@/components/AppText";
 import { OrderRow } from "@/components/OrderRow";
 import { SafetyBanner } from "@/components/SafetyBanner";
@@ -15,7 +16,7 @@ import { useMyResponses } from "@/features/orders/use-my-responses";
 import { useOrdersAssignedToMe } from "@/features/orders/use-orders-assigned-to-me";
 import { useMarkFeedSeen } from "@/features/orders/use-unread-feed";
 import { usePullToRefresh } from "@/hooks/use-pull-to-refresh";
-import { useThemeColor, useThemeColors } from "@/lib/use-theme-color";
+import { useThemeColor } from "@/lib/use-theme-color";
 
 export default function OrdersScreen() {
   const { session } = useAuthSession();
@@ -42,12 +43,19 @@ function ClientOrdersView({ userId }: ClientOrdersViewProps) {
   const router = useRouter();
   const { data: orders, isLoading, error, refetch } = useMyOrders(userId);
   const hasOrders = (orders?.length ?? 0) > 0;
-  const tc = useThemeColors(["muted-soft", "on-primary"]);
   const refresh = usePullToRefresh();
+
+  // Tap-on-active-tab → scroll to top.
+  const scrollRef = useRef<ScrollView>(null);
+  const resetCounter = useTabScrollResetCounter("orders");
+  useEffect(() => {
+    if (resetCounter > 0) scrollViewToTop(scrollRef);
+  }, [resetCounter]);
 
   return (
     <View className="flex-1 bg-canvas">
       <ScrollView
+        ref={scrollRef}
         contentContainerStyle={{
           paddingTop: insets.top + 24,
           paddingBottom: insets.bottom + 100,
@@ -92,6 +100,7 @@ function ClientOrdersView({ userId }: ClientOrdersViewProps) {
                 id={o.id}
                 title={o.title}
                 categoryName={o.l2?.name_ru ?? o.l2_id}
+                categoryIcon={o.l2?.icon ?? null}
                 cityName={o.city?.name ?? o.city_id ?? "Вся Ингушетия"}
                 district={o.district}
                 urgency={o.urgency}
@@ -115,20 +124,10 @@ function ClientOrdersView({ userId }: ClientOrdersViewProps) {
           </View>
         )}
       </ScrollView>
-
-      <Pressable
-        accessibilityRole="button"
-        onPress={() => router.push("/(tabs)/orders/new")}
-        className="absolute right-6 h-14 flex-row items-center gap-2 rounded-pill bg-primary px-5 active:opacity-80"
-        // bottom = home-indicator + TabBar height (52) + воздух (16).
-        // Без TabBar-offset FAB перекрывал нижний таб «Профиль» на iPhone.
-        style={{ bottom: insets.bottom + 52 + 16 }}
-      >
-        <Plus size={20} strokeWidth={2.25} color={tc["on-primary"]} />
-        <AppText weight="semibold" className="text-button text-on-primary">
-          Создать заказ
-        </AppText>
-      </Pressable>
+      {/* FAB «Создать заказ» удалён по фидбэку user 2026-05-14: дублирует
+          5-й таб («+ Создать») в TabBar — две точки входа на одной странице
+          избыточны и перекрывали контент. Путь к созданию остаётся через
+          таб-бар. */}
     </View>
   );
 }
@@ -182,8 +181,16 @@ function MasterOrdersView({ userId }: MasterOrdersViewProps) {
   const hasCategories = l2Ids.length > 0;
   const refresh = usePullToRefresh();
 
+  // Tap-on-active-tab → scroll to top.
+  const scrollRef = useRef<ScrollView>(null);
+  const resetCounter = useTabScrollResetCounter("orders");
+  useEffect(() => {
+    if (resetCounter > 0) scrollViewToTop(scrollRef);
+  }, [resetCounter]);
+
   return (
     <ScrollView
+      ref={scrollRef}
       className="flex-1 bg-canvas"
       contentContainerStyle={{
         paddingTop: insets.top + 24,
@@ -314,7 +321,7 @@ interface NewOrdersTabProps {
   orders: {
     id: string;
     title: string;
-    l2: { name_ru: string } | null;
+    l2: { name_ru: string; icon: string | null } | null;
     l2_id: string;
     city: { name: string } | null;
     city_id: string | null;
@@ -406,6 +413,7 @@ function NewOrdersTab({
           id={o.id}
           title={o.title}
           categoryName={o.l2?.name_ru ?? o.l2_id}
+          categoryIcon={o.l2?.icon ?? null}
           cityName={o.city?.name ?? o.city_id ?? "Вся Ингушетия"}
           district={o.district}
           urgency={o.urgency}
@@ -471,6 +479,7 @@ function RespondedTab({ responses, isLoading, onOrderPress }: RespondedTabProps)
           id={order.id}
           title={order.title}
           categoryName={order.l2?.name_ru ?? order.l2_id}
+          categoryIcon={order.l2?.icon ?? null}
           cityName={order.city?.name ?? order.city_id ?? "Вся Ингушетия"}
           district={order.district}
           urgency={order.urgency}
@@ -518,6 +527,7 @@ function AssignedTab({ orders, isLoading, onOrderPress }: AssignedTabProps) {
           id={o.id}
           title={o.title}
           categoryName={o.l2?.name_ru ?? o.l2_id}
+          categoryIcon={o.l2?.icon ?? null}
           cityName={o.city?.name ?? o.city_id ?? "Вся Ингушетия"}
           district={o.district}
           urgency={o.urgency}

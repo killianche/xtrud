@@ -1,6 +1,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import {
+  Check,
   CheckCircle2,
   ChevronLeft,
   ChevronRight,
@@ -1328,38 +1329,52 @@ function CompletionSection({ orderId, order, userId }: CompletionSectionProps) {
   const isBusy = completeOrder.isPending;
   const isClient = order.client_id === userId;
 
+  // Активные тексты — кто и что делает. Раньше «Работа выполнена» читалось
+  // как success-banner (info-state), не как CTA. Теперь: клиент **подтверждает**,
+  // мастер **сообщает что закончил**.
+  const buttonLabel = isClient ? "Подтвердить выполнение" : "Я закончил работу";
+  const captionText = isClient
+    ? "Когда мастер закончит — нажмите эту кнопку, чтобы оставить отзыв."
+    : "Нажмите, когда работа сделана — клиент сможет оставить отзыв.";
+
   return (
-    <View className="mt-6 px-5">
-      {/* Filled success pill, full-width — это ключевое state-transition
-          действие («работа закончена»), должно явно бросаться в глаза.
-          Раньше было ghost border-success — терялось. */}
+    <View className="mt-8 px-5">
+      {/* Section label сверху (mono eyebrow) превращает блок из «банера»
+          в осмысленную часть страницы — как другие секции (Ваш мастер,
+          Откликнулись). Дальше — Vercel primary CTA, явная кнопка-действие. */}
+      <AppText
+        weight="mono"
+        className="text-mono-caption text-mute uppercase tracking-widest"
+      >
+        Завершение работы
+      </AppText>
+
       <Pressable
         accessibilityRole="button"
+        accessibilityLabel={buttonLabel}
         disabled={isBusy}
         onPress={() => completeOrder.mutate({ orderId, userId })}
-        className={`h-12 flex-row items-center justify-center gap-2 rounded-pill ${
-          isBusy ? "bg-canvas-soft-2" : "bg-success active:opacity-85"
+        className={`mt-3 h-14 flex-row items-center justify-center gap-2 rounded-pill ${
+          isBusy ? "bg-canvas-soft-2" : "bg-primary active:opacity-80"
         }`}
       >
         {isBusy ? (
           <ActivityIndicator size="small" color={tc.mute} />
         ) : (
           <>
-            <CheckCircle2 size={18} strokeWidth={2.25} color={tc["on-primary"]} />
+            <Check size={18} strokeWidth={2.25} color={tc["on-primary"]} />
             <AppText
               weight="semibold"
-              className="text-button"
+              className="text-button-lg"
               style={{ color: tc["on-primary"] }}
             >
-              Работа выполнена
+              {buttonLabel}
             </AppText>
           </>
         )}
       </Pressable>
-      <AppText className="mt-2 text-center text-caption text-mute">
-        {isClient
-          ? "Отметьте, когда мастер закончил — потом можно оставить отзыв."
-          : "Отметьте, когда работа выполнена — клиент сможет оставить отзыв."}
+      <AppText className="mt-3 text-center text-caption text-mute">
+        {captionText}
       </AppText>
       {completeOrder.error && (
         <AppText weight="medium" className="mt-2 text-center text-caption text-error">

@@ -24,12 +24,15 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
 import { useSearchableServices } from "@/features/categories/use-searchable-services";
 import { filterServicesByQuery, highlightMatch } from "@/lib/highlight-match";
+import { useSafeBack } from "@/lib/use-safe-back";
 
 export default function SearchScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const [query, setQuery] = useState("");
   const inputRef = useRef<TextInput>(null);
+  // safeBack: deeplink/refresh → home (поиск открывается всегда из home).
+  const goBack = useSafeBack("/" as const);
 
   // Гарантированный autofocus + сброс query при каждом открытии экрана.
   // RNW autoFocus иногда не срабатывает после navigation/cache — ручной
@@ -57,7 +60,7 @@ export default function SearchScreen() {
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Назад"
-          onPress={() => router.back()}
+          onPress={goBack}
           hitSlop={12}
           className="h-9 w-9 items-center justify-center rounded-full active:opacity-70 text-ink"
         >
@@ -137,7 +140,13 @@ export default function SearchScreen() {
             data={results}
             keyExtractor={(item) => `${item.type}-${item.id}`}
             keyboardShouldPersistTaps="handled"
-            contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 8, paddingBottom: 80 }}
+            contentContainerStyle={{
+              paddingHorizontal: 20,
+              paddingTop: 8,
+              // home-indicator safe-area + воздух (24). Без +bottom список
+              // подрезает последние строки на iPhone X+.
+              paddingBottom: insets.bottom + 24,
+            }}
           renderItem={({ item }) => {
             const segments = highlightMatch(item.name_ru, query);
             return (

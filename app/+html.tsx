@@ -28,10 +28,13 @@ const themeGuardScript = `
 })();
 `;
 
+// html/body фоны — заходят за safe-area (на iPhone X+ это area под notch и
+// home-indicator). При overscroll bounce и pull-to-refresh виден этот цвет,
+// поэтому он должен совпадать с canvas-токеном.
 const responsiveBackground = `
-body { background-color: #ffffff; }
+html, body { background-color: #ffffff; }
 @media (prefers-color-scheme: dark) {
-  body { background-color: #0a0a0a; }
+  html, body { background-color: #0a0a0a; }
 }
 `;
 
@@ -42,6 +45,16 @@ export default function Root({ children }: PropsWithChildren) {
         <meta charSet="utf-8" />
         <meta httpEquiv="X-UA-Compatible" content="IE=edge" />
         <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+        {/* theme-color — Safari iOS красит address-bar и notch-area в этот цвет.
+            Прописываем два variant'а: light/dark — Safari подхватит активный
+            автоматически по prefers-color-scheme. */}
+        <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
+        <meta name="theme-color" content="#0a0a0a" media="(prefers-color-scheme: dark)" />
+        {/* iOS standalone (Add to Home Screen): чёрная статус-бар тема,
+            прозрачная — наш canvas-color виден сквозь неё. */}
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        <meta name="mobile-web-app-capable" content="yes" />
         <ScrollViewStyleReset />
         {/* biome-ignore lint/security/noDangerouslySetInnerHtml: inline theme guard для устранения FOUC */}
         <style dangerouslySetInnerHTML={{ __html: responsiveBackground }} />

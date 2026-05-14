@@ -92,7 +92,7 @@ function ClientOrdersView({ userId }: ClientOrdersViewProps) {
                 id={o.id}
                 title={o.title}
                 categoryName={o.l2?.name_ru ?? o.l2_id}
-                cityName={o.city?.name ?? o.city_id}
+                cityName={o.city?.name ?? o.city_id ?? "Вся Ингушетия"}
                 district={o.district}
                 urgency={o.urgency}
                 responsesCount={o.responses_count}
@@ -119,8 +119,10 @@ function ClientOrdersView({ userId }: ClientOrdersViewProps) {
       <Pressable
         accessibilityRole="button"
         onPress={() => router.push("/(tabs)/orders/new")}
-        className="absolute right-6 bottom-6 h-14 flex-row items-center gap-2 rounded-pill bg-primary px-5 active:opacity-80"
-        style={{ marginBottom: insets.bottom + 12 }}
+        className="absolute right-6 h-14 flex-row items-center gap-2 rounded-pill bg-primary px-5 active:opacity-80"
+        // bottom = home-indicator + TabBar height (52) + воздух (16).
+        // Без TabBar-offset FAB перекрывал нижний таб «Профиль» на iPhone.
+        style={{ bottom: insets.bottom + 52 + 16 }}
       >
         <Plus size={20} strokeWidth={2.25} color={tc["on-primary"]} />
         <AppText weight="semibold" className="text-button text-on-primary">
@@ -315,7 +317,7 @@ interface NewOrdersTabProps {
     l2: { name_ru: string } | null;
     l2_id: string;
     city: { name: string } | null;
-    city_id: string;
+    city_id: string | null;
     district: string | null;
     urgency: import("@/features/orders/use-create-order").OrderUrgency;
     responses_count: number;
@@ -404,7 +406,7 @@ function NewOrdersTab({
           id={o.id}
           title={o.title}
           categoryName={o.l2?.name_ru ?? o.l2_id}
-          cityName={o.city?.name ?? o.city_id}
+          cityName={o.city?.name ?? o.city_id ?? "Вся Ингушетия"}
           district={o.district}
           urgency={o.urgency}
           responsesCount={o.responses_count}
@@ -469,7 +471,7 @@ function RespondedTab({ responses, isLoading, onOrderPress }: RespondedTabProps)
           id={order.id}
           title={order.title}
           categoryName={order.l2?.name_ru ?? order.l2_id}
-          cityName={order.city?.name ?? order.city_id}
+          cityName={order.city?.name ?? order.city_id ?? "Вся Ингушетия"}
           district={order.district}
           urgency={order.urgency}
           responsesCount={order.responses_count}
@@ -516,7 +518,7 @@ function AssignedTab({ orders, isLoading, onOrderPress }: AssignedTabProps) {
           id={o.id}
           title={o.title}
           categoryName={o.l2?.name_ru ?? o.l2_id}
-          cityName={o.city?.name ?? o.city_id}
+          cityName={o.city?.name ?? o.city_id ?? "Вся Ингушетия"}
           district={o.district}
           urgency={o.urgency}
           responsesCount={o.responses_count}

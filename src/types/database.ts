@@ -1213,6 +1213,10 @@ export type Database = {
         Args: { p_order_id: string; p_master_id: string }
         Returns: string
       }
+      reject_response: {
+        Args: { p_response_id: string }
+        Returns: undefined
+      }
       complete_master_onboarding: {
         Args: {
           p_bio: string

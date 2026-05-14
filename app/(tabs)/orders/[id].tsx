@@ -12,6 +12,7 @@ import {
   Pencil,
   Star,
   Wallet,
+  X,
 } from "lucide-react-native";
 import { useEffect, useRef, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
@@ -36,6 +37,7 @@ import { useUserRecord } from "@/features/auth/use-user-record";
 import { BottomSheet } from "@/components/ui";
 import { useMyChats } from "@/features/chat/use-my-chats";
 import { useStartChatWithMaster } from "@/features/chat/use-start-chat";
+import { useRejectResponse } from "@/features/orders/use-reject-response";
 import {
   OutcomeTrackingModal,
   SNOOZE_MS,
@@ -505,15 +507,20 @@ interface ClientResponsesSectionProps {
 
 function ClientResponsesSection({ orderId, order, chatId }: ClientResponsesSectionProps) {
   const router = useRouter();
+  const tc = useThemeColors(["muted-soft"]);
   const { data: responses, isLoading, error } = useOrderResponses(orderId);
   const acceptResponse = useAcceptResponse();
   const startChat = useStartChatWithMaster();
+  const rejectResponse = useRejectResponse();
 
   // Точечный pending-state: какой именно мастер сейчас в процессе действия.
   // Без этого `mutation.isPending` triggers loading-state у ВСЕХ карточек,
   // потому что один TanStack mutation общий для всех откликов.
   const [pendingWriteMasterId, setPendingWriteMasterId] = useState<string | null>(null);
   const [pendingAcceptResponseId, setPendingAcceptResponseId] = useState<string | null>(null);
+  const [pendingRejectResponseId, setPendingRejectResponseId] = useState<string | null>(null);
+  // Раскрыт ли блок «Скрытые отклики» (по умолчанию свёрнут).
+  const [hiddenExpanded, setHiddenExpanded] = useState(false);
 
   // Кнопка «Написать» на карточке мастера — создаёт chat (или открывает
   // существующий) и уводит в /chats/[id]. До accept_response.
@@ -546,10 +553,41 @@ function ClientResponsesSection({ orderId, order, chatId }: ClientResponsesSecti
     );
   };
 
+  // Кнопка «Скрыть» на карточке: confirm → reject_response RPC.
+  // Карточка переезжает в collapsible-секцию «Скрытые» внизу.
+  const onRejectResponseClick = (responseId: string, masterName: string) => {
+    if (pendingRejectResponseId) return;
+    Alert.alert(
+      "Скрыть этот отклик?",
+      `Отклик от «${masterName}» уедет в раздел «Скрытые». Это можно отменить позже, открыв скрытые.`,
+      [
+        { text: "Отмена", style: "cancel" },
+        {
+          text: "Скрыть",
+          style: "destructive",
+          onPress: () => {
+            setPendingRejectResponseId(responseId);
+            rejectResponse.mutate(
+              { responseId, orderId },
+              {
+                onSettled: () => setPendingRejectResponseId(null),
+                onError: (e) => Alert.alert("Не удалось скрыть", e.message),
+              },
+            );
+          },
+        },
+      ],
+    );
+  };
+
   const hasResponses = (responses?.length ?? 0) > 0;
   const isOpen = order.status === "open";
   const pickedResponse = responses?.find((r) => r.master_id === order.picked_master_id);
-  const otherResponses = responses?.filter((r) => r.master_id !== order.picked_master_id) ?? [];
+  // Активные = не picked + не rejected. Rejected — в отдельную секцию.
+  const allOthers = responses?.filter((r) => r.master_id !== order.picked_master_id) ?? [];
+  const activeOthers = allOthers.filter((r) => r.status !== "rejected");
+  const rejectedOthers = allOthers.filter((r) => r.status === "rejected");
+  const activeCount = activeOthers.length + (pickedResponse ? 1 : 0);
 
   return (
     <View className="mt-8 px-5">
@@ -563,7 +601,7 @@ function ClientResponsesSection({ orderId, order, chatId }: ClientResponsesSecti
         </AppText>
         {hasResponses ? (
           <AppText weight="mono" className="text-mono-caption text-mute">
-            {pickedResponse ? "1 выбран" : `${responses?.length ?? 0}`}
+            {pickedResponse ? "1 выбран" : `${activeCount}`}
           </AppText>
         ) : null}
       </View>
@@ -602,37 +640,101 @@ function ClientResponsesSection({ orderId, order, chatId }: ClientResponsesSecti
           chatId={chatId ?? null}
           isBusy={pendingAcceptResponseId === pickedResponse.id}
           isWriting={pendingWriteMasterId === pickedResponse.master_id}
+          isRejecting={false}
           onAccept={() => onAcceptResponseClick(pickedResponse.id)}
           onOpenMaster={() => router.push(`/master/${pickedResponse.master_id}` as never)}
           onOpenChat={() => {
             if (chatId) router.push(`/chats/${chatId}` as never);
           }}
           onWrite={() => onWriteToMaster(pickedResponse.master_id)}
+          onReject={undefined}
         />
       ) : null}
 
-      {/* Other responses */}
-      {otherResponses.length > 0 ? (
+      {/* Active others */}
+      {activeOthers.length > 0 ? (
         <View className="mt-3 gap-2">
-          {otherResponses.map((r) => (
+          {activeOthers.map((r) => (
             <ClientMasterResponseCard
               key={r.id}
               response={r}
               variant={
-                r.status === "rejected"
-                  ? "rejected"
-                  : isOpen && (r.status === "sent" || r.status === "viewed")
-                    ? "actionable"
-                    : "passive"
+                isOpen && (r.status === "sent" || r.status === "viewed")
+                  ? "actionable"
+                  : "passive"
               }
               chatId={null}
               isBusy={pendingAcceptResponseId === r.id}
               isWriting={pendingWriteMasterId === r.master_id}
+              isRejecting={pendingRejectResponseId === r.id}
               onAccept={() => onAcceptResponseClick(r.id)}
               onOpenMaster={() => router.push(`/master/${r.master_id}` as never)}
               onWrite={() => onWriteToMaster(r.master_id)}
+              onReject={
+                isOpen
+                  ? () => {
+                      const masterName =
+                        [r.master?.first_name, r.master?.last_name].filter(Boolean).join(" ") ||
+                        "мастера";
+                      onRejectResponseClick(r.id, masterName);
+                    }
+                  : undefined
+              }
             />
           ))}
+        </View>
+      ) : null}
+
+      {/* Скрытые отклики — collapsible. Не маячат в общем списке, но
+          доступны при необходимости (вернуть/просмотреть). */}
+      {rejectedOthers.length > 0 ? (
+        <View className="mt-4">
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => setHiddenExpanded((v) => !v)}
+            className="flex-row items-center justify-between rounded-lg border border-hairline bg-canvas-soft px-4 py-3 active:opacity-70"
+          >
+            <View className="flex-1 flex-row items-center gap-2">
+              <AppText
+                weight="medium"
+                className="text-body-sm text-mute"
+              >
+                Скрытые отклики
+              </AppText>
+              <View className="rounded-full bg-canvas-soft-2 px-2 py-0.5">
+                <AppText weight="mono" className="text-mono-caption text-mute">
+                  {rejectedOthers.length}
+                </AppText>
+              </View>
+            </View>
+            <ChevronRight
+              size={16}
+              strokeWidth={1.75}
+              color={tc["muted-soft"]}
+              style={{
+                transform: [{ rotate: hiddenExpanded ? "90deg" : "0deg" }],
+              }}
+            />
+          </Pressable>
+          {hiddenExpanded ? (
+            <View className="mt-2 gap-2">
+              {rejectedOthers.map((r) => (
+                <ClientMasterResponseCard
+                  key={r.id}
+                  response={r}
+                  variant="rejected"
+                  chatId={null}
+                  isBusy={false}
+                  isWriting={false}
+                  isRejecting={false}
+                  onAccept={() => {}}
+                  onOpenMaster={() => router.push(`/master/${r.master_id}` as never)}
+                  onWrite={() => onWriteToMaster(r.master_id)}
+                  onReject={undefined}
+                />
+              ))}
+            </View>
+          ) : null}
         </View>
       ) : null}
 
@@ -670,10 +772,14 @@ interface ClientMasterResponseCardProps {
   chatId: string | null;
   isBusy: boolean;
   isWriting: boolean;
+  isRejecting: boolean;
   onAccept: () => void;
   onOpenMaster: () => void;
   onOpenChat?: () => void;
   onWrite: () => void;
+  /** Если undefined — кнопка «Скрыть» не показывается (заказ закрыт /
+   *  rejected уже / picked-вариант). */
+  onReject: (() => void) | undefined;
 }
 
 function ClientMasterResponseCard({
@@ -682,10 +788,12 @@ function ClientMasterResponseCard({
   chatId,
   isBusy,
   isWriting,
+  isRejecting,
   onAccept,
   onOpenMaster,
   onOpenChat,
   onWrite,
+  onReject,
 }: ClientMasterResponseCardProps) {
   const tc = useThemeColors(["ink", "mute", "muted-soft", "warning", "success", "on-primary"]);
 
@@ -703,66 +811,87 @@ function ClientMasterResponseCard({
     : "rounded-xl border border-hairline bg-canvas p-4 hover:bg-canvas-soft";
 
   return (
-    <View className={cardClassName} style={isRejected ? { opacity: 0.55 } : undefined}>
-      {/* Header — весь row кликабельный → профиль мастера. items-center
-          выравнивает avatar по середине с именем (раньше items-start
-          ставил аватар выше — некрасиво). */}
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={`Профиль ${masterName}`}
-        onPress={onOpenMaster}
-        className="flex-row items-center gap-3 active:opacity-70"
-      >
-        <Avatar
-          url={response.master?.avatar_url ?? null}
-          name={masterName}
-          seed={response.master?.id ?? response.master_id}
-          size="md"
-        />
+    <View className={cardClassName} style={isRejected ? { opacity: 0.6 } : undefined}>
+      {/* Header — Pressable за исключением правого reject-кнопки (которая
+          вне ряда, чтобы тап по ней не уводил на профиль мастера). */}
+      <View className="flex-row items-start gap-3">
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={`Профиль ${masterName}`}
+          onPress={onOpenMaster}
+          className="flex-1 flex-row items-center gap-3 active:opacity-70"
+        >
+          <Avatar
+            url={response.master?.avatar_url ?? null}
+            name={masterName}
+            seed={response.master?.id ?? response.master_id}
+            size="md"
+          />
 
-        <View className="flex-1 min-w-0">
-          <View className="flex-row items-center gap-2">
-            <AppText
-              weight="semibold"
-              className="flex-1 text-body-md text-ink"
-              numberOfLines={1}
-            >
-              {masterName}
-            </AppText>
-            {isPicked ? (
-              <View className="rounded-full bg-success px-2 py-0.5">
-                <AppText
-                  weight="bold"
-                  className="text-caption-xs"
-                  style={{ color: tc["on-primary"] }}
-                >
-                  ВЫБРАН
-                </AppText>
-              </View>
-            ) : null}
+          <View className="flex-1 min-w-0">
+            <View className="flex-row items-center gap-2">
+              <AppText
+                weight="semibold"
+                className="flex-1 text-body-md text-ink"
+                numberOfLines={1}
+              >
+                {masterName}
+              </AppText>
+              {isPicked ? (
+                <View className="rounded-full bg-success px-2 py-0.5">
+                  <AppText
+                    weight="bold"
+                    className="text-caption-xs"
+                    style={{ color: tc["on-primary"] }}
+                  >
+                    ВЫБРАН
+                  </AppText>
+                </View>
+              ) : null}
+            </View>
+
+            {/* Price row — крупная цена справа, срок (если есть) слева */}
+            <View className="mt-0.5 flex-row items-center justify-between gap-2">
+              {response.lead_time ? (
+                <View className="flex-row items-center gap-1">
+                  <Clock size={12} strokeWidth={1.75} color={tc["muted-soft"]} />
+                  <AppText className="text-caption text-mute" numberOfLines={1}>
+                    {response.lead_time}
+                  </AppText>
+                </View>
+              ) : (
+                <View />
+              )}
+              <AppText
+                weight={isNegotiable ? "semibold" : "mono"}
+                className={`${isNegotiable ? "text-body-sm" : "text-title-sm"} text-ink`}
+              >
+                {priceText}
+              </AppText>
+            </View>
           </View>
+        </Pressable>
 
-          {/* Price row — крупная цена справа, срок (если есть) слева */}
-          <View className="mt-0.5 flex-row items-center justify-between gap-2">
-            {response.lead_time ? (
-              <View className="flex-row items-center gap-1">
-                <Clock size={12} strokeWidth={1.75} color={tc["muted-soft"]} />
-                <AppText className="text-caption text-mute" numberOfLines={1}>
-                  {response.lead_time}
-                </AppText>
-              </View>
+        {/* Reject-кнопка — отдельный hit-target справа, не привязан к Pressable
+            header'а. Только для actionable откликов (заказ open + не picked
+            + не уже rejected). Видна как «×» 32×32 round. */}
+        {onReject ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Скрыть отклик"
+            onPress={onReject}
+            disabled={isRejecting}
+            hitSlop={8}
+            className="h-8 w-8 items-center justify-center rounded-full bg-canvas-soft active:opacity-70 hover:bg-canvas-soft-2"
+          >
+            {isRejecting ? (
+              <ActivityIndicator size="small" color={tc.mute} />
             ) : (
-              <View />
+              <X size={14} strokeWidth={2} color={tc.mute} />
             )}
-            <AppText
-              weight={isNegotiable ? "semibold" : "mono"}
-              className={`${isNegotiable ? "text-body-sm" : "text-title-sm"} text-ink`}
-            >
-              {priceText}
-            </AppText>
-          </View>
-        </View>
-      </Pressable>
+          </Pressable>
+        ) : null}
+      </View>
 
       {/* Message body */}
       {response.message ? (
@@ -775,10 +904,11 @@ function ClientMasterResponseCard({
         </AppText>
       ) : null}
 
-      {/* Status hint для rejected */}
+      {/* Status hint для rejected — теперь это «скрыто клиентом» либо
+          «выбран другой мастер». Различаем по picked_master_id выше. */}
       {isRejected ? (
         <AppText weight="medium" className="mt-2 text-caption text-muted-soft">
-          Вы выбрали другого мастера
+          Скрыто
         </AppText>
       ) : null}
 
@@ -1188,6 +1318,7 @@ interface CompletionSectionProps {
 
 function CompletionSection({ orderId, order, userId }: CompletionSectionProps) {
   const completeOrder = useCompleteOrder();
+  const tc = useThemeColors(["on-primary", "mute"]);
   const canComplete =
     order.status === "in_progress" &&
     (order.client_id === userId || order.picked_master_id === userId);
@@ -1195,25 +1326,43 @@ function CompletionSection({ orderId, order, userId }: CompletionSectionProps) {
   if (!canComplete) return null;
 
   const isBusy = completeOrder.isPending;
+  const isClient = order.client_id === userId;
 
   return (
-    <View className="mt-6 px-6">
+    <View className="mt-6 px-5">
+      {/* Filled success pill, full-width — это ключевое state-transition
+          действие («работа закончена»), должно явно бросаться в глаза.
+          Раньше было ghost border-success — терялось. */}
       <Pressable
         accessibilityRole="button"
         disabled={isBusy}
         onPress={() => completeOrder.mutate({ orderId, userId })}
-        className={`h-12 items-center justify-center rounded-md border ${
-          isBusy
-            ? "border-hairline bg-surface-3"
-            : "border-success bg-success-soft active:opacity-80"
+        className={`h-12 flex-row items-center justify-center gap-2 rounded-pill ${
+          isBusy ? "bg-canvas-soft-2" : "bg-success active:opacity-85"
         }`}
       >
-        <AppText weight="semibold" className="text-button text-success">
-          {isBusy ? "Сохраняем..." : "Работа выполнена"}
-        </AppText>
+        {isBusy ? (
+          <ActivityIndicator size="small" color={tc.mute} />
+        ) : (
+          <>
+            <CheckCircle2 size={18} strokeWidth={2.25} color={tc["on-primary"]} />
+            <AppText
+              weight="semibold"
+              className="text-button"
+              style={{ color: tc["on-primary"] }}
+            >
+              Работа выполнена
+            </AppText>
+          </>
+        )}
       </Pressable>
+      <AppText className="mt-2 text-center text-caption text-mute">
+        {isClient
+          ? "Отметьте, когда мастер закончил — потом можно оставить отзыв."
+          : "Отметьте, когда работа выполнена — клиент сможет оставить отзыв."}
+      </AppText>
       {completeOrder.error && (
-        <AppText weight="medium" className="mt-2 text-caption text-error">
+        <AppText weight="medium" className="mt-2 text-center text-caption text-error">
           {completeOrder.error.message}
         </AppText>
       )}

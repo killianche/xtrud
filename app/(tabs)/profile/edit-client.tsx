@@ -1,18 +1,33 @@
 /**
- * Edit-client — экран редактирования базовой инфы клиента.
+ * Edit-client — экран редактирования базовой инфы клиента (Linear/Bluesky-стиль).
  *
  * Поля: имя, фамилия, город (BD `cities` id), район.
  * Master редактирует расширенный набор полей через edit-master.tsx.
+ *
+ * Дизайн-паттерны (Lazyweb: Bluesky / Medium / Linear / Replit):
+ *   - Header navbar: «Отмена» / Заголовок по центру / «Сохранить» (accent если dirty)
+ *   - Section captions UPPERCASE / mute / caption-size
+ *   - Inputs в bordered-cards с тонким hairline-разделителем между полями
+ *   - Save floats up в навбар, не отдельная кнопка внизу
  */
 
 import { useRouter } from "expo-router";
-import { ChevronLeft } from "lucide-react-native";
+import { ChevronRight, MapPin } from "lucide-react-native";
 import { useEffect, useState } from "react";
-import { Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, View } from "react-native";
+import {
+  ActivityIndicator,
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  ScrollView,
+  TextInput,
+  View,
+} from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
 import { CITIES, type CityId } from "@/components/CitySelector";
-import { Button, Input, PickerSheet, type PickerOption } from "@/components/ui";
+import { PickerSheet, type PickerOption } from "@/components/ui";
 import { useAuthSession } from "@/features/auth/use-auth-session";
 import { useUserRecord } from "@/features/auth/use-user-record";
 import { useUpdateMyProfile } from "@/features/profile/use-update-my-profile";
@@ -25,7 +40,7 @@ export default function EditClientScreen() {
   const userId = session?.user?.id;
   const { data: user } = useUserRecord(userId);
   const update = useUpdateMyProfile(userId);
-  const tc = useThemeColors(["ink"]);
+  const tc = useThemeColors(["ink", "mute", "muted-soft", "accent"]);
 
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
@@ -35,7 +50,6 @@ export default function EditClientScreen() {
   const [didInit, setDidInit] = useState(false);
 
   // Один раз префиллим форму актуальными значениями после загрузки user.
-  // Дальнейшие правки пользователя не перетираем.
   useEffect(() => {
     if (!user || didInit) return;
     setFirstName(user.first_name ?? "");
@@ -51,14 +65,17 @@ export default function EditClientScreen() {
   }));
   const cityLabel = CITIES.find((c) => c.id === cityId)?.name ?? "Не выбрано";
 
-  const canSave = firstName.trim().length >= 2 && !update.isPending;
   const isDirty =
-    (firstName ?? "") !== (user?.first_name ?? "") ||
-    (lastName ?? "") !== (user?.last_name ?? "") ||
-    cityId !== ((user?.city_id as CityId) ?? "all") ||
-    (district ?? "") !== (user?.district ?? "");
+    didInit &&
+    ((firstName ?? "") !== (user?.first_name ?? "") ||
+      (lastName ?? "") !== (user?.last_name ?? "") ||
+      cityId !== ((user?.city_id as CityId) ?? "all") ||
+      (district ?? "") !== (user?.district ?? ""));
+
+  const canSave = firstName.trim().length >= 2 && isDirty && !update.isPending;
 
   const onSave = () => {
+    if (!canSave) return;
     update.mutate(
       {
         first_name: firstName,
@@ -73,11 +90,11 @@ export default function EditClientScreen() {
     );
   };
 
-  const onBack = () => {
+  const onCancel = () => {
     if (isDirty) {
-      Alert.alert("Есть несохранённые изменения", "Выйти без сохранения?", [
-        { text: "Остаться", style: "cancel" },
-        { text: "Выйти", style: "destructive", onPress: () => router.back() },
+      Alert.alert("Отменить изменения?", "Несохранённые правки будут потеряны.", [
+        { text: "Продолжить редактирование", style: "cancel" },
+        { text: "Отменить", style: "destructive", onPress: () => router.back() },
       ]);
       return;
     }
@@ -87,89 +104,126 @@ export default function EditClientScreen() {
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === "ios" ? "padding" : undefined}
-      className="flex-1 bg-canvas"
+      className="flex-1 bg-canvas-soft"
       style={{ paddingTop: insets.top }}
     >
-      <View className="flex-row items-center justify-between px-3 py-2">
+      {/* Header navbar — Cancel / Title / Save */}
+      <View className="flex-row items-center justify-between border-hairline border-b bg-canvas px-4 py-3">
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Назад"
-          onPress={onBack}
+          accessibilityLabel="Отмена"
+          onPress={onCancel}
           hitSlop={12}
-          className="h-10 w-10 items-center justify-center rounded-full active:opacity-70"
+          className="min-w-[64px] active:opacity-60"
         >
-          <ChevronLeft size={24} strokeWidth={1.75} color={tc.ink} />
+          <AppText weight="medium" className="text-body-md text-ink">
+            Отмена
+          </AppText>
         </Pressable>
         <AppText weight="semibold" className="text-title-md text-ink">
-          Редактирование
+          Профиль
         </AppText>
-        <View className="w-10" />
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Сохранить"
+          onPress={onSave}
+          disabled={!canSave}
+          hitSlop={12}
+          className="min-w-[64px] items-end active:opacity-60"
+        >
+          {update.isPending ? (
+            <ActivityIndicator size="small" color={tc.accent} />
+          ) : (
+            <AppText
+              weight="semibold"
+              className={`text-body-md ${canSave ? "text-accent" : "text-muted-soft"}`}
+            >
+              Сохранить
+            </AppText>
+          )}
+        </Pressable>
       </View>
 
       <ScrollView
         contentContainerStyle={{ paddingBottom: insets.bottom + 32 }}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
       >
-        <View className="gap-5 px-6 pt-4">
-          <Input
-            label="Имя"
-            value={firstName}
-            onChangeText={setFirstName}
-            placeholder="Алина"
-            autoCapitalize="words"
-            maxLength={50}
-            hint={firstName.trim().length < 2 ? "Минимум 2 символа" : undefined}
-          />
-          <Input
-            label="Фамилия"
-            value={lastName}
-            onChangeText={setLastName}
-            placeholder="Тестова"
-            autoCapitalize="words"
-            maxLength={50}
-          />
+        {/* ============================================================
+            Секция «ВАШЕ ИМЯ» — Linear/Bluesky паттерн: маленький uppercase
+            label + единая карточка с двумя строками inputs, разделённых
+            hairline'ом. Без border на самих TextInput.
+        ============================================================ */}
+        <SectionCaption>Ваше имя</SectionCaption>
+        <View className="mx-4 overflow-hidden rounded-lg border border-hairline bg-canvas">
+          <FieldRow label="Имя">
+            <NakedInput
+              value={firstName}
+              onChangeText={setFirstName}
+              placeholder="Алина"
+              autoCapitalize="words"
+              maxLength={50}
+            />
+          </FieldRow>
+          <View className="h-px bg-hairline mx-4" />
+          <FieldRow label="Фамилия">
+            <NakedInput
+              value={lastName}
+              onChangeText={setLastName}
+              placeholder="Тестова"
+              autoCapitalize="words"
+              maxLength={50}
+            />
+          </FieldRow>
+        </View>
+        {firstName.trim().length < 2 ? (
+          <AppText className="mt-2 px-4 text-caption text-error">
+            Имя — минимум 2 символа.
+          </AppText>
+        ) : null}
 
+        {/* ============================================================
+            Секция «ГДЕ ВЫ ЖИВЁТЕ» — город (picker) + район (input)
+        ============================================================ */}
+        <SectionCaption>Где вы живёте</SectionCaption>
+        <View className="mx-4 overflow-hidden rounded-lg border border-hairline bg-canvas">
           <Pressable
             accessibilityRole="button"
+            accessibilityLabel={`Город: ${cityLabel}`}
             onPress={() => setCityOpen(true)}
-            className="active:opacity-70"
+            className="flex-row items-center gap-3 px-4 py-3 active:bg-canvas-soft"
           >
-            <AppText weight="medium" className="mb-2 text-caption text-mute">
-              Город
-            </AppText>
-            <View className="h-12 flex-row items-center justify-between rounded-md border border-hairline bg-canvas px-3">
-              <AppText className="text-body-md text-ink">{cityLabel}</AppText>
-              <AppText className="text-caption text-mute">изменить</AppText>
+            <View className="h-9 w-9 items-center justify-center rounded-md bg-canvas-soft">
+              <MapPin size={16} strokeWidth={1.75} color={tc.ink} />
             </View>
+            <View className="flex-1">
+              <AppText className="text-caption text-mute">Город</AppText>
+              <AppText weight="medium" className="mt-0.5 text-body-md text-ink">
+                {cityLabel}
+              </AppText>
+            </View>
+            <ChevronRight size={18} strokeWidth={1.75} color={tc["muted-soft"]} />
           </Pressable>
-
-          <Input
-            label="Район"
-            value={district}
-            onChangeText={setDistrict}
-            placeholder="Центр"
-            autoCapitalize="words"
-            maxLength={80}
-            hint="Опционально — поможем подобрать ближайших мастеров"
-          />
-
-          <View className="mt-4">
-            <Button
-              variant="primary"
-              size="lg"
-              onPress={onSave}
-              disabled={!canSave || !isDirty}
-              loading={update.isPending}
-            >
-              Сохранить
-            </Button>
-          </View>
+          <View className="h-px bg-hairline mx-4" />
+          <FieldRow label="Район">
+            <NakedInput
+              value={district}
+              onChangeText={setDistrict}
+              placeholder="например, Центр"
+              autoCapitalize="words"
+              maxLength={80}
+            />
+          </FieldRow>
         </View>
+        <AppText className="mt-2 px-4 text-caption text-mute">
+          Поможем подобрать ближайших мастеров.
+        </AppText>
       </ScrollView>
 
       <PickerSheet
         open={cityOpen}
-        title="Город"
+        title="Выберите город"
+        subtitle="Республика Ингушетия"
         options={cityOptions}
         selectedId={cityId === "all" ? null : cityId}
         onSelect={(id) => {
@@ -179,5 +233,66 @@ export default function EditClientScreen() {
         onClose={() => setCityOpen(false)}
       />
     </KeyboardAvoidingView>
+  );
+}
+
+// ============================================================
+// Sub-components
+// ============================================================
+
+function SectionCaption({ children }: { children: string }) {
+  return (
+    <AppText
+      weight="medium"
+      className="mt-6 mb-2 px-4 text-caption text-mute"
+      style={{ letterSpacing: 0.5, textTransform: "uppercase" }}
+    >
+      {children}
+    </AppText>
+  );
+}
+
+function FieldRow({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <View className="flex-row items-center gap-3 px-4 py-2.5">
+      <AppText weight="medium" className="w-20 text-body-md text-mute">
+        {label}
+      </AppText>
+      <View className="flex-1">{children}</View>
+    </View>
+  );
+}
+
+interface NakedInputProps {
+  value: string;
+  onChangeText: (v: string) => void;
+  placeholder: string;
+  autoCapitalize?: "none" | "sentences" | "words" | "characters";
+  maxLength?: number;
+}
+
+function NakedInput({
+  value,
+  onChangeText,
+  placeholder,
+  autoCapitalize = "sentences",
+  maxLength,
+}: NakedInputProps) {
+  const tc = useThemeColors(["ink", "muted-soft"]);
+  return (
+    <TextInput
+      value={value}
+      onChangeText={onChangeText}
+      placeholder={placeholder}
+      placeholderTextColor={tc["muted-soft"]}
+      autoCapitalize={autoCapitalize}
+      maxLength={maxLength}
+      maxFontSizeMultiplier={1.3}
+      className="text-body-md text-ink"
+      style={
+        // web-only: убираем синий focus outline у нативного <input>
+        { color: tc.ink, outlineWidth: 0, outlineStyle: "none", paddingVertical: 4 } as object
+      }
+    />
   );
 }

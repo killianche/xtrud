@@ -17,11 +17,15 @@ import {
   ChevronRight,
   ClipboardList,
   LogOut,
+  MapPin,
   MessageCircle,
+  Moon,
   Pencil,
   Plus,
   ShieldCheck,
+  Smartphone,
   Star,
+  Sun,
 } from "lucide-react-native";
 import { useMemo, useState } from "react";
 import { ActivityIndicator, Alert, Pressable, ScrollView, View } from "react-native";
@@ -29,10 +33,12 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
 import { Avatar } from "@/components/Avatar";
 import { ThemeSwitcher } from "@/components/ThemeSwitcher";
+import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useAuthSession } from "@/features/auth/use-auth-session";
 import { useUserRecord } from "@/features/auth/use-user-record";
 import { useMyChats, unreadChatsCount } from "@/features/chat/use-my-chats";
 import { useMyOrders } from "@/features/orders/use-my-orders";
+import type { ThemePreference } from "@/lib/theme";
 import { PortfolioGrid } from "@/features/profile/PortfolioGrid";
 import { PortfolioLightbox } from "@/features/profile/PortfolioLightbox";
 import {
@@ -81,7 +87,14 @@ export default function ProfileScreen() {
 
   const canAddPortfolio = (portfolio.data?.length ?? 0) < PORTFOLIO_MAX;
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
-  const themeColors = useThemeColors(["ink", "muted-soft", "on-primary", "warning", "body"]);
+  const themeColors = useThemeColors([
+    "ink",
+    "muted-soft",
+    "on-primary",
+    "warning",
+    "body",
+    "error",
+  ]);
 
   const onChangeAvatar = () => {
     if (updateAvatar.isPending) return;
@@ -148,9 +161,11 @@ export default function ProfileScreen() {
     ? (masterProfile?.rating_overall_count ?? 0)
     : user.rating_as_client_count;
 
+  const isClient = !user.is_master;
+
   return (
     <View className="flex-1 bg-canvas" style={{ paddingTop: insets.top }}>
-      {/* Top bar */}
+      {/* Top bar — минималистичный: back + центр-заголовок + edit-shortcut справа (только клиент) */}
       <View className="flex-row items-center justify-between px-3 py-2">
         <Pressable
           accessibilityRole="button"
@@ -164,146 +179,242 @@ export default function ProfileScreen() {
         <AppText weight="semibold" className="text-title-md text-ink">
           Профиль
         </AppText>
-        <View className="w-10" />
+        {isClient ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Редактировать профиль"
+            onPress={() => router.push("/(tabs)/profile/edit-client" as never)}
+            hitSlop={12}
+            className="h-10 w-10 items-center justify-center rounded-full active:opacity-70"
+          >
+            <Pencil size={18} strokeWidth={1.75} color={themeColors.ink} />
+          </Pressable>
+        ) : (
+          <View className="w-10" />
+        )}
       </View>
 
       <ScrollView
         contentContainerStyle={{ paddingBottom: insets.bottom + 32 }}
         showsVerticalScrollIndicator={false}
       >
-        {/* Avatar block */}
-        <View className="items-center px-6 pt-2">
-          <View className="relative">
-            <Avatar url={user.avatar_url} name={fullName} seed={user.id} size="xl" />
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Изменить фото"
-              onPress={onChangeAvatar}
-              disabled={updateAvatar.isPending}
-              hitSlop={6}
-              className="-bottom-1 -right-1 absolute h-9 w-9 items-center justify-center rounded-full border-2 border-canvas bg-primary active:opacity-80"
-            >
-              {updateAvatar.isPending ? (
-                <ActivityIndicator size="small" color={themeColors["on-primary"]} />
-              ) : (
-                <Pencil size={16} strokeWidth={2} color={themeColors["on-primary"]} />
-              )}
-            </Pressable>
-          </View>
-
-          {user.avatar_url && (
-            <Pressable
-              accessibilityRole="button"
-              onPress={onRemoveAvatar}
-              hitSlop={8}
-              className="mt-3 active:opacity-70"
-            >
-              <AppText weight="medium" className="text-caption text-muted">
-                Убрать фото
-              </AppText>
-            </Pressable>
-          )}
-
-          <AppText weight="bold" className="mt-4 text-display-sm text-ink">
-            {fullName}
-          </AppText>
-
-          <View className="mt-2 flex-row items-center gap-2">
-            <View className="rounded-pill bg-surface-2 px-3 py-1">
-              <AppText weight="medium" className="text-caption text-body">
-                {user.is_master ? "Мастер" : "Клиент"}
-              </AppText>
+        {/* HERO card — Vercel docs-cover вайб: tinted band сверху, avatar overlap,
+            имя+бейдж+rating+локация в плотном стеке. Один visual-anchor страницы. */}
+        {isClient ? (
+          <View className="mx-5 mt-3 overflow-hidden rounded-xl border border-hairline bg-canvas">
+            {/* Decorative tinted band — мини mesh-tint, единственное место в профиле */}
+            <View className="h-20 bg-badge-violet relative overflow-hidden">
+              <View
+                className="absolute rounded-full bg-canvas"
+                style={{ top: -28, left: -20, width: 80, height: 80, opacity: 0.35 }}
+              />
+              <View
+                className="absolute rounded-full bg-canvas"
+                style={{ bottom: -16, right: 24, width: 56, height: 56, opacity: 0.45 }}
+              />
+              <View
+                className="absolute rounded-md bg-canvas"
+                style={{ top: 16, right: 100, width: 16, height: 16, opacity: 0.55, transform: [{ rotate: "18deg" }] }}
+              />
             </View>
-            {ratingAvg != null && ratingCount > 0 && (
-              <View className="flex-row items-center gap-1">
-                <Star
-                  size={14}
-                  strokeWidth={2}
-                  color={themeColors.warning}
-                  fill={themeColors.warning}
-                />
-                <AppText weight="semibold" className="text-caption text-ink">
-                  {ratingAvg.toFixed(1)}
-                </AppText>
-                <AppText className="text-caption text-muted">({ratingCount})</AppText>
+            {/* Body */}
+            <View className="px-5 pt-0 pb-5">
+              <View className="-mt-12 flex-row items-end justify-between">
+                {/* Avatar with edit-overlay */}
+                <View className="relative">
+                  <View className="rounded-full border-4 border-canvas">
+                    <Avatar url={user.avatar_url} name={fullName} seed={user.id} size="xl" />
+                  </View>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="Изменить фото"
+                    onPress={onChangeAvatar}
+                    disabled={updateAvatar.isPending}
+                    hitSlop={6}
+                    className="absolute bottom-0 right-0 h-9 w-9 items-center justify-center rounded-full border-2 border-canvas bg-ink active:opacity-80"
+                  >
+                    {updateAvatar.isPending ? (
+                      <ActivityIndicator size="small" color={themeColors["on-primary"]} />
+                    ) : (
+                      <Pencil size={14} strokeWidth={2} color={themeColors["on-primary"]} />
+                    )}
+                  </Pressable>
+                </View>
+                {user.avatar_url ? (
+                  <Pressable
+                    accessibilityRole="button"
+                    onPress={onRemoveAvatar}
+                    hitSlop={8}
+                    className="mb-1 active:opacity-70"
+                  >
+                    <AppText weight="medium" className="text-caption text-mute">
+                      Убрать фото
+                    </AppText>
+                  </Pressable>
+                ) : null}
               </View>
-            )}
+
+              <AppText weight="display" className="mt-4 text-display-md tracking-tight text-ink">
+                {fullName}
+              </AppText>
+
+              <View className="mt-2 flex-row items-center gap-2">
+                <View className="rounded-full bg-canvas-soft-2 px-2.5 py-0.5">
+                  <AppText weight="medium" className="text-caption text-body">
+                    Клиент
+                  </AppText>
+                </View>
+                {ratingAvg != null && ratingCount > 0 ? (
+                  <View className="flex-row items-center gap-1">
+                    <Star
+                      size={13}
+                      strokeWidth={2}
+                      color={themeColors.warning}
+                      fill={themeColors.warning}
+                    />
+                    <AppText weight="mono" className="text-mono-caption text-ink">
+                      {ratingAvg.toFixed(1)}
+                    </AppText>
+                    <AppText weight="mono" className="text-mono-caption text-mute">
+                      ({ratingCount})
+                    </AppText>
+                  </View>
+                ) : null}
+              </View>
+
+              {cityName ? (
+                <View className="mt-2 flex-row items-center gap-1">
+                  <MapPin size={13} strokeWidth={1.75} color={themeColors["muted-soft"]} />
+                  <AppText className="text-body-sm text-mute">
+                    {cityName}
+                    {user.district ? ` · ${user.district}` : ""}
+                  </AppText>
+                </View>
+              ) : null}
+            </View>
           </View>
+        ) : (
+          // Master profile — оставляем старый компактный header (его секции редактируются ниже)
+          <View className="items-center px-6 pt-2">
+            <View className="relative">
+              <Avatar url={user.avatar_url} name={fullName} seed={user.id} size="xl" />
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Изменить фото"
+                onPress={onChangeAvatar}
+                disabled={updateAvatar.isPending}
+                hitSlop={6}
+                className="-bottom-1 -right-1 absolute h-9 w-9 items-center justify-center rounded-full border-2 border-canvas bg-primary active:opacity-80"
+              >
+                {updateAvatar.isPending ? (
+                  <ActivityIndicator size="small" color={themeColors["on-primary"]} />
+                ) : (
+                  <Pencil size={16} strokeWidth={2} color={themeColors["on-primary"]} />
+                )}
+              </Pressable>
+            </View>
 
-          {cityName && (
-            <AppText className="mt-1 text-body-sm text-muted">
-              {cityName}
-              {user.district ? `, ${user.district}` : ""}
+            {user.avatar_url ? (
+              <Pressable
+                accessibilityRole="button"
+                onPress={onRemoveAvatar}
+                hitSlop={8}
+                className="mt-3 active:opacity-70"
+              >
+                <AppText weight="medium" className="text-caption text-muted">
+                  Убрать фото
+                </AppText>
+              </Pressable>
+            ) : null}
+
+            <AppText weight="bold" className="mt-4 text-display-sm text-ink">
+              {fullName}
             </AppText>
-          )}
-        </View>
 
-        {/* Client-only quick links — заказы / чаты со счётчиками + редактирование */}
-        {!user.is_master && (
+            <View className="mt-2 flex-row items-center gap-2">
+              <View className="rounded-pill bg-surface-2 px-3 py-1">
+                <AppText weight="medium" className="text-caption text-body">
+                  Мастер
+                </AppText>
+              </View>
+              {ratingAvg != null && ratingCount > 0 ? (
+                <View className="flex-row items-center gap-1">
+                  <Star
+                    size={14}
+                    strokeWidth={2}
+                    color={themeColors.warning}
+                    fill={themeColors.warning}
+                  />
+                  <AppText weight="semibold" className="text-caption text-ink">
+                    {ratingAvg.toFixed(1)}
+                  </AppText>
+                  <AppText className="text-caption text-muted">({ratingCount})</AppText>
+                </View>
+              ) : null}
+            </View>
+
+            {cityName ? (
+              <AppText className="mt-1 text-body-sm text-muted">
+                {cityName}
+                {user.district ? `, ${user.district}` : ""}
+              </AppText>
+            ) : null}
+          </View>
+        )}
+
+        {/* Client-only stats trio + edit-row */}
+        {isClient ? (
           <>
-            <View className="mx-6 mt-8 flex-row gap-3">
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Мои заказы"
+            <View className="mx-5 mt-4 flex-row gap-2">
+              <ClientStatTile
+                label="Заказы"
+                value={ordersTotal}
+                hint={activeOrders > 0 ? `${activeOrders} активных` : "Все закрыты"}
+                accent={activeOrders > 0}
                 onPress={() => router.push("/(tabs)/orders" as never)}
-                className="flex-1 rounded-lg border border-hairline bg-canvas p-4 active:opacity-70"
-              >
-                <View className="flex-row items-center gap-2">
-                  <ClipboardList size={18} strokeWidth={1.75} color={themeColors.ink} />
-                  <AppText weight="semibold" className="text-body-md text-ink">
-                    Заказы
-                  </AppText>
-                </View>
-                <AppText weight="bold" className="mt-3 text-display-sm text-ink">
-                  {ordersTotal}
-                </AppText>
-                <AppText className="mt-0.5 text-caption text-muted">
-                  {activeOrders > 0 ? `${activeOrders} активных` : "Все закрыты"}
-                </AppText>
-              </Pressable>
-
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Мои чаты"
-                onPress={() => router.push("/(tabs)/chats" as never)}
-                className="flex-1 rounded-lg border border-hairline bg-canvas p-4 active:opacity-70"
-              >
-                <View className="flex-row items-center gap-2">
-                  <MessageCircle size={18} strokeWidth={1.75} color={themeColors.ink} />
-                  <AppText weight="semibold" className="text-body-md text-ink">
-                    Чаты
-                  </AppText>
-                </View>
-                <AppText weight="bold" className="mt-3 text-display-sm text-ink">
-                  {chatsTotal}
-                </AppText>
-                <AppText className="mt-0.5 text-caption text-muted">
-                  {chatsUnread > 0
-                    ? `${chatsUnread} непрочитанных`
+              />
+              <ClientStatTile
+                label="Чаты"
+                value={chatsTotal}
+                hint={
+                  chatsUnread > 0
+                    ? `${chatsUnread} новых`
                     : chatsTotal > 0
-                      ? "Все прочитаны"
-                      : "Пока нет"}
-                </AppText>
-              </Pressable>
+                      ? "Прочитано"
+                      : "Пока нет"
+                }
+                accent={chatsUnread > 0}
+                onPress={() => router.push("/(tabs)/chats" as never)}
+              />
+              <ClientStatTile
+                label="Отзывы"
+                value={ratingCount ?? 0}
+                hint={
+                  ratingAvg != null && (ratingCount ?? 0) > 0
+                    ? `★ ${ratingAvg.toFixed(1)}`
+                    : "Нет"
+                }
+                onPress={() => router.push("/(tabs)/orders" as never)}
+              />
             </View>
 
             <Pressable
               accessibilityRole="button"
               onPress={() => router.push("/(tabs)/profile/edit-client" as never)}
-              className="mx-6 mt-3 flex-row items-center justify-between rounded-lg border border-hairline bg-canvas p-4 active:opacity-70"
+              className="mx-5 mt-2 flex-row items-center justify-between rounded-lg border border-hairline bg-canvas p-4 active:bg-canvas-soft"
             >
               <View className="flex-1">
                 <AppText weight="semibold" className="text-body-md text-ink">
                   Редактировать профиль
                 </AppText>
-                <AppText className="mt-0.5 text-body-sm text-muted">
+                <AppText className="mt-0.5 text-body-sm text-mute">
                   Имя, фамилия, город, район
                 </AppText>
               </View>
               <ChevronRight size={20} strokeWidth={1.75} color={themeColors["muted-soft"]} />
             </Pressable>
           </>
-        )}
+        ) : null}
 
         {/* Master-only sections */}
         {user.is_master && (
@@ -428,17 +539,28 @@ export default function ProfileScreen() {
           </>
         )}
 
-        {/* Theme switcher */}
-        <View className="mt-10 px-6">
-          <AppText weight="semibold" className="mb-3 text-title-md text-ink">
-            Тема
-          </AppText>
-          <ThemeSwitcher />
-        </View>
+        {/* Theme — для клиента segmented (3-button row), для мастера старый stacked
+            (чтобы не ломать его экран; на нём 3 строки органичнее, т.к. master-секция
+            уже длинная). */}
+        {isClient ? (
+          <View className="mt-8 px-5">
+            <AppText weight="medium" className="mb-2 text-caption text-mute uppercase tracking-wider">
+              Тема
+            </AppText>
+            <ClientThemeSegmented />
+          </View>
+        ) : (
+          <View className="mt-10 px-6">
+            <AppText weight="semibold" className="mb-3 text-title-md text-ink">
+              Тема
+            </AppText>
+            <ThemeSwitcher />
+          </View>
+        )}
 
         {/* Admin entry — видно только админам */}
         {(user as { is_admin?: boolean } | null)?.is_admin && (
-          <View className="mt-10 px-6">
+          <View className={`mt-8 ${isClient ? "px-5" : "px-6"}`}>
             <Pressable
               accessibilityRole="button"
               onPress={() => router.push("/(tabs)/admin" as never)}
@@ -452,24 +574,44 @@ export default function ProfileScreen() {
           </View>
         )}
 
-        {/* Sign out */}
-        <View className="mt-10 px-6">
-          <Pressable
-            accessibilityRole="button"
-            onPress={() =>
-              Alert.alert("Выйти?", "Можно будет войти заново со своим номером.", [
-                { text: "Отмена", style: "cancel" },
-                { text: "Выйти", style: "destructive", onPress: () => signOut() },
-              ])
-            }
-            className="h-12 flex-row items-center justify-center gap-2 rounded-md border border-hairline bg-canvas active:opacity-70"
-          >
-            <LogOut size={18} strokeWidth={1.75} color={themeColors.body} />
-            <AppText weight="semibold" className="text-button text-body">
-              Выйти
-            </AppText>
-          </Pressable>
-        </View>
+        {/* Sign out — клиенту ghost-destructive строкой, мастеру bordered (как было) */}
+        {isClient ? (
+          <View className="mt-8 px-5">
+            <Pressable
+              accessibilityRole="button"
+              onPress={() =>
+                Alert.alert("Выйти из аккаунта?", "Можно будет войти заново со своим номером.", [
+                  { text: "Отмена", style: "cancel" },
+                  { text: "Выйти", style: "destructive", onPress: () => signOut() },
+                ])
+              }
+              className="h-11 flex-row items-center justify-center gap-2 active:opacity-70"
+            >
+              <LogOut size={16} strokeWidth={1.75} color={themeColors.error} />
+              <AppText weight="semibold" className="text-button text-error">
+                Выйти из аккаунта
+              </AppText>
+            </Pressable>
+          </View>
+        ) : (
+          <View className="mt-10 px-6">
+            <Pressable
+              accessibilityRole="button"
+              onPress={() =>
+                Alert.alert("Выйти?", "Можно будет войти заново со своим номером.", [
+                  { text: "Отмена", style: "cancel" },
+                  { text: "Выйти", style: "destructive", onPress: () => signOut() },
+                ])
+              }
+              className="h-12 flex-row items-center justify-center gap-2 rounded-md border border-hairline bg-canvas active:opacity-70"
+            >
+              <LogOut size={18} strokeWidth={1.75} color={themeColors.body} />
+              <AppText weight="semibold" className="text-button text-body">
+                Выйти
+              </AppText>
+            </Pressable>
+          </View>
+        )}
       </ScrollView>
 
       <PortfolioLightbox
@@ -478,6 +620,92 @@ export default function ProfileScreen() {
         onClose={() => setLightboxIndex(null)}
         onChangeIndex={setLightboxIndex}
       />
+    </View>
+  );
+}
+
+// ----------------------------------------------------------------------------
+// Client-only UI sub-components
+// ----------------------------------------------------------------------------
+
+interface ClientStatTileProps {
+  label: string;
+  value: number;
+  hint: string;
+  accent?: boolean;
+  onPress: () => void;
+}
+
+function ClientStatTile({ label, value, hint, accent, onPress }: ClientStatTileProps) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`${label}: ${value}, ${hint}`}
+      onPress={onPress}
+      className="flex-1 rounded-lg border border-hairline bg-canvas px-3 py-3 active:bg-canvas-soft"
+    >
+      <AppText weight="medium" className="text-caption text-mute">
+        {label}
+      </AppText>
+      <AppText weight="mono" className="mt-2 text-display-md text-ink">
+        {value}
+      </AppText>
+      <View className="mt-1.5 flex-row items-center gap-1.5">
+        {accent ? <View className="h-1.5 w-1.5 rounded-full bg-warning" /> : null}
+        <AppText
+          weight={accent ? "semibold" : "regular"}
+          className={`text-caption ${accent ? "text-ink" : "text-mute"}`}
+          numberOfLines={1}
+        >
+          {hint}
+        </AppText>
+      </View>
+    </Pressable>
+  );
+}
+
+// Сегментированный 3-button-row для темы (Linear/Vercel-стиль).
+// В одном «pill»-контейнере 3 равных секции, активная — bg-canvas + shadow, остальные ghost.
+function ClientThemeSegmented() {
+  const { preference, setPreference } = useColorScheme();
+  const tc = useThemeColors(["ink", "mute"]);
+
+  const opts: Array<{ value: ThemePreference; label: string; Icon: typeof Sun }> = [
+    { value: "system", label: "Авто", Icon: Smartphone },
+    { value: "light", label: "Светлая", Icon: Sun },
+    { value: "dark", label: "Тёмная", Icon: Moon },
+  ];
+
+  return (
+    <View className="flex-row items-center rounded-lg border border-hairline bg-canvas-soft p-1">
+      {opts.map(({ value, label, Icon }) => {
+        const isSel = preference === value;
+        return (
+          <Pressable
+            key={value}
+            accessibilityRole="radio"
+            accessibilityState={{ selected: isSel }}
+            accessibilityLabel={label}
+            onPress={() => setPreference(value)}
+            className={`flex-1 h-9 flex-row items-center justify-center gap-1.5 rounded-md ${
+              isSel ? "bg-canvas" : "active:opacity-60"
+            }`}
+            style={
+              isSel
+                ? { boxShadow: "0 1px 2px rgba(0,0,0,0.06), 0 0 0 1px rgba(0,0,0,0.04)" }
+                : undefined
+            }
+          >
+            <Icon size={14} strokeWidth={1.75} color={isSel ? tc.ink : tc.mute} />
+            <AppText
+              weight={isSel ? "semibold" : "medium"}
+              className={`text-caption ${isSel ? "text-ink" : "text-mute"}`}
+            >
+              {label}
+            </AppText>
+          </Pressable>
+        );
+      })}
     </View>
   );
 }

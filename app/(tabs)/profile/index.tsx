@@ -15,7 +15,9 @@ import { useRouter } from "expo-router";
 import {
   ChevronLeft,
   ChevronRight,
+  ClipboardList,
   LogOut,
+  MessageCircle,
   Pencil,
   Plus,
   ShieldCheck,
@@ -29,6 +31,8 @@ import { Avatar } from "@/components/Avatar";
 import { ThemeSwitcher } from "@/components/ThemeSwitcher";
 import { useAuthSession } from "@/features/auth/use-auth-session";
 import { useUserRecord } from "@/features/auth/use-user-record";
+import { useMyChats, unreadChatsCount } from "@/features/chat/use-my-chats";
+import { useMyOrders } from "@/features/orders/use-my-orders";
 import { PortfolioGrid } from "@/features/profile/PortfolioGrid";
 import { PortfolioLightbox } from "@/features/profile/PortfolioLightbox";
 import {
@@ -53,6 +57,15 @@ export default function ProfileScreen() {
   const { data: user, isLoading: userLoading } = useUserRecord(userId);
   const { data: cityName } = useCityName(user?.city_id ?? null);
   const { data: masterProfile } = useMyMasterProfile(userId, user?.is_master === true);
+  // Quick stats для клиента (для master есть отдельные экраны со своими счётчиками).
+  const { data: myOrders } = useMyOrders(user?.is_master ? undefined : userId);
+  const { data: myChats } = useMyChats(user?.is_master ? undefined : userId);
+  const ordersTotal = myOrders?.length ?? 0;
+  const activeOrders = (myOrders ?? []).filter(
+    (o) => o.status === "open" || o.status === "in_progress",
+  ).length;
+  const chatsTotal = myChats?.length ?? 0;
+  const chatsUnread = unreadChatsCount(myChats, userId);
 
   const updateAvatar = useUpdateMyAvatar(userId);
   const removeAvatar = useRemoveMyAvatar(userId);
@@ -224,6 +237,73 @@ export default function ProfileScreen() {
             </AppText>
           )}
         </View>
+
+        {/* Client-only quick links — заказы / чаты со счётчиками + редактирование */}
+        {!user.is_master && (
+          <>
+            <View className="mx-6 mt-8 flex-row gap-3">
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Мои заказы"
+                onPress={() => router.push("/(tabs)/orders" as never)}
+                className="flex-1 rounded-lg border border-hairline bg-canvas p-4 active:opacity-70"
+              >
+                <View className="flex-row items-center gap-2">
+                  <ClipboardList size={18} strokeWidth={1.75} color={themeColors.ink} />
+                  <AppText weight="semibold" className="text-body-md text-ink">
+                    Заказы
+                  </AppText>
+                </View>
+                <AppText weight="bold" className="mt-3 text-display-sm text-ink">
+                  {ordersTotal}
+                </AppText>
+                <AppText className="mt-0.5 text-caption text-muted">
+                  {activeOrders > 0 ? `${activeOrders} активных` : "Все закрыты"}
+                </AppText>
+              </Pressable>
+
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Мои чаты"
+                onPress={() => router.push("/(tabs)/chats" as never)}
+                className="flex-1 rounded-lg border border-hairline bg-canvas p-4 active:opacity-70"
+              >
+                <View className="flex-row items-center gap-2">
+                  <MessageCircle size={18} strokeWidth={1.75} color={themeColors.ink} />
+                  <AppText weight="semibold" className="text-body-md text-ink">
+                    Чаты
+                  </AppText>
+                </View>
+                <AppText weight="bold" className="mt-3 text-display-sm text-ink">
+                  {chatsTotal}
+                </AppText>
+                <AppText className="mt-0.5 text-caption text-muted">
+                  {chatsUnread > 0
+                    ? `${chatsUnread} непрочитанных`
+                    : chatsTotal > 0
+                      ? "Все прочитаны"
+                      : "Пока нет"}
+                </AppText>
+              </Pressable>
+            </View>
+
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => router.push("/(tabs)/profile/edit-client" as never)}
+              className="mx-6 mt-3 flex-row items-center justify-between rounded-lg border border-hairline bg-canvas p-4 active:opacity-70"
+            >
+              <View className="flex-1">
+                <AppText weight="semibold" className="text-body-md text-ink">
+                  Редактировать профиль
+                </AppText>
+                <AppText className="mt-0.5 text-body-sm text-muted">
+                  Имя, фамилия, город, район
+                </AppText>
+              </View>
+              <ChevronRight size={20} strokeWidth={1.75} color={themeColors["muted-soft"]} />
+            </Pressable>
+          </>
+        )}
 
         {/* Master-only sections */}
         {user.is_master && (

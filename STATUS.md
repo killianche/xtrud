@@ -4,7 +4,21 @@
 
 ---
 
-## Текущее состояние (2026-05-13, Sprint J — UI rewrite + web hydration fix)
+## Текущее состояние (2026-05-14, Sprint J — auth-bypass для demo + client profile полноценный)
+
+**Главное на сегодня:**
+- **Демо-логин починен.** До этого фронт делал `signInAnonymously()` и просто записывал телефон в `users_private` → пользователь попадал в чистого анона и не видел ни своих заказов, ни чатов. Теперь для номеров `+79000…` фронт логинится через `signInWithPassword({ email, password: 'xtrud' })` где email = `<digits>@xtrud-demo.local`. Сессия попадает в существующего demo-юзера (Алина id `f0000001-…0001`) со всеми её 11 заказами / 4 чатами / 21 сообщением. Phone-provider в Supabase отключён — поэтому email-маршрут.
+- **Профиль клиента стал полноценным.** Quick-stats карточки «Заказы N / X активных» и «Чаты N / Y непрочитанных» (clickable) + новая кнопка «Редактировать профиль» → экран `/profile/edit-client.tsx` с полями имя/фамилия/город (через PickerSheet) /район. Префилл из БД, dirty-check на back, кнопка disabled пока нет изменений.
+- **Чаты: добавил свежее непрочитанное** от Магомеда Алине → 2 видимых unread-чата для UX-проверки. Префикс `demo: ` в title заказов убран — был артефактом частичной заливки.
+- **Аватары: правило DiceBear `shapes` only.** Все 30 demo-юзеров мигрированы с avataaars → shapes (геометрия, Vercel-эстетика). Запрет на avataaars/personas/micah и пр. зафиксирован в CLAUDE.md и memory.
+
+**Миграции применены на проде:** `0045_demo_users_password`, `0046_demo_users_email_login`, `0047_demo_users_fix_null_tokens`, `0048_demo_avatars_shapes_and_cleanup`.
+
+**Что НЕ сделано (намеренно отложено):**
+- Реальный OTP SMS-провайдер — Sprint 2.
+- Phone-provider в Supabase включать пока не стали (нужно SMS-сообщение), email-маршрут работает.
+
+## Старое состояние (2026-05-13, Sprint J — UI rewrite + web hydration fix)
 
 **Главное:** проект **запускается локально на web** с реальными данными прод-Supabase. Главная клиента + master detail + category page переписаны с нуля под Vercel-based DESIGN.md. Hydration на dev сервере был сломан (Hermes-stable Metro transform → `import.meta` в classic script → SyntaxError), решено через production export + sed-патч на `<script type="module">`.
 

@@ -1,28 +1,72 @@
 // Auth API уровня lib.
 //
-// Sprint 1 решение: anonymous sign-in под капотом + phone сохраняется в users_private
-// без OTP-верификации. UI выглядит как phone-OTP flow для будущего sprint 2.
+// Sprint 1 решение:
+// - Если номер совпадает с demo-паттерном `+79000…` (предзаведённые тестовые
+//   аккаунты Алина/Магомед и др.) — логинимся через signInWithPassword
+//   с фиксированным паролем 'xtrud' (см. миграцию 0045_demo_users_password).
+//   Тогда сессия попадает в существующего пользователя со всеми его заказами,
+//   чатами и сообщениями.
+// - Иначе — анонимная сессия + UPDATE users_private.phone. Это «новый клиент».
+//
+// Sprint 2 заменит обе ветки на реальный supabase.auth.signInWithOtp + verifyOtp.
 //
 // Требование к Supabase: Anonymous Sign-Ins должно быть включено в Dashboard:
 //   Authentication → Providers / Sign-In Settings → "Allow anonymous sign-ins" = ON
-//
-// Если выключено — signInAnonymously() вернёт error "Anonymous sign-ins are disabled".
-// Это обрабатывается в use-auth-mutations с понятным сообщением.
 
 import { unregisterCurrentPushToken } from "@/features/notifications/use-register-push-token";
 import { supabase } from "./supabase";
 
+/** Префиксы телефонов, у которых на сервере уже заведены auth.users + пароль. */
+const DEMO_PHONE_PREFIX = "+79000";
+const DEMO_PASSWORD = "xtrud";
+
+function isDemoPhone(phone: string): boolean {
+  // Сравниваем по нормализованной форме без пробелов/тире — на этом этапе
+  // phone уже прошёл normalizePhone (см. features/auth/validation).
+  return phone.startsWith(DEMO_PHONE_PREFIX);
+}
+
+/**
+ * Конвертирует +79000000001 → 79000000001@xtrud-demo.local.
+ * См. миграцию 0046_demo_users_email_login — у каждого demo-аккаунта
+ * выставлен соответствующий email + identity 'email'.
+ */
+function demoPhoneToEmail(phone: string): string {
+  const digits = phone.replace(/\D/g, "");
+  return `${digits}@xtrud-demo.local`;
+}
+
 /**
  * Sprint 1 sign-in:
- * 1. Создаём анонимную сессию Supabase
- * 2. Триггер handle_new_auth_user уже вставил пустые записи users + users_private
- * 3. Обновляем users_private.phone с введённым номером
- *
- * Возвращает {ok: true} либо {ok: false, error: human-readable}.
+ * - demo phone → e-mail/password sign-in в существующий аккаунт.
+ *   (Phone-provider в Supabase Auth отключён, поэтому fronend логинится
+ *   через email, который синтетически назначен каждому demo-телефону.)
+ * - иначе → анонимная сессия + UPDATE users_private.phone.
  */
 export async function signInAnonymouslyWithPhone(
   phone: string,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
+  if (isDemoPhone(phone)) {
+    const email = demoPhoneToEmail(phone);
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password: DEMO_PASSWORD,
+    });
+    if (error) {
+      return {
+        ok: false,
+        error:
+          `Не удалось войти как тестовый аккаунт (${phone}).\n` +
+          `${error.message}\n` +
+          "Проверь миграции 0045-0047 (пароль 'xtrud' + email mapping).",
+      };
+    }
+    if (!data.session) {
+      return { ok: false, error: "Сессия не создана" };
+    }
+    return { ok: true };
+  }
+
   // 1. Анонимный sign-in
   const { data: authData, error: authError } = await supabase.auth.signInAnonymously();
 

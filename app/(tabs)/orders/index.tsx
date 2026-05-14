@@ -101,6 +101,7 @@ function ClientOrdersView({ userId }: ClientOrdersViewProps) {
                 title={o.title}
                 categoryName={o.l2?.name_ru ?? o.l2_id}
                 categoryIcon={o.l2?.icon ?? null}
+                categoryL2Id={o.l2_id}
                 cityName={o.city?.name ?? o.city_id ?? "Вся Ингушетия"}
                 district={o.district}
                 urgency={o.urgency}
@@ -414,6 +415,7 @@ function NewOrdersTab({
           title={o.title}
           categoryName={o.l2?.name_ru ?? o.l2_id}
           categoryIcon={o.l2?.icon ?? null}
+          categoryL2Id={o.l2_id}
           cityName={o.city?.name ?? o.city_id ?? "Вся Ингушетия"}
           district={o.district}
           urgency={o.urgency}
@@ -480,6 +482,7 @@ function RespondedTab({ responses, isLoading, onOrderPress }: RespondedTabProps)
           title={order.title}
           categoryName={order.l2?.name_ru ?? order.l2_id}
           categoryIcon={order.l2?.icon ?? null}
+          categoryL2Id={order.l2_id}
           cityName={order.city?.name ?? order.city_id ?? "Вся Ингушетия"}
           district={order.district}
           urgency={order.urgency}
@@ -528,6 +531,7 @@ function AssignedTab({ orders, isLoading, onOrderPress }: AssignedTabProps) {
           title={o.title}
           categoryName={o.l2?.name_ru ?? o.l2_id}
           categoryIcon={o.l2?.icon ?? null}
+          categoryL2Id={o.l2_id}
           cityName={o.city?.name ?? o.city_id ?? "Вся Ингушетия"}
           district={o.district}
           urgency={o.urgency}

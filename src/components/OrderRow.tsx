@@ -6,9 +6,10 @@
 // чтобы не сталкиваться с status-pill (раньше «Завершён» наезжал на дату).
 
 import { MapPin } from "lucide-react-native";
-import { Pressable, View } from "react-native";
+import { Image, Pressable, View } from "react-native";
 import { AppText } from "@/components/AppText";
 import type { OrderStatusValue } from "@/components/OrderStatusBadge";
+import { getCategoryColorIconUrl } from "@/lib/category-color-icons";
 import { getCategoryIcon } from "@/lib/category-icons";
 import { urgencyLabel } from "@/features/orders/order-schema";
 import type { OrderUrgency } from "@/features/orders/use-create-order";
@@ -19,8 +20,11 @@ export interface OrderRowProps {
   id: string;
   title: string;
   categoryName: string;
-  /** Lucide-icon ключ из categories_l2.icon. Используется в tinted tile. */
+  /** Lucide-icon ключ из categories_l2.icon. Fallback если нет color-иконки. */
   categoryIcon?: string | null;
+  /** L2 id для маппинга в цветную SVG-иконку (`getCategoryColorIconUrl`).
+   *  Если найдена цветная — рендерим её 24×24, иначе fallback Lucide. */
+  categoryL2Id?: string | null;
   cityName: string;
   district?: string | null;
   urgency: OrderUrgency;
@@ -82,6 +86,9 @@ const STATUS_META: Record<OrderStatusValue, StatusMeta> = {
 export function OrderRow(props: OrderRowProps) {
   const tc = useThemeColors(["ink", "muted-soft", "mute"]);
   const Icon = getCategoryIcon(props.categoryIcon);
+  // Mapping L2 id → colored SVG (fluent-color). Если в curated-словаре есть
+  // match — рендерим цветную иконку как на главной, иначе моно-Lucide.
+  const colorUrl = getCategoryColorIconUrl(props.categoryL2Id);
   const statusMeta = props.status ? STATUS_META[props.status] : null;
   const dimmed = statusMeta?.dimmed ?? false;
 
@@ -93,10 +100,14 @@ export function OrderRow(props: OrderRowProps) {
       className="flex-row items-start gap-3 rounded-xl border border-hairline bg-canvas p-4 active:bg-canvas-soft hover:bg-canvas-soft"
       style={dimmed ? { opacity: 0.7 } : undefined}
     >
-      {/* Category icon tile — Vercel-style tinted square. Заменяет category-pill
-          (раньше «Сантехника» висела как pill сверху, отдельной строкой). */}
+      {/* Category icon tile — tinted square. Цветная SVG-иконка (как на
+          главной, fluent-color set) или Lucide-моно как fallback. */}
       <View className="h-11 w-11 items-center justify-center rounded-xl bg-canvas-soft-2">
-        <Icon size={20} strokeWidth={1.75} color={tc.ink} />
+        {colorUrl ? (
+          <Image source={{ uri: colorUrl }} style={{ width: 26, height: 26 }} />
+        ) : (
+          <Icon size={20} strokeWidth={1.75} color={tc.ink} />
+        )}
       </View>
 
       {/* Right column — title + meta */}

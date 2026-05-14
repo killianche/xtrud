@@ -509,15 +509,39 @@ function ClientResponsesSection({ orderId, order, chatId }: ClientResponsesSecti
   const acceptResponse = useAcceptResponse();
   const startChat = useStartChatWithMaster();
 
+  // Точечный pending-state: какой именно мастер сейчас в процессе действия.
+  // Без этого `mutation.isPending` triggers loading-state у ВСЕХ карточек,
+  // потому что один TanStack mutation общий для всех откликов.
+  const [pendingWriteMasterId, setPendingWriteMasterId] = useState<string | null>(null);
+  const [pendingAcceptResponseId, setPendingAcceptResponseId] = useState<string | null>(null);
+
   // Кнопка «Написать» на карточке мастера — создаёт chat (или открывает
   // существующий) и уводит в /chats/[id]. До accept_response.
   const onWriteToMaster = (masterId: string) => {
-    if (startChat.isPending) return;
+    if (pendingWriteMasterId) return;
+    setPendingWriteMasterId(masterId);
     startChat.mutate(
       { orderId, masterId, clientUserId: order.client_id },
       {
-        onSuccess: (newChatId) => router.push(`/chats/${newChatId}` as never),
-        onError: (e) => Alert.alert("Не удалось открыть чат", e.message),
+        onSuccess: (newChatId) => {
+          setPendingWriteMasterId(null);
+          router.push(`/chats/${newChatId}` as never);
+        },
+        onError: (e) => {
+          setPendingWriteMasterId(null);
+          Alert.alert("Не удалось открыть чат", e.message);
+        },
+      },
+    );
+  };
+
+  const onAcceptResponseClick = (responseId: string) => {
+    if (pendingAcceptResponseId) return;
+    setPendingAcceptResponseId(responseId);
+    acceptResponse.mutate(
+      { responseId, orderId, clientId: order.client_id },
+      {
+        onSettled: () => setPendingAcceptResponseId(null),
       },
     );
   };
@@ -576,15 +600,9 @@ function ClientResponsesSection({ orderId, order, chatId }: ClientResponsesSecti
           response={pickedResponse}
           variant="picked"
           chatId={chatId ?? null}
-          isBusy={acceptResponse.isPending}
-          isWriting={startChat.isPending}
-          onAccept={() =>
-            acceptResponse.mutate({
-              responseId: pickedResponse.id,
-              orderId,
-              clientId: order.client_id,
-            })
-          }
+          isBusy={pendingAcceptResponseId === pickedResponse.id}
+          isWriting={pendingWriteMasterId === pickedResponse.master_id}
+          onAccept={() => onAcceptResponseClick(pickedResponse.id)}
           onOpenMaster={() => router.push(`/master/${pickedResponse.master_id}` as never)}
           onOpenChat={() => {
             if (chatId) router.push(`/chats/${chatId}` as never);
@@ -608,15 +626,9 @@ function ClientResponsesSection({ orderId, order, chatId }: ClientResponsesSecti
                     : "passive"
               }
               chatId={null}
-              isBusy={acceptResponse.isPending}
-              isWriting={startChat.isPending}
-              onAccept={() =>
-                acceptResponse.mutate({
-                  responseId: r.id,
-                  orderId,
-                  clientId: order.client_id,
-                })
-              }
+              isBusy={pendingAcceptResponseId === r.id}
+              isWriting={pendingWriteMasterId === r.master_id}
+              onAccept={() => onAcceptResponseClick(r.id)}
               onOpenMaster={() => router.push(`/master/${r.master_id}` as never)}
               onWrite={() => onWriteToMaster(r.master_id)}
             />

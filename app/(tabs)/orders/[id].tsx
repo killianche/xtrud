@@ -35,6 +35,7 @@ import { useAuthSession } from "@/features/auth/use-auth-session";
 import { useUserRecord } from "@/features/auth/use-user-record";
 import { BottomSheet } from "@/components/ui";
 import { useMyChats } from "@/features/chat/use-my-chats";
+import { useStartChatWithMaster } from "@/features/chat/use-start-chat";
 import {
   OutcomeTrackingModal,
   SNOOZE_MS,
@@ -123,11 +124,10 @@ export default function OrderDetailScreen() {
       className="flex-1 bg-canvas"
       style={{ paddingTop: insets.top }}
     >
-      {/* Header — единый паттерн: back / status-pill в центре (информация) /
-          overflow ⋮ справа (действия в bottom-sheet). Раньше pencil + cancel
-          + report плавали отдельными иконками и сливались со status pill —
-          было не ясно, что кнопка, а что нет. Иерархия теперь чистая. */}
-      <View className="flex-row items-center justify-between border-hairline-soft border-b px-3 py-3">
+      {/* Header — чистая навигация. Status переехал в info-block ниже —
+          там он по смыслу принадлежит к контенту заказа, а не к навбару.
+          В шапке только: back + ⋮ overflow меню. */}
+      <View className="flex-row items-center justify-between px-3 py-3">
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Назад"
@@ -137,10 +137,6 @@ export default function OrderDetailScreen() {
         >
           <ChevronLeft size={22} strokeWidth={2} color={tc.ink} />
         </Pressable>
-
-        <View className="flex-1 items-center px-2">
-          {order ? <OrderStatusBadge status={order.status} size="md" /> : null}
-        </View>
 
         {order && id && userId ? (
           <Pressable
@@ -177,7 +173,7 @@ export default function OrderDetailScreen() {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          <OrderInfoBlock order={order} />
+          <OrderInfoBlock order={order} isOwner={isOwner} />
 
           {userId && id && <CompletionSection orderId={id} order={order} userId={userId} />}
 
@@ -352,9 +348,12 @@ function ActionMenuItem({ icon: Icon, label, destructive, onPress }: ActionMenuI
 
 interface OrderInfoBlockProps {
   order: NonNullable<ReturnType<typeof useOrderDetail>["data"]>;
+  /** Клиент сам же видит свой заказ? Тогда «Заказчик»-карточка не показывается
+   *  (не показывать себе себя). */
+  isOwner: boolean;
 }
 
-function OrderInfoBlock({ order }: OrderInfoBlockProps) {
+function OrderInfoBlock({ order, isOwner }: OrderInfoBlockProps) {
   const router = useRouter();
   const clientDisplay =
     [order.client?.first_name, order.client?.last_name].filter(Boolean).join(" ") || "Клиент";
@@ -367,10 +366,14 @@ function OrderInfoBlock({ order }: OrderInfoBlockProps) {
   const isNegotiable = order.budget_mode === "negotiable";
 
   return (
-    <View className="px-5 pt-5">
-      {/* Category chip — Vercel badge-secondary (canvas-soft, caption, pill) */}
-      <View className="self-start rounded-full bg-canvas-soft px-2.5 py-1">
-        <AppText weight="medium" className="text-caption-xs text-body">
+    <View className="px-5 pt-2">
+      {/* Status + Category — статус слева (главный сигнал состояния заказа),
+          категория мутным chip рядом. Раньше status сидел в header — там
+          он сливался с back-button и иконкой действий. */}
+      <View className="flex-row items-center gap-2">
+        <OrderStatusBadge status={order.status} size="md" />
+        <AppText className="text-caption text-mute">·</AppText>
+        <AppText weight="medium" className="text-caption text-body">
           {order.l2?.name_ru ?? order.l2_id}
         </AppText>
       </View>
@@ -421,48 +424,52 @@ function OrderInfoBlock({ order }: OrderInfoBlockProps) {
         </AppText>
       ) : null}
 
-      {/* Author card — выделенная карточка, чтобы автор не сливался с description. */}
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={`Профиль клиента ${clientDisplay}`}
-        onPress={() => router.push(`/client/${order.client_id}` as never)}
-        className="mt-6 flex-row items-center gap-3 rounded-xl border border-hairline bg-canvas-soft p-3 active:bg-canvas hover:bg-canvas"
-      >
-        <Avatar
-          url={order.client?.avatar_url ?? null}
-          name={clientDisplay}
-          seed={order.client?.id ?? order.client_id}
-          size="md"
-        />
-        <View className="flex-1 min-w-0">
-          <AppText
-            weight="medium"
-            className="text-caption text-mute uppercase tracking-wider"
-            style={{ letterSpacing: 0.5 }}
-          >
-            Заказчик
-          </AppText>
-          <AppText
-            weight="semibold"
-            className="mt-0.5 text-body-md text-ink"
-            numberOfLines={1}
-          >
-            {clientDisplay}
-          </AppText>
-        </View>
-        {clientRating != null && clientRatingCount > 0 ? (
-          <View className="flex-row items-center gap-1">
-            <Star size={13} strokeWidth={2} color={tc.warning} fill={tc.warning} />
-            <AppText weight="mono" className="text-mono-caption text-ink">
-              {clientRating.toFixed(1)}
+      {/* Author card — рендерится ТОЛЬКО для мастера. Клиент-владелец не должен
+          видеть «Заказчик: Алина Тестова» внутри своего же заказа — это
+          избыточная информация (он и так знает, что заказ его). */}
+      {!isOwner ? (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={`Профиль клиента ${clientDisplay}`}
+          onPress={() => router.push(`/client/${order.client_id}` as never)}
+          className="mt-6 flex-row items-center gap-3 rounded-xl border border-hairline bg-canvas-soft p-3 active:bg-canvas hover:bg-canvas"
+        >
+          <Avatar
+            url={order.client?.avatar_url ?? null}
+            name={clientDisplay}
+            seed={order.client?.id ?? order.client_id}
+            size="md"
+          />
+          <View className="flex-1 min-w-0">
+            <AppText
+              weight="medium"
+              className="text-caption text-mute uppercase tracking-wider"
+              style={{ letterSpacing: 0.5 }}
+            >
+              Заказчик
             </AppText>
-            <AppText weight="mono" className="text-mono-caption text-mute">
-              ({clientRatingCount})
+            <AppText
+              weight="semibold"
+              className="mt-0.5 text-body-md text-ink"
+              numberOfLines={1}
+            >
+              {clientDisplay}
             </AppText>
           </View>
-        ) : null}
-        <ChevronRight size={16} strokeWidth={1.75} color={tc["muted-soft"]} />
-      </Pressable>
+          {clientRating != null && clientRatingCount > 0 ? (
+            <View className="flex-row items-center gap-1">
+              <Star size={13} strokeWidth={2} color={tc.warning} fill={tc.warning} />
+              <AppText weight="mono" className="text-mono-caption text-ink">
+                {clientRating.toFixed(1)}
+              </AppText>
+              <AppText weight="mono" className="text-mono-caption text-mute">
+                ({clientRatingCount})
+              </AppText>
+            </View>
+          ) : null}
+          <ChevronRight size={16} strokeWidth={1.75} color={tc["muted-soft"]} />
+        </Pressable>
+      ) : null}
     </View>
   );
 }
@@ -500,6 +507,20 @@ function ClientResponsesSection({ orderId, order, chatId }: ClientResponsesSecti
   const router = useRouter();
   const { data: responses, isLoading, error } = useOrderResponses(orderId);
   const acceptResponse = useAcceptResponse();
+  const startChat = useStartChatWithMaster();
+
+  // Кнопка «Написать» на карточке мастера — создаёт chat (или открывает
+  // существующий) и уводит в /chats/[id]. До accept_response.
+  const onWriteToMaster = (masterId: string) => {
+    if (startChat.isPending) return;
+    startChat.mutate(
+      { orderId, masterId, clientUserId: order.client_id },
+      {
+        onSuccess: (newChatId) => router.push(`/chats/${newChatId}` as never),
+        onError: (e) => Alert.alert("Не удалось открыть чат", e.message),
+      },
+    );
+  };
 
   const hasResponses = (responses?.length ?? 0) > 0;
   const isOpen = order.status === "open";
@@ -556,6 +577,7 @@ function ClientResponsesSection({ orderId, order, chatId }: ClientResponsesSecti
           variant="picked"
           chatId={chatId ?? null}
           isBusy={acceptResponse.isPending}
+          isWriting={startChat.isPending}
           onAccept={() =>
             acceptResponse.mutate({
               responseId: pickedResponse.id,
@@ -567,6 +589,7 @@ function ClientResponsesSection({ orderId, order, chatId }: ClientResponsesSecti
           onOpenChat={() => {
             if (chatId) router.push(`/chats/${chatId}` as never);
           }}
+          onWrite={() => onWriteToMaster(pickedResponse.master_id)}
         />
       ) : null}
 
@@ -586,6 +609,7 @@ function ClientResponsesSection({ orderId, order, chatId }: ClientResponsesSecti
               }
               chatId={null}
               isBusy={acceptResponse.isPending}
+              isWriting={startChat.isPending}
               onAccept={() =>
                 acceptResponse.mutate({
                   responseId: r.id,
@@ -594,6 +618,7 @@ function ClientResponsesSection({ orderId, order, chatId }: ClientResponsesSecti
                 })
               }
               onOpenMaster={() => router.push(`/master/${r.master_id}` as never)}
+              onWrite={() => onWriteToMaster(r.master_id)}
             />
           ))}
         </View>
@@ -632,9 +657,11 @@ interface ClientMasterResponseCardProps {
   variant: MasterCardVariant;
   chatId: string | null;
   isBusy: boolean;
+  isWriting: boolean;
   onAccept: () => void;
   onOpenMaster: () => void;
   onOpenChat?: () => void;
+  onWrite: () => void;
 }
 
 function ClientMasterResponseCard({
@@ -642,9 +669,11 @@ function ClientMasterResponseCard({
   variant,
   chatId,
   isBusy,
+  isWriting,
   onAccept,
   onOpenMaster,
   onOpenChat,
+  onWrite,
 }: ClientMasterResponseCardProps) {
   const tc = useThemeColors(["ink", "mute", "muted-soft", "warning", "success", "on-primary"]);
 
@@ -657,32 +686,27 @@ function ClientMasterResponseCard({
   const isActionable = variant === "actionable";
   const isRejected = variant === "rejected";
 
-  // Master может иметь rating, если он подгружен. У OrderResponseWithMaster
-  // нет master.rating — оставляем без отображения (TODO: расширить response-hook).
-  // Для сейчас — без звёзд, чтобы не врать.
-
   const cardClassName = isPicked
     ? "rounded-xl border-2 border-success bg-success-soft p-4"
     : "rounded-xl border border-hairline bg-canvas p-4 hover:bg-canvas-soft";
 
   return (
     <View className={cardClassName} style={isRejected ? { opacity: 0.55 } : undefined}>
-      {/* Row 1: avatar + name + price */}
-      <View className="flex-row items-start gap-3">
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={`Профиль ${masterName}`}
-          onPress={onOpenMaster}
-          hitSlop={4}
-          className="active:opacity-70"
-        >
-          <Avatar
-            url={response.master?.avatar_url ?? null}
-            name={masterName}
-            seed={response.master?.id ?? response.master_id}
-            size="md"
-          />
-        </Pressable>
+      {/* Header — весь row кликабельный → профиль мастера. items-center
+          выравнивает avatar по середине с именем (раньше items-start
+          ставил аватар выше — некрасиво). */}
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={`Профиль ${masterName}`}
+        onPress={onOpenMaster}
+        className="flex-row items-center gap-3 active:opacity-70"
+      >
+        <Avatar
+          url={response.master?.avatar_url ?? null}
+          name={masterName}
+          seed={response.master?.id ?? response.master_id}
+          size="md"
+        />
 
         <View className="flex-1 min-w-0">
           <View className="flex-row items-center gap-2">
@@ -706,8 +730,8 @@ function ClientMasterResponseCard({
             ) : null}
           </View>
 
-          {/* Price row — крупная цена справа */}
-          <View className="mt-1 flex-row items-center justify-between gap-2">
+          {/* Price row — крупная цена справа, срок (если есть) слева */}
+          <View className="mt-0.5 flex-row items-center justify-between gap-2">
             {response.lead_time ? (
               <View className="flex-row items-center gap-1">
                 <Clock size={12} strokeWidth={1.75} color={tc["muted-soft"]} />
@@ -716,9 +740,7 @@ function ClientMasterResponseCard({
                 </AppText>
               </View>
             ) : (
-              <AppText className="text-caption text-muted-soft">
-                {response.status === "rejected" ? "Выбран другой мастер" : ""}
-              </AppText>
+              <View />
             )}
             <AppText
               weight={isNegotiable ? "semibold" : "mono"}
@@ -728,7 +750,7 @@ function ClientMasterResponseCard({
             </AppText>
           </View>
         </View>
-      </View>
+      </Pressable>
 
       {/* Message body */}
       {response.message ? (
@@ -741,71 +763,75 @@ function ClientMasterResponseCard({
         </AppText>
       ) : null}
 
-      {/* Action row */}
+      {/* Status hint для rejected */}
+      {isRejected ? (
+        <AppText weight="medium" className="mt-2 text-caption text-muted-soft">
+          Вы выбрали другого мастера
+        </AppText>
+      ) : null}
+
+      {/* Action row — две основные пары:
+          - picked: «Открыть чат» (primary ink) + «Завершить» (тут оставляем
+            «Открыть чат» single, без дублирующего «Профиль»)
+          - actionable (есть отклик, можно нанять):
+            «Написать» (secondary, для уточняющих вопросов) +
+            «Выбрать мастера» (primary success-green — позитив-commit) */}
       {isPicked && chatId && onOpenChat ? (
-        <View className="mt-4 flex-row gap-2">
-          <Pressable
-            accessibilityRole="button"
-            onPress={onOpenChat}
-            className="h-11 flex-1 flex-row items-center justify-center gap-2 rounded-pill bg-ink active:opacity-80"
-          >
-            <MessageSquare size={16} strokeWidth={2} color={tc["on-primary"]} />
-            <AppText weight="semibold" className="text-button text-on-primary">
-              Открыть чат
-            </AppText>
-          </Pressable>
-          <Pressable
-            accessibilityRole="button"
-            onPress={onOpenMaster}
-            className="h-11 items-center justify-center rounded-pill border border-hairline bg-canvas px-5 active:bg-canvas-soft"
-          >
-            <AppText weight="semibold" className="text-button text-ink">
-              Профиль
-            </AppText>
-          </Pressable>
-        </View>
+        <Pressable
+          accessibilityRole="button"
+          onPress={onOpenChat}
+          className="mt-4 h-11 flex-row items-center justify-center gap-2 rounded-pill bg-ink active:opacity-80"
+        >
+          <MessageSquare size={16} strokeWidth={2} color={tc["on-primary"]} />
+          <AppText weight="semibold" className="text-button text-on-primary">
+            Открыть чат
+          </AppText>
+        </Pressable>
       ) : isActionable ? (
         <View className="mt-4 flex-row gap-2">
           <Pressable
             accessibilityRole="button"
-            disabled={isBusy}
-            onPress={onAccept}
-            className={`h-11 flex-1 items-center justify-center rounded-pill ${
-              isBusy ? "bg-canvas-soft-2" : "bg-ink active:opacity-80"
-            }`}
+            disabled={isWriting}
+            onPress={onWrite}
+            className="h-11 flex-1 flex-row items-center justify-center gap-2 rounded-pill border border-hairline bg-canvas active:bg-canvas-soft"
           >
-            {isBusy ? (
-              <ActivityIndicator size="small" color={tc["mute"]} />
+            {isWriting ? (
+              <ActivityIndicator size="small" color={tc.ink} />
             ) : (
-              <AppText weight="semibold" className="text-button text-on-primary">
-                Принять
-              </AppText>
+              <>
+                <MessageSquare size={15} strokeWidth={2} color={tc.ink} />
+                <AppText weight="semibold" className="text-button text-ink">
+                  Написать
+                </AppText>
+              </>
             )}
           </Pressable>
           <Pressable
             accessibilityRole="button"
-            onPress={onOpenMaster}
-            className="h-11 items-center justify-center rounded-pill border border-hairline bg-canvas px-5 active:bg-canvas-soft"
+            disabled={isBusy}
+            onPress={onAccept}
+            className={`h-11 flex-1 flex-row items-center justify-center gap-2 rounded-pill ${
+              isBusy ? "bg-canvas-soft-2" : "bg-success active:opacity-85"
+            }`}
+            style={{ shadowColor: tc.success, shadowOpacity: 0.25, shadowRadius: 8 }}
           >
-            <AppText weight="semibold" className="text-button text-ink">
-              Профиль
-            </AppText>
+            {isBusy ? (
+              <ActivityIndicator size="small" color={tc["mute"]} />
+            ) : (
+              <>
+                <CheckCircle2 size={15} strokeWidth={2.25} color={tc["on-primary"]} />
+                <AppText
+                  weight="semibold"
+                  className="text-button"
+                  style={{ color: tc["on-primary"] }}
+                >
+                  Выбрать мастера
+                </AppText>
+              </>
+            )}
           </Pressable>
         </View>
-      ) : (
-        <View className="mt-3 flex-row items-center justify-end">
-          <Pressable
-            accessibilityRole="button"
-            onPress={onOpenMaster}
-            hitSlop={6}
-            className="active:opacity-60"
-          >
-            <AppText weight="medium" className="text-caption text-accent">
-              Открыть профиль →
-            </AppText>
-          </Pressable>
-        </View>
-      )}
+      ) : null}
     </View>
   );
 }

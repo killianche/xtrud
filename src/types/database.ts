@@ -214,6 +214,7 @@ export type Database = {
           created_at: string
           id: string
           last_message_at: string | null
+          last_message_text: string | null
           last_read_client_at: string | null
           last_read_master_at: string | null
           master_id: string
@@ -224,6 +225,7 @@ export type Database = {
           created_at?: string
           id?: string
           last_message_at?: string | null
+          last_message_text?: string | null
           last_read_client_at?: string | null
           last_read_master_at?: string | null
           master_id: string
@@ -234,6 +236,7 @@ export type Database = {
           created_at?: string
           id?: string
           last_message_at?: string | null
+          last_message_text?: string | null
           last_read_client_at?: string | null
           last_read_master_at?: string | null
           master_id?: string
@@ -359,6 +362,8 @@ export type Database = {
       master_profiles: {
         Row: {
           account_type: Database["public"]["Enums"]["master_account_type"]
+          availability_status: Database["public"]["Enums"]["availability_status"]
+          availability_until: string | null
           bio: string | null
           closed_deals: number
           created_at: string
@@ -682,7 +687,7 @@ export type Database = {
           budget_max: number | null
           budget_min: number | null
           budget_mode: Database["public"]["Enums"]["order_budget_mode"]
-          city_id: string
+          city_id: string | null
           client_id: string
           contact_mode: Database["public"]["Enums"]["order_contact_mode"]
           created_at: string
@@ -704,7 +709,7 @@ export type Database = {
           budget_max?: number | null
           budget_min?: number | null
           budget_mode?: Database["public"]["Enums"]["order_budget_mode"]
-          city_id: string
+          city_id?: string | null
           client_id: string
           contact_mode?: Database["public"]["Enums"]["order_contact_mode"]
           created_at?: string
@@ -726,7 +731,7 @@ export type Database = {
           budget_max?: number | null
           budget_min?: number | null
           budget_mode?: Database["public"]["Enums"]["order_budget_mode"]
-          city_id?: string
+          city_id?: string | null
           client_id?: string
           contact_mode?: Database["public"]["Enums"]["order_contact_mode"]
           created_at?: string
@@ -1204,6 +1209,10 @@ export type Database = {
     }
     Functions: {
       accept_response: { Args: { p_response_id: string }; Returns: undefined }
+      start_chat_with_master: {
+        Args: { p_order_id: string; p_master_id: string }
+        Returns: string
+      }
       complete_master_onboarding: {
         Args: {
           p_bio: string
@@ -1226,7 +1235,24 @@ export type Database = {
         Args: { p_target_user_id: string }
         Returns: number
       }
+      confirm_work_done: {
+        Args: {
+          p_master_id: string
+          p_order_id?: string
+          p_l2_id?: string
+          p_title?: string
+          p_review_rating?: number
+          p_review_text?: string
+        }
+        Returns: string
+      }
+      expire_availability: { Args: never; Returns: number }
       expire_old_orders: { Args: never; Returns: number }
+      get_master_phone: { Args: { p_master_id: string }; Returns: string }
+      set_availability: {
+        Args: { p_status: Database["public"]["Enums"]["availability_status"] }
+        Returns: string
+      }
       is_current_user_admin: { Args: never; Returns: boolean }
       mark_chat_read: { Args: { p_chat_id: string }; Returns: undefined }
       mark_feed_seen: { Args: never; Returns: undefined }
@@ -1251,6 +1277,7 @@ export type Database = {
     }
     Enums: {
       article_status: "draft" | "published" | "archived"
+      availability_status: "today" | "this_week" | "next_week" | "unavailable"
       category_seasonality:
         | "year_round"
         | "summer"

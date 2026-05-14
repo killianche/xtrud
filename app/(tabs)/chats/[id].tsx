@@ -1,6 +1,6 @@
-import { useLocalSearchParams, useRouter } from "expo-router";
-import { ChevronLeft, MessageSquare, Send } from "lucide-react-native";
-import { useEffect, useRef, useState } from "react";
+import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
+import { ChevronLeft, Info, MessageSquare, Send } from "lucide-react-native";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -27,6 +27,7 @@ import {
 import { useMarkChatRead } from "@/features/chat/use-mark-chat-read";
 import { useMyChats } from "@/features/chat/use-my-chats";
 import { useSendMessage } from "@/features/chat/use-send-message";
+import { useTabBarVisibility } from "@/lib/tabbar-visibility";
 import { useThemeColors } from "@/lib/use-theme-color";
 
 export default function ChatThreadScreen() {
@@ -46,6 +47,18 @@ export default function ChatThreadScreen() {
   const markRead = useMarkChatRead(userId);
   const markReadMutate = markRead.mutate;
   const tc = useThemeColors(["ink", "muted-soft", "on-primary"]);
+
+  // Скрываем нижний TabBar внутри треда — full-screen chat-experience, как
+  // WhatsApp/Telegram. При возврате назад на /chats bar снова появится.
+  // Тот же паттерн, что в orders/new (Zustand-флаг, т.к. custom TabBar не
+  // читает navigation.setOptions({tabBarStyle})).
+  const setTabBarHidden = useTabBarVisibility((s) => s.setHidden);
+  useFocusEffect(
+    useCallback(() => {
+      setTabBarHidden(true);
+      return () => setTabBarHidden(false);
+    }, [setTabBarHidden]),
+  );
 
   // Помечаем чат прочитанным при открытии thread и при появлении новых сообщений.
   // biome-ignore lint/correctness/useExhaustiveDependencies: messages?.length — намеренный trigger.
@@ -98,43 +111,74 @@ export default function ChatThreadScreen() {
       className="flex-1 bg-canvas"
       style={{ paddingTop: insets.top }}
     >
-      {/* Header */}
-      <View className="flex-row items-center gap-2 border-hairline-soft border-b px-3 py-2">
+      {/* Header — Telegram/Linear-стиль:
+            - back-кнопка (round 40, тёмный фон в dark mode незаметен, но в hit-зоне)
+            - avatar собеседника 36 (tap → его профиль)
+            - двустрочный блок: имя ink, ниже — мелкая meta (статус-бадж + title заказа)
+            - правый info-button → деталь заказа (так чат остаётся "про разговор",
+              а meta-инфа доступна одним тапом)
+          Воздух: py-3, gap-3 — раньше py-2 / gap-2, всё слипалось. */}
+      <View className="flex-row items-center gap-3 border-hairline-soft border-b px-3 py-3">
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Назад"
           onPress={() => router.back()}
           hitSlop={12}
-          className="h-10 w-10 items-center justify-center rounded-full active:opacity-70"
+          className="h-10 w-10 items-center justify-center rounded-full active:opacity-70 hover:bg-surface-2"
         >
-          <ChevronLeft size={24} strokeWidth={1.75} color={tc.ink} />
+          <ChevronLeft size={22} strokeWidth={2} color={tc.ink} />
         </Pressable>
+
         <Pressable
           accessibilityRole="button"
+          accessibilityLabel={partner ? `Открыть профиль ${partnerName}` : partnerName}
           disabled={!partnerHref}
           onPress={() => {
             if (partnerHref) router.push(partnerHref as never);
           }}
-          className="flex-1 active:opacity-70"
+          className="flex-1 flex-row items-center gap-3 active:opacity-70"
         >
-          <AppText
-            weight="semibold"
-            className={`text-body-md ${partnerHref ? "text-accent" : "text-ink"}`}
-            numberOfLines={1}
-          >
-            {partnerName}
-          </AppText>
-          <View className="mt-0.5 flex-row items-center gap-2">
-            {chat?.order?.status && (
-              <OrderStatusBadge status={chat.order.status as OrderStatusValue} />
-            )}
-            {chat?.order?.title && (
-              <AppText className="flex-1 text-caption text-muted" numberOfLines={1}>
-                {chat.order.title}
-              </AppText>
-            )}
+          <Avatar
+            url={partner?.avatar_url ?? null}
+            name={partnerName}
+            seed={partner?.id ?? null}
+            size="md"
+          />
+          <View className="flex-1 min-w-0">
+            <AppText
+              weight="semibold"
+              className="text-body-md text-ink"
+              numberOfLines={1}
+            >
+              {partnerName}
+            </AppText>
+            <View className="mt-0.5 flex-row items-center gap-2">
+              {chat?.order?.status ? (
+                <OrderStatusBadge status={chat.order.status as OrderStatusValue} />
+              ) : null}
+              {chat?.order?.title ? (
+                <AppText
+                  className="flex-1 text-caption text-muted"
+                  numberOfLines={1}
+                >
+                  {chat.order.title}
+                </AppText>
+              ) : null}
+            </View>
           </View>
         </Pressable>
+
+        {chat?.order_id ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Открыть заказ"
+            onPress={() => router.push(`/(tabs)/orders/${chat.order_id}` as never)}
+            hitSlop={8}
+            className="h-10 w-10 items-center justify-center rounded-full active:opacity-70 hover:bg-surface-2"
+          >
+            <Info size={20} strokeWidth={1.75} color={tc["muted-soft"]} />
+          </Pressable>
+        ) : null}
       </View>
 
       {/* Messages */}

@@ -1,19 +1,24 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import {
+  CheckCircle2,
   ChevronLeft,
+  ChevronRight,
+  Clock,
   Flag,
   MapPin,
   MessageSquare,
-  MoreVertical,
+  MoreHorizontal,
   Pencil,
   Star,
+  Wallet,
 } from "lucide-react-native";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import {
   ActivityIndicator,
   Alert,
+  Animated,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -28,6 +33,8 @@ import { Avatar } from "@/components/Avatar";
 import { OrderStatusBadge } from "@/components/OrderStatusBadge";
 import { useAuthSession } from "@/features/auth/use-auth-session";
 import { useUserRecord } from "@/features/auth/use-user-record";
+import { BottomSheet } from "@/components/ui";
+import { useMyChats } from "@/features/chat/use-my-chats";
 import {
   OutcomeTrackingModal,
   SNOOZE_MS,
@@ -80,8 +87,13 @@ export default function OrderDetailScreen() {
 
   const isOwner = !!userId && !!order && order.client_id === userId;
   const isMasterRole = user?.active_role === "master";
-  const tc = useThemeColors(["ink", "muted-soft", "body"]);
+  const tc = useThemeColors(["ink", "muted-soft", "body", "mute"]);
   const [reportOpen, setReportOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  // Резолвим chat по order_id из my-chats (без отдельного запроса).
+  const { data: myChats } = useMyChats(userId);
+  const orderChat = myChats?.find((c) => c.order_id === id) ?? null;
 
   // Sprint 12.3 — при open order detail (если owner) помечаем отклики просмотренными.
   const markResponsesViewed = useMarkResponsesViewed(userId);
@@ -111,77 +123,38 @@ export default function OrderDetailScreen() {
       className="flex-1 bg-canvas"
       style={{ paddingTop: insets.top }}
     >
-      <View className="flex-row items-center justify-between px-3 py-2">
+      {/* Header — единый паттерн: back / status-pill в центре (информация) /
+          overflow ⋮ справа (действия в bottom-sheet). Раньше pencil + cancel
+          + report плавали отдельными иконками и сливались со status pill —
+          было не ясно, что кнопка, а что нет. Иерархия теперь чистая. */}
+      <View className="flex-row items-center justify-between border-hairline-soft border-b px-3 py-3">
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Назад"
           onPress={() => router.back()}
           hitSlop={12}
-          className="h-10 w-10 items-center justify-center rounded-full active:opacity-70"
+          className="h-10 w-10 items-center justify-center rounded-full active:opacity-70 hover:bg-canvas-soft"
         >
-          <ChevronLeft size={24} strokeWidth={1.75} color={tc.ink} />
+          <ChevronLeft size={22} strokeWidth={2} color={tc.ink} />
         </Pressable>
-        <View className="flex-row items-center gap-2">
-          {order && <OrderStatusBadge status={order.status} size="md" />}
-          {isOwner && order?.status === "open" && id && (
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Редактировать заказ"
-              onPress={() => router.push(`/orders/edit/${id}` as never)}
-              hitSlop={12}
-              className="h-10 w-10 items-center justify-center rounded-full bg-surface-2 active:opacity-70"
-            >
-              <Pencil size={16} strokeWidth={1.75} color={tc.body} />
-            </Pressable>
-          )}
-          {!isOwner && id && userId && order && (
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Пожаловаться на заказ"
-              onPress={() => setReportOpen(true)}
-              hitSlop={12}
-              className="h-10 w-10 items-center justify-center rounded-full bg-surface-2 active:opacity-70"
-            >
-              <Flag size={16} strokeWidth={1.75} color={tc.body} />
-            </Pressable>
-          )}
-          {isOwner &&
-            order &&
-            (order.status === "open" || order.status === "in_progress") &&
-            id &&
-            userId && (
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Действия с заказом"
-                onPress={() => {
-                  // T2/T6 cancel: open/in_progress → cancelled. RLS uses auth.uid()=client_id.
-                  Alert.alert(
-                    "Отменить заказ?",
-                    "Отменённый заказ нельзя восстановить. Мастера больше не смогут откликнуться.",
-                    [
-                      { text: "Назад", style: "cancel" },
-                      {
-                        text: "Отменить заказ",
-                        style: "destructive",
-                        onPress: () => {
-                          cancelOrder.mutate(
-                            { orderId: id, clientId: userId },
-                            {
-                              onError: (e) => Alert.alert("Не удалось отменить", e.message),
-                            },
-                          );
-                        },
-                      },
-                    ],
-                  );
-                }}
-                hitSlop={12}
-                className="h-10 w-10 items-center justify-center rounded-full bg-surface-2 active:opacity-70"
-              >
-                <MoreVertical size={18} strokeWidth={1.75} color={tc.body} />
-              </Pressable>
-            )}
+
+        <View className="flex-1 items-center px-2">
+          {order ? <OrderStatusBadge status={order.status} size="md" /> : null}
         </View>
+
+        {order && id && userId ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Действия с заказом"
+            onPress={() => setMenuOpen(true)}
+            hitSlop={12}
+            className="h-10 w-10 items-center justify-center rounded-full active:opacity-70 hover:bg-canvas-soft"
+          >
+            <MoreHorizontal size={20} strokeWidth={2} color={tc.ink} />
+          </Pressable>
+        ) : (
+          <View className="w-10" />
+        )}
       </View>
 
       {isLoading && (
@@ -208,7 +181,13 @@ export default function OrderDetailScreen() {
 
           {userId && id && <CompletionSection orderId={id} order={order} userId={userId} />}
 
-          {isOwner && id && order && <ClientResponsesSection orderId={id} order={order} />}
+          {isOwner && id && order && (
+            <ClientResponsesSection
+              orderId={id}
+              order={order}
+              chatId={orderChat?.id ?? null}
+            />
+          )}
           {!isOwner && isMasterRole && userId && id && (
             <MasterResponseSection
               orderId={id}
@@ -272,7 +251,98 @@ export default function OrderDetailScreen() {
           onClose={() => setReportOpen(false)}
         />
       )}
+
+      {/* Action menu — bottom-sheet с действиями по заказу. Заменяет россыпь
+          круглых icon-buttons в шапке, чтобы не путать с status-pill. */}
+      {order && id && userId ? (
+        <BottomSheet
+          open={menuOpen}
+          onClose={() => setMenuOpen(false)}
+          title="Действия с заказом"
+        >
+          <View className="gap-1 pb-2">
+            {isOwner && order.status === "open" ? (
+              <ActionMenuItem
+                icon={Pencil}
+                label="Редактировать заказ"
+                onPress={() => {
+                  setMenuOpen(false);
+                  router.push(`/orders/edit/${id}` as never);
+                }}
+              />
+            ) : null}
+            {isOwner && (order.status === "open" || order.status === "in_progress") ? (
+              <ActionMenuItem
+                icon={Flag}
+                label="Отменить заказ"
+                destructive
+                onPress={() => {
+                  setMenuOpen(false);
+                  Alert.alert(
+                    "Отменить заказ?",
+                    "Отменённый заказ нельзя восстановить. Мастера больше не смогут откликнуться.",
+                    [
+                      { text: "Назад", style: "cancel" },
+                      {
+                        text: "Отменить заказ",
+                        style: "destructive",
+                        onPress: () => {
+                          cancelOrder.mutate(
+                            { orderId: id, clientId: userId },
+                            {
+                              onError: (e) =>
+                                Alert.alert("Не удалось отменить", e.message),
+                            },
+                          );
+                        },
+                      },
+                    ],
+                  );
+                }}
+              />
+            ) : null}
+            {!isOwner ? (
+              <ActionMenuItem
+                icon={Flag}
+                label="Пожаловаться на заказ"
+                destructive
+                onPress={() => {
+                  setMenuOpen(false);
+                  setReportOpen(true);
+                }}
+              />
+            ) : null}
+          </View>
+        </BottomSheet>
+      ) : null}
     </KeyboardAvoidingView>
+  );
+}
+
+interface ActionMenuItemProps {
+  icon: typeof Pencil;
+  label: string;
+  destructive?: boolean;
+  onPress: () => void;
+}
+
+function ActionMenuItem({ icon: Icon, label, destructive, onPress }: ActionMenuItemProps) {
+  const tc = useThemeColors(["ink", "error"]);
+  const color = destructive ? tc.error : tc.ink;
+  return (
+    <Pressable
+      accessibilityRole="button"
+      onPress={onPress}
+      className="flex-row items-center gap-3 rounded-lg px-3 py-3 active:bg-canvas-soft hover:bg-canvas-soft"
+    >
+      <Icon size={18} strokeWidth={1.75} color={color} />
+      <AppText
+        weight="medium"
+        className={`text-body-md ${destructive ? "text-error" : "text-ink"}`}
+      >
+        {label}
+      </AppText>
+    </Pressable>
   );
 }
 
@@ -290,71 +360,108 @@ function OrderInfoBlock({ order }: OrderInfoBlockProps) {
     [order.client?.first_name, order.client?.last_name].filter(Boolean).join(" ") || "Клиент";
   const clientRating = order.client?.rating_as_client_avg;
   const clientRatingCount = order.client?.rating_as_client_count ?? 0;
-  const tc = useThemeColors(["muted-soft"]);
+  const tc = useThemeColors(["muted-soft", "mute", "ink", "warning"]);
+
+  // Бюджет — отдельный display-режим: разделяем сумму и пометку «договорной».
+  const budgetText = formatBudget(order);
+  const isNegotiable = order.budget_mode === "negotiable";
 
   return (
-    <View className="px-6">
-      {/* Category chip */}
-      <View className="self-start rounded-pill bg-surface-2 px-3 py-1">
+    <View className="px-5 pt-5">
+      {/* Category chip — Vercel badge-secondary (canvas-soft, caption, pill) */}
+      <View className="self-start rounded-full bg-canvas-soft px-2.5 py-1">
         <AppText weight="medium" className="text-caption-xs text-body">
           {order.l2?.name_ru ?? order.l2_id}
         </AppText>
       </View>
 
-      <AppText weight="bold" className="mt-3 text-display-sm tracking-tight text-ink">
+      <AppText
+        weight="display"
+        className="mt-3 text-display-md tracking-tight text-ink"
+      >
         {order.title}
       </AppText>
 
-      {/* Meta */}
+      {/* Meta row — urgency + location, с иконками */}
       <View className="mt-3 flex-row flex-wrap items-center gap-x-3 gap-y-1">
-        <AppText className="text-caption text-muted">{urgencyLabel(order.urgency)}</AppText>
-        <View className="flex-row items-center gap-1">
-          <MapPin size={12} strokeWidth={1.75} color={tc["muted-soft"]} />
-          <AppText className="text-caption text-muted">
+        <View className="flex-row items-center gap-1.5">
+          <Clock size={13} strokeWidth={1.75} color={tc.mute} />
+          <AppText className="text-body-sm text-mute">{urgencyLabel(order.urgency)}</AppText>
+        </View>
+        <AppText className="text-caption text-muted-soft">·</AppText>
+        <View className="flex-row items-center gap-1.5">
+          <MapPin size={13} strokeWidth={1.75} color={tc.mute} />
+          <AppText className="text-body-sm text-mute">
             {order.city?.name ?? order.city_id}
             {order.district ? ` · ${order.district}` : ""}
           </AppText>
         </View>
       </View>
 
-      {/* Budget */}
-      {(order.budget_min !== null || order.budget_max !== null) && (
-        <AppText weight="medium" className="mt-3 text-body-md text-ink">
-          {formatBudget(order)}
+      {/* Budget hero — крупно, mono. Это первая цифра, на которую смотрит мастер. */}
+      {budgetText ? (
+        <View className="mt-5 flex-row items-center gap-2">
+          <Wallet size={18} strokeWidth={1.75} color={tc.ink} />
+          {isNegotiable ? (
+            <AppText weight="semibold" className="text-title-md text-ink">
+              Цена договорная
+            </AppText>
+          ) : (
+            <AppText weight="mono" className="text-title-lg text-ink">
+              {budgetText}
+            </AppText>
+          )}
+        </View>
+      ) : null}
+
+      {/* Description — body-md ink, плотный текст. */}
+      {order.description ? (
+        <AppText className="mt-5 text-body-md text-body" style={{ lineHeight: 24 }}>
+          {order.description}
         </AppText>
-      )}
+      ) : null}
 
-      {/* Description */}
-      <AppText className="mt-6 text-body-md text-body">{order.description}</AppText>
-
-      {/* Author */}
+      {/* Author card — выделенная карточка, чтобы автор не сливался с description. */}
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={`Профиль клиента ${clientDisplay}`}
         onPress={() => router.push(`/client/${order.client_id}` as never)}
-        className="mt-6 flex-row items-center gap-3 active:opacity-70"
+        className="mt-6 flex-row items-center gap-3 rounded-xl border border-hairline bg-canvas-soft p-3 active:bg-canvas hover:bg-canvas"
       >
         <Avatar
           url={order.client?.avatar_url ?? null}
           name={clientDisplay}
           seed={order.client?.id ?? order.client_id}
-          size="sm"
+          size="md"
         />
-        <View className="flex-1">
-          <AppText className="text-caption text-muted-soft">Заказчик</AppText>
-          <AppText weight="medium" className="text-body-sm text-accent">
+        <View className="flex-1 min-w-0">
+          <AppText
+            weight="medium"
+            className="text-caption text-mute uppercase tracking-wider"
+            style={{ letterSpacing: 0.5 }}
+          >
+            Заказчик
+          </AppText>
+          <AppText
+            weight="semibold"
+            className="mt-0.5 text-body-md text-ink"
+            numberOfLines={1}
+          >
             {clientDisplay}
           </AppText>
         </View>
-        {clientRating != null && clientRatingCount > 0 && (
+        {clientRating != null && clientRatingCount > 0 ? (
           <View className="flex-row items-center gap-1">
-            <Star size={12} strokeWidth={2} color="#f59e0b" fill="#f59e0b" />
-            <AppText weight="semibold" className="text-caption text-ink">
+            <Star size={13} strokeWidth={2} color={tc.warning} fill={tc.warning} />
+            <AppText weight="mono" className="text-mono-caption text-ink">
               {clientRating.toFixed(1)}
             </AppText>
-            <AppText className="text-caption-xs text-muted">({clientRatingCount})</AppText>
+            <AppText weight="mono" className="text-mono-caption text-mute">
+              ({clientRatingCount})
+            </AppText>
           </View>
-        )}
+        ) : null}
+        <ChevronRight size={16} strokeWidth={1.75} color={tc["muted-soft"]} />
       </Pressable>
     </View>
   );
@@ -366,7 +473,7 @@ function formatBudget(o: {
   budget_mode: string;
 }): string {
   const fmt = new Intl.NumberFormat("ru-RU");
-  if (o.budget_mode === "negotiable") return "Бюджет: договорной";
+  if (o.budget_mode === "negotiable") return "Цена договорная";
   if (o.budget_mode === "exact" && o.budget_min !== null) return `${fmt.format(o.budget_min)} ₽`;
   if (o.budget_mode === "range") {
     if (o.budget_min !== null && o.budget_max !== null) {
@@ -375,7 +482,7 @@ function formatBudget(o: {
     if (o.budget_min !== null) return `от ${fmt.format(o.budget_min)} ₽`;
     if (o.budget_max !== null) return `до ${fmt.format(o.budget_max)} ₽`;
   }
-  return "Бюджет: договорной";
+  return "Цена договорная";
 }
 
 // ============================================================================
@@ -385,32 +492,39 @@ function formatBudget(o: {
 interface ClientResponsesSectionProps {
   orderId: string;
   order: OrderDetail;
+  /** chat-id если он уже существует (после accept) — для кнопки «Открыть чат». */
+  chatId?: string | null;
 }
 
-function ClientResponsesSection({ orderId, order }: ClientResponsesSectionProps) {
+function ClientResponsesSection({ orderId, order, chatId }: ClientResponsesSectionProps) {
   const router = useRouter();
   const { data: responses, isLoading, error } = useOrderResponses(orderId);
   const acceptResponse = useAcceptResponse();
 
   const hasResponses = (responses?.length ?? 0) > 0;
   const isOpen = order.status === "open";
+  const pickedResponse = responses?.find((r) => r.master_id === order.picked_master_id);
+  const otherResponses = responses?.filter((r) => r.master_id !== order.picked_master_id) ?? [];
 
   return (
-    <View className="mt-10 px-6">
-      <AppText weight="semibold" className="text-title-lg text-ink">
-        Отклики
-      </AppText>
-
-      {!isOpen && order.status === "in_progress" && (
-        <View className="mt-3 rounded-lg border border-success/30 bg-success-soft p-3">
-          <AppText weight="medium" className="text-body-sm text-ink">
-            Вы выбрали мастера. Заказ в работе.
+    <View className="mt-8 px-5">
+      {/* Heading: «Отклики · N» или «Ваш мастер» */}
+      <View className="flex-row items-baseline justify-between gap-2">
+        <AppText
+          weight="semibold"
+          className="text-title-md text-ink tracking-tight"
+        >
+          {pickedResponse ? "Ваш мастер" : "Отклики"}
+        </AppText>
+        {hasResponses ? (
+          <AppText weight="mono" className="text-mono-caption text-mute">
+            {pickedResponse ? "1 выбран" : `${responses?.length ?? 0}`}
           </AppText>
-        </View>
-      )}
+        ) : null}
+      </View>
 
       {isLoading && (
-        <View className="mt-3 items-start">
+        <View className="mt-4 items-start">
           <ActivityIndicator />
         </View>
       )}
@@ -421,20 +535,56 @@ function ClientResponsesSection({ orderId, order }: ClientResponsesSectionProps)
         </AppText>
       )}
 
+      {/* Empty state — обещаем «обычно за час». Vercel-style тонкая карточка. */}
       {!isLoading && !error && !hasResponses && (
-        <AppText className="mt-3 text-body-sm text-muted">
-          Откликов пока нет. Обычно первые приходят в течение часа.
-        </AppText>
+        <View className="mt-3 rounded-xl border border-hairline bg-canvas-soft p-4">
+          <AppText weight="medium" className="text-body-sm text-ink">
+            Откликов пока нет
+          </AppText>
+          <AppText className="mt-1 text-body-sm text-mute">
+            Обычно первые приходят в течение часа. Уведомим, как только мастер
+            отзовётся.
+          </AppText>
+        </View>
       )}
 
-      {hasResponses && (
-        <View className="mt-4 gap-3">
-          {responses?.map((r) => (
-            <ClientResponseRow
+      {/* Picked master — hero-card зелёный success, видна сразу под заголовком */}
+      {pickedResponse ? (
+        <ClientMasterResponseCard
+          key={pickedResponse.id}
+          response={pickedResponse}
+          variant="picked"
+          chatId={chatId ?? null}
+          isBusy={acceptResponse.isPending}
+          onAccept={() =>
+            acceptResponse.mutate({
+              responseId: pickedResponse.id,
+              orderId,
+              clientId: order.client_id,
+            })
+          }
+          onOpenMaster={() => router.push(`/master/${pickedResponse.master_id}` as never)}
+          onOpenChat={() => {
+            if (chatId) router.push(`/chats/${chatId}` as never);
+          }}
+        />
+      ) : null}
+
+      {/* Other responses */}
+      {otherResponses.length > 0 ? (
+        <View className="mt-3 gap-2">
+          {otherResponses.map((r) => (
+            <ClientMasterResponseCard
               key={r.id}
               response={r}
-              isPicked={r.master_id === order.picked_master_id}
-              canAccept={isOpen && r.status === "sent"}
+              variant={
+                r.status === "rejected"
+                  ? "rejected"
+                  : isOpen && (r.status === "sent" || r.status === "viewed")
+                    ? "actionable"
+                    : "passive"
+              }
+              chatId={null}
               isBusy={acceptResponse.isPending}
               onAccept={() =>
                 acceptResponse.mutate({
@@ -447,7 +597,7 @@ function ClientResponsesSection({ orderId, order }: ClientResponsesSectionProps)
             />
           ))}
         </View>
-      )}
+      ) : null}
 
       {acceptResponse.error && (
         <AppText weight="medium" className="mt-3 text-caption text-error">
@@ -458,75 +608,203 @@ function ClientResponsesSection({ orderId, order }: ClientResponsesSectionProps)
   );
 }
 
-interface ClientResponseRowProps {
+// ----------------------------------------------------------------------------
+// Master response card (TaskRabbit + Vercel-tier)
+//
+// Layout:
+//   ┌─ Avatar(md) ─ Name + ★rating ─────────── Price-pill ─┐
+//   │              message body (2-3 lines)                │
+//   │              ⏱ срок (если указан)                    │
+//   │              ─── divider ───                         │
+//   │     [Принять primary]  [Написать ghost-icon] ┃ Профиль│
+//   └──────────────────────────────────────────────────────┘
+//
+// Variants:
+//   - picked: бордер success + bg success-soft, primary CTA «Открыть чат»
+//   - actionable: open + status=sent, primary CTA «Принять»
+//   - passive: всё прочее (other-picked, withdrawn) — без actions
+//   - rejected: muted opacity 0.55
+// ----------------------------------------------------------------------------
+type MasterCardVariant = "picked" | "actionable" | "passive" | "rejected";
+
+interface ClientMasterResponseCardProps {
   response: OrderResponseWithMaster;
-  isPicked: boolean;
-  canAccept: boolean;
+  variant: MasterCardVariant;
+  chatId: string | null;
   isBusy: boolean;
   onAccept: () => void;
   onOpenMaster: () => void;
+  onOpenChat?: () => void;
 }
 
-function ClientResponseRow({
+function ClientMasterResponseCard({
   response,
-  isPicked,
-  canAccept,
+  variant,
+  chatId,
   isBusy,
   onAccept,
   onOpenMaster,
-}: ClientResponseRowProps) {
-  const masterDisplay =
+  onOpenChat,
+}: ClientMasterResponseCardProps) {
+  const tc = useThemeColors(["ink", "mute", "muted-soft", "warning", "success", "on-primary"]);
+
+  const masterName =
     [response.master?.first_name, response.master?.last_name].filter(Boolean).join(" ") || "Мастер";
+  const priceText = formatResponsePrice(response);
+  const isNegotiable = response.price_mode === "negotiable";
+
+  const isPicked = variant === "picked";
+  const isActionable = variant === "actionable";
+  const isRejected = variant === "rejected";
+
+  // Master может иметь rating, если он подгружен. У OrderResponseWithMaster
+  // нет master.rating — оставляем без отображения (TODO: расширить response-hook).
+  // Для сейчас — без звёзд, чтобы не врать.
+
+  const cardClassName = isPicked
+    ? "rounded-xl border-2 border-success bg-success-soft p-4"
+    : "rounded-xl border border-hairline bg-canvas p-4 hover:bg-canvas-soft";
 
   return (
-    <View
-      className={`rounded-lg border p-4 ${
-        isPicked ? "border-success bg-success-soft" : "border-hairline bg-canvas"
-      }`}
-    >
-      <View className="flex-row items-start justify-between gap-2">
+    <View className={cardClassName} style={isRejected ? { opacity: 0.55 } : undefined}>
+      {/* Row 1: avatar + name + price */}
+      <View className="flex-row items-start gap-3">
         <Pressable
           accessibilityRole="button"
+          accessibilityLabel={`Профиль ${masterName}`}
           onPress={onOpenMaster}
           hitSlop={4}
-          className="flex-1 active:opacity-70"
+          className="active:opacity-70"
         >
-          <AppText weight="semibold" className="text-body-md text-accent">
-            {masterDisplay}
-          </AppText>
-          {isPicked && (
-            <AppText weight="medium" className="mt-1 text-caption-xs text-success">
-              ВЫБРАН
-            </AppText>
-          )}
-          {response.status === "rejected" && !isPicked && (
-            <AppText weight="medium" className="mt-1 text-caption-xs text-muted-soft">
-              Выбран другой мастер
-            </AppText>
-          )}
+          <Avatar
+            url={response.master?.avatar_url ?? null}
+            name={masterName}
+            seed={response.master?.id ?? response.master_id}
+            size="md"
+          />
         </Pressable>
-        <AppText weight="medium" className="text-caption text-accent">
-          {formatResponsePrice(response)}
-        </AppText>
-      </View>
-      {response.lead_time && (
-        <AppText className="mt-1 text-caption text-muted">Срок: {response.lead_time}</AppText>
-      )}
-      <AppText className="mt-2 text-body-sm text-body">{response.message}</AppText>
 
-      {canAccept && (
-        <Pressable
-          accessibilityRole="button"
-          disabled={isBusy}
-          onPress={onAccept}
-          className={`mt-3 h-10 items-center justify-center rounded-md ${
-            isBusy ? "bg-surface-3" : "bg-primary active:opacity-80"
-          }`}
+        <View className="flex-1 min-w-0">
+          <View className="flex-row items-center gap-2">
+            <AppText
+              weight="semibold"
+              className="flex-1 text-body-md text-ink"
+              numberOfLines={1}
+            >
+              {masterName}
+            </AppText>
+            {isPicked ? (
+              <View className="rounded-full bg-success px-2 py-0.5">
+                <AppText
+                  weight="bold"
+                  className="text-caption-xs"
+                  style={{ color: tc["on-primary"] }}
+                >
+                  ВЫБРАН
+                </AppText>
+              </View>
+            ) : null}
+          </View>
+
+          {/* Price row — крупная цена справа */}
+          <View className="mt-1 flex-row items-center justify-between gap-2">
+            {response.lead_time ? (
+              <View className="flex-row items-center gap-1">
+                <Clock size={12} strokeWidth={1.75} color={tc["muted-soft"]} />
+                <AppText className="text-caption text-mute" numberOfLines={1}>
+                  {response.lead_time}
+                </AppText>
+              </View>
+            ) : (
+              <AppText className="text-caption text-muted-soft">
+                {response.status === "rejected" ? "Выбран другой мастер" : ""}
+              </AppText>
+            )}
+            <AppText
+              weight={isNegotiable ? "semibold" : "mono"}
+              className={`${isNegotiable ? "text-body-sm" : "text-title-sm"} text-ink`}
+            >
+              {priceText}
+            </AppText>
+          </View>
+        </View>
+      </View>
+
+      {/* Message body */}
+      {response.message ? (
+        <AppText
+          className="mt-3 text-body-sm text-body"
+          style={{ lineHeight: 20 }}
+          numberOfLines={4}
         >
-          <AppText weight="semibold" className="text-button text-on-primary">
-            {isBusy ? "Принимаем..." : "Принять отклик"}
-          </AppText>
-        </Pressable>
+          {response.message}
+        </AppText>
+      ) : null}
+
+      {/* Action row */}
+      {isPicked && chatId && onOpenChat ? (
+        <View className="mt-4 flex-row gap-2">
+          <Pressable
+            accessibilityRole="button"
+            onPress={onOpenChat}
+            className="h-11 flex-1 flex-row items-center justify-center gap-2 rounded-pill bg-ink active:opacity-80"
+          >
+            <MessageSquare size={16} strokeWidth={2} color={tc["on-primary"]} />
+            <AppText weight="semibold" className="text-button text-on-primary">
+              Открыть чат
+            </AppText>
+          </Pressable>
+          <Pressable
+            accessibilityRole="button"
+            onPress={onOpenMaster}
+            className="h-11 items-center justify-center rounded-pill border border-hairline bg-canvas px-5 active:bg-canvas-soft"
+          >
+            <AppText weight="semibold" className="text-button text-ink">
+              Профиль
+            </AppText>
+          </Pressable>
+        </View>
+      ) : isActionable ? (
+        <View className="mt-4 flex-row gap-2">
+          <Pressable
+            accessibilityRole="button"
+            disabled={isBusy}
+            onPress={onAccept}
+            className={`h-11 flex-1 items-center justify-center rounded-pill ${
+              isBusy ? "bg-canvas-soft-2" : "bg-ink active:opacity-80"
+            }`}
+          >
+            {isBusy ? (
+              <ActivityIndicator size="small" color={tc["mute"]} />
+            ) : (
+              <AppText weight="semibold" className="text-button text-on-primary">
+                Принять
+              </AppText>
+            )}
+          </Pressable>
+          <Pressable
+            accessibilityRole="button"
+            onPress={onOpenMaster}
+            className="h-11 items-center justify-center rounded-pill border border-hairline bg-canvas px-5 active:bg-canvas-soft"
+          >
+            <AppText weight="semibold" className="text-button text-ink">
+              Профиль
+            </AppText>
+          </Pressable>
+        </View>
+      ) : (
+        <View className="mt-3 flex-row items-center justify-end">
+          <Pressable
+            accessibilityRole="button"
+            onPress={onOpenMaster}
+            hitSlop={6}
+            className="active:opacity-60"
+          >
+            <AppText weight="medium" className="text-caption text-accent">
+              Открыть профиль →
+            </AppText>
+          </Pressable>
+        </View>
       )}
     </View>
   );

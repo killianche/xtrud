@@ -98,6 +98,8 @@ export function useSubmitResponse() {
       queryClient.invalidateQueries({ queryKey: orderResponsesKey(orderId) });
       queryClient.invalidateQueries({ queryKey: myResponseKey(orderId, masterId) });
       queryClient.invalidateQueries({ queryKey: orderDetailKey(orderId) });
+      // P0-5: после успешного отклика обновляем бейдж лимита в шапке master-главной.
+      queryClient.invalidateQueries({ queryKey: ["response-limit-today"] });
     },
   });
 }

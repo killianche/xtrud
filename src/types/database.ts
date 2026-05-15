@@ -1301,6 +1301,10 @@ export type Database = {
         Args: { p_l2_ids: string[] }
         Returns: undefined
       }
+      get_response_limit_today: {
+        Args: Record<string, never>
+        Returns: Json
+      }
     }
     Enums: {
       article_status: "draft" | "published" | "archived"

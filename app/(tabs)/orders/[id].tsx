@@ -56,6 +56,10 @@ import {
   useOrderResponses,
   useSubmitResponse,
 } from "@/features/orders/use-order-responses";
+import {
+  isDailyLimitError,
+  useResponseLimit,
+} from "@/features/orders/use-response-limit";
 import { useMarkResponsesViewed } from "@/features/orders/use-unread-responses";
 import { ReportModal } from "@/features/reports/ReportModal";
 import { useMyReviewForOrder, useSubmitReview } from "@/features/reviews/use-reviews";
@@ -1080,6 +1084,9 @@ function MasterResponseSection({
 }: MasterResponseSectionProps) {
   const { data: myResponse, isLoading } = useMyResponseForOrder(orderId, masterId);
   const submitResponse = useSubmitResponse();
+  // P0-5: дневной лимит откликов (5/день). Не блокируем UI, но блокируем
+  // submit + показываем понятное сообщение если лимит исчерпан.
+  const { data: responseLimit } = useResponseLimit();
   const tc = useThemeColors(["muted-soft"]);
 
   const isPickedMaster = pickedMasterId === masterId;
@@ -1104,7 +1111,10 @@ function MasterResponseSection({
 
   const priceMode = watch("priceMode");
   const isBusy = submitResponse.isPending;
+  // P0-5: исчерпан ли лимит откликов сегодня?
+  const limitReached = (responseLimit?.remaining ?? 5) <= 0;
   const submitError = submitResponse.error?.message;
+  const limitError = isDailyLimitError(submitResponse.error);
 
   const onSubmit = handleSubmit(async (values) => {
     try {
@@ -1336,22 +1346,40 @@ function MasterResponseSection({
         />
       </View>
 
-      {submitError && (
+      {limitReached && (
+        <View className="rounded-md border border-hairline bg-canvas-soft p-3">
+          <AppText weight="semibold" className="text-body-sm text-ink">
+            Лимит откликов на сегодня исчерпан
+          </AppText>
+          <AppText className="mt-1 text-caption text-muted">
+            Вы отправили {responseLimit?.used ?? 5} из {responseLimit?.max ?? 5} откликов.
+            Завтра в 00:00 (МСК) появятся новые. В будущем планируется опция
+            «больше откликов» — пока всё бесплатно.
+          </AppText>
+        </View>
+      )}
+      {submitError && !limitReached && (
         <AppText weight="medium" className="text-caption text-error">
-          Не удалось отправить отклик. {submitError}
+          {limitError
+            ? "Лимит откликов на сегодня исчерпан — попробуйте завтра."
+            : `Не удалось отправить отклик. ${submitError}`}
         </AppText>
       )}
 
       <Pressable
         accessibilityRole="button"
-        disabled={!isValid || isBusy}
+        disabled={!isValid || isBusy || limitReached}
         onPress={onSubmit}
         className={`h-12 items-center justify-center rounded-md ${
-          isValid && !isBusy ? "bg-primary active:opacity-80" : "bg-surface-3"
+          isValid && !isBusy && !limitReached ? "bg-primary active:opacity-80" : "bg-surface-3"
         }`}
       >
         <AppText weight="semibold" className="text-button text-on-primary">
-          {isBusy ? "Отправляем..." : "Отправить отклик"}
+          {limitReached
+            ? "Лимит исчерпан"
+            : isBusy
+              ? "Отправляем..."
+              : "Отправить отклик"}
         </AppText>
       </Pressable>
     </View>

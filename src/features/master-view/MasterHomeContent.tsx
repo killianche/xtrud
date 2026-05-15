@@ -7,6 +7,7 @@ import { ActivityIndicator, Pressable, View } from "react-native";
 import { AppText } from "@/components/AppText";
 import { SafetyBanner } from "@/components/SafetyBanner";
 import { AvailabilitySwitcher } from "@/features/master-view/AvailabilitySwitcher";
+import { ResponseLimitBadge } from "@/features/master-view/ResponseLimitBadge";
 import { useMyMasterCategories } from "@/features/master-categories/use-my-categories";
 import { useThemeColors } from "@/lib/use-theme-color";
 
@@ -25,6 +26,10 @@ export function MasterHomeContent({ userId }: MasterHomeContentProps) {
     <View className="gap-6 px-6">
       {/* Availability switcher — наверху, как «онлайн» в такси */}
       <AvailabilitySwitcher userId={userId} />
+
+      {/* P0-5: бейдж дневного лимита откликов (5 в день в free-tier).
+          Self-start чтобы не растягивался на всю ширину. */}
+      <ResponseLimitBadge />
 
       {/* Safety banner */}
       <SafetyBanner />

@@ -23,6 +23,38 @@
 
 ---
 
+## 0. ОСНОВА ДИЗАЙНА — edge-to-edge rows + узкий side-padding
+
+**Зафиксировано 2026-05-15** (фидбэк user после редизайна master home — «отступы не такие большие, материал карточки, линии до краёв, давай это основа дизайна»).
+
+**Главный принцип:** списки заявок / мастеров / категорий / сообщений — **full-bleed rows** с `border-b border-hairline` divider'ом, идущим **от края до края экрана**. **Никаких** «карточек с большими side-margin'ами и rounded-lg bg-canvas-soft» вокруг каждого row — это утяжеляет визуал и сбивает hierarchy.
+
+**Стандартные значения:**
+- **Wrapping container** на tab home / list view: `px-4` (НЕ `px-5`). 16px горизонтально — достаточно «дыхания», но без визуального вырезания контента.
+- **Row internal padding:** `px-5 py-4` (внутри `<OrderRow>`, `<ChatRow>` и т.д.). Внутри row своё дыхание; row сам по себе full-bleed относительно экрана.
+- **Когда row рендерится внутри padded-секции:** оборачиваем в `-mx-4` чтобы вырваться в края: `<View className="-mx-4">{rows}</View>`. Это компенсирует родительский `px-4`.
+- **Section gap:** между секциями (статус → orders → completed-pill) — `gap-8` (32px). Раньше было gap-6 — узковато.
+- **Section heading:** `text-body-md semibold ink` (не uppercase eyebrow). Опц. mono-caption справа («до завтра», «3 заявки»).
+
+**Когда отступать от паттерна (исключения):**
+- **Hero / featured-карусель** — горизонтальный scroll с tinted plate-карточками (FeaturedRequests, TopMasters). Это акцентные блоки, тут карточка уместна.
+- **Single CTA-баннер** («Не нашли мастера?», «Добавьте категории») — одиночная карточка с border + bg-canvas-soft в `mx-4`. Не список, поэтому полу-карточка ОК.
+- **Detail-страница заказа `/orders/[id]`** — там специфический layout с большой description-секцией и формой отклика. Не трогать (фидбэк user 2026-05-15: «после заказов хорошо выглядит»).
+
+**Эталонные реализации (копировать):**
+- `app/(tabs)/orders/search/index.tsx` — list view с `<OrderRow>` full-bleed.
+- `src/features/master-view/MasterDashboardOrders.tsx` — orders на главной мастера, использует `-mx-4` чтобы вырваться из родительского `px-4`.
+- `src/features/master-view/MasterHomeContent.tsx` — обёртка `<View className="gap-8 px-4">`.
+- `app/(tabs)/index.tsx` → `AllCategories` — список категорий с `border-b border-hairline` rows.
+
+**Anti-patterns (запрещено):**
+- ❌ `<View className="rounded-lg bg-canvas-soft p-4">` вокруг каждого OrderRow на главной — утяжеляет, ломает edge-to-edge.
+- ❌ `gap-3` или `mt-3` между крупными секциями — слишком тесно. Минимум `gap-6`, лучше `gap-8`.
+- ❌ `px-5` или больше на tab home — слишком много пустого с боков. Используй `px-4`.
+- ❌ Order rows внутри ScrollView без `-mx-4` — будут вырезанные с боков, не full-bleed.
+
+---
+
 ## 1. Эталонные экраны (golden references)
 
 Если сомневаешься «как сделать» — посмотри **код этих экранов**. Они приняты как стандарт.

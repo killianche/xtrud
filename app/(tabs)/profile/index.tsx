@@ -37,6 +37,7 @@ import { AppText } from "@/components/AppText";
 import { Avatar } from "@/components/Avatar";
 import { ThemeSwitcher } from "@/components/ThemeSwitcher";
 import { useColorScheme } from "@/hooks/use-color-scheme";
+import { RoleSwitcher } from "@/features/auth/RoleSwitcher";
 import { useAuthSession } from "@/features/auth/use-auth-session";
 import { useUserRecord } from "@/features/auth/use-user-record";
 import { useMyChats, unreadChatsCount } from "@/features/chat/use-my-chats";
@@ -326,6 +327,17 @@ export default function ProfileScreen() {
                   </AppText>
                 </View>
               ) : null}
+
+              {/* P1-8: переключатель ролей для dual-role users.
+                  Видим только если у пользователя is_master И is_client. */}
+              <View className="mt-4 w-full max-w-xs">
+                <RoleSwitcher
+                  userId={user.id}
+                  currentRole={user.active_role}
+                  isMaster={user.is_master}
+                  isClient={user.is_client}
+                />
+              </View>
             </View>
           </View>
         ) : (
@@ -394,6 +406,17 @@ export default function ProfileScreen() {
                 {user.district ? `, ${user.district}` : ""}
               </AppText>
             ) : null}
+
+            {/* P1-8: переключатель ролей для dual-role users.
+                Видим только если у пользователя is_master И is_client. */}
+            <View className="mt-4 w-full max-w-xs">
+              <RoleSwitcher
+                userId={user.id}
+                currentRole={user.active_role}
+                isMaster={user.is_master}
+                isClient={user.is_client}
+              />
+            </View>
           </View>
         )}
 

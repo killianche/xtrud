@@ -454,6 +454,8 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          l2_id: string | null
+          l3_id: string | null
           master_id: string
           position: number
           price_max: number | null
@@ -465,6 +467,8 @@ export type Database = {
         Insert: {
           created_at?: string
           id?: string
+          l2_id?: string | null
+          l3_id?: string | null
           master_id: string
           position?: number
           price_max?: number | null
@@ -476,6 +480,8 @@ export type Database = {
         Update: {
           created_at?: string
           id?: string
+          l2_id?: string | null
+          l3_id?: string | null
           master_id?: string
           position?: number
           price_max?: number | null
@@ -485,6 +491,20 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "master_services_l2_id_fkey"
+            columns: ["l2_id"]
+            isOneToOne: false
+            referencedRelation: "categories_l2"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "master_services_l3_id_fkey"
+            columns: ["l3_id"]
+            isOneToOne: false
+            referencedRelation: "categories_l3"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "master_services_master_id_fkey"
             columns: ["master_id"]

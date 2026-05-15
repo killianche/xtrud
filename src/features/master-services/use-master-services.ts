@@ -50,11 +50,19 @@ export interface UpsertMasterServiceInput {
   price_min: number;
   price_max: number | null;
   unit: ServiceUnit;
+  /** L2-категория услуги. Передаётся новым UI после миграции 0056 (P0-2). */
+  l2_id?: string | null;
+  /** Опц. конкретная L3 услуга из таксономии. NULL = свободный текст в title. */
+  l3_id?: string | null;
 }
 
 /**
  * Insert (id отсутствует) или Update (id задан) одной услуги.
  * position при insert ставим в конец (max + 1), при update оставляем как было.
+ *
+ * l2_id / l3_id опциональны для обратной совместимости с legacy-вызовами;
+ * новый UI (P0-3 / P0-4) обязательно передаёт l2_id для всех INSERT и при
+ * выборе из pre-defined услуг — также l3_id.
  */
 export function useUpsertMasterService(masterId: string | null | undefined) {
   const qc = useQueryClient();
@@ -68,6 +76,8 @@ export function useUpsertMasterService(masterId: string | null | undefined) {
           price_min: input.price_min,
           price_max: input.price_max,
           unit: input.unit,
+          ...(input.l2_id !== undefined ? { l2_id: input.l2_id } : {}),
+          ...(input.l3_id !== undefined ? { l3_id: input.l3_id } : {}),
         };
         const { data, error } = await supabase
           .from("master_services")
@@ -95,6 +105,8 @@ export function useUpsertMasterService(masterId: string | null | undefined) {
         price_max: input.price_max,
         unit: input.unit,
         position: nextPosition,
+        ...(input.l2_id !== undefined ? { l2_id: input.l2_id } : {}),
+        ...(input.l3_id !== undefined ? { l3_id: input.l3_id } : {}),
       };
       const { data, error } = await supabase
         .from("master_services")

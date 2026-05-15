@@ -1,9 +1,13 @@
 // Контент главной для active_role='master'.
-// Структура: availability + лимит откликов → ваши категории
-// (или CTA добавить) → ⭐ ЛЕНТА свежих заказов (P0-8) или empty state.
+// Структура: availability + лимит откликов → ⭐ ЛЕНТА свежих заказов
+// (P0-8) или empty state с CTA «Добавьте категории».
+//
+// N1 (2026-05-15): блок «Ваши категории» убран с главной — это
+// настройка профиля, не daily-use. Категории редактируются через
+// /profile → «Категории».
 
 import { useRouter } from "expo-router";
-import { ChevronRight, Inbox, Plus } from "lucide-react-native";
+import { ChevronRight, Inbox, Search } from "lucide-react-native";
 import { Pressable, View } from "react-native";
 import { AppText } from "@/components/AppText";
 import { OrderRow } from "@/components/OrderRow";
@@ -20,7 +24,7 @@ interface MasterHomeContentProps {
 
 export function MasterHomeContent({ userId }: MasterHomeContentProps) {
   const router = useRouter();
-  const { data: myCats, isLoading } = useMyMasterCategories(userId);
+  const { data: myCats } = useMyMasterCategories(userId);
   const tc = useThemeColors(["accent", "muted-soft", "on-primary"]);
 
   const hasCategories = (myCats?.length ?? 0) > 0;
@@ -42,65 +46,46 @@ export function MasterHomeContent({ userId }: MasterHomeContentProps) {
           Self-start чтобы не растягивался на всю ширину. */}
       <ResponseLimitBadge />
 
-      {/* Категории */}
-      <View>
-        <AppText weight="semibold" className="text-title-lg text-ink">
-          Ваши категории
-        </AppText>
+      {/* N1: блок «Ваши категории» убран — это настройки профиля,
+          редактируются через /profile, не нужны на daily-use главной. */}
 
-        {isLoading && (
-          <View className="mt-3 flex-row flex-wrap gap-2">
-            {[0, 1, 2].map((i) => (
-              <Skeleton key={i} className="rounded-pill" width={92} height={32} />
-            ))}
+      {/* CTA «Поиск заказов» — большая заметная кнопка на main entry-point
+          для мастера. Ведёт на /orders где search-input + chip-фильтр L2 (N3). */}
+      {hasCategories ? (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Поиск заказов"
+          onPress={() => router.push("/(tabs)/orders")}
+          className="flex-row items-center gap-3 rounded-xl bg-ink p-4 active:opacity-80"
+        >
+          <View className="h-10 w-10 items-center justify-center rounded-full bg-on-primary/10">
+            <Search size={20} strokeWidth={2} color={tc["on-primary"]} />
           </View>
-        )}
-
-        {!isLoading && !hasCategories && (
-          <Pressable
-            accessibilityRole="button"
-            onPress={() => router.push("/(onboarding)/master-categories")}
-            className="mt-3 flex-row items-center justify-between rounded-lg border border-hairline bg-canvas p-4 active:opacity-70"
-          >
-            <View className="flex-1">
-              <AppText weight="semibold" className="text-body-md text-ink">
-                Добавьте категории
-              </AppText>
-              <AppText className="mt-1 text-body-sm text-muted">
-                Без категорий клиенты не увидят вас в каталоге.
-              </AppText>
-            </View>
-            <View className="h-10 w-10 items-center justify-center rounded-full bg-accent">
-              <Plus size={20} strokeWidth={2} color={tc["on-primary"]} />
-            </View>
-          </Pressable>
-        )}
-
-        {!isLoading && hasCategories && (
-          <View className="mt-3">
-            <View className="flex-row flex-wrap gap-2">
-              {myCats?.map((mc) => (
-                <View key={mc.id} className="rounded-pill bg-accent-soft px-3 py-2">
-                  <AppText weight="medium" className="text-caption text-accent">
-                    {mc.l2?.name_ru ?? mc.l2_id}
-                  </AppText>
-                </View>
-              ))}
-            </View>
-            <Pressable
-              accessibilityRole="button"
-              onPress={() => router.push("/(onboarding)/master-categories")}
-              className="mt-3 flex-row items-center gap-1 self-start active:opacity-70"
-              hitSlop={8}
-            >
-              <AppText weight="medium" className="text-caption text-accent">
-                Редактировать ({myCats?.length}/5)
-              </AppText>
-              <ChevronRight size={14} strokeWidth={2} color={tc.accent} />
-            </Pressable>
+          <View className="flex-1">
+            <AppText weight="semibold" className="text-body-md text-on-primary">
+              Поиск заказов
+            </AppText>
+            <AppText className="mt-0.5 text-caption text-on-primary/70">
+              Найти заявки по категории, тексту, новизне
+            </AppText>
           </View>
-        )}
-      </View>
+        </Pressable>
+      ) : (
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => router.push("/(onboarding)/master-categories")}
+          className="flex-row items-center justify-between rounded-lg border border-hairline bg-canvas p-4 active:opacity-70"
+        >
+          <View className="flex-1">
+            <AppText weight="semibold" className="text-body-md text-ink">
+              Добавьте категории
+            </AppText>
+            <AppText className="mt-1 text-body-sm text-muted">
+              Без категорий клиенты не увидят вас в каталоге.
+            </AppText>
+          </View>
+        </Pressable>
+      )}
 
       {/* P0-8: Свежие заказы прямо на главной мастера. */}
       <View>

@@ -184,8 +184,7 @@ export default function EditMasterScreen() {
           <MasterProfileFormBody
             control={control}
             errors={errors}
-            isBusy={isBusy || citiesLoading}
-            cities={cities ?? undefined}
+            isBusy={isBusy}
           />
 
           <View className="mt-8">

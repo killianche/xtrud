@@ -8,13 +8,13 @@
  * Caller предоставляет свой submit и кнопку.
  */
 
+import { Car, Wrench } from "lucide-react-native";
 import type { Control, FieldErrors, FieldPath } from "react-hook-form";
 import { Controller } from "react-hook-form";
-import { ActivityIndicator, Pressable, Switch, TextInput, View } from "react-native";
+import { Pressable, TextInput, View } from "react-native";
 import { AppText } from "@/components/AppText";
 import type { MasterProfileFormValues } from "@/features/auth/master-profile-schema";
 import { useThemeColor } from "@/lib/use-theme-color";
-import type { Tables } from "@/types/database";
 
 type FormControl = Control<MasterProfileFormValues>;
 
@@ -22,14 +22,15 @@ interface MasterProfileFormBodyProps {
   control: FormControl;
   errors: FieldErrors<MasterProfileFormValues>;
   isBusy: boolean;
-  cities: Pick<Tables<"cities">, "id" | "name">[] | undefined;
+  // cities — больше не используется (Город убран из формы 2026-05-15;
+  // мастер указывает где работает через ServiceAreasSection в edit-master).
+  cities?: never;
 }
 
 export function MasterProfileFormBody({
   control,
   errors,
   isBusy,
-  cities,
 }: MasterProfileFormBodyProps) {
   const mutedSoftColor = useThemeColor("muted-soft");
   return (
@@ -56,68 +57,11 @@ export function MasterProfileFormBody({
         />
       </View>
 
-      {/* Город */}
-      <View className="mt-6 px-6">
-        <AppText weight="medium" className="text-caption text-muted">
-          Город
-        </AppText>
-        {!cities && (
-          <View className="mt-2">
-            <ActivityIndicator />
-          </View>
-        )}
-        {cities && (
-          <Controller
-            control={control}
-            name="cityId"
-            render={({ field: { value, onChange } }) => (
-              <View className="mt-2 flex-row flex-wrap gap-2">
-                {cities.map((city) => {
-                  const selected = value === city.id;
-                  return (
-                    <Pressable
-                      key={city.id}
-                      accessibilityRole="button"
-                      accessibilityState={{ selected }}
-                      disabled={isBusy}
-                      onPress={() => onChange(city.id)}
-                      className={`h-10 items-center justify-center rounded-pill border px-4 ${
-                        selected
-                          ? "border-accent bg-accent-soft"
-                          : "border-hairline bg-canvas active:opacity-70"
-                      }`}
-                    >
-                      <AppText
-                        weight="medium"
-                        className={`text-caption ${selected ? "text-accent" : "text-body"}`}
-                      >
-                        {city.name}
-                      </AppText>
-                    </Pressable>
-                  );
-                })}
-              </View>
-            )}
-          />
-        )}
-        {errors.cityId && (
-          <AppText weight="medium" className="mt-2 text-caption text-error">
-            {errors.cityId.message}
-          </AppText>
-        )}
-      </View>
-
-      {/* Район */}
-      <View className="mt-6 px-6">
-        <FormField
-          label="Район или село (опц.)"
-          error={errors.district?.message}
-          control={control}
-          name="district"
-          placeholder="Центр / Назрань-Юг"
-          disabled={isBusy}
-        />
-      </View>
+      {/* Город / Район / Радиус выезда УБРАНЫ (фидбэк user 2026-05-15):
+          мастер не указывает свой персональный город — важно ГДЕ ОН РАБОТАЕТ,
+          а это уже в ServiceAreasSection ниже («Где работаете» с multi-select
+          городов и районов). Persistent cityId в users остаётся для legacy,
+          новый UX не его не запрашивает. */}
 
       {/* Bio с char-counter */}
       <View className="mt-6 px-6">
@@ -165,58 +109,92 @@ export function MasterProfileFormBody({
         />
       </View>
 
-      {/* Опыт и радиус */}
-      <View className="mt-6 flex-row gap-3 px-6">
-        <View className="flex-1">
-          <NumberField
-            label="Опыт, лет"
-            error={errors.experienceYears?.message}
-            control={control}
-            name="experienceYears"
-            placeholder="5"
-            disabled={isBusy}
-          />
-        </View>
-        <View className="flex-1">
-          <NumberField
-            label="Радиус выезда, км"
-            error={errors.serviceRadiusKm?.message}
-            control={control}
-            name="serviceRadiusKm"
-            placeholder="10"
-            disabled={isBusy}
-          />
-        </View>
+      {/* Опыт (Радиус выезда УБРАН — поле не нужно, локации задаются
+          через ServiceAreasSection «Где работаете») */}
+      <View className="mt-6 px-6">
+        <NumberField
+          label="Опыт, лет"
+          error={errors.experienceYears?.message}
+          control={control}
+          name="experienceYears"
+          placeholder="5"
+          disabled={isBusy}
+        />
       </View>
 
-      {/* Тогглы */}
-      <View className="mt-6 gap-2 px-6">
-        <Controller
-          control={control}
-          name="hasTools"
-          render={({ field: { value, onChange } }) => (
-            <ToggleRow
-              label="Со своим инструментом"
-              value={value}
-              onChange={onChange}
-              disabled={isBusy}
-            />
-          )}
-        />
-        <Controller
-          control={control}
-          name="hasTransport"
-          render={({ field: { value, onChange } }) => (
-            <ToggleRow
-              label="На своём транспорте"
-              value={value}
-              onChange={onChange}
-              disabled={isBusy}
-            />
-          )}
-        />
+      {/* Toggles — переделаны на 2-column toggleable карточки (фидбэк user
+          2026-05-15: «дизайн отстойный»). Раньше были широкие row'ы с
+          текстом слева и switch справа — выглядело как настройки iOS.
+          Теперь карточки с lucide-иконкой, подписью и галочкой при selected. */}
+      <View className="mt-6 px-6">
+        <AppText weight="medium" className="text-caption text-muted">
+          Что у вас есть
+        </AppText>
+        <View className="mt-2 flex-row gap-3">
+          <Controller
+            control={control}
+            name="hasTools"
+            render={({ field: { value, onChange } }) => (
+              <ToggleCard
+                Icon={Wrench}
+                label="Свой инструмент"
+                value={value}
+                onChange={onChange}
+                disabled={isBusy}
+              />
+            )}
+          />
+          <Controller
+            control={control}
+            name="hasTransport"
+            render={({ field: { value, onChange } }) => (
+              <ToggleCard
+                Icon={Car}
+                label="Свой транспорт"
+                value={value}
+                onChange={onChange}
+                disabled={isBusy}
+              />
+            )}
+          />
+        </View>
       </View>
     </>
+  );
+}
+
+// ----------------------------------------------------------------------------
+
+interface ToggleCardProps {
+  Icon: typeof Wrench;
+  label: string;
+  value: boolean;
+  onChange: (next: boolean) => void;
+  disabled?: boolean;
+}
+
+function ToggleCard({ Icon, label, value, onChange, disabled }: ToggleCardProps) {
+  const inkColor = useThemeColor("ink");
+  const onPrimaryColor = useThemeColor("on-primary");
+  const iconColor = value ? onPrimaryColor : inkColor;
+  return (
+    <Pressable
+      accessibilityRole="checkbox"
+      accessibilityState={{ checked: value, disabled }}
+      disabled={disabled}
+      onPress={() => onChange(!value)}
+      className={`flex-1 items-center gap-2 rounded-xl border-2 p-4 active:opacity-70 ${
+        value ? "border-ink bg-ink" : "border-hairline bg-canvas"
+      }`}
+    >
+      <Icon size={24} strokeWidth={1.75} color={iconColor} />
+      <AppText
+        weight={value ? "semibold" : "medium"}
+        className={`text-center text-body-sm ${value ? "text-on-primary" : "text-ink"}`}
+      >
+        {label}
+      </AppText>
+    </Pressable>
   );
 }
 
@@ -324,25 +302,5 @@ function NumberField(props: NumberFieldProps) {
   );
 }
 
-interface ToggleRowProps {
-  label: string;
-  value: boolean;
-  onChange: (v: boolean) => void;
-  disabled?: boolean;
-}
-
-function ToggleRow({ label, value, onChange, disabled }: ToggleRowProps) {
-  return (
-    <View className="flex-row items-center justify-between rounded-md bg-surface-2 px-4 py-3">
-      <AppText weight="medium" className="flex-1 text-body-md text-ink">
-        {label}
-      </AppText>
-      <Switch
-        value={value}
-        onValueChange={onChange}
-        disabled={disabled}
-        trackColor={{ true: "#2563eb", false: "#e5e7eb" }}
-      />
-    </View>
-  );
-}
+// ToggleRow удалён 2026-05-15 — заменён на ToggleCard выше (фидбэк
+// «дизайн отстойный» про iOS-style switch'и).

@@ -82,8 +82,7 @@ export default function MasterProfileScreen() {
         <MasterProfileFormBody
           control={control}
           errors={errors}
-          isBusy={isBusy || citiesLoading}
-          cities={cities ?? undefined}
+          isBusy={isBusy}
         />
 
         {submitError && (

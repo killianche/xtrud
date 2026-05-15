@@ -20,6 +20,8 @@ import { CirclePlus } from "lucide-react-native";
 import { Platform, Pressable, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
+import { useAuthSession } from "@/features/auth/use-auth-session";
+import { useUserRecord } from "@/features/auth/use-user-record";
 import { useTabBarVisibility } from "@/lib/tabbar-visibility";
 import { triggerTabScrollReset } from "@/lib/tab-scroll-reset";
 import { useThemeColors } from "@/lib/use-theme-color";
@@ -35,6 +37,14 @@ export function TabBar({ state, descriptors, navigation }: BottomTabBarProps) {
   const router = useRouter();
   const tc = useThemeColors(["canvas", "hairline", "ink", "mute"]);
   const tabBarHidden = useTabBarVisibility((s) => s.hidden);
+
+  // N2: кнопка «+ Создать заказ» — только для клиента. Мастер не создаёт
+  // заказы, ему нужны другие действия (поиск заявок). Скрываем «+» когда
+  // active_role='master'. Анонимы (нет user) — показываем «+» по умолчанию
+  // (анон создаёт заказ через JIT-signup).
+  const { session } = useAuthSession();
+  const { data: user } = useUserRecord(session?.user?.id);
+  const isMasterRole = user?.active_role === "master";
 
   // Скрыт глобальным флагом (используется на full-screen wizard'ах вроде
   // orders/new — там TabBar отвлекает от формы).
@@ -157,24 +167,30 @@ export function TabBar({ state, descriptors, navigation }: BottomTabBarProps) {
       {/* Левая часть. */}
       {leftRoutes.map(renderTab)}
 
-      {/* Таб «Создать» — обычный неактивный таб (mute), не route. Только иконка. */}
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel="Создать заказ"
-        onPress={() => router.push("/orders/new" as never)}
-        className={isWeb ? "text-mute" : undefined}
-        style={{
-          flex: 1,
-          alignItems: "center",
-          justifyContent: "center",
-        }}
-      >
-        <CirclePlus
-          size={28}
-          strokeWidth={1.75}
-          color={isWeb ? "currentColor" : tc.mute}
-        />
-      </Pressable>
+      {/* N2: Таб «Создать» — только для клиента (мастер не создаёт заказы).
+          Если master active_role — отрендерим пустой spacer, чтобы остальные
+          табы остались равноширокими (4 таба × flex:1). */}
+      {isMasterRole ? (
+        <View style={{ flex: 1 }} />
+      ) : (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Создать заказ"
+          onPress={() => router.push("/orders/new" as never)}
+          className={isWeb ? "text-mute" : undefined}
+          style={{
+            flex: 1,
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <CirclePlus
+            size={28}
+            strokeWidth={1.75}
+            color={isWeb ? "currentColor" : tc.mute}
+          />
+        </Pressable>
+      )}
 
       {/* Правая часть. */}
       {rightRoutes.map(renderTab)}

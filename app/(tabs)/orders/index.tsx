@@ -1,7 +1,7 @@
 import { useRouter } from "expo-router";
-import { Plus } from "lucide-react-native";
-import { useEffect, useRef, useState } from "react";
-import { ActivityIndicator, Pressable, ScrollView, View } from "react-native";
+import { Plus, Search, X } from "lucide-react-native";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { ActivityIndicator, Pressable, ScrollView, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { scrollViewToTop, useTabScrollResetCounter } from "@/lib/tab-scroll-reset";
 import { AppText } from "@/components/AppText";
@@ -16,6 +16,7 @@ import { useMyResponses } from "@/features/orders/use-my-responses";
 import { useOrdersAssignedToMe } from "@/features/orders/use-orders-assigned-to-me";
 import { useMarkFeedSeen } from "@/features/orders/use-unread-feed";
 import { usePullToRefresh } from "@/hooks/use-pull-to-refresh";
+import { flipLayout, looksLikeWrongLayout } from "@/lib/keyboard-layout";
 import { useThemeColor } from "@/lib/use-theme-color";
 
 export default function OrdersScreen() {
@@ -249,6 +250,11 @@ function MasterOrdersView({ userId }: MasterOrdersViewProps) {
           onLoadMore={() => feedFetchNext()}
           onCategoryCta={() => router.push("/(onboarding)/master-categories")}
           onOrderPress={(id) => router.push(`/(tabs)/orders/${id}` as never)}
+          // N3: для chip-фильтра по конкретной L2 (только если категорий >1).
+          myCategories={(myCats ?? []).map((mc) => ({
+            l2_id: mc.l2_id,
+            name_ru: mc.l2?.name_ru ?? mc.l2_id,
+          }))}
         />
       )}
 
@@ -330,6 +336,7 @@ interface NewOrdersTabProps {
     urgency: import("@/features/orders/use-create-order").OrderUrgency;
     responses_count: number;
     created_at: string;
+    description?: string | null;
   }[];
   isLoading: boolean;
   hasCategories: boolean;
@@ -339,6 +346,8 @@ interface NewOrdersTabProps {
   onLoadMore: () => void;
   onCategoryCta: () => void;
   onOrderPress: (id: string) => void;
+  /** P1-3: список L2 мастера для chip-фильтра (опц.). */
+  myCategories?: { l2_id: string; name_ru: string }[];
 }
 
 function NewOrdersTab({
@@ -351,8 +360,42 @@ function NewOrdersTab({
   onLoadMore,
   onCategoryCta,
   onOrderPress,
+  myCategories,
 }: NewOrdersTabProps) {
   const onPrimaryColor = useThemeColor("on-primary");
+  const muteColor = useThemeColor("mute");
+  const inkColor = useThemeColor("ink");
+
+  // N3: локальный поиск/фильтр по уже загруженным orders. Не идём в RPC —
+  // микро-каталог 50-100 строк, фильтрация в памяти мгновенная и не
+  // требует server-roundtrip. Раскладка-fix через flipLayout.
+  const [query, setQuery] = useState("");
+  const [l2Filter, setL2Filter] = useState<string | null>(null);
+
+  const filtered = useMemo(() => {
+    let result = orders;
+    if (l2Filter) result = result.filter((o) => o.l2_id === l2Filter);
+    const q = query.trim().toLowerCase();
+    if (q.length >= 2) {
+      // Запрос + раскладка-фикс flipped версия — мастер мог забыть раскладку.
+      const flipped = looksLikeWrongLayout(q) ? flipLayout(q) : null;
+      const matches = (text: string) => {
+        const t = text.toLowerCase();
+        if (t.includes(q)) return true;
+        return flipped ? t.includes(flipped) : false;
+      };
+      result = result.filter(
+        (o) =>
+          matches(o.title) ||
+          matches(o.l2?.name_ru ?? "") ||
+          matches(o.description ?? ""),
+      );
+    }
+    return result;
+  }, [orders, query, l2Filter]);
+
+  const showCategoryFilter = (myCategories?.length ?? 0) > 1;
+
   if (isLoading) {
     return (
       <View className="mt-8 items-center px-6">
@@ -407,8 +450,96 @@ function NewOrdersTab({
   }
 
   return (
-    <View className="mt-6 gap-3 px-6">
-      {orders.map((o) => (
+    <View className="mt-6 px-6">
+      {/* N3: поиск по тексту title/description/категории + раскладка-fix */}
+      <View className="flex-row items-center gap-2 rounded-md border border-hairline bg-canvas px-3 h-11">
+        <Search size={16} strokeWidth={1.75} color={muteColor} />
+        <TextInput
+          value={query}
+          onChangeText={setQuery}
+          placeholder="Найти заявку…"
+          placeholderTextColor={muteColor}
+          style={
+            {
+              flex: 1,
+              fontSize: 15,
+              color: inkColor,
+              outlineWidth: 0,
+              outlineStyle: "none",
+            } as object
+          }
+        />
+        {query ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Очистить"
+            onPress={() => setQuery("")}
+            hitSlop={6}
+            className="active:opacity-60"
+          >
+            <X size={14} strokeWidth={2} color={muteColor} />
+          </Pressable>
+        ) : null}
+      </View>
+
+      {/* N3: chip-фильтр по конкретной L2 — только если у мастера >1 категория */}
+      {showCategoryFilter ? (
+        <View className="mt-3 flex-row flex-wrap gap-2">
+          <Pressable
+            accessibilityRole="button"
+            accessibilityState={{ selected: l2Filter == null }}
+            onPress={() => setL2Filter(null)}
+            className={`rounded-pill border px-3 py-1.5 active:opacity-70 ${
+              l2Filter == null
+                ? "border-ink bg-ink"
+                : "border-hairline bg-canvas hover:bg-surface-2"
+            }`}
+          >
+            <AppText
+              weight={l2Filter == null ? "semibold" : "medium"}
+              className={`text-caption ${l2Filter == null ? "text-on-primary" : "text-ink"}`}
+            >
+              Все категории
+            </AppText>
+          </Pressable>
+          {(myCategories ?? []).map((c) => {
+            const selected = l2Filter === c.l2_id;
+            return (
+              <Pressable
+                key={c.l2_id}
+                accessibilityRole="button"
+                accessibilityState={{ selected }}
+                onPress={() => setL2Filter(c.l2_id)}
+                className={`rounded-pill border px-3 py-1.5 active:opacity-70 ${
+                  selected
+                    ? "border-ink bg-ink"
+                    : "border-hairline bg-canvas hover:bg-surface-2"
+                }`}
+              >
+                <AppText
+                  weight={selected ? "semibold" : "medium"}
+                  className={`text-caption ${selected ? "text-on-primary" : "text-ink"}`}
+                >
+                  {c.name_ru}
+                </AppText>
+              </Pressable>
+            );
+          })}
+        </View>
+      ) : null}
+
+      {/* Empty-state если фильтр всё отсёк */}
+      {filtered.length === 0 ? (
+        <View className="mt-6">
+          <AppText className="text-body-sm text-mute text-center">
+            Ничего не нашли{query ? ` по запросу «${query}»` : ""}
+            {l2Filter ? " в выбранной категории" : ""}.
+          </AppText>
+        </View>
+      ) : null}
+
+      <View className="mt-4 gap-3">
+      {filtered.map((o) => (
         <OrderRow
           key={o.id}
           id={o.id}
@@ -426,6 +557,7 @@ function NewOrdersTab({
           onPress={() => onOrderPress(o.id)}
         />
       ))}
+      </View>
 
       {hasNextPage && (
         <Pressable

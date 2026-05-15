@@ -51,8 +51,15 @@ export function MasterHomeContent({ userId }: MasterHomeContentProps) {
       </View>
 
       {/* Мои заявки — tab pills получают свой px-4 внутри компонента,
-          карточки идут full-bleed. */}
-      {hasCategories ? <MasterDashboardOrders userId={userId} /> : null}
+          карточки идут full-bleed. Edge-to-edge hairline + pt-6 — визуальный
+          разделитель между статусом доступности и блоком «заявки» (фидбек
+          user 2026-05-16: «между блоками сделай побольше расстояние и черту»).
+          Линия идёт edge-to-edge как стандартный section-divider Vercel/iOS. */}
+      {hasCategories ? (
+        <View className="border-t border-hairline pt-6">
+          <MasterDashboardOrders userId={userId} />
+        </View>
+      ) : null}
 
       {/* Categories callout — единственный conditional блок. */}
       {!hasCategories ? (

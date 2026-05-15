@@ -4,7 +4,43 @@
 
 ---
 
-## Текущее состояние (2026-05-15 поздний вечер, JIT-signup + draft persistence + guest profile)
+## Текущее состояние (2026-05-15 ночь, P0 master-account + умный поиск)
+
+**Главное:** закрыто 9 из 9 P0-задач из [`research/MASTER_ACCOUNT_PLAN.md`](research/MASTER_ACCOUNT_PLAN.md). Master-аккаунт функционально доведён до уровня готовности «Sprint 1». Каждая задача отдельным коммитом.
+
+**Закрытые P0 (порядок исполнения):**
+
+1. **P0-1** [`ec4be72`] — Унификация цен на `master_services`, deprecate `master_categories.pricing_mode/pricing/attributes` (миграция 0055).
+2. **P0-2** [`34c6c9b`] — Связь `master_services` с категорией: `l2_id` + `l3_id` (FK), backfill 7/36 точно по таксономии (миграция 0056).
+3. **P0-10** [`c44471b`] — Режим «Договорная» в прайсе: enum `service_pricing_kind` (fixed/range/hourly/quote), 4 toggle с условной видимостью price-полей (миграция 0057).
+4. **P0-3** [`24ab7a1`] — Иерархический picker категорий в онбординге: sticky search, группировка по L1 (10 разделов × 64 L2), flat-выдача в search-mode.
+5. **P0-4** [`a935d67`] — Pre-defined L3 услуги с placeholder-ценами в форме «Новая услуга»: chip-row выбора L2 → готовый список L3 → автозаполнение title → hint «✨ В среднем берут X ₽ — применить» (миграции 0056 + seed 0058 на 41 услугу).
+6. **P0-5** [`9e59358`] — Daily response limit 5/день (как Яндекс): trigger в БД, RPC `get_response_limit_today()`, бейдж «5 откликов сегодня» в шапке master-главной, disabled state кнопки «Отправить отклик» при 0 remaining (миграция 0059).
+7. **P0-7** [`ba5d6ed`] — `users.is_demo bool` флаг + backfill 21 demo-master / 31 demo-client (миграция 0060). Queries не фильтруют — пока показываем всех, иначе каталог пустой.
+8. **P0-6** [`eb22593`] — Фото-attachments в чате: миграция `messages.image_url`, Storage bucket `chat-images` + RLS, кнопка ImagePlus → expo-image-picker → preview → upload (миграция 0061).
+9. **P0-NEW** [`38d0b5d`] — Умный поиск услуг (миграции 0062 + 0063):
+   - Postgres FTS русским стеммером + pg_trgm + thesaurus-таблица `category_terms` (86 seed-терминов).
+   - RPC `search_categories(query, limit)` — UNION 3 слоёв (synonym 1.0 / FTS 0.7 / trigram 0.5×similarity).
+   - Раскладка-фикс на клиенте JS (`flipLayout`) — 2 параллельных запроса.
+   - Интегрировано в `/orders/category-select`.
+   - Кейсы verified: «камера» → Видеонаблюдение; «rfvthf» → баннер «Возможно, вы искали: камера»; «холодильник» → Бытовая техника (synonym); «сантехнк» (опечатка) → Сантехника (trigram); «электр» (префикс) → Электрика (FTS).
+10. **P0-8** [`2f5cf0d`] — Главная мастера = лента 3 свежих заказов (вместо «Заявок пока нет»), skeletons вместо ActivityIndicator. Tab-bar badge на иконку «Заказы» уже работал.
+
+**Что сейчас функционально готово в master-аккаунте:**
+- Регистрация (на demo OTP), профиль с категориями (через bottom-sheet с поиском), прайс-лист с pre-defined услугами и placeholder-ценами, 4 типа цен включая «договорная», лимит откликов 5/день, главная = лента заказов, чат с фото.
+
+**13 миграций применены на прод:** 0049–0063 (часть baseline-коммитом, P0-1..P0-NEW добавили 0055–0063).
+
+**Что НЕ сделано в P0 (отложено):**
+- 6 micro-улучшений UX из P0-8: swipe-actions на OrderRow, inline-edit прайса, 1-тап «Готово» с автозапросом отзыва.
+- Полное наполнение `avg_check_rub` для всех 280 L3 услуг (заполнено 41 на 5 категорий — Сантехника / Электрика / Уборка / Покраска / Плитка).
+- `is_demo` фильтр в queries — включим когда появятся реальные мастера.
+
+**Известная регрессия:** demo-логин (`+79000000003` → код `000000`) падает в `/verify` с «Database error querying schema». Заведено в TASKS как BUGFIX. Не блокирует разработку (можно использовать другой demo-аккаунт или начать с регистрации).
+
+---
+
+## Прежнее состояние (2026-05-15 поздний вечер, JIT-signup + draft persistence + guest profile)
 
 **Главное:**
 

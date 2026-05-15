@@ -5,6 +5,59 @@
 > До этого инфа была разлита по 3 документам: `PROJECT_MAP.md` §4.3 / §5.1 / §5.2 (UI и шаги онбординга), `CATEGORIES_AND_PROFILES.md` §2 (поля профиля + dual-role), миграциям (`0001`–`0024`, `0040`+, `0043`). Этот файл — точка входа: «что вообще такое аккаунт мастера».
 >
 > Если правишь схему — обнови этот файл в том же коммите.
+>
+> **Last update 2026-05-15:** добавлены P0-1..P0-NEW (миграции 0055–0063). Главные сдвиги: единый источник цен `master_services` (с FK на l2_id/l3_id и pricing_kind), pre-defined услуги с placeholder-ценами, daily response limit 5/день, фото в чате, умный поиск (FTS+pg_trgm+thesaurus). Подробнее в [`research/MASTER_ACCOUNT_PLAN.md`](research/MASTER_ACCOUNT_PLAN.md) и в STATUS.md секция «2026-05-15 ночь».
+
+---
+
+## Архитектура цен (после P0-1, P0-2, P0-10)
+
+**Единственный источник цен — `master_services`** (плоский прайс-лист). Поля `master_categories.pricing_mode/pricing/attributes` помечены DEPRECATED в миграции 0055 и не используются новым кодом.
+
+**Схема `master_services`:**
+- `id`, `master_id` (FK users)
+- `l2_id` (FK categories_l2, NULL только для legacy до 0056)
+- `l3_id` (FK categories_l3, NULL = свободная формулировка title)
+- `title` (text 2-100, prepopulated из L3.name_ru при выборе из готового списка)
+- `pricing_kind` enum (`fixed | range | hourly | quote`)
+- `price_min` (int, NULL только для quote)
+- `price_max` (int, NULL для всего кроме range)
+- `unit` enum (`per_hour | per_task | per_m2 | per_day`)
+- `position`, `created_at`, `updated_at`
+
+**Format helper:** `formatServicePrice()` в [src/features/master-services/use-master-services.ts](src/features/master-services/use-master-services.ts) — единственный источник истины для отображения. По фидбеку пользователя 2026-05-15: формат «от X ₽» без диапазона; для unit=per_task suffix не отображается.
+
+**Pricing helper в форме:** при выборе L3 показывается «✨ В среднем берут X ₽ — применить» из `categories_l3.avg_check_rub`. Заполнено для 41 популярной L3 (миграция 0058), остальные 239 — задача наполнения.
+
+---
+
+## Daily response limit (P0-5)
+
+**5 откликов/день** в free-tier. Эталон Яндекс Услуги (7/день).
+
+- Trigger `check_daily_response_limit` (миграция 0059) — блокирует INSERT в `order_responses` с error `daily_response_limit_reached` если за сутки (МСК) уже 5.
+- RPC `get_response_limit_today()` → `{used, max, remaining}`.
+- UI хук `useResponseLimit()` (cached 30s).
+- Бейдж `<ResponseLimitBadge />` в шапке master-главной.
+- В форме отклика — disabled state кнопки + сообщение «Лимит исчерпан, завтра в 00:00 (МСК)…».
+
+В будущем — платная разблокировка (как Яндекс 199 ₽/нед безлимит). Архитектура готова — лимит 5 хардкоден в trigger и RPC, легко вынести на user_id-tier.
+
+---
+
+## Умный поиск услуг (P0-NEW, миграции 0062 + 0063)
+
+Главный API: RPC `search_categories(p_query, p_limit)` — UNION 3 слоёв:
+
+1. **Synonym** (вес 1.0) — точное/похожее с синонимом из `category_terms` (86 seed-терминов).
+2. **FTS** (вес 0.7) — `categories_l2.fts_doc` / `categories_l3.fts_doc` через `to_tsvector('russian')` + `websearch_to_tsquery`. Морфология «камеры → камер» из коробки.
+3. **pg_trgm fuzzy** (вес 0.5×similarity) — опечатки.
+
+Раскладка-фикс «rfvthf → камера» — на клиенте JS через `flipLayout()` ([src/lib/keyboard-layout.ts](src/lib/keyboard-layout.ts)). Два параллельных запроса через `useSearchCategories()`. Если original=0 hits и flipped>0 → баннер «Возможно, вы искали: ...».
+
+UI: [app/(tabs)/orders/category-select.tsx](app/(tabs)/orders/category-select.tsx) — browse-mode (пустой query) показывает все L2, search-mode (query≥2) использует RPC.
+
+**Расширение thesaurus:** новые синонимы — прямо INSERT в `category_terms`. Структура: `(term, l2_id | l3_id, weight)`. См. миграцию 0063.
 
 ---
 

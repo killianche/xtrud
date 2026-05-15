@@ -4,7 +4,58 @@
 
 ---
 
-## Текущее состояние (2026-05-15 ночь, P0 master-account + умный поиск)
+## Текущее состояние (2026-05-15 ночь, /orders/search redesign — full-screen filters + ScreenHeader standard)
+
+**Главное:** Глубокий редизайн `/orders/search` под фидбек user 2026-05-15: «хедер мелкий, разный на разных экранах; кнопка Фильтры мелкая; фильтры должны открываться на отдельном экране большие и удобные; категории не перечислять сразу — кнопка-trigger которая открывает picker». Зафиксирован общий стандарт UI-паттернов на будущее.
+
+**Что сделано:**
+
+1. **Новый `<ScreenHeader>`** (`src/components/ui/ScreenHeader.tsx`) — единый хедер для всех full-screen detail-экранов. height 64px, back-кнопка h-12 w-12 + ChevronLeft 28px stroke 2.25, title display-md tracking-tight bold, опц. rightAction h-11 pill (label + Icon, active=true → border-ink bg-ink). Экспортируется через `@/components/ui`.
+2. **Новый Zustand-стор фильтров** (`src/features/orders/orders-search-filters-store.ts`) — переживает переход search → filters → category-select. l2Ids, l1Id, sort + countActiveFilters helper.
+3. **Новая страница `/orders/search/filters`** (`app/(tabs)/orders/search/filters.tsx`) — full-screen фильтры. Сортировка как pill chips, Категория как button-trigger «Выберите категории» с chevron-down (NE list inline!), Раздел L1 как chips, sticky footer «Применить · N», reset-link. TabBar скрыт.
+4. **Новая страница `/orders/search/category-select`** (`app/(tabs)/orders/search/category-select.tsx`) — full-screen multi-select picker категорий. Search-input, цветные Iconify-иконки, ✓-индикатор справа, sticky «Применить · N», RightAction «Сбросить» в хедере при count > 0. Локальный Set синхронизируется со стором при apply. TabBar скрыт.
+5. **Миграция `app/(tabs)/orders/search.tsx` → `app/(tabs)/orders/search/index.tsx`** — теперь использует ScreenHeader + читает фильтры из стора (вместо useState), inline-блок фильтров удалён. Это таб (без back-кнопки, TabBar visible). L1 фильтр без L2 → сужает на клиенте до всех L2 в этом L1.
+6. **Документация в `DESIGN.md` → новая секция «UI patterns»** — 5 паттернов с anti-patterns: ScreenHeader (стандарт), button-trigger вместо chip-row, full-screen filter/picker экраны, таб vs detail (когда показывать back и скрывать TabBar), header-комментарий обязателен. Зафиксирован 2026-05-15 после фидбэка.
+
+**Verify в preview:** ✅ Хедер большой (display-md), кнопка Фильтры пилюлей с иконкой, переход на /filters работает, переход на /category-select работает, multi-select работает (выбрал 2 → footer «Применить · 2»), apply пишет в стор, возврат на /filters показывает «Выбрано 2 / Сантехника, Ремонт и отделка», apply на /filters → /search с активным состоянием Фильтры-кнопки + сортировка применилась.
+
+**TS clean.**
+
+---
+
+## Прежнее состояние (2026-05-15 поздно ночь, MASTER_REDESIGN_SPEC — старт визуального редизайна мастер-side)
+
+**Новая большая работа:** перенос клиентского визуала на ВСЕ мастер-экраны. User-фидбек: «у клиента красиво — размеры шрифтов, хедеры, фильтры, кнопки, иллюстрации, свечение. Возьми всё это и применю по всем мастер-экранам».
+
+**Что в этой сессии (часть 1 из N):**
+- **`MASTER_REDESIGN_SPEC.md`** (новый файл в корне) — инвентарь **8 визуальных паттернов** клиента + план редизайна по **11 мастер-экранам** в порядке приоритета. Раздел 1 — каждый паттерн с эталонным кодом и file-ссылкой. Раздел 2 — пошаговый план по каждому экрану (что меняем, зачем). Раздел 3 — чек-лист закрытия задачи. Раздел 4 — история решений.
+- Изучил клиентскую главную (`app/(tabs)/index.tsx`), `HelpCallout`, `MasterStatsBlock`, `OrderRow`, `MasterHomeContent`, `orders/search.tsx`. Зафиксировал визуальный gap.
+
+**Часть 2 (мелкий стурктурный фикс перед редизайном /orders/search):**
+- `/orders/search` — таб-страница, не detail. Фиксы: убран `setTabBarHidden(true)` (нижняя панель больше не пропадает) + убрана back-кнопка из `<ScreenHeader>` + средняя кнопка «Поиск заказов» в TabBar теперь подсвечивается `text-ink` + stroke 2.25 когда `pathname.startsWith('/orders/search')`.
+- Файлы: `app/(tabs)/orders/search/index.tsx` (убраны 3 импорта, 1 useEffect-блок, 1 prop у ScreenHeader); `src/components/TabBar.tsx` (+ usePathname + isSearchActive ветка для color/stroke).
+- Verify в preview: ✅ back-кнопка отсутствует, ✅ TabBar visible, ✅ значок лупы в TabBar = ink-цвет stroke 2.25.
+
+**Часть 3..N:**
+Косметический редизайн `/orders/search` (skeletons, hero empty-state, HelpCallout) и далее по 1 экрану на сессию. Порядок:
+
+1. ⏭️ **`/orders/search`** (то от чего пришёл фидбек — экран с скриншотом)
+2. Master Home (`MasterHomeContent`)
+3. `/orders` master-режим (3 таба)
+4. `/orders/[id]` master-вид + форма отклика
+5. `/chats` list
+6. `/chats/[id]` thread
+7. `/profile` master-режим
+8. `/profile/edit-master`
+9. `/master-categories` edit-режим
+10. `MasterServicesSection`
+11. `PortfolioGrid` edit
+
+После каждого экрана — отчёт + screenshot before/after + verification в preview.
+
+---
+
+## Прежнее состояние (2026-05-15 ночь, P0 master-account + умный поиск)
 
 **Главное:** закрыто 9 из 9 P0-задач из [`research/MASTER_ACCOUNT_PLAN.md`](research/MASTER_ACCOUNT_PLAN.md). Master-аккаунт функционально доведён до уровня готовности «Sprint 1». Каждая задача отдельным коммитом.
 

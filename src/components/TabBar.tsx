@@ -15,7 +15,7 @@
  */
 
 import type { BottomTabBarProps } from "@react-navigation/bottom-tabs";
-import { useRouter } from "expo-router";
+import { usePathname, useRouter } from "expo-router";
 import { CirclePlus, Search } from "lucide-react-native";
 import { Platform, Pressable, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -35,6 +35,7 @@ const isWeb = Platform.OS === "web";
 export function TabBar({ state, descriptors, navigation }: BottomTabBarProps) {
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const pathname = usePathname();
   const tc = useThemeColors(["canvas", "hairline", "ink", "mute"]);
   const tabBarHidden = useTabBarVisibility((s) => s.hidden);
 
@@ -45,6 +46,13 @@ export function TabBar({ state, descriptors, navigation }: BottomTabBarProps) {
   const { session } = useAuthSession();
   const { data: user } = useUserRecord(session?.user?.id);
   const isMasterRole = user?.active_role === "master";
+
+  // Подсветка средней «Поиск заказов» псевдо-таба для мастера: когда
+  // активный URL начинается с `/orders/search` (страница + её /filters
+  // подэкран), эта кнопка выглядит focused — ink цвет + stroke 2.25, как
+  // у настоящих табов. До этого фикса (2026-05-15) кнопка всегда была
+  // mute → user не понимал, что это сейчас активный экран.
+  const isSearchActive = pathname.startsWith("/orders/search");
 
   // Скрыт глобальным флагом (используется на full-screen wizard'ах вроде
   // orders/new — там TabBar отвлекает от формы).
@@ -175,15 +183,20 @@ export function TabBar({ state, descriptors, navigation }: BottomTabBarProps) {
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Поиск заказов"
+          accessibilityState={{ selected: isSearchActive }}
           onPress={() => router.push("/orders/search" as never)}
-          className={isWeb ? "text-mute" : undefined}
+          className={isWeb ? (isSearchActive ? "text-ink" : "text-mute") : undefined}
           style={{
             flex: 1,
             alignItems: "center",
             justifyContent: "center",
           }}
         >
-          <Search size={28} strokeWidth={1.75} color={isWeb ? "currentColor" : tc.mute} />
+          <Search
+            size={28}
+            strokeWidth={isSearchActive ? 2.25 : 1.75}
+            color={isWeb ? "currentColor" : isSearchActive ? tc.ink : tc.mute}
+          />
         </Pressable>
       ) : (
         <Pressable

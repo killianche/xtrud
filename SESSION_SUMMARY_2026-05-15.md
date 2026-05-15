@@ -106,3 +106,57 @@
 - ✅ Залогинился под Алиной (+7 900 000-00-01), `useSafeBack` в `master/[id]`: путь `/orders → /orders/[id] → /master/[id] → back` → лендит на `/orders/[id]` (раньше уводило на `/`). Подтверждено screenshot'ом — открыт исходный заказ «Замена смесителя на кухне» с откликами.
 - ✅ Логаут: hook на `window.confirm`, клик «Выйти из аккаунта» → confirm вызван с сообщением «Выйти из аккаунта? Можно будет войти заново со своим номером.» Клик «ОК» → localStorage пустой (supabase keys стёрты) → профиль уходит в loading-state (AuthGate переводит в анон). Клик «Отмена» → `signOut()` НЕ вызывается, URL остаётся `/profile`.
 - ✅ TypeScript clean (`npx tsc --noEmit`, no output).
+
+---
+
+# Дополнение (поздно ночь, /orders/search redesign + ScreenHeader standard)
+
+## TL;DR
+
+Глубокий редизайн `/orders/search` под фидбек user 2026-05-15. Зафиксирован общий стандарт UI-паттернов в DESIGN.md → секция «UI patterns» (5 паттернов с anti-patterns), чтобы любой следующий агент/человек делал хедеры, фильтры и picker'ы единообразно.
+
+## Закрытые задачи
+
+1. **Новый `<ScreenHeader>`** (`src/components/ui/ScreenHeader.tsx`) — единый хедер для всех full-screen detail-экранов. Стандарт: height 64px, h-12 w-12 back с ChevronLeft 28 stroke 2.25, title text-display-md tracking-tight bold, опц. rightAction h-11 pill (label + Icon + active-state).
+2. **Новый Zustand-стор `useOrdersSearchFiltersStore`** (`src/features/orders/orders-search-filters-store.ts`) — l2Ids, l1Id, sort + countActiveFilters helper. Переживает переход search → filters → category-select.
+3. **Новая страница `app/(tabs)/orders/search/filters.tsx`** — full-screen фильтры. Сортировка как pill chips, Категория как button-trigger (НЕ inline list), Раздел L1 как chips, sticky footer Применить · N, reset-link.
+4. **Новая страница `app/(tabs)/orders/search/category-select.tsx`** — full-screen multi-select picker. Search-input, цветные Iconify-иконки, ✓-индикатор, sticky Применить · N, RightAction «Сбросить» в хедере.
+5. **Миграция `search.tsx` → `search/index.tsx`** — теперь использует ScreenHeader + Zustand. inline-блок фильтров удалён. Это таб (без back, TabBar visible).
+6. **`DESIGN.md` → новая секция «UI patterns»** — 5 паттернов: ScreenHeader, button-trigger, full-screen filter/picker, таб vs detail, header-комментарий обязателен.
+7. **`STATUS.md` обновлён** — секция «Текущее состояние» с описанием.
+
+## Новые правила и решения
+
+- **Один хедер на все detail-экраны — `<ScreenHeader>`** — DESIGN.md §UI patterns §1. Зафиксирован в коде, любые ad-hoc inline-хедеры запрещены.
+- **Picker для 5+ опций — full-screen, не bottom-sheet, не inline chip-row** — DESIGN.md §UI patterns §3. Bottom-sheet занимает 60% малых экранов; inline chip-row не масштабируется. Только button-trigger → новый route.
+- **State фильтров между экранами — Zustand-стор, не useState** — DESIGN.md §UI patterns §3. Иначе при переходе на picker → back state теряется.
+- **Activity count L1 без L2** — countActiveFilters считает L1 как +1 только когда L2-список пуст (иначе L2 уже сужают выдачу, L1 — лишь группировка).
+- **Таб vs detail** — табы не показывают back-кнопку и не скрывают TabBar; detail-экраны делают и то, и другое (DESIGN.md §UI patterns §4).
+
+## Новые компоненты / паттерны
+
+- **`<ScreenHeader>`** (`src/components/ui/ScreenHeader.tsx`) — для всех full-screen detail-экранов. См. DESIGN.md.
+- **`useOrdersSearchFiltersStore`** (`src/features/orders/orders-search-filters-store.ts`) — стор фильтров поиска. Pattern: cross-screen state в Zustand при многошаговых пикерах.
+- **Multi-select picker** (`app/(tabs)/orders/search/category-select.tsx`) — pattern для multi-select из длинного списка с sticky footer.
+
+## Anti-patterns обнаруженные в сессии
+
+- **Ad-hoc inline header** (старый `search.tsx`: `<View><Pressable>...ChevronLeft size={24}...</Pressable><AppText className="text-title-lg">...</AppText></View>`) — даёт «мелкий хедер» (фидбек user). Заменено на `<ScreenHeader>`.
+- **Категории inline chip-row в фильтрах** — пользователь должен видеть «выбрать категорию», а не сразу 64 чипа подряд. Заменено на button-trigger.
+- **TabBar НЕ скрывается на full-screen detail** — забыл `useFocusEffect(setTabBarHidden)` в category-select; добавлено после verify в preview.
+- **Локальный useState для фильтров между экранами** — теряется при переходе на picker. Решено: Zustand-стор.
+
+## Открытые вопросы / TODO
+
+- aria-checked на `[role="checkbox"]` Pressable не отражается на RNW — функционально работает (state корректен, footer показывает «Применить · N»), но скринридер на web не услышит «checked». Малоприоритетно, но если будет audit a11y — исправить.
+- Сортировка по «Срочные сверху» сейчас просто client-side порядок в useAllOpenOrders. Если будет много заказов и пагинация — нужно server-side ORDER BY urgency.
+
+## Verification — что реально проверено в preview
+
+- ✅ `/orders/search` рендерит `<ScreenHeader title="Поиск заказов" rightAction={Фильтры}>` (display-md title, h-11 pill).
+- ✅ Клик «Фильтры» → переход на `/orders/search/filters` (TabBar скрыт, full-screen).
+- ✅ Клик «Выбрать категории» → переход на `/orders/search/category-select` (TabBar скрыт).
+- ✅ Multi-select в picker'е: клик 2 строк → footer показывает «Применить · 2», RightAction в хедере «Сбросить» появился.
+- ✅ Apply → возврат на /filters, Категория-trigger показывает «Выбрано 2 / Сантехника, Ремонт и отделка».
+- ✅ Apply на /filters (с sort=urgent) → возврат на /search, Фильтры-кнопка filled-black (active=true), заказы отсортированы urgent-first.
+- ✅ TypeScript clean (`npx tsc --noEmit`).

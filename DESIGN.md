@@ -60,6 +60,125 @@ xtrud — Expo + react-native-web. Все компоненты должны ре
 - На web Tailwind-классы `text-ink`, `bg-canvas` работают через CSS-переменные из `global.css`
 - CSS-переменные **авто-генерируются** из `colors.ts` (`npm run tokens`). НЕ редактировать руками.
 
+## UI patterns (обязательны для всех экранов)
+
+Эти паттерны зафиксированы 2026-05-15 после фидбэка пользователя «хедеры мелкие, разные на разных экранах, фильтры неудобные». Любое отклонение требует явного согласования и обновления этой секции.
+
+### 1. ScreenHeader — единый хедер для всех full-screen detail-экранов
+
+**Что:** компонент `<ScreenHeader>` из `@/components/ui` (`src/components/ui/ScreenHeader.tsx`).
+
+**Когда использовать:**
+- На **любом** full-screen экране, где есть back-кнопка и заголовок: master/[id], category/[id], orders/search, orders/[id], chats/[id], orders/category-select, profile/edit-master, useful/[slug], admin, и любых других detail-экранах.
+- На табах (когда экран — корень таба): без `onBack`, только заголовок и опц. `rightAction`. Пример: `/orders/search`.
+
+**Когда НЕ использовать:** modal-overlay'и, tab-bar'ы, cards, in-flow секции — для них свои стандарты.
+
+**Стандарт (фиксирован, не править без согласования):**
+- **Высота:** 64 px (визуально крупный).
+- **Back-кнопка:** `h-12 w-12` (48×48 — минимум a11y), `ChevronLeft` 28 px, stroke 2.25, `bg-canvas-soft` при active.
+- **Title:** `text-display-md` (24 px) `tracking-tight` `weight=bold` (700), `numberOfLines={1}`.
+- **Gap title от back:** `gap-2`.
+- **RightAction (опц.):** `h-11 px-4 rounded-pill` border-hairline. Активное состояние (`active: true`) — `border-ink bg-ink` + `text-on-primary`. Иконка слева 16 px stroke 2.
+
+**API:**
+
+```tsx
+<ScreenHeader title="Поиск заказов" onBack={goBack} />
+
+<ScreenHeader
+  title="Поиск заказов"
+  onBack={goBack}
+  rightAction={{
+    label: "Фильтры",
+    Icon: SlidersHorizontal,
+    onPress: () => router.push("/orders/search/filters"),
+    active: hasActiveFilters,
+  }}
+/>
+```
+
+**Anti-patterns (запрещено):**
+- ❌ Ad-hoc inline `<View><Pressable>...</Pressable><AppText>...</AppText></View>` — ломает консистентность, возникает «мелкий хедер».
+- ❌ `text-title-lg` или `text-title-md` для title — должно быть `text-display-md`.
+- ❌ Back-кнопка `h-9 w-9` или `h-10 w-10` — должно быть `h-12 w-12`.
+- ❌ `ChevronLeft size={20}` или `size={24}` — должно быть `size={28}`.
+
+### 2. Button-trigger для выбора одной/нескольких сущностей (вместо chip-row)
+
+**Когда:** на формах и фильтрах, когда нужно выбрать категорию / город / период / другое из 5+ опций.
+
+**Что вместо:** **не** показывать сразу горизонтальную скроллируемую chip-row («Сантехник», «Электрик», «Плитка», …) — это даёт ощущение «список в списке» и не масштабируется.
+
+**Стандарт:**
+- Кнопка-trigger `h-14`, `rounded-md`, `border-hairline`, `bg-canvas`, `px-4`.
+- Внутри слева — текущее значение или placeholder; справа — `ChevronDown` 20 px stroke 1.75 `color={mute}`.
+- Если ничего не выбрано → `text-mute` placeholder («Выберите категории», «Город», …).
+- Если выбрано — двухстрочный layout: `text-caption text-muted` сверху («Выбрано N»), `text-body-md text-ink medium` снизу с самим значением (или первые 2 + «и ещё N»).
+- Тап → `router.push("…/category-select")` на отдельный full-screen picker.
+
+**Пример:** см. `app/(tabs)/orders/search/filters.tsx` (categories trigger → /search/category-select).
+
+**Anti-pattern:** ❌ Bottom-sheet с длинным списком категорий. На малых экранах sheet занимает 60% и закрывает контекст; full-screen picker удобнее.
+
+### 3. Full-screen filter / picker экраны
+
+**Когда:** фильтры списка содержат 3+ группы (сортировка + категории + регион / срочность) **или** одна группа имеет 5+ опций.
+
+**Стандарт:**
+- Отдельный route `…/filters` (или `…/category-select`), не expandable inline-блок над списком.
+- `<ScreenHeader title="…" onBack={…} />` сверху.
+- Группы фильтров сверху вниз, между группами `mt-8`, между title и chip-row `mt-3`.
+- Sticky footer с `<Button variant="primary" size="lg" fullWidth>` «Применить · N» (N — количество активных фильтров).
+- При count=0 → label «Применить» без счётчика.
+- Reset-ссылка («Сбросить все фильтры») — текстовая, `text-link`, `weight=medium`, `text-body-md` (НЕ кнопка), показывается только при `activeCount > 0`.
+- Чипы-фильтра — `h-11 px-4 rounded-pill`, `border-hairline` для unselected, `border-ink bg-ink` + `text-on-primary` для selected.
+- TabBar **скрыт** на этих экранах через `useTabBarVisibility((s) => s.setHidden)` в `useFocusEffect` (это full-screen UX, нижняя панель отвлекает).
+
+**State:** Zustand-store, не `useState` в компоненте. Иначе при переходе между filters → category-select → back state теряется.
+
+```ts
+// Пример: src/features/orders/orders-search-filters-store.ts
+export const useOrdersSearchFiltersStore = create<State>((set) => ({
+  l2Ids: [],
+  l1Id: null,
+  sort: "newest",
+  // ...
+  clearAll: () => set({ l2Ids: [], l1Id: null, sort: "newest" }),
+}));
+```
+
+**Multi-select picker** (примерно `app/(tabs)/orders/search/category-select.tsx`):
+- Локальная Set'ка `selected`, инициализируется из стора.
+- Тап по строке → toggle (✓-индикатор справа: `h-7 w-7 rounded-full border-ink bg-ink` с `Check 16 stroke 2.5 white`).
+- Sticky footer «Применить · N» → пишет `Array.from(selected)` в стор и `goBack()`.
+- RightAction в хедере «Сбросить» — показывается только при count > 0.
+
+### 4. Когда таб vs detail: правила хедера и TabBar
+
+| Тип экрана | TabBar | Back-кнопка | Заголовок |
+|---|---|---|---|
+| **Корневой экран таба** (`/orders/index`, `/profile/index`, `/orders/search` если в TabBar) | Виден | НЕ показывать (`<ScreenHeader title="…" />` без `onBack`) | `<ScreenHeader>` с display-md |
+| **Detail внутри таба** (`/orders/[id]`, `/master/[id]`, `/orders/search/filters`) | Скрыт через `useFocusEffect` | Показывать (`<ScreenHeader title="…" onBack={goBack} />`) | `<ScreenHeader>` с display-md |
+| **Modal / sheet** | n/a | n/a | свой стандарт |
+
+`goBack` — через `useSafeBack("/(tabs)/...")` с фолбэком на родителя (для deeplink / refresh).
+
+### 5. Документировать в коде (header-comment)
+
+Каждый новый detail-экран начинается с шапки 5–15 строк, объясняющей **почему** именно так, со ссылкой на этот раздел DESIGN.md. Пример:
+
+```tsx
+// /orders/search/filters — full-screen экран фильтров для глобального поиска заказов.
+//
+// Эталон UX (фидбек user 2026-05-15 + референс-скриншоты):
+//   - Полный экран (не expandable inline) — больше места, удобнее на mobile.
+//   - Header через <ScreenHeader> (back + title display-md + опц. action).
+//   - Категория НЕ перечислена сразу — кнопка-trigger «Выберите категории»
+//     с chevron, при тапе → full-screen picker.
+//   - Sticky footer с большой primary-кнопкой «Применить» + ссылкой «Сбросить».
+```
+
 ## Активная палитра — оригинал из Vercel ниже
 
 ---

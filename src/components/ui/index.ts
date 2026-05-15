@@ -8,6 +8,7 @@ export { Card, type CardPadding, type CardProps, type CardVariant } from "./Card
 export { Chip, type ChipProps, type ChipSize, type ChipVariant } from "./Chip";
 export { Input, type InputProps, type InputSize } from "./Input";
 export { PickerSheet, type PickerOption, type PickerSheetProps } from "./PickerSheet";
+export { ScreenHeader, type ScreenHeaderRightAction } from "./ScreenHeader";
 export { LocationSheet, type LocationSheetProps } from "./LocationSheet";
 export {
   LocationFilterSheet,

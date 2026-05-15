@@ -632,24 +632,28 @@ function ClientResponsesSection({ orderId, order, chatId }: ClientResponsesSecti
         </View>
       )}
 
-      {/* Picked master — hero-card зелёный success, видна сразу под заголовком */}
+      {/* Picked master — hero-card зелёный success. Воздух mt-5 между
+          заголовком «Ваш мастер» и карточкой — раньше шла впритык, выглядело
+          сплющенно (фидбэк user 2026-05-15). */}
       {pickedResponse ? (
-        <ClientMasterResponseCard
-          key={pickedResponse.id}
-          response={pickedResponse}
-          variant="picked"
-          chatId={chatId ?? null}
-          isBusy={pendingAcceptResponseId === pickedResponse.id}
-          isWriting={pendingWriteMasterId === pickedResponse.master_id}
-          isRejecting={false}
-          onAccept={() => onAcceptResponseClick(pickedResponse.id)}
-          onOpenMaster={() => router.push(`/master/${pickedResponse.master_id}` as never)}
-          onOpenChat={() => {
-            if (chatId) router.push(`/chats/${chatId}` as never);
-          }}
-          onWrite={() => onWriteToMaster(pickedResponse.master_id)}
-          onReject={undefined}
-        />
+        <View className="mt-5">
+          <ClientMasterResponseCard
+            key={pickedResponse.id}
+            response={pickedResponse}
+            variant="picked"
+            chatId={chatId ?? null}
+            isBusy={pendingAcceptResponseId === pickedResponse.id}
+            isWriting={pendingWriteMasterId === pickedResponse.master_id}
+            isRejecting={false}
+            onAccept={() => onAcceptResponseClick(pickedResponse.id)}
+            onOpenMaster={() => router.push(`/master/${pickedResponse.master_id}` as never)}
+            onOpenChat={() => {
+              if (chatId) router.push(`/chats/${chatId}` as never);
+            }}
+            onWrite={() => onWriteToMaster(pickedResponse.master_id)}
+            onReject={undefined}
+          />
+        </View>
       ) : null}
 
       {/* Active others */}
@@ -811,6 +815,101 @@ function ClientMasterResponseCard({
     ? "rounded-xl border-2 border-success bg-success-soft p-4"
     : "rounded-xl border border-hairline bg-canvas p-4 hover:bg-canvas-soft";
 
+  // Picked-вариант рендерится по другой структуре — больше воздуха, цена
+  // отдельным блоком, ВЫБРАН выходит из-под имени. Это «свой мастер»,
+  // главная карточка экрана — её нельзя сжимать.
+  if (isPicked) {
+    return (
+      <View className={cardClassName}>
+        {/* Row 1: avatar + (name + meta) + ВЫБРАН pill */}
+        <View className="flex-row items-center gap-3">
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={`Профиль ${masterName}`}
+            onPress={onOpenMaster}
+            className="flex-1 flex-row items-center gap-3 active:opacity-70"
+          >
+            <Avatar
+              url={response.master?.avatar_url ?? null}
+              name={masterName}
+              seed={response.master?.id ?? response.master_id}
+              size="md"
+            />
+            <View className="flex-1 min-w-0">
+              <AppText
+                weight="semibold"
+                className="text-body-md text-ink"
+                numberOfLines={1}
+              >
+                {masterName}
+              </AppText>
+              {response.lead_time ? (
+                <View className="mt-0.5 flex-row items-center gap-1">
+                  <Clock size={12} strokeWidth={1.75} color={tc["muted-soft"]} />
+                  <AppText className="text-caption text-mute" numberOfLines={1}>
+                    {response.lead_time}
+                  </AppText>
+                </View>
+              ) : null}
+            </View>
+          </Pressable>
+          <View className="rounded-full bg-success px-2.5 py-1">
+            <AppText
+              weight="bold"
+              className="text-caption-xs"
+              style={{ color: tc["on-primary"], letterSpacing: 0.5 }}
+            >
+              ВЫБРАН
+            </AppText>
+          </View>
+        </View>
+
+        {/* Price block — отдельная строка с label слева и value mono справа.
+            Раньше цена висела в углу под бейджем «ВЫБРАН» — было сжато
+            и нечитаемо. */}
+        <View className="mt-4 flex-row items-baseline justify-between border-t border-success/30 pt-3">
+          <AppText
+            weight="medium"
+            className="text-caption text-mute uppercase tracking-wider"
+            style={{ letterSpacing: 0.5 }}
+          >
+            Цена
+          </AppText>
+          <AppText
+            weight={isNegotiable ? "semibold" : "mono"}
+            className={`${isNegotiable ? "text-body-md" : "text-title-md"} text-ink`}
+          >
+            {priceText}
+          </AppText>
+        </View>
+
+        {/* Message body */}
+        {response.message ? (
+          <AppText
+            className="mt-3 text-body-sm text-body"
+            style={{ lineHeight: 20 }}
+          >
+            {response.message}
+          </AppText>
+        ) : null}
+
+        {/* CTA — «Открыть чат» (full-width primary). */}
+        {chatId && onOpenChat ? (
+          <Pressable
+            accessibilityRole="button"
+            onPress={onOpenChat}
+            className="mt-5 h-12 flex-row items-center justify-center gap-2 rounded-pill bg-ink active:opacity-80"
+          >
+            <MessageSquare size={16} strokeWidth={2} color={tc["on-primary"]} />
+            <AppText weight="semibold" className="text-button text-on-primary">
+              Открыть чат
+            </AppText>
+          </Pressable>
+        ) : null}
+      </View>
+    );
+  }
+
   return (
     <View className={cardClassName} style={isRejected ? { opacity: 0.6 } : undefined}>
       {/* Header — Pressable за исключением правого reject-кнопки (которая
@@ -830,26 +929,13 @@ function ClientMasterResponseCard({
           />
 
           <View className="flex-1 min-w-0">
-            <View className="flex-row items-center gap-2">
-              <AppText
-                weight="semibold"
-                className="flex-1 text-body-md text-ink"
-                numberOfLines={1}
-              >
-                {masterName}
-              </AppText>
-              {isPicked ? (
-                <View className="rounded-full bg-success px-2 py-0.5">
-                  <AppText
-                    weight="bold"
-                    className="text-caption-xs"
-                    style={{ color: tc["on-primary"] }}
-                  >
-                    ВЫБРАН
-                  </AppText>
-                </View>
-              ) : null}
-            </View>
+            <AppText
+              weight="semibold"
+              className="text-body-md text-ink"
+              numberOfLines={1}
+            >
+              {masterName}
+            </AppText>
 
             {/* Price row — крупная цена справа, срок (если есть) слева */}
             <View className="mt-0.5 flex-row items-center justify-between gap-2">
@@ -913,24 +999,8 @@ function ClientMasterResponseCard({
         </AppText>
       ) : null}
 
-      {/* Action row — две основные пары:
-          - picked: «Открыть чат» (primary ink) + «Завершить» (тут оставляем
-            «Открыть чат» single, без дублирующего «Профиль»)
-          - actionable (есть отклик, можно нанять):
-            «Написать» (secondary, для уточняющих вопросов) +
-            «Выбрать мастера» (primary success-green — позитив-commit) */}
-      {isPicked && chatId && onOpenChat ? (
-        <Pressable
-          accessibilityRole="button"
-          onPress={onOpenChat}
-          className="mt-4 h-11 flex-row items-center justify-center gap-2 rounded-pill bg-ink active:opacity-80"
-        >
-          <MessageSquare size={16} strokeWidth={2} color={tc["on-primary"]} />
-          <AppText weight="semibold" className="text-button text-on-primary">
-            Открыть чат
-          </AppText>
-        </Pressable>
-      ) : isActionable ? (
+      {/* Action row для actionable — Написать + Выбрать мастера */}
+      {isActionable ? (
         <View className="mt-4 flex-row gap-2">
           <Pressable
             accessibilityRole="button"
@@ -1319,7 +1389,7 @@ interface CompletionSectionProps {
 
 function CompletionSection({ orderId, order, userId }: CompletionSectionProps) {
   const completeOrder = useCompleteOrder();
-  const tc = useThemeColors(["on-primary", "mute"]);
+  const tc = useThemeColors(["mute", "success"]);
   const canComplete =
     order.status === "in_progress" &&
     (order.client_id === userId || order.picked_master_id === userId);
@@ -1329,19 +1399,31 @@ function CompletionSection({ orderId, order, userId }: CompletionSectionProps) {
   const isBusy = completeOrder.isPending;
   const isClient = order.client_id === userId;
 
-  // Активные тексты — кто и что делает. Раньше «Работа выполнена» читалось
-  // как success-banner (info-state), не как CTA. Теперь: клиент **подтверждает**,
-  // мастер **сообщает что закончил**.
   const buttonLabel = isClient ? "Подтвердить выполнение" : "Я закончил работу";
   const captionText = isClient
-    ? "Когда мастер закончит — нажмите эту кнопку, чтобы оставить отзыв."
-    : "Нажмите, когда работа сделана — клиент сможет оставить отзыв.";
+    ? "Заказ перейдёт в «Завершён», и вы сможете оставить отзыв. Действие нельзя отменить."
+    : "Клиент увидит запрос на подтверждение и сможет оставить отзыв.";
+
+  // Confirm dialog перед action — это state-transition, нельзя случайно
+  // тапать. Раньше filled primary pill читался как обычная кнопка.
+  const onConfirmPress = () => {
+    if (isBusy) return;
+    Alert.alert(
+      isClient ? "Подтвердить, что работа выполнена?" : "Завершить заказ?",
+      captionText,
+      [
+        { text: "Отмена", style: "cancel" },
+        {
+          text: isClient ? "Подтвердить" : "Завершить",
+          onPress: () => completeOrder.mutate({ orderId, userId }),
+        },
+      ],
+    );
+  };
 
   return (
     <View className="mt-8 px-5">
-      {/* Section label сверху (mono eyebrow) превращает блок из «банера»
-          в осмысленную часть страницы — как другие секции (Ваш мастер,
-          Откликнулись). Дальше — Vercel primary CTA, явная кнопка-действие. */}
+      {/* Section label — mono eyebrow «Завершение работы», как другие секции. */}
       <AppText
         weight="mono"
         className="text-mono-caption text-mute uppercase tracking-widest"
@@ -1349,24 +1431,29 @@ function CompletionSection({ orderId, order, userId }: CompletionSectionProps) {
         Завершение работы
       </AppText>
 
+      {/* Кнопка — outline-success вместо filled. Это серьёзное state-transition
+          (заказ переходит в completed), требует осознанного тапа. После клика
+          — Alert.alert confirm. Раньше был filled black/primary pill — читался
+          как обычная кнопка, легко нажать случайно. */}
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={buttonLabel}
         disabled={isBusy}
-        onPress={() => completeOrder.mutate({ orderId, userId })}
-        className={`mt-3 h-14 flex-row items-center justify-center gap-2 rounded-pill ${
-          isBusy ? "bg-canvas-soft-2" : "bg-primary active:opacity-80"
+        onPress={onConfirmPress}
+        className={`mt-3 h-12 flex-row items-center justify-center gap-2 rounded-pill border-2 ${
+          isBusy
+            ? "border-hairline bg-canvas-soft"
+            : "border-success bg-canvas active:bg-success-soft"
         }`}
       >
         {isBusy ? (
           <ActivityIndicator size="small" color={tc.mute} />
         ) : (
           <>
-            <Check size={18} strokeWidth={2.25} color={tc["on-primary"]} />
+            <CheckCircle2 size={18} strokeWidth={2} color={tc.success} />
             <AppText
               weight="semibold"
-              className="text-button-lg"
-              style={{ color: tc["on-primary"] }}
+              className="text-button text-success"
             >
               {buttonLabel}
             </AppText>

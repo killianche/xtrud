@@ -1,12 +1,30 @@
+// Master onboarding step: выбор L2-категорий.
+//
+// P0-3 (research/MASTER_ACCOUNT_PLAN.md): редизайн — раньше плоский
+// chip-list из 32 опций без поиска и иерархии. Теперь:
+//   - sticky search input (чипы фильтруются по name_ru)
+//   - группировка по L1 (10 разделов × 64 L2 = читаемая иерархия)
+//   - chip multi-select с лимитом 5
+//   - sticky bottom CTA «Продолжить» (onboarding) или «Сохранить» (settings)
+//
+// Эталон UX: Яндекс Услуги (поиск + иерархия), Профи.ру (группы + категории),
+// LocationFilterSheet (внутри проекта — этот же паттерн для городов/сёл).
+// Lazyweb-референсы: mercury (search + categorized list), klarna (multi-select
+// chips), bubbles-and-friends (group → category bottom sheet).
+
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { Check, ChevronLeft } from "lucide-react-native";
-import { useEffect, useState } from "react";
-import { ActivityIndicator, Pressable, ScrollView, View } from "react-native";
+import { Check, ChevronLeft, Search, X } from "lucide-react-native";
+import { useEffect, useMemo, useState } from "react";
+import { Pressable, ScrollView, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
 import { OnboardingProgress } from "@/components/OnboardingProgress";
 import { useAuthSession } from "@/features/auth/use-auth-session";
-import { useVisibleCategories } from "@/features/categories/use-visible-categories";
+import { useCategoriesL1 } from "@/features/categories/use-categories-l1";
+import {
+  type VisibleCategory,
+  useVisibleCategories,
+} from "@/features/categories/use-visible-categories";
 import { useMyMasterCategories } from "@/features/master-categories/use-my-categories";
 import { useSetMasterCategories } from "@/features/master-categories/use-set-categories";
 import { useThemeColors } from "@/lib/use-theme-color";
@@ -26,13 +44,15 @@ export default function MasterCategoriesScreen() {
   const userId = session?.user?.id;
 
   const { data: visible, isLoading: visibleLoading } = useVisibleCategories();
+  const { data: l1List, isLoading: l1Loading } = useCategoriesL1();
   const { data: myCats, isLoading: myCatsLoading } = useMyMasterCategories(userId);
   const setCategories = useSetMasterCategories();
-  const tc = useThemeColors(["ink", "accent"]);
+  const tc = useThemeColors(["ink", "accent", "mute"]);
 
   // Локальный selected — инициализируется из myCats при первой загрузке
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [hydrated, setHydrated] = useState(false);
+  const [search, setSearch] = useState("");
 
   useEffect(() => {
     if (!hydrated && myCats) {
@@ -70,9 +90,31 @@ export default function MasterCategoriesScreen() {
     }
   };
 
+  // Группировка L2 по L1 — для иерархического показа.
+  const groupedByL1 = useMemo(() => {
+    if (!visible || !l1List) return null;
+    const byL1 = new Map<string, VisibleCategory[]>();
+    for (const cat of visible) {
+      const list = byL1.get(cat.l1_id) ?? [];
+      list.push(cat);
+      byL1.set(cat.l1_id, list);
+    }
+    // Возвращаем в порядке sort_order L1, исключаем пустые группы
+    return l1List
+      .map((l1) => ({ l1, items: byL1.get(l1.id) ?? [] }))
+      .filter((g) => g.items.length > 0);
+  }, [visible, l1List]);
+
+  // Поиск — flat-выдача всех L2 у которых name_ru содержит query.
+  const filteredFlat = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q || !visible) return null;
+    return visible.filter((c) => c.name_ru.toLowerCase().includes(q));
+  }, [search, visible]);
+
   const isBusy = setCategories.isPending;
   const error = setCategories.error?.message;
-  const initialLoading = visibleLoading || myCatsLoading;
+  const initialLoading = visibleLoading || myCatsLoading || l1Loading;
   const reachedLimit = selected.size >= MAX_CATEGORIES;
 
   return (
@@ -96,58 +138,117 @@ export default function MasterCategoriesScreen() {
         </View>
       )}
 
+      {/* Header — компактный (раньше занимал много места) */}
+      <View className="px-6 pb-3">
+        <AppText weight="bold" className="text-display-sm tracking-tight text-ink">
+          Ваши категории
+        </AppText>
+        <AppText className="mt-1 text-body-sm text-muted">
+          Выберите до {MAX_CATEGORIES} категорий — клиенты увидят вас в каждой.
+        </AppText>
+      </View>
+
+      {/* Sticky search + counter row */}
+      <View className="px-6 pb-3">
+        <View className="flex-row items-center gap-2 rounded-md border border-hairline bg-canvas px-3 h-11">
+          <Search size={16} strokeWidth={1.75} color={tc.mute} />
+          <TextInput
+            value={search}
+            onChangeText={setSearch}
+            placeholder="Найти категорию…"
+            placeholderTextColor={tc.mute}
+            style={
+              {
+                flex: 1,
+                fontSize: 15,
+                color: tc.ink,
+                outlineWidth: 0,
+                outlineStyle: "none",
+              } as object
+            }
+          />
+          {search ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Очистить"
+              onPress={() => setSearch("")}
+              hitSlop={6}
+              className="active:opacity-60"
+            >
+              <X size={14} strokeWidth={2} color={tc.mute} />
+            </Pressable>
+          ) : null}
+        </View>
+        <AppText className="mt-2 text-caption text-muted-soft">
+          Выбрано {selected.size} из {MAX_CATEGORIES}
+        </AppText>
+      </View>
+
       <ScrollView
         contentContainerStyle={{ paddingBottom: insets.bottom + 96 }}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
       >
-        <View className="px-6 pb-6">
-          <AppText weight="bold" className="text-display-sm tracking-tight text-ink">
-            Ваши категории
-          </AppText>
-          <AppText className="mt-2 text-body-md text-muted">
-            Выберите до {MAX_CATEGORIES} категорий — клиенты увидят вас в каждой.
-          </AppText>
-          <AppText className="mt-1 text-caption text-muted-soft">
-            Выбрано: {selected.size} / {MAX_CATEGORIES}
-          </AppText>
-        </View>
-
         {initialLoading && (
-          <View className="items-center px-6">
-            <ActivityIndicator />
+          <View className="items-center px-6 py-6">
+            <AppText className="text-body-sm text-mute">Загружаем категории…</AppText>
           </View>
         )}
 
-        {visible && hydrated && (
-          <View className="gap-2 px-6">
-            {visible.map((cat) => {
-              const isSelected = selected.has(cat.id);
-              const isDisabled = !isSelected && reachedLimit;
-              return (
-                <Pressable
-                  key={cat.id}
-                  accessibilityRole="button"
-                  accessibilityState={{ selected: isSelected, disabled: isDisabled || isBusy }}
-                  disabled={isDisabled || isBusy}
-                  onPress={() => toggleCategory(cat.id)}
-                  className={`flex-row items-center justify-between rounded-md border p-4 ${
-                    isSelected
-                      ? "border-accent bg-accent-soft"
-                      : isDisabled
-                        ? "border-hairline bg-surface-2 opacity-50"
-                        : "border-hairline bg-canvas active:opacity-70"
-                  }`}
+        {/* Активный поиск → flat-выдача матчевших L2 */}
+        {hydrated && filteredFlat && (
+          <View className="px-6">
+            {filteredFlat.length === 0 ? (
+              <View className="items-center py-8">
+                <AppText className="text-body-sm text-mute">
+                  Ничего не найдено по запросу «{search}».
+                </AppText>
+              </View>
+            ) : (
+              <View className="flex-row flex-wrap gap-2">
+                {filteredFlat.map((cat) => (
+                  <CategoryChip
+                    key={cat.id}
+                    cat={cat}
+                    isSelected={selected.has(cat.id)}
+                    isDisabled={!selected.has(cat.id) && reachedLimit}
+                    isBusy={isBusy}
+                    onPress={() => toggleCategory(cat.id)}
+                    accentColor={tc.accent}
+                  />
+                ))}
+              </View>
+            )}
+          </View>
+        )}
+
+        {/* Без поиска → группы L1 (раскрытые сразу — у нас всего 10 групп
+            и 64 L2, не нужно collapse). */}
+        {hydrated && !filteredFlat && groupedByL1 && (
+          <View className="gap-5">
+            {groupedByL1.map(({ l1, items }) => (
+              <View key={l1.id} className="px-6">
+                <AppText
+                  weight="semibold"
+                  className="mb-2 text-caption uppercase tracking-wider text-muted"
                 >
-                  <AppText
-                    weight={isSelected ? "semibold" : "medium"}
-                    className={`flex-1 text-body-md ${isSelected ? "text-accent" : "text-ink"}`}
-                  >
-                    {cat.name_ru}
-                  </AppText>
-                  {isSelected && <Check size={20} strokeWidth={2.25} color={tc.accent} />}
-                </Pressable>
-              );
-            })}
+                  {l1.name_ru}
+                </AppText>
+                <View className="flex-row flex-wrap gap-2">
+                  {items.map((cat) => (
+                    <CategoryChip
+                      key={cat.id}
+                      cat={cat}
+                      isSelected={selected.has(cat.id)}
+                      isDisabled={!selected.has(cat.id) && reachedLimit}
+                      isBusy={isBusy}
+                      onPress={() => toggleCategory(cat.id)}
+                      accentColor={tc.accent}
+                    />
+                  ))}
+                </View>
+              </View>
+            ))}
           </View>
         )}
 
@@ -181,5 +282,49 @@ export default function MasterCategoriesScreen() {
         </Pressable>
       </View>
     </View>
+  );
+}
+
+// ----------------------------------------------------------------------------
+
+interface CategoryChipProps {
+  cat: VisibleCategory;
+  isSelected: boolean;
+  isDisabled: boolean;
+  isBusy: boolean;
+  onPress: () => void;
+  accentColor: string;
+}
+
+function CategoryChip({
+  cat,
+  isSelected,
+  isDisabled,
+  isBusy,
+  onPress,
+  accentColor,
+}: CategoryChipProps) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityState={{ selected: isSelected, disabled: isDisabled || isBusy }}
+      disabled={isDisabled || isBusy}
+      onPress={onPress}
+      className={`flex-row items-center gap-1.5 rounded-pill border px-3 py-2 ${
+        isSelected
+          ? "border-accent bg-accent-soft"
+          : isDisabled
+            ? "border-hairline bg-surface-2 opacity-50"
+            : "border-hairline bg-canvas active:opacity-70"
+      }`}
+    >
+      {isSelected ? <Check size={14} strokeWidth={2.25} color={accentColor} /> : null}
+      <AppText
+        weight={isSelected ? "semibold" : "medium"}
+        className={`text-body-sm ${isSelected ? "text-accent" : "text-ink"}`}
+      >
+        {cat.name_ru}
+      </AppText>
+    </Pressable>
   );
 }

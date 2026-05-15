@@ -7,9 +7,9 @@
 // Эталон UX: Avito Услуги «лента» / Profi.ru «биржа заявок».
 
 import { useFocusEffect, useRouter } from "expo-router";
-import { ChevronLeft, Search, SlidersHorizontal, X } from "lucide-react-native";
+import { ChevronLeft, SlidersHorizontal } from "lucide-react-native";
 import { useCallback, useMemo, useState } from "react";
-import { ActivityIndicator, Pressable, ScrollView, TextInput, View } from "react-native";
+import { ActivityIndicator, Pressable, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
 import { OrderRow } from "@/components/OrderRow";
@@ -17,7 +17,6 @@ import { useAuthSession } from "@/features/auth/use-auth-session";
 import { useCategoriesL1 } from "@/features/categories/use-categories-l1";
 import { useVisibleCategories } from "@/features/categories/use-visible-categories";
 import { useAllOpenOrders } from "@/features/orders/use-all-open-orders";
-import { flipLayout, looksLikeWrongLayout } from "@/lib/keyboard-layout";
 import { useTabBarVisibility } from "@/lib/tabbar-visibility";
 import { useSafeBack } from "@/lib/use-safe-back";
 import { useThemeColor } from "@/lib/use-theme-color";
@@ -44,8 +43,8 @@ export default function OrdersSearchScreen() {
     }, [setTabBarHidden]),
   );
 
-  // Локальные state'ы фильтров.
-  const [query, setQuery] = useState("");
+  // Локальные state'ы фильтров (search-input убран по фидбеку
+  // user 2026-05-15 — фильтрация только через категории + сортировка).
   const [selectedL2s, setSelectedL2s] = useState<Set<string>>(new Set());
   const [selectedL1, setSelectedL1] = useState<string | null>(null);
   const [sort, setSort] = useState<SortMode>("newest");
@@ -73,20 +72,10 @@ export default function OrdersSearchScreen() {
     return l2List.filter((cat) => cat.l1_id === selectedL1);
   }, [selectedL1, l2List]);
 
-  // Локальный поиск по тексту title/description с раскладка-fix.
-  const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    if (q.length < 2) return allOrders;
-    const flipped = looksLikeWrongLayout(q) ? flipLayout(q) : null;
-    const matches = (text: string) => {
-      const t = text.toLowerCase();
-      if (t.includes(q)) return true;
-      return flipped ? t.includes(flipped) : false;
-    };
-    return allOrders.filter(
-      (o) => matches(o.title) || matches(o.l2?.name_ru ?? "") || matches(o.description ?? ""),
-    );
-  }, [allOrders, query]);
+  // Раньше здесь была фильтрация по тексту с раскладка-fix — убрана
+  // вместе с search-input (фидбек 2026-05-15). Фильтрация — только
+  // через выбранные L2 категории (передаются прямо в useAllOpenOrders).
+  const filtered = allOrders;
 
   const toggleL2 = (l2Id: string) => {
     setSelectedL2s((prev) => {
@@ -100,12 +89,10 @@ export default function OrdersSearchScreen() {
   const clearAllFilters = () => {
     setSelectedL2s(new Set());
     setSelectedL1(null);
-    setQuery("");
     setSort("newest");
   };
 
-  const hasActiveFilters =
-    selectedL2s.size > 0 || query.trim().length > 0 || sort !== "newest";
+  const hasActiveFilters = selectedL2s.size > 0 || sort !== "newest";
 
   return (
     <View className="flex-1 bg-canvas" style={{ paddingTop: insets.top }}>
@@ -146,38 +133,8 @@ export default function OrdersSearchScreen() {
         </Pressable>
       </View>
 
-      {/* Search input — sticky сверху */}
-      <View className="px-4 pb-3">
-        <View className="flex-row items-center gap-2 rounded-md border border-hairline bg-canvas-soft px-3 h-12">
-          <Search size={18} strokeWidth={1.75} color={muteColor} />
-          <TextInput
-            value={query}
-            onChangeText={setQuery}
-            placeholder="Найти по тексту: «холодильник», «сантехник»…"
-            placeholderTextColor={muteColor}
-            style={
-              {
-                flex: 1,
-                fontSize: 15,
-                color: inkColor,
-                outlineWidth: 0,
-                outlineStyle: "none",
-              } as object
-            }
-          />
-          {query ? (
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Очистить"
-              onPress={() => setQuery("")}
-              hitSlop={6}
-              className="active:opacity-60"
-            >
-              <X size={16} strokeWidth={2} color={muteColor} />
-            </Pressable>
-          ) : null}
-        </View>
-      </View>
+      {/* Search-input убран по фидбеку user 2026-05-15 — фильтрация только
+          через категории + сортировку. */}
 
       {/* Expandable filters block */}
       {filtersOpen ? (

@@ -7,9 +7,9 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQuery } from "@tanstack/react-query";
-import { useRouter } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 import { ChevronLeft } from "lucide-react-native";
-import { useEffect } from "react";
+import { useCallback, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import {
   ActivityIndicator,
@@ -34,6 +34,7 @@ import { useUpdateMasterProfile } from "@/features/master-profile/use-update-mas
 import { MasterServicesSection } from "@/features/master-services/MasterServicesSection";
 import { ServiceAreasSection } from "@/features/master-profile/ServiceAreasSection";
 import { supabase } from "@/lib/supabase";
+import { useTabBarVisibility } from "@/lib/tabbar-visibility";
 import { useThemeColor } from "@/lib/use-theme-color";
 import type { Tables } from "@/types/database";
 
@@ -48,6 +49,18 @@ export default function EditMasterScreen() {
   const { data: cities, isLoading: citiesLoading } = useCities();
   const updateMaster = useUpdateMasterProfile();
   const inkColor = useThemeColor("ink");
+
+  // Скрываем TabBar при редактировании профиля — full-screen форма с длинным
+  // списком полей не должна перекрываться нижним меню (фидбэк user 2026-05-15
+  // «убрать нижнее меню когда редактируешь данные»). Тот же паттерн что в
+  // chats/[id].tsx и orders/new.
+  const setTabBarHidden = useTabBarVisibility((s) => s.setHidden);
+  useFocusEffect(
+    useCallback(() => {
+      setTabBarHidden(true);
+      return () => setTabBarHidden(false);
+    }, [setTabBarHidden]),
+  );
 
   const isMaster = user?.is_master === true;
 

@@ -1,5 +1,5 @@
 // Контент главной для active_role='master'.
-// Структура: availability + лимит откликов → safety banner → ваши категории
+// Структура: availability + лимит откликов → ваши категории
 // (или CTA добавить) → ⭐ ЛЕНТА свежих заказов (P0-8) или empty state.
 
 import { useRouter } from "expo-router";
@@ -8,7 +8,6 @@ import { Pressable, View } from "react-native";
 import { AppText } from "@/components/AppText";
 import { OrderRow } from "@/components/OrderRow";
 import { Skeleton } from "@/components/ui";
-import { SafetyBanner } from "@/components/SafetyBanner";
 import { AvailabilitySwitcher } from "@/features/master-view/AvailabilitySwitcher";
 import { ResponseLimitBadge } from "@/features/master-view/ResponseLimitBadge";
 import { useMyMasterCategories } from "@/features/master-categories/use-my-categories";
@@ -42,9 +41,6 @@ export function MasterHomeContent({ userId }: MasterHomeContentProps) {
       {/* P0-5: бейдж дневного лимита откликов (5 в день в free-tier).
           Self-start чтобы не растягивался на всю ширину. */}
       <ResponseLimitBadge />
-
-      {/* Safety banner */}
-      <SafetyBanner />
 
       {/* Категории */}
       <View>

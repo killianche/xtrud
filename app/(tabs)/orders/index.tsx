@@ -6,7 +6,6 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { scrollViewToTop, useTabScrollResetCounter } from "@/lib/tab-scroll-reset";
 import { AppText } from "@/components/AppText";
 import { OrderRow } from "@/components/OrderRow";
-import { SafetyBanner } from "@/components/SafetyBanner";
 import { useAuthSession } from "@/features/auth/use-auth-session";
 import { useUserRecord } from "@/features/auth/use-user-record";
 import { useMyMasterCategories } from "@/features/master-categories/use-my-categories";
@@ -230,11 +229,6 @@ function MasterOrdersView({ userId }: MasterOrdersViewProps) {
             onPress={() => setTab("assigned")}
           />
         </View>
-      </View>
-
-      {/* Safety banner */}
-      <View className="mt-4 px-6">
-        <SafetyBanner />
       </View>
 
       {/* Tab content */}

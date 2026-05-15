@@ -1,23 +1,23 @@
 // ServiceAreasSection — multi-select городов и районов где работает мастер.
 //
 // P1-3 (упрощ.) из research/MASTER_ACCOUNT_PLAN.md. Без сёл и без radius —
-// мастер просто отмечает чипы городов и/или районов. Минимум 1 локация
-// для попадания в выдачу.
+// мастер просто отмечает чипы городов и/или районов.
 //
-// Чипы группируются в 2 секции — «Города» (5 cities из БД) и «Районы»
-// (4 муниципальных из location-config DISTRICTS). Сохранение через RPC
-// set_master_service_areas (DELETE all + INSERT new атомарно).
+// Auto-save при каждом тапе chip (фидбэк user 2026-05-15: «2 кнопки
+// "Сохранить"»). Локальная save-кнопка убрана — каждое изменение мгновенно
+// уходит в RPC set_master_service_areas. Inline status «Сохранено» / spinner
+// заменяет save-кнопку.
 
+import { Check } from "lucide-react-native";
 import { useEffect, useState } from "react";
-import { Pressable, View } from "react-native";
+import { ActivityIndicator, Pressable, View } from "react-native";
 import { AppText } from "@/components/AppText";
-import { Button } from "@/components/ui";
 import {
-  type SetServiceAreasInput,
   useMasterServiceAreas,
   useSetMasterServiceAreas,
 } from "@/features/master-profile/use-service-areas";
 import { DISTRICTS, PICKER_CITIES } from "@/lib/location-config";
+import { useThemeColor } from "@/lib/use-theme-color";
 
 interface ServiceAreasSectionProps {
   masterId: string | null | undefined;
@@ -26,11 +26,14 @@ interface ServiceAreasSectionProps {
 export function ServiceAreasSection({ masterId }: ServiceAreasSectionProps) {
   const { data: existing, isLoading } = useMasterServiceAreas(masterId);
   const setAreas = useSetMasterServiceAreas(masterId);
+  const successColor = useThemeColor("success");
 
   // Local draft — Set<id> для быстрого toggle.
   const [cities, setCities] = useState<Set<string>>(new Set());
   const [districts, setDistricts] = useState<Set<string>>(new Set());
   const [hydrated, setHydrated] = useState(false);
+  // Status indicator для UX-feedback после auto-save
+  const [showSaved, setShowSaved] = useState(false);
 
   useEffect(() => {
     if (!hydrated && existing) {
@@ -42,54 +45,41 @@ export function ServiceAreasSection({ masterId }: ServiceAreasSectionProps) {
     }
   }, [existing, hydrated]);
 
+  // Auto-save при каждом изменении draft.
+  // Не сохраняем при первом hydrate — только при реальных user-actions.
+  const persistAreas = (nextCities: Set<string>, nextDistricts: Set<string>) => {
+    setAreas.mutate(
+      {
+        cities: Array.from(nextCities),
+        districts: Array.from(nextDistricts),
+      },
+      {
+        onSuccess: () => {
+          setShowSaved(true);
+          // Скрываем «Сохранено» через 2 секунды
+          setTimeout(() => setShowSaved(false), 2000);
+        },
+      },
+    );
+  };
+
   const toggleCity = (id: string) => {
-    setCities((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
+    const next = new Set(cities);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    setCities(next);
+    persistAreas(next, districts);
   };
 
   const toggleDistrict = (id: string) => {
-    setDistricts((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
+    const next = new Set(districts);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    setDistricts(next);
+    persistAreas(cities, next);
   };
-
-  // Dirty-check: текущий draft != existing
-  const dirty = (() => {
-    if (!existing) return false;
-    const existingCities = new Set(
-      existing.filter((a) => a.kind === "city").map((a) => a.location_id),
-    );
-    const existingDistricts = new Set(
-      existing.filter((a) => a.kind === "district").map((a) => a.location_id),
-    );
-    if (cities.size !== existingCities.size || districts.size !== existingDistricts.size) {
-      return true;
-    }
-    for (const c of cities) if (!existingCities.has(c)) return true;
-    for (const d of districts) if (!existingDistricts.has(d)) return true;
-    return false;
-  })();
 
   const totalSelected = cities.size + districts.size;
-
-  const onSave = async () => {
-    const payload: SetServiceAreasInput = {
-      cities: Array.from(cities),
-      districts: Array.from(districts),
-    };
-    try {
-      await setAreas.mutateAsync(payload);
-    } catch (_e) {
-      // ошибка отрендерится через setAreas.error ниже
-    }
-  };
 
   if (isLoading) {
     return (
@@ -101,7 +91,7 @@ export function ServiceAreasSection({ masterId }: ServiceAreasSectionProps) {
 
   return (
     <View className="px-6">
-      <View className="flex-row items-end justify-between">
+      <View className="flex-row items-start justify-between gap-3">
         <View className="flex-1">
           <AppText weight="semibold" className="text-title-md tracking-tight text-ink">
             Где работаете
@@ -114,6 +104,20 @@ export function ServiceAreasSection({ masterId }: ServiceAreasSectionProps) {
             Выбрано: {totalSelected}
           </AppText>
         </View>
+        {/* Inline status вместо save-кнопки. */}
+        {setAreas.isPending ? (
+          <View className="flex-row items-center gap-1.5">
+            <ActivityIndicator size="small" />
+            <AppText className="text-caption text-muted">Сохраняем…</AppText>
+          </View>
+        ) : showSaved ? (
+          <View className="flex-row items-center gap-1.5">
+            <Check size={14} strokeWidth={2.5} color={successColor} />
+            <AppText weight="medium" className="text-caption text-success">
+              Сохранено
+            </AppText>
+          </View>
+        ) : null}
       </View>
 
       {/* Города */}
@@ -128,6 +132,7 @@ export function ServiceAreasSection({ masterId }: ServiceAreasSectionProps) {
               key={c.id}
               accessibilityRole="button"
               accessibilityState={{ selected }}
+              disabled={setAreas.isPending}
               onPress={() => toggleCity(c.id)}
               className={`h-10 items-center justify-center rounded-pill border px-4 ${
                 selected
@@ -158,6 +163,7 @@ export function ServiceAreasSection({ masterId }: ServiceAreasSectionProps) {
               key={d.id}
               accessibilityRole="button"
               accessibilityState={{ selected }}
+              disabled={setAreas.isPending}
               onPress={() => toggleDistrict(d.id)}
               className={`h-10 items-center justify-center rounded-pill border px-4 ${
                 selected
@@ -181,24 +187,6 @@ export function ServiceAreasSection({ masterId }: ServiceAreasSectionProps) {
           Не удалось сохранить. {setAreas.error.message}
         </AppText>
       ) : null}
-
-      <View className="mt-4">
-        <Button
-          variant="primary"
-          size="md"
-          fullWidth
-          disabled={!dirty || setAreas.isPending || totalSelected === 0}
-          onPress={onSave}
-        >
-          {setAreas.isPending
-            ? "Сохраняем..."
-            : totalSelected === 0
-              ? "Выберите хотя бы одну локацию"
-              : dirty
-                ? "Сохранить изменения"
-                : "Сохранено"}
-        </Button>
-      </View>
     </View>
   );
 }

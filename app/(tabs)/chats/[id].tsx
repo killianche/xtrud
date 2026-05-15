@@ -1,8 +1,10 @@
+import * as ImagePicker from "expo-image-picker";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
-import { ChevronLeft, Info, MessageSquare, Send } from "lucide-react-native";
+import { ChevronLeft, ImagePlus, Info, MessageSquare, Send, X } from "lucide-react-native";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Image,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -70,8 +72,33 @@ export default function ChatThreadScreen() {
   }, [id, userId, messages?.length, markReadMutate]);
 
   const [text, setText] = useState("");
+  // P0-6: локальный URI выбранной картинки до отправки. Picker запускается
+  // при тапе на ImagePlus, после выбора — preview над input + send отправит
+  // в Storage через useSendMessage.
+  const [pendingImageUri, setPendingImageUri] = useState<string | null>(null);
   const [reportMessageId, setReportMessageId] = useState<string | null>(null);
   const scrollRef = useRef<ScrollView>(null);
+
+  const onPickImage = async () => {
+    try {
+      // На web разрешения не нужны; на native — auto-prompt.
+      if (Platform.OS !== "web") {
+        const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (!perm.granted) return;
+      }
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: false,
+        quality: 0.8,
+        exif: false,
+      });
+      if (!result.canceled && result.assets?.[0]?.uri) {
+        setPendingImageUri(result.assets[0].uri);
+      }
+    } catch {
+      // ignore — пользователь мог отменить или картинка большая
+    }
+  };
 
   // Автоскролл вниз при появлении новых сообщений
   useEffect(() => {
@@ -89,21 +116,29 @@ export default function ChatThreadScreen() {
   const partnerHref =
     chat && (partnerIsMaster ? `/master/${chat.master_id}` : `/client/${chat.client_id}`);
 
-  const canSend = text.trim().length > 0 && !sendMessage.isPending && !!userId && !!id;
+  const canSend =
+    (text.trim().length > 0 || !!pendingImageUri) &&
+    !sendMessage.isPending &&
+    !!userId &&
+    !!id;
 
   const onSend = async () => {
     if (!canSend || !id || !userId) return;
     const messageText = text.trim();
+    const imageUri = pendingImageUri;
     setText("");
+    setPendingImageUri(null);
     try {
       await sendMessage.mutateAsync({
         chatId: id,
         senderId: userId,
         text: messageText,
+        imageUri,
       });
     } catch (_e) {
-      // ошибка отрендерится через sendMessage.error; вернём текст обратно
+      // ошибка отрендерится через sendMessage.error; вернём текст и картинку обратно
       setText(messageText);
+      setPendingImageUri(imageUri);
     }
   };
 
@@ -229,15 +264,48 @@ export default function ChatThreadScreen() {
         className="border-hairline-soft border-t py-2"
       />
 
+      {/* P0-6: preview прикреплённой картинки до отправки */}
+      {pendingImageUri ? (
+        <View className="border-hairline-soft border-t px-3 py-2">
+          <View className="self-start">
+            <Image
+              source={{ uri: pendingImageUri }}
+              style={{ width: 96, height: 96, borderRadius: 12 }}
+              resizeMode="cover"
+            />
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Убрать фото"
+              onPress={() => setPendingImageUri(null)}
+              hitSlop={6}
+              style={{ position: "absolute", top: -8, right: -8 }}
+              className="h-7 w-7 items-center justify-center rounded-full bg-ink active:opacity-80"
+            >
+              <X size={14} strokeWidth={2.5} color={tc["on-primary"]} />
+            </Pressable>
+          </View>
+        </View>
+      ) : null}
+
       {/* Input */}
       <View
         className="flex-row items-end gap-2 border-hairline-soft border-t px-3 py-2"
         style={{ paddingBottom: insets.bottom + 8 }}
       >
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Прикрепить фото"
+          onPress={onPickImage}
+          disabled={sendMessage.isPending}
+          hitSlop={6}
+          className="h-12 w-12 items-center justify-center rounded-full bg-surface-2 active:opacity-70"
+        >
+          <ImagePlus size={20} strokeWidth={1.75} color={tc.ink} />
+        </Pressable>
         <TextInput
           value={text}
           onChangeText={setText}
-          placeholder="Сообщение"
+          placeholder={pendingImageUri ? "Подпись (опц.)" : "Сообщение"}
           placeholderTextColor={tc["muted-soft"]}
           multiline
           maxLength={4000}
@@ -298,7 +366,10 @@ function MessageBubble({
     ? [partner.first_name, partner.last_name].filter(Boolean).join(" ") || "Собеседник"
     : "Собеседник";
 
-  const displayText = maskContactsInText(message.text);
+  // P0-6: text может быть null если только фото. maskContacts падает на null —
+  // вызываем только если есть текст.
+  const displayText = message.text ? maskContactsInText(message.text) : null;
+  const imageUrl = message.image_url ?? null;
   const handleLongPress = () => {
     if (!isMine && onLongPress) onLongPress(message.id);
   };
@@ -306,9 +377,18 @@ function MessageBubble({
   if (isMine) {
     return (
       <View className="max-w-[80%] self-end">
-        <View className="rounded-2xl bg-primary px-4 py-2">
-          <AppText className="text-body-md text-on-primary">{displayText}</AppText>
-        </View>
+        {imageUrl ? (
+          <Image
+            source={{ uri: imageUrl }}
+            style={{ width: 220, height: 220, borderRadius: 16, marginBottom: displayText ? 4 : 0 }}
+            resizeMode="cover"
+          />
+        ) : null}
+        {displayText ? (
+          <View className="rounded-2xl bg-primary px-4 py-2">
+            <AppText className="text-body-md text-on-primary">{displayText}</AppText>
+          </View>
+        ) : null}
         <AppText className="mt-1 text-right text-caption-xs text-muted-soft">{time}</AppText>
       </View>
     );
@@ -329,9 +409,18 @@ function MessageBubble({
           accessibilityHint="Долгое нажатие — пожаловаться на сообщение"
           delayLongPress={400}
         >
-          <View className="rounded-2xl bg-surface-2 px-4 py-2">
-            <AppText className="text-body-md text-ink">{displayText}</AppText>
-          </View>
+          {imageUrl ? (
+            <Image
+              source={{ uri: imageUrl }}
+              style={{ width: 220, height: 220, borderRadius: 16, marginBottom: displayText ? 4 : 0 }}
+              resizeMode="cover"
+            />
+          ) : null}
+          {displayText ? (
+            <View className="rounded-2xl bg-surface-2 px-4 py-2">
+              <AppText className="text-body-md text-ink">{displayText}</AppText>
+            </View>
+          ) : null}
         </Pressable>
         <AppText className="mt-1 text-caption-xs text-muted-soft">{time}</AppText>
       </View>

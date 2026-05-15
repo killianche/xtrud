@@ -142,20 +142,29 @@ export default function ProfileScreen() {
     }
   };
 
-  const onDeletePortfolio = (id: string, storagePath: string) => {
-    Alert.alert("Удалить фото?", "Действие нельзя отменить.", [
-      { text: "Отмена", style: "cancel" },
+  // P1-4: confirmAsync вместо Alert.alert — на web Alert.alert no-op
+  // (react-native-web известный issue). confirmAsync проксирует на
+  // window.confirm на web, на native — на Alert.alert (см. src/lib/confirm.ts).
+  const onDeletePortfolio = async (id: string, storagePath: string) => {
+    const confirmed = await confirmAsync({
+      title: "Удалить фото?",
+      message: "Действие нельзя отменить.",
+      confirmText: "Удалить",
+      cancelText: "Отмена",
+      destructive: true,
+    });
+    if (!confirmed) return;
+    deletePortfolioItem.mutate(
+      { id, storagePath },
       {
-        text: "Удалить",
-        style: "destructive",
-        onPress: () => {
-          deletePortfolioItem.mutate(
-            { id, storagePath },
-            { onError: (e) => Alert.alert("Не удалось удалить", e.message) },
-          );
+        onError: (e) => {
+          // Используем Alert как fallback — для error message нет confirm-flow,
+          // на web всё равно покажется через console + ошибка в Alert не критична.
+          // TODO: заменить на toast-инфраструктуру когда появится.
+          Alert.alert("Не удалось удалить", e.message);
         },
       },
-    ]);
+    );
   };
 
   // Анон (нет userId) → guest-state с CTA «Войти» вместо бесконечного спиннера.

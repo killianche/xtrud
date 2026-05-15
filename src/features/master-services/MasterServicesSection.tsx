@@ -11,10 +11,13 @@ import { ActivityIndicator, Alert, Modal, Pressable, TextInput, View } from "rea
 import { AppText } from "@/components/AppText";
 import { EmptyState } from "@/components/EmptyState";
 import {
-  formatPriceRange,
+  formatServicePrice,
   MASTER_SERVICES_MAX,
   type MasterService,
+  PRICING_KIND_HINT,
+  PRICING_KIND_LABELS,
   SERVICE_UNIT_LABELS,
+  type ServicePricingKind,
   type ServiceUnit,
   useDeleteMasterService,
   useMasterServices,
@@ -145,8 +148,7 @@ function ServiceRow({ service, onEdit, onDelete, errorColor, inkColor }: Service
           {service.title}
         </AppText>
         <AppText className="mt-0.5 text-caption text-muted">
-          {formatPriceRange(service.price_min, service.price_max)} ·{" "}
-          {SERVICE_UNIT_LABELS[service.unit]}
+          {formatServicePrice(service)}
         </AppText>
       </View>
       <Pressable
@@ -181,6 +183,7 @@ interface ServiceFormModalProps {
 }
 
 const UNIT_OPTIONS: ServiceUnit[] = ["per_hour", "per_task", "per_m2", "per_day"];
+const KIND_OPTIONS: ServicePricingKind[] = ["fixed", "range", "hourly", "quote"];
 
 function ServiceFormModal({ visible, initial, masterId, onClose }: ServiceFormModalProps) {
   // formKey меняется при смене initial → ServiceFormContent ремаунтится со свежим state.
@@ -205,18 +208,33 @@ function ServiceFormContent({ initial, masterId, onClose }: ServiceFormContentPr
   const upsert = useUpsertMasterService(masterId);
   const tc = useThemeColors(["ink", "muted-soft"]);
 
+  const initialKind: ServicePricingKind = initial?.pricing_kind ?? "fixed";
+  const [pricingKind, setPricingKind] = useState<ServicePricingKind>(initialKind);
   const [title, setTitle] = useState(initial?.title ?? "");
-  const [priceMin, setPriceMin] = useState(initial == null ? "" : String(initial.price_min));
+  const [priceMin, setPriceMin] = useState(
+    initial?.price_min == null ? "" : String(initial.price_min),
+  );
   const [priceMax, setPriceMax] = useState(
     initial?.price_max == null ? "" : String(initial.price_max),
   );
   const [unit, setUnit] = useState<ServiceUnit>(initial?.unit ?? "per_task");
   const [submitError, setSubmitError] = useState<string | null>(null);
 
-  const handleSubmit = async () => {
-    const min = parseInt(priceMin.replace(/\s/g, ""), 10);
-    const max = priceMax.trim() === "" ? null : parseInt(priceMax.replace(/\s/g, ""), 10);
+  // При переключении pricing_kind очищаем поля, которые не имеют смысла
+  // в новом режиме (priceMax — только для range; priceMin — только не для quote).
+  const handleKindChange = (k: ServicePricingKind) => {
+    setPricingKind(k);
+    if (k === "quote") {
+      setPriceMin("");
+      setPriceMax("");
+    } else if (k !== "range") {
+      setPriceMax("");
+    }
+    if (k === "hourly") setUnit("per_hour");
+    setSubmitError(null);
+  };
 
+  const handleSubmit = async () => {
     if (!title.trim() || title.trim().length < 2) {
       setSubmitError("Название от 2 символов");
       return;
@@ -225,11 +243,41 @@ function ServiceFormContent({ initial, masterId, onClose }: ServiceFormContentPr
       setSubmitError("Название до 100 символов");
       return;
     }
-    if (Number.isNaN(min) || min < 0) {
-      setSubmitError("Укажите минимальную цену");
+
+    if (pricingKind === "quote") {
+      // Цены не требуются — submit с null/null
+      try {
+        await upsert.mutateAsync({
+          id: initial?.id,
+          title: title.trim(),
+          price_min: null,
+          price_max: null,
+          unit,
+          pricing_kind: pricingKind,
+        });
+        onClose();
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : "Не удалось сохранить";
+        setSubmitError(msg);
+      }
       return;
     }
-    if (max != null && (Number.isNaN(max) || max < min)) {
+
+    const min = parseInt(priceMin.replace(/\s/g, ""), 10);
+    const max =
+      pricingKind === "range" && priceMax.trim() !== ""
+        ? parseInt(priceMax.replace(/\s/g, ""), 10)
+        : null;
+
+    if (Number.isNaN(min) || min < 0) {
+      setSubmitError("Укажите цену");
+      return;
+    }
+    if (pricingKind === "range" && max == null) {
+      setSubmitError("Укажите максимальную цену для диапазона");
+      return;
+    }
+    if (max != null && max < min) {
       setSubmitError("Максимальная цена должна быть ≥ минимальной");
       return;
     }
@@ -241,6 +289,7 @@ function ServiceFormContent({ initial, masterId, onClose }: ServiceFormContentPr
         price_min: min,
         price_max: max,
         unit,
+        pricing_kind: pricingKind,
       });
       onClose();
     } catch (e) {
@@ -252,7 +301,14 @@ function ServiceFormContent({ initial, masterId, onClose }: ServiceFormContentPr
   const isBusy = upsert.isPending;
   const placeholderColor = tc["muted-soft"];
   const inkColor = tc.ink;
-  const isValid = title.trim().length >= 2 && priceMin.trim() !== "";
+  const isValid =
+    title.trim().length >= 2 &&
+    (pricingKind === "quote" || priceMin.trim() !== "");
+  const showPriceMin = pricingKind !== "quote";
+  const showPriceMax = pricingKind === "range";
+  // Unit не показываем для hourly (он зафиксирован per_hour) и quote (не имеет
+  // смысла без цены).
+  const showUnit = pricingKind === "fixed" || pricingKind === "range";
 
   return (
     <View className="flex-1 items-center justify-center bg-black/60 px-6">
@@ -276,50 +332,20 @@ function ServiceFormContent({ initial, masterId, onClose }: ServiceFormContentPr
           />
         </View>
 
-        <View className="mt-3 flex-row gap-3">
-          <View className="flex-1">
-            <AppText weight="medium" className="text-caption text-muted">
-              Цена от, ₽
-            </AppText>
-            <TextInput
-              value={priceMin}
-              onChangeText={setPriceMin}
-              placeholder="1000"
-              placeholderTextColor={placeholderColor}
-              keyboardType="number-pad"
-              style={{ color: inkColor }}
-              className="mt-1.5 h-11 rounded-md border border-hairline bg-canvas px-3 text-body-md"
-            />
-          </View>
-          <View className="flex-1">
-            <AppText weight="medium" className="text-caption text-muted">
-              До, ₽ (опц.)
-            </AppText>
-            <TextInput
-              value={priceMax}
-              onChangeText={setPriceMax}
-              placeholder="2000"
-              placeholderTextColor={placeholderColor}
-              keyboardType="number-pad"
-              style={{ color: inkColor }}
-              className="mt-1.5 h-11 rounded-md border border-hairline bg-canvas px-3 text-body-md"
-            />
-          </View>
-        </View>
-
+        {/* Pricing kind toggles — главная P0-10 фича: режим «договорная» */}
         <View className="mt-3">
           <AppText weight="medium" className="text-caption text-muted">
-            Единица
+            Тип цены
           </AppText>
           <View className="mt-1.5 flex-row flex-wrap gap-2">
-            {UNIT_OPTIONS.map((opt) => {
-              const selected = unit === opt;
+            {KIND_OPTIONS.map((opt) => {
+              const selected = pricingKind === opt;
               return (
                 <Pressable
                   key={opt}
                   accessibilityRole="radio"
                   accessibilityState={{ selected }}
-                  onPress={() => setUnit(opt)}
+                  onPress={() => handleKindChange(opt)}
                   className={`rounded-pill border px-3 py-1.5 active:opacity-70 ${
                     selected ? "border-ink bg-ink" : "border-hairline bg-canvas hover:bg-surface-2"
                   }`}
@@ -328,13 +354,88 @@ function ServiceFormContent({ initial, masterId, onClose }: ServiceFormContentPr
                     weight={selected ? "semibold" : "medium"}
                     className={`text-caption ${selected ? "text-on-primary" : "text-ink"}`}
                   >
-                    {SERVICE_UNIT_LABELS[opt]}
+                    {PRICING_KIND_LABELS[opt]}
                   </AppText>
                 </Pressable>
               );
             })}
           </View>
+          <AppText className="mt-1 text-caption-xs text-muted">
+            {PRICING_KIND_HINT[pricingKind]}
+          </AppText>
         </View>
+
+        {showPriceMin && (
+          <View className="mt-3 flex-row gap-3">
+            <View className="flex-1">
+              <AppText weight="medium" className="text-caption text-muted">
+                {pricingKind === "hourly"
+                  ? "₽ / час"
+                  : pricingKind === "range"
+                    ? "Цена от, ₽"
+                    : "Цена, ₽"}
+              </AppText>
+              <TextInput
+                value={priceMin}
+                onChangeText={setPriceMin}
+                placeholder={pricingKind === "hourly" ? "800" : "1500"}
+                placeholderTextColor={placeholderColor}
+                keyboardType="number-pad"
+                style={{ color: inkColor }}
+                className="mt-1.5 h-11 rounded-md border border-hairline bg-canvas px-3 text-body-md"
+              />
+            </View>
+            {showPriceMax && (
+              <View className="flex-1">
+                <AppText weight="medium" className="text-caption text-muted">
+                  До, ₽
+                </AppText>
+                <TextInput
+                  value={priceMax}
+                  onChangeText={setPriceMax}
+                  placeholder="3000"
+                  placeholderTextColor={placeholderColor}
+                  keyboardType="number-pad"
+                  style={{ color: inkColor }}
+                  className="mt-1.5 h-11 rounded-md border border-hairline bg-canvas px-3 text-body-md"
+                />
+              </View>
+            )}
+          </View>
+        )}
+
+        {showUnit && (
+          <View className="mt-3">
+            <AppText weight="medium" className="text-caption text-muted">
+              Единица
+            </AppText>
+            <View className="mt-1.5 flex-row flex-wrap gap-2">
+              {UNIT_OPTIONS.map((opt) => {
+                const selected = unit === opt;
+                return (
+                  <Pressable
+                    key={opt}
+                    accessibilityRole="radio"
+                    accessibilityState={{ selected }}
+                    onPress={() => setUnit(opt)}
+                    className={`rounded-pill border px-3 py-1.5 active:opacity-70 ${
+                      selected
+                        ? "border-ink bg-ink"
+                        : "border-hairline bg-canvas hover:bg-surface-2"
+                    }`}
+                  >
+                    <AppText
+                      weight={selected ? "semibold" : "medium"}
+                      className={`text-caption ${selected ? "text-on-primary" : "text-ink"}`}
+                    >
+                      {SERVICE_UNIT_LABELS[opt]}
+                    </AppText>
+                  </Pressable>
+                );
+              })}
+            </View>
+          </View>
+        )}
 
         {submitError && (
           <View className="mt-4">

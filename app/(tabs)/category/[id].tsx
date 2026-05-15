@@ -49,7 +49,7 @@ import {
 } from "@/features/master-view/availability";
 import { type MasterInCategory, useMastersByL2 } from "@/features/master-view/use-masters-by-l2";
 import {
-  SERVICE_UNIT_LABELS,
+  formatServicePrice,
   useMasterServices,
 } from "@/features/master-services/use-master-services";
 import {
@@ -636,28 +636,17 @@ function MasterRow({
         {topServices.length > 0 ? (
           <View className="mt-3 gap-1">
             {topServices.map((s) => {
-              // Один формат на выбор:
-              //   - «X ₽» если price_min === price_max (точная цена)
-              //   - «до X ₽» если задан только max
-              //   - «от X ₽» в остальных случаях (диапазон или только min)
-              const hasMin = s.price_min > 0;
-              const hasMax = !!s.price_max && s.price_max > 0;
-              const price =
-                hasMax && s.price_max === s.price_min
-                  ? `${s.price_min} ₽`
-                  : hasMax && !hasMin
-                    ? `до ${s.price_max} ₽`
-                    : `от ${s.price_min} ₽`;
-              const unitSuffix =
-                s.unit !== "per_task" ? ` · ${SERVICE_UNIT_LABELS[s.unit] ?? ""}` : "";
+              // formatServicePrice (helper из use-master-services) сам обрабатывает
+              // pricing_kind: 'quote' → «Договорная»; 'hourly' → «X ₽ / час»;
+              // 'fixed' → «X ₽ · за работу»; 'range' → «X–Y ₽ · за работу».
+              const priceText = formatServicePrice(s);
               return (
                 <View key={s.id} className="flex-row items-center justify-between gap-2">
                   <AppText className="text-body text-body-md flex-1" numberOfLines={1}>
                     {s.title}
                   </AppText>
                   <AppText weight="mono" className="text-ink text-mono-md">
-                    {price}
-                    {unitSuffix}
+                    {priceText}
                   </AppText>
                 </View>
               );
@@ -929,24 +918,14 @@ function MasterRowGallery({
       {topServices.length > 0 ? (
         <View className="mt-3 gap-1">
           {topServices.map((s) => {
-            const hasMin = s.price_min > 0;
-            const hasMax = !!s.price_max && s.price_max > 0;
-            const price =
-              hasMax && s.price_max === s.price_min
-                ? `${s.price_min} ₽`
-                : hasMax && !hasMin
-                  ? `до ${s.price_max} ₽`
-                  : `от ${s.price_min} ₽`;
-            const unitSuffix =
-              s.unit !== "per_task" ? ` · ${SERVICE_UNIT_LABELS[s.unit] ?? ""}` : "";
+            const priceText = formatServicePrice(s);
             return (
               <View key={s.id} className="flex-row items-center justify-between gap-2">
                 <AppText className="text-body text-body-md flex-1" numberOfLines={1}>
                   {s.title}
                 </AppText>
                 <AppText weight="mono" className="text-ink text-mono-md">
-                  {price}
-                  {unitSuffix}
+                  {priceText}
                 </AppText>
               </View>
             );

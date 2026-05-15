@@ -11,6 +11,9 @@ import {
   SERVICE_UNIT_LABELS,
   useMasterServices,
 } from "@/features/master-services/use-master-services";
+import type { Enums } from "@/types/database";
+
+type ServicePricingKind = Enums<"service_pricing_kind">;
 
 interface MasterServicesListProps {
   masterId: string;
@@ -57,28 +60,41 @@ export function MasterServicesList({ masterId, hideTitle = false }: MasterServic
           раньше прайс выглядел иначе чем категории и казался «другой раздел»
           (фидбэк user 2026-05-14). */}
       <View className={hideTitle ? "gap-3" : "mt-4 gap-3"}>
-        {services.map((service) => (
-          <View
-            key={service.id}
-            className="rounded-xl bg-canvas-soft p-4"
-          >
-            <View className="flex-row items-center justify-between gap-2">
-              <AppText
-                weight="semibold"
-                className="text-ink text-body-md flex-1"
-                numberOfLines={1}
-              >
-                {service.title}
-              </AppText>
-              <AppText weight="mono" className="text-ink text-mono-sm">
-                {formatPriceRange(service.price_min, service.price_max)}
-              </AppText>
+        {services.map((service) => {
+          const kind: ServicePricingKind = service.pricing_kind ?? "fixed";
+          const isQuote = kind === "quote";
+          // Текст цены: для quote — «Договорная», для остальных — диапазон
+          // (formatPriceRange сам ставит «Договорная» если price_min=null).
+          const priceText = isQuote
+            ? "Договорная"
+            : formatPriceRange(service.price_min, service.price_max);
+          // Подпись под ценой: для hourly — «за час», для quote скрываем,
+          // для остальных — единица из SERVICE_UNIT_LABELS.
+          const unitText = isQuote
+            ? null
+            : kind === "hourly"
+              ? "за час"
+              : SERVICE_UNIT_LABELS[service.unit];
+          return (
+            <View key={service.id} className="rounded-xl bg-canvas-soft p-4">
+              <View className="flex-row items-center justify-between gap-2">
+                <AppText
+                  weight="semibold"
+                  className="text-ink text-body-md flex-1"
+                  numberOfLines={1}
+                >
+                  {service.title}
+                </AppText>
+                <AppText weight="mono" className="text-ink text-mono-sm">
+                  {priceText}
+                </AppText>
+              </View>
+              {unitText ? (
+                <AppText className="mt-1 text-caption text-mute">{unitText}</AppText>
+              ) : null}
             </View>
-            <AppText className="mt-1 text-caption text-mute">
-              {SERVICE_UNIT_LABELS[service.unit]}
-            </AppText>
-          </View>
-        ))}
+          );
+        })}
       </View>
     </View>
   );

@@ -459,7 +459,8 @@ export type Database = {
           master_id: string
           position: number
           price_max: number | null
-          price_min: number
+          price_min: number | null
+          pricing_kind: Database["public"]["Enums"]["service_pricing_kind"]
           title: string
           unit: Database["public"]["Enums"]["service_unit"]
           updated_at: string
@@ -472,7 +473,8 @@ export type Database = {
           master_id: string
           position?: number
           price_max?: number | null
-          price_min: number
+          price_min?: number | null
+          pricing_kind?: Database["public"]["Enums"]["service_pricing_kind"]
           title: string
           unit?: Database["public"]["Enums"]["service_unit"]
           updated_at?: string
@@ -485,7 +487,8 @@ export type Database = {
           master_id?: string
           position?: number
           price_max?: number | null
-          price_min?: number
+          price_min?: number | null
+          pricing_kind?: Database["public"]["Enums"]["service_pricing_kind"]
           title?: string
           unit?: Database["public"]["Enums"]["service_unit"]
           updated_at?: string
@@ -1345,6 +1348,7 @@ export type Database = {
       response_status: "sent" | "viewed" | "accepted" | "rejected" | "withdrawn"
       review_direction: "client_to_master" | "master_to_client"
       review_status: "visible" | "hidden" | "pending"
+      service_pricing_kind: "fixed" | "range" | "hourly" | "quote"
       service_unit: "per_hour" | "per_task" | "per_m2" | "per_day"
       team_member_role: "owner" | "member"
       tax_status:
@@ -1530,6 +1534,7 @@ export const Constants = {
       response_status: ["sent", "viewed", "accepted", "rejected", "withdrawn"],
       review_direction: ["client_to_master", "master_to_client"],
       review_status: ["visible", "hidden", "pending"],
+      service_pricing_kind: ["fixed", "range", "hourly", "quote"],
       service_unit: ["per_hour", "per_task", "per_m2", "per_day"],
       team_member_role: ["owner", "member"],
       tax_status: [

@@ -1,14 +1,18 @@
 // Контент главной для active_role='master'.
-// Структура: safety banner → ваши категории (или CTA добавить) → empty state ленты заявок.
+// Структура: availability + лимит откликов → safety banner → ваши категории
+// (или CTA добавить) → ⭐ ЛЕНТА свежих заказов (P0-8) или empty state.
 
 import { useRouter } from "expo-router";
 import { ChevronRight, Inbox, Plus } from "lucide-react-native";
-import { ActivityIndicator, Pressable, View } from "react-native";
+import { Pressable, View } from "react-native";
 import { AppText } from "@/components/AppText";
+import { OrderRow } from "@/components/OrderRow";
+import { Skeleton } from "@/components/ui";
 import { SafetyBanner } from "@/components/SafetyBanner";
 import { AvailabilitySwitcher } from "@/features/master-view/AvailabilitySwitcher";
 import { ResponseLimitBadge } from "@/features/master-view/ResponseLimitBadge";
 import { useMyMasterCategories } from "@/features/master-categories/use-my-categories";
+import { useMasterFeed } from "@/features/orders/use-master-feed";
 import { useThemeColors } from "@/lib/use-theme-color";
 
 interface MasterHomeContentProps {
@@ -21,6 +25,14 @@ export function MasterHomeContent({ userId }: MasterHomeContentProps) {
   const tc = useThemeColors(["accent", "muted-soft", "on-primary"]);
 
   const hasCategories = (myCats?.length ?? 0) > 0;
+
+  // P0-8: главная мастера = свежие заказы. До этого было «Заявок пока нет»
+  // как только empty state — мастер не понимал куда смотреть и зачем
+  // открывать tab «Заказы». Эталон Яндекс.Pro / Profi.ru — лента сразу.
+  const l2Ids = (myCats ?? []).map((mc) => mc.l2_id);
+  const { data: feed, isLoading: feedLoading } = useMasterFeed({ userId, l2Ids });
+  const recentOrders = (feed?.pages?.[0]?.rows ?? []).slice(0, 3);
+  const hasOrders = recentOrders.length > 0;
 
   return (
     <View className="gap-6 px-6">
@@ -41,8 +53,10 @@ export function MasterHomeContent({ userId }: MasterHomeContentProps) {
         </AppText>
 
         {isLoading && (
-          <View className="mt-3 items-start">
-            <ActivityIndicator />
+          <View className="mt-3 flex-row flex-wrap gap-2">
+            {[0, 1, 2].map((i) => (
+              <Skeleton key={i} className="rounded-pill" width={92} height={32} />
+            ))}
           </View>
         )}
 
@@ -92,19 +106,72 @@ export function MasterHomeContent({ userId }: MasterHomeContentProps) {
         )}
       </View>
 
-      {/* Empty state ленты заявок */}
-      <View className="items-center rounded-lg bg-surface-2 px-6 py-10">
-        <View className="h-12 w-12 items-center justify-center rounded-full bg-surface-3">
-          <Inbox size={24} strokeWidth={1.75} color={tc["muted-soft"]} />
+      {/* P0-8: Свежие заказы прямо на главной мастера. */}
+      <View>
+        <View className="flex-row items-center justify-between">
+          <AppText weight="semibold" className="text-title-lg text-ink">
+            Новые заказы
+          </AppText>
+          {hasOrders ? (
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => router.push("/(tabs)/orders")}
+              className="flex-row items-center gap-1 active:opacity-70"
+              hitSlop={8}
+            >
+              <AppText weight="medium" className="text-caption text-accent">
+                Все заявки
+              </AppText>
+              <ChevronRight size={14} strokeWidth={2} color={tc.accent} />
+            </Pressable>
+          ) : null}
         </View>
-        <AppText weight="semibold" className="mt-4 text-title-md text-ink">
-          Заявок пока нет
-        </AppText>
-        <AppText className="mt-2 text-center text-body-sm text-muted">
-          {hasCategories
-            ? "Здесь появятся новые заявки клиентов по вашим категориям."
-            : "Добавьте категории, чтобы получать заявки."}
-        </AppText>
+
+        {feedLoading && hasCategories && (
+          <View className="mt-3 gap-3">
+            {[0, 1, 2].map((i) => (
+              <Skeleton key={i} className="rounded-lg" height={84} />
+            ))}
+          </View>
+        )}
+
+        {!feedLoading && hasOrders && (
+          <View className="mt-3 gap-3">
+            {recentOrders.map((o) => (
+              <OrderRow
+                key={o.id}
+                id={o.id}
+                title={o.title}
+                categoryName={o.l2?.name_ru ?? o.l2_id}
+                categoryIcon={o.l2?.icon ?? null}
+                categoryL2Id={o.l2_id}
+                cityName={o.city?.name ?? o.city_id ?? "Вся Ингушетия"}
+                district={o.district}
+                urgency={o.urgency}
+                responsesCount={o.responses_count}
+                createdAt={o.created_at}
+                status="open"
+                onPress={() => router.push(`/(tabs)/orders/${o.id}`)}
+              />
+            ))}
+          </View>
+        )}
+
+        {!feedLoading && !hasOrders && (
+          <View className="mt-3 items-center rounded-lg bg-surface-2 px-6 py-10">
+            <View className="h-12 w-12 items-center justify-center rounded-full bg-surface-3">
+              <Inbox size={24} strokeWidth={1.75} color={tc["muted-soft"]} />
+            </View>
+            <AppText weight="semibold" className="mt-4 text-title-md text-ink">
+              Заявок пока нет
+            </AppText>
+            <AppText className="mt-2 text-center text-body-sm text-muted">
+              {hasCategories
+                ? "Здесь появятся новые заявки клиентов по вашим категориям."
+                : "Добавьте категории, чтобы получать заявки."}
+            </AppText>
+          </View>
+        )}
       </View>
     </View>
   );

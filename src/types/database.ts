@@ -1131,6 +1131,7 @@ export type Database = {
           id: string
           is_admin: boolean
           is_client: boolean
+          is_demo: boolean
           is_master: boolean
           last_name: string | null
           last_seen_feed_at: string | null
@@ -1150,6 +1151,7 @@ export type Database = {
           id: string
           is_admin?: boolean
           is_client?: boolean
+          is_demo?: boolean
           is_master?: boolean
           last_name?: string | null
           last_seen_feed_at?: string | null
@@ -1169,6 +1171,7 @@ export type Database = {
           id?: string
           is_admin?: boolean
           is_client?: boolean
+          is_demo?: boolean
           is_master?: boolean
           last_name?: string | null
           last_seen_feed_at?: string | null

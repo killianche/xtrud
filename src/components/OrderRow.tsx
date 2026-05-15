@@ -18,7 +18,7 @@
 //
 // Старый дизайн (h-9 w-9 slot с подложкой): см. git log до 2026-05-15.
 
-import { CheckCircle, Hourglass, MapPin } from "phosphor-react-native";
+import { MapPin } from "phosphor-react-native";
 import { Image, Pressable, View } from "react-native";
 import { AppText } from "@/components/AppText";
 import type { OrderStatusValue } from "@/components/OrderStatusBadge";
@@ -138,21 +138,17 @@ export function OrderRow(props: OrderRowProps) {
   const dimmed = statusMeta?.dimmed ?? false;
   const variant = props.variant ?? "default";
 
-  // Inline-иконка в начале заголовка. Все variant'ы — НЕЦВЕТНЫЕ (ink-токен,
-  // авто-инверсия светлая/тёмная тема). Фидбэк user 2026-05-15: «галочку
-  // сделать не цветной, белой в темной теме и наоборот». Отличие variant'ов
-  // даётся самой иконкой (CheckCircle / Hourglass / categoryIcon), не цветом.
+  // Inline-иконка в начале заголовка — ВСЕГДА category-иконка (Iconify-color
+  // или Lucide-fallback). Status-маркеры CheckCircle/Hourglass для variants
+  // assigned/responded убраны (фидбек user 2026-05-16): иконка статуса
+  // дублирует контекст таба — лента «Меня выбрали» / «Я откликнулся» уже
+  // фильтрует по статусу, ещё одна иконка перед каждой строкой — шум.
   // Размер 16px — маркер, не визуальный анкор.
-  const inlineIcon =
-    variant === "assigned" ? (
-      <CheckCircle size={16} weight="bold" color={tc.ink} />
-    ) : variant === "responded" ? (
-      <Hourglass size={16} weight="bold" color={tc.ink} />
-    ) : colorUrl ? (
-      <Image source={{ uri: colorUrl }} style={{ width: 16, height: 16 }} />
-    ) : (
-      <Icon size={16} weight="bold" color={tc.ink} />
-    );
+  const inlineIcon = colorUrl ? (
+    <Image source={{ uri: colorUrl }} style={{ width: 16, height: 16 }} />
+  ) : (
+    <Icon size={16} weight="bold" color={tc.ink} />
+  );
 
   return (
     <Pressable

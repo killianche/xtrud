@@ -82,7 +82,7 @@ UI: [app/(tabs)/orders/category-select.tsx](app/(tabs)/orders/category-select.ts
 2. **Заказы** (`(tabs)/orders/index.tsx`) — 3 таба: «Новые» / «Я откликнулся» / «Меня выбрали».
 3. **Чаты** (`(tabs)/chats/*`) — диалоги с клиентами по конкретным заказам (один чат на пару order×master).
 4. **Свой публичный профиль глазами клиента** (`(tabs)/master/[id].tsx`) — то, что видит клиент.
-5. **Редактирование профиля** (`(tabs)/profile/edit-master.tsx`) — bio, опыт, инструмент/транспорт, радиус выезда, прайс-лист услуг.
+5. **Редактирование профиля** (`(tabs)/profile/edit-master.tsx`) — bio, опыт, инструмент/транспорт, where-я-работаю (ServiceAreas — multi-select городов/районов), прайс-лист услуг.
 6. **Управление категориями** (`(onboarding)/master-categories.tsx` — переиспользуется в режиме edit) — добавить/убрать L2 (max 5), для каждой выбрать pricing_mode + L3 услуги.
 
 ---
@@ -121,7 +121,6 @@ UI: [app/(tabs)/orders/category-select.tsx](app/(tabs)/orders/category-select.ts
 | `status` | enum (`active`, `paused`, `banned`, …) | `active` | Прод-ready только если `active`. |
 | `verification_level` | smallint 0–5 | 0 | См. §4 ниже. |
 | `experience_years` | int 0–70 | NULL | Видим как chip «12 лет опыта» в карточке. |
-| `service_radius_km` | int 0–200 | 10 | Радиус выезда. Override на категорию через `master_categories.category_radius_km`. |
 | `team_size` | int 1–100 | 1 | 1 = одиночка, 2-10 = бригада, 10+ = компания. |
 | `languages` | text[] | `['ru']` | Коды: `ru`, `in` (ингушский), `ce`, `en`, `ar`. |
 
@@ -135,7 +134,6 @@ UI: [app/(tabs)/orders/category-select.tsx](app/(tabs)/orders/category-select.ts
 | `l2_id` | text FK `categories_l2` | Один из 64 L2 (см. `CATEGORIES_AND_PROFILES.md` §1.3). |
 | `pricing_mode` | enum (`per_hour`, `per_unit`, `negotiable`, `on_quote`) | Влияет на форму отклика и отображение в карточке. |
 | `category_bio` | text ≤200 chars | Опц. короткое описание именно этой категории (приоритет над общим `bio`). |
-| `category_radius_km` | int | Опц. override общего `service_radius_km` для этой категории. |
 
 **Лимит:** 5 L2-категорий на мастера (trigger `check_master_categories_limit`).
 
@@ -227,7 +225,7 @@ UI: [app/(tabs)/orders/category-select.tsx](app/(tabs)/orders/category-select.ts
 4. Город + район
 5. Выбор L2-категорий (1-5)
 6. Внутри каждой L2 — выбор L3 + `pricing_mode`
-7. (Опц.) Bio, опыт, has_tools, has_transport, service_radius_km
+7. (Опц.) Bio, опыт, has_tools, has_transport
 
 После шагов 1-5 мастер уже виден в каталоге. Остальное — «прокачка профиля».
 
@@ -268,7 +266,7 @@ UI: [app/(tabs)/orders/category-select.tsx](app/(tabs)/orders/category-select.ts
 
 ### 6.5. Редактирование (`profile/edit-master.tsx`)
 
-Поля формы: имя, фамилия, город, район, bio, experience_years, has_tools, has_transport, service_radius_km. Прайс-лист услуг — отдельная секция `MasterServicesSection` (CRUD inline).
+Поля формы: имя, фамилия, город, район, bio, experience_years, has_tools, has_transport. Прайс-лист услуг — отдельная секция `MasterServicesSection` (CRUD inline). «Где работает» — `ServiceAreasSection` (multi-select городов/районов из `master_service_areas`, заменила радиус выезда 2026-05-15).
 
 ---
 

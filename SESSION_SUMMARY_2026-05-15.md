@@ -160,3 +160,43 @@
 - ✅ Apply → возврат на /filters, Категория-trigger показывает «Выбрано 2 / Сантехника, Ремонт и отделка».
 - ✅ Apply на /filters (с sort=urgent) → возврат на /search, Фильтры-кнопка filled-black (active=true), заказы отсортированы urgent-first.
 - ✅ TypeScript clean (`npx tsc --noEmit`).
+
+---
+
+# Дополнение (поздно ночь, drop радиуса + drop 8 out-of-scope L1)
+
+## TL;DR
+
+Полная чистка нерелевантных категорий и удаление поля радиуса выезда. xtrud — нишевый сервис под ремонт+стройку+быт (включая клининг), всё остальное (авто, перевозки, бьюти, образование, события, бизнес, IT, личный сервис) физически удалено из БД.
+
+## Закрытые задачи
+
+1. **Миграция 0067_drop_service_radius.sql** — DROP service_radius_km / category_radius_km columns + REPLACE complete_master_onboarding RPC без p_service_radius_km. Применена через MCP supabase.
+2. **Чистка кода радиуса** (9 файлов): database.ts, Zod-схема, 3 hooks, 4 UI-файла. TS clean.
+3. **Миграция 0068_drop_out_of_scope_categories.sql** — DELETE 8 L1 + всё связанное (47 L2, 12 master_categories, 13 orders + CASCADE, 20 orphaned responses, 8 orphaned reviews). Применена.
+4. **product-scope.ts** — IN_SCOPE_L1_IDS = ["construction", "home-services"], комментарий переписан под физическое удаление.
+5. **Доки:** CATEGORIES_AND_PROFILES.md (Product scope блок), MASTER_ACCOUNT_SPEC.md (5 мест с радиусом), STATUS.md (новая секция).
+
+## Новые правила и решения
+
+- **Радиус выезда удалён навсегда** — заменён на ServiceAreas (m2m мастер ↔ город/район). DESIGN_SYSTEM это уже знал, но БД не была почищена. Теперь нет.
+- **Scope-фильтр как «второй защитный слой»** поверх физического удаления, не вместо него (раньше думали наоборот). После миграции 0068 в БД остаются только in-scope L1, и scope-фильтр их же перечисляет — фактически no-op, но защитит если seed случайно вернёт oos.
+- **При удалении категорий — учитывать FK ON DELETE RESTRICT** (master_categories, orders, order_responses, reviews держат RESTRICT на L2). Правильный порядок DELETE: сначала чистим master_categories по oos l2_id, потом orders (CASCADE подтянет chats/responses/reviews по order_id), потом orphaned по l2_id, потом L3, потом L2, потом L1.
+
+## Anti-patterns обнаруженные в сессии
+
+- **«Скрыть в UI, оставить в БД»** для крупных out-of-scope разделов — неправильно для нишевого сервиса. На demo-окружении создавало путаницу (фильтры показывали лишнее, seed-мастера висели как orphaned). Правильно — физическое удаление через миграцию.
+- **«Убрать поле с UI, оставить в БД и hooks»** — half-finished cleanup. Радиус выезда был именно таким — UI-поле скрыли, но `service_radius_km` всё ещё писался в БД при онбординге, читался в `useMasterPublicProfile`, отображался на `/master/[id]` как «Радиус X км». Полное удаление = миграция + типы + Zod + hooks + RPC + UI.
+
+## Verification — что реально проверено в preview
+
+- ✅ `/orders/search/filters` показывает только 2 раздела «Строительство и ремонт» и «Дом и быт» (скриншот). Раньше — 10.
+- ✅ `/orders/search/category-select` (multi-select picker) — список L2 только из construction (Сантехника, Электрика, Ремонт и отделка, Мастер на час, Уборка после ремонта, Окна и остекление, Двери, Замки и безопасность, Штукатурка, Гипсокартон, Плитка, ...) — нет шиномонтажа/ресниц/перевозок/IT.
+- ✅ DB-state: 2 L1, 48 L2, 280 L3, 0 master_categories с oos l2_id, 0 orders с oos l2_id (verified через `mcp__supabase__execute_sql`).
+- ✅ TypeScript clean (`npx tsc --noEmit`).
+- ⚠️ `/master/[id]` без радиуса — runtime-проверка не удалась из-за поломанного user-WIP rebuild'а (`MasterDashboardOrders.tsx` + `search/index.tsx`). Источник проверен глазами + TS clean.
+
+## Открытые вопросы / TODO
+
+- Почистить упоминания радиуса в research/*.md и AUDIT_2026-05-12.md (они исторические, не критично — но кто-то может запутаться). Не сделал в этой сессии — не блокер.
+- В demo-fixture.sql (seed) и старых seed-миграциях (0036, 0038, 0039, 0054) есть INSERT'ы с `service_radius_km` / `category_radius_km`. После миграции 0067 эти миграции при «свежем накате с нуля» упадут — поля больше не существуют. **Это известный долг.** Если будем пересоздавать БД — нужно либо отредактировать старые seed'ы (но это меняет историю миграций — плохо), либо создать миграцию-патч.

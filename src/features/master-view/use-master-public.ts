@@ -28,7 +28,6 @@ export type MasterPublicProfile = {
     | "experience_years"
     | "has_tools"
     | "has_transport"
-    | "service_radius_km"
     | "rating_overall_avg"
     | "rating_overall_count"
     | "closed_deals"
@@ -59,7 +58,7 @@ export function useMasterPublicProfile(masterId: string | null | undefined) {
       const { data: masterData, error: masterErr } = await supabase
         .from("master_profiles")
         .select(
-          "bio, experience_years, has_tools, has_transport, service_radius_km, rating_overall_avg, rating_overall_count, closed_deals, languages, status, account_type, team_size, availability_status, availability_until",
+          "bio, experience_years, has_tools, has_transport, rating_overall_avg, rating_overall_count, closed_deals, languages, status, account_type, team_size, availability_status, availability_until",
         )
         .eq("user_id", masterId)
         .maybeSingle();

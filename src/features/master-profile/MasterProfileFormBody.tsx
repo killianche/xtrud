@@ -175,8 +175,8 @@ interface ToggleCardProps {
 
 function ToggleCard({ Icon, label, value, onChange, disabled }: ToggleCardProps) {
   const inkColor = useThemeColor("ink");
-  const onPrimaryColor = useThemeColor("on-primary");
-  const iconColor = value ? onPrimaryColor : inkColor;
+  const accentColor = useThemeColor("accent");
+  const iconColor = value ? accentColor : inkColor;
   return (
     <Pressable
       accessibilityRole="checkbox"
@@ -184,13 +184,13 @@ function ToggleCard({ Icon, label, value, onChange, disabled }: ToggleCardProps)
       disabled={disabled}
       onPress={() => onChange(!value)}
       className={`flex-1 items-center gap-2 rounded-xl border-2 p-4 active:opacity-70 ${
-        value ? "border-ink bg-ink" : "border-hairline bg-canvas"
+        value ? "border-accent bg-accent-soft" : "border-hairline bg-canvas"
       }`}
     >
       <Icon size={24} strokeWidth={1.75} color={iconColor} />
       <AppText
         weight={value ? "semibold" : "medium"}
-        className={`text-center text-body-sm ${value ? "text-on-primary" : "text-ink"}`}
+        className={`text-center text-body-sm ${value ? "text-accent" : "text-ink"}`}
       >
         {label}
       </AppText>
@@ -206,7 +206,7 @@ type MPStringField = Extract<
 >;
 type MPNumberField = Extract<
   FieldPath<MasterProfileFormValues>,
-  "experienceYears" | "serviceRadiusKm"
+  "experienceYears"
 >;
 
 interface FormFieldProps {

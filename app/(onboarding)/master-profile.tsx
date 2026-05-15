@@ -36,7 +36,6 @@ export default function MasterProfileScreen() {
       experienceYears: 0,
       hasTools: false,
       hasTransport: false,
-      serviceRadiusKm: 10,
     },
     mode: "onChange",
   });

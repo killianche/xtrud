@@ -4,7 +4,61 @@
 
 ---
 
-## Текущее состояние (2026-05-15 ночь, /orders/search redesign — full-screen filters + ScreenHeader standard)
+## Текущее состояние (2026-05-15 поздно ночь — drop радиуса + drop 8 out-of-scope L1)
+
+**Главное:** Полная чистка нерелевантных категорий и удаление радиуса выезда. Фидбек user 2026-05-15: «у нас сервис под ремонт+стройку+клининг, удали всё лишнее полностью; раньше радиус убирали с UI, но он остался в коде».
+
+**Что сделано:**
+
+1. **Миграция [`0067_drop_service_radius.sql`](supabase/migrations/0067_drop_service_radius.sql)** — DROP `service_radius_km` из `master_profiles`, DROP `category_radius_km` из `master_categories`, DROP индекс, REPLACE RPC `complete_master_onboarding` без `p_service_radius_km`. Применена.
+2. **Чистка кода радиуса:** `database.ts`, `master-profile-schema.ts` (Zod), `use-submit-master-profile.ts`, `use-update-master-profile.ts`, `use-master-public.ts`, `master/[id].tsx` (убран блок «Радиус X км»), `MasterProfileFormBody.tsx`, `edit-master.tsx`, `master-profile.tsx` (онбординг).
+3. **Миграция [`0068_drop_out_of_scope_categories.sql`](supabase/migrations/0068_drop_out_of_scope_categories.sql)** — DELETE 8 L1 (auto, transport, beauty-health, education, events, business, it-digital, personal-services) + всё связанное. Порядок DELETE учитывает FK ON DELETE RESTRICT (master_categories → orders с CASCADE → orphaned responses/reviews → l3 → l2 → l1).
+   - **Удалено из БД:** 8 L1, 47 L2 (теперь 48 L2 = 41 construction + 7 home-services), 12 master_categories, 13 orders + CASCADE на chats/order_responses/reviews, 20 orphaned responses, 8 orphaned reviews.
+4. **`src/lib/product-scope.ts`** — `IN_SCOPE_L1_IDS = ["construction", "home-services"]`. Комментарий обновлён: scope-фильтр теперь «второй защитный слой» поверх физического удаления.
+5. **Доки:** `CATEGORIES_AND_PROFILES.md` (Product scope блок переписан под 2 L1 + миграцию 0068, TL;DR обновлён), `MASTER_ACCOUNT_SPEC.md` (5 мест где упоминался радиус — убраны или заменены на ServiceAreas).
+
+**Verify в preview:** ✅ `/orders/search/filters` показывает только 2 раздела (раньше 10). ✅ Multi-select picker `/orders/search/category-select` — только construction L2 (нет шиномонтажа/ресниц/IT). ✅ TS clean.
+
+**⚠️ Side note:** Dev rebuild упал на user-WIP-файлах вне моего scope (`MasterDashboardOrders.tsx` JSX mismatch, `app/(tabs)/orders/search/index.tsx` duplicate `OrderRowsSkeleton`). Эти файлы я не трогал. Из-за rebuild-failure не смог runtime-проверить `/master/[id]` без радиуса — но source чистый, TS clean.
+
+---
+
+## Прежнее состояние (2026-05-15 поздно ночь, правило «никаких чёрных chip-pill»)
+
+**User-фидбек:** «черные кнопки не делай» (тычок в активный pill «Фильтры» который был `border-ink bg-ink` — выглядел тяжёлым, доминировал на экране).
+
+**Решение:** глобальная замена паттерна selected chip с чёрного на голубой Vercel-link.
+- `border-ink bg-ink` → `border-accent bg-accent-soft` (фон `#d3e5ff`, бордер `#0070f3`)
+- `text-on-primary` (text/icon когда chip активен) → `text-accent` (`#0070f3`)
+- `useThemeColor("on-primary")` (icon color когда активен) → `useThemeColor("accent")`
+- Малый button «Добавить» в MasterServicesSection (`bg-ink`) → `bg-accent` (solid blue)
+- Checkbox-индикатор в `category-select` (28px круг с галочкой) — `border-accent bg-accent` (solid, iOS-style) + белый Check внутри
+
+**Затронутые файлы (12):**
+1. `src/components/ui/ScreenHeader.tsx` — rightAction.active pill
+2. `src/components/ui/LocationSheet.tsx` — основная карточка «Вся Ингушетия» + 2 chip-row
+3. `src/components/ui/LocationFilterSheet.tsx` — 2 chip-row
+4. `src/features/master-profile/ServiceAreasSection.tsx` — города + районы
+5. `src/features/master-profile/MasterProfileFormBody.tsx` — ToggleCard
+6. `src/features/orders/LocationPicker.tsx` — карточка «Вся Ингушетия» + 4 chip-row
+7. `src/features/orders/OrderFormBody.tsx` — urgency + budget chips
+8. `src/features/master-services/MasterServicesSection.tsx` — 3 chip + 1 button
+9. `app/(tabs)/orders/search/filters.tsx` — SortChip
+10. `app/(tabs)/orders/search/category-select.tsx` — checkbox-индикатор
+
+**Verify:**
+- `tsc --noEmit` clean
+- 0 occurrences `border-ink bg-ink` остались в codebase
+- DOM-проверка: chip активный имеет `border-accent bg-accent-soft`, computed bg = `rgb(211, 229, 255)`, text color = `rgb(0, 112, 243)`
+- Скриншот /orders/search/filters: 2 selected chip («Новые сверху», «Бьюти и здоровье») — голубые soft-tint с blue текстом, не чёрные
+
+**⚠️ Что НЕ трогал:**
+- Большие primary-CTA (`bg-primary` на «Применить», «Сохранить», «Опубликовать», «Войти», TabBar кнопка «Создать заказ» внутри Button-компонента) — это стандартный Vercel primary-action pattern. Если user скажет «вообще все чёрные кнопки в blue» — это отдельный sweep на ~25-30 мест.
+- `<Button variant="primary">` — primary вариант остаётся `bg-primary`/black по умолчанию.
+
+---
+
+## Прежнее состояние (2026-05-15 ночь, /orders/search redesign — full-screen filters + ScreenHeader standard)
 
 **Главное:** Глубокий редизайн `/orders/search` под фидбек user 2026-05-15: «хедер мелкий, разный на разных экранах; кнопка Фильтры мелкая; фильтры должны открываться на отдельном экране большие и удобные; категории не перечислять сразу — кнопка-trigger которая открывает picker». Зафиксирован общий стандарт UI-паттернов на будущее.
 

@@ -5,7 +5,7 @@
  * она ставит `onboarding_completed_at`. После онбординга владелец редактирует
  * поля через простой UPDATE — два запроса:
  *  - users.first_name/last_name/city_id/district
- *  - master_profiles.bio/experience_years/has_tools/has_transport/service_radius_km
+ *  - master_profiles.bio/experience_years/has_tools/has_transport
  *
  * Не объединяем в один RPC — sprint 9 минимум, нужен ли единый transactional
  * UPDATE — пока нет, поля редактируются вместе с UI. Если будут race conditions
@@ -26,7 +26,6 @@ export interface UpdateMasterProfileInput {
   experienceYears: number;
   hasTools: boolean;
   hasTransport: boolean;
-  serviceRadiusKm: number;
 }
 
 export function useUpdateMasterProfile() {
@@ -52,7 +51,6 @@ export function useUpdateMasterProfile() {
           experience_years: input.experienceYears,
           has_tools: input.hasTools,
           has_transport: input.hasTransport,
-          service_radius_km: input.serviceRadiusKm,
         })
         .eq("user_id", input.userId);
       if (profileErr) throw profileErr;

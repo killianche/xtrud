@@ -8,7 +8,6 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQuery } from "@tanstack/react-query";
 import { useFocusEffect, useRouter } from "expo-router";
-import { ChevronLeft } from "lucide-react-native";
 import { useCallback, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import {
@@ -22,6 +21,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
+import { ScreenHeader } from "@/components/ui";
 import {
   type MasterProfileFormValues,
   masterProfileSchema,
@@ -35,7 +35,6 @@ import { MasterServicesSection } from "@/features/master-services/MasterServices
 import { ServiceAreasSection } from "@/features/master-profile/ServiceAreasSection";
 import { supabase } from "@/lib/supabase";
 import { useTabBarVisibility } from "@/lib/tabbar-visibility";
-import { useThemeColor } from "@/lib/use-theme-color";
 import type { Tables } from "@/types/database";
 
 export default function EditMasterScreen() {
@@ -48,7 +47,6 @@ export default function EditMasterScreen() {
   const { data: masterProfile, isLoading: profileLoading } = useMyMasterProfile(userId);
   const { data: cities, isLoading: citiesLoading } = useCities();
   const updateMaster = useUpdateMasterProfile();
-  const inkColor = useThemeColor("ink");
 
   // Скрываем TabBar при редактировании профиля — full-screen форма с длинным
   // списком полей не должна перекрываться нижним меню (фидбэк user 2026-05-15
@@ -80,7 +78,6 @@ export default function EditMasterScreen() {
       experienceYears: 0,
       hasTools: false,
       hasTransport: false,
-      serviceRadiusKm: 10,
     },
     mode: "onChange",
   });
@@ -96,7 +93,6 @@ export default function EditMasterScreen() {
       experienceYears: masterProfile.experience_years ?? 0,
       hasTools: masterProfile.has_tools,
       hasTransport: masterProfile.has_transport,
-      serviceRadiusKm: masterProfile.service_radius_km,
     });
   }, [user, masterProfile, reset]);
 
@@ -119,30 +115,24 @@ export default function EditMasterScreen() {
       className="flex-1 bg-canvas"
       style={{ paddingTop: insets.top }}
     >
-      <View className="flex-row items-center px-3 py-2">
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Назад"
-          onPress={() => {
-            if (isDirty && !isBusy) {
-              Alert.alert("Есть несохранённые изменения", "Выйти без сохранения?", [
-                { text: "Остаться", style: "cancel" },
-                {
-                  text: "Выйти",
-                  style: "destructive",
-                  onPress: () => router.back(),
-                },
-              ]);
-              return;
-            }
-            router.back();
-          }}
-          hitSlop={12}
-          className="h-10 w-10 items-center justify-center rounded-full active:opacity-70"
-        >
-          <ChevronLeft size={24} strokeWidth={1.75} color={inkColor} />
-        </Pressable>
-      </View>
+      <ScreenHeader
+        title="Профиль мастера"
+        subtitle="Изменения видны клиентам сразу."
+        onBack={() => {
+          if (isDirty && !isBusy) {
+            Alert.alert("Есть несохранённые изменения", "Выйти без сохранения?", [
+              { text: "Остаться", style: "cancel" },
+              {
+                text: "Выйти",
+                style: "destructive",
+                onPress: () => router.back(),
+              },
+            ]);
+            return;
+          }
+          router.back();
+        }}
+      />
 
       {(profileLoading || !user) && (
         <View className="flex-1 items-center justify-center">
@@ -172,14 +162,8 @@ export default function EditMasterScreen() {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          <View className="px-6 pb-6">
-            <AppText weight="bold" className="text-display-sm tracking-tight text-ink">
-              Профиль мастера
-            </AppText>
-            <AppText className="mt-2 text-body-md text-muted">
-              Изменения видны клиентам сразу.
-            </AppText>
-          </View>
+          {/* Заголовок «Профиль мастера» + subtitle переехали в ScreenHeader. */}
+          <View className="pt-2" />
 
           <MasterProfileFormBody
             control={control}

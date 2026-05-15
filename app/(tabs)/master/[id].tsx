@@ -391,10 +391,10 @@ export default function MasterPublicScreen() {
                 ) : null}
               </View>
 
-              {/* Row 2: опыт · радиус · бригада/компания (inline через bullets
-                  у text-mute) */}
+              {/* Row 2: опыт · бригада/компания (inline через bullets у text-mute).
+                  Радиус выезда удалён 2026-05-15 — заменено на ServiceAreas
+                  (m2m мастер ↔ город/район), отображается ниже отдельной секцией. */}
               {(experienceYears !== null && experienceYears > 0) ||
-              (m.service_radius_km && m.service_radius_km > 0) ||
               closedDeals > 0 ||
               m.account_type === "brigade" ||
               m.account_type === "company" ? (
@@ -405,18 +405,6 @@ export default function MasterPublicScreen() {
                         {pluralizeYears(experienceYears)} опыта
                       </AppText>
                     </View>
-                  ) : null}
-
-                  {m.service_radius_km && m.service_radius_km > 0 ? (
-                    <>
-                      <View className="h-1 w-1 rounded-full bg-mute opacity-40" />
-                      <View className="flex-row items-center gap-1">
-                        <MapPin size={13} strokeWidth={1.75} color="currentColor" className="text-mute" />
-                        <AppText className="text-body text-body-sm">
-                          Радиус {m.service_radius_km} км
-                        </AppText>
-                      </View>
-                    </>
                   ) : null}
 
                   {closedDeals > 0 ? (

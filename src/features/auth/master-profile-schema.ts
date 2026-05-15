@@ -26,11 +26,6 @@ export const masterProfileSchema = z.object({
     .max(70, "Не больше 70"),
   hasTools: z.boolean(),
   hasTransport: z.boolean(),
-  serviceRadiusKm: z
-    .number({ message: "Введите число" })
-    .int()
-    .min(1, "Минимум 1 км")
-    .max(200, "Максимум 200 км"),
 });
 
 export type MasterProfileFormValues = z.infer<typeof masterProfileSchema>;

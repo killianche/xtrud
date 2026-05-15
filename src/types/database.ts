@@ -329,7 +329,6 @@ export type Database = {
         Row: {
           attributes: Json
           category_bio: string | null
-          category_radius_km: number | null
           closed_deals: number
           created_at: string
           id: string
@@ -345,7 +344,6 @@ export type Database = {
         Insert: {
           attributes?: Json
           category_bio?: string | null
-          category_radius_km?: number | null
           closed_deals?: number
           created_at?: string
           id?: string
@@ -361,7 +359,6 @@ export type Database = {
         Update: {
           attributes?: Json
           category_bio?: string | null
-          category_radius_km?: number | null
           closed_deals?: number
           created_at?: string
           id?: string
@@ -411,7 +408,6 @@ export type Database = {
           ogrn: string | null
           rating_overall_avg: number | null
           rating_overall_count: number
-          service_radius_km: number
           status: Database["public"]["Enums"]["master_status"]
           tax_status: Database["public"]["Enums"]["tax_status"] | null
           team_size: number
@@ -437,7 +433,6 @@ export type Database = {
           ogrn?: string | null
           rating_overall_avg?: number | null
           rating_overall_count?: number
-          service_radius_km?: number
           status?: Database["public"]["Enums"]["master_status"]
           tax_status?: Database["public"]["Enums"]["tax_status"] | null
           team_size?: number
@@ -463,7 +458,6 @@ export type Database = {
           ogrn?: string | null
           rating_overall_avg?: number | null
           rating_overall_count?: number
-          service_radius_km?: number
           status?: Database["public"]["Enums"]["master_status"]
           tax_status?: Database["public"]["Enums"]["tax_status"] | null
           team_size?: number
@@ -1288,7 +1282,6 @@ export type Database = {
           p_has_tools: boolean
           p_has_transport: boolean
           p_last_name: string
-          p_service_radius_km: number
         }
         Returns: undefined
       }

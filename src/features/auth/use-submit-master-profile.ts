@@ -15,7 +15,6 @@ export interface SubmitMasterProfileInput {
   experienceYears: number;
   hasTools: boolean;
   hasTransport: boolean;
-  serviceRadiusKm: number;
 }
 
 export function useSubmitMasterProfile() {
@@ -32,7 +31,6 @@ export function useSubmitMasterProfile() {
         p_experience_years: input.experienceYears,
         p_has_tools: input.hasTools,
         p_has_transport: input.hasTransport,
-        p_service_radius_km: input.serviceRadiusKm,
       });
       if (error) throw error;
     },

@@ -1339,6 +1339,10 @@ export type Database = {
         Args: { p_l2_ids: string[] }
         Returns: undefined
       }
+      get_master_stats: {
+        Args: Record<string, never>
+        Returns: Json
+      }
       get_response_limit_today: {
         Args: Record<string, never>
         Returns: Json

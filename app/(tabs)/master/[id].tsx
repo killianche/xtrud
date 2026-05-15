@@ -39,15 +39,13 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
-import { Avatar, Button, Card, Chip, Skeleton, normalizeAvatarUrl } from "@/components/ui";
+import { Avatar, Button, Card, Skeleton, normalizeAvatarUrl } from "@/components/ui";
 
-/** Лейблы режимов прайсинга для отображения на карточке категории мастера. */
-const PRICING_MODE_LABELS: Record<string, string> = {
-  per_hour: "Почасовая оплата",
-  per_unit: "За единицу работы",
-  negotiable: "Цена договорная",
-  on_quote: "По смете",
-};
+// PRICING_MODE_LABELS убран 2026-05-15 (P0-1 в research/MASTER_ACCOUNT_PLAN.md).
+// Цены — единственным источником master_services, отображаются через
+// <MasterServicesList />. Поле master_categories.pricing_mode помечено
+// DEPRECATED в миграции 0055.
+
 import { useAuthSession } from "@/features/auth/use-auth-session";
 import { getCategoryColorIconUrl } from "@/lib/category-color-icons";
 import { useSafeBack } from "@/lib/use-safe-back";
@@ -517,8 +515,6 @@ export default function MasterPublicScreen() {
                 <View className="gap-3">
                   {cats.map((c) => {
                     const name = c.l2?.name_ru ?? c.l2_id;
-                    const pricingLabel =
-                      PRICING_MODE_LABELS[c.pricing_mode] ?? null;
                     // Цветная иконка категории через единый mapping
                     // `getCategoryColorIconUrl` (см. docs/ICONS.md). Если нет
                     // в маппинге — fallback на круг с canvas-soft фоном без
@@ -526,28 +522,21 @@ export default function MasterPublicScreen() {
                     const colorUrl = getCategoryColorIconUrl(c.l2_id);
                     return (
                       <Card key={c.l2_id} variant="soft" padding="md">
-                        <View className="flex-row items-center justify-between gap-2">
-                          <View className="flex-1 flex-row items-center gap-2">
-                            {colorUrl ? (
-                              <View className="h-8 w-8 items-center justify-center rounded-full bg-canvas">
-                                <Image
-                                  source={{ uri: colorUrl }}
-                                  style={{ width: 20, height: 20 }}
-                                />
-                              </View>
-                            ) : null}
-                            <AppText
-                              weight="semibold"
-                              className="text-ink text-body-md"
-                            >
-                              {name}
-                            </AppText>
-                          </View>
-                          {pricingLabel ? (
-                            <Chip size="sm" mono>
-                              {pricingLabel}
-                            </Chip>
+                        <View className="flex-row items-center gap-2">
+                          {colorUrl ? (
+                            <View className="h-8 w-8 items-center justify-center rounded-full bg-canvas">
+                              <Image
+                                source={{ uri: colorUrl }}
+                                style={{ width: 20, height: 20 }}
+                              />
+                            </View>
                           ) : null}
+                          <AppText
+                            weight="semibold"
+                            className="text-ink text-body-md"
+                          >
+                            {name}
+                          </AppText>
                         </View>
                         <AppText className="text-body text-body-sm mt-2 leading-5">
                           {c.category_bio}

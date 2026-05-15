@@ -912,73 +912,46 @@ function ClientMasterResponseCard({
 
   return (
     <View className={cardClassName} style={isRejected ? { opacity: 0.6 } : undefined}>
-      {/* Header — Pressable за исключением правого reject-кнопки (которая
-          вне ряда, чтобы тап по ней не уводил на профиль мастера). */}
-      <View className="flex-row items-start gap-3">
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={`Профиль ${masterName}`}
-          onPress={onOpenMaster}
-          className="flex-1 flex-row items-center gap-3 active:opacity-70"
-        >
-          <Avatar
-            url={response.master?.avatar_url ?? null}
-            name={masterName}
-            seed={response.master?.id ?? response.master_id}
-            size="md"
-          />
+      {/* Header: Avatar + (Name | Price на одной inline-строке) + (Срок ниже).
+          Раньше Avatar + Name стояли в row, а цена и × летели справа отдельным
+          столбцом — было сжато и криво. Теперь: имя слева flex-1, цена справа
+          mono — выровнены baseline, читаются как пара. */}
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={`Профиль ${masterName}`}
+        onPress={onOpenMaster}
+        className="flex-row items-center gap-3 active:opacity-70"
+      >
+        <Avatar
+          url={response.master?.avatar_url ?? null}
+          name={masterName}
+          seed={response.master?.id ?? response.master_id}
+          size="md"
+        />
 
-          <View className="flex-1 min-w-0">
+        <View className="flex-1 min-w-0">
+          <View className="flex-row items-baseline justify-between gap-2">
             <AppText
               weight="semibold"
-              className="text-body-md text-ink"
+              className="flex-1 text-body-md text-ink"
               numberOfLines={1}
             >
               {masterName}
             </AppText>
-
-            {/* Price row — крупная цена справа, срок (если есть) слева */}
-            <View className="mt-0.5 flex-row items-center justify-between gap-2">
-              {response.lead_time ? (
-                <View className="flex-row items-center gap-1">
-                  <Clock size={12} strokeWidth={1.75} color={tc["muted-soft"]} />
-                  <AppText className="text-caption text-mute" numberOfLines={1}>
-                    {response.lead_time}
-                  </AppText>
-                </View>
-              ) : (
-                <View />
-              )}
-              <AppText
-                weight={isNegotiable ? "semibold" : "mono"}
-                className={`${isNegotiable ? "text-body-sm" : "text-title-sm"} text-ink`}
-              >
-                {priceText}
-              </AppText>
-            </View>
+            <AppText
+              weight={isNegotiable ? "semibold" : "mono"}
+              className={`${isNegotiable ? "text-body-sm" : "text-body-md"} text-ink`}
+            >
+              {priceText}
+            </AppText>
           </View>
-        </Pressable>
-
-        {/* Reject-кнопка — отдельный hit-target справа, не привязан к Pressable
-            header'а. Только для actionable откликов (заказ open + не picked
-            + не уже rejected). Видна как «×» 32×32 round. */}
-        {onReject ? (
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Скрыть отклик"
-            onPress={onReject}
-            disabled={isRejecting}
-            hitSlop={8}
-            className="h-8 w-8 items-center justify-center rounded-full bg-canvas-soft active:opacity-70 hover:bg-canvas-soft-2"
-          >
-            {isRejecting ? (
-              <ActivityIndicator size="small" color={tc.mute} />
-            ) : (
-              <X size={14} strokeWidth={2} color={tc.mute} />
-            )}
-          </Pressable>
-        ) : null}
-      </View>
+          {response.lead_time ? (
+            <AppText className="mt-0.5 text-caption text-mute" numberOfLines={1}>
+              Срок: {response.lead_time}
+            </AppText>
+          ) : null}
+        </View>
+      </Pressable>
 
       {/* Message body */}
       {response.message ? (
@@ -991,59 +964,74 @@ function ClientMasterResponseCard({
         </AppText>
       ) : null}
 
-      {/* Status hint для rejected — теперь это «скрыто клиентом» либо
-          «выбран другой мастер». Различаем по picked_master_id выше. */}
+      {/* Status hint для rejected */}
       {isRejected ? (
         <AppText weight="medium" className="mt-2 text-caption text-muted-soft">
           Скрыто
         </AppText>
       ) : null}
 
-      {/* Action row для actionable — Написать + Выбрать мастера */}
+      {/* Action row — две кнопки БЕЗ иконок (фидбэк user 2026-05-15):
+          - «Написать» (outline pill)
+          - «Выбрать» (filled black primary pill — Vercel-style, не неон-success) */}
       {isActionable ? (
         <View className="mt-4 flex-row gap-2">
           <Pressable
             accessibilityRole="button"
             disabled={isWriting}
             onPress={onWrite}
-            className="h-11 flex-1 flex-row items-center justify-center gap-2 rounded-pill border border-hairline bg-canvas active:bg-canvas-soft"
+            className="h-11 flex-1 items-center justify-center rounded-pill border border-hairline bg-canvas active:bg-canvas-soft"
           >
             {isWriting ? (
               <ActivityIndicator size="small" color={tc.ink} />
             ) : (
-              <>
-                <MessageSquare size={15} strokeWidth={2} color={tc.ink} />
-                <AppText weight="semibold" className="text-button text-ink">
-                  Написать
-                </AppText>
-              </>
+              <AppText weight="semibold" className="text-button text-ink">
+                Написать
+              </AppText>
             )}
           </Pressable>
           <Pressable
             accessibilityRole="button"
             disabled={isBusy}
             onPress={onAccept}
-            className={`h-11 flex-1 flex-row items-center justify-center gap-2 rounded-pill ${
-              isBusy ? "bg-canvas-soft-2" : "bg-success active:opacity-85"
+            className={`h-11 flex-1 items-center justify-center rounded-pill ${
+              isBusy ? "bg-canvas-soft-2" : "bg-ink active:opacity-85"
             }`}
-            style={{ shadowColor: tc.success, shadowOpacity: 0.25, shadowRadius: 8 }}
           >
             {isBusy ? (
-              <ActivityIndicator size="small" color={tc["mute"]} />
+              <ActivityIndicator size="small" color={tc.mute} />
             ) : (
-              <>
-                <CheckCircle2 size={15} strokeWidth={2.25} color={tc["on-primary"]} />
-                <AppText
-                  weight="semibold"
-                  className="text-button"
-                  style={{ color: tc["on-primary"] }}
-                >
-                  Выбрать мастера
-                </AppText>
-              </>
+              <AppText
+                weight="semibold"
+                className="text-button"
+                style={{ color: tc["on-primary"] }}
+              >
+                Выбрать
+              </AppText>
             )}
           </Pressable>
         </View>
+      ) : null}
+
+      {/* «Не подходит» — text-link под кнопками. Заменяет круглую «×»
+          в углу карточки (фидбэк: «иксик непонятный, некрасивый»). */}
+      {onReject ? (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Скрыть отклик"
+          onPress={onReject}
+          disabled={isRejecting}
+          hitSlop={6}
+          className="mt-3 items-center active:opacity-60"
+        >
+          {isRejecting ? (
+            <ActivityIndicator size="small" color={tc.mute} />
+          ) : (
+            <AppText weight="medium" className="text-caption text-muted-soft">
+              Не подходит
+            </AppText>
+          )}
+        </Pressable>
       ) : null}
     </View>
   );

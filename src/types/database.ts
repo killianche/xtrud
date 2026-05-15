@@ -293,6 +293,38 @@ export type Database = {
         }
         Relationships: []
       }
+      master_service_areas: {
+        Row: {
+          id: string
+          master_id: string
+          kind: "city" | "district"
+          location_id: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          master_id: string
+          kind: "city" | "district"
+          location_id: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          master_id?: string
+          kind?: "city" | "district"
+          location_id?: string
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "master_service_areas_master_id_fkey"
+            columns: ["master_id"]
+            isOneToOne: false
+            referencedRelation: "master_profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
       master_categories: {
         Row: {
           attributes: Json
@@ -1310,6 +1342,10 @@ export type Database = {
       get_response_limit_today: {
         Args: Record<string, never>
         Returns: Json
+      }
+      set_master_service_areas: {
+        Args: { p_cities: string[]; p_districts: string[] }
+        Returns: undefined
       }
       search_categories: {
         Args: { p_query: string; p_limit?: number }

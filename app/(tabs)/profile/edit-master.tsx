@@ -32,6 +32,7 @@ import { useCities } from "@/features/cities/use-cities";
 import { MasterProfileFormBody } from "@/features/master-profile/MasterProfileFormBody";
 import { useUpdateMasterProfile } from "@/features/master-profile/use-update-master-profile";
 import { MasterServicesSection } from "@/features/master-services/MasterServicesSection";
+import { ServiceAreasSection } from "@/features/master-profile/ServiceAreasSection";
 import { supabase } from "@/lib/supabase";
 import { useThemeColor } from "@/lib/use-theme-color";
 import type { Tables } from "@/types/database";
@@ -176,6 +177,11 @@ export default function EditMasterScreen() {
 
           <View className="mt-8">
             <MasterServicesSection masterId={userId} />
+          </View>
+
+          {/* P1-3: где работает мастер (multi-select городов и районов). */}
+          <View className="mt-8">
+            <ServiceAreasSection masterId={userId} />
           </View>
 
           {submitError && (

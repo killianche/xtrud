@@ -1311,6 +1311,17 @@ export type Database = {
         Args: Record<string, never>
         Returns: Json
       }
+      search_categories: {
+        Args: { p_query: string; p_limit?: number }
+        Returns: {
+          kind: string
+          id: string
+          name_ru: string
+          l2_id: string
+          score: number
+          source: string
+        }[]
+      }
     }
     Enums: {
       article_status: "draft" | "published" | "archived"

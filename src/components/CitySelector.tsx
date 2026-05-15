@@ -1,5 +1,10 @@
 /**
- * CitySelector — chip-кнопка «Город ▾» + PickerSheet со списком городов.
+ * CitySelector — header-pill «Город ▾» + PickerSheet со списком городов.
+ *
+ * **Визуал** идентичен `ScreenHeader.rightAction` (UI_PATTERNS §3.1):
+ * h-11 rounded-pill border-hairline bg-canvas px-4, иконка 16 ink,
+ * текст text-button semibold. Это единый стандарт для всех right-actions
+ * в хедерах xtrud (фидбэк user 2026-05-15 «кнопка локации мелкая и кривая»).
  *
  * Источник данных: `MAJOR_CITIES` из `@/lib/location-config` (8 поселений).
  * Глобальное состояние пользовательского города — `useUserCity` из
@@ -7,7 +12,7 @@
  * nearest → DEFAULT_CITY).
  *
  * Использование:
- *   <CitySelector />   // chip с текущим городом, тап открывает PickerSheet
+ *   <CitySelector />   // pill с текущим городом, тап открывает PickerSheet
  *
  * Сёла — не показываются в этом селекторе (он про «город пользователя»,
  * один уровень). Для иерархического выбора заказа — <LocationPicker> в
@@ -16,9 +21,11 @@
 
 import { ChevronDown, MapPin } from "lucide-react-native";
 import { useState } from "react";
-import { Chip, PickerSheet, type PickerOption } from "@/components/ui";
+import { Pressable, View } from "react-native";
+import { AppText } from "@/components/AppText";
+import { PickerSheet, type PickerOption } from "@/components/ui";
 import { ALL_INGUSHETIA_CITY_ID, PICKER_CITIES } from "@/lib/location-config";
-import { useThemeColors } from "@/lib/use-theme-color";
+import { useThemeColor, useThemeColors } from "@/lib/use-theme-color";
 import { useUserCity } from "@/lib/use-user-city";
 
 /**
@@ -40,24 +47,33 @@ export { useCityStore, getCityName } from "@/lib/use-user-city";
 export function CitySelector() {
   const { cityId, cityName, setCity } = useUserCity();
   const [open, setOpen] = useState(false);
-  const tc = useThemeColors(["ink", "mute"]);
+  const inkColor = useThemeColor("ink");
+  const tc = useThemeColors(["ink"]);
 
   return (
     <>
-      <Chip
-        variant="outline"
-        size="md"
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={`Город: ${cityName}`}
         onPress={() => setOpen(true)}
-        leftIcon={<MapPin size={14} strokeWidth={1.75} color={tc.mute} />}
-        rightIcon={<ChevronDown size={14} strokeWidth={1.75} color={tc.mute} />}
+        className="h-11 flex-row items-center gap-1.5 rounded-pill border px-4 active:opacity-70 border-hairline bg-canvas hover:bg-surface-2"
       >
-        {cityName}
-      </Chip>
+        <MapPin size={16} strokeWidth={2} color={inkColor} />
+        <AppText weight="semibold" className="text-button text-ink" numberOfLines={1}>
+          {cityName}
+        </AppText>
+        <View className="-mr-1">
+          <ChevronDown size={16} strokeWidth={2} color={inkColor} />
+        </View>
+      </Pressable>
 
       <PickerSheet
         open={open}
         onClose={() => setOpen(false)}
         title="Город"
+        // Search убран по фидбеку user 2026-05-15: всего 8 населённых пунктов
+        // Ингушетии помещаются на экране без скролла, search-input избыточен.
+        searchable={false}
         options={CITIES.map<PickerOption>((c) => ({
           id: c.id,
           title: c.name,

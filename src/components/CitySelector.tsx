@@ -19,7 +19,7 @@
  * `src/features/orders/LocationPicker.tsx`.
  */
 
-import { ChevronDown, MapPin } from "lucide-react-native";
+import { CaretDown, MapPin } from "phosphor-react-native";
 import { useState } from "react";
 import { Pressable, View } from "react-native";
 import { AppText } from "@/components/AppText";
@@ -58,12 +58,12 @@ export function CitySelector() {
         onPress={() => setOpen(true)}
         className="h-11 flex-row items-center gap-1.5 rounded-pill border px-4 active:opacity-70 border-hairline bg-canvas hover:bg-surface-2"
       >
-        <MapPin size={16} strokeWidth={2} color={inkColor} />
+        <MapPin size={16} weight="bold" color={inkColor} />
         <AppText weight="semibold" className="text-button text-ink" numberOfLines={1}>
           {cityName}
         </AppText>
         <View className="-mr-1">
-          <ChevronDown size={16} strokeWidth={2} color={inkColor} />
+          <CaretDown size={16} weight="bold" color={inkColor} />
         </View>
       </Pressable>
 
@@ -77,7 +77,7 @@ export function CitySelector() {
         options={CITIES.map<PickerOption>((c) => ({
           id: c.id,
           title: c.name,
-          icon: <MapPin size={18} strokeWidth={1.75} color={tc.ink} />,
+          icon: <MapPin size={18} weight="bold" color={tc.ink} />,
         }))}
         selectedId={cityId}
         onSelect={(id) => {

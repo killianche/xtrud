@@ -7,7 +7,7 @@
 // На variant="sidebar" подсвечивает выбранный чат и компактнее (без display-заголовка).
 
 import { useRouter } from "expo-router";
-import { MessageCircle } from "lucide-react-native";
+import { ChatCircle } from "phosphor-react-native";
 import { useEffect, useRef } from "react";
 import { Pressable, ScrollView, View } from "react-native";
 import { AppText } from "@/components/AppText";
@@ -15,7 +15,9 @@ import { Avatar } from "@/components/Avatar";
 import { EmptyState } from "@/components/EmptyState";
 import { OrderStatusBadge, type OrderStatusValue } from "@/components/OrderStatusBadge";
 import { CardListSkeleton } from "@/components/Skeleton";
+import { ScreenHeader } from "@/components/ui";
 import { useAuthSession } from "@/features/auth/use-auth-session";
+import { useUserRecord } from "@/features/auth/use-user-record";
 import { isChatUnread, type MyChatWithRefs, useMyChats } from "@/features/chat/use-my-chats";
 import { scrollViewToTop, useTabScrollResetCounter } from "@/lib/tab-scroll-reset";
 
@@ -31,6 +33,8 @@ export function ChatsListContent({
   const router = useRouter();
   const { session } = useAuthSession();
   const userId = session?.user?.id;
+  const { data: user } = useUserRecord(userId);
+  const isMasterRole = user?.active_role === "master";
   const { data: chats, isLoading, error, refetch } = useMyChats(userId);
 
   const hasChats = (chats?.length ?? 0) > 0;
@@ -52,12 +56,7 @@ export function ChatsListContent({
       showsVerticalScrollIndicator={false}
     >
       {!isSidebar && (
-        <View className="px-6 pt-6">
-          <AppText weight="bold" className="text-display-md tracking-tight text-ink">
-            Чаты
-          </AppText>
-          <AppText className="mt-2 text-body-md text-muted">Общение с мастерами по вашим задачам.</AppText>
-        </View>
+        <ScreenHeader title="Чаты" subtitle="Общение с мастерами по вашим задачам." />
       )}
 
       {isSidebar && (
@@ -92,7 +91,7 @@ export function ChatsListContent({
       )}
 
       {!isLoading && !error && hasChats && (
-        <View className={`gap-2 ${isSidebar ? "p-2" : "mt-6 px-6"}`}>
+        <View className={isSidebar ? "gap-2 p-2" : "mt-2"}>
           {chats?.map((c) => (
             <ChatListRow
               key={c.id}
@@ -109,10 +108,14 @@ export function ChatsListContent({
       {!isLoading && !error && !hasChats && (
         <View className={`${isSidebar ? "p-4 pt-12" : "mt-12"}`}>
           <EmptyState
-            icon={MessageCircle}
+            icon={ChatCircle}
             emoji="💬"
             title="Чатов пока нет"
-            hint="Напишите мастеру первым с его страницы — диалог появится здесь."
+            hint={
+              isMasterRole
+                ? "Здесь появятся диалоги, когда клиенты выберут вас по откликам."
+                : "Напишите мастеру первым с его страницы — диалог появится здесь."
+            }
           />
         </View>
       )}
@@ -140,24 +143,27 @@ function ChatListRow({ chat, userId, onPress, compact, isSelected }: ChatListRow
     : "Нет сообщений";
   const unread = userId ? isChatUnread(chat, userId) : false;
 
+  // Page-вариант — full-bleed list-row (UI_PATTERNS §3.3 OrderRow): без
+  // обводки и rounded, разделитель border-b, padding px-5 py-4.
+  // Sidebar-вариант (desktop web) — компактный rounded row для списка слева.
   const baseClasses = compact
     ? "flex-row items-center gap-3 rounded-md p-3 active:opacity-70 hover:bg-surface-2"
-    : "flex-row items-center gap-3 rounded-lg border p-4 active:opacity-70 hover:bg-surface-2";
+    : "flex-row items-center gap-3 border-b border-hairline px-5 py-4 active:bg-canvas-soft hover:bg-canvas-soft";
 
-  let borderColorClass = "";
+  let bgClass = "";
   if (!compact) {
-    borderColorClass = unread ? "border-accent bg-accent-soft" : "border-hairline bg-canvas";
+    bgClass = unread ? "bg-accent-soft" : "bg-canvas";
   } else if (isSelected) {
-    borderColorClass = "bg-surface-2";
+    bgClass = "bg-surface-2";
   } else if (unread) {
-    borderColorClass = "bg-accent-soft";
+    bgClass = "bg-accent-soft";
   }
 
   return (
     <Pressable
       accessibilityRole="button"
       onPress={onPress}
-      className={`${baseClasses} ${borderColorClass}`}
+      className={`${baseClasses} ${bgClass}`}
     >
       <Avatar
         url={partner?.avatar_url ?? null}

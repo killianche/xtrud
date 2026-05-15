@@ -4,7 +4,75 @@
 
 ---
 
-## Текущее состояние (2026-05-15 ночь — Phosphor как UI icon set по умолчанию)
+## Текущее состояние (2026-05-15 ночь — массовая миграция Lucide → Phosphor)
+
+**Главное:** Закончил перенос **всего UI** с Lucide React Native на Phosphor React Native — продолжение work'а после Phosphor в TabBar (коммит `5044f53`). 56 файлов, ~250 use-site'ов, скрипт [`scripts/migrate-lucide-to-phosphor.mjs`](scripts/migrate-lucide-to-phosphor.mjs) для механической части + точечные правки для Star fill / Image conflict / generic types. Категорийные иконки (Iconify CDN цветные + Lucide моно-fallback для не-mapped L2) — НЕ тронуты по правилу user'а «иконки категорий хорошие, не трогать».
+
+**Что сделано:**
+
+1. **Скрипт миграции** [`scripts/migrate-lucide-to-phosphor.mjs`](scripts/migrate-lucide-to-phosphor.mjs) с маппингом 60+ Lucide → Phosphor (Home→House, Search→MagnifyingGlass, ChevronLeft→CaretLeft, MessageCircle→ChatCircle, AlertCircle→WarningCircle, и т.д.). Заменяет imports + use-sites + `strokeWidth → weight`. SKIP-set для `category-icons.ts` и `CategoryTile.tsx` (категорийный Lucide-fallback оставлен).
+2. **Generic тип `IconComponent`** ([`src/types/icon.ts`](src/types/icon.ts)) — supertype для Lucide+Phosphor (props: size/color/weight/className). Используется в `EmptyState`, `ScreenHeader`, `getCategoryIcon` return type — позволяет передавать обе библиотеки без конфликта типов.
+3. **Type augmentation** ([`phosphor-react-native.d.ts`](phosphor-react-native.d.ts)) — добавляет `className?: string` в `IconProps`. NativeWind className на иконках работает runtime через cssInterop, type aug убирает 19 tsc ошибок.
+4. **63 → 0 tsc ошибки.** После apply скрипта было 63 error TS. Починены: Star+Lightning constant-fill (sed), Star fill={ternary} (Python multi-line regex), Image-conflict (chats/[id], portfolio — Phosphor `Image` → `ImageSquare`), strokeWidth={2.5} leftover, LucideIcon type-ref (orders/new.tsx → IconComponent), FilterChip generic icon type.
+5. **Документация:** [`docs/UI_ICONS.md`](docs/UI_ICONS.md) — обновлена секция «Где используется» (теперь весь app, не только TabBar) + объяснение `IconComponent` generic + type augmentation. Маппинг Lucide → Phosphor (расширенный до 60+ имён).
+
+**Verify в preview:**
+- ✅ `/` (главная клиента) — desktop nav: House active с pill, ClipboardText, ChatCircle, Sun, UserCircle. Search: MagnifyingGlass. Hero-плитки: Sparkle/Drop/Lightning. Console clean.
+- ✅ `/profile` — Pencil (edit), Star (рейтинг filled), User/Briefcase chips (Client/Master), CaretRight chevrons. TabBar: House(active+pill) / ClipboardText / PlusCircle / ChatCircle / UserCircle.
+- ✅ `/chats` — список с Phosphor badge'ами, ChatCircle active с pill. Аватары DiceBear shapes.
+- ✅ `tsc --noEmit` clean (от 63 до 0).
+
+**Anti-patterns пойманные в процессе:**
+- `strokeWidth={2.5}` в чекмарках — не покрылся первым regex'ом (1.5/1.75/2/2.25). Добавлен.
+- `ImagePlus → Image` mapping создал конфликт с RN `Image` (TS2300). Решение: переименовать в `ImageSquare` в файлах где RN Image тоже импортирован.
+- `Star fill="currentColor"` / `fill={color}` — Lucide pattern. В Phosphor нужно `weight="fill"`. Постоянные случаи: regex `weight="bold" color={X} fill={X}` → `weight="fill" color={X}`. Тернарные: `fill={cond ? Y : "transparent"}` → `weight={cond ? "fill" : "bold"}`.
+- `EmptyState`, `ScreenHeader`, `FilterChip`, `getCategoryIcon` имели тип `icon: LucideIcon` / `typeof Home`. Generic `IconComponent` — теперь supertype для обоих.
+
+---
+
+## Прежнее состояние (2026-05-15 ночь — мастер-верификация: backend готов)
+
+**Главное:** Запущена опциональная фича верификации мастера. Мастер опционально загружает селфи + фото главной страницы паспорта → ждёт ручную проверку админа → после approval на профиле появляется badge «Паспорт подтверждён». В этой сессии готов **backend (часть 1)**, frontend — следующей сессией.
+
+**Что сделано (часть 1, backend):**
+
+1. **Миграция [`supabase/migrations/0070_master_verifications.sql`](supabase/migrations/0070_master_verifications.sql)** применена в prod:
+   - ENUM `verification_status` (`pending / approved / rejected`).
+   - TABLE `master_verifications` (1:1 с `auth.users`, поля selfie_path/passport_main_path/status/timestamps/reviewer/rejection_reason).
+   - RLS: только owner, нельзя поставить себе approved (только service-role).
+   - Trigger `sync_master_verification_level` — sync `master_profiles.verification_level ≥ 1` при approved, откат при revoke.
+   - PRIVATE Storage bucket `master-verifications` + 4 RLS policies (owner-only по `{user_id}/...`).
+2. **TS-типы регенерированы** ([`src/types/database.ts`](src/types/database.ts)).
+3. **Спецификация фичи** в [`docs/VERIFICATION.md`](docs/VERIFICATION.md) — схема БД, RLS, Storage, planned flow, security.
+
+**Что НЕ сделано (часть 2, frontend) — следующая сессия:**
+
+- Хуки `useMyVerification` / `useSubmitVerification`.
+- Экран `/profile/verification` (full-screen flow: инструкция + 2 image-picker'а + кнопка отправить).
+- Nudge-карточка на `/profile/index.tsx` (только мастер): «Подтвердите личность / На проверке / Паспорт подтверждён ✓».
+- Badge «Паспорт подтверждён» на детальной странице мастера + карточках мастеров.
+
+**Verify:** миграция применена (apply_migration success), TS clean. Backend-фича готова к использованию через service-role (для будущей админки) или через прямой Supabase-клиент (для будущих хуков).
+
+---
+
+## Прежнее состояние (2026-05-15 ночь — фильтры поиска заказов: defaults из профиля + quick-select chips)
+
+**Главное:** На /orders/search для мастера теперь применяются **defaults из его профиля** — при первом заходе `l2Ids` подставляются из `master_categories`, мастер сразу видит релевантные заявки. На /orders/search/filters добавлен блок **«Из вашего профиля»** — горизонтальный ряд chip'ов с цветными иконками категорий, тап = toggle прямо в store (без захода в полный multi-select picker).
+
+**Что сделано:**
+
+1. **[`src/features/orders/orders-search-filters-store.ts`](src/features/orders/orders-search-filters-store.ts)** — добавлено поле `initializedForUserId: string | null` и action `initFromMasterCategories(userId, ids)`. Идемпотентность по `userId`: повторный вызов для того же мастера — no-op. Это значит, что после `clearAll` пустой scope (= показывать все категории) не перезаливается. Logout/login другого юзера → `initializedForUserId` не совпадёт → defaults подставятся заново.
+2. **[`app/(tabs)/orders/search/index.tsx`](app/(tabs)/orders/search/index.tsx)** — подписан на `useMyMasterCategories(userId)`, `useEffect` вызывает `initFromMasterCategories` когда данные пришли.
+3. **[`app/(tabs)/orders/search/filters.tsx`](app/(tabs)/orders/search/filters.tsx)** — тот же `useEffect` продублирован (поддержка deep-link / refresh на /filters). Добавлен компонент `ProfileCategoryChip` (h-10 pill, accent-soft когда selected + Check-индикатор, иначе canvas + цветная Iconify-иконка категории). Блок «Из вашего профиля» рендерится сразу под trigger «Выберите категории», скрыт если у мастера 0 категорий в профиле.
+
+**Verify в preview:** ✅ Авто-defaults: trigger показывает «Выбрано 3 · Сантехника, Электрика», chip'ы Сантехника/Электрика подсвечены accent-soft, кнопка «Применить · 3», «Сбросить все фильтры» доступна. TS clean.
+
+**Lazyweb:** не дёргал — паттерн (chip-row с selected состоянием + цветные иконки L2) уже зафиксирован в проекте (см. `/orders/search/category-select.tsx`, `MasterServicesSection.tsx`). Решение опирается на установленный визуальный язык, не на референс.
+
+---
+
+## Прежнее состояние (2026-05-15 ночь — Phosphor как UI icon set по умолчанию)
 
 **Главное:** Заменил иконки в TabBar с Lucide на **Phosphor React Native**. Фидбэк user: «иконки внизу обычные, хочу ультрасовременные дизайнерские». Phosphor даёт 6 weights, **filled-vs-outline** active state (как Instagram/Threads/X/Linear), fluid corners. Pattern зафиксирован как стандарт для всего нового UI.
 

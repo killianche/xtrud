@@ -19,7 +19,7 @@
  */
 
 import { useRouter } from "expo-router";
-import { ChevronRight, Droplet, Search, Sparkles, User, Zap } from "lucide-react-native";
+import { CaretRight, Drop, SignIn, MagnifyingGlass, Sparkle, Lightning } from "phosphor-react-native";
 import { useEffect, useRef } from "react";
 import { Animated, FlatList, Image, Pressable, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -28,8 +28,9 @@ import { getCategoryIcon } from "@/lib/category-icons";
 import { AppText } from "@/components/AppText";
 import { CitySelector, useCityStore, getCityName } from "@/components/CitySelector";
 import { Avatar, Button, Card, Skeleton } from "@/components/ui";
-import { HelpCallout } from "@/components/HelpCallout";
 import { XtrudLogo } from "@/components/XtrudLogo";
+import { useThemeColor } from "@/lib/use-theme-color";
+import { HelpCallout } from "@/components/HelpCallout";
 import { useAuthSession } from "@/features/auth/use-auth-session";
 import { useUserRecord } from "@/features/auth/use-user-record";
 import { useVisibleCategories } from "@/features/categories/use-visible-categories";
@@ -101,6 +102,22 @@ export default function HomeTab() {
 // Top-bar — logo + city + auth-кнопка
 // ============================================================================
 
+/**
+ * TopBar — брендинг главной (лого + wordmark «xtrud») + right actions.
+ *
+ * Контейнер по габаритам совпадает с `<ScreenHeader>` (height 64, gap-2, px-3),
+ * но слева — лого + wordmark вместо title. Это «домашняя» шапка приложения
+ * (фидбэк user 2026-05-15 «xtrud с логотипом поставь» — раньше тут было
+ * приветствие «Привет, Руслан», но брендинг важнее на главном экране).
+ *
+ *   - left: `<XtrudLogo size={28} />` + «xtrud» display-md bold (gap-2)
+ *   - right actions: CitySelector pill + (анон) кнопка «Войти» pill
+ *     (оба h-11 в стиле ScreenHeader.rightAction)
+ *
+ * Avatar/profile-shortcut и приветствие в header не нужны — профиль
+ * открывается через 5-й таб TabBar, hero ниже сам по себе достаточно тёплый
+ * («Найдутся мастера» и т.п.).
+ */
 function TopBar({
   userId,
   userName,
@@ -111,45 +128,41 @@ function TopBar({
   avatarUrl: string | null;
 }) {
   const router = useRouter();
+  const inkColor = useThemeColor("ink");
+  // userName / avatarUrl сейчас не используются в шапке (брендинг важнее
+  // приветствия). Оставлены в props на случай возврата приветственной строки.
+  void userName;
+  void avatarUrl;
   return (
-    <View className="flex-row items-center justify-between px-5 py-3">
-      {/* Логотип: SVG-марка xtrud (от user 2026-05-14) + wordmark «xtrud».
-          Иконка слева, размер ~20 (компактно, не перетягивает на себя
-          визуальный вес — wordmark и так display-sm). */}
-      <Pressable
-        onPress={() => router.push("/(tabs)" as never)}
-        hitSlop={8}
-        className="flex-row items-center gap-1.5"
-      >
-        <XtrudLogo size={20} />
-        <AppText weight="display" className="text-display-sm tracking-tight text-ink">
+    <View
+      className="flex-row items-center gap-2 px-3"
+      style={{ height: 64 }}
+    >
+      <View className="flex-1 min-w-0 flex-row items-center gap-2">
+        <XtrudLogo size={28} />
+        <AppText
+          weight="bold"
+          className="text-display-md tracking-tight text-ink"
+          numberOfLines={1}
+        >
           xtrud
         </AppText>
-      </Pressable>
-
-      <View className="flex-row items-center gap-2">
-        <CitySelector />
-        {userId ? (
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Профиль"
-            onPress={() => router.push("/profile" as never)}
-            hitSlop={8}
-            className="active:opacity-70"
-          >
-            <Avatar url={avatarUrl} name={userName} seed={userId} size="sm" />
-          </Pressable>
-        ) : (
-          <Button
-            size="sm"
-            variant="secondary"
-            leftIcon={<User size={14} strokeWidth={1.75} />}
-            onPress={() => router.push("/(auth)/phone" as never)}
-          >
-            Войти
-          </Button>
-        )}
       </View>
+
+      <CitySelector />
+      {!userId ? (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Войти"
+          onPress={() => router.push("/(auth)/phone" as never)}
+          className="h-11 flex-row items-center gap-1.5 rounded-pill border px-4 active:opacity-70 border-hairline bg-canvas hover:bg-surface-2"
+        >
+          <SignIn size={16} weight="bold" color={inkColor} />
+          <AppText weight="semibold" className="text-button text-ink">
+            Войти
+          </AppText>
+        </Pressable>
+      ) : null}
     </View>
   );
 }
@@ -201,28 +214,28 @@ const FEATURED: Array<{
   id: string;
   title: string;
   subtitle: string;
-  Icon: typeof Sparkles;
+  Icon: typeof Sparkle;
   tintBg: string;
 }> = [
   {
     id: "cleaning",
     title: "Уборка квартиры",
     subtitle: "Регулярная и генеральная",
-    Icon: Sparkles,
+    Icon: Sparkle,
     tintBg: "bg-badge-sky",
   },
   {
     id: "plumbing",
     title: "Сантехник",
     subtitle: "Аварийный и плановый",
-    Icon: Droplet,
+    Icon: Drop,
     tintBg: "bg-badge-violet",
   },
   {
     id: "electrical",
     title: "Электрик",
     subtitle: "Розетки, проводка, свет",
-    Icon: Zap,
+    Icon: Lightning,
     tintBg: "bg-badge-amber",
   },
 ];
@@ -269,7 +282,7 @@ function FeaturedRequests({ onCategoryPress }: { onCategoryPress: (id: string) =
                 />
                 {/* Центральная иконка */}
                 <View className="h-14 w-14 items-center justify-center rounded-full bg-canvas text-ink">
-                  <Icon size={28} strokeWidth={1.5} color="currentColor" />
+                  <Icon size={28} weight="bold" color="currentColor" />
                 </View>
               </View>
               {/* Body */}
@@ -395,9 +408,9 @@ function Hero({
           }`}
           style={{ boxShadow: searchShadow }}
         >
-          <Search
+          <MagnifyingGlass
             size={20}
-            strokeWidth={1.75}
+            weight="bold"
             color="currentColor"
             className={isDark ? "text-ink" : "text-mute"}
           />
@@ -664,14 +677,14 @@ function AllCategories({ onCategoryPress }: { onCategoryPress: (id: string) => v
                   {colorUrl ? (
                     <Image source={{ uri: colorUrl }} style={{ width: 24, height: 24 }} />
                   ) : (
-                    <Icon size={20} strokeWidth={1.5} color="currentColor" />
+                    <Icon size={20} weight="bold" color="currentColor" />
                   )}
                 </View>
                 <AppText weight="semibold" className="flex-1 text-body-md text-ink">
                   {cat.name_ru}
                 </AppText>
                 <View className="text-mute">
-                  <ChevronRight size={20} strokeWidth={1.5} color="currentColor" />
+                  <CaretRight size={20} weight="bold" color="currentColor" />
                 </View>
               </Pressable>
             );

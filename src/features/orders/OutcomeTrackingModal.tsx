@@ -10,7 +10,7 @@
  * Pure-логика и store вынесены в `outcome-store.ts` (тестируется в Node).
  */
 
-import { CheckCircle2, X, XCircle } from "lucide-react-native";
+import { CheckCircle, X, XCircle } from "phosphor-react-native";
 import { Modal, Pressable, View } from "react-native";
 import { AppText } from "@/components/AppText";
 import { useThemeColor } from "@/lib/use-theme-color";
@@ -52,7 +52,7 @@ export function OutcomeTrackingModal({
               hitSlop={8}
               className="ml-2 active:opacity-70"
             >
-              <X size={20} strokeWidth={1.75} color={mutedSoftColor} />
+              <X size={20} weight="bold" color={mutedSoftColor} />
             </Pressable>
           </View>
           <AppText className="text-body-sm text-muted">
@@ -67,7 +67,7 @@ export function OutcomeTrackingModal({
               onPress={onCompletedOffline}
               className="flex-row items-center gap-3 rounded-md border border-success/40 bg-success-soft px-4 py-3 active:opacity-80"
             >
-              <CheckCircle2 size={20} strokeWidth={1.75} color="#10b981" />
+              <CheckCircle size={20} weight="bold" color="#10b981" />
               <View className="flex-1">
                 <AppText weight="semibold" className="text-body-md text-ink">
                   Всё сделано
@@ -84,7 +84,7 @@ export function OutcomeTrackingModal({
               onPress={onNoDeal}
               className="flex-row items-center gap-3 rounded-md border border-error/30 bg-error-soft px-4 py-3 active:opacity-80"
             >
-              <XCircle size={20} strokeWidth={1.75} color="#ef4444" />
+              <XCircle size={20} weight="bold" color="#ef4444" />
               <View className="flex-1">
                 <AppText weight="semibold" className="text-body-md text-ink">
                   Не договорились

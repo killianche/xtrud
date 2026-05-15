@@ -16,15 +16,7 @@
 
 import { LinearGradient } from "expo-linear-gradient";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import {
-  Building2,
-  ChevronLeft,
-  Flag,
-  MapPin,
-  Star,
-  Users,
-  Wrench,
-} from "lucide-react-native";
+import { Buildings, CaretLeft, Flag, MapPin, Star, Users, Wrench } from "phosphor-react-native";
 import { useState } from "react";
 import {
   FlatList,
@@ -202,7 +194,7 @@ export default function MasterPublicScreen() {
                 onPress={goBack}
                 className="h-9 w-9 items-center justify-center rounded-full bg-black/50 active:opacity-70"
               >
-                <ChevronLeft size={20} strokeWidth={2} color="#fff" />
+                <CaretLeft size={20} weight="bold" color="#fff" />
               </Pressable>
             </View>
           </View>
@@ -229,7 +221,7 @@ export default function MasterPublicScreen() {
                 onPress={goBack}
                 className="h-9 w-9 items-center justify-center rounded-full bg-black/50 active:opacity-70"
               >
-                <ChevronLeft size={20} strokeWidth={2} color="#fff" />
+                <CaretLeft size={20} weight="bold" color="#fff" />
               </Pressable>
               {!isOwnProfile && (
                 <Pressable
@@ -238,7 +230,7 @@ export default function MasterPublicScreen() {
                   onPress={() => setReportOpen(true)}
                   className="h-9 w-9 items-center justify-center rounded-full bg-black/50 active:opacity-70"
                 >
-                  <Flag size={18} strokeWidth={1.75} color="#fff" />
+                  <Flag size={18} weight="bold" color="#fff" />
                 </Pressable>
               )}
             </View>
@@ -278,7 +270,7 @@ export default function MasterPublicScreen() {
                 onPress={goBack}
                 className="h-9 w-9 items-center justify-center rounded-full bg-black/50 active:opacity-70"
               >
-                <ChevronLeft size={20} strokeWidth={2} color="#fff" />
+                <CaretLeft size={20} weight="bold" color="#fff" />
               </Pressable>
               {!isOwnProfile && (
                 <Pressable
@@ -287,7 +279,7 @@ export default function MasterPublicScreen() {
                   onPress={() => setReportOpen(true)}
                   className="h-9 w-9 items-center justify-center rounded-full bg-black/50 active:opacity-70"
                 >
-                  <Flag size={18} strokeWidth={1.75} color="#fff" />
+                  <Flag size={18} weight="bold" color="#fff" />
                 </Pressable>
               )}
             </View>
@@ -373,7 +365,7 @@ export default function MasterPublicScreen() {
 
                 {ratingAvg !== null && ratingCount > 0 ? (
                   <View className="flex-row items-center gap-1">
-                    <Star size={14} strokeWidth={2} color="currentColor" className="text-ink" />
+                    <Star size={14} weight="bold" color="currentColor" className="text-ink" />
                     <AppText weight="mono" className="text-ink text-mono-body">
                       {ratingAvg.toFixed(1)}
                     </AppText>
@@ -385,7 +377,7 @@ export default function MasterPublicScreen() {
 
                 {cityName ? (
                   <View className="flex-row items-center gap-1">
-                    <MapPin size={14} strokeWidth={1.75} color="currentColor" className="text-mute" />
+                    <MapPin size={14} weight="bold" color="currentColor" className="text-mute" />
                     <AppText className="text-body text-body-sm">{cityName}</AppText>
                   </View>
                 ) : null}
@@ -420,7 +412,7 @@ export default function MasterPublicScreen() {
                     <>
                       <View className="h-1 w-1 rounded-full bg-mute opacity-40" />
                       <View className="flex-row items-center gap-1">
-                        <Users size={13} strokeWidth={1.75} color="currentColor" className="text-mute" />
+                        <Users size={13} weight="bold" color="currentColor" className="text-mute" />
                         <AppText className="text-body text-body-sm">
                           Бригада{m.team_size && m.team_size > 1 ? ` ${m.team_size} чел.` : ""}
                         </AppText>
@@ -431,7 +423,7 @@ export default function MasterPublicScreen() {
                     <>
                       <View className="h-1 w-1 rounded-full bg-mute opacity-40" />
                       <View className="flex-row items-center gap-1">
-                        <Building2 size={13} strokeWidth={1.75} color="currentColor" className="text-mute" />
+                        <Buildings size={13} weight="bold" color="currentColor" className="text-mute" />
                         <AppText className="text-body text-body-sm">Компания</AppText>
                       </View>
                     </>
@@ -581,7 +573,7 @@ export default function MasterPublicScreen() {
 
         {/* Wrench-иконка как разделитель — Vercel character */}
         <View className="items-center mt-12 mb-2">
-          <Wrench size={20} strokeWidth={1.5} color="currentColor" className="text-mute" />
+          <Wrench size={20} weight="bold" color="currentColor" className="text-mute" />
         </View>
       </ScrollView>
 

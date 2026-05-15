@@ -41,7 +41,7 @@
  * `findDistrictByVillage`, оба chip'а подсвечиваются.
  */
 
-import { Check, ChevronDown, MapPin } from "lucide-react-native";
+import { Check, CaretDown, MapPin } from "phosphor-react-native";
 import { useEffect, useState } from "react";
 import { Pressable, ScrollView, View } from "react-native";
 import { AppText } from "@/components/AppText";
@@ -80,7 +80,7 @@ export function LocationPicker({
   error,
 }: LocationPickerProps) {
   const [open, setOpen] = useState(false);
-  const tc = useThemeColors(["ink", "mute", "on-primary"]);
+  const tc = useThemeColors(["ink", "mute", "accent"]);
 
   // Draft-state локально внутри sheet'а — commit только на тап «Готово».
   const [draftCity, setDraftCity] = useState(cityId);
@@ -119,7 +119,7 @@ export function LocationPicker({
   return (
     <View>
       {/* Trigger — выглядит идентично CategoryPicker'у (тот же form-input стандарт:
-          h-12, rounded-md, bg-canvas, px-3, gap-2). Справа — ChevronDown как
+          h-12, rounded-md, bg-canvas, px-3, gap-2). Справа — CaretDown как
           visual-signal что это trigger, открывающий sheet (единый паттерн
           с CategoryPicker). */}
       <Pressable
@@ -131,14 +131,14 @@ export function LocationPicker({
           error ? "border-error" : "border-hairline"
         }`}
       >
-        <MapPin size={18} strokeWidth={1.75} color={tc.mute} />
+        <MapPin size={18} weight="bold" color={tc.mute} />
         <AppText
           className={`flex-1 text-body-md ${isPlaceholder ? "text-mute" : "text-ink"}`}
           numberOfLines={1}
         >
           {triggerLabel}
         </AppText>
-        <ChevronDown size={18} strokeWidth={2} color={tc.mute} />
+        <CaretDown size={18} weight="bold" color={tc.mute} />
       </Pressable>
 
       {error ? (
@@ -171,38 +171,30 @@ export function LocationPicker({
             }}
             className={`flex-row items-center gap-3 rounded-lg border p-4 ${
               isAllIngush
-                ? "border-ink bg-ink"
+                ? "border-accent bg-accent-soft"
                 : "border-hairline bg-canvas-soft active:opacity-70"
             }`}
           >
             <View
-              className={`h-10 w-10 items-center justify-center rounded-full ${
-                isAllIngush ? "bg-on-primary" : "bg-canvas"
-              }`}
+              className="h-10 w-10 items-center justify-center rounded-full bg-canvas"
             >
-              <MapPin
-                size={18}
-                strokeWidth={1.75}
-                color={isAllIngush ? tc.ink : tc.ink}
-              />
+              <MapPin size={18} weight="bold" color={tc.ink} />
             </View>
             <View className="flex-1">
               <AppText
                 weight="semibold"
-                className={`text-body-md ${isAllIngush ? "text-on-primary" : "text-ink"}`}
+                className={`text-body-md ${isAllIngush ? "text-accent" : "text-ink"}`}
               >
                 Вся Ингушетия
               </AppText>
               <AppText
-                className={`mt-0.5 text-caption ${
-                  isAllIngush ? "text-on-primary" : "text-mute"
-                }`}
+                className="mt-0.5 text-caption text-mute"
               >
                 Заказ увидят мастера со всей республики
               </AppText>
             </View>
             {isAllIngush ? (
-              <Check size={20} strokeWidth={2.25} color={tc["on-primary"]} />
+              <Check size={20} weight="fill" color={tc.accent} />
             ) : null}
           </Pressable>
 
@@ -221,13 +213,13 @@ export function LocationPicker({
                   onPress={() => setDraftCity(c.id)}
                   className={`h-10 items-center justify-center rounded-pill border px-4 ${
                     selected
-                      ? "border-ink bg-ink"
+                      ? "border-accent bg-accent-soft"
                       : "border-hairline bg-canvas active:opacity-70"
                   }`}
                 >
                   <AppText
                     weight="medium"
-                    className={`text-body-sm ${selected ? "text-on-primary" : "text-ink"}`}
+                    className={`text-body-sm ${selected ? "text-accent" : "text-ink"}`}
                   >
                     {c.name}
                   </AppText>
@@ -256,13 +248,13 @@ export function LocationPicker({
                       onPress={() => setDraftDistrict(selected ? "" : d)}
                       className={`h-10 items-center justify-center rounded-pill border px-4 ${
                         selected
-                          ? "border-ink bg-ink"
+                          ? "border-accent bg-accent-soft"
                           : "border-hairline bg-canvas active:opacity-70"
                       }`}
                     >
                       <AppText
                         weight="medium"
-                        className={`text-body-sm ${selected ? "text-on-primary" : "text-ink"}`}
+                        className={`text-body-sm ${selected ? "text-accent" : "text-ink"}`}
                       >
                         {d}
                       </AppText>
@@ -288,14 +280,14 @@ export function LocationPicker({
                           }
                           className={`h-8 items-center justify-center rounded-pill border px-3 ${
                             selected
-                              ? "border-ink bg-ink"
+                              ? "border-accent bg-accent-soft"
                               : "border-hairline bg-canvas active:opacity-70"
                           }`}
                         >
                           <AppText
                             weight="medium"
                             className={`text-caption ${
-                              selected ? "text-on-primary" : "text-ink"
+                              selected ? "text-accent" : "text-ink"
                             }`}
                           >
                             {v}

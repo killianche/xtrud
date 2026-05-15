@@ -1,5 +1,5 @@
 import { useRouter } from "expo-router";
-import { Briefcase, Search } from "lucide-react-native";
+import { Briefcase, MagnifyingGlass } from "phosphor-react-native";
 import { useState } from "react";
 import { Pressable, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -15,7 +15,7 @@ interface RoleCardProps {
   disabled: boolean;
   title: string;
   description: string;
-  Icon: typeof Search;
+  Icon: typeof MagnifyingGlass;
   onPress: () => void;
 }
 
@@ -36,7 +36,7 @@ function RoleCard({ selected, disabled, title, description, Icon, onPress }: Rol
             selected ? "bg-accent" : "bg-surface-3"
           }`}
         >
-          <Icon size={24} strokeWidth={1.75} color={selected ? "#ffffff" : "#374151"} />
+          <Icon size={24} weight="bold" color={selected ? "#ffffff" : "#374151"} />
         </View>
         <View className="flex-1">
           <AppText weight="semibold" className="text-title-md text-ink">
@@ -98,7 +98,7 @@ export default function RoleScreen() {
             disabled={isBusy}
             title="Я ищу мастера"
             description="Создавать заявки и выбирать исполнителя из откликов."
-            Icon={Search}
+            Icon={MagnifyingGlass}
             onPress={() => setSelected("client")}
           />
           <RoleCard

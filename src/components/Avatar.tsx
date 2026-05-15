@@ -11,7 +11,7 @@
  */
 
 import { Image, type ImageContentFit } from "expo-image";
-import { User } from "lucide-react-native";
+import { User } from "phosphor-react-native";
 import { useMemo } from "react";
 import { View } from "react-native";
 import { AppText } from "@/components/AppText";
@@ -84,7 +84,7 @@ export function Avatar({ url, name, seed, size = "md", contentFit = "cover" }: A
         }}
         className="items-center justify-center"
       >
-        <User size={dims.px * 0.5} strokeWidth={1.75} color={tc.muted} />
+        <User size={dims.px * 0.5} weight="bold" color={tc.muted} />
       </View>
     );
   }

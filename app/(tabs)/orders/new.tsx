@@ -1,14 +1,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
+import type { IconComponent } from "@/types/icon";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
-import {
-  CheckCircle2,
-  ChevronLeft,
-  Lock,
-  type LucideIcon,
-  MessageSquare,
-  Tag,
-  UserCheck,
-} from "lucide-react-native";
+import { CheckCircle, CaretLeft, Lock, ChatCenteredText, Tag, UserCheck } from "phosphor-react-native";
 import { useCallback, useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, View } from "react-native";
@@ -85,9 +78,8 @@ export default function NewOrderScreen() {
       cityId: draft.cityId ?? "",
       district: draft.district ?? "",
       urgency: draft.urgency ?? "flexible",
-      budgetMode: draft.budgetMode ?? "negotiable",
-      budgetMin: draft.budgetMin ?? null,
-      budgetMax: draft.budgetMax ?? null,
+      budgetKind: draft.budgetKind ?? "negotiable",
+      budgetValue: draft.budgetValue ?? null,
     },
     mode: "onChange",
   });
@@ -107,7 +99,7 @@ export default function NewOrderScreen() {
     return () => sub.unsubscribe();
   }, [watch, setDraft]);
 
-  const budgetMode = watch("budgetMode");
+  const budgetKind = watch("budgetKind");
 
   // Реальная публикация (предполагает залогиненного пользователя).
   // Отдельная функция от handleSubmit, чтобы её можно было вызвать
@@ -124,9 +116,8 @@ export default function NewOrderScreen() {
         cityId: values.cityId,
         district: values.district,
         urgency: values.urgency,
-        budgetMode: values.budgetMode,
-        budgetMin: values.budgetMode === "negotiable" ? null : values.budgetMin,
-        budgetMax: values.budgetMode === "negotiable" ? null : values.budgetMax,
+        budgetKind: values.budgetKind,
+        budgetValue: values.budgetKind === "negotiable" ? null : values.budgetValue,
       });
       const newId =
         created && typeof created === "object" && "id" in created
@@ -165,7 +156,7 @@ export default function NewOrderScreen() {
       >
         <View className="items-center">
           <View className="h-16 w-16 items-center justify-center rounded-full bg-success-soft">
-            <CheckCircle2 size={36} strokeWidth={1.75} color={tc.success} />
+            <CheckCircle size={36} weight="bold" color={tc.success} />
           </View>
           <AppText weight="bold" className="mt-6 text-center text-display-sm text-ink">
             Заявка опубликована
@@ -222,7 +213,7 @@ export default function NewOrderScreen() {
           hitSlop={12}
           className="h-9 w-9 items-center justify-center rounded-full active:opacity-70"
         >
-          <ChevronLeft size={20} strokeWidth={1.75} color={tc.ink} />
+          <CaretLeft size={20} weight="bold" color={tc.ink} />
         </Pressable>
       </View>
 
@@ -232,7 +223,7 @@ export default function NewOrderScreen() {
         showsVerticalScrollIndicator={false}
       >
         {/* Hero — Vercel value-card. Eyebrow (mono) → H1 → subtitle → 3-step
-            row (Pencil / MessageSquare / Lock — все 3 согласованы с privacy
+            row (Pencil / ChatCenteredText / Lock — все 3 согласованы с privacy
             обещанием) → выделенная privacy-плашка снизу.
             Никаких декоративных кругов / случайного violet — чистая
             типографическая иерархия + один акцентный privacy-trust блок. */}
@@ -257,7 +248,7 @@ export default function NewOrderScreen() {
               работает», а не два разных компонента. */}
           <View className="mt-6 rounded-xl border border-hairline bg-canvas-soft overflow-hidden">
             <View className="flex-row items-start gap-2 px-5 py-5">
-              <StepItem icon={MessageSquare} label="Получите отклики" />
+              <StepItem icon={ChatCenteredText} label="Получите отклики" />
               <StepItem icon={Tag} label="Посмотрите цены от мастеров" />
               <StepItem icon={UserCheck} label="Выберите подходящего" />
             </View>
@@ -266,7 +257,7 @@ export default function NewOrderScreen() {
 
             <View className="flex-row items-start gap-3 px-5 py-5">
               <View className="h-10 w-10 items-center justify-center rounded-full bg-ink">
-                <Lock size={18} strokeWidth={2} color={tc["on-primary"]} />
+                <Lock size={18} weight="bold" color={tc["on-primary"]} />
               </View>
               <View className="flex-1">
                 <AppText weight="semibold" className="text-body-sm text-ink">
@@ -284,7 +275,7 @@ export default function NewOrderScreen() {
         <OrderFormBody
           control={control}
           errors={errors}
-          budgetMode={budgetMode}
+          budgetKind={budgetKind}
           isBusy={isBusy}
           categories={categories}
           cities={cities}
@@ -344,13 +335,13 @@ export default function NewOrderScreen() {
 // Без декоративного фона — Vercel-эстетика, ink-on-canvas минимализм.
 // ----------------------------------------------------------------------------
 
-function StepItem({ icon: Icon, label }: { icon: LucideIcon; label: string }) {
+function StepItem({ icon: Icon, label }: { icon: IconComponent; label: string }) {
   return (
     <View className="flex-1 items-center gap-2">
       {/* Кружок белый (bg-canvas) — выделяется на bg-canvas-soft карточке.
           Размер 40dp согласован с Lock-кружком в privacy-блоке ниже. */}
       <View className="h-10 w-10 items-center justify-center rounded-full bg-canvas border border-hairline">
-        <Icon size={18} strokeWidth={1.75} color="currentColor" className="text-ink" />
+        <Icon size={18} weight="bold" color="currentColor" className="text-ink" />
       </View>
       <AppText
         weight="medium"

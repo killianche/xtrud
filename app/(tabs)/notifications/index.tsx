@@ -10,7 +10,7 @@
  */
 
 import { useRouter } from "expo-router";
-import { Bell, CheckCheck, ChevronLeft, Trash2 } from "lucide-react-native";
+import { Bell, Checks, CaretLeft, Trash } from "phosphor-react-native";
 import { useEffect } from "react";
 import { ActivityIndicator, Pressable, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -96,7 +96,7 @@ function NotificationCard({
         hitSlop={8}
         className="active:opacity-60"
       >
-        <Trash2 size={16} strokeWidth={1.75} color={muted} />
+        <Trash size={16} weight="bold" color={muted} />
       </Pressable>
     </Pressable>
   );
@@ -153,7 +153,7 @@ export default function NotificationsScreen() {
           hitSlop={12}
           className="h-10 w-10 items-center justify-center rounded-full active:opacity-70"
         >
-          <ChevronLeft size={24} strokeWidth={1.75} color={tc.ink} />
+          <CaretLeft size={24} weight="bold" color={tc.ink} />
         </Pressable>
         <AppText weight="bold" className="flex-1 text-title-lg text-ink">
           Уведомления
@@ -167,7 +167,7 @@ export default function NotificationsScreen() {
             hitSlop={8}
             className="flex-row items-center gap-1 active:opacity-70"
           >
-            <CheckCheck size={18} strokeWidth={1.75} color={tc["muted-soft"]} />
+            <Checks size={18} weight="bold" color={tc["muted-soft"]} />
             <AppText weight="medium" className="text-caption text-muted">
               Всё прочитано
             </AppText>

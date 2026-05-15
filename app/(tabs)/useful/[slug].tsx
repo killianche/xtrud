@@ -7,7 +7,7 @@
 
 import { Image } from "expo-image";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { ChevronLeft } from "lucide-react-native";
+import { CaretLeft } from "phosphor-react-native";
 import { useMemo } from "react";
 import { ActivityIndicator, Pressable, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -87,7 +87,7 @@ export default function ArticleScreen() {
           hitSlop={12}
           className="h-10 w-10 items-center justify-center rounded-full active:opacity-70"
         >
-          <ChevronLeft size={24} strokeWidth={1.75} color={tcInk} />
+          <CaretLeft size={24} weight="bold" color={tcInk} />
         </Pressable>
       </View>
 

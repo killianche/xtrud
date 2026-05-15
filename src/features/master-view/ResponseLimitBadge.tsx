@@ -7,7 +7,7 @@
 //
 // Цвета: зелёный — осталось ≥3, жёлтый — 1-2, серый/красный — 0.
 
-import { Zap } from "lucide-react-native";
+import { Lightning } from "phosphor-react-native";
 import { View } from "react-native";
 import { AppText } from "@/components/AppText";
 import { useResponseLimit } from "@/features/orders/use-response-limit";
@@ -46,7 +46,7 @@ export function ResponseLimitBadge() {
 
   return (
     <View className={`flex-row items-center gap-1.5 self-start rounded-pill px-3 py-1.5 ${bgClass}`}>
-      <Zap size={12} strokeWidth={2} color={iconColor} fill={iconColor} />
+      <Lightning size={12} weight="fill" color={iconColor} />
       <AppText weight="medium" className={`text-caption ${textClass}`}>
         {text}
       </AppText>

@@ -11,31 +11,16 @@
  */
 
 import { useQuery } from "@tanstack/react-query";
+import { Image } from "expo-image";
 import { useRouter } from "expo-router";
-import {
-  ChevronLeft,
-  ChevronRight,
-  ClipboardList,
-  LogIn,
-  LogOut,
-  MapPin,
-  MessageCircle,
-  Moon,
-  Pencil,
-  Plus,
-  ShieldCheck,
-  Smartphone,
-  Star,
-  Sun,
-  UserRound,
-} from "lucide-react-native";
+import { CaretRight, ClipboardText, Eye, SignIn, SignOut, MapPin, ChatCircle, Moon, Pencil, Plus, ShieldCheck, DeviceMobile, Star, Sun, User } from "phosphor-react-native";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, Alert, Pressable, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { scrollViewToTop, useTabScrollResetCounter } from "@/lib/tab-scroll-reset";
 import { AppText } from "@/components/AppText";
 import { Avatar } from "@/components/Avatar";
-import { ThemeSwitcher } from "@/components/ThemeSwitcher";
+import { ScreenHeader } from "@/components/ui";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { RoleSwitcher } from "@/features/auth/RoleSwitcher";
 import { useAuthSession } from "@/features/auth/use-auth-session";
@@ -55,7 +40,6 @@ import { useRemoveMyAvatar, useUpdateMyAvatar } from "@/features/profile/use-upd
 import { useUploadPortfolioImage } from "@/features/uploads/use-upload-image";
 import { signOut } from "@/lib/auth";
 import { confirmAsync } from "@/lib/confirm";
-import { useSafeBack } from "@/lib/use-safe-back";
 import { supabase } from "@/lib/supabase";
 import { useThemeColors } from "@/lib/use-theme-color";
 import type { Tables } from "@/types/database";
@@ -108,8 +92,6 @@ export default function ProfileScreen() {
     "body",
     "error",
   ]);
-  const goBack = useSafeBack("/" as const);
-
   const onChangeAvatar = () => {
     if (updateAvatar.isPending) return;
     updateAvatar.mutate(undefined, {
@@ -200,34 +182,21 @@ export default function ProfileScreen() {
 
   return (
     <View className="flex-1 bg-canvas" style={{ paddingTop: insets.top }}>
-      {/* Top bar — минималистичный: back + центр-заголовок + edit-shortcut справа (только клиент) */}
-      <View className="flex-row items-center justify-between px-3 py-2">
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Назад"
-          onPress={goBack}
-          hitSlop={12}
-          className="h-10 w-10 items-center justify-center rounded-full active:opacity-70"
-        >
-          <ChevronLeft size={24} strokeWidth={1.75} color={themeColors.ink} />
-        </Pressable>
-        <AppText weight="semibold" className="text-title-md text-ink">
-          Профиль
-        </AppText>
-        {isClient ? (
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Редактировать профиль"
-            onPress={() => router.push("/(tabs)/profile/edit-client" as never)}
-            hitSlop={12}
-            className="h-10 w-10 items-center justify-center rounded-full active:opacity-70"
-          >
-            <Pencil size={18} strokeWidth={1.75} color={themeColors.ink} />
-          </Pressable>
-        ) : (
-          <View className="w-10" />
-        )}
-      </View>
+      {/* Унифицированный ScreenHeader — без back (это таб). Для клиента справа
+          компактная иконка-pencil как rightAction → /profile/edit-client. */}
+      <ScreenHeader
+        title="Профиль"
+        rightAction={
+          isClient
+            ? {
+                label: "Изменить",
+                Icon: Pencil,
+                onPress: () => router.push("/(tabs)/profile/edit-client" as never),
+                accessibilityLabel: "Редактировать профиль",
+              }
+            : undefined
+        }
+      />
 
       <ScrollView
         ref={profileScrollRef}
@@ -272,7 +241,7 @@ export default function ProfileScreen() {
                     {updateAvatar.isPending ? (
                       <ActivityIndicator size="small" color={themeColors["on-primary"]} />
                     ) : (
-                      <Pencil size={14} strokeWidth={2} color={themeColors["on-primary"]} />
+                      <Pencil size={14} weight="bold" color={themeColors["on-primary"]} />
                     )}
                   </Pressable>
                 </View>
@@ -304,9 +273,8 @@ export default function ProfileScreen() {
                   <View className="flex-row items-center gap-1">
                     <Star
                       size={13}
-                      strokeWidth={2}
+                      weight="fill"
                       color={themeColors.warning}
-                      fill={themeColors.warning}
                     />
                     <AppText weight="mono" className="text-mono-caption text-ink">
                       {ratingAvg.toFixed(1)}
@@ -320,7 +288,7 @@ export default function ProfileScreen() {
 
               {cityName ? (
                 <View className="mt-2 flex-row items-center gap-1">
-                  <MapPin size={13} strokeWidth={1.75} color={themeColors["muted-soft"]} />
+                  <MapPin size={13} weight="bold" color={themeColors["muted-soft"]} />
                   <AppText className="text-body-sm text-mute">
                     {cityName}
                     {user.district ? ` · ${user.district}` : ""}
@@ -356,7 +324,7 @@ export default function ProfileScreen() {
                 {updateAvatar.isPending ? (
                   <ActivityIndicator size="small" color={themeColors["on-primary"]} />
                 ) : (
-                  <Pencil size={16} strokeWidth={2} color={themeColors["on-primary"]} />
+                  <Pencil size={16} weight="bold" color={themeColors["on-primary"]} />
                 )}
               </Pressable>
             </View>
@@ -388,9 +356,8 @@ export default function ProfileScreen() {
                 <View className="flex-row items-center gap-1">
                   <Star
                     size={14}
-                    strokeWidth={2}
+                    weight="fill"
                     color={themeColors.warning}
-                    fill={themeColors.warning}
                   />
                   <AppText weight="semibold" className="text-caption text-ink">
                     {ratingAvg.toFixed(1)}
@@ -469,7 +436,7 @@ export default function ProfileScreen() {
                   Имя, фамилия, город, район
                 </AppText>
               </View>
-              <ChevronRight size={20} strokeWidth={1.75} color={themeColors["muted-soft"]} />
+              <CaretRight size={20} weight="bold" color={themeColors["muted-soft"]} />
             </Pressable>
           </>
         ) : null}
@@ -477,26 +444,6 @@ export default function ProfileScreen() {
         {/* Master-only sections */}
         {user.is_master && (
           <>
-            {/* «Посмотреть как клиент» — Airbnb showcase pattern. */}
-            <Pressable
-              accessibilityRole="button"
-              onPress={() => router.push(`/(tabs)/master/${user.id}` as never)}
-              className="mx-6 mt-8 flex-row items-center justify-between rounded-lg border border-ink bg-ink p-4 active:opacity-80"
-            >
-              <View className="flex-1">
-                <AppText weight="semibold" className="text-body-md text-on-primary">
-                  Посмотреть как клиент
-                </AppText>
-                <AppText
-                  className="mt-0.5 text-body-sm"
-                  style={{ color: themeColors["on-primary"], opacity: 0.7 }}
-                >
-                  Так вашу карточку видят клиенты в каталоге.
-                </AppText>
-              </View>
-              <ChevronRight size={20} strokeWidth={1.75} color={themeColors["on-primary"]} />
-            </Pressable>
-
             {/* Edit master profile shortcut */}
             <Pressable
               accessibilityRole="button"
@@ -511,7 +458,7 @@ export default function ProfileScreen() {
                   Имя, город, bio, опыт, инструмент и транспорт
                 </AppText>
               </View>
-              <ChevronRight size={20} strokeWidth={1.75} color={themeColors["muted-soft"]} />
+              <CaretRight size={20} weight="bold" color={themeColors["muted-soft"]} />
             </Pressable>
 
             {/* Categories shortcut */}
@@ -528,93 +475,87 @@ export default function ProfileScreen() {
                   Выбор L2 услуг, которые вы предлагаете
                 </AppText>
               </View>
-              <ChevronRight size={20} strokeWidth={1.75} color={themeColors["muted-soft"]} />
+              <CaretRight size={20} weight="bold" color={themeColors["muted-soft"]} />
             </Pressable>
 
-            {/* Portfolio section */}
-            <View className="mt-8 px-6">
-              <View className="flex-row items-center justify-between">
-                <AppText weight="semibold" className="text-title-lg text-ink">
+            {/* Services from template — Treatwell/Booksy-style чеклист L3 с
+                дефолтными ценами. По фидбэку user 2026-05-15: «чтобы были
+                подсказки — ремонт унитаза и т.д., не вручную всё забивать». */}
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => router.push("/(tabs)/profile/services-suggest" as never)}
+              className="mx-6 mt-3 flex-row items-center justify-between rounded-lg border border-hairline bg-canvas p-4 active:opacity-70"
+            >
+              <View className="flex-1">
+                <AppText weight="semibold" className="text-body-md text-ink">
+                  Услуги и цены
+                </AppText>
+                <AppText className="mt-0.5 text-body-sm text-muted">
+                  Добавить из шаблона: «Замена смесителя», «Установка унитаза» и т.д.
+                </AppText>
+              </View>
+              <CaretRight size={20} weight="bold" color={themeColors["muted-soft"]} />
+            </Pressable>
+
+            {/* Portfolio shortcut — preview 4 фото + ссылка на отдельный
+                экран /profile/portfolio. Управление (multi-upload до 50 фото
+                + сжатие + crop кривых) живёт в полноэкранном экране, не
+                в inline-блоке (фидбэк user 2026-05-15: «отдельная кнопочка,
+                чтобы было удобно работать»). */}
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => router.push("/(tabs)/profile/portfolio" as never)}
+              className="mx-6 mt-3 flex-row items-center justify-between rounded-lg border border-hairline bg-canvas p-4 active:opacity-70"
+            >
+              <View className="flex-1">
+                <AppText weight="semibold" className="text-body-md text-ink">
                   Портфолио
                 </AppText>
-                <AppText className="text-caption text-muted">
-                  {portfolio.data?.length ?? 0}/{PORTFOLIO_MAX}
+                <AppText className="mt-0.5 text-body-sm text-muted">
+                  {portfolio.data?.length ?? 0} из {PORTFOLIO_MAX} фото —
+                  добавляйте работы, чтобы повысить доверие
                 </AppText>
               </View>
-              <AppText className="mt-1 text-body-sm text-muted">
-                Фото работ повышают доверие клиентов.
+              <CaretRight size={20} weight="bold" color={themeColors["muted-soft"]} />
+            </Pressable>
+
+            {/* Превью 4 фото портфолио убрано 2026-05-15 (фидбэк user
+                «вот эти четыре фотографии снизу убери — они там не нужны»).
+                Карточка-trigger «Портфолио» выше уже даёт счётчик и переход
+                на полноэкранный экран /profile/portfolio. */}
+
+            {/* Компактный ghost-link «Посмотреть глазами клиента». Раньше
+                был большой card hero CTA — слишком яркий (фидбэк user 2026-05-15:
+                «эту кнопку сделай не такой большой, не такой заметной, можешь
+                спрятать за тремя точками»). Сейчас — мелкая ghost-row с Eye
+                иконкой + caption. Меню «...» избыточно для одной утилитарной
+                ссылки; этот компромисс даёт минимальный визуальный вес. */}
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => router.push(`/(tabs)/master/${user.id}` as never)}
+              className="mx-6 mt-4 flex-row items-center gap-2 self-start active:opacity-60"
+              hitSlop={6}
+            >
+              <Eye size={14} weight="bold" color={themeColors["muted-soft"]} />
+              <AppText weight="medium" className="text-caption text-muted">
+                Посмотреть глазами клиента
               </AppText>
-
-              <View className="mt-4">
-                <PortfolioGrid
-                  items={portfolio.data ?? []}
-                  onDelete={onDeletePortfolio}
-                  onOpen={(item) => {
-                    const idx = (portfolio.data ?? []).findIndex((p) => p.id === item.id);
-                    if (idx >= 0) setLightboxIndex(idx);
-                  }}
-                  isLoading={portfolio.isLoading}
-                />
-              </View>
-
-              {canAddPortfolio && (
-                <Pressable
-                  accessibilityRole="button"
-                  onPress={onAddPortfolio}
-                  disabled={uploadPortfolio.isPending || addPortfolioItem.isPending}
-                  className="mt-4 h-12 flex-row items-center justify-center gap-2 rounded-md border border-hairline bg-canvas active:opacity-70"
-                >
-                  {uploadPortfolio.isPending || addPortfolioItem.isPending ? (
-                    <ActivityIndicator />
-                  ) : (
-                    <>
-                      <Plus size={18} strokeWidth={2} color="#2563eb" />
-                      <AppText weight="semibold" className="text-button text-accent">
-                        Добавить фото
-                      </AppText>
-                    </>
-                  )}
-                </Pressable>
-              )}
-
-              {!canAddPortfolio && (
-                <View className="mt-4 rounded-md bg-surface-2 px-4 py-3">
-                  <AppText className="text-caption text-muted">
-                    Достигнут лимит {PORTFOLIO_MAX} фото. Удалите старые, чтобы добавить новые.
-                  </AppText>
-                </View>
-              )}
-
-              {(deletePortfolioItem.isPending || uploadPortfolio.isPending) && (
-                <View className="mt-2 flex-row items-center gap-2">
-                  <ActivityIndicator size="small" />
-                  <AppText className="text-caption text-muted">
-                    {deletePortfolioItem.isPending ? "Удаляем…" : "Загружаем…"}
-                  </AppText>
-                </View>
-              )}
-            </View>
+            </Pressable>
           </>
         )}
 
-        {/* Theme — для клиента segmented (3-button row), для мастера старый stacked
-            (чтобы не ломать его экран; на нём 3 строки органичнее, т.к. master-секция
-            уже длинная). */}
-        {isClient ? (
-          <View className="mt-8 px-5">
-            <AppText weight="medium" className="mb-2 text-caption text-mute uppercase tracking-wider">
-              Тема
-            </AppText>
-            <ClientThemeSegmented />
-          </View>
-        ) : (
-          <View className="mt-10 px-6">
-            <AppText weight="semibold" className="mb-3 text-title-md text-ink">
-              Тема
-            </AppText>
-            <ThemeSwitcher />
-          </View>
-        )}
+        {/* Theme — единый segmented (3-button row) для клиента и мастера.
+            Раньше у мастера был stacked 3-row ThemeSwitcher (огромный, занимал
+            пол-экрана). Фидбэк user 2026-05-15 «тему сделай не такой огромной». */}
+        <View className={`mt-8 ${isClient ? "px-5" : "px-6"}`}>
+          <AppText
+            weight="medium"
+            className="mb-2 text-caption text-mute uppercase tracking-wider"
+          >
+            Тема
+          </AppText>
+          <ClientThemeSegmented />
+        </View>
 
         {/* Admin entry — видно только админам */}
         {(user as { is_admin?: boolean } | null)?.is_admin && (
@@ -624,7 +565,7 @@ export default function ProfileScreen() {
               onPress={() => router.push("/(tabs)/admin" as never)}
               className="h-12 flex-row items-center justify-center gap-2 rounded-md border border-hairline bg-canvas active:opacity-70"
             >
-              <ShieldCheck size={18} strokeWidth={1.75} color={themeColors.body} />
+              <ShieldCheck size={18} weight="bold" color={themeColors.body} />
               <AppText weight="semibold" className="text-button text-body">
                 Модерация
               </AppText>
@@ -650,7 +591,7 @@ export default function ProfileScreen() {
               }}
               className="h-11 flex-row items-center justify-center gap-2 active:opacity-70"
             >
-              <LogOut size={16} strokeWidth={1.75} color={themeColors.error} />
+              <SignOut size={16} weight="bold" color={themeColors.error} />
               <AppText weight="semibold" className="text-button text-error">
                 Выйти из аккаунта
               </AppText>
@@ -671,7 +612,7 @@ export default function ProfileScreen() {
               }}
               className="h-12 flex-row items-center justify-center gap-2 rounded-md border border-hairline bg-canvas active:opacity-70"
             >
-              <LogOut size={18} strokeWidth={1.75} color={themeColors.body} />
+              <SignOut size={18} weight="bold" color={themeColors.body} />
               <AppText weight="semibold" className="text-button text-body">
                 Выйти
               </AppText>
@@ -737,7 +678,7 @@ function ClientThemeSegmented() {
   const tc = useThemeColors(["ink", "mute"]);
 
   const opts: Array<{ value: ThemePreference; label: string; Icon: typeof Sun }> = [
-    { value: "system", label: "Авто", Icon: Smartphone },
+    { value: "system", label: "Авто", Icon: DeviceMobile },
     { value: "light", label: "Светлая", Icon: Sun },
     { value: "dark", label: "Тёмная", Icon: Moon },
   ];
@@ -762,7 +703,7 @@ function ClientThemeSegmented() {
                 : undefined
             }
           >
-            <Icon size={14} strokeWidth={1.75} color={isSel ? tc.ink : tc.mute} />
+            <Icon size={14} weight="bold" color={isSel ? tc.ink : tc.mute} />
             <AppText
               weight={isSel ? "semibold" : "medium"}
               className={`text-caption ${isSel ? "text-ink" : "text-mute"}`}
@@ -798,17 +739,11 @@ interface GuestProfileScreenProps {
 function GuestProfileScreen({ insets, themeColors, onLogin }: GuestProfileScreenProps) {
   return (
     <View className="flex-1 bg-canvas" style={{ paddingTop: insets.top }}>
+      <ScreenHeader title="Профиль" />
       <ScrollView
         contentContainerStyle={{ paddingBottom: insets.bottom + 32 }}
         showsVerticalScrollIndicator={false}
       >
-        {/* Header — просто заголовок «Профиль», без back-кнопки (это таб). */}
-        <View className="flex-row items-center justify-center px-5 py-3">
-          <AppText weight="semibold" className="text-title-md text-ink">
-            Профиль
-          </AppText>
-        </View>
-
         {/* Hero card — Vercel-style: tinted band → иконка-юзер → текст → CTA.
             Воздух mt-6, paddings 6, чтобы выглядело как «приглашение», а не пусто. */}
         <View className="mx-5 mt-6 overflow-hidden rounded-xl border border-hairline bg-canvas">
@@ -836,7 +771,7 @@ function GuestProfileScreen({ insets, themeColors, onLogin }: GuestProfileScreen
           <View className="-mt-10 items-center px-6 pb-6">
             {/* Icon-cap — заменяет аватар. */}
             <View className="h-20 w-20 items-center justify-center rounded-full border-4 border-canvas bg-canvas-soft">
-              <UserRound size={32} strokeWidth={1.5} color={themeColors.ink} />
+              <User size={32} weight="bold" color={themeColors.ink} />
             </View>
 
             <AppText
@@ -858,7 +793,7 @@ function GuestProfileScreen({ insets, themeColors, onLogin }: GuestProfileScreen
               onPress={onLogin}
               className="mt-5 h-12 w-full flex-row items-center justify-center gap-2 rounded-pill bg-ink active:opacity-80"
             >
-              <LogIn size={16} strokeWidth={2} color={themeColors["on-primary"]} />
+              <SignIn size={16} weight="bold" color={themeColors["on-primary"]} />
               <AppText weight="semibold" className="text-button text-on-primary">
                 Войти по телефону
               </AppText>

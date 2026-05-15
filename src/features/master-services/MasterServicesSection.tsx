@@ -5,7 +5,7 @@
 //
 // Sprint 31.5.
 
-import { Edit3, ListPlus, Pencil, Plus, Sparkles, Trash2 } from "lucide-react-native";
+import { PencilSimple, ListPlus, Pencil, Plus, Sparkle, Trash } from "phosphor-react-native";
 import { useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, Alert, Modal, Pressable, ScrollView, TextInput, View } from "react-native";
 import { AppText } from "@/components/AppText";
@@ -70,10 +70,10 @@ export function MasterServicesSection({ masterId }: MasterServicesSectionProps) 
           disabled={!canAdd}
           onPress={() => setEditing("new")}
           className={`h-10 flex-row items-center gap-1.5 rounded-md px-3 ${
-            canAdd ? "bg-ink active:opacity-80 hover:opacity-80" : "bg-surface-3"
+            canAdd ? "bg-accent active:opacity-80 hover:opacity-80" : "bg-surface-3"
           }`}
         >
-          <Plus size={16} strokeWidth={2} color={canAdd ? "#fff" : inkColor} />
+          <Plus size={16} weight="bold" color={canAdd ? "#fff" : inkColor} />
           <AppText
             weight="semibold"
             className={`text-caption ${canAdd ? "text-on-primary" : "text-muted"}`}
@@ -160,7 +160,7 @@ function ServiceRow({ service, onEdit, onDelete, errorColor, inkColor }: Service
         hitSlop={8}
         className="h-9 w-9 items-center justify-center rounded-md active:opacity-70 hover:bg-surface-2"
       >
-        <Pencil size={16} strokeWidth={1.75} color={inkColor} />
+        <Pencil size={16} weight="bold" color={inkColor} />
       </Pressable>
       <Pressable
         accessibilityRole="button"
@@ -169,7 +169,7 @@ function ServiceRow({ service, onEdit, onDelete, errorColor, inkColor }: Service
         hitSlop={8}
         className="h-9 w-9 items-center justify-center rounded-md active:opacity-70 hover:bg-surface-2"
       >
-        <Trash2 size={16} strokeWidth={1.75} color={errorColor} />
+        <Trash size={16} weight="bold" color={errorColor} />
       </Pressable>
     </View>
   );
@@ -435,13 +435,13 @@ function ServiceFormContent({ initial, masterId, onClose }: ServiceFormContentPr
                     }}
                     className={`rounded-pill border px-3 py-1.5 active:opacity-70 ${
                       selected
-                        ? "border-ink bg-ink"
+                        ? "border-accent bg-accent-soft"
                         : "border-hairline bg-canvas hover:bg-surface-2"
                     }`}
                   >
                     <AppText
                       weight={selected ? "semibold" : "medium"}
-                      className={`text-caption ${selected ? "text-on-primary" : "text-ink"}`}
+                      className={`text-caption ${selected ? "text-accent" : "text-ink"}`}
                     >
                       {mc.l2?.name_ru ?? mc.l2_id}
                     </AppText>
@@ -468,7 +468,7 @@ function ServiceFormContent({ initial, masterId, onClose }: ServiceFormContentPr
                 hitSlop={6}
                 className="flex-row items-center gap-1 active:opacity-60"
               >
-                <Edit3 size={12} strokeWidth={2} color={accentColor} />
+                <PencilSimple size={12} weight="bold" color={accentColor} />
                 <AppText weight="medium" className="text-caption text-accent">
                   Своя формулировка
                 </AppText>
@@ -560,12 +560,12 @@ function ServiceFormContent({ initial, masterId, onClose }: ServiceFormContentPr
                   accessibilityState={{ selected }}
                   onPress={() => handleKindChange(opt)}
                   className={`rounded-pill border px-3 py-1.5 active:opacity-70 ${
-                    selected ? "border-ink bg-ink" : "border-hairline bg-canvas hover:bg-surface-2"
+                    selected ? "border-accent bg-accent-soft" : "border-hairline bg-canvas hover:bg-surface-2"
                   }`}
                 >
                   <AppText
                     weight={selected ? "semibold" : "medium"}
-                    className={`text-caption ${selected ? "text-on-primary" : "text-ink"}`}
+                    className={`text-caption ${selected ? "text-accent" : "text-ink"}`}
                   >
                     {PRICING_KIND_LABELS[opt]}
                   </AppText>
@@ -631,7 +631,7 @@ function ServiceFormContent({ initial, masterId, onClose }: ServiceFormContentPr
                 hitSlop={6}
                 className="mt-2 flex-row items-center gap-1.5 self-start active:opacity-60"
               >
-                <Sparkles size={12} strokeWidth={2} color={accentColor} />
+                <Sparkle size={12} weight="bold" color={accentColor} />
                 <AppText weight="medium" className="text-caption text-accent">
                   В среднем берут {selectedL3Obj.avg_check_rub.toLocaleString("ru-RU")} ₽
                   — применить
@@ -657,13 +657,13 @@ function ServiceFormContent({ initial, masterId, onClose }: ServiceFormContentPr
                     onPress={() => setUnit(opt)}
                     className={`rounded-pill border px-3 py-1.5 active:opacity-70 ${
                       selected
-                        ? "border-ink bg-ink"
+                        ? "border-accent bg-accent-soft"
                         : "border-hairline bg-canvas hover:bg-surface-2"
                     }`}
                   >
                     <AppText
                       weight={selected ? "semibold" : "medium"}
-                      className={`text-caption ${selected ? "text-on-primary" : "text-ink"}`}
+                      className={`text-caption ${selected ? "text-accent" : "text-ink"}`}
                     >
                       {SERVICE_UNIT_LABELS[opt]}
                     </AppText>

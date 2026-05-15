@@ -4,7 +4,7 @@
 // На mobile / narrow web компонент не используется (см. (tabs)/_layout.tsx).
 
 import { Link, usePathname, useRouter } from "expo-router";
-import { ClipboardList, Home, MessageCircle, Moon, Sun, User } from "lucide-react-native";
+import { ClipboardText, House, ChatCircle, Moon, Sun, User } from "phosphor-react-native";
 import { Pressable, View } from "react-native";
 import { AppText } from "@/components/AppText";
 import { Avatar } from "@/components/Avatar";
@@ -23,7 +23,7 @@ interface NavItem {
   href: "/(tabs)" | "/(tabs)/orders" | "/(tabs)/chats" | "/(tabs)/profile";
   match: string;
   label: string;
-  icon: typeof Home;
+  icon: typeof House;
   badge?: string;
 }
 
@@ -36,20 +36,30 @@ export function WebShell({ children, chatsBadge, ordersBadge }: WebShellProps) {
   const { data: user } = useUserRecord(userId);
   const { colorScheme, preference, setPreference } = useColorScheme();
 
+  // Ссылка «Заказы» — только клиент. У мастера эта страница убрана
+  // (фидбэк user 2026-05-15): «Я откликнулся / Меня выбрали» переехали
+  // на главную мастера, а лента новых заявок — на /orders/search. На
+  // desktop отдельной кнопки «Поиск» нет; мастеру логично уходить с
+  // главной (там и поиск, и его текущие заявки).
+  const isMasterRole = user?.active_role === "master";
   const navItems: NavItem[] = [
-    { href: "/(tabs)", match: "/", label: "Главная", icon: Home },
-    {
-      href: "/(tabs)/orders",
-      match: "/orders",
-      label: "Заказы",
-      icon: ClipboardList,
-      badge: ordersBadge,
-    },
+    { href: "/(tabs)", match: "/", label: "Главная", icon: House },
+    ...(isMasterRole
+      ? []
+      : [
+          {
+            href: "/(tabs)/orders" as const,
+            match: "/orders",
+            label: "Заказы",
+            icon: ClipboardText,
+            badge: ordersBadge,
+          },
+        ]),
     {
       href: "/(tabs)/chats",
       match: "/chats",
       label: "Чаты",
-      icon: MessageCircle,
+      icon: ChatCircle,
       badge: chatsBadge,
     },
   ];
@@ -101,7 +111,7 @@ export function WebShell({ children, chatsBadge, ordersBadge }: WebShellProps) {
                       active ? "bg-surface-2" : ""
                     }`}
                   >
-                    <Icon size={18} strokeWidth={1.75} color={active ? tc.ink : tc.muted} />
+                    <Icon size={18} weight="bold" color={active ? tc.ink : tc.muted} />
                     <AppText
                       weight={active ? "semibold" : "medium"}
                       className={`text-body-sm ${active ? "text-ink" : "text-muted"}`}
@@ -137,9 +147,9 @@ export function WebShell({ children, chatsBadge, ordersBadge }: WebShellProps) {
               className="h-9 w-9 items-center justify-center rounded-md hover:bg-surface-2"
             >
               {colorScheme === "dark" ? (
-                <Sun size={18} strokeWidth={1.75} color={tc.ink} />
+                <Sun size={18} weight="bold" color={tc.ink} />
               ) : (
-                <Moon size={18} strokeWidth={1.75} color={tc.ink} />
+                <Moon size={18} weight="bold" color={tc.ink} />
               )}
             </Pressable>
             <Pressable
@@ -152,7 +162,7 @@ export function WebShell({ children, chatsBadge, ordersBadge }: WebShellProps) {
                 <Avatar url={user.avatar_url} name={fullName} seed={user.id} size="sm" />
               ) : (
                 <View className="h-9 w-9 items-center justify-center rounded-full border border-hairline bg-surface-2">
-                  <User size={18} strokeWidth={1.75} color={tc.ink} />
+                  <User size={18} weight="bold" color={tc.ink} />
                 </View>
               )}
             </Pressable>

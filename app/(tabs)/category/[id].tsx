@@ -11,17 +11,7 @@
  */
 
 import { useLocalSearchParams, useRouter } from "expo-router";
-import {
-  Briefcase,
-  Calendar,
-  ChevronLeft,
-  ListChecks,
-  MapPin,
-  MessageCircle,
-  Phone,
-  Star,
-  Users,
-} from "lucide-react-native";
+import { Briefcase, Calendar, CaretLeft, ListChecks, MapPin, ChatCircle, Phone, Star, Users } from "phosphor-react-native";
 import { useCallback, useMemo, useRef, useState } from "react";
 import {
   Animated,
@@ -199,7 +189,7 @@ export default function CategoryDetailScreen() {
             onPress={goBack}
             className="h-12 w-12 items-center justify-center rounded-full active:bg-canvas-soft text-ink"
           >
-            <ChevronLeft size={28} strokeWidth={2.25} color="currentColor" />
+            <CaretLeft size={28} weight="fill" color="currentColor" />
           </Pressable>
           <AppText
             weight="bold"
@@ -345,7 +335,7 @@ export default function CategoryDetailScreen() {
         options={CITIES.map<PickerOption>((c) => ({
           id: c.id,
           title: c.name,
-          icon: <MapPin size={18} strokeWidth={1.75} color={tc.ink} />,
+          icon: <MapPin size={18} weight="bold" color={tc.ink} />,
         }))}
         selectedId={cityFilter}
         onSelect={(id) => {
@@ -362,7 +352,7 @@ export default function CategoryDetailScreen() {
           {
             id: "__all",
             title: "Все услуги",
-            icon: <ListChecks size={18} strokeWidth={1.75} color={tc.ink} />,
+            icon: <ListChecks size={18} weight="bold" color={tc.ink} />,
           },
           ...services.map<PickerOption>((s) => {
             // Все L3-услуги одной L2 — рендерим цветную тематическую SVG-иконку
@@ -380,7 +370,7 @@ export default function CategoryDetailScreen() {
                   style={{ width: 22, height: 22 }}
                 />
               ) : (
-                <ListChecks size={18} strokeWidth={1.75} color={tc.mute} />
+                <ListChecks size={18} weight="bold" color={tc.mute} />
               ),
             };
           }),
@@ -405,19 +395,19 @@ export default function CategoryDetailScreen() {
             id: "rating",
             title: "По рейтингу",
             subtitle: "Сначала с лучшими отзывами",
-            icon: <Star size={18} strokeWidth={1.75} color={tc.ink} />,
+            icon: <Star size={18} weight="bold" color={tc.ink} />,
           },
           {
             id: "experience",
             title: "По опыту",
             subtitle: "Сначала самые опытные",
-            icon: <Briefcase size={18} strokeWidth={1.75} color={tc.ink} />,
+            icon: <Briefcase size={18} weight="bold" color={tc.ink} />,
           },
           {
             id: "availability",
             title: "Свободные сначала",
             subtitle: "Кто готов сегодня и на неделе",
-            icon: <Calendar size={18} strokeWidth={1.75} color={tc.ink} />,
+            icon: <Calendar size={18} weight="bold" color={tc.ink} />,
           },
         ]}
         selectedId={sortBy}
@@ -447,8 +437,8 @@ function FilterChip({
   onPress,
 }: {
   label: string;
-  /** Lucide-иконка слева. Передаётся как компонент (`MapPin`, `Star` и т.п.). */
-  icon?: React.ComponentType<{ size?: number; strokeWidth?: number; color?: string; className?: string }>;
+  /** Иконка слева. Передаётся как компонент (`MapPin`, `Star` и т.п. из Phosphor). */
+  icon?: import("@/types/icon").IconComponent;
   active: boolean;
   onPress: () => void;
 }) {
@@ -465,7 +455,7 @@ function FilterChip({
       {Icon ? (
         <Icon
           size={15}
-          strokeWidth={1.75}
+          weight="bold"
           color="currentColor"
           className={active ? "text-ink" : "text-body"}
         />
@@ -581,14 +571,14 @@ function MasterRow({
             <View className="flex-row flex-wrap items-center gap-x-3 gap-y-1.5 mt-2">
               {accountBadge ? (
                 <View className="flex-row items-center gap-1">
-                  <Users size={14} strokeWidth={1.75} color="currentColor" className="text-mute" />
+                  <Users size={14} weight="bold" color="currentColor" className="text-mute" />
                   <AppText className="text-mute text-body-sm">{accountBadge}</AppText>
                 </View>
               ) : null}
 
               {rating !== null && ratingCount > 0 ? (
                 <View className="flex-row items-center gap-1">
-                  <Star size={14} strokeWidth={1.75} color="currentColor" className="text-ink" />
+                  <Star size={14} weight="bold" color="currentColor" className="text-ink" />
                   <AppText weight="mono" className="text-ink text-mono-sm">
                     {rating.toFixed(1)}
                   </AppText>
@@ -598,14 +588,14 @@ function MasterRow({
                 </View>
               ) : (
                 <View className="flex-row items-center gap-1">
-                  <Star size={14} strokeWidth={1.75} color="currentColor" className="text-mute" />
+                  <Star size={14} weight="bold" color="currentColor" className="text-mute" />
                   <AppText className="text-mute text-body-sm">Без отзывов</AppText>
                 </View>
               )}
 
               {experience !== null && experience > 0 ? (
                 <View className="flex-row items-center gap-1">
-                  <Briefcase size={14} strokeWidth={1.75} color="currentColor" className="text-mute" />
+                  <Briefcase size={14} weight="bold" color="currentColor" className="text-mute" />
                   <AppText className="text-mute text-body-sm">
                     {pluralizeYears(experience)} опыта
                   </AppText>
@@ -615,7 +605,7 @@ function MasterRow({
 
             {cityName ? (
               <View className="flex-row items-center gap-1 mt-1.5">
-                <MapPin size={14} strokeWidth={1.75} color="currentColor" className="text-mute" />
+                <MapPin size={14} weight="bold" color="currentColor" className="text-mute" />
                 <AppText className="text-mute text-body-sm">{cityName}</AppText>
               </View>
             ) : null}
@@ -863,7 +853,7 @@ function MasterRowGallery({
           <View className="mt-2.5 gap-1">
             {accountBadge ? (
               <View className="flex-row items-center gap-1.5">
-                <Users size={12} strokeWidth={1.75} color="currentColor" className="text-mute" />
+                <Users size={12} weight="bold" color="currentColor" className="text-mute" />
                 <AppText className="text-mute text-caption" numberOfLines={1}>
                   {accountBadge}
                 </AppText>
@@ -872,21 +862,21 @@ function MasterRowGallery({
 
             {rating !== null && ratingCount > 0 ? (
               <View className="flex-row items-center gap-1.5">
-                <Star size={12} strokeWidth={1.75} color="currentColor" className="text-mute" />
+                <Star size={12} weight="bold" color="currentColor" className="text-mute" />
                 <AppText weight="mono" className="text-mute text-mono-caption">
                   {rating.toFixed(1)} ({ratingCount})
                 </AppText>
               </View>
             ) : (
               <View className="flex-row items-center gap-1.5">
-                <Star size={12} strokeWidth={1.75} color="currentColor" className="text-mute" />
+                <Star size={12} weight="bold" color="currentColor" className="text-mute" />
                 <AppText className="text-mute text-caption">Без отзывов</AppText>
               </View>
             )}
 
             {experience !== null && experience > 0 ? (
               <View className="flex-row items-center gap-1.5">
-                <Briefcase size={12} strokeWidth={1.75} color="currentColor" className="text-mute" />
+                <Briefcase size={12} weight="bold" color="currentColor" className="text-mute" />
                 <AppText className="text-mute text-caption">
                   {pluralizeYears(experience)} опыта
                 </AppText>
@@ -895,7 +885,7 @@ function MasterRowGallery({
 
             {cityName ? (
               <View className="flex-row items-center gap-1.5">
-                <MapPin size={12} strokeWidth={1.75} color="currentColor" className="text-mute" />
+                <MapPin size={12} weight="bold" color="currentColor" className="text-mute" />
                 <AppText className="text-mute text-caption" numberOfLines={1}>
                   {cityName}
                 </AppText>
@@ -941,7 +931,7 @@ function MasterRowGallery({
           onPress={handleContact}
           className="flex-1 flex-row items-center justify-center gap-2 h-10 rounded-full bg-canvas-soft border border-hairline active:opacity-70"
         >
-          <Phone size={16} strokeWidth={1.75} color="currentColor" className="text-ink" />
+          <Phone size={16} weight="bold" color="currentColor" className="text-ink" />
           <AppText weight="medium" className="text-body-sm text-ink">
             Позвонить
           </AppText>
@@ -952,7 +942,7 @@ function MasterRowGallery({
           onPress={handleContact}
           className="flex-1 flex-row items-center justify-center gap-2 h-10 rounded-full bg-canvas-soft border border-hairline active:opacity-70"
         >
-          <MessageCircle size={16} strokeWidth={1.75} color="currentColor" className="text-ink" />
+          <ChatCircle size={16} weight="bold" color="currentColor" className="text-ink" />
           <AppText weight="medium" className="text-body-sm text-ink">
             WhatsApp
           </AppText>

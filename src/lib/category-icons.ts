@@ -92,8 +92,18 @@ export const CATEGORY_ICONS: Record<string, LucideIcon> = {
 
 export const DEFAULT_CATEGORY_ICON: LucideIcon = Wrench;
 
-/** Безопасный лукап с фоллбеком. */
-export function getCategoryIcon(iconName: string | null | undefined): LucideIcon {
-  if (!iconName) return DEFAULT_CATEGORY_ICON;
-  return CATEGORY_ICONS[iconName] ?? DEFAULT_CATEGORY_ICON;
+/**
+ * Безопасный лукап с фоллбеком.
+ *
+ * Return type — `IconComponent` (generic), не `LucideIcon`: вызывающие места
+ * передают Phosphor-prop'ы (`weight="bold"`) которые Lucide игнорирует runtime,
+ * но без generic-типа tsc ругается. См. `docs/UI_ICONS.md`.
+ */
+export function getCategoryIcon(
+  iconName: string | null | undefined,
+): import("@/types/icon").IconComponent {
+  if (!iconName) return DEFAULT_CATEGORY_ICON as unknown as import("@/types/icon").IconComponent;
+  return (CATEGORY_ICONS[iconName] ?? DEFAULT_CATEGORY_ICON) as unknown as import(
+    "@/types/icon"
+  ).IconComponent;
 }

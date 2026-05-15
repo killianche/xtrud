@@ -28,17 +28,22 @@
 //     }}
 //   />
 
-import { ChevronLeft } from "lucide-react-native";
-import type { ComponentType } from "react";
+import { CaretLeft } from "phosphor-react-native";
 import { Pressable, View } from "react-native";
 import { AppText } from "@/components/AppText";
 import { useThemeColor } from "@/lib/use-theme-color";
+import type { IconComponent } from "@/types/icon";
+
+// Активный pill в правом углу (rightAction.active === true) рисуется
+// с голубым accent-tint, НЕ с чёрной заливкой. Чёрные chip-кнопки запрещены
+// (user 2026-05-15: «черные кнопки не делай»). Этот же accent-pattern
+// применяется ко всем chip'ам с selected-состоянием в проекте.
 
 export interface ScreenHeaderRightAction {
   /** Текст на pill-кнопке (например, «Фильтры»). */
   label: string;
   /** Lucide-иконка слева от текста. Опц. */
-  Icon?: ComponentType<{ size?: number; color?: string; strokeWidth?: number }>;
+  Icon?: IconComponent;
   onPress: () => void;
   /** Если true — pill подсвечивается ink-цветом (есть активные фильтры). */
   active?: boolean;
@@ -46,23 +51,39 @@ export interface ScreenHeaderRightAction {
   accessibilityLabel?: string;
 }
 
+/** Иконка-only кнопка (h-10 w-10 круг) — для overflow-меню («⋮»),
+ *  share-кнопки, flag, edit-pencil и т.п. Альтернатива pill-rightAction. */
+export interface ScreenHeaderIconAction {
+  Icon: IconComponent;
+  onPress: () => void;
+  accessibilityLabel: string;
+}
+
 interface ScreenHeaderProps {
   title: string;
+  /** Опц. подзаголовок под title — text-body-sm text-muted, mt-1.
+   *  Используется на табах вроде /chats («Общение с мастерами по…»). */
+  subtitle?: string;
   onBack?: () => void;
-  /** Опц. кнопка справа (Фильтры / Сохранить / Поделиться и т.д.). */
+  /** Опц. pill-кнопка справа (Фильтры / Сохранить / Поделиться). */
   rightAction?: ScreenHeaderRightAction;
+  /** Опц. круглая icon-кнопка справа (overflow «⋮» / share / edit и т.п.).
+   *  Если переданы и rightAction и iconAction — рендерятся обе (icon правее). */
+  iconAction?: ScreenHeaderIconAction;
 }
 
 const HEADER_HEIGHT = 64;
+const HEADER_WITH_SUBTITLE_HEIGHT = 88;
 
-export function ScreenHeader({ title, onBack, rightAction }: ScreenHeaderProps) {
+export function ScreenHeader({ title, subtitle, onBack, rightAction, iconAction }: ScreenHeaderProps) {
   const inkColor = useThemeColor("ink");
-  const onPrimaryColor = useThemeColor("on-primary");
+  const accentColor = useThemeColor("accent");
+  const height = subtitle ? HEADER_WITH_SUBTITLE_HEIGHT : HEADER_HEIGHT;
 
   return (
     <View
       className="flex-row items-center gap-2 bg-canvas px-3"
-      style={{ height: HEADER_HEIGHT }}
+      style={{ height }}
     >
       {onBack ? (
         <Pressable
@@ -72,17 +93,24 @@ export function ScreenHeader({ title, onBack, rightAction }: ScreenHeaderProps) 
           hitSlop={8}
           className="h-12 w-12 items-center justify-center rounded-full active:bg-canvas-soft"
         >
-          <ChevronLeft size={28} strokeWidth={2.25} color={inkColor} />
+          <CaretLeft size={28} weight="fill" color={inkColor} />
         </Pressable>
       ) : null}
 
-      <AppText
-        weight="bold"
-        className="flex-1 text-display-md tracking-tight text-ink"
-        numberOfLines={1}
-      >
-        {title}
-      </AppText>
+      <View className="flex-1 min-w-0">
+        <AppText
+          weight="bold"
+          className="text-display-md tracking-tight text-ink"
+          numberOfLines={1}
+        >
+          {title}
+        </AppText>
+        {subtitle ? (
+          <AppText className="mt-1 text-body-sm text-muted" numberOfLines={2}>
+            {subtitle}
+          </AppText>
+        ) : null}
+      </View>
 
       {rightAction ? (
         <Pressable
@@ -91,23 +119,35 @@ export function ScreenHeader({ title, onBack, rightAction }: ScreenHeaderProps) 
           onPress={rightAction.onPress}
           className={`h-11 flex-row items-center gap-1.5 rounded-pill border px-4 active:opacity-70 ${
             rightAction.active
-              ? "border-ink bg-ink"
+              ? "border-accent bg-accent-soft"
               : "border-hairline bg-canvas hover:bg-surface-2"
           }`}
         >
           {rightAction.Icon ? (
             <rightAction.Icon
               size={16}
-              strokeWidth={2}
-              color={rightAction.active ? onPrimaryColor : inkColor}
+              weight="bold"
+              color={rightAction.active ? accentColor : inkColor}
             />
           ) : null}
           <AppText
             weight="semibold"
-            className={`text-button ${rightAction.active ? "text-on-primary" : "text-ink"}`}
+            className={`text-button ${rightAction.active ? "text-accent" : "text-ink"}`}
           >
             {rightAction.label}
           </AppText>
+        </Pressable>
+      ) : null}
+
+      {iconAction ? (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={iconAction.accessibilityLabel}
+          onPress={iconAction.onPress}
+          hitSlop={8}
+          className="h-10 w-10 items-center justify-center rounded-full active:bg-canvas-soft"
+        >
+          <iconAction.Icon size={20} weight="bold" color={inkColor} />
         </Pressable>
       ) : null}
     </View>

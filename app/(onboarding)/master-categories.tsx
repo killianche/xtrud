@@ -13,7 +13,7 @@
 // chips), bubbles-and-friends (group → category bottom sheet).
 
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { Check, ChevronLeft, Search, X } from "lucide-react-native";
+import { Check, CaretLeft, MagnifyingGlass, X } from "phosphor-react-native";
 import { useEffect, useMemo, useState } from "react";
 import { Pressable, ScrollView, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -27,6 +27,7 @@ import {
 } from "@/features/categories/use-visible-categories";
 import { useMyMasterCategories } from "@/features/master-categories/use-my-categories";
 import { useSetMasterCategories } from "@/features/master-categories/use-set-categories";
+import { useSafeBack } from "@/lib/use-safe-back";
 import { useThemeColors } from "@/lib/use-theme-color";
 
 const MAX_CATEGORIES = 5;
@@ -36,9 +37,13 @@ export default function MasterCategoriesScreen() {
   const router = useRouter();
   const { mode } = useLocalSearchParams<{ mode?: string }>();
   // mode=onboarding → шаг визарда: save → push на photo. Иначе settings-режим:
-  // save → router.back(). Видимая разница: progress-индикатор сверху, скрытая
+  // save → goBack(). Видимая разница: progress-индикатор сверху, скрытая
   // back-кнопка, обязательный выбор ≥1 категории, кнопка "Продолжить".
   const isOnboarding = mode === "onboarding";
+  // safeBack — fallback /(tabs)/profile, потому что settings-режим открывается
+  // из /profile, и при cross-stack push'е expo-router теряет history (фикс
+  // фидбэка user 2026-05-15 «back из категорий ведёт на главную»).
+  const goBack = useSafeBack("/(tabs)/profile" as const);
 
   const { session } = useAuthSession();
   const userId = session?.user?.id;
@@ -83,7 +88,7 @@ export default function MasterCategoriesScreen() {
       if (isOnboarding) {
         router.push("/(onboarding)/master-photo");
       } else {
-        router.back();
+        goBack();
       }
     } catch (_e) {
       // Ошибка отрендерится через setCategories.error ниже
@@ -129,11 +134,11 @@ export default function MasterCategoriesScreen() {
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Назад"
-            onPress={() => router.back()}
+            onPress={() => goBack()}
             hitSlop={12}
             className="h-10 w-10 items-center justify-center rounded-full active:opacity-70"
           >
-            <ChevronLeft size={24} strokeWidth={1.75} color={tc.ink} />
+            <CaretLeft size={24} weight="bold" color={tc.ink} />
           </Pressable>
         </View>
       )}
@@ -151,7 +156,7 @@ export default function MasterCategoriesScreen() {
       {/* Sticky search + counter row */}
       <View className="px-6 pb-3">
         <View className="flex-row items-center gap-2 rounded-md border border-hairline bg-canvas px-3 h-11">
-          <Search size={16} strokeWidth={1.75} color={tc.mute} />
+          <MagnifyingGlass size={16} weight="bold" color={tc.mute} />
           <TextInput
             value={search}
             onChangeText={setSearch}
@@ -175,7 +180,7 @@ export default function MasterCategoriesScreen() {
               hitSlop={6}
               className="active:opacity-60"
             >
-              <X size={14} strokeWidth={2} color={tc.mute} />
+              <X size={14} weight="bold" color={tc.mute} />
             </Pressable>
           ) : null}
         </View>
@@ -318,7 +323,7 @@ function CategoryChip({
             : "border-hairline bg-canvas active:opacity-70"
       }`}
     >
-      {isSelected ? <Check size={14} strokeWidth={2.25} color={accentColor} /> : null}
+      {isSelected ? <Check size={14} weight="fill" color={accentColor} /> : null}
       <AppText
         weight={isSelected ? "semibold" : "medium"}
         className={`text-body-sm ${isSelected ? "text-accent" : "text-ink"}`}

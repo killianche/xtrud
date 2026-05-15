@@ -14,7 +14,7 @@
  */
 
 import { Image } from "expo-image";
-import { ChevronLeft, ChevronRight, X } from "lucide-react-native";
+import { CaretLeft, CaretRight, X } from "phosphor-react-native";
 import { useEffect } from "react";
 import { Modal, Pressable, useWindowDimensions, View } from "react-native";
 import { Gesture, GestureDetector, GestureHandlerRootView } from "react-native-gesture-handler";
@@ -219,7 +219,7 @@ export function PortfolioLightbox({
                 hitSlop={12}
                 className="h-10 w-10 items-center justify-center rounded-full bg-black/40 active:opacity-70"
               >
-                <X size={22} strokeWidth={2} color="#ffffff" />
+                <X size={22} weight="bold" color="#ffffff" />
               </Pressable>
             </View>
 
@@ -234,7 +234,7 @@ export function PortfolioLightbox({
                   className="absolute top-1/2 left-3 h-11 w-11 items-center justify-center rounded-full bg-black/40 active:opacity-70"
                   style={{ transform: [{ translateY: -22 }] }}
                 >
-                  <ChevronLeft size={26} strokeWidth={2} color="#ffffff" />
+                  <CaretLeft size={26} weight="bold" color="#ffffff" />
                 </Pressable>
                 <Pressable
                   accessibilityRole="button"
@@ -244,7 +244,7 @@ export function PortfolioLightbox({
                   className="absolute top-1/2 right-3 h-11 w-11 items-center justify-center rounded-full bg-black/40 active:opacity-70"
                   style={{ transform: [{ translateY: -22 }] }}
                 >
-                  <ChevronRight size={26} strokeWidth={2} color="#ffffff" />
+                  <CaretRight size={26} weight="bold" color="#ffffff" />
                 </Pressable>
               </>
             )}

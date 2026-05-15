@@ -31,7 +31,7 @@
  *   />
  */
 
-import { ChevronRight, Search, X } from "lucide-react-native";
+import { CaretRight, MagnifyingGlass, X } from "phosphor-react-native";
 import { useEffect, useMemo, useState } from "react";
 import { Pressable, ScrollView, TextInput, View } from "react-native";
 import { AppText } from "@/components/AppText";
@@ -161,13 +161,13 @@ export function LocationFilterSheet({
                   onPress={() => toggle(key)}
                   className={`h-10 items-center justify-center rounded-pill border px-4 ${
                     selected
-                      ? "border-ink bg-ink"
+                      ? "border-accent bg-accent-soft"
                       : "border-hairline bg-canvas active:opacity-70"
                   }`}
                 >
                   <AppText
                     weight="medium"
-                    className={`text-body-sm ${selected ? "text-on-primary" : "text-ink"}`}
+                    className={`text-body-sm ${selected ? "text-accent" : "text-ink"}`}
                   >
                     {c.name}
                   </AppText>
@@ -192,7 +192,7 @@ export function LocationFilterSheet({
                 {villageCount > 0 ? ` · выбрано ${villageCount}` : null}
               </AppText>
             </View>
-            <ChevronRight size={18} strokeWidth={1.75} color={tc.mute} />
+            <CaretRight size={18} weight="bold" color={tc.mute} />
           </Pressable>
         </ScrollView>
 
@@ -214,9 +214,9 @@ export function LocationFilterSheet({
       subtitle="Можно выбрать несколько"
       fullScreen
     >
-      {/* Search input */}
+      {/* MagnifyingGlass input */}
       <View className="mb-3 flex-row items-center gap-2 rounded-md border border-hairline bg-canvas px-3 h-11">
-        <Search size={16} strokeWidth={1.75} color={tc.mute} />
+        <MagnifyingGlass size={16} weight="bold" color={tc.mute} />
         <TextInput
           value={search}
           onChangeText={setSearch}
@@ -240,7 +240,7 @@ export function LocationFilterSheet({
             hitSlop={6}
             className="active:opacity-60"
           >
-            <X size={14} strokeWidth={2} color={tc.mute} />
+            <X size={14} weight="bold" color={tc.mute} />
           </Pressable>
         ) : null}
       </View>
@@ -269,13 +269,13 @@ export function LocationFilterSheet({
                   onPress={() => toggle(key)}
                   className={`h-9 items-center justify-center rounded-pill border px-3 ${
                     selected
-                      ? "border-ink bg-ink"
+                      ? "border-accent bg-accent-soft"
                       : "border-hairline bg-canvas active:opacity-70"
                   }`}
                 >
                   <AppText
                     weight="medium"
-                    className={`text-body-sm ${selected ? "text-on-primary" : "text-ink"}`}
+                    className={`text-body-sm ${selected ? "text-accent" : "text-ink"}`}
                   >
                     {v}
                   </AppText>

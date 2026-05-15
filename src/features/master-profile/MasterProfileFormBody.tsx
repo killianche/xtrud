@@ -8,7 +8,7 @@
  * Caller предоставляет свой submit и кнопку.
  */
 
-import { Car, Wrench } from "lucide-react-native";
+import { Car, Wrench } from "phosphor-react-native";
 import type { Control, FieldErrors, FieldPath } from "react-hook-form";
 import { Controller } from "react-hook-form";
 import { Pressable, TextInput, View } from "react-native";
@@ -187,7 +187,7 @@ function ToggleCard({ Icon, label, value, onChange, disabled }: ToggleCardProps)
         value ? "border-accent bg-accent-soft" : "border-hairline bg-canvas"
       }`}
     >
-      <Icon size={24} strokeWidth={1.75} color={iconColor} />
+      <Icon size={24} weight="bold" color={iconColor} />
       <AppText
         weight={value ? "semibold" : "medium"}
         className={`text-center text-body-sm ${value ? "text-accent" : "text-ink"}`}

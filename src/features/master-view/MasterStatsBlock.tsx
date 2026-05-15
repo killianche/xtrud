@@ -11,7 +11,7 @@
 // Layout: компактные tile-карточки 2x2 grid. Цифра большая mono, label
 // маленький. Лимит откликов — с прогресс-баром.
 
-import { CheckCircle2, MessageSquare, Trophy, Zap } from "lucide-react-native";
+import { CheckCircle, ChatCenteredText, Trophy, Lightning } from "phosphor-react-native";
 import { View } from "react-native";
 import { AppText } from "@/components/AppText";
 import { useMasterStats } from "@/features/master-view/use-master-stats";
@@ -39,7 +39,7 @@ export function MasterStatsBlock() {
       <View className="rounded-xl border border-hairline bg-canvas p-4">
         <View className="flex-row items-center justify-between">
           <View className="flex-row items-center gap-2">
-            <Zap size={16} strokeWidth={2} color={limitIconColor} fill={limitIconColor} />
+            <Lightning size={16} weight="fill" color={limitIconColor} />
             <AppText weight="medium" className="text-caption text-muted">
               Отклики сегодня
             </AppText>
@@ -72,7 +72,7 @@ export function MasterStatsBlock() {
       {/* Bottom row — 3 tile-карточки */}
       <View className="flex-row gap-2">
         <StatTile
-          Icon={MessageSquare}
+          Icon={ChatCenteredText}
           iconColor={accentColor}
           value={data.responses_total}
           label="Отправил откликов"
@@ -84,7 +84,7 @@ export function MasterStatsBlock() {
           label="Меня выбрали"
         />
         <StatTile
-          Icon={CheckCircle2}
+          Icon={CheckCircle}
           iconColor={successColor}
           value={data.completed_total}
           label="Завершил сделок"
@@ -95,7 +95,7 @@ export function MasterStatsBlock() {
 }
 
 interface StatTileProps {
-  Icon: typeof Zap;
+  Icon: typeof Lightning;
   iconColor: string;
   value: number;
   label: string;
@@ -104,7 +104,7 @@ interface StatTileProps {
 function StatTile({ Icon, iconColor, value, label }: StatTileProps) {
   return (
     <View className="flex-1 rounded-xl border border-hairline bg-canvas p-3">
-      <Icon size={16} strokeWidth={2} color={iconColor} />
+      <Icon size={16} weight="bold" color={iconColor} />
       <AppText weight="bold" className="mt-2 text-display-sm text-ink">
         {value}
       </AppText>

@@ -11,7 +11,7 @@
 // Размещение: src/features/auth/ (рядом с use-set-active-role.ts).
 // Используется в app/(tabs)/profile/index.tsx.
 
-import { Briefcase, User } from "lucide-react-native";
+import { Briefcase, User } from "phosphor-react-native";
 import { Pressable, View } from "react-native";
 import { AppText } from "@/components/AppText";
 import {
@@ -102,14 +102,29 @@ function RoleToggle({
       accessibilityState={{ selected: active, disabled }}
       disabled={disabled}
       onPress={onPress}
+      // Active state — soft-bg canvas (как iOS segmented control), не filled-ink.
+      // По фидбэку user 2026-05-15: filled-black слишком давит. Контраст
+      // активного состояния — типографический (semibold ink) vs неактивного
+      // (medium mute), а не цветовой.
       className={`flex-1 flex-row items-center justify-center gap-1.5 rounded-pill h-10 ${
-        active ? "bg-ink" : "active:opacity-60"
+        active ? "bg-canvas" : "active:opacity-60"
       }`}
+      style={
+        active
+          ? {
+              shadowColor: "#000",
+              shadowOffset: { width: 0, height: 1 },
+              shadowOpacity: 0.06,
+              shadowRadius: 2,
+              elevation: 1,
+            }
+          : undefined
+      }
     >
-      <Icon size={16} strokeWidth={2} color={active ? activeText : inactiveColor} />
+      <Icon size={16} weight="bold" color={active ? activeColor : inactiveColor} />
       <AppText
         weight={active ? "semibold" : "medium"}
-        className={`text-body-sm ${active ? "text-on-primary" : "text-mute"}`}
+        className={`text-body-sm ${active ? "text-ink" : "text-mute"}`}
       >
         {label}
       </AppText>

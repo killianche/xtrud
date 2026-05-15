@@ -13,7 +13,7 @@
  * После submit показывает «Жалоба отправлена» и автоматически закрывается через 1.5с.
  */
 
-import { Check, X } from "lucide-react-native";
+import { Check, X } from "phosphor-react-native";
 import { useState } from "react";
 import {
   KeyboardAvoidingView,
@@ -106,13 +106,13 @@ export function ReportModal({ visible, targetType, targetId, onClose }: ReportMo
               hitSlop={8}
               className="ml-2 active:opacity-70"
             >
-              <X size={20} strokeWidth={1.75} color={tcMuted} />
+              <X size={20} weight="bold" color={tcMuted} />
             </Pressable>
           </View>
 
           {submitted ? (
             <View className="mt-2 flex-row items-center gap-2">
-              <Check size={18} strokeWidth={2} color={tcInk} />
+              <Check size={18} weight="bold" color={tcInk} />
               <AppText className="flex-1 text-body-sm text-muted">
                 Жалоба отправлена. Модератор рассмотрит в ближайшее время.
               </AppText>

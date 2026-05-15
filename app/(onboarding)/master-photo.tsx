@@ -1,6 +1,6 @@
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
-import { Camera } from "lucide-react-native";
+import { Camera } from "phosphor-react-native";
 import { ActivityIndicator, Pressable, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
@@ -67,7 +67,7 @@ export default function MasterPhotoScreen() {
               ) : isBusy ? (
                 <ActivityIndicator />
               ) : (
-                <Camera size={36} strokeWidth={1.5} color={mutedSoftColor} />
+                <Camera size={36} weight="bold" color={mutedSoftColor} />
               )}
             </Pressable>
 

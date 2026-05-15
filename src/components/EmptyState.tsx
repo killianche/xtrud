@@ -13,14 +13,14 @@
 //     onCtaPress={() => router.push("/orders/new")}
 //   />
 
-import type { LucideIcon } from "lucide-react-native";
 import { Pressable, View } from "react-native";
 import { AppText } from "@/components/AppText";
 import { useThemeColor } from "@/lib/use-theme-color";
+import type { IconComponent } from "@/types/icon";
 
 export interface EmptyStateProps {
-  /** Lucide-иконка — fallback если emoji не задан. */
-  icon: LucideIcon;
+  /** Иконка (Phosphor / Lucide — generic). Fallback если emoji не задан. */
+  icon: IconComponent;
   /** Большой emoji-стикер (приоритетен над icon). Используется как
    *  цветная объёмная «иллюстрация» без doodle-человечков. */
   emoji?: string;

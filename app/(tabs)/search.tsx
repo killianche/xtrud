@@ -17,7 +17,7 @@
  */
 
 import { useFocusEffect, useRouter } from "expo-router";
-import { ChevronLeft, X } from "lucide-react-native";
+import { CaretLeft, X } from "phosphor-react-native";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { FlatList, Pressable, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -64,7 +64,7 @@ export default function SearchScreen() {
           hitSlop={12}
           className="h-9 w-9 items-center justify-center rounded-full active:opacity-70 text-ink"
         >
-          <ChevronLeft size={20} strokeWidth={1.75} color="currentColor" />
+          <CaretLeft size={20} weight="bold" color="currentColor" />
         </Pressable>
       </View>
 
@@ -100,7 +100,7 @@ export default function SearchScreen() {
               style={{ position: "absolute", right: 0, top: 4, bottom: 4 }}
               className="h-9 w-9 items-center justify-center rounded-full active:opacity-60 text-mute"
             >
-              <X size={22} strokeWidth={2} color="currentColor" />
+              <X size={22} weight="bold" color="currentColor" />
             </Pressable>
           )}
         </View>

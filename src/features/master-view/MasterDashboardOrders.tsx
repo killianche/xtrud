@@ -22,12 +22,7 @@
  */
 
 import { useRouter } from "expo-router";
-import {
-  ChevronDown,
-  ChevronUp,
-  CheckCircle2,
-  MessageSquare,
-} from "lucide-react-native";
+import { CaretDown, CaretUp, CheckCircle, ChatCenteredText } from "phosphor-react-native";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Animated, Pressable, View } from "react-native";
 import { AppText } from "@/components/AppText";
@@ -110,15 +105,12 @@ export function MasterDashboardOrders({ userId }: MasterDashboardOrdersProps) {
 
   return (
     <View>
-      {/* Tab pills full-width — заголовок «Мои заявки» убран как избыточный
-          (контекст ясен из chip-tab лейблов). По фидбэку user 2026-05-15:
-          «убрать слово, переключатели на всю ширину». Каждый pill flex-1 —
-          iOS segmented control pattern. */}
-      <View className="flex-row gap-1 rounded-pill bg-canvas-soft-2 p-1">
+      {/* Segmented control: внешний контейнер rounded-lg (12px), внутренние
+          кнопки получат rounded-md (8px). Прямоугольная форма с лёгким
+          скруглением — стиль Vercel/Linear. */}
+      <View className="mx-4 flex-row gap-1 rounded-lg bg-canvas-soft-2 p-1">
         <TabPill
           label="Меня выбрали"
-          // Badge — только активные (open/in_progress), без архива.
-          // Завершённые «висят» в collapsible-секции ниже.
           count={activeAssigned.length}
           selected={tab === "assigned"}
           onPress={() => setTab("assigned")}
@@ -133,19 +125,17 @@ export function MasterDashboardOrders({ userId }: MasterDashboardOrdersProps) {
 
       {/* Content */}
       {isLoading ? (
-        // Skeleton-rows вместо ActivityIndicator (UI_PATTERNS §3.7).
-        // -mx-4 чтобы skeleton строки шли от края до края, как реальные OrderRow.
-        <View className="-mx-4">
+        // Skeleton-rows вместо ActivityIndicator (UI_PATTERNS §3.7). Идут
+        // edge-to-edge, как реальные OrderRow.
+        <View>
           <OrderRowsSkeleton count={3} />
         </View>
       ) : isEmpty ? (
         <EmptyTabState tab={tab} accentColor={accentColor} />
       ) : (
-        // Карточки — full-bleed, как в OrderRow.
-        // ‼️ Берём отступ из родителя обратно (-mx-4 = compensate за px-4 на
-        // MasterHomeContent), чтобы граница строки шла от края до края.
-        // Внутри OrderRow свой px-5.
-        <Animated.View style={{ opacity }} className="-mx-4 mt-3">
+        // Карточки — full-bleed, от левого до правого края экрана.
+        // Padding pх внутри самого OrderRow (px-5).
+        <Animated.View style={{ opacity }} className="mt-3">
           {tab === "assigned" ? (
             <>
               {/* Активные (open/in_progress) — всегда видны */}
@@ -176,31 +166,35 @@ export function MasterDashboardOrders({ userId }: MasterDashboardOrdersProps) {
                   раскрыть посмотреть». Если активных нет, но есть архив —
                   тоже показываем кнопку. */}
               {archivedAssigned.length > 0 ? (
-                <View className="mx-4 mt-4">
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel={
-                      archiveOpen ? "Скрыть завершённые" : "Показать завершённые"
-                    }
-                    onPress={() => setArchiveOpen((v) => !v)}
-                    className="flex-row items-center justify-between rounded-md border border-hairline bg-canvas px-4 py-3 active:opacity-70"
-                  >
-                    <View className="flex-1">
-                      <AppText weight="semibold" className="text-body-sm text-ink">
-                        Завершённые заявки
-                      </AppText>
-                      <AppText className="mt-0.5 text-caption text-mute">
-                        {archivedAssigned.length} {archivedAssigned.length === 1 ? "заявка" : "заявок"}
-                      </AppText>
-                    </View>
-                    {archiveOpen ? (
-                      <ChevronUp size={18} strokeWidth={2} color={inkColor} />
-                    ) : (
-                      <ChevronDown size={18} strokeWidth={2} color={inkColor} />
-                    )}
-                  </Pressable>
+                <>
+                  {/* Toggle-кнопка в padding'е, чтобы не приклеивалась
+                      к краям. Карточки списка — full-bleed. */}
+                  <View className="mx-4 mt-4">
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel={
+                        archiveOpen ? "Скрыть завершённые" : "Показать завершённые"
+                      }
+                      onPress={() => setArchiveOpen((v) => !v)}
+                      className="flex-row items-center justify-between rounded-md border border-hairline bg-canvas px-4 py-3 active:opacity-70"
+                    >
+                      <View className="flex-1">
+                        <AppText weight="semibold" className="text-body-sm text-ink">
+                          Завершённые заявки
+                        </AppText>
+                        <AppText className="mt-0.5 text-caption text-mute">
+                          {archivedAssigned.length} {archivedAssigned.length === 1 ? "заявка" : "заявок"}
+                        </AppText>
+                      </View>
+                      {archiveOpen ? (
+                        <CaretUp size={18} weight="bold" color={inkColor} />
+                      ) : (
+                        <CaretDown size={18} weight="bold" color={inkColor} />
+                      )}
+                    </Pressable>
+                  </View>
                   {archiveOpen ? (
-                    <View className="-mx-4 mt-3">
+                    <View className="mt-3">
                       {archivedAssigned.map((o) => (
                         <OrderRow
                           key={o.id}
@@ -226,7 +220,7 @@ export function MasterDashboardOrders({ userId }: MasterDashboardOrdersProps) {
                       ))}
                     </View>
                   ) : null}
-                </View>
+                </>
               ) : null}
             </>
           ) : (
@@ -293,9 +287,9 @@ function EmptyTabState({ tab, accentColor }: { tab: LocalTab; accentColor: strin
         />
         <View className="h-14 w-14 items-center justify-center rounded-full bg-canvas">
           {isAssigned ? (
-            <CheckCircle2 size={26} strokeWidth={1.75} color={accentColor} />
+            <CheckCircle size={26} weight="bold" color={accentColor} />
           ) : (
-            <MessageSquare size={26} strokeWidth={1.75} color={accentColor} />
+            <ChatCenteredText size={26} weight="bold" color={accentColor} />
           )}
         </View>
       </View>
@@ -328,11 +322,10 @@ function TabPill({
       accessibilityRole="button"
       accessibilityState={{ selected }}
       onPress={onPress}
-      // flex-1 → каждый pill занимает половину ширины контейнера.
-      // Высота h-12 (увеличена с h-10 — фидбек user 2026-05-15: «главное
-      // должно выглядеть круто»). Активный pill — bg-canvas + чуть более
-      // выраженная тень для glow-эффекта.
-      className={`flex-1 h-12 flex-row items-center justify-center gap-2 rounded-pill px-4 ${
+      // flex-1 → каждый pill занимает половину ширины. Inner rounded-md
+      // (8px) — менее «таблеточная» форма, более «segmented control» как у
+      // Vercel/Linear. h-10 — компактнее, дышит лучше при rounded-md.
+      className={`flex-1 h-10 flex-row items-center justify-center gap-2 rounded-md px-4 ${
         selected ? "bg-canvas" : "active:opacity-60"
       }`}
       style={
@@ -354,14 +347,19 @@ function TabPill({
         {label}
       </AppText>
       {count > 0 ? (
+        // Notification-style badge: красный (error-токен) как iOS unread badge.
+        // Маленький — h-4 min-w-4 px-1 + text-[10px]. Фидбэк user 2026-05-15:
+        // «синие badges заменить на красные как у обычных уведомлений, поменьше».
+        // На неselected — тот же красный (notification всегда заметна), но
+        // приглушённая через opacity 0.55 чтобы не доминировать.
         <View
-          className={`h-5 min-w-5 items-center justify-center rounded-full px-1.5 ${
-            selected ? "bg-accent" : "bg-canvas-soft"
-          }`}
+          className="h-4 min-w-4 items-center justify-center rounded-full bg-error px-1"
+          style={selected ? undefined : { opacity: 0.55 }}
         >
           <AppText
             weight="semibold"
-            className={`text-caption-xs ${selected ? "text-on-primary" : "text-mute"}`}
+            className="text-white"
+            style={{ fontSize: 10, lineHeight: 12 }}
           >
             {count}
           </AppText>

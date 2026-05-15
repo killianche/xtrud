@@ -8,7 +8,7 @@
 // уходит в RPC set_master_service_areas. Inline status «Сохранено» / spinner
 // заменяет save-кнопку.
 
-import { Check } from "lucide-react-native";
+import { Check, MapPin } from "phosphor-react-native";
 import { useEffect, useState } from "react";
 import { ActivityIndicator, Pressable, View } from "react-native";
 import { AppText } from "@/components/AppText";
@@ -27,6 +27,7 @@ export function ServiceAreasSection({ masterId }: ServiceAreasSectionProps) {
   const { data: existing, isLoading } = useMasterServiceAreas(masterId);
   const setAreas = useSetMasterServiceAreas(masterId);
   const successColor = useThemeColor("success");
+  const accentColor = useThemeColor("accent");
 
   // Local draft — Set<id> для быстрого toggle.
   const [cities, setCities] = useState<Set<string>>(new Set());
@@ -80,6 +81,18 @@ export function ServiceAreasSection({ masterId }: ServiceAreasSectionProps) {
   };
 
   const totalSelected = cities.size + districts.size;
+  // Семантика: пустой выбор = «вся Ингушетия» (нет территориального фильтра,
+  // мастер получает заявки откуда угодно). Аналогично клиентскому
+  // <LocationSheet> и <LocationPicker> — паттерн «карточка-toggle сверху»,
+  // снимающая остальные чипы. По фидбэку user 2026-05-15: «добавь один,
+  // который покрывает все — Ингушетия».
+  const isAllIngushetia = totalSelected === 0;
+  const selectAllIngushetia = () => {
+    if (isAllIngushetia) return; // уже active — клик no-op
+    setCities(new Set());
+    setDistricts(new Set());
+    persistAreas(new Set(), new Set());
+  };
 
   if (isLoading) {
     return (
@@ -112,7 +125,7 @@ export function ServiceAreasSection({ masterId }: ServiceAreasSectionProps) {
           </View>
         ) : showSaved ? (
           <View className="flex-row items-center gap-1.5">
-            <Check size={14} strokeWidth={2.5} color={successColor} />
+            <Check size={14} weight="bold" color={successColor} />
             <AppText weight="medium" className="text-caption text-success">
               Сохранено
             </AppText>
@@ -120,8 +133,42 @@ export function ServiceAreasSection({ masterId }: ServiceAreasSectionProps) {
         ) : null}
       </View>
 
+      {/* «Вся Ингушетия» — toggle-карточка сверху, снимает все остальные
+          чипы. Эквивалент пустого выбора (cities=[], districts=[]) — мастер
+          получает заявки со всей республики без территориального фильтра. */}
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Вся Ингушетия"
+        accessibilityState={{ selected: isAllIngushetia }}
+        disabled={setAreas.isPending || isAllIngushetia}
+        onPress={selectAllIngushetia}
+        className={`mt-4 flex-row items-center gap-3 rounded-lg border p-4 ${
+          isAllIngushetia
+            ? "border-accent bg-accent-soft"
+            : "border-hairline bg-canvas-soft active:opacity-70"
+        }`}
+      >
+        <View className="h-10 w-10 items-center justify-center rounded-full bg-canvas">
+          <MapPin size={18} weight="bold" color={successColor} />
+        </View>
+        <View className="flex-1">
+          <AppText
+            weight="semibold"
+            className={`text-body-md ${isAllIngushetia ? "text-accent" : "text-ink"}`}
+          >
+            Вся Ингушетия
+          </AppText>
+          <AppText className="mt-0.5 text-caption text-mute">
+            Получать заявки со всей республики, без фильтра по городу
+          </AppText>
+        </View>
+        {isAllIngushetia ? (
+          <Check size={20} weight="fill" color={accentColor} />
+        ) : null}
+      </Pressable>
+
       {/* Города */}
-      <AppText weight="semibold" className="mt-4 text-caption uppercase tracking-wider text-muted">
+      <AppText weight="semibold" className="mt-5 text-caption uppercase tracking-wider text-muted">
         Города
       </AppText>
       <View className="mt-2 flex-row flex-wrap gap-2">
@@ -136,13 +183,13 @@ export function ServiceAreasSection({ masterId }: ServiceAreasSectionProps) {
               onPress={() => toggleCity(c.id)}
               className={`h-10 items-center justify-center rounded-pill border px-4 ${
                 selected
-                  ? "border-ink bg-ink"
+                  ? "border-accent bg-accent-soft"
                   : "border-hairline bg-canvas active:opacity-70"
               }`}
             >
               <AppText
                 weight="medium"
-                className={`text-body-sm ${selected ? "text-on-primary" : "text-ink"}`}
+                className={`text-body-sm ${selected ? "text-accent" : "text-ink"}`}
               >
                 {c.name}
               </AppText>
@@ -167,13 +214,13 @@ export function ServiceAreasSection({ masterId }: ServiceAreasSectionProps) {
               onPress={() => toggleDistrict(d.id)}
               className={`h-10 items-center justify-center rounded-pill border px-4 ${
                 selected
-                  ? "border-ink bg-ink"
+                  ? "border-accent bg-accent-soft"
                   : "border-hairline bg-canvas active:opacity-70"
               }`}
             >
               <AppText
                 weight="medium"
-                className={`text-body-sm ${selected ? "text-on-primary" : "text-ink"}`}
+                className={`text-body-sm ${selected ? "text-accent" : "text-ink"}`}
               >
                 {d.name}
               </AppText>

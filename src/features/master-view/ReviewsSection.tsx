@@ -8,7 +8,7 @@
  */
 
 import type { UseInfiniteQueryResult } from "@tanstack/react-query";
-import { Star } from "lucide-react-native";
+import { Star } from "phosphor-react-native";
 import { ActivityIndicator, Pressable, View } from "react-native";
 import { AppText } from "@/components/AppText";
 import { Avatar } from "@/components/Avatar";
@@ -102,9 +102,8 @@ function ReviewRow({ review }: { review: ReviewWithAuthor }) {
                 <Star
                   key={n}
                   size={12}
-                  strokeWidth={2}
+                  weight={n <= review.rating ? "fill" : "bold"}
                   color={n <= review.rating ? "#f59e0b" : "#e5e7eb"}
-                  fill={n <= review.rating ? "#f59e0b" : "transparent"}
                 />
               ))}
             </View>

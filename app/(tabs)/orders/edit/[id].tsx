@@ -5,7 +5,7 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { ChevronLeft } from "lucide-react-native";
+import { CaretLeft } from "phosphor-react-native";
 import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import {
@@ -66,9 +66,8 @@ export default function EditOrderScreen() {
       cityId: "",
       district: "",
       urgency: "flexible",
-      budgetMode: "negotiable",
-      budgetMin: null,
-      budgetMax: null,
+      budgetKind: "negotiable",
+      budgetValue: null,
     },
     mode: "onChange",
   });
@@ -84,13 +83,12 @@ export default function EditOrderScreen() {
       cityId: order.city_id ?? "all",
       district: order.district ?? "",
       urgency: order.urgency,
-      budgetMode: order.budget_mode,
-      budgetMin: order.budget_min,
-      budgetMax: order.budget_max,
+      budgetKind: order.budget_kind,
+      budgetValue: order.budget_value,
     });
   }, [order, reset]);
 
-  const budgetMode = watch("budgetMode");
+  const budgetKind = watch("budgetKind");
 
   const onSubmit = handleSubmit(async (values) => {
     if (!orderId || !userId) return;
@@ -104,9 +102,8 @@ export default function EditOrderScreen() {
         cityId: values.cityId,
         district: values.district,
         urgency: values.urgency,
-        budgetMode: values.budgetMode,
-        budgetMin: values.budgetMode === "negotiable" ? null : values.budgetMin,
-        budgetMax: values.budgetMode === "negotiable" ? null : values.budgetMax,
+        budgetKind: values.budgetKind,
+        budgetValue: values.budgetKind === "negotiable" ? null : values.budgetValue,
       });
       goBack();
     } catch (_e) {
@@ -131,7 +128,7 @@ export default function EditOrderScreen() {
           hitSlop={12}
           className="h-10 w-10 items-center justify-center rounded-full active:opacity-70"
         >
-          <ChevronLeft size={24} strokeWidth={1.75} color={inkColor} />
+          <CaretLeft size={24} weight="bold" color={inkColor} />
         </Pressable>
       </View>
 
@@ -175,7 +172,7 @@ export default function EditOrderScreen() {
           <OrderFormBody
             control={control}
             errors={errors}
-            budgetMode={budgetMode}
+            budgetKind={budgetKind}
             isBusy={isBusy}
             categories={categories}
             cities={cities}

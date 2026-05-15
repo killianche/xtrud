@@ -11,7 +11,7 @@
 //   variant="row" — full-width, для category-list (88-104px высоты).
 
 import { Image } from "expo-image";
-import { Star } from "lucide-react-native";
+import { Star } from "phosphor-react-native";
 import { Pressable, View } from "react-native";
 import { AppText } from "@/components/AppText";
 import { Avatar } from "@/components/Avatar";
@@ -75,7 +75,7 @@ export function MasterPreviewCard({
         <View className="mt-1 flex-row items-center gap-1">
           {ratingAvg != null && ratingCount > 0 ? (
             <>
-              <Star size={12} strokeWidth={2} color={warningColor} fill={warningColor} />
+              <Star size={12} weight="fill" color={warningColor} />
               <AppText weight="semibold" className="text-caption text-ink">
                 {ratingAvg.toFixed(1)}
               </AppText>
@@ -126,7 +126,7 @@ export function MasterPreviewCard({
         <View className="mt-1 flex-row items-center gap-2">
           {ratingAvg != null && ratingCount > 0 ? (
             <View className="flex-row items-center gap-1">
-              <Star size={12} strokeWidth={2} color={warningColor} fill={warningColor} />
+              <Star size={12} weight="fill" color={warningColor} />
               <AppText weight="semibold" className="text-caption text-ink">
                 {ratingAvg.toFixed(1)}
               </AppText>

@@ -1,6 +1,6 @@
 import * as ImagePicker from "expo-image-picker";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
-import { ChevronLeft, ImagePlus, Info, MessageSquare, Send, X } from "lucide-react-native";
+import { CaretLeft, ImageSquare, Info, ChatCenteredText, PaperPlaneTilt, X } from "phosphor-react-native";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -73,7 +73,7 @@ export default function ChatThreadScreen() {
 
   const [text, setText] = useState("");
   // P0-6: локальный URI выбранной картинки до отправки. Picker запускается
-  // при тапе на ImagePlus, после выбора — preview над input + send отправит
+  // при тапе на Image, после выбора — preview над input + send отправит
   // в Storage через useSendMessage.
   const [pendingImageUri, setPendingImageUri] = useState<string | null>(null);
   const [reportMessageId, setReportMessageId] = useState<string | null>(null);
@@ -163,7 +163,7 @@ export default function ChatThreadScreen() {
           hitSlop={12}
           className="h-10 w-10 items-center justify-center rounded-full active:opacity-70 hover:bg-surface-2"
         >
-          <ChevronLeft size={22} strokeWidth={2} color={tc.ink} />
+          <CaretLeft size={22} weight="bold" color={tc.ink} />
         </Pressable>
 
         <Pressable
@@ -213,7 +213,7 @@ export default function ChatThreadScreen() {
             hitSlop={8}
             className="h-10 w-10 items-center justify-center rounded-full active:opacity-70 hover:bg-surface-2"
           >
-            <Info size={20} strokeWidth={1.75} color={tc["muted-soft"]} />
+            <Info size={20} weight="bold" color={tc["muted-soft"]} />
           </Pressable>
         ) : null}
       </View>
@@ -240,7 +240,7 @@ export default function ChatThreadScreen() {
         {!isLoading && !error && messages?.length === 0 && (
           <View className="mt-8">
             <EmptyState
-              icon={MessageSquare}
+              icon={ChatCenteredText}
               title="Начните диалог"
               hint="Поздоровайтесь и уточните детали — подсказки внизу помогут."
             />
@@ -281,7 +281,7 @@ export default function ChatThreadScreen() {
               style={{ position: "absolute", top: -8, right: -8 }}
               className="h-7 w-7 items-center justify-center rounded-full bg-ink active:opacity-80"
             >
-              <X size={14} strokeWidth={2.5} color={tc["on-primary"]} />
+              <X size={14} weight="bold" color={tc["on-primary"]} />
             </Pressable>
           </View>
         </View>
@@ -300,7 +300,7 @@ export default function ChatThreadScreen() {
           hitSlop={6}
           className="h-12 w-12 items-center justify-center rounded-full bg-surface-2 active:opacity-70"
         >
-          <ImagePlus size={20} strokeWidth={1.75} color={tc.ink} />
+          <ImageSquare size={20} weight="bold" color={tc.ink} />
         </Pressable>
         <TextInput
           value={text}
@@ -321,7 +321,7 @@ export default function ChatThreadScreen() {
             canSend ? "bg-primary active:opacity-80" : "bg-surface-3"
           }`}
         >
-          <Send size={20} strokeWidth={2} color={canSend ? tc["on-primary"] : tc["muted-soft"]} />
+          <PaperPlaneTilt size={20} weight="bold" color={canSend ? tc["on-primary"] : tc["muted-soft"]} />
         </Pressable>
       </View>
 

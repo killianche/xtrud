@@ -3,7 +3,7 @@
 // На mobile тоже работает (override системной); на web — необходимо, т.к.
 // системную тему пользователь не всегда контролирует.
 
-import { Check, Moon, Smartphone, Sun } from "lucide-react-native";
+import { Check, Moon, DeviceMobile, Sun } from "phosphor-react-native";
 import { Pressable, View } from "react-native";
 import { AppText } from "@/components/AppText";
 import { useColorScheme } from "@/hooks/use-color-scheme";
@@ -11,7 +11,7 @@ import type { ThemePreference } from "@/lib/theme";
 import { useThemeColors } from "@/lib/use-theme-color";
 
 const OPTIONS: { value: ThemePreference; label: string; icon: typeof Sun }[] = [
-  { value: "system", label: "Системная", icon: Smartphone },
+  { value: "system", label: "Системная", icon: DeviceMobile },
   { value: "light", label: "Светлая", icon: Sun },
   { value: "dark", label: "Тёмная", icon: Moon },
 ];
@@ -35,12 +35,12 @@ export function ThemeSwitcher() {
             }`}
           >
             <View className="flex-row items-center gap-3">
-              <Icon size={18} strokeWidth={1.75} color={selected ? tc.ink : tc.body} />
+              <Icon size={18} weight="bold" color={selected ? tc.ink : tc.body} />
               <AppText weight={selected ? "semibold" : "medium"} className="text-body-md text-ink">
                 {label}
               </AppText>
             </View>
-            {selected && <Check size={18} strokeWidth={2} color={tc.ink} />}
+            {selected && <Check size={18} weight="bold" color={tc.ink} />}
           </Pressable>
         );
       })}

@@ -118,12 +118,24 @@ Active state в TabBar = `weight="fill"` + ink color + **pill-фон** `bg-canva
 
 Полный каталог: **https://phosphoricons.com** — кликни иконку, переключи weight, скопируй имя. Имена в `phosphor-react-native` PascalCase (как в каталоге, но без пробелов).
 
-## Где сейчас используется
+## Где используется
 
-- [`src/components/TabBar.tsx`](../src/components/TabBar.tsx) — центральная и right-таб иконки (MagnifyingGlass, PlusCircle).
-- [`app/(tabs)/_layout.tsx`](../app/(tabs)/_layout.tsx) — 4 tabBarIcon (House, ClipboardText, ChatCircle, UserCircle).
+**Везде, кроме категорийных fallback'ов.** 2026-05-15 проведена массовая миграция Lucide → Phosphor по всему `app/` и `src/` через скрипт [`scripts/migrate-lucide-to-phosphor.mjs`](../scripts/migrate-lucide-to-phosphor.mjs) — 56 файлов, ~250 use-site'ов. Покрыто:
 
-**Постепенная миграция Lucide → Phosphor:** оставшиеся ~80-120 мест с Lucide мигрируем по мере правки экранов (по фичам, не отдельным sweep'ом). При любой правке UI-кода — если уже трогаешь файл, заменяй Lucide imports на Phosphor по таблице выше.
+- TabBar, _layout (tabBarIcon)
+- ScreenHeader (CaretLeft back-button + rightAction Icon + iconAction Icon)
+- Все UI atoms (BottomSheet, PickerSheet, LocationSheet, LocationFilterSheet, SearchBar, Avatar)
+- Все экраны (home, orders, chats, profile, master-detail, category, admin, useful, notifications, search)
+- Features (chat list, master-view, master-services, master-profile, orders, profile portfolio, auth role switcher, reports)
+
+**Что НЕ мигрировано (намеренно):**
+
+- [`src/lib/category-icons.ts`](../src/lib/category-icons.ts) — Lucide-fallback **категорий** L2 (47 иконок). Используется как fallback в `OrderRow`/`CategoryPicker` когда категория не в `category-color-icons.ts`. По правилу user'а «иконки категорий не трогать» оставлено как есть. **Тип return** изменён с `LucideIcon` → `IconComponent` (generic), чтобы вызывающие места могли передавать Phosphor-prop'ы (`weight="bold"`) — Lucide их runtime игнорирует, tsc принимает.
+- [`src/components/CategoryTile.tsx`](../src/components/CategoryTile.tsx) — Lucide-карта плиток категорий L2 (47 иконок). То же rationale.
+
+**Generic `IconComponent` тип** ([`src/types/icon.ts`](../src/types/icon.ts)) — supertype для Lucide+Phosphor, описывает только используемые props (`size?`, `color?`, `weight?`, `className?`). Используется в shared компонентах (`EmptyState`, `ScreenHeader`), чтобы можно было передавать обе библиотеки.
+
+**Type augmentation** ([`phosphor-react-native.d.ts`](../phosphor-react-native.d.ts)) — добавляет `className?: string` в `IconProps`. Без этого tsc ругается на `<House className="text-ink" />` (NativeWind className на иконках работает runtime через cssInterop, но Phosphor сам по себе className не объявляет).
 
 ## Anti-patterns
 

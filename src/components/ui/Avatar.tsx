@@ -10,7 +10,7 @@
  */
 
 import { Image, type ImageContentFit } from "expo-image";
-import { User } from "lucide-react-native";
+import { User } from "phosphor-react-native";
 import { useMemo } from "react";
 import { View } from "react-native";
 import { AppText } from "@/components/AppText";
@@ -72,7 +72,7 @@ export function Avatar({ url, name, seed, size = "md", contentFit = "cover" }: A
         className="bg-canvas-soft-2 items-center justify-center"
         style={{ width: dims.px, height: dims.px, borderRadius: dims.px / 2 }}
       >
-        <User size={dims.iconSize} strokeWidth={1.75} color="currentColor" className="text-mute" />
+        <User size={dims.iconSize} weight="bold" color="currentColor" className="text-mute" />
       </View>
     );
   }

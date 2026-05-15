@@ -14,7 +14,7 @@
  */
 
 import { useRouter } from "expo-router";
-import { AlertTriangle, ChevronLeft, ShieldCheck, X } from "lucide-react-native";
+import { Warning, CaretLeft, ShieldCheck, X } from "phosphor-react-native";
 import { useState } from "react";
 import { ActivityIndicator, Alert, Pressable, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -95,7 +95,7 @@ function ReportCard({
 
       {item.status !== "pending" && (
         <View className="mt-2 flex-row items-center gap-1">
-          <ShieldCheck size={12} strokeWidth={1.75} color="#10b981" />
+          <ShieldCheck size={12} weight="bold" color="#10b981" />
           <AppText weight="medium" className="text-caption-xs text-success">
             {item.status}
           </AppText>
@@ -130,7 +130,7 @@ export default function AdminScreen() {
         style={{ paddingTop: insets.top }}
       >
         <EmptyState
-          icon={AlertTriangle}
+          icon={Warning}
           title="Доступ запрещён"
           hint="Эта страница только для админов."
         />
@@ -212,7 +212,7 @@ export default function AdminScreen() {
           hitSlop={12}
           className="h-10 w-10 items-center justify-center rounded-full active:opacity-70"
         >
-          <ChevronLeft size={24} strokeWidth={1.75} color={tc.ink} />
+          <CaretLeft size={24} weight="bold" color={tc.ink} />
         </Pressable>
         <AppText weight="bold" className="flex-1 text-title-lg text-ink">
           Модерация

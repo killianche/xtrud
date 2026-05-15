@@ -7,7 +7,7 @@
 
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
-import { BookOpen, ChevronLeft } from "lucide-react-native";
+import { BookOpen, CaretLeft } from "phosphor-react-native";
 import { ActivityIndicator, Pressable, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
@@ -70,7 +70,7 @@ export default function UsefulScreen() {
           hitSlop={12}
           className="h-10 w-10 items-center justify-center rounded-full active:opacity-70"
         >
-          <ChevronLeft size={24} strokeWidth={1.75} color={tcInk} />
+          <CaretLeft size={24} weight="bold" color={tcInk} />
         </Pressable>
         <AppText weight="bold" className="flex-1 text-title-lg text-ink">
           Полезное

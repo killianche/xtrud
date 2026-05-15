@@ -1,20 +1,6 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import {
-  Check,
-  CheckCircle2,
-  ChevronLeft,
-  ChevronRight,
-  Clock,
-  Flag,
-  MapPin,
-  MessageSquare,
-  MoreHorizontal,
-  Pencil,
-  Star,
-  Wallet,
-  X,
-} from "lucide-react-native";
+import { Check, CheckCircle, CaretRight, Clock, Flag, MapPin, ChatCenteredText, DotsThree, Pencil, Star, Wallet, X } from "phosphor-react-native";
 import { useEffect, useRef, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import {
@@ -35,7 +21,7 @@ import { Avatar } from "@/components/Avatar";
 import { OrderStatusBadge } from "@/components/OrderStatusBadge";
 import { useAuthSession } from "@/features/auth/use-auth-session";
 import { useUserRecord } from "@/features/auth/use-user-record";
-import { BottomSheet } from "@/components/ui";
+import { BottomSheet, ScreenHeader } from "@/components/ui";
 import { useMyChats } from "@/features/chat/use-my-chats";
 import { useStartChatWithMaster } from "@/features/chat/use-start-chat";
 import { useRejectResponse } from "@/features/orders/use-reject-response";
@@ -45,7 +31,12 @@ import {
   shouldShowOutcomePrompt,
   useOutcomeStore,
 } from "@/features/orders/OutcomeTrackingModal";
-import { orderBudgetModeOptions, urgencyLabel } from "@/features/orders/order-schema";
+import {
+  formatPrice,
+  orderPriceKindOptions,
+  priceKindLabel,
+  urgencyLabel,
+} from "@/features/orders/order-schema";
 import { useAcceptResponse } from "@/features/orders/use-accept-response";
 import { useCancelOrder } from "@/features/orders/use-cancel-order";
 import { useCompleteOrder } from "@/features/orders/use-complete-order";
@@ -63,10 +54,12 @@ import {
 import { useMarkResponsesViewed } from "@/features/orders/use-unread-responses";
 import { ReportModal } from "@/features/reports/ReportModal";
 import { useMyReviewForOrder, useSubmitReview } from "@/features/reviews/use-reviews";
+import { useColorScheme } from "@/hooks/use-color-scheme";
+import { darkColors, lightColors } from "@/lib/colors";
 import { confirmAsync } from "@/lib/confirm";
 import { useSafeBack } from "@/lib/use-safe-back";
 import { useThemeColors } from "@/lib/use-theme-color";
-import type { Tables } from "@/types/database";
+import type { Database, Tables } from "@/types/database";
 
 // ============================================================================
 // Response form schema (для мастера)
@@ -74,9 +67,8 @@ import type { Tables } from "@/types/database";
 
 const responseSchema = z.object({
   message: z.string().min(10, "Минимум 10 символов").max(1000, "Максимум 1000 символов"),
-  priceMode: z.enum(orderBudgetModeOptions),
-  priceMin: z.number().int().min(0).nullable(),
-  priceMax: z.number().int().min(0).nullable(),
+  priceKind: z.enum(orderPriceKindOptions),
+  priceValue: z.number().int().min(0).nullable(),
   leadTime: z.string().max(100, "Максимум 100 символов"),
 });
 
@@ -138,34 +130,23 @@ export default function OrderDetailScreen() {
       className="flex-1 bg-canvas"
       style={{ paddingTop: insets.top }}
     >
-      {/* Header — чистая навигация. Status переехал в info-block ниже —
-          там он по смыслу принадлежит к контенту заказа, а не к навбару.
-          В шапке только: back + ⋮ overflow меню. */}
-      <View className="flex-row items-center justify-between px-3 py-3">
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Назад"
-          onPress={goBack}
-          hitSlop={12}
-          className="h-10 w-10 items-center justify-center rounded-full active:opacity-70 hover:bg-canvas-soft"
-        >
-          <ChevronLeft size={22} strokeWidth={2} color={tc.ink} />
-        </Pressable>
-
-        {order && id && userId ? (
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Действия с заказом"
-            onPress={() => setMenuOpen(true)}
-            hitSlop={12}
-            className="h-10 w-10 items-center justify-center rounded-full active:opacity-70 hover:bg-canvas-soft"
-          >
-            <MoreHorizontal size={20} strokeWidth={2} color={tc.ink} />
-          </Pressable>
-        ) : (
-          <View className="w-10" />
-        )}
-      </View>
+      {/* ScreenHeader без title — заголовок переехал в body (hero-display
+          под status). Header содержит только back + ⋮ overflow-меню.
+          Паттерн Instagram-post / Twitter-tweet: entity-page без title в
+          shell, hero внутри тела. Выбор user 2026-05-15. */}
+      <ScreenHeader
+        title=""
+        onBack={goBack}
+        iconAction={
+          order && id && userId
+            ? {
+                Icon: DotsThree,
+                onPress: () => setMenuOpen(true),
+                accessibilityLabel: "Действия с заказом",
+              }
+            : undefined
+        }
+      />
 
       {isLoading && (
         <View className="mt-8 items-center px-6">
@@ -337,18 +318,53 @@ interface ActionMenuItemProps {
 }
 
 function ActionMenuItem({ icon: Icon, label, destructive, onPress }: ActionMenuItemProps) {
+  // BottomSheet рендерится в react-native-web Modal portal, CSS-vars
+  // `rgb(var(--X))` там не резолвятся. Получаем hex напрямую из палитры.
+  const { colorScheme } = useColorScheme();
+  const palette = colorScheme === "dark" ? darkColors : lightColors;
+  const isWeb = Platform.OS === "web";
   const tc = useThemeColors(["ink", "error"]);
-  const color = destructive ? tc.error : tc.ink;
+  const inkColor = isWeb ? palette.ink : tc.ink;
+  const errorColor = isWeb ? palette.error : tc.error;
+  const iconColor = destructive ? errorColor : inkColor;
+  const textColor = destructive ? errorColor : inkColor;
+  // Soft-bg для icon-square slot. Для destructive — error-soft (мягкий
+  // красный), для обычных — canvas-soft (нейтральный фон).
+  const slotBg = destructive
+    ? isWeb
+      ? palette["error-soft"]
+      : palette["error-soft"]
+    : isWeb
+      ? palette["canvas-soft"]
+      : palette["canvas-soft"];
   return (
     <Pressable
       accessibilityRole="button"
       onPress={onPress}
-      className="flex-row items-center gap-3 rounded-lg px-3 py-3 active:bg-canvas-soft hover:bg-canvas-soft"
+      style={({ pressed }) => ({
+        opacity: pressed ? 0.7 : 1,
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 12,
+        paddingHorizontal: 20,
+        paddingVertical: 12,
+      })}
     >
-      <Icon size={18} strokeWidth={1.75} color={color} />
+      <View
+        style={{
+          height: 32,
+          width: 32,
+          alignItems: "center",
+          justifyContent: "center",
+          borderRadius: 8,
+          backgroundColor: slotBg,
+        }}
+      >
+        <Icon size={18} weight="bold" color={iconColor} />
+      </View>
       <AppText
         weight="medium"
-        className={`text-body-md ${destructive ? "text-error" : "text-ink"}`}
+        style={{ color: textColor, fontSize: 16, lineHeight: 22 }}
       >
         {label}
       </AppText>
@@ -377,7 +393,7 @@ function OrderInfoBlock({ order, isOwner }: OrderInfoBlockProps) {
 
   // Бюджет — отдельный display-режим: разделяем сумму и пометку «договорной».
   const budgetText = formatBudget(order);
-  const isNegotiable = order.budget_mode === "negotiable";
+  const isNegotiable = order.budget_kind === "negotiable";
 
   return (
     <View className="px-5 pt-2">
@@ -392,6 +408,8 @@ function OrderInfoBlock({ order, isOwner }: OrderInfoBlockProps) {
         </AppText>
       </View>
 
+      {/* Display-заголовок — теперь живёт в body (а не в ScreenHeader),
+          выбор user 2026-05-15. Hero-стиль entity-page. */}
       <AppText
         weight="display"
         className="mt-3 text-display-md tracking-tight text-ink"
@@ -402,12 +420,12 @@ function OrderInfoBlock({ order, isOwner }: OrderInfoBlockProps) {
       {/* Meta row — urgency + location, с иконками */}
       <View className="mt-3 flex-row flex-wrap items-center gap-x-3 gap-y-1">
         <View className="flex-row items-center gap-1.5">
-          <Clock size={13} strokeWidth={1.75} color={tc.mute} />
+          <Clock size={13} weight="bold" color={tc.mute} />
           <AppText className="text-body-sm text-mute">{urgencyLabel(order.urgency)}</AppText>
         </View>
         <AppText className="text-caption text-muted-soft">·</AppText>
         <View className="flex-row items-center gap-1.5">
-          <MapPin size={13} strokeWidth={1.75} color={tc.mute} />
+          <MapPin size={13} weight="bold" color={tc.mute} />
           <AppText className="text-body-sm text-mute">
             {order.city?.name ?? order.city_id}
             {order.district ? ` · ${order.district}` : ""}
@@ -418,7 +436,7 @@ function OrderInfoBlock({ order, isOwner }: OrderInfoBlockProps) {
       {/* Budget hero — крупно, mono. Это первая цифра, на которую смотрит мастер. */}
       {budgetText ? (
         <View className="mt-5 flex-row items-center gap-2">
-          <Wallet size={18} strokeWidth={1.75} color={tc.ink} />
+          <Wallet size={18} weight="bold" color={tc.ink} />
           {isNegotiable ? (
             <AppText weight="semibold" className="text-title-md text-ink">
               Цена договорная
@@ -472,7 +490,7 @@ function OrderInfoBlock({ order, isOwner }: OrderInfoBlockProps) {
           </View>
           {clientRating != null && clientRatingCount > 0 ? (
             <View className="flex-row items-center gap-1">
-              <Star size={13} strokeWidth={2} color={tc.warning} fill={tc.warning} />
+              <Star size={13} weight="fill" color={tc.warning} />
               <AppText weight="mono" className="text-mono-caption text-ink">
                 {clientRating.toFixed(1)}
               </AppText>
@@ -481,7 +499,7 @@ function OrderInfoBlock({ order, isOwner }: OrderInfoBlockProps) {
               </AppText>
             </View>
           ) : null}
-          <ChevronRight size={16} strokeWidth={1.75} color={tc["muted-soft"]} />
+          <CaretRight size={16} weight="bold" color={tc["muted-soft"]} />
         </Pressable>
       ) : null}
     </View>
@@ -489,21 +507,11 @@ function OrderInfoBlock({ order, isOwner }: OrderInfoBlockProps) {
 }
 
 function formatBudget(o: {
-  budget_min: number | null;
-  budget_max: number | null;
-  budget_mode: string;
+  budget_kind: Database["public"]["Enums"]["order_price_kind"];
+  budget_value: number | null;
 }): string {
-  const fmt = new Intl.NumberFormat("ru-RU");
-  if (o.budget_mode === "negotiable") return "Цена договорная";
-  if (o.budget_mode === "exact" && o.budget_min !== null) return `${fmt.format(o.budget_min)} ₽`;
-  if (o.budget_mode === "range") {
-    if (o.budget_min !== null && o.budget_max !== null) {
-      return `${fmt.format(o.budget_min)} – ${fmt.format(o.budget_max)} ₽`;
-    }
-    if (o.budget_min !== null) return `от ${fmt.format(o.budget_min)} ₽`;
-    if (o.budget_max !== null) return `до ${fmt.format(o.budget_max)} ₽`;
-  }
-  return "Цена договорная";
+  // Делегирует общему форматтеру цены из order-schema.
+  return formatPrice(o.budget_kind, o.budget_value);
 }
 
 // ============================================================================
@@ -723,9 +731,9 @@ function ClientResponsesSection({ orderId, order, chatId }: ClientResponsesSecti
                 </AppText>
               </View>
             </View>
-            <ChevronRight
+            <CaretRight
               size={16}
-              strokeWidth={1.75}
+              weight="bold"
               color={tc["muted-soft"]}
               style={{
                 transform: [{ rotate: hiddenExpanded ? "90deg" : "0deg" }],
@@ -816,7 +824,7 @@ function ClientMasterResponseCard({
   const masterName =
     [response.master?.first_name, response.master?.last_name].filter(Boolean).join(" ") || "Мастер";
   const priceText = formatResponsePrice(response);
-  const isNegotiable = response.price_mode === "negotiable";
+  const isNegotiable = response.price_kind === "negotiable";
 
   const isPicked = variant === "picked";
   const isActionable = variant === "actionable";
@@ -856,7 +864,7 @@ function ClientMasterResponseCard({
               </AppText>
               {response.lead_time ? (
                 <View className="mt-0.5 flex-row items-center gap-1">
-                  <Clock size={12} strokeWidth={1.75} color={tc["muted-soft"]} />
+                  <Clock size={12} weight="bold" color={tc["muted-soft"]} />
                   <AppText className="text-caption text-mute" numberOfLines={1}>
                     {response.lead_time}
                   </AppText>
@@ -911,7 +919,7 @@ function ClientMasterResponseCard({
             onPress={onOpenChat}
             className="mt-5 h-12 flex-row items-center justify-center gap-2 rounded-pill bg-ink active:opacity-80"
           >
-            <MessageSquare size={16} strokeWidth={2} color={tc["on-primary"]} />
+            <ChatCenteredText size={16} weight="bold" color={tc["on-primary"]} />
             <AppText weight="semibold" className="text-button text-on-primary">
               Открыть чат
             </AppText>
@@ -1051,17 +1059,10 @@ function ClientMasterResponseCard({
 }
 
 function formatResponsePrice(r: Tables<"order_responses">): string {
-  const fmt = new Intl.NumberFormat("ru-RU");
-  if (r.price_mode === "negotiable") return "Договорная";
-  if (r.price_mode === "exact" && r.price_min !== null) return `${fmt.format(r.price_min)} ₽`;
-  if (r.price_mode === "range") {
-    if (r.price_min !== null && r.price_max !== null) {
-      return `${fmt.format(r.price_min)} – ${fmt.format(r.price_max)} ₽`;
-    }
-    if (r.price_min !== null) return `от ${fmt.format(r.price_min)} ₽`;
-    if (r.price_max !== null) return `до ${fmt.format(r.price_max)} ₽`;
-  }
-  return "Договорная";
+  // Делегирует общему форматтеру из order-schema. «Цена договорная» → «Договорная»
+  // короткая (для inline-меты в карточке отклика).
+  if (r.price_kind === "negotiable") return "Договорная";
+  return formatPrice(r.price_kind, r.price_value);
 }
 
 // ============================================================================
@@ -1102,15 +1103,14 @@ function MasterResponseSection({
     resolver: zodResolver(responseSchema),
     defaultValues: {
       message: "",
-      priceMode: "negotiable",
-      priceMin: null,
-      priceMax: null,
+      priceKind: "negotiable",
+      priceValue: null,
       leadTime: "",
     },
     mode: "onChange",
   });
 
-  const priceMode = watch("priceMode");
+  const priceKind = watch("priceKind");
   const isBusy = submitResponse.isPending;
   // P0-5: исчерпан ли лимит откликов сегодня?
   const limitReached = (responseLimit?.remaining ?? 5) <= 0;
@@ -1123,9 +1123,8 @@ function MasterResponseSection({
         orderId,
         masterId,
         l2Id,
-        priceMin: values.priceMin,
-        priceMax: values.priceMax,
-        priceMode: values.priceMode,
+        priceKind: values.priceKind,
+        priceValue: values.priceValue,
         leadTime: values.leadTime,
         message: values.message,
       });
@@ -1157,7 +1156,7 @@ function MasterResponseSection({
         </AppText>
         <View className={`mt-3 rounded-lg border ${accentClass} p-4`}>
           <View className="flex-row items-center gap-2">
-            <MessageSquare size={16} strokeWidth={2} color={iconColor} />
+            <ChatCenteredText size={16} weight="bold" color={iconColor} />
             <AppText weight="semibold" className={`text-body-md ${textColor}`}>
               {isPickedMaster ? "Клиент выбрал вас 🎉" : responseStatusLabel(myResponse.status)}
             </AppText>
@@ -1201,18 +1200,18 @@ function MasterResponseSection({
         </AppText>
         <Controller
           control={control}
-          name="priceMode"
+          name="priceKind"
           render={({ field: { value, onChange } }) => (
             <View className="mt-2 flex-row flex-wrap gap-2">
-              {orderBudgetModeOptions.map((m) => {
-                const selected = value === m;
+              {orderPriceKindOptions.map((k) => {
+                const selected = value === k;
                 return (
                   <Pressable
-                    key={m}
+                    key={k}
                     accessibilityRole="button"
                     accessibilityState={{ selected }}
                     disabled={isBusy}
-                    onPress={() => onChange(m)}
+                    onPress={() => onChange(k)}
                     className={`h-10 items-center justify-center rounded-pill border px-4 ${
                       selected
                         ? "border-accent bg-accent-soft"
@@ -1223,7 +1222,7 @@ function MasterResponseSection({
                       weight="medium"
                       className={`text-caption ${selected ? "text-accent" : "text-body"}`}
                     >
-                      {m === "exact" ? "Точная" : m === "range" ? "Диапазон" : "Договорная"}
+                      {priceKindLabel(k)}
                     </AppText>
                   </Pressable>
                 );
@@ -1231,56 +1230,31 @@ function MasterResponseSection({
             </View>
           )}
         />
-        {priceMode !== "negotiable" && (
-          <View className="mt-3 flex-row gap-3">
-            <View className="flex-1">
-              <Controller
-                control={control}
-                name="priceMin"
-                render={({ field: { value, onChange, onBlur } }) => (
-                  <TextInput
-                    value={value === null ? "" : String(value)}
-                    onBlur={onBlur}
-                    onChangeText={(raw) => {
-                      const cleaned = raw.replace(/\D/g, "");
-                      onChange(cleaned === "" ? null : Number.parseInt(cleaned, 10));
-                    }}
-                    placeholder={priceMode === "exact" ? "Сумма, ₽" : "От, ₽"}
-                    placeholderTextColor={tc["muted-soft"]}
-                    keyboardType="number-pad"
-                    inputMode="numeric"
-                    maxFontSizeMultiplier={1.3}
-                    className="h-12 rounded-md border border-hairline bg-canvas px-3 text-body-md text-ink"
-                    editable={!isBusy}
-                  />
-                )}
-              />
-            </View>
-            {priceMode === "range" && (
-              <View className="flex-1">
-                <Controller
-                  control={control}
-                  name="priceMax"
-                  render={({ field: { value, onChange, onBlur } }) => (
-                    <TextInput
-                      value={value === null ? "" : String(value)}
-                      onBlur={onBlur}
-                      onChangeText={(raw) => {
-                        const cleaned = raw.replace(/\D/g, "");
-                        onChange(cleaned === "" ? null : Number.parseInt(cleaned, 10));
-                      }}
-                      placeholder="До, ₽"
-                      placeholderTextColor={tc["muted-soft"]}
-                      keyboardType="number-pad"
-                      inputMode="numeric"
-                      maxFontSizeMultiplier={1.3}
-                      className="h-12 rounded-md border border-hairline bg-canvas px-3 text-body-md text-ink"
-                      editable={!isBusy}
-                    />
-                  )}
+        {priceKind !== "negotiable" && (
+          <View className="mt-3">
+            <Controller
+              control={control}
+              name="priceValue"
+              render={({ field: { value, onChange, onBlur } }) => (
+                <TextInput
+                  value={value === null ? "" : String(value)}
+                  onBlur={onBlur}
+                  onChangeText={(raw) => {
+                    const cleaned = raw.replace(/\D/g, "");
+                    onChange(cleaned === "" ? null : Number.parseInt(cleaned, 10));
+                  }}
+                  placeholder={
+                    priceKind === "fixed" ? "Сумма, ₽" : priceKind === "from" ? "От, ₽" : "До, ₽"
+                  }
+                  placeholderTextColor={tc["muted-soft"]}
+                  keyboardType="number-pad"
+                  inputMode="numeric"
+                  maxFontSizeMultiplier={1.3}
+                  className="h-12 rounded-md border border-hairline bg-canvas px-3 text-body-md text-ink"
+                  editable={!isBusy}
                 />
-              </View>
-            )}
+              )}
+            />
           </View>
         )}
       </View>
@@ -1474,7 +1448,7 @@ function CompletionSection({ orderId, order, userId }: CompletionSectionProps) {
           <ActivityIndicator size="small" color={tc.mute} />
         ) : (
           <>
-            <CheckCircle2 size={18} strokeWidth={2} color={tc.success} />
+            <CheckCircle size={18} weight="bold" color={tc.success} />
             <AppText
               weight="semibold"
               className="text-button text-success"
@@ -1530,9 +1504,8 @@ function ClientReviewSection({ orderId, clientId, masterId, l2Id }: ClientReview
                 <Star
                   key={s}
                   size={18}
-                  strokeWidth={1.75}
+                  weight={filled ? "fill" : "bold"}
                   color={filled ? tc.warning : tc["muted-soft"]}
-                  fill={filled ? tc.warning : "transparent"}
                 />
               );
             })}
@@ -1587,9 +1560,8 @@ function ClientReviewSection({ orderId, clientId, masterId, l2Id }: ClientReview
           >
             <Star
               size={36}
-              strokeWidth={1.75}
+              weight={s <= rating ? "fill" : "bold"}
               color={s <= rating ? tc.warning : tc["muted-soft"]}
-              fill={s <= rating ? tc.warning : "transparent"}
             />
           </Pressable>
         ))}
@@ -1665,9 +1637,8 @@ function MasterReviewSection({ orderId, masterId, clientId, l2Id }: MasterReview
                 <Star
                   key={s}
                   size={18}
-                  strokeWidth={1.75}
+                  weight={filled ? "fill" : "bold"}
                   color={filled ? tc.warning : tc["muted-soft"]}
-                  fill={filled ? tc.warning : "transparent"}
                 />
               );
             })}
@@ -1722,9 +1693,8 @@ function MasterReviewSection({ orderId, masterId, clientId, l2Id }: MasterReview
           >
             <Star
               size={36}
-              strokeWidth={1.75}
+              weight={s <= rating ? "fill" : "bold"}
               color={s <= rating ? tc.warning : tc["muted-soft"]}
-              fill={s <= rating ? tc.warning : "transparent"}
             />
           </Pressable>
         ))}

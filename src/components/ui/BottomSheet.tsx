@@ -1,34 +1,38 @@
 /**
- * BottomSheet — модальное окно снизу. Используется для:
- *   - LoginWall (просит логин на действиях анону)
- *   - CitySelector (выбор города)
- *   - Filter / Sort menus
- *   - Подтверждение опасных действий (отменить заказ)
+ * BottomSheet — полноэкранная модалка для любых вложенных flow'ов (фильтры,
+ * выбор города, JIT-signup, action menu, подтверждения).
  *
- * Реализация:
- *   - `animationType="none"` на Modal + ручная split-анимация:
- *     - Backdrop: opacity 0→1 (fade) — иначе «затемнение едет снизу вместе
- *       с листом», что выглядит сломанно (фидбэк user 2026-05-14).
- *     - Sheet: translateY +SHEET_DROP→0 (slide-up).
- *   - При закрытии — reverse, потом setMounted(false), чтобы анимация
- *     выхода успела отыграть до unmount.
- *   - useNativeDriver=true — transform+opacity нативно работают (на web
- *     fallback на JS-driver автоматически).
+ * Историческое название «BottomSheet» сохранено (много импортов), но
+ * **поведение теперь всегда full-screen** — никаких bottom-anchored листов.
+ * По фидбэку user 2026-05-15: «откажемся полностью от щитов, всё всплывает
+ * на полный экран — как Фильтры».
+ *
+ * Что внутри:
+ *   - Полностью покрывает viewport (включая статус-бар через insets.top).
+ *   - Сверху — `ScreenHeader`-style строка: back-кнопка `←` слева,
+ *     опц. title по центру (semibold), пустое место справа для будущих
+ *     action'ов.
+ *   - Slide-in анимация снизу — мягкий «push» как в нативном стеке.
  *
  * Использование:
- *   <BottomSheet open={open} onClose={() => setOpen(false)} title="Войдите чтобы продолжить">
- *     <AppText>Описание...</AppText>
- *     <Button onPress={...}>Войти по телефону</Button>
+ *   <BottomSheet open={open} onClose={() => setOpen(false)} title="Действия">
+ *     <ActionItem .../>
  *   </BottomSheet>
  *
- * Контент уже имеет horizontal padding 20 + bottom safe-area. Сверху — drag handle + title.
+ * Контент уже имеет horizontal padding 20 + bottom safe-area.
+ *
+ * Контракт `fullScreen` prop **deprecated** — игнорируется. Оставлен в
+ * сигнатуре для обратной совместимости с consumers (LocationSheet,
+ * LocationFilterSheet и т.п.), удалить можно после очистки.
  */
 
-import { X } from "lucide-react-native";
+import { CaretLeft } from "phosphor-react-native";
 import { type ReactNode, useEffect, useRef, useState } from "react";
-import { Animated, Modal, Pressable, View } from "react-native";
+import { Animated, Modal, Platform, Pressable, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
+import { useColorScheme } from "@/hooks/use-color-scheme";
+import { darkColors, lightColors } from "@/lib/colors";
 import { useThemeColors } from "@/lib/use-theme-color";
 
 export interface BottomSheetProps {
@@ -38,20 +42,17 @@ export interface BottomSheetProps {
   /** Подзаголовок под title — описание контекста. */
   subtitle?: string;
   children: ReactNode;
-  /** Закрывать ли по тапу на backdrop. Default true. Для критических → false. */
+  /** Закрывать ли по тапу на backdrop. Сохранён для API-совместимости,
+   *  но в full-screen режиме backdrop'а нет — параметр игнорируется. */
   dismissibleOnBackdrop?: boolean;
-  /** Если true — лист занимает весь экран (full-screen modal). По умолчанию
-   *  bottom-sheet с минимальной высотой по содержимому. Используется для
-   *  селекторов с длинным списком, где нужно «на весь экран». */
+  /** @deprecated — поведение всегда full-screen, prop игнорируется. */
   fullScreen?: boolean;
 }
 
-/** Стартовое смещение листа вниз (вне viewport). Достаточно для любого
- *  реалистичного контента action-sheet'а; если лист короче — slide-in
- *  отыграет за те же 220ms просто из дальней точки. */
+/** Сдвиг для slide-in анимации. Достаточно для любого высокого контента. */
 const SHEET_DROP_PX = 600;
-const OPEN_DURATION = 220;
-const CLOSE_DURATION = 180;
+const OPEN_DURATION = 240;
+const CLOSE_DURATION = 200;
 
 export function BottomSheet({
   open,
@@ -59,50 +60,40 @@ export function BottomSheet({
   title,
   subtitle,
   children,
-  dismissibleOnBackdrop = true,
-  fullScreen = false,
 }: BottomSheetProps) {
   const insets = useSafeAreaInsets();
-  const tc = useThemeColors(["canvas", "ink", "body", "hairline-strong", "mute"]);
+  const tc = useThemeColors(["canvas", "ink", "body"]);
+  // CSS-vars `rgb(var(--X))` теряются в portal'е react-native-web Modal
+  // (Modal рендерится вне основного DOM-дерева). Резолвим ВСЕ нужные цвета
+  // вручную из палитры — иначе title и текст невидимы на canvas-фоне.
+  const { colorScheme } = useColorScheme();
+  const isWeb = Platform.OS === "web";
+  const palette = colorScheme === "dark" ? darkColors : lightColors;
+  const sheetBgColor = isWeb ? palette.canvas : tc.canvas;
+  const sheetInkColor = isWeb ? palette.ink : tc.ink;
+  const sheetBodyColor = isWeb ? palette.body : tc.body;
 
-  // mounted остаётся true пока closing-анимация не завершится — чтобы лист
-  // не пропадал мгновенно при open=false.
   const [mounted, setMounted] = useState(open);
-  const backdropOpacity = useRef(new Animated.Value(0)).current;
   const sheetTranslateY = useRef(new Animated.Value(SHEET_DROP_PX)).current;
 
   useEffect(() => {
     if (open) {
       setMounted(true);
-      Animated.parallel([
-        Animated.timing(backdropOpacity, {
-          toValue: 1,
-          duration: OPEN_DURATION,
-          useNativeDriver: true,
-        }),
-        Animated.timing(sheetTranslateY, {
-          toValue: 0,
-          duration: OPEN_DURATION,
-          useNativeDriver: true,
-        }),
-      ]).start();
+      Animated.timing(sheetTranslateY, {
+        toValue: 0,
+        duration: OPEN_DURATION,
+        useNativeDriver: true,
+      }).start();
     } else if (mounted) {
-      Animated.parallel([
-        Animated.timing(backdropOpacity, {
-          toValue: 0,
-          duration: CLOSE_DURATION,
-          useNativeDriver: true,
-        }),
-        Animated.timing(sheetTranslateY, {
-          toValue: SHEET_DROP_PX,
-          duration: CLOSE_DURATION,
-          useNativeDriver: true,
-        }),
-      ]).start(({ finished }) => {
+      Animated.timing(sheetTranslateY, {
+        toValue: SHEET_DROP_PX,
+        duration: CLOSE_DURATION,
+        useNativeDriver: true,
+      }).start(({ finished }) => {
         if (finished) setMounted(false);
       });
     }
-  }, [open, mounted, backdropOpacity, sheetTranslateY]);
+  }, [open, mounted, sheetTranslateY]);
 
   if (!mounted) return null;
 
@@ -114,91 +105,90 @@ export function BottomSheet({
       onRequestClose={onClose}
       statusBarTranslucent
     >
-      {/* Backdrop — fade-in отдельно от sheet. Pressable снаружи Animated
-          ловит тап на затемнённой области, чтобы закрыть лист. */}
+      {/* Full-screen контейнер. Без backdrop'а — лист сам занимает viewport. */}
       <Animated.View
         style={{
           flex: 1,
-          backgroundColor: "rgba(0,0,0,0.6)",
-          opacity: backdropOpacity,
-          justifyContent: "flex-end",
+          backgroundColor: sheetBgColor,
+          transform: [{ translateY: sheetTranslateY }],
         }}
       >
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Закрыть"
-          onPress={dismissibleOnBackdrop ? onClose : undefined}
+        {/* Header — 1:1 ScreenHeader: height 64, gap-2, px-3, h-12 w-12 back
+            (CaretLeft 28 strokeWidth 2.25), display-md title (24px, 700).
+            Цвета inline-styled (резолвленные hex), а не CSS-vars — иначе
+            теряются в portal Modal. */}
+        <View
           style={{
-            position: "absolute",
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-          }}
-        />
-        {/* Сам лист — translateY slide-up. bg-canvas через className
-            (NativeWind), не inline tc.canvas — потому что в RN-Web Modal
-            рендерится в portal вне основного DOM-дерева, и CSS-vars для
-            `rgb(var(--canvas))` теряются → лист становится прозрачным (баг
-            user 2026-05-14). className сохраняет cascade. */}
-        <Animated.View
-          className="bg-canvas"
-          style={{
-            transform: [{ translateY: sheetTranslateY }],
-            borderTopLeftRadius: fullScreen ? 0 : 16,
-            borderTopRightRadius: fullScreen ? 0 : 16,
-            paddingHorizontal: 20,
-            paddingTop: insets.top + (fullScreen ? 16 : 12),
-            paddingBottom: insets.bottom + 20,
-            // На web даёт максимальную ширину 480px для desktop view.
-            // На mobile native max-width не сработает.
-            maxWidth: 480,
-            width: "100%",
-            alignSelf: "center",
-            ...(fullScreen ? { flex: 1 } : {}),
+            paddingTop: insets.top,
           }}
         >
-          {/* Drag handle */}
           <View
             style={{
-              alignSelf: "center",
-              width: 40,
-              height: 4,
-              borderRadius: 2,
-              backgroundColor: tc["hairline-strong"],
-              marginBottom: title || subtitle ? 16 : 12,
+              height: 64,
+              paddingHorizontal: 12,
+              flexDirection: "row",
+              alignItems: "center",
+              gap: 8,
             }}
-          />
-
-          {/* Header (title + close X) */}
-          {title || subtitle ? (
-            <View style={{ flexDirection: "row", alignItems: "flex-start", marginBottom: 12, gap: 12 }}>
-              <View style={{ flex: 1 }}>
-                {title ? (
-                  <AppText weight="semibold" style={{ color: tc.ink, fontSize: 18, lineHeight: 24 }}>
-                    {title}
-                  </AppText>
-                ) : null}
-                {subtitle ? (
-                  <AppText style={{ color: tc.body, fontSize: 14, lineHeight: 20, marginTop: 4 }}>
-                    {subtitle}
-                  </AppText>
-                ) : null}
-              </View>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Закрыть"
-                onPress={onClose}
-                hitSlop={8}
-                style={({ pressed }) => ({ opacity: pressed ? 0.5 : 1, marginTop: 2 })}
-              >
-                <X size={20} strokeWidth={1.75} color={tc.mute} />
-              </Pressable>
+          >
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Назад"
+              onPress={onClose}
+              hitSlop={8}
+              style={({ pressed }) => ({
+                opacity: pressed ? 0.5 : 1,
+                width: 48,
+                height: 48,
+                alignItems: "center",
+                justifyContent: "center",
+                borderRadius: 24,
+              })}
+            >
+              <CaretLeft size={28} weight="fill" color={sheetInkColor} />
+            </Pressable>
+            <View style={{ flex: 1, minWidth: 0 }}>
+              {title ? (
+                <AppText
+                  weight="display"
+                  numberOfLines={1}
+                  style={{
+                    color: sheetInkColor,
+                    fontSize: 24,
+                    lineHeight: 30,
+                    letterSpacing: -0.5,
+                  }}
+                >
+                  {title}
+                </AppText>
+              ) : null}
+              {subtitle ? (
+                <AppText
+                  numberOfLines={1}
+                  style={{
+                    color: sheetBodyColor,
+                    fontSize: 13,
+                    lineHeight: 18,
+                    marginTop: 2,
+                  }}
+                >
+                  {subtitle}
+                </AppText>
+              ) : null}
             </View>
-          ) : null}
+          </View>
+        </View>
 
+        {/* Контент: без default-padding, чтобы row-items могли быть full-bleed
+            (как PickerSheet). Если consumer хочет padding — обернёт сам. */}
+        <View
+          style={{
+            flex: 1,
+            paddingBottom: insets.bottom + 20,
+          }}
+        >
           {children}
-        </Animated.View>
+        </View>
       </Animated.View>
     </Modal>
   );

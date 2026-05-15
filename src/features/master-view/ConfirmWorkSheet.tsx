@@ -19,7 +19,7 @@
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
-import { Star } from "lucide-react-native";
+import { Star } from "phosphor-react-native";
 import { useState } from "react";
 import { Pressable, TextInput, View } from "react-native";
 import { AppText } from "@/components/AppText";
@@ -157,9 +157,8 @@ export function ConfirmWorkSheet({ open, onClose, masterId, masterName }: Confir
                 >
                   <Star
                     size={32}
-                    strokeWidth={1.5}
+                    weight={n <= rating ? "fill" : "bold"}
                     color="#f5a623"
-                    fill={n <= rating ? "#f5a623" : "transparent"}
                   />
                 </Pressable>
               ))}

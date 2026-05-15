@@ -18,7 +18,7 @@
  */
 
 import { useRouter } from "expo-router";
-import { ChevronDown, Search } from "lucide-react-native";
+import { CaretDown, MagnifyingGlass } from "phosphor-react-native";
 import { useEffect, useMemo } from "react";
 import { Pressable, View } from "react-native";
 import { AppText } from "@/components/AppText";
@@ -79,13 +79,13 @@ export function CategoryPicker({ value, onChange, disabled, error }: CategoryPic
         ) : (
           <View className="flex-1 flex-row items-center gap-2">
             <View className="text-mute">
-              <Search size={18} strokeWidth={1.75} color="currentColor" />
+              <MagnifyingGlass size={18} weight="bold" color="currentColor" />
             </View>
             <AppText className="flex-1 text-body-md text-mute">Выберите категорию</AppText>
           </View>
         )}
         <View className="text-mute">
-          <ChevronDown size={18} strokeWidth={2} color="currentColor" />
+          <CaretDown size={18} weight="bold" color="currentColor" />
         </View>
       </Pressable>
       {error && (
@@ -102,7 +102,7 @@ function SelectedDisplay({ icon, name }: { icon: string; name: string }) {
   return (
     <View className="flex-1 flex-row items-center gap-3">
       <View className="text-ink">
-        <Icon size={20} strokeWidth={1.5} color="currentColor" />
+        <Icon size={20} weight="bold" color="currentColor" />
       </View>
       <AppText weight="semibold" className="flex-1 text-body-md text-ink" numberOfLines={1}>
         {name}

@@ -1,7 +1,7 @@
 /**
  * SearchBar — поисковая строка под главную и full-screen search.
  *
- * Использует Input + Lucide Search icon слева + опциональный clear-button справа.
+ * Использует Input + Lucide MagnifyingGlass icon слева + опциональный clear-button справа.
  *
  * Варианты использования:
  *   1. Inline (на главной): tap открывает full-screen search.
@@ -12,7 +12,7 @@
  * Дефолтный размер — lg (48px), Vercel form-input-lg.
  */
 
-import { Search, X } from "lucide-react-native";
+import { MagnifyingGlass, X } from "phosphor-react-native";
 import { forwardRef } from "react";
 import { Pressable, type TextInput } from "react-native";
 import { Input, type InputProps } from "@/components/ui/Input";
@@ -43,7 +43,7 @@ export const SearchBar = forwardRef<TextInput, SearchBarProps>(function SearchBa
       value={value}
       onChangeText={onChangeText}
       placeholder={placeholder}
-      leftIcon={<Search size={iconSize} strokeWidth={1.75} color={mute} />}
+      leftIcon={<MagnifyingGlass size={iconSize} weight="bold" color={mute} />}
       rightIcon={
         showClear ? (
           <Pressable
@@ -52,7 +52,7 @@ export const SearchBar = forwardRef<TextInput, SearchBarProps>(function SearchBa
             onPress={() => (onClear ? onClear() : onChangeText?.(""))}
             hitSlop={8}
           >
-            <X size={iconSize} strokeWidth={1.75} color={mute} />
+            <X size={iconSize} weight="bold" color={mute} />
           </Pressable>
         ) : undefined
       }

@@ -26,7 +26,7 @@
  *   const label = getLocationLabel(filter);  // для trigger pill
  */
 
-import { Check, MapPin } from "lucide-react-native";
+import { Check, MapPin } from "phosphor-react-native";
 import { useEffect, useState } from "react";
 import { Pressable, ScrollView, View } from "react-native";
 import { AppText } from "@/components/AppText";
@@ -59,7 +59,7 @@ export function LocationSheet({
   title = "Где искать",
   subtitle = "Выберите города и районы — можно несколько",
 }: LocationSheetProps) {
-  const tc = useThemeColors(["ink", "mute", "on-primary"]);
+  const tc = useThemeColors(["ink", "mute", "accent"]);
 
   // Draft state — commit только на «Применить».
   const [draft, setDraft] = useState<LocationFilter>(value);
@@ -115,30 +115,24 @@ export function LocationSheet({
           accessibilityState={{ selected: isAll }}
           onPress={toggleAll}
           className={`flex-row items-center gap-3 rounded-lg border p-4 ${
-            isAll ? "border-ink bg-ink" : "border-hairline bg-canvas-soft active:opacity-70"
+            isAll ? "border-accent bg-accent-soft" : "border-hairline bg-canvas-soft active:opacity-70"
           }`}
         >
-          <View
-            className={`h-10 w-10 items-center justify-center rounded-full ${
-              isAll ? "bg-on-primary" : "bg-canvas"
-            }`}
-          >
-            <MapPin size={18} strokeWidth={1.75} color={tc.ink} />
+          <View className="h-10 w-10 items-center justify-center rounded-full bg-canvas">
+            <MapPin size={18} weight="bold" color={tc.ink} />
           </View>
           <View className="flex-1">
             <AppText
               weight="semibold"
-              className={`text-body-md ${isAll ? "text-on-primary" : "text-ink"}`}
+              className={`text-body-md ${isAll ? "text-accent" : "text-ink"}`}
             >
               Вся Ингушетия
             </AppText>
-            <AppText
-              className={`mt-0.5 text-caption ${isAll ? "text-on-primary" : "text-mute"}`}
-            >
+            <AppText className="mt-0.5 text-caption text-mute">
               Без фильтра по городу или району
             </AppText>
           </View>
-          {isAll ? <Check size={20} strokeWidth={2.25} color={tc["on-primary"]} /> : null}
+          {isAll ? <Check size={20} weight="fill" color={tc.accent} /> : null}
         </Pressable>
 
         {/* Города */}
@@ -156,13 +150,13 @@ export function LocationSheet({
                 onPress={() => toggleCity(c.id)}
                 className={`h-10 items-center justify-center rounded-pill border px-4 ${
                   selected
-                    ? "border-ink bg-ink"
+                    ? "border-accent bg-accent-soft"
                     : "border-hairline bg-canvas active:opacity-70"
                 }`}
               >
                 <AppText
                   weight="medium"
-                  className={`text-body-sm ${selected ? "text-on-primary" : "text-ink"}`}
+                  className={`text-body-sm ${selected ? "text-accent" : "text-ink"}`}
                 >
                   {c.name}
                 </AppText>
@@ -186,13 +180,13 @@ export function LocationSheet({
                 onPress={() => toggleDistrict(d.name)}
                 className={`h-10 items-center justify-center rounded-pill border px-4 ${
                   selected
-                    ? "border-ink bg-ink"
+                    ? "border-accent bg-accent-soft"
                     : "border-hairline bg-canvas active:opacity-70"
                 }`}
               >
                 <AppText
                   weight="medium"
-                  className={`text-body-sm ${selected ? "text-on-primary" : "text-ink"}`}
+                  className={`text-body-sm ${selected ? "text-accent" : "text-ink"}`}
                 >
                   {d.name}
                 </AppText>

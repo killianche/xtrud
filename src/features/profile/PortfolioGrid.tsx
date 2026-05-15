@@ -7,7 +7,7 @@
  */
 
 import { Image } from "expo-image";
-import { Trash2 } from "lucide-react-native";
+import { Trash } from "phosphor-react-native";
 import { ActivityIndicator, Pressable, useWindowDimensions, View } from "react-native";
 import { AppText } from "@/components/AppText";
 import type { PortfolioItem } from "@/features/profile/use-my-portfolio";
@@ -69,7 +69,7 @@ export function PortfolioGrid({ items, isLoading, onDelete, onOpen }: PortfolioG
                 hitSlop={6}
                 className="absolute top-1.5 right-1.5 h-7 w-7 items-center justify-center rounded-full bg-canvas/90 active:opacity-70"
               >
-                <Trash2 size={14} strokeWidth={2} color="#ef4444" />
+                <Trash size={14} weight="bold" color="#ef4444" />
               </Pressable>
             )}
           </View>

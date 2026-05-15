@@ -17,11 +17,12 @@
  * /orders/new слушает store и применяет выбор в react-hook-form.
  */
 
-import { ChevronLeft, Search, Sparkles, X } from "lucide-react-native";
+import { MagnifyingGlass, Sparkle, X } from "phosphor-react-native";
 import { useMemo, useRef, useState } from "react";
 import { Image, Pressable, ScrollView, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
+import { ScreenHeader } from "@/components/ui";
 import { useSearchCategories } from "@/features/categories/use-search-categories";
 import { useVisibleCategories } from "@/features/categories/use-visible-categories";
 import { getCategoryColorIconUrl } from "@/lib/category-color-icons";
@@ -37,7 +38,7 @@ export default function CategorySelectScreen() {
   const setSelectedL2 = useOrderDraftStore((s) => s.setSelectedL2);
   // Browse-режим (пустой query) — показываем все L2 категории.
   const { data: categories = [] } = useVisibleCategories();
-  // Search-режим (query >= 2) — P0-NEW умный поиск: thesaurus + FTS + trigram +
+  // MagnifyingGlass-режим (query >= 2) — P0-NEW умный поиск: thesaurus + FTS + trigram +
   // раскладка-fix. Возвращает L2 и L3 hits с score и source.
   const search = useSearchCategories(query, 20);
   // safeBack: при deeplink/refresh уходим на /orders/new (родитель wizard'а).
@@ -92,32 +93,17 @@ export default function CategorySelectScreen() {
 
   return (
     <View className="flex-1 bg-canvas" style={{ paddingTop: insets.top }}>
-      {/* Header: back только */}
-      <View className="flex-row items-center px-3 py-1 pb-2">
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Назад"
-          onPress={goBack}
-          hitSlop={12}
-          className="h-9 w-9 items-center justify-center rounded-full active:opacity-70 text-ink"
-        >
-          <ChevronLeft size={20} strokeWidth={1.75} color="currentColor" />
-        </Pressable>
-      </View>
-
-      {/* H1 */}
-      <View className="px-5 mt-2">
-        <AppText weight="bold" className="text-display-sm tracking-tight text-ink">
-          Выберите категорию
-        </AppText>
-      </View>
+      {/* Стандартный ScreenHeader (height 64, h-12 back, display-md title)
+          вместо самописного h-9 w-9 + отдельной H1 ниже. Унифицирует с
+          /orders/search, /profile/portfolio и т.п. */}
+      <ScreenHeader title="Выберите категорию" onBack={goBack} />
 
       {/* Typeahead инпут — крупный (h-16 + 20px шрифт), чтобы не было
           ощущения «инпут размером с шрифт». */}
       <View className="px-5 mt-5">
         <View className="flex-row items-center gap-3 h-16 rounded-2xl bg-canvas-soft px-4">
           <View className="text-mute">
-            <Search size={22} strokeWidth={1.75} color="currentColor" />
+            <MagnifyingGlass size={22} weight="bold" color="currentColor" />
           </View>
           <TextInput
             ref={inputRef}
@@ -141,7 +127,7 @@ export default function CategorySelectScreen() {
               onPress={() => setQuery("")}
               className="h-9 w-9 items-center justify-center rounded-full active:opacity-60 text-mute"
             >
-              <X size={20} strokeWidth={2} color="currentColor" />
+              <X size={20} weight="bold" color="currentColor" />
             </Pressable>
           )}
         </View>
@@ -152,7 +138,7 @@ export default function CategorySelectScreen() {
       {isSearching && search.data?.wasFlipped && search.data.flippedQuery ? (
         <View className="px-5 mt-3">
           <View className="flex-row items-center gap-2 rounded-md bg-canvas-soft px-3 py-2">
-            <Sparkles size={14} strokeWidth={2} color="rgb(var(--accent))" />
+            <Sparkle size={14} weight="bold" color="rgb(var(--accent))" />
             <AppText className="text-caption text-body" numberOfLines={1}>
               Возможно, вы искали:{" "}
               <AppText weight="semibold" className="text-ink">
@@ -207,11 +193,11 @@ export default function CategorySelectScreen() {
                       style={{ width: 24, height: 24 }}
                     />
                   ) : (
-                    <Icon size={20} strokeWidth={1.5} color="currentColor" />
+                    <Icon size={20} weight="bold" color="currentColor" />
                   )}
                 </View>
                 <View className="flex-1">
-                  <AppText className="text-body-md" numberOfLines={1}>
+                  <AppText className="text-body-md text-ink" numberOfLines={1}>
                     {segments
                       ? segments.map((seg, idx) => (
                           <AppText

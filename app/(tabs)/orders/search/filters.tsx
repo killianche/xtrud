@@ -12,18 +12,20 @@
 // на category-select и обратно.
 
 import { useFocusEffect, useRouter } from "expo-router";
-import { ChevronDown, ChevronRight } from "lucide-react-native";
-import { useCallback, useMemo } from "react";
-import { Pressable, ScrollView, View } from "react-native";
+import { Check, CaretDown } from "phosphor-react-native";
+import { useCallback, useEffect, useMemo } from "react";
+import { Image, Pressable, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
 import { Button, ScreenHeader } from "@/components/ui";
-import { useCategoriesL1 } from "@/features/categories/use-categories-l1";
+import { useAuthSession } from "@/features/auth/use-auth-session";
 import { useVisibleCategories } from "@/features/categories/use-visible-categories";
+import { useMyMasterCategories } from "@/features/master-categories/use-my-categories";
 import {
   countActiveFilters,
   useOrdersSearchFiltersStore,
 } from "@/features/orders/orders-search-filters-store";
+import { getCategoryColorIconUrl } from "@/lib/category-color-icons";
 import { useTabBarVisibility } from "@/lib/tabbar-visibility";
 import { useSafeBack } from "@/lib/use-safe-back";
 import { useThemeColor } from "@/lib/use-theme-color";
@@ -45,10 +47,43 @@ export default function OrdersSearchFiltersScreen() {
   );
 
   const filters = useOrdersSearchFiltersStore();
-  const { l2Ids, l1Id, sort, setL1Id, setSort, clearAll } = filters;
+  const { l2Ids, sort, setSort, clearAll, toggleL2 } = filters;
+  const initFromMasterCategories = useOrdersSearchFiltersStore(
+    (s) => s.initFromMasterCategories,
+  );
 
-  const { data: l1List } = useCategoriesL1();
   const { data: l2List } = useVisibleCategories();
+
+  // Категории мастера из его профиля — для блока «Из вашего профиля»
+  // (быстрый toggle без захода в полный picker). Скрыт если у мастера
+  // 0 категорий в профиле (например, ещё не прошёл онбординг).
+  const { session } = useAuthSession();
+  const userId = session?.user?.id;
+  const { data: myCategories } = useMyMasterCategories(userId);
+
+  // Дублируем авто-инициализацию defaults (см. /orders/search/index.tsx):
+  // если мастер открыл /filters напрямую (deep link / refresh), без захода
+  // на /orders/search — defaults всё равно подставятся. Идемпотентно.
+  useEffect(() => {
+    if (!userId || !myCategories) return;
+    initFromMasterCategories(
+      userId,
+      myCategories
+        .map((mc) => mc.l2_id)
+        .filter((id): id is string => !!id),
+    );
+  }, [userId, myCategories, initFromMasterCategories]);
+
+  const profileCategoryRows = useMemo(() => {
+    if (!myCategories || !l2List) return [];
+    return myCategories
+      .map((mc) => {
+        const cat = l2List.find((c) => c.id === mc.l2_id);
+        if (!cat) return null;
+        return { id: cat.id, name_ru: cat.name_ru };
+      })
+      .filter((x): x is { id: string; name_ru: string } => !!x);
+  }, [myCategories, l2List]);
 
   // Показываем имена выбранных L2 в trigger (первые 2 + «и ещё N»).
   const selectedL2Names = useMemo(() => {
@@ -124,31 +159,40 @@ export default function OrdersSearchFiltersScreen() {
                 </AppText>
               )}
             </View>
-            <ChevronDown size={20} strokeWidth={1.75} color={muteColor} />
+            <CaretDown size={20} weight="bold" color={muteColor} />
           </Pressable>
+
+          {/* Quick-select chips из категорий мастера (master_categories).
+              Тап = toggle прямо в store. Если у мастера 0 категорий в
+              профиле — блок скрыт. */}
+          {profileCategoryRows.length > 0 ? (
+            <View className="mt-4">
+              <AppText className="text-caption text-mute">
+                Из вашего профиля
+              </AppText>
+              <View className="mt-2 flex-row flex-wrap gap-2">
+                {profileCategoryRows.map((cat) => {
+                  const selected = l2Ids.includes(cat.id);
+                  return (
+                    <ProfileCategoryChip
+                      key={cat.id}
+                      l2Id={cat.id}
+                      name={cat.name_ru}
+                      selected={selected}
+                      onPress={() => toggleL2(cat.id)}
+                    />
+                  );
+                })}
+              </View>
+            </View>
+          ) : null}
         </View>
 
-        {/* РАЗДЕЛ L1 (drill-down) — chips */}
-        <View className="mt-8 px-5">
-          <AppText weight="semibold" className="text-body-md text-ink">
-            Раздел
-          </AppText>
-          <View className="mt-3 flex-row flex-wrap gap-2">
-            <SortChip
-              label="Все разделы"
-              selected={l1Id == null}
-              onPress={() => setL1Id(null)}
-            />
-            {(l1List ?? []).map((l1) => (
-              <SortChip
-                key={l1.id}
-                label={l1.name_ru}
-                selected={l1Id === l1.id}
-                onPress={() => setL1Id(l1Id === l1.id ? null : l1.id)}
-              />
-            ))}
-          </View>
-        </View>
+        {/* Блок «Разделы» (L1) удалён 2026-05-15 (фидбэк user: «убери разделы,
+            у нас есть категории, этого достаточно — категории, подкатегории
+            и так далее»). L1 это организационная группа категорий
+            (Строительство и ремонт / Дом и быт), а не самостоятельный фильтр.
+            User фильтрует по конкретным L2 (Сантехника, Электрика и т.д.). */}
 
         {/* RESET-ссылка */}
         {activeCount > 0 ? (
@@ -194,15 +238,73 @@ function SortChip({ label, selected, onPress }: SortChipProps) {
       onPress={onPress}
       className={`h-11 items-center justify-center rounded-pill border px-4 active:opacity-70 ${
         selected
-          ? "border-ink bg-ink"
+          ? "border-accent bg-accent-soft"
           : "border-hairline bg-canvas hover:bg-surface-2"
       }`}
     >
       <AppText
         weight={selected ? "semibold" : "medium"}
-        className={`text-body-sm ${selected ? "text-on-primary" : "text-ink"}`}
+        className={`text-body-sm ${selected ? "text-accent" : "text-ink"}`}
       >
         {label}
+      </AppText>
+    </Pressable>
+  );
+}
+
+interface ProfileCategoryChipProps {
+  l2Id: string;
+  name: string;
+  selected: boolean;
+  onPress: () => void;
+}
+
+/**
+ * Chip быстрого выбора категории из профиля мастера.
+ * - selected → accent-soft фон + Check-иконка слева
+ * - !selected → canvas + hairline border + цветная Iconify-иконка категории
+ *
+ * Иконка категории намеренно цветная (twemoji/fluent-color через
+ * getCategoryColorIconUrl) — это user-friendly «узнаваемые шорткаты»,
+ * не нейтральный фильтр. См. docs/ICONS.md.
+ */
+function ProfileCategoryChip({
+  l2Id,
+  name,
+  selected,
+  onPress,
+}: ProfileCategoryChipProps) {
+  const colorIconUrl = getCategoryColorIconUrl(l2Id);
+  return (
+    <Pressable
+      accessibilityRole="checkbox"
+      accessibilityState={{ checked: selected }}
+      accessibilityLabel={name}
+      onPress={onPress}
+      className={`h-10 flex-row items-center gap-2 rounded-pill border pl-2 pr-3 active:opacity-70 ${
+        selected
+          ? "border-accent bg-accent-soft"
+          : "border-hairline bg-canvas hover:bg-surface-2"
+      }`}
+    >
+      {selected ? (
+        <View className="h-6 w-6 items-center justify-center rounded-full bg-accent">
+          <Check size={14} weight="bold" color="#fff" />
+        </View>
+      ) : colorIconUrl ? (
+        <Image
+          source={{ uri: colorIconUrl }}
+          style={{ width: 20, height: 20 }}
+        />
+      ) : (
+        <View className="h-5 w-5" />
+      )}
+      <AppText
+        weight={selected ? "semibold" : "medium"}
+        className={`text-body-sm ${selected ? "text-accent" : "text-ink"}`}
+        numberOfLines={1}
+      >
+        {name}
       </AppText>
     </Pressable>
   );

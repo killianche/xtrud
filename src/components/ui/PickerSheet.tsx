@@ -3,14 +3,20 @@
  *
  * Заменяет «BottomSheet с list-ом» для выбора одной опции (город, услуга,
  * сортировка). Дизайн в духе Vercel/Linear/Poshmark/Fever:
- *   - Header: round back-button (36×36 bg-canvas-soft) + большой bold title +
+ *   - Header: round back-button (44×44 bg-canvas-soft) + большой bold title +
  *     опциональная reset-ссылка справа (для фильтров)
  *   - Hairline divider под header
  *   - (Optional) search-input в pill-form под divider'ом, если опций много
  *   - ScrollView с опциями
- *   - Каждая опция: square 40×40 для иконки (rounded-md, bg tinted) +
+ *   - Каждая опция: square 32×32 для иконки (rounded-md, bg tinted) +
  *     title (semibold для selected) + subtitle (опц) + Check 20px в accent справа
  *   - Voздух 14-16 между опциями, без horizontal divider'ов
+ *
+ * **Dark theme fix 2026-05-15:** все inline `style={{ color: tc.ink }}` и
+ * прочие color-styles переведены на NativeWind className (`text-ink`,
+ * `bg-canvas-soft`, ...). На web inline `color: 'rgb(var(--ink))'` мог не
+ * resolve'иться, и текст падал на черный default → темно-на-темном в dark
+ * theme. NativeWind className → CSS-class с правильным resolution.
  *
  * Anti-patterns которых избегаем (фидбэк user 2026-05-14):
  *   - Drag-handle полоска на full-screen (там нечего «свайпать»)
@@ -28,12 +34,12 @@
  *   />
  */
 
-import { Check, ChevronLeft, Search, X } from "lucide-react-native";
+import { Check, CaretLeft, MagnifyingGlass, X } from "phosphor-react-native";
 import { type ReactNode, useMemo, useState } from "react";
 import { Modal, Pressable, ScrollView, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
-import { useThemeColors } from "@/lib/use-theme-color";
+import { useThemeColor } from "@/lib/use-theme-color";
 
 export interface PickerOption {
   id: string;
@@ -78,16 +84,11 @@ export function PickerSheet({
   resetLabel = "Сбросить",
 }: PickerSheetProps) {
   const insets = useSafeAreaInsets();
-  const tc = useThemeColors([
-    "canvas",
-    "canvas-soft",
-    "ink",
-    "body",
-    "mute",
-    "hairline",
-    "accent",
-    "accent-soft",
-  ]);
+  // Только для иконок Lucide (которые требуют hex color prop) — оставляем
+  // useThemeColor. Текст / фоны / бордеры — через NativeWind className.
+  const inkColor = useThemeColor("ink");
+  const muteColor = useThemeColor("mute");
+  const accentColor = useThemeColor("accent");
   const [query, setQuery] = useState("");
 
   const showSearch = searchable ?? options.length >= 8;
@@ -111,59 +112,36 @@ export function PickerSheet({
       statusBarTranslucent
     >
       <View
-        className="bg-canvas"
+        className="flex-1 bg-canvas self-center w-full"
         style={{
-          flex: 1,
           paddingTop: insets.top,
           // Web: ограничиваем ширину для desktop
           maxWidth: 480,
-          width: "100%",
-          alignSelf: "center",
         }}
       >
         {/* Header: back-button + title + (optional reset) */}
-        <View
-          style={{
-            flexDirection: "row",
-            alignItems: "center",
-            paddingHorizontal: 12,
-            paddingVertical: 8,
-            gap: 8,
-          }}
-        >
+        <View className="flex-row items-center gap-2 px-3 py-2">
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Назад"
             onPress={onClose}
             hitSlop={8}
-            style={({ pressed }) => ({
-              // Размер поднят 36→44 (тач-таргет минимум по CROSS_PLATFORM_RULES),
-              // chevron 20→24 — пользователь жаловался на мелкую back-стрелку
-              // (2026-05-14). bg-canvas-soft даёт мягкий контейнер, не «голая»
-              // иконка.
-              width: 44,
-              height: 44,
-              borderRadius: 22,
-              alignItems: "center",
-              justifyContent: "center",
-              backgroundColor: tc["canvas-soft"],
-              opacity: pressed ? 0.6 : 1,
-            })}
+            className="h-11 w-11 items-center justify-center rounded-full bg-canvas-soft active:opacity-60"
           >
-            <ChevronLeft size={24} strokeWidth={2.25} color={tc.ink} />
+            <CaretLeft size={24} weight="fill" color={inkColor} />
           </Pressable>
 
-          <View style={{ flex: 1, paddingHorizontal: 4 }}>
+          <View className="flex-1 px-1 min-w-0">
             <AppText
               weight="bold"
-              style={{ color: tc.ink, fontSize: 22, lineHeight: 28 }}
+              className="text-display-sm tracking-tight text-ink"
               numberOfLines={1}
             >
               {title}
             </AppText>
             {subtitle ? (
               <AppText
-                style={{ color: tc.mute, fontSize: 13, lineHeight: 18, marginTop: 2 }}
+                className="mt-0.5 text-caption text-mute"
                 numberOfLines={1}
               >
                 {subtitle}
@@ -180,24 +158,9 @@ export function PickerSheet({
                 setQuery("");
               }}
               hitSlop={8}
-              style={({ pressed }) => ({
-                // Pill-кнопка вместо тонкой ссылки — пользователь жаловался
-                // что reset «мелкий, плохо заметный» (2026-05-14). Pill +
-                // accent-soft фон + accent текст semibold — явный CTA уровень,
-                // как в Airbnb/Booking pickers.
-                height: 36,
-                paddingHorizontal: 14,
-                borderRadius: 18,
-                alignItems: "center",
-                justifyContent: "center",
-                backgroundColor: tc["accent-soft"],
-                opacity: pressed ? 0.6 : 1,
-              })}
+              className="h-9 px-3.5 rounded-pill bg-accent-soft items-center justify-center active:opacity-60"
             >
-              <AppText
-                weight="semibold"
-                style={{ color: tc.accent, fontSize: 15, lineHeight: 20 }}
-              >
+              <AppText weight="semibold" className="text-button text-accent">
                 {resetLabel}
               </AppText>
             </Pressable>
@@ -205,45 +168,21 @@ export function PickerSheet({
         </View>
 
         {/* Hairline divider под header */}
-        <View
-          style={{
-            height: 1,
-            backgroundColor: tc.hairline,
-            marginHorizontal: 16,
-          }}
-        />
+        <View className="h-px bg-hairline mx-4" />
 
-        {/* Search input (опц) */}
+        {/* MagnifyingGlass input (опц) */}
         {showSearch ? (
-          <View
-            style={{
-              paddingHorizontal: 16,
-              paddingTop: 12,
-              paddingBottom: 4,
-            }}
-          >
-            <View
-              style={{
-                flexDirection: "row",
-                alignItems: "center",
-                gap: 8,
-                paddingHorizontal: 14,
-                height: 40,
-                borderRadius: 20,
-                backgroundColor: tc["canvas-soft"],
-              }}
-            >
-              <Search size={16} strokeWidth={1.75} color={tc.mute} />
+          <View className="px-4 pt-3 pb-1">
+            <View className="flex-row items-center gap-2 h-10 rounded-full bg-canvas-soft px-3.5">
+              <MagnifyingGlass size={16} weight="bold" color={muteColor} />
               <TextInput
                 value={query}
                 onChangeText={setQuery}
                 placeholder={searchPlaceholder}
-                placeholderTextColor={tc.mute}
+                placeholderTextColor={muteColor}
+                className="flex-1 text-body-md text-ink"
                 style={
                   {
-                    flex: 1,
-                    fontSize: 15,
-                    color: tc.ink,
                     // web-only: убираем синий focus outline у нативного <input>
                     outlineWidth: 0,
                     outlineStyle: "none",
@@ -256,9 +195,9 @@ export function PickerSheet({
                   accessibilityLabel="Очистить"
                   onPress={() => setQuery("")}
                   hitSlop={6}
-                  style={({ pressed }) => ({ opacity: pressed ? 0.5 : 1 })}
+                  className="active:opacity-50"
                 >
-                  <X size={14} strokeWidth={2} color={tc.mute} />
+                  <X size={14} weight="bold" color={muteColor} />
                 </Pressable>
               ) : null}
             </View>
@@ -275,70 +214,47 @@ export function PickerSheet({
           keyboardShouldPersistTaps="handled"
         >
           {filtered.length === 0 ? (
-            <View style={{ paddingHorizontal: 20, paddingTop: 32, alignItems: "center" }}>
-              <AppText style={{ color: tc.mute, fontSize: 14 }}>
+            <View className="px-5 pt-8 items-center">
+              <AppText className="text-body-sm text-mute">
                 Ничего не найдено
               </AppText>
             </View>
           ) : (
             filtered.map((opt) => {
               const isSel = opt.id === selectedId;
-              const tintBg =
-                opt.iconTint === "accent-soft"
-                  ? tc["accent-soft"]
-                  : opt.iconTint === "primary-soft"
-                    ? tc["accent-soft"]
-                    : tc["canvas-soft"];
+              const tintBgClass =
+                opt.iconTint === "accent-soft" || opt.iconTint === "primary-soft"
+                  ? "bg-accent-soft"
+                  : "bg-canvas-soft";
               return (
                 <Pressable
                   key={opt.id || "__empty"}
                   accessibilityRole="button"
                   accessibilityLabel={opt.title}
                   onPress={() => onSelect(opt.id)}
-                  style={({ pressed }) => ({
-                    flexDirection: "row",
-                    alignItems: "center",
-                    gap: 12,
-                    paddingHorizontal: 20,
-                    paddingVertical: 6,
-                    backgroundColor: pressed ? tc["canvas-soft"] : "transparent",
-                  })}
+                  className="flex-row items-center gap-3 px-5 py-2 active:bg-canvas-soft"
                 >
                   {opt.icon ? (
                     <View
-                      style={{
-                        width: 32,
-                        height: 32,
-                        borderRadius: 8,
-                        alignItems: "center",
-                        justifyContent: "center",
-                        backgroundColor: isSel ? tc["accent-soft"] : tintBg,
-                      }}
+                      className={`h-8 w-8 items-center justify-center rounded-md ${
+                        isSel ? "bg-accent-soft" : tintBgClass
+                      }`}
                     >
                       {opt.icon}
                     </View>
                   ) : null}
 
-                  <View style={{ flex: 1 }}>
+                  <View className="flex-1 min-w-0">
                     <AppText
                       weight={isSel ? "semibold" : "medium"}
-                      style={{
-                        color: isSel ? tc.accent : tc.ink,
-                        fontSize: 16,
-                        lineHeight: 22,
-                      }}
+                      className={`text-body-md ${isSel ? "text-accent" : "text-ink"}`}
                       numberOfLines={1}
                     >
                       {opt.title}
                     </AppText>
                     {opt.subtitle ? (
                       <AppText
-                        style={{
-                          color: tc.mute,
-                          fontSize: 13,
-                          lineHeight: 18,
-                          marginTop: 2,
-                        }}
+                        className="mt-0.5 text-caption text-mute"
                         numberOfLines={1}
                       >
                         {opt.subtitle}
@@ -347,7 +263,7 @@ export function PickerSheet({
                   </View>
 
                   {isSel ? (
-                    <Check size={20} strokeWidth={2.25} color={tc.accent} />
+                    <Check size={20} weight="fill" color={accentColor} />
                   ) : null}
                 </Pressable>
               );

@@ -11,12 +11,13 @@
  */
 
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { CheckCircle2, ChevronLeft, CircleAlert, MapPin, Star } from "lucide-react-native";
+import { CheckCircle, WarningCircle, MapPin, Star } from "phosphor-react-native";
 import { useMemo } from "react";
-import { ActivityIndicator, Pressable, ScrollView, View } from "react-native";
+import { ActivityIndicator, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
 import { Avatar } from "@/components/Avatar";
+import { ScreenHeader } from "@/components/ui";
 import { useClientPublicProfile } from "@/features/client-view/use-client-public";
 import { ReviewsSection } from "@/features/master-view/ReviewsSection";
 import { useReviewsForTarget } from "@/features/master-view/use-master-public";
@@ -45,18 +46,9 @@ export default function ClientPublicScreen() {
 
   return (
     <View className="flex-1 bg-canvas" style={{ paddingTop: insets.top }}>
-      {/* Top bar */}
-      <View className="flex-row items-center px-3 py-2">
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Назад"
-          onPress={() => router.back()}
-          hitSlop={12}
-          className="h-10 w-10 items-center justify-center rounded-full active:opacity-70"
-        >
-          <ChevronLeft size={24} strokeWidth={1.75} color={tc.ink} />
-        </Pressable>
-      </View>
+      {/* Стандартный ScreenHeader — height 64, h-12 back, без title (имя
+          клиента показывается hero-блоком ниже с аватаром). */}
+      <ScreenHeader title="" onBack={() => router.back()} />
 
       <ScrollView
         contentContainerStyle={{ paddingBottom: insets.bottom + 32 }}
@@ -71,7 +63,7 @@ export default function ClientPublicScreen() {
 
         {profile.error && (
           <View className="mt-20 items-center px-6">
-            <CircleAlert size={32} strokeWidth={1.5} color={tc.error} />
+            <WarningCircle size={32} weight="bold" color={tc.error} />
             <AppText className="mt-3 text-body-sm text-error">
               Не удалось загрузить профиль. {profile.error.message}
             </AppText>
@@ -106,7 +98,7 @@ export default function ClientPublicScreen() {
                 </View>
                 {profile.data.completedOrdersCount > 0 && (
                   <View className="flex-row items-center gap-1 rounded-pill bg-success-soft px-2.5 py-1">
-                    <CheckCircle2 size={12} strokeWidth={2} color={tc.success} />
+                    <CheckCircle size={12} weight="bold" color={tc.success} />
                     <AppText weight="medium" className="text-caption-xs text-success">
                       {pluralizeCompleted(profile.data.completedOrdersCount)}
                     </AppText>
@@ -118,7 +110,7 @@ export default function ClientPublicScreen() {
                 {profile.data.user.rating_as_client_avg != null &&
                 profile.data.user.rating_as_client_count > 0 ? (
                   <>
-                    <Star size={16} strokeWidth={2} color={tc.warning} fill={tc.warning} />
+                    <Star size={16} weight="fill" color={tc.warning} />
                     <AppText weight="semibold" className="text-body-md text-ink">
                       {profile.data.user.rating_as_client_avg.toFixed(1)}
                     </AppText>
@@ -135,7 +127,7 @@ export default function ClientPublicScreen() {
 
               {profile.data.city && (
                 <View className="mt-2 flex-row items-center gap-1">
-                  <MapPin size={14} strokeWidth={1.75} color={tc["muted-soft"]} />
+                  <MapPin size={14} weight="bold" color={tc["muted-soft"]} />
                   <AppText className="text-body-sm text-muted">
                     {profile.data.city.name}
                     {profile.data.user.district ? `, ${profile.data.user.district}` : ""}

@@ -12,7 +12,7 @@
  */
 
 import { useRouter } from "expo-router";
-import { ChevronRight, MapPin } from "lucide-react-native";
+import { CaretRight, MapPin } from "phosphor-react-native";
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -31,6 +31,7 @@ import { PickerSheet, type PickerOption } from "@/components/ui";
 import { useAuthSession } from "@/features/auth/use-auth-session";
 import { useUserRecord } from "@/features/auth/use-user-record";
 import { useUpdateMyProfile } from "@/features/profile/use-update-my-profile";
+import { useSafeBack } from "@/lib/use-safe-back";
 import { useThemeColors } from "@/lib/use-theme-color";
 
 export default function EditClientScreen() {
@@ -41,6 +42,9 @@ export default function EditClientScreen() {
   const { data: user } = useUserRecord(userId);
   const update = useUpdateMyProfile(userId);
   const tc = useThemeColors(["ink", "mute", "muted-soft", "accent"]);
+  // safeBack — fallback /(tabs)/profile, потому что edit-client открывается
+  // из /profile, и при cross-stack push'е expo-router теряет history.
+  const goBack = useSafeBack("/(tabs)/profile" as const);
 
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
@@ -84,7 +88,7 @@ export default function EditClientScreen() {
         district,
       },
       {
-        onSuccess: () => router.back(),
+        onSuccess: () => goBack(),
         onError: (e) => Alert.alert("Не удалось сохранить", e.message),
       },
     );
@@ -94,11 +98,11 @@ export default function EditClientScreen() {
     if (isDirty) {
       Alert.alert("Отменить изменения?", "Несохранённые правки будут потеряны.", [
         { text: "Продолжить редактирование", style: "cancel" },
-        { text: "Отменить", style: "destructive", onPress: () => router.back() },
+        { text: "Отменить", style: "destructive", onPress: () => goBack() },
       ]);
       return;
     }
-    router.back();
+    goBack();
   };
 
   return (
@@ -194,7 +198,7 @@ export default function EditClientScreen() {
             className="flex-row items-center gap-3 px-4 py-3 active:bg-canvas-soft"
           >
             <View className="h-9 w-9 items-center justify-center rounded-md bg-canvas-soft">
-              <MapPin size={16} strokeWidth={1.75} color={tc.ink} />
+              <MapPin size={16} weight="bold" color={tc.ink} />
             </View>
             <View className="flex-1">
               <AppText className="text-caption text-mute">Город</AppText>
@@ -202,7 +206,7 @@ export default function EditClientScreen() {
                 {cityLabel}
               </AppText>
             </View>
-            <ChevronRight size={18} strokeWidth={1.75} color={tc["muted-soft"]} />
+            <CaretRight size={18} weight="bold" color={tc["muted-soft"]} />
           </Pressable>
           <View className="h-px bg-hairline mx-4" />
           <FieldRow label="Район">

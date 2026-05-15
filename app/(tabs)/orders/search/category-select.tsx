@@ -10,13 +10,13 @@
 //
 // UX-стандарты (фидбек user 2026-05-15):
 //   - <ScreenHeader title="Категории" onBack={...} /> (height 64).
-//   - Search input крупный (h-14, 18px шрифт).
+//   - MagnifyingGlass input крупный (h-14, 18px шрифт).
 //   - Lucide Check 20 для отметки выбранного, цветные Iconify-иконки
 //     слева (как в wizard category-select).
 //   - Sticky footer с большой Button size="lg".
 
 import { useFocusEffect } from "expo-router";
-import { Check, Search, Sparkles, X } from "lucide-react-native";
+import { Check, MagnifyingGlass, Sparkle, X } from "phosphor-react-native";
 import { useCallback, useMemo, useState } from "react";
 import { Image, Pressable, ScrollView, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -134,7 +134,7 @@ export default function FiltersCategorySelectScreen() {
       {/* Typeahead инпут — крупный (h-14, 18px). */}
       <View className="px-5 mt-2">
         <View className="flex-row items-center gap-3 h-14 rounded-2xl bg-canvas-soft px-4">
-          <Search size={20} strokeWidth={1.75} color={muteColor} />
+          <MagnifyingGlass size={20} weight="bold" color={muteColor} />
           <TextInput
             value={query}
             onChangeText={setQuery}
@@ -155,7 +155,7 @@ export default function FiltersCategorySelectScreen() {
               onPress={() => setQuery("")}
               className="h-9 w-9 items-center justify-center rounded-full active:opacity-60"
             >
-              <X size={18} strokeWidth={2} color={muteColor} />
+              <X size={18} weight="bold" color={muteColor} />
             </Pressable>
           ) : null}
         </View>
@@ -165,7 +165,7 @@ export default function FiltersCategorySelectScreen() {
       {isSearching && search.data?.wasFlipped && search.data.flippedQuery ? (
         <View className="px-5 mt-3">
           <View className="flex-row items-center gap-2 rounded-md bg-canvas-soft px-3 py-2">
-            <Sparkles size={14} strokeWidth={2} color={inkColor} />
+            <Sparkle size={14} weight="bold" color={inkColor} />
             <AppText className="text-caption text-body" numberOfLines={1}>
               Возможно, вы искали:{" "}
               <AppText weight="semibold" className="text-ink">
@@ -217,11 +217,11 @@ export default function FiltersCategorySelectScreen() {
                       style={{ width: 24, height: 24 }}
                     />
                   ) : (
-                    <Icon size={20} strokeWidth={1.5} color={inkColor} />
+                    <Icon size={20} weight="bold" color={inkColor} />
                   )}
                 </View>
                 <View className="flex-1">
-                  <AppText className="text-body-md" numberOfLines={1}>
+                  <AppText className="text-body-md text-ink" numberOfLines={1}>
                     {segments
                       ? segments.map((seg, idx) => (
                           <AppText
@@ -244,16 +244,17 @@ export default function FiltersCategorySelectScreen() {
                     </AppText>
                   ) : null}
                 </View>
-                {/* Checkbox-индикатор справа */}
+                {/* Checkbox-индикатор справа — солидный accent (iOS-style)
+                    когда выбран. Чёрные индикаторы запрещены (user 2026-05-15). */}
                 <View
                   className={`h-7 w-7 items-center justify-center rounded-full border ${
                     isSelected
-                      ? "border-ink bg-ink"
+                      ? "border-accent bg-accent"
                       : "border-hairline bg-canvas"
                   }`}
                 >
                   {isSelected ? (
-                    <Check size={16} strokeWidth={2.5} color="#fff" />
+                    <Check size={16} weight="bold" color="#fff" />
                   ) : null}
                 </View>
               </Pressable>

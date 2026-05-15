@@ -25,6 +25,11 @@ _пусто_
 
 _Все открытые задачи которые подняли но не закрыли — здесь. Они забираются в работу первыми._
 
+- [ ] **БД-таблица `locations`** (миграция 0051+) — заменит hardcoded `DISTRICTS` const в `src/lib/location-config.ts` на запросы из БД. Структура: `locations(id, name, type enum('city'|'district'|'village'), parent_id, lat, lng, sort_order)`. Admin UI добавления / правок. Применить только после стабилизации текущего hardcoded подхода (есть LocationPicker / LocationSheet / LocationFilterSheet работающие через const — БД-таблица улучшит admin workflow без UX-регрессии).
+- [ ] **Native geolocation через `expo-location`** — установить пакет (`npm install expo-location`) и заменить заглушку `getDeviceCoordinates` в `src/lib/use-user-city.ts`. См. inline TODO. Сейчас на native fallback на `DEFAULT_CITY_ID`.
+- [ ] **`<LocationFilterSheet>` интеграция в master profile edit** — для master service zone (где мастер работает). Компонент готов в `src/components/ui/LocationFilterSheet.tsx`, нужна БД-таблица `master_service_zones(master_id, location_key)` где `location_key` хранит `c:cityId` / `v:village` строку из `Set<LocSetItem>`.
+- [ ] **`<LocationSheet>` для master feed фильтра** — мастер фильтрует входящие заказы по нескольким городам/районам. Компонент готов; нужна интеграция в master feed screen + обновление `useMasterFeed` хука для приёма `LocationFilter`.
+- [ ] **LocationPicker в master profile (single mode)** — расширить onboarding мастера от city до района/села. `master_profiles.district` + `master_profiles.village` колонки.
 - [ ] Перенести «Примеры» («Починить кондиционер», «Нужен плиточник…») как placeholder поля description в `app/(tabs)/orders/new.tsx`
 - [ ] LoginWall: подключить к действиям — отправка сообщения в чате (`chats/[id].tsx`), оставление отзыва, создание заказа (`orders/new.tsx` финальный submit)
 - [ ] Hot-reload в браузере (WebSocket auto-reload injection) — сейчас F5 руками
@@ -60,7 +65,7 @@ _Все открытые задачи которые подняли но не з
 
 ### 🟡 Важно (UI редизайн под Vercel)
 - [ ] Orders list (`(tabs)/orders/index.tsx`) — сейчас работает через compat aliases, нужен Vercel-rewrite
-- [ ] Orders new (`(tabs)/orders/new.tsx`) — wizard выглядит ОК но не Vercel-styled, плюс нужен LoginWall на финальный submit
+- [x] **Orders new (`(tabs)/orders/new.tsx`)** — переписан 2026-05-14: Vercel hero (eyebrow + H1 + 3-step value-prop + privacy callout) + единая info-card + `<LocationPicker>` bottom-sheet с иерархией Город/Район/Село. Подключение LoginWall к финальному submit — отдельная задача ниже.
 - [ ] Order detail (`(tabs)/orders/[id].tsx`) — большой экран, нужен Vercel + StatusBadge компонент
 - [ ] Order edit (`(tabs)/orders/edit/[id].tsx`)
 - [ ] Chats list (`(tabs)/chats/index.tsx`)
@@ -101,6 +106,30 @@ _Все открытые задачи которые подняли но не з
 - [x] **Профиль клиента: stats + edit.** В `app/(tabs)/profile/index.tsx` добавлены 2 карточки (заказы / чаты) со счётчиками и кнопка «Редактировать профиль». Новый экран `app/(tabs)/profile/edit-client.tsx` (имя / фамилия / город через `PickerSheet` / район) с префиллом, dirty-check, save через `useUpdateMyProfile`.
 - [x] **Аватары DiceBear `shapes` only.** Миграция 0048 перевела все 30 demo-аватаров с avataaars → shapes. Зафиксировано как правило в `CLAUDE.md` (раздел «АВАТАРЫ — ТОЛЬКО DiceBear shapes»). Запрет на avataaars/personas/micah/pixel-art и сторонние cartoon-генераторы.
 - [x] **Чаты hygiene.** Префикс `demo: ` в title 4 заказов Алины убран. Добавлено свежее (15 минут назад) сообщение от Магомеда → у Алины теперь 2 видимых непрочитанных чата.
+
+## ✅ Сделано (Sprint J — 2026-05-14 поздний вечер, location-архитектура)
+
+- [x] **Единый `src/lib/location-config.ts`** — 8 cities + 4 districts + 32 villages + CITY_COORDINATES + DEFAULT_CITY_ID + getNearestCity Haversine + getLocationLabel + helpers + LocationFilter type + LocSet utilities. Подход скопирован из Ingush-Business.
+- [x] **Миграция `0050_cities_add_large_villages.sql`** — 3 новых cities в БД (Орджоникидзевская, Серноводская, Нестеровская). Применена на прод.
+- [x] **`src/lib/use-user-city.ts`** — Zustand store + init-цикл AsyncStorage → web geolocation → `getNearestCity` → DEFAULT_CITY_ID. Хук `useUserCity()`.
+- [x] **`<LocationSheet>` multi-select** (`src/components/ui/LocationSheet.tsx`) — `LocationFilter` `{isAll, cities[], districts[]}` + reset link + sticky CTA.
+- [x] **`<LocationFilterSheet>` Set-API** (`src/components/ui/LocationFilterSheet.tsx`) — `Set<"c:"|"v:">` + 2 режима (cities / villages-search), 32 села с поиском.
+- [x] **CitySelector переведён на useUserCity** — старый local Zustand store удалён, импорт через `@/lib/use-user-city`. Все 8 cities видны в PickerSheet.
+- [x] **`order-schema.ts` остался только Zod** — все локационные константы переехали в `location-config.ts`, оставлены re-export'ы для обратной совместимости.
+- [x] **docs/location-system.md обновлён** до полной архитектуры (4 компонента + init-цикл + follow-up).
+
+---
+
+## ✅ Сделано (Sprint J — 2026-05-14 вечер, часть 1)
+
+- [x] **`orders/new` rewrite под Vercel** — hero (eyebrow «НОВЫЙ ЗАКАЗ» + H1 «Опишите задачу — мастера отзовутся» + 3-step value-prop «Получите отклики / Посмотрите цены / Выберите подходящего» + privacy callout с Lock в единой info-card с hairline-divider), все form-labels `body-sm-strong text-ink`, selected chips чёрные Vercel-pills, единый primary CTA «Опубликовать заказ».
+- [x] **`<LocationPicker>` компонент** — bottom-sheet с иерархией Вся-Ингушетия / 5 городов / 4 муниципальных района / 34 села. Trigger-pill в форме (`📍 Магас · Экажево`). Скопирован паттерн из Ingush-Business `LocationSheet`. См. `src/features/orders/LocationPicker.tsx`.
+- [x] **БД миграция `0049_orders_city_optional.sql`** — `orders.city_id → NULLABLE` для заказов «Вся Ингушетия». Применена на прод. Регенерация types.
+- [x] **Labels «Сроки» → «Готовность мастера взяться за работу»** — точнее по смыслу.
+- [x] **`villagesByDistrict` const + helpers `findDistrictByVillage` / `isDistrict`** в `order-schema.ts` — для UI-восстановления родительского района по селу.
+- [x] **CLAUDE.md новые правила:** «🚨 Никаких минимальных вариантов» + «🚨 Документация после каждой осмысленной единицы работы».
+
+---
 
 ## ✅ Сделано (Sprint J — 2026-05-13)
 

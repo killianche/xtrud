@@ -18,6 +18,7 @@ import "react-native-reanimated";
 import { useAuthSession } from "@/features/auth/use-auth-session";
 import { useUserRecord } from "@/features/auth/use-user-record";
 import { useRegisterPushToken } from "@/features/notifications/use-register-push-token";
+import { NavHistoryTracker } from "@/lib/nav-history";
 
 /*
  * RootLayout — корень приложения.
@@ -177,6 +178,7 @@ export default function RootLayout() {
       <QueryClientProvider client={queryClient}>
         <SafeAreaProvider>
           <AuthGate>
+            <NavHistoryTracker />
             <Slot />
           </AuthGate>
           <StatusBar style="auto" />

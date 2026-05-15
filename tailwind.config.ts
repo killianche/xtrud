@@ -102,6 +102,13 @@ const config: Config = {
         caption: ["12px", "16px"],
 
         // mono — для цифр в карточках (рейтинг, цена, расстояние). xtrud override.
+        // mono-md (16px) — для цен в листинге мастеров (фидбэк user 2026-05-14
+        //                 «мелко, не читается», поднято с mono-body 14px).
+        // mono-body (14px) — fallback / inline-цифры.
+        // mono-sm (13px) — мета-цифры (рейтинг 4.9, расстояние 12км).
+        // mono-caption (12px) — мелкие метки и не-критичные счётчики.
+        "mono-md": ["16px", "24px"],
+        "mono-body": ["14px", "20px"],
         "mono-sm": ["13px", "20px"],
         "mono-caption": ["12px", "16px"],
 

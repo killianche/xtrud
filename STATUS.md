@@ -4,7 +4,181 @@
 
 ---
 
-## Текущее состояние (2026-05-14, Sprint J — auth-bypass для demo + client profile полноценный)
+## Текущее состояние (2026-05-15 поздний вечер, JIT-signup + draft persistence + guest profile)
+
+**Главное:**
+
+- **JIT-signup для анона в /orders/new.** Анон заполняет всю форму заказа (название, описание, категория, локация, срочность, бюджет). Нажимает «Опубликовать» — открывается `<JitSignupSheet>` (BottomSheet с двумя шагами: имя+телефон → 6-значный SMS-код). После confirm: `signInAnonymously` создаёт сессию, `UPDATE users SET first_name, onboarding_completed_at=now()` (JIT-flow пропускает онбординг), затем родитель автоматически вызывает `publishWithUser(uid)` → success screen «Заявка опубликована». Sprint 1: SMS — заглушка (любые 6 цифр проходят).
+- **Draft заказа выживает любую навигацию.** Расширил `order-draft-store.ts` — теперь хранит полный snapshot формы (title, description, l2Id, cityId, district, urgency, budgetMode, budgetMin, budgetMax). `/orders/new` подписывается на `watch()` и пишет в store при каждом изменении, читает store как defaultValues. Это решает баг user 2026-05-15 «нажал на категорию → форма сбросилась» — переход `/orders/new → /orders/category-select → back` теперь сохраняет всё что было введено (verified в preview).
+- **Guest profile screen.** Анон тапает «Профиль» — раньше висел спиннер. Теперь показывается hero-card «Войдите в аккаунт · Создавайте заказы…» + CTA «Войти по телефону» + переключатель темы. Спиннер остаётся только для случая «есть session, грузим userRecord».
+- **Back navigation v3 (in-app history stack).** Введён `<NavHistoryTracker />` + `useNavHistory` Zustand-стек pathname'ов. `useSafeBack` теперь делает `router.replace(prev)` на предпоследний path из стека — обходит проблему Expo Router с `history.replaceState` при cross-tab переходах. Раскатан на 8 detail-экранах.
+- **Логаут на вебе работает.** `Alert.alert` → `confirmAsync` (web → `window.confirm`, native → `Alert.alert`).
+
+**Новые файлы:**
+- `src/lib/confirm.ts` — `confirmAsync()`.
+- `src/lib/nav-history.ts` — Zustand-стек pathname + `<NavHistoryTracker />`.
+- `src/features/auth/JitSignupSheet.tsx` — JIT-signup BottomSheet.
+- `SESSION_SUMMARY_2026-05-15.md`.
+
+**Изменённые файлы:**
+- `src/lib/use-safe-back.ts` — переписан на nav-history.
+- `src/lib/order-draft-store.ts` — расширен до полного draft.
+- `app/_layout.tsx` — смонтирован NavHistoryTracker.
+- `app/(tabs)/profile/index.tsx` — guest-state + логаут через confirmAsync + header back через useSafeBack.
+- `app/(tabs)/orders/new.tsx` — useForm ↔ draft-store sync, JIT-signup integration.
+- 7 detail-экранов с back-кнопками (orders/[id], chats/[id], client/[id], notifications, useful×2, admin).
+
+**E2E-flow verified (Заказ от анона):**
+1. Анон на `/orders/new` → пишет «Покрасить стену в детской» + описание ✅
+2. Кликает «Выберите категорию» → `/orders/category-select` → пикает «Сантехника» → back ✅
+3. **Title/description выжили после возврата** ✅
+4. Выбирает локацию «Назрань · Магас» → Готово ✅
+5. Нажимает «Опубликовать заказ» → открывается JIT sheet ✅
+6. Вводит имя «Магомед» + телефон → «Получить код» → код-экран ✅
+7. Вводит `000000` → «Подтвердить и опубликовать» → success screen «Заявка опубликована» ✅
+8. «К моим заказам» → видит новый заказ в списке ✅
+
+**Куда ещё применить confirmAsync / useSafeBack (НЕ сделано):**
+- `Alert.alert` confirm'ы в orders/[id] (отмена, скрыть отклик, завершить), profile/edit-*.tsx, admin/index.tsx — на вебе всё ещё no-op.
+
+---
+
+## Прежнее состояние (2026-05-15 вечер, fix back-navigation + logout button на вебе)
+
+**Главное:**
+
+- **Кнопка «Выйти из аккаунта» теперь работает на вебе.** Был баг: `Alert.alert` в react-native-web — no-op, поэтому confirm-диалог никогда не показывался, `signOut()` не вызывался. Создан `src/lib/confirm.ts` с `confirmAsync()` — на вебе использует `window.confirm`, на native — `Alert.alert`. Логаут в `app/(tabs)/profile/index.tsx` (обе ветки: клиент + мастер) переведён на `confirmAsync`. Верифицировано в preview: confirm срабатывает, localStorage очищается, AuthGate переводит в анон-режим.
+- **Кнопка «Назад» возвращает на предыдущий экран, а не «куда попало».** Был баг: на вебе detail-экраны (`master/[id]`, `client/[id]`, `category/[id]`, `chats/[id]`, `orders/[id]`, `notifications`, `useful`, `admin`) живут как top-level Tabs.Screen в `(tabs)`. Cross-tab `router.push` использует `history.replaceState`, не `pushState`. `router.back()` через canGoBack=true уходил на корень предыдущего таба; `window.history.back()` тоже не помогал — predecessor entry уже затёрт. Фикс: создан `src/lib/nav-history.ts` (Zustand-стек pathname'ов) + `<NavHistoryTracker />` смонтирован в корневом `app/_layout.tsx`. `useSafeBack` теперь читает предпоследний элемент стека и делает `router.replace(prev)`. Применён `useSafeBack` на 8 detail-экранах, где раньше был сырой `router.back()`. Верифицировано в preview: `/orders/[id] → /master/[id] → back` приводит обратно на `/orders/[id]`.
+
+**Новые файлы:**
+- `src/lib/confirm.ts` — `confirmAsync()` кросс-платформенный confirm.
+- `src/lib/nav-history.ts` — Zustand-стек pathname + `<NavHistoryTracker />`.
+
+**Изменённые файлы:**
+- `src/lib/use-safe-back.ts` — переписан на nav-history стек (v3; до этого было 2 промежуточных подхода — history.back и web-first history, оба отброшены).
+- `app/_layout.tsx` — смонтирован `<NavHistoryTracker />`.
+- `app/(tabs)/profile/index.tsx` — логаут через `confirmAsync`, header back через `useSafeBack`.
+- `app/(tabs)/orders/[id].tsx`, `chats/[id].tsx`, `client/[id].tsx`, `notifications/index.tsx`, `useful/index.tsx`, `useful/[slug].tsx`, `admin/index.tsx` — заменён сырой `router.back()` на `useSafeBack(<fallback>)`.
+
+**Куда ещё применить тот же паттерн (НЕ сделано в этой сессии):**
+- `Alert.alert` на confirm-диалогах внутри `orders/[id]` (отмена заказа, скрыть отклик, завершить заказ), `profile/edit-client.tsx`, `profile/edit-master.tsx` — на вебе они тоже no-op. Переход на `confirmAsync` — отдельная задача (видно в `TASKS.md` если завести).
+
+---
+
+## Прежнее состояние (2026-05-15, спека мастера + персональный demo-master)
+
+**Главное в этой сессии:**
+
+- **`MASTER_ACCOUNT_SPEC.md`** (новый файл в корне) — консолидированная спецификация аккаунта мастера. Раньше инфа была разлита по `PROJECT_MAP.md` §4.3/§5.1/§5.2 + `CATEGORIES_AND_PROFILES.md` §2 + миграциям. Теперь одна точка входа: 3 БД-сущности + 6 экранов UI + чек-листы MVP-1 / Phase-2 / Phase-3 + INSERT-шаблон для тестов. Линкована из `DEMO_ACCOUNTS.md`.
+- **Персональный demo-master `+7 900 000-00-03`** (Руслан Хамхоев, Магас) — миграция `0054_personal_demo_master.sql`, применена на прод. ⭐⭐⭐ верификация (самозанятый с ИНН 060800123456), 12 лет опыта, рейтинг **4.7 ★** (3 отзыва), **29 закрытых сделок**, availability_status = `this_week`. **3 категории** (Сантехника + Электрика + Отделка), **8 услуг в прайсе**, **8 фото в портфолио**, **2 in_progress** заказа с активными чатами + **3 completed** (1 без отзыва от Алины — чтобы потестить «Оставить отзыв») + **2 sent отклика** на чужие open-заказы.
+- **Логин (как у других демо):** email `79000000003@xtrud-demo.local` + password `xtrud`. На фронте — телефон `+7 900 000-00-03` + любой 6-значный код.
+- Verification в preview: открыл `/master/f0000003-…0003` — карточка рендерится корректно (имя, рейтинг, бейджи, 8 услуг, 3 отзыва от Адама/Ахмеда/Зелимхана).
+
+**Файлы сессии:**
+- Новые: `MASTER_ACCOUNT_SPEC.md`, `supabase/migrations/0054_personal_demo_master.sql`
+- Изменённые: `DEMO_ACCOUNTS.md` (добавлен личный мастер + детальный walkthrough), `STATUS.md`
+
+---
+
+## Старое состояние (2026-05-14 поздняя ночь, location-архитектура по образцу Ingush-Business)
+
+**Главное в этой сессии (см. подробно `SESSION_SUMMARY_2026-05-14.md` → секция «Поздняя ночь 2026-05-14 — Location system rewrite»):**
+
+- **Единый source-of-truth `src/lib/location-config.ts`** — содержит 8 поселений РИ (5 cities из БД + 3 крупных села-городка), 4 муниципальных района, 32 села, координаты для Haversine, helpers (`findDistrictByVillage`, `getNearestCity`, `getLocationLabel`), типы `LocationFilter` / `LocSet`. Подход скопирован из Ingush-Business `lib/config.ts`. Все потребители (CitySelector / LocationPicker / order-schema) импортируют отсюда.
+- **`useUserCity()` hook** в `src/lib/use-user-city.ts` — Zustand store + persist (`xtrud-city` v3) + init-цикл: AsyncStorage → web geolocation (`navigator.geolocation`, 5s timeout) → `getNearestCity` (threshold 30км) → `DEFAULT_CITY_ID="nazran"` fallback. Native — TODO `expo-location`.
+- **2 новых UI компонента:**
+  - `<LocationSheet>` (`src/components/ui/LocationSheet.tsx`) — multi-select городов+районов через `LocationFilter` `{isAll, cities[], districts[]}`. Reset link + sticky CTA.
+  - `<LocationFilterSheet>` (`src/components/ui/LocationFilterSheet.tsx`) — multi-select с сёлами напрямую через `Set<"c:cityId"|"v:village">`. Два режима UI (cities-grid / villages-list с поиском по 32 сёлам).
+- **Миграция `0050_cities_add_large_villages.sql`** — добавила 3 cities в БД (`ordzhonikidzevskaya`, `sernovodskaya`, `nesterovskaya`). Применена на прод.
+- **`order-schema.ts` теперь только Zod** — все локационные константы переехали в `location-config.ts`, оставлены re-export'ы (ALL_INGUSHETIA_CITY / districtOptions / villagesByDistrict / findDistrictByVillage / isDistrict) для обратной совместимости.
+- **CitySelector переведён на useUserCity** — старый local Zustand store удалён, импорт через `@/lib/use-user-city`. Все 8 cities видны в PickerSheet.
+- **docs/location-system.md обновлён** до полной архитектуры — 4 компонента + init-цикл + 5 follow-up задач.
+
+**Файлы сессии (location-architect):**
+- Новые: `src/lib/location-config.ts`, `src/lib/use-user-city.ts`, `src/components/ui/LocationSheet.tsx`, `src/components/ui/LocationFilterSheet.tsx`, `supabase/migrations/0050_cities_add_large_villages.sql`
+- Изменённые: `src/components/CitySelector.tsx` (переведён на useUserCity), `src/components/ui/index.ts` (экспорт 2 sheet'ов), `src/features/orders/order-schema.ts` (re-export'ы из location-config), `app/(tabs)/orders/index.tsx` (graceful fallback null city_id в 3 OrderRow + nullable city_id в NewOrdersTabProps), `docs/location-system.md`, `STATUS.md`, `TASKS.md`, `SESSION_SUMMARY_2026-05-14.md`
+
+**Верификация:** `tsc --noEmit` чисто, preview-eval подтверждает 8 cities в LocationPicker bottom-sheet'е (Магас / Назрань / Сунжа / Малгобек / Карабулак / Орджоникидзевская / Серноводская / Нестеровская). Dark mode корректно отрисован.
+
+---
+
+## Старое состояние (2026-05-14 ночь, perf-агент: skeletons + safe back-navigation)
+
+**Главное в этой сессии (см. подробно `SESSION_SUMMARY_2026-05-14.md` → раздел «Поздний вечер 2026-05-14 — perf-агент»):**
+
+- **Прогрессивная загрузка экранов с реальной структурой вместо пустых лоадеров.** Master detail больше не блокируется full-screen «Загружаем профиль…» — рендерится hero 4:5 skeleton + skeleton имени + 3 pill-skeletons, секции проявляются сверху вниз. Home/TopMasters рисует 4 mini-card skeleton'а вместо `null` (раньше секция «прыгала»). Orders index — все 4 `<ActivityIndicator />` заменены на `OrderRowsSkeleton` (chip + title + meta). Category page — row-skeletons формы реального `MasterRow`. MasterServicesList — 3 price-row skeleton'а.
+- **Skeleton базовый компонент** — `src/components/ui/Skeleton.tsx`. Animated.View opacity-pulse, `bg-canvas-soft-2` (auto dark mode). Anti-pattern: `<ActivityIndicator />` на пустом экране запрещён.
+- **Safe back-navigation** — `useSafeBack(fallback: Href)` хук (`src/lib/use-safe-back.ts`). Раньше при заходе по deeplink/refresh `router.back()` уходил в браузерную историю до приложения («не туда, откуда зашёл»). Теперь — `canGoBack()` check + `router.replace(fallback)` на логического родителя. Применено в 7 экранах: master/[id] → home, category/[id] → home, orders/new → /orders, orders/[id] → /orders, orders/edit/[id] → /orders/[id], orders/category-select → /orders/new, chats/[id] → /chats, search → home.
+- **Верификация:** `tsc --noEmit` чистый, 18 matches `useSafeBack|canGoBack` в bundle, smoke-тесты deeplink → back для master/category/search/orders прошли.
+
+**Файлы сессии (perf-agent):**
+- Новые: `src/components/ui/Skeleton.tsx`, `src/lib/use-safe-back.ts`
+- Изменённые: `src/components/ui/index.ts`, `app/(tabs)/index.tsx`, `app/(tabs)/master/[id].tsx`, `app/(tabs)/category/[id].tsx`, `app/(tabs)/orders/index.tsx`, `app/(tabs)/orders/[id].tsx`, `app/(tabs)/orders/new.tsx`, `app/(tabs)/orders/edit/[id].tsx`, `app/(tabs)/orders/category-select.tsx`, `app/(tabs)/chats/[id].tsx`, `app/(tabs)/search.tsx`, `src/features/master-services/MasterServicesList.tsx`
+
+---
+
+## Старое состояние (2026-05-14 поздно вечером, UX-полировка category + master)
+
+**Главное в этой сессии (см. подробно `SESSION_SUMMARY_2026-05-14.md`):**
+
+- **Шрифты:** имя мастера в карточке 16 → **18px** (`text-body-lg`), цены в листинге 12 → **14px** mono (новый токен `text-mono-body` в `tailwind.config.ts`).
+- **DESIGN.md:** добавлена секция «Минимальные размеры шрифта» — шкала + 6 правил, anti-pattern `text-caption-xs` (10px) запрещён.
+- **CLAUDE.md:** 2 новых критических правила —
+  - 🚨 «ДОКУМЕНТАЦИЯ ПОСЛЕ КАЖДОЙ ОСМЫСЛЕННОЙ ЕДИНИЦЫ» (структура SESSION_SUMMARY, что обновлять);
+  - 🚨 «УМЕНЬШАТЬ ИЗОБРАЖЕНИЯ ДО ≤1200px перед `Read`» (`sips`/`pdftoppm` команды).
+- **`/category/[id]` редизайн:**
+  - Header: `display-sm` заголовок (20px) + `h-11` тач-таргет back; chip-bar tighter (px:12, gap:6, h-9 chips).
+  - FilterChip: outline-style (transparent + hairline border) когда inactive; bg-ink + on-primary text когда active. ChevronDown 14→12, opacity 50%.
+  - Gap chips → первая карточка: 44 → 20px (mt-4→0 + py-7→5).
+  - **VK-style 5 миниатюр портфолио в каждой карточке** между прайсом и кнопками. На 5-й «+N» если фото больше. Тап → переход на профиль.
+  - Контактные кнопки: ghost pills (bg-canvas-soft, h-10, без иконок, equal weight). Primary action — сама карточка. Паттерн TaskRabbit/Booksy/Yelp.
+- **`SESSION_SUMMARY_2026-05-14.md`** — полный отчёт сессии (38 закрытых пунктов, новые правила, новые компоненты, anti-patterns, открытые TODO).
+
+**Lazyweb использован для:** редизайна кнопок (TaskRabbit, Booksy, Yelp) и header+chips (Farfetch, Backmarket, Wander, Airbnb).
+
+**Файлы текущей сессии:**
+- `app/(tabs)/category/[id].tsx` — header redesign, chip outline, 5-thumb row, ghost buttons, font sizes
+- `tailwind.config.ts` — новый токен `mono-body: 14px / 20px lh`
+- `DESIGN.md` — секция «Минимальные размеры шрифта»
+- `CLAUDE.md` — 2 новых правила
+- `SESSION_SUMMARY_2026-05-14.md` — новый файл
+
+---
+
+## Старое состояние (2026-05-14 днём, Sprint J — orders/new rewrite + LocationPicker + правила в CLAUDE.md)
+
+**Главное на сегодня (вечер):**
+- **Экран `orders/new` переписан под Vercel-эстетику.** Hero card «Опишите задачу — мастера отзовутся» с eyebrow «НОВЫЙ ЗАКАЗ» (mono) + 3-step value-prop (Получите отклики / Посмотрите цены от мастеров / Выберите подходящего) + privacy callout с Lock-кружком («Ваш номер скрыт от мастеров. Мастера присылают только цену и срок выполнения. Написать или позвонить вам они смогут лишь после того, как вы сами это разрешите.») — оба блока в **единой info-card** с hairline-divider посредине. Иконки 40dp согласованы.
+- **`<LocationPicker>` компонент** (`src/features/orders/LocationPicker.tsx`) — иерархический picker locации в bottom-sheet'е. Подход скопирован из проекта Ingush-Business (их `LocationSheet`). Заменил две плоские chip-row секции (Город + Район) на одну trigger-pill «📍 Выберите локацию» → открывает sheet с:
+  - Выделенная карточка «Вся Ингушетия» (toggle — заказ видят мастера всей республики, `city_id = null`)
+  - 5 chips городов РИ
+  - 4 chips муниципальных районов
+  - **Sub-row сёл выбранного района** (Экажево, Орджоникидзевская, Джейрах… — 34 села по 4 районам)
+  - Sticky bottom CTA «Готово» — commit changes
+  Trigger показывает финальную локацию: `Магас · Экажево` / `Вся Ингушетия` / placeholder.
+- **БД: `orders.city_id` → NULLABLE** (миграция `0049_orders_city_optional.sql`, применена на прод). Это позволяет хранить заказы «Вся Ингушетия» без привязки к городу. `useCreateOrder` конвертирует UI-значение `"all"` → `null` в payload. `useUpdateOrder` / edit-форма — конвертируют обратно `null` → `"all"` при reset.
+- **`orders/index.tsx`**: `cityName={o.city?.name ?? o.city_id ?? "Вся Ингушетия"}` в 3 местах — graceful fallback для null city.
+- **Label «Сроки» → «Готовность мастера взяться за работу»** — точнее отражает смысл (это про мастера, не про дедлайн задачи).
+- **Все form-chips Vercel-pattern**: selected = чёрный pill (`border-ink bg-ink text-on-primary`) вместо голубого `accent-soft`. City / urgency / budget / district / village — единый visual.
+
+**Новые правила в CLAUDE.md:**
+- **🚨 «НИКАКИХ МИНИМАЛЬНЫХ ВАРИАНТОВ И СОКРАЩЕНИЙ»** — задача выполняется полноценно до production-ready, MVP/v1/«пока хватит» запрещены без явной просьбы. Если есть reference-реализация в Ingush-Business / Profi.ru / TaskRabbit — делать на их уровне или выше, не ниже.
+- **🚨 «ДОКУМЕНТАЦИЯ ПОСЛЕ КАЖДОЙ ОСМЫСЛЕННОЙ ЕДИНИЦЫ РАБОТЫ»** (добавлено пользователем после моих stub-решений) — после новой фичи / редизайна / data-schema-изменения обновлять STATUS.md, TASKS.md, design-doc'и.
+
+**Файлы:**
+- `app/(tabs)/orders/new.tsx` — hero rewrite + единый submit + StepItem
+- `src/features/orders/OrderFormBody.tsx` — labels через `body-sm-strong text-ink`, chips через `bg-ink`, секции «Город» + «Район» заменены на `<LocationPicker>`
+- `src/features/orders/LocationPicker.tsx` — новый компонент (~270 строк)
+- `src/features/orders/order-schema.ts` — константы `ALL_INGUSHETIA_CITY`, `districtOptions`, `villagesByDistrict` (34 села по 4 районам), helpers `findDistrictByVillage` / `isDistrict`
+- `src/features/orders/use-create-order.ts` — `"all"` → `null` конвертер
+- `app/(tabs)/orders/edit/[id].tsx` — `cityId: order.city_id ?? "all"` при reset
+- `app/(tabs)/orders/index.tsx` — graceful fallback для null city
+- `supabase/migrations/0049_orders_city_optional.sql` — applied
+- `src/types/database.ts` — orders.city_id: string | null в Row/Insert/Update
+
+---
+
+## Старое состояние (2026-05-14 утром, Sprint J — auth-bypass для demo + client profile полноценный)
 
 **Главное на сегодня:**
 - **Демо-логин починен.** До этого фронт делал `signInAnonymously()` и просто записывал телефон в `users_private` → пользователь попадал в чистого анона и не видел ни своих заказов, ни чатов. Теперь для номеров `+79000…` фронт логинится через `signInWithPassword({ email, password: 'xtrud' })` где email = `<digits>@xtrud-demo.local`. Сессия попадает в существующего demo-юзера (Алина id `f0000001-…0001`) со всеми её 11 заказами / 4 чатами / 21 сообщением. Phone-provider в Supabase отключён — поэтому email-маршрут.

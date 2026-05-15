@@ -59,6 +59,7 @@ import {
 import { useMarkResponsesViewed } from "@/features/orders/use-unread-responses";
 import { ReportModal } from "@/features/reports/ReportModal";
 import { useMyReviewForOrder, useSubmitReview } from "@/features/reviews/use-reviews";
+import { useSafeBack } from "@/lib/use-safe-back";
 import { useThemeColors } from "@/lib/use-theme-color";
 import type { Tables } from "@/types/database";
 
@@ -94,6 +95,11 @@ export default function OrderDetailScreen() {
   const tc = useThemeColors(["ink", "muted-soft", "body", "mute"]);
   const [reportOpen, setReportOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+
+  // safeBack: на вебе orders/[id] и master/[id] живут в разных tab-стеках, поэтому
+  // router.back() при cross-stack переходе срабатывает не туда. На web падаем
+  // на window.history.back(), на native — обычный back с fallback'ом на список заказов.
+  const goBack = useSafeBack("/(tabs)/orders" as const);
 
   // Резолвим chat по order_id из my-chats (без отдельного запроса).
   const { data: myChats } = useMyChats(userId);
@@ -134,7 +140,7 @@ export default function OrderDetailScreen() {
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Назад"
-          onPress={() => router.back()}
+          onPress={goBack}
           hitSlop={12}
           className="h-10 w-10 items-center justify-center rounded-full active:opacity-70 hover:bg-canvas-soft"
         >

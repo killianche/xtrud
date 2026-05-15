@@ -70,7 +70,7 @@ export function CategoryPicker({ value, onChange, disabled, error }: CategoryPic
         accessibilityLabel="Выбрать категорию"
         disabled={disabled}
         onPress={() => router.push("/(tabs)/orders/category-select" as never)}
-        className={`flex-row items-center gap-3 h-14 rounded-xl border px-4 active:opacity-70 ${
+        className={`mt-2 flex-row items-center gap-2 h-12 rounded-md bg-canvas border px-3 active:opacity-70 ${
           error ? "border-error" : "border-hairline"
         } ${disabled ? "opacity-50" : ""}`}
       >

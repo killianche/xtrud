@@ -47,15 +47,16 @@ export function Avatar({ url, name, seed, size = "md", contentFit = "cover" }: A
   const dims = SIZE_MAP[size];
   const initials = useMemo(() => extractInitials(name), [name]);
   const paletteClass = useMemo(() => pickPaletteClass(seed ?? name ?? ""), [seed, name]);
+  const resolvedUrl = useMemo(() => normalizeAvatarUrl(url), [url]);
 
-  if (url) {
+  if (resolvedUrl) {
     return (
       <View
         className="overflow-hidden bg-canvas-soft-2"
         style={{ width: dims.px, height: dims.px, borderRadius: dims.px / 2 }}
       >
         <Image
-          source={{ uri: url }}
+          source={{ uri: resolvedUrl }}
           style={{ width: "100%", height: "100%" }}
           contentFit={contentFit}
           transition={150}
@@ -103,6 +104,21 @@ function extractInitials(name?: string | null): string {
   const first = parts[0]?.slice(0, 1) ?? "";
   const last = parts[parts.length - 1]?.slice(0, 1) ?? "";
   return (first + last).toUpperCase();
+}
+
+// DiceBear avataaars-сидовые URL — это placeholder из demo-fixture, а не
+// загруженное пользователем фото. Перегенерируем в стиле shapes (моно-гео,
+// ближе к Vercel-эстетике) с тем же seed → внешний вид стабилен между сессиями.
+// Экспортируется для переиспользования в местах с прямым <Image source={uri}>
+// (master/[id] hero etc), где Avatar компонент не подходит по форме.
+export function normalizeAvatarUrl(url?: string | null): string | null {
+  if (!url) return null;
+  if (url.includes("api.dicebear.com") && url.includes("/avataaars/")) {
+    return url
+      .replace("/avataaars/", "/shapes/")
+      .replace(/[?&]backgroundColor=[^&]*/g, "");
+  }
+  return url;
 }
 
 function pickPaletteClass(seed: string): (typeof PALETTE_CLASSES)[number] {

@@ -25,6 +25,7 @@ import { OrderFormBody } from "@/features/orders/OrderFormBody";
 import { type CreateOrderFormValues, createOrderSchema } from "@/features/orders/order-schema";
 import { useOrderDetail } from "@/features/orders/use-order-detail";
 import { useUpdateOrder } from "@/features/orders/use-update-order";
+import { useSafeBack } from "@/lib/use-safe-back";
 import { useThemeColor } from "@/lib/use-theme-color";
 
 export default function EditOrderScreen() {
@@ -41,6 +42,11 @@ export default function EditOrderScreen() {
   const { data: cities } = useCities();
   const updateOrder = useUpdateOrder();
   const inkColor = useThemeColor("ink");
+  // safeBack: deeplink/refresh → fallback на сам заказ (если id известен),
+  // иначе на /orders.
+  const goBack = useSafeBack(
+    (orderId ? `/(tabs)/orders/${orderId}` : "/(tabs)/orders") as never,
+  );
 
   const isOwner = !!userId && !!order && order.client_id === userId;
   const isEditable = !!order && order.status === "open";
@@ -74,7 +80,8 @@ export default function EditOrderScreen() {
       l2Id: order.l2_id,
       title: order.title,
       description: order.description,
-      cityId: order.city_id,
+      // city_id=null означает «Вся Ингушетия» — конвертируем обратно в "all" UI-значение
+      cityId: order.city_id ?? "all",
       district: order.district ?? "",
       urgency: order.urgency,
       budgetMode: order.budget_mode,
@@ -101,7 +108,7 @@ export default function EditOrderScreen() {
         budgetMin: values.budgetMode === "negotiable" ? null : values.budgetMin,
         budgetMax: values.budgetMode === "negotiable" ? null : values.budgetMax,
       });
-      router.back();
+      goBack();
     } catch (_e) {
       // через updateOrder.error
     }
@@ -120,7 +127,7 @@ export default function EditOrderScreen() {
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Назад"
-          onPress={() => router.back()}
+          onPress={goBack}
           hitSlop={12}
           className="h-10 w-10 items-center justify-center rounded-full active:opacity-70"
         >

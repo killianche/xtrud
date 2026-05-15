@@ -2,6 +2,7 @@
 // RLS orders_insert_own проверит auth.uid() = client_id.
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { ALL_INGUSHETIA_CITY } from "@/features/orders/order-schema";
 import { myOrdersKey } from "@/features/orders/use-my-orders";
 import { supabase } from "@/lib/supabase";
 import type { Database, Enums } from "@/types/database";
@@ -32,7 +33,8 @@ export function useCreateOrder() {
         l2_id: input.l2Id,
         title: input.title,
         description: input.description,
-        city_id: input.cityId,
+        // «Вся Ингушетия» = NULL (миграция 0045 сделала city_id nullable).
+        city_id: input.cityId === ALL_INGUSHETIA_CITY ? null : input.cityId,
         district: input.district || null,
         urgency: input.urgency,
         budget_mode: input.budgetMode,

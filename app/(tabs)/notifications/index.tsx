@@ -24,6 +24,7 @@ import {
   useNotifications,
   useRealtimeNotifications,
 } from "@/features/notifications/use-notifications";
+import { useSafeBack } from "@/lib/use-safe-back";
 import { useThemeColor, useThemeColors } from "@/lib/use-theme-color";
 
 function timeAgo(iso: string): string {
@@ -112,6 +113,7 @@ export default function NotificationsScreen() {
   const { data: items = [], isLoading, error, refetch } = useNotifications(userId);
   const markRead = useMarkNotificationsRead(userId);
   const deleteOne = useDeleteNotification(userId);
+  const goBack = useSafeBack("/" as const);
 
   // Авто-mark-as-read при mount (если есть непрочитанные)
   useEffect(() => {
@@ -147,7 +149,7 @@ export default function NotificationsScreen() {
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Назад"
-          onPress={() => router.back()}
+          onPress={goBack}
           hitSlop={12}
           className="h-10 w-10 items-center justify-center rounded-full active:opacity-70"
         >

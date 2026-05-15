@@ -4,13 +4,13 @@
     {
       "name": "xtrud-web",
       "runtimeExecutable": "sh",
-      "runtimeArgs": ["-c", "BROWSER=none npx expo start --web --port 8082 --clear"],
+      "runtimeArgs": ["-c", "node scripts/dev-web-local.mjs"],
       "port": 8082
     },
     {
       "name": "xtrud-web-prod",
       "runtimeExecutable": "sh",
-      "runtimeArgs": ["-c", "npx serve dist -p 8082 -s"],
+      "runtimeArgs": ["-c", "node scripts/build-web-local.mjs && npx serve dist -p 8082 -s"],
       "port": 8082
     }
   ]

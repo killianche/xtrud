@@ -13,6 +13,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
 import { EmptyState } from "@/components/EmptyState";
 import { type Article, useArticles } from "@/features/articles/use-articles";
+import { useSafeBack } from "@/lib/use-safe-back";
 import { useThemeColor } from "@/lib/use-theme-color";
 
 function ArticleCard({ item, onPress }: { item: Article; onPress: () => void }) {
@@ -57,6 +58,7 @@ export default function UsefulScreen() {
   const router = useRouter();
   const { data: items = [], isLoading, error, refetch } = useArticles();
   const tcInk = useThemeColor("ink");
+  const goBack = useSafeBack("/" as const);
 
   return (
     <View className="flex-1 bg-canvas" style={{ paddingTop: insets.top }}>
@@ -64,7 +66,7 @@ export default function UsefulScreen() {
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Назад"
-          onPress={() => router.back()}
+          onPress={goBack}
           hitSlop={12}
           className="h-10 w-10 items-center justify-center rounded-full active:opacity-70"
         >

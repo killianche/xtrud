@@ -22,6 +22,7 @@ import { ReviewsSection } from "@/features/master-view/ReviewsSection";
 import { useReviewsForTarget } from "@/features/master-view/use-master-public";
 import { usePullToRefresh } from "@/hooks/use-pull-to-refresh";
 import { pluralizeClosedOrders as pluralizeCompleted, pluralizeReviews } from "@/lib/pluralize";
+import { useSafeBack } from "@/lib/use-safe-back";
 import { useThemeColors } from "@/lib/use-theme-color";
 
 export default function ClientPublicScreen() {
@@ -34,6 +35,7 @@ export default function ClientPublicScreen() {
   const reviews = useReviewsForTarget(clientId, "master_to_client");
   const refresh = usePullToRefresh();
   const tc = useThemeColors(["ink", "muted-soft", "error", "success", "warning"]);
+  const goBack = useSafeBack("/" as const);
 
   const fullName = useMemo(() => {
     if (!profile.data?.user) return "";

@@ -16,6 +16,7 @@ import {
   ChevronLeft,
   ChevronRight,
   ClipboardList,
+  LogIn,
   LogOut,
   MapPin,
   MessageCircle,
@@ -26,10 +27,12 @@ import {
   Smartphone,
   Star,
   Sun,
+  UserRound,
 } from "lucide-react-native";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, Alert, Pressable, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { scrollViewToTop, useTabScrollResetCounter } from "@/lib/tab-scroll-reset";
 import { AppText } from "@/components/AppText";
 import { Avatar } from "@/components/Avatar";
 import { ThemeSwitcher } from "@/components/ThemeSwitcher";
@@ -50,6 +53,8 @@ import {
 import { useRemoveMyAvatar, useUpdateMyAvatar } from "@/features/profile/use-update-my-avatar";
 import { useUploadPortfolioImage } from "@/features/uploads/use-upload-image";
 import { signOut } from "@/lib/auth";
+import { confirmAsync } from "@/lib/confirm";
+import { useSafeBack } from "@/lib/use-safe-back";
 import { supabase } from "@/lib/supabase";
 import { useThemeColors } from "@/lib/use-theme-color";
 import type { Tables } from "@/types/database";
@@ -59,6 +64,13 @@ export default function ProfileScreen() {
   const router = useRouter();
   const { session } = useAuthSession();
   const userId = session?.user?.id;
+
+  // Tap-on-active-tab → scroll to top.
+  const profileScrollRef = useRef<ScrollView>(null);
+  const profileResetCounter = useTabScrollResetCounter("profile");
+  useEffect(() => {
+    if (profileResetCounter > 0) scrollViewToTop(profileScrollRef);
+  }, [profileResetCounter]);
 
   const { data: user, isLoading: userLoading } = useUserRecord(userId);
   const { data: cityName } = useCityName(user?.city_id ?? null);
@@ -95,6 +107,7 @@ export default function ProfileScreen() {
     "body",
     "error",
   ]);
+  const goBack = useSafeBack("/" as const);
 
   const onChangeAvatar = () => {
     if (updateAvatar.isPending) return;
@@ -145,6 +158,18 @@ export default function ProfileScreen() {
     ]);
   };
 
+  // Анон (нет userId) → guest-state с CTA «Войти» вместо бесконечного спиннера.
+  // Spinner показываем ТОЛЬКО когда есть userId и идёт загрузка user record.
+  if (!userId) {
+    return (
+      <GuestProfileScreen
+        insets={insets}
+        themeColors={themeColors}
+        onLogin={() => router.push("/(auth)/phone" as never)}
+      />
+    );
+  }
+
   if (userLoading || !user) {
     return (
       <View
@@ -170,7 +195,7 @@ export default function ProfileScreen() {
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Назад"
-          onPress={() => router.back()}
+          onPress={goBack}
           hitSlop={12}
           className="h-10 w-10 items-center justify-center rounded-full active:opacity-70"
         >
@@ -195,6 +220,7 @@ export default function ProfileScreen() {
       </View>
 
       <ScrollView
+        ref={profileScrollRef}
         contentContainerStyle={{ paddingBottom: insets.bottom + 32 }}
         showsVerticalScrollIndicator={false}
       >
@@ -574,17 +600,22 @@ export default function ProfileScreen() {
           </View>
         )}
 
-        {/* Sign out — клиенту ghost-destructive строкой, мастеру bordered (как было) */}
+        {/* Sign out — клиенту ghost-destructive строкой, мастеру bordered (как было).
+            confirmAsync вместо Alert.alert: на вебе Alert — no-op, и кнопка
+            не работала (фидбэк user 2026-05-15). */}
         {isClient ? (
           <View className="mt-8 px-5">
             <Pressable
               accessibilityRole="button"
-              onPress={() =>
-                Alert.alert("Выйти из аккаунта?", "Можно будет войти заново со своим номером.", [
-                  { text: "Отмена", style: "cancel" },
-                  { text: "Выйти", style: "destructive", onPress: () => signOut() },
-                ])
-              }
+              onPress={async () => {
+                const ok = await confirmAsync({
+                  title: "Выйти из аккаунта?",
+                  message: "Можно будет войти заново со своим номером.",
+                  confirmText: "Выйти",
+                  destructive: true,
+                });
+                if (ok) await signOut();
+              }}
               className="h-11 flex-row items-center justify-center gap-2 active:opacity-70"
             >
               <LogOut size={16} strokeWidth={1.75} color={themeColors.error} />
@@ -597,12 +628,15 @@ export default function ProfileScreen() {
           <View className="mt-10 px-6">
             <Pressable
               accessibilityRole="button"
-              onPress={() =>
-                Alert.alert("Выйти?", "Можно будет войти заново со своим номером.", [
-                  { text: "Отмена", style: "cancel" },
-                  { text: "Выйти", style: "destructive", onPress: () => signOut() },
-                ])
-              }
+              onPress={async () => {
+                const ok = await confirmAsync({
+                  title: "Выйти?",
+                  message: "Можно будет войти заново со своим номером.",
+                  confirmText: "Выйти",
+                  destructive: true,
+                });
+                if (ok) await signOut();
+              }}
               className="h-12 flex-row items-center justify-center gap-2 rounded-md border border-hairline bg-canvas active:opacity-70"
             >
               <LogOut size={18} strokeWidth={1.75} color={themeColors.body} />
@@ -706,6 +740,111 @@ function ClientThemeSegmented() {
           </Pressable>
         );
       })}
+    </View>
+  );
+}
+
+// ----------------------------------------------------------------------------
+// Guest-state — анон видит CTA «Войти» вместо бесконечного спиннера.
+//
+// Контракт: без auth-session userRecord загрузить нельзя, поэтому раньше
+// экран висел в `<ActivityIndicator />`. Это выглядит как баг: пользователь
+// тапнул иконку профиля и ничего не происходит (фидбэк user 2026-05-15).
+//
+// Что показываем гостю:
+// - hero-карточка с иконкой + объяснение зачем входить;
+// - primary CTA «Войти по телефону» → /(auth)/phone;
+// - тема (auto / light / dark) — работает и для анона через useColorScheme.
+// ----------------------------------------------------------------------------
+
+interface GuestProfileScreenProps {
+  insets: { top: number; bottom: number };
+  themeColors: { ink: string; "on-primary": string; body: string };
+  onLogin: () => void;
+}
+
+function GuestProfileScreen({ insets, themeColors, onLogin }: GuestProfileScreenProps) {
+  return (
+    <View className="flex-1 bg-canvas" style={{ paddingTop: insets.top }}>
+      <ScrollView
+        contentContainerStyle={{ paddingBottom: insets.bottom + 32 }}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Header — просто заголовок «Профиль», без back-кнопки (это таб). */}
+        <View className="flex-row items-center justify-center px-5 py-3">
+          <AppText weight="semibold" className="text-title-md text-ink">
+            Профиль
+          </AppText>
+        </View>
+
+        {/* Hero card — Vercel-style: tinted band → иконка-юзер → текст → CTA.
+            Воздух mt-6, paddings 6, чтобы выглядело как «приглашение», а не пусто. */}
+        <View className="mx-5 mt-6 overflow-hidden rounded-xl border border-hairline bg-canvas">
+          <View className="relative h-24 overflow-hidden bg-badge-violet">
+            <View
+              className="absolute rounded-full bg-canvas"
+              style={{ top: -28, left: -20, width: 80, height: 80, opacity: 0.35 }}
+            />
+            <View
+              className="absolute rounded-full bg-canvas"
+              style={{ bottom: -16, right: 24, width: 56, height: 56, opacity: 0.45 }}
+            />
+            <View
+              className="absolute rounded-md bg-canvas"
+              style={{
+                top: 16,
+                right: 100,
+                width: 16,
+                height: 16,
+                opacity: 0.55,
+                transform: [{ rotate: "18deg" }],
+              }}
+            />
+          </View>
+          <View className="-mt-10 items-center px-6 pb-6">
+            {/* Icon-cap — заменяет аватар. */}
+            <View className="h-20 w-20 items-center justify-center rounded-full border-4 border-canvas bg-canvas-soft">
+              <UserRound size={32} strokeWidth={1.5} color={themeColors.ink} />
+            </View>
+
+            <AppText
+              weight="display"
+              className="mt-4 text-display-sm tracking-tight text-ink text-center"
+            >
+              Войдите в аккаунт
+            </AppText>
+            <AppText
+              className="mt-2 text-body-sm text-mute text-center"
+              style={{ lineHeight: 20 }}
+            >
+              Создавайте заказы, общайтесь с мастерами и оставляйте отзывы.
+              Регистрация по номеру телефона — 30 секунд.
+            </AppText>
+
+            <Pressable
+              accessibilityRole="button"
+              onPress={onLogin}
+              className="mt-5 h-12 w-full flex-row items-center justify-center gap-2 rounded-pill bg-ink active:opacity-80"
+            >
+              <LogIn size={16} strokeWidth={2} color={themeColors["on-primary"]} />
+              <AppText weight="semibold" className="text-button text-on-primary">
+                Войти по телефону
+              </AppText>
+            </Pressable>
+          </View>
+        </View>
+
+        {/* Тема — работает и для анона. */}
+        <View className="mt-8 px-5">
+          <AppText
+            weight="medium"
+            className="mb-2 text-caption text-mute uppercase tracking-wider"
+          >
+            Тема
+          </AppText>
+          <ClientThemeSegmented />
+        </View>
+      </ScrollView>
     </View>
   );
 }

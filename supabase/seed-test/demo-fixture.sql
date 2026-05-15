@@ -49,7 +49,7 @@ INSERT INTO auth.users (
 
 UPDATE public.users SET
   first_name = 'Алина', last_name = 'Тестова',
-  avatar_url = 'https://api.dicebear.com/9.x/avataaars/png?seed=test-client-alina&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf',
+  avatar_url = 'https://api.dicebear.com/9.x/shapes/png?seed=test-client-alina',
   city_id = 'nazran', district = 'Центр',
   is_master = false, is_client = true,
   onboarding_completed_at = now() - interval '30 days',
@@ -58,7 +58,7 @@ WHERE id = 'f0000001-0000-0000-0000-000000000001';
 
 UPDATE public.users SET
   first_name = 'Магомед', last_name = 'Тестов',
-  avatar_url = 'https://api.dicebear.com/9.x/avataaars/png?seed=test-master-magomed&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf',
+  avatar_url = 'https://api.dicebear.com/9.x/shapes/png?seed=test-master-magomed',
   city_id = 'magas', district = 'Центральный',
   is_master = true, is_client = true,
   onboarding_completed_at = now() - interval '30 days',
@@ -118,8 +118,8 @@ DECLARE
   v_id uuid;
   v_idx int := 1;
   v_seed text;
-  v_avatar_prefix text := 'https://api.dicebear.com/9.x/avataaars/png?seed=';
-  v_avatar_suffix text := '&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf';
+  v_avatar_prefix text := 'https://api.dicebear.com/9.x/shapes/png?seed=';
+  v_avatar_suffix text := '';
   v_photo_count int;
   i int;
 BEGIN
@@ -205,8 +205,8 @@ DECLARE
   v_id uuid;
   v_idx int := 1;
   v_seed text;
-  v_avatar_prefix text := 'https://api.dicebear.com/9.x/avataaars/png?seed=';
-  v_avatar_suffix text := '&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf';
+  v_avatar_prefix text := 'https://api.dicebear.com/9.x/shapes/png?seed=';
+  v_avatar_suffix text := '';
 BEGIN
   FOR v_client IN SELECT * FROM jsonb_array_elements(v_clients)
   LOOP

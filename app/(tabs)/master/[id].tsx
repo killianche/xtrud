@@ -49,6 +49,7 @@ const PRICING_MODE_LABELS: Record<string, string> = {
   on_quote: "По смете",
 };
 import { useAuthSession } from "@/features/auth/use-auth-session";
+import { getCategoryColorIconUrl } from "@/lib/category-color-icons";
 import { useSafeBack } from "@/lib/use-safe-back";
 import { MasterServicesList } from "@/features/master-services/MasterServicesList";
 import { ReviewsSection } from "@/features/master-view/ReviewsSection";
@@ -518,15 +519,23 @@ export default function MasterPublicScreen() {
                     const name = c.l2?.name_ru ?? c.l2_id;
                     const pricingLabel =
                       PRICING_MODE_LABELS[c.pricing_mode] ?? null;
-                    const glassUrl = `https://api.dicebear.com/9.x/glass/png?seed=${encodeURIComponent(c.l2_id)}`;
+                    // Цветная иконка категории через единый mapping
+                    // `getCategoryColorIconUrl` (см. docs/ICONS.md). Если нет
+                    // в маппинге — fallback на круг с canvas-soft фоном без
+                    // иконки (не показываем абстрактный glass-pattern).
+                    const colorUrl = getCategoryColorIconUrl(c.l2_id);
                     return (
                       <Card key={c.l2_id} variant="soft" padding="md">
                         <View className="flex-row items-center justify-between gap-2">
                           <View className="flex-1 flex-row items-center gap-2">
-                            <Image
-                              source={{ uri: glassUrl }}
-                              style={{ width: 12, height: 12, borderRadius: 6 }}
-                            />
+                            {colorUrl ? (
+                              <View className="h-8 w-8 items-center justify-center rounded-full bg-canvas">
+                                <Image
+                                  source={{ uri: colorUrl }}
+                                  style={{ width: 20, height: 20 }}
+                                />
+                              </View>
+                            ) : null}
                             <AppText
                               weight="semibold"
                               className="text-ink text-body-md"

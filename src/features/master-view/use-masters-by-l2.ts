@@ -30,6 +30,8 @@ export type MasterInCategory = {
     | "bio"
     | "account_type"
     | "team_size"
+    | "availability_status"
+    | "availability_until"
   > | null;
   city: Pick<Tables<"cities">, "id" | "name"> | null;
 };
@@ -49,6 +51,8 @@ type Row = {
     | "bio"
     | "account_type"
     | "team_size"
+    | "availability_status"
+    | "availability_until"
   > | null;
 };
 
@@ -68,7 +72,7 @@ export function useMastersByL2(l2Id: string | null | undefined) {
           master_id,
           profile:master_profiles!master_categories_master_id_fkey (
             rating_overall_avg, rating_overall_count, closed_deals, experience_years, bio,
-            account_type, team_size,
+            account_type, team_size, availability_status, availability_until,
             user:users!master_profiles_user_id_fkey (
               id, first_name, last_name, avatar_url, city_id, district
             )
@@ -100,6 +104,8 @@ export function useMastersByL2(l2Id: string | null | undefined) {
               bio: r.profile.bio,
               account_type: r.profile.account_type,
               team_size: r.profile.team_size,
+              availability_status: r.profile.availability_status,
+              availability_until: r.profile.availability_until,
             }
           : null,
       }));

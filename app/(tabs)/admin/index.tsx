@@ -30,6 +30,7 @@ import {
 import { useAuthSession } from "@/features/auth/use-auth-session";
 import { useUserRecord } from "@/features/auth/use-user-record";
 import { REASON_LABELS } from "@/features/reports/use-create-report";
+import { useSafeBack } from "@/lib/use-safe-back";
 import { useThemeColor, useThemeColors } from "@/lib/use-theme-color";
 
 const STATUS_FILTERS = [
@@ -120,6 +121,7 @@ export default function AdminScreen() {
   const updateUser = useUpdateUserStatus();
   const updateReview = useUpdateReviewStatus();
   const tc = useThemeColors(["ink", "muted-soft", "error"]);
+  const goBack = useSafeBack("/(tabs)/profile" as const);
 
   if (user && !isAdmin) {
     return (
@@ -134,7 +136,7 @@ export default function AdminScreen() {
         />
         <Pressable
           accessibilityRole="button"
-          onPress={() => router.back()}
+          onPress={goBack}
           className="mt-4 h-10 items-center justify-center rounded-md border border-hairline px-4 active:opacity-70"
         >
           <AppText weight="medium" className="text-caption text-ink">
@@ -206,7 +208,7 @@ export default function AdminScreen() {
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Назад"
-          onPress={() => router.back()}
+          onPress={goBack}
           hitSlop={12}
           className="h-10 w-10 items-center justify-center rounded-full active:opacity-70"
         >

@@ -1,6 +1,14 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
-import { CheckCircle2, ChevronLeft, Clock, Lock, type LucideIcon, Pencil, Phone, Users } from "lucide-react-native";
+import {
+  CheckCircle2,
+  ChevronLeft,
+  Lock,
+  type LucideIcon,
+  MessageSquare,
+  Tag,
+  UserCheck,
+} from "lucide-react-native";
 import { useCallback, useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, View } from "react-native";
@@ -12,15 +20,15 @@ import { useCities } from "@/features/cities/use-cities";
 import { OrderFormBody } from "@/features/orders/OrderFormBody";
 import { type CreateOrderFormValues, createOrderSchema } from "@/features/orders/order-schema";
 import { useCreateOrder } from "@/features/orders/use-create-order";
+import { JitSignupSheet } from "@/features/auth/JitSignupSheet";
+import { type OrderDraft, useOrderDraftStore } from "@/lib/order-draft-store";
 import { useTabBarVisibility } from "@/lib/tabbar-visibility";
+import { useSafeBack } from "@/lib/use-safe-back";
 import { useThemeColors } from "@/lib/use-theme-color";
 
-// Sprint 26 — Order create wizard. 2 шага:
-//   1. Описание задачи + категория — всё про «что нужно» на одном экране
-//   2. Бюджет, город, район, срочность + Trust «отвечают за ~30 мин»
-// После публикации — success-экран, не голый router.back().
-
-type Step = 1 | 2;
+// Order create — single-screen форма (раньше был 2-шаговый wizard, объединили
+// в один экран по фидбэку: пользователь видит весь объём сразу, нет «спрятанных
+// полей» на следующем шаге). После публикации — success-экран.
 
 export default function NewOrderScreen() {
   const insets = useSafeAreaInsets();
@@ -48,30 +56,38 @@ export default function NewOrderScreen() {
   const { data: categories } = useVisibleCategories();
   const { data: cities } = useCities();
   const createOrder = useCreateOrder();
-  const tc = useThemeColors(["ink", "on-primary", "success"]);
+  const tc = useThemeColors(["ink", "on-primary", "success", "mute"]);
+  // safeBack: при deeplink/refresh уходим на /orders, а не в пустоту.
+  const goBack = useSafeBack("/(tabs)/orders" as const);
 
-  const [step, setStep] = useState<Step>(1);
   const [createdOrderId, setCreatedOrderId] = useState<string | null>(null);
+  const [signupSheetOpen, setSignupSheetOpen] = useState(false);
+
+  // Persisted draft из Zustand — выживает любую навигацию (выбор категории,
+  // случайное переключение табов, JIT-signup flow).
+  const draft = useOrderDraftStore((s) => s.draft);
+  const setDraft = useOrderDraftStore((s) => s.setDraft);
+  const clearDraft = useOrderDraftStore((s) => s.clearDraft);
 
   const {
     control,
     handleSubmit,
     watch,
-    trigger,
     setValue,
+    getValues,
     formState: { errors, isValid },
   } = useForm<CreateOrderFormValues>({
     resolver: zodResolver(createOrderSchema),
     defaultValues: {
-      l2Id: "",
-      title: initialDraft.slice(0, 80),
-      description: initialDraft,
-      cityId: "",
-      district: "",
-      urgency: "flexible",
-      budgetMode: "negotiable",
-      budgetMin: null,
-      budgetMax: null,
+      l2Id: draft.l2Id ?? "",
+      title: draft.title ?? initialDraft.slice(0, 80),
+      description: draft.description ?? initialDraft,
+      cityId: draft.cityId ?? "",
+      district: draft.district ?? "",
+      urgency: draft.urgency ?? "flexible",
+      budgetMode: draft.budgetMode ?? "negotiable",
+      budgetMin: draft.budgetMin ?? null,
+      budgetMax: draft.budgetMax ?? null,
     },
     mode: "onChange",
   });
@@ -83,13 +99,25 @@ export default function NewOrderScreen() {
     }
   }, [params.l2, setValue]);
 
+  // Каждое изменение формы → в Zustand. Не теряем при mount/unmount.
+  useEffect(() => {
+    const sub = watch((values) => {
+      setDraft(values as OrderDraft);
+    });
+    return () => sub.unsubscribe();
+  }, [watch, setDraft]);
+
   const budgetMode = watch("budgetMode");
 
-  const onSubmit = handleSubmit(async (values) => {
-    if (!userId) return;
+  // Реальная публикация (предполагает залогиненного пользователя).
+  // Отдельная функция от handleSubmit, чтобы её можно было вызвать
+  // ИЗ JitSignupSheet после успешного signup (там uid появляется
+  // позже, чем handleSubmit замкнётся над текущим userId).
+  const publishWithUser = async (uid: string) => {
+    const values = getValues();
     try {
       const created = await createOrder.mutateAsync({
-        clientId: userId,
+        clientId: uid,
         l2Id: values.l2Id,
         title: values.title,
         description: values.description,
@@ -100,37 +128,28 @@ export default function NewOrderScreen() {
         budgetMin: values.budgetMode === "negotiable" ? null : values.budgetMin,
         budgetMax: values.budgetMode === "negotiable" ? null : values.budgetMax,
       });
-      // useCreateOrder возвращает id созданного заказа.
       const newId =
         created && typeof created === "object" && "id" in created
           ? (created as { id: string }).id
           : null;
+      clearDraft();
       setCreatedOrderId(newId ?? "submitted");
     } catch (_e) {
       // отображается через createOrder.error
     }
+  };
+
+  const onSubmit = handleSubmit(async (_values) => {
+    if (!userId) {
+      // Анон: открываем JIT-signup sheet. По завершении он сам
+      // вызовет onSignedUp(newUserId) → publishWithUser.
+      setSignupSheetOpen(true);
+      return;
+    }
+    await publishWithUser(userId);
   });
 
-  const goNext = async () => {
-    if (step === 1) {
-      // Шаг 1 — описание задачи + выбор категории.
-      const ok = await trigger(["title", "description", "l2Id"]);
-      if (ok) setStep(2);
-      return;
-    }
-    if (step === 2) {
-      // Шаг 2 — финальный submit (условия и место).
-      void onSubmit();
-    }
-  };
-
-  const goBack = () => {
-    if (step === 1) {
-      router.back();
-      return;
-    }
-    setStep(1);
-  };
+  const handlePublish = () => void onSubmit();
 
   const isBusy = createOrder.isPending;
   const submitError = createOrder.error?.message;
@@ -169,7 +188,7 @@ export default function NewOrderScreen() {
           </Pressable>
           <Pressable
             accessibilityRole="button"
-            onPress={() => router.back()}
+            onPress={goBack}
             hitSlop={8}
             className="h-10 items-center justify-center"
           >
@@ -183,30 +202,10 @@ export default function NewOrderScreen() {
   }
 
   // ============================================================================
-  // Wizard step.
+  // Single-screen форма.
   // ============================================================================
 
-  // Локальная per-step валидация для кнопки «Далее».
-  // На шаге 3 используем общий isValid (Zod-схема), чтобы Submit прошёл целиком.
-  const watchedL2 = watch("l2Id");
-  const watchedTitle = watch("title");
-  // step 1: title ≥ 5 + категория выбрана. description опционален.
-  // step 2: финальная валидация всей схемы.
-  const stepValid =
-    step === 1
-      ? watchedTitle.length >= 5 &&
-        watchedL2.length > 0 &&
-        !errors.title &&
-        !errors.description &&
-        !errors.l2Id
-      : isValid && !!cities;
-
-  const stepTitle = step === 1 ? "Что нужно сделать?" : "Условия и место";
-
-  const stepHint =
-    step === 1
-      ? "Просто опишите задачу своими словами — мастера разберутся."
-      : "Бюджет, город, район, срочность.";
+  const canSubmit = isValid && !!cities;
 
   return (
     <KeyboardAvoidingView
@@ -214,8 +213,8 @@ export default function NewOrderScreen() {
       className="flex-1 bg-canvas"
       style={{ paddingTop: insets.top }}
     >
-      {/* Header: back + progress в одном ряду — компактный (h-9). */}
-      <View className="flex-row items-center px-3 py-1 gap-3 pb-2">
+      {/* Header: только back (progress убран — single-screen форма). */}
+      <View className="flex-row items-center px-3 py-1 pb-2">
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Назад"
@@ -225,59 +224,62 @@ export default function NewOrderScreen() {
         >
           <ChevronLeft size={20} strokeWidth={1.75} color={tc.ink} />
         </Pressable>
-        {/* Inline progress без обёртки OnboardingProgress (его px-6 ломает
-            горизонтальное выравнивание с back-кнопкой). */}
-        <View
-          className="flex-1 flex-row gap-1.5 pr-3"
-          accessibilityRole="progressbar"
-          accessibilityValue={{ min: 1, max: 2, now: step }}
-          accessibilityLabel={`Шаг ${step} из 2`}
-        >
-          {[1, 2].map((i) => (
-            <View
-              key={i}
-              className={`h-1 flex-1 rounded-full ${i <= step ? "bg-ink" : "bg-hairline"}`}
-            />
-          ))}
-        </View>
       </View>
 
       <ScrollView
-        contentContainerStyle={{ paddingBottom: insets.bottom + 24 }}
+        contentContainerStyle={{ paddingBottom: insets.bottom + 96 }}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        {/* Заголовок шага — только для step 2/3. На step 1 он дублирует
-            3 «как это работает» строки ниже, удалён по запросу. */}
-        {step !== 1 && (
-          <View className="px-6 pb-6">
-            <AppText weight="bold" className="text-display-sm tracking-tight text-ink">
-              {stepTitle}
-            </AppText>
-            <AppText className="mt-2 text-body-md text-muted">{stepHint}</AppText>
-          </View>
-        )}
+        {/* Hero — Vercel value-card. Eyebrow (mono) → H1 → subtitle → 3-step
+            row (Pencil / MessageSquare / Lock — все 3 согласованы с privacy
+            обещанием) → выделенная privacy-плашка снизу.
+            Никаких декоративных кругов / случайного violet — чистая
+            типографическая иерархия + один акцентный privacy-trust блок. */}
+        <View className="px-6 pb-8">
+          <AppText
+            weight="mono"
+            className="text-mono-caption text-mute uppercase tracking-widest"
+          >
+            Новый заказ
+          </AppText>
+          <AppText
+            weight="display"
+            className="mt-2 text-display-md text-ink"
+          >
+            Опишите задачу — мастера отзовутся
+          </AppText>
 
-        {/* 3 шага «как это работает» — показываем только на step 1.
-            Vercel-card стиль: единая bg-canvas-soft карточка с rounded-xl +
-            hairline между строк, маленькая иконка в bg-canvas круге +
-            заголовок ink + подсказка mute. Caption-заголовок сверху. */}
-        {step === 1 && (
-          <View className="px-6 pb-8">
-            <View className="rounded-xl bg-canvas-soft">
-              <HowItWorksRow icon={Pencil} title="Создадим задачу" />
-              <View className="h-px bg-hairline mx-4" />
-              <HowItWorksRow icon={Users} title="Мастера откликнутся" />
-              <View className="h-px bg-hairline mx-4" />
-              <HowItWorksRow
-                icon={Phone}
-                title="Можете позвонить подходящему"
-                hint="Мастера не видят ваш номер"
-                hintIcon={Lock}
-              />
+          {/* «Как это работает» — единая info card с двумя смысловыми блоками:
+              сверху 3-step (что получит клиент), снизу privacy-trust (номер скрыт).
+              Объединение в одну карточку с внутренним hairline-divider создаёт
+              визуальную гармонию: оба блока — части одного нарратива «как заказ
+              работает», а не два разных компонента. */}
+          <View className="mt-6 rounded-xl border border-hairline bg-canvas-soft overflow-hidden">
+            <View className="flex-row items-start gap-2 px-5 py-5">
+              <StepItem icon={MessageSquare} label="Получите отклики" />
+              <StepItem icon={Tag} label="Посмотрите цены от мастеров" />
+              <StepItem icon={UserCheck} label="Выберите подходящего" />
+            </View>
+
+            <View className="h-px bg-hairline" />
+
+            <View className="flex-row items-start gap-3 px-5 py-5">
+              <View className="h-10 w-10 items-center justify-center rounded-full bg-ink">
+                <Lock size={18} strokeWidth={2} color={tc["on-primary"]} />
+              </View>
+              <View className="flex-1">
+                <AppText weight="semibold" className="text-body-sm text-ink">
+                  Ваш номер скрыт от мастеров
+                </AppText>
+                <AppText className="mt-1 text-caption text-body">
+                  Мастера присылают только цену и срок выполнения. Написать или позвонить вам они смогут лишь после того, как вы сами это разрешите.
+                </AppText>
+              </View>
             </View>
           </View>
-        )}
+        </View>
+        {/* /Hero */}
 
         <OrderFormBody
           control={control}
@@ -286,7 +288,6 @@ export default function NewOrderScreen() {
           isBusy={isBusy}
           categories={categories}
           cities={cities}
-          step={step}
         />
 
         {submitError && (
@@ -297,69 +298,67 @@ export default function NewOrderScreen() {
           </View>
         )}
 
-        <View className="mt-8 px-6">
-          {/* «Далее» (step 1) — анон-friendly, требует только валидных полей.
-              «Опубликовать заявку» (step 2) — требует userId+categories,
-              на финальном submit. LoginWall сработает если user анон. */}
+        {/* Submit — один primary CTA на всю ширину (back-кнопка вверху
+            закрывает «отмена» интент). Vercel pattern: один conversion target. */}
+        <View className="mt-10 px-6">
           <Pressable
             accessibilityRole="button"
-            disabled={
-              !stepValid || isBusy || (step === 2 && (!userId || !categories))
-            }
-            onPress={goNext}
+            // Анону кнопка тоже доступна — на нажатие открывается JIT-signup sheet.
+            // Disabled остаётся только когда форма невалидна или категории ещё грузятся.
+            disabled={!canSubmit || isBusy || !categories}
+            onPress={handlePublish}
             className={`h-14 items-center justify-center rounded-full ${
-              stepValid && !isBusy && (step !== 2 || (userId && categories))
+              canSubmit && !isBusy && categories
                 ? "bg-primary active:opacity-80"
-                : "bg-surface-3"
+                : "bg-canvas-soft-2"
             }`}
           >
-            <AppText weight="semibold" className="text-button" style={{ color: tc["on-primary"] }}>
-              {isBusy ? "Публикуем..." : step === 2 ? "Опубликовать заявку" : "Далее"}
+            <AppText
+              weight="semibold"
+              className="text-button-lg"
+              style={{ color: canSubmit && !isBusy && categories ? tc["on-primary"] : tc.mute }}
+            >
+              {isBusy ? "Публикуем…" : !userId ? "Опубликовать заказ" : "Опубликовать заказ"}
             </AppText>
           </Pressable>
         </View>
       </ScrollView>
+
+      {/* JIT-signup sheet — открывается, если анон нажал «Опубликовать».
+          После успешного login → автоматически публикует заказ. */}
+      <JitSignupSheet
+        open={signupSheetOpen}
+        onClose={() => setSignupSheetOpen(false)}
+        onSignedUp={async (uid) => {
+          setSignupSheetOpen(false);
+          await publishWithUser(uid);
+        }}
+      />
     </KeyboardAvoidingView>
   );
 }
 
 // ----------------------------------------------------------------------------
-// HowItWorksRow — строка внутри Vercel-card «Как это работает».
-// Маленькая Lucide-иконка в bg-canvas круге + title ink + hint mute.
+// StepItem — единичный пункт в горизонтальном 3-step row hero-блока.
+// Tinted circle (canvas-soft-2 + hairline) + Lucide-иконка + 2-строчный label.
+// Без декоративного фона — Vercel-эстетика, ink-on-canvas минимализм.
 // ----------------------------------------------------------------------------
 
-function HowItWorksRow({
-  icon: Icon,
-  title,
-  hint,
-  hintIcon: HintIcon,
-}: {
-  icon: LucideIcon;
-  title: string;
-  hint?: string;
-  /** Маленькая иконка слева от hint'а — для приватных/важных сигналов (Lock). */
-  hintIcon?: LucideIcon;
-}) {
+function StepItem({ icon: Icon, label }: { icon: LucideIcon; label: string }) {
   return (
-    <View className="flex-row items-center gap-4 px-4 py-4">
-      <View className="h-9 w-9 items-center justify-center rounded-full bg-canvas shrink-0 text-ink">
-        <Icon size={18} strokeWidth={1.75} color="currentColor" />
+    <View className="flex-1 items-center gap-2">
+      {/* Кружок белый (bg-canvas) — выделяется на bg-canvas-soft карточке.
+          Размер 40dp согласован с Lock-кружком в privacy-блоке ниже. */}
+      <View className="h-10 w-10 items-center justify-center rounded-full bg-canvas border border-hairline">
+        <Icon size={18} strokeWidth={1.75} color="currentColor" className="text-ink" />
       </View>
-      <View className="flex-1">
-        <AppText weight="semibold" className="text-body-md text-ink">
-          {title}
-        </AppText>
-        {hint && (
-          <View className="mt-1 flex-row items-center gap-1.5">
-            {HintIcon && (
-              <View className="text-mute">
-                <HintIcon size={13} strokeWidth={2} color="currentColor" />
-              </View>
-            )}
-            <AppText className="text-body-sm text-mute">{hint}</AppText>
-          </View>
-        )}
-      </View>
+      <AppText
+        weight="medium"
+        className="text-caption text-ink text-center"
+        numberOfLines={3}
+      >
+        {label}
+      </AppText>
     </View>
   );
 }

@@ -13,6 +13,7 @@ import { ActivityIndicator, Pressable, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
 import { useArticleBySlug } from "@/features/articles/use-articles";
+import { useSafeBack } from "@/lib/use-safe-back";
 import { useThemeColor } from "@/lib/use-theme-color";
 
 interface MdBlock {
@@ -72,6 +73,7 @@ export default function ArticleScreen() {
   const slugStr = typeof slug === "string" ? slug : undefined;
   const { data: article, isLoading, error } = useArticleBySlug(slugStr);
   const tcInk = useThemeColor("ink");
+  const goBack = useSafeBack("/(tabs)/useful" as const);
 
   const blocks = useMemo(() => (article ? parseSimpleMarkdown(article.body_md) : []), [article]);
 
@@ -81,7 +83,7 @@ export default function ArticleScreen() {
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Назад"
-          onPress={() => router.back()}
+          onPress={goBack}
           hitSlop={12}
           className="h-10 w-10 items-center justify-center rounded-full active:opacity-70"
         >

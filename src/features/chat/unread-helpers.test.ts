@@ -10,6 +10,7 @@ function makeChat(overrides: Partial<Chat>): Chat {
     created_at: "2026-05-12T10:00:00Z",
     id: "chat-1",
     last_message_at: null,
+    last_message_text: null,
     last_read_client_at: null,
     last_read_master_at: null,
     master_id: "master-1",

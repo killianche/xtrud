@@ -1,42 +1,39 @@
 /*
- * TabBar v3 — нижний таб-бар с центральной CTA «Создать заказ».
- *
- * Паттерн: Яндекс.Услуги / Profi.ru / Canva / Avito — 4 таба + центральная
- * круглая FAB-кнопка primary action поднятая над линией навбара.
+ * TabBar v4 — нижний таб-бар, 5 равноценных табов (без выделяющегося FAB).
  *
  * Структура:
- *   [Главная] [Заказы]  ⊕  [Чаты] [Профиль]
- *                   ↑
- *           Создать заказ (router.push('/orders/new'))
+ *   [Главная] [Заказы] [Создать] [Чаты] [Профиль]
  *
- * Активный таб: ink + semibold + filled icon (stroke 2.25).
- * Неактивный:    mute + regular + outline icon (stroke 1.5).
- * Центральная CTA — bg-primary, всегда яркая (это primary action, не таб).
+ * История: v3 был с круглым FAB primary в центре («приподнятая кнопка»).
+ * Решение откатили (2026-05-14): FAB наезжал на sticky CTA на master detail
+ * («Войти и написать»), и сама эстетика «жирного круга» противоречит Vercel-
+ * минимализму. Сделали 5-й таб обычной иконкой Plus + подпись «Создать».
  *
- * Lazyweb: посмотрел Canva, Adobe, Duckbill, TaskRabbit — паттерн 5-elements
- * (2L + FAB + 2R) с приподнятой центральной кнопкой — самый частый для
- * marketplace/productivity-приложений.
+ * Активный таб: ink + semibold + stroke 2.25.
+ * Неактивный:    mute + regular + stroke 1.5.
+ * Таб «Создать» — обычный неактивный таб, тап → router.push('/orders/new').
  */
 
 import type { BottomTabBarProps } from "@react-navigation/bottom-tabs";
 import { useRouter } from "expo-router";
-import { Plus } from "lucide-react-native";
+import { CirclePlus } from "lucide-react-native";
 import { Platform, Pressable, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
 import { useTabBarVisibility } from "@/lib/tabbar-visibility";
+import { triggerTabScrollReset } from "@/lib/tab-scroll-reset";
 import { useThemeColors } from "@/lib/use-theme-color";
 
-// Порядок таб-роутов в навбаре. Центральная CTA вставляется между orders и chats.
+// Порядок таб-роутов в навбаре. Между orders и chats — синтетический таб
+// «Создать» (не expo-router screen, просто Pressable → /orders/new).
 const TAB_ORDER = ["index", "orders", "chats", "profile"] as const;
-const TAB_HEIGHT = 60;
-const FAB_SIZE = 56;
+const TAB_HEIGHT = 52; // icon-only — ужали с 60 (был запас под текст-лейбл)
 const isWeb = Platform.OS === "web";
 
 export function TabBar({ state, descriptors, navigation }: BottomTabBarProps) {
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const tc = useThemeColors(["canvas", "hairline", "ink", "mute", "primary", "on-primary"]);
+  const tc = useThemeColors(["canvas", "hairline", "ink", "mute"]);
   const tabBarHidden = useTabBarVisibility((s) => s.hidden);
 
   // Скрыт глобальным флагом (используется на full-screen wizard'ах вроде
@@ -77,7 +74,11 @@ export function TabBar({ state, descriptors, navigation }: BottomTabBarProps) {
         target: route.key,
         canPreventDefault: true,
       });
-      if (!isFocused && !event.defaultPrevented) {
+      if (event.defaultPrevented) return;
+      if (isFocused) {
+        // Стандартный mobile-pattern: тап на активный таб → scroll to top.
+        triggerTabScrollReset(route.name);
+      } else {
         navigation.navigate(route.name as never);
       }
     };
@@ -95,19 +96,17 @@ export function TabBar({ state, descriptors, navigation }: BottomTabBarProps) {
           flex: 1,
           alignItems: "center",
           justifyContent: "center",
-          gap: 3,
-          paddingTop: 6,
         }}
       >
         <View style={{ position: "relative" }}>
-          {options.tabBarIcon?.({ focused: isFocused, color: iconColor, size: 24 })}
+          {options.tabBarIcon?.({ focused: isFocused, color: iconColor, size: 28 })}
 
           {badge !== undefined && badge !== null && (
             <View
               style={{
                 position: "absolute",
-                top: -3,
-                right: -9,
+                top: -4,
+                right: -10,
                 backgroundColor: badgeBg,
                 borderRadius: 8,
                 minWidth: 16,
@@ -126,18 +125,6 @@ export function TabBar({ state, descriptors, navigation }: BottomTabBarProps) {
             </View>
           )}
         </View>
-
-        <AppText
-          weight={isFocused ? "semibold" : "regular"}
-          className={isWeb ? (isFocused ? "text-ink" : "text-mute") : undefined}
-          style={
-            isWeb
-              ? { fontSize: 11, lineHeight: 14 }
-              : { fontSize: 11, lineHeight: 14, color: tabColorHex }
-          }
-        >
-          {label}
-        </AppText>
       </Pressable>
     );
   };
@@ -170,48 +157,24 @@ export function TabBar({ state, descriptors, navigation }: BottomTabBarProps) {
       {/* Левая часть. */}
       {leftRoutes.map(renderTab)}
 
-      {/* Центральная CTA — slot шириной обычного таба, FAB visually поднят. */}
-      <View
+      {/* Таб «Создать» — обычный неактивный таб (mute), не route. Только иконка. */}
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Создать заказ"
+        onPress={() => router.push("/orders/new" as never)}
+        className={isWeb ? "text-mute" : undefined}
         style={{
           flex: 1,
           alignItems: "center",
-          justifyContent: "flex-start",
-          paddingTop: 0,
+          justifyContent: "center",
         }}
       >
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Создать заказ"
-          onPress={() => router.push("/orders/new" as never)}
-          // bg-primary + text-on-primary через NativeWind className —
-          // inline style с CSS-var в RNW не резолвится (design-quality #2).
-          className="bg-primary text-on-primary items-center justify-center active:opacity-85"
-          style={[
-            {
-              width: FAB_SIZE,
-              height: FAB_SIZE,
-              borderRadius: FAB_SIZE / 2,
-              marginTop: -16, // приподнят над линией навбара
-            },
-            Platform.OS === "ios" && {
-              shadowColor: "#000",
-              shadowOffset: { width: 0, height: 4 },
-              shadowOpacity: 0.18,
-              shadowRadius: 12,
-            },
-            Platform.OS === "android" && { elevation: 6 },
-            isWeb && {
-              boxShadow: "0 6px 16px rgba(0,0,0,0.18)",
-            },
-          ]}
-        >
-          <Plus
-            size={28}
-            strokeWidth={2.25}
-            color={isWeb ? "currentColor" : tc["on-primary"]}
-          />
-        </Pressable>
-      </View>
+        <CirclePlus
+          size={28}
+          strokeWidth={1.75}
+          color={isWeb ? "currentColor" : tc.mute}
+        />
+      </Pressable>
 
       {/* Правая часть. */}
       {rightRoutes.map(renderTab)}

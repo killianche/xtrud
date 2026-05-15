@@ -17,24 +17,26 @@
  * /orders/new слушает store и применяет выбор в react-hook-form.
  */
 
-import { useRouter } from "expo-router";
 import { ChevronLeft, Search, X } from "lucide-react-native";
 import { useMemo, useRef, useState } from "react";
-import { Pressable, ScrollView, TextInput, View } from "react-native";
+import { Image, Pressable, ScrollView, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
 import { useVisibleCategories } from "@/features/categories/use-visible-categories";
+import { getCategoryColorIconUrl } from "@/lib/category-color-icons";
 import { getCategoryIcon } from "@/lib/category-icons";
 import { filterServicesByQuery, highlightMatch } from "@/lib/highlight-match";
 import { useOrderDraftStore } from "@/lib/order-draft-store";
+import { useSafeBack } from "@/lib/use-safe-back";
 
 export default function CategorySelectScreen() {
   const insets = useSafeAreaInsets();
-  const router = useRouter();
   const [query, setQuery] = useState("");
   const inputRef = useRef<TextInput>(null);
   const setSelectedL2 = useOrderDraftStore((s) => s.setSelectedL2);
   const { data: categories = [] } = useVisibleCategories();
+  // safeBack: при deeplink/refresh уходим на /orders/new (родитель wizard'а).
+  const goBack = useSafeBack("/(tabs)/orders/new" as const);
 
   const results = useMemo(
     () => filterServicesByQuery(categories, query, 100),
@@ -43,7 +45,7 @@ export default function CategorySelectScreen() {
 
   const handleSelect = (l2Id: string) => {
     setSelectedL2(l2Id);
-    router.back();
+    goBack();
   };
 
   return (
@@ -53,7 +55,7 @@ export default function CategorySelectScreen() {
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Назад"
-          onPress={() => router.back()}
+          onPress={goBack}
           hitSlop={12}
           className="h-9 w-9 items-center justify-center rounded-full active:opacity-70 text-ink"
         >
@@ -117,6 +119,10 @@ export default function CategorySelectScreen() {
           </View>
         ) : (
           results.map((cat) => {
+            // Цветная Iconify-иконка (mapping в src/lib/category-color-icons.ts,
+            // docs/ICONS.md). Если категория не в маппинге — fallback на
+            // моно-Lucide из категорийных данных.
+            const colorUrl = getCategoryColorIconUrl(cat.id);
             const Icon = getCategoryIcon(cat.icon);
             const segments = highlightMatch(cat.name_ru, query);
             return (
@@ -128,7 +134,14 @@ export default function CategorySelectScreen() {
                 className="flex-row items-center gap-3 px-5 py-3 active:bg-canvas-soft-2"
               >
                 <View className="h-10 w-10 items-center justify-center rounded-full bg-canvas-soft text-ink shrink-0">
-                  <Icon size={20} strokeWidth={1.5} color="currentColor" />
+                  {colorUrl ? (
+                    <Image
+                      source={{ uri: colorUrl }}
+                      style={{ width: 24, height: 24 }}
+                    />
+                  ) : (
+                    <Icon size={20} strokeWidth={1.5} color="currentColor" />
+                  )}
                 </View>
                 <AppText className="flex-1 text-body-md" numberOfLines={1}>
                   {segments.map((seg, idx) => (

@@ -10,9 +10,10 @@
 
 import type { Control, FieldErrors, FieldPath } from "react-hook-form";
 import { Controller } from "react-hook-form";
-import { ActivityIndicator, Pressable, TextInput, View } from "react-native";
+import { Pressable, TextInput, View } from "react-native";
 import { AppText } from "@/components/AppText";
 import { CategoryPicker } from "@/components/CategoryPicker";
+import { LocationPicker } from "@/features/orders/LocationPicker";
 import type { CreateOrderFormValues } from "@/features/orders/order-schema";
 import {
   orderBudgetModeOptions,
@@ -92,8 +93,8 @@ export function OrderFormBody({
             name="description"
             render={({ field: { value, onChange, onBlur } }) => (
               <View>
-                <AppText weight="medium" className="text-caption text-muted">
-                  Подробности (необязательно)
+                <AppText weight="semibold" className="text-body-sm text-ink">
+                  Подробности <AppText className="text-body-sm text-mute">(необязательно)</AppText>
                 </AppText>
                 <TextInput
                   value={value}
@@ -127,7 +128,7 @@ export function OrderFormBody({
           Lazyweb-вывод: Klarna/Profi/Яндекс используют compact + bottom-sheet. */}
       {showCategory && (
         <View className={showContent ? "mt-6 px-6" : "px-6"}>
-          <AppText weight="medium" className="text-caption text-muted mb-3">
+          <AppText weight="semibold" className="text-body-sm text-ink">
             Категория
           </AppText>
           <Controller
@@ -150,63 +151,47 @@ export function OrderFormBody({
         </View>
       )}
 
-      {/* Город — Шаг 3 */}
+      {/* Локация — единый иерархический picker (город + район + село)
+          в bottom-sheet. Заменил две плоские chip-row секции (Город / Район).
+          Подход взят из Ingush-Business `LocationSheet`. */}
       {showBudgetCity && (
         <View className={showContent ? "mt-6 px-6" : "px-6"}>
-          <AppText weight="medium" className="text-caption text-muted">
-            Город
+          <AppText weight="semibold" className="text-body-sm text-ink">
+            Где находится задача
           </AppText>
-          {!cities && (
-            <View className="mt-2">
-              <ActivityIndicator />
-            </View>
-          )}
-          {cities && (
-            <Controller
-              control={control}
-              name="cityId"
-              render={({ field: { value, onChange } }) => (
-                <View className="mt-2 flex-row flex-wrap gap-2">
-                  {cities.map((c) => {
-                    const selected = value === c.id;
-                    return (
-                      <Pressable
-                        key={c.id}
-                        accessibilityRole="button"
-                        accessibilityState={{ selected }}
-                        disabled={isBusy}
-                        onPress={() => onChange(c.id)}
-                        className={`h-10 items-center justify-center rounded-pill border px-4 ${
-                          selected
-                            ? "border-accent bg-accent-soft"
-                            : "border-hairline bg-canvas active:opacity-70"
-                        }`}
-                      >
-                        <AppText
-                          weight="medium"
-                          className={`text-caption ${selected ? "text-accent" : "text-body"}`}
-                        >
-                          {c.name}
-                        </AppText>
-                      </Pressable>
-                    );
-                  })}
-                </View>
-              )}
-            />
-          )}
-          {errors.cityId && (
-            <AppText weight="medium" className="mt-2 text-caption text-error">
-              {errors.cityId.message}
-            </AppText>
-          )}
+          <Controller
+            control={control}
+            name="cityId"
+            render={({ field: { value: cityValue, onChange: setCity } }) => (
+              <Controller
+                control={control}
+                name="district"
+                render={({ field: { value: districtValue, onChange: setDistrict } }) => (
+                  <LocationPicker
+                    cityId={cityValue}
+                    district={districtValue}
+                    cities={cities}
+                    disabled={isBusy}
+                    error={errors.cityId?.message ?? errors.district?.message}
+                    onChange={(next) => {
+                      setCity(next.cityId);
+                      setDistrict(next.district);
+                    }}
+                  />
+                )}
+              />
+            )}
+          />
         </View>
       )}
 
-      {/* Срочность — Шаг 2 */}
+      {/* Сроки — Шаг 2. Короткий заголовок «Сроки» по фидбэку user 2026-05-14
+          (длинное «Готовность мастера взяться за работу» избыточно: chips
+          «Срочно / На неделе / В этом месяце / Неважно» сами достаточно
+          самообъясняющие). */}
       {showBudgetCity && (
         <View className="mt-6 px-6">
-          <AppText weight="medium" className="text-caption text-muted">
+          <AppText weight="semibold" className="text-body-sm text-ink">
             Сроки
           </AppText>
           <Controller
@@ -225,13 +210,13 @@ export function OrderFormBody({
                       onPress={() => onChange(u)}
                       className={`h-10 items-center justify-center rounded-pill border px-4 ${
                         selected
-                          ? "border-accent bg-accent-soft"
+                          ? "border-ink bg-ink"
                           : "border-hairline bg-canvas active:opacity-70"
                       }`}
                     >
                       <AppText
                         weight="medium"
-                        className={`text-caption ${selected ? "text-accent" : "text-body"}`}
+                        className={`text-body-sm ${selected ? "text-on-primary" : "text-ink"}`}
                       >
                         {urgencyLabel(u)}
                       </AppText>
@@ -247,7 +232,7 @@ export function OrderFormBody({
       {/* Бюджет — Шаг 3 */}
       {showBudgetCity && (
         <View className="mt-6 px-6">
-          <AppText weight="medium" className="text-caption text-muted">
+          <AppText weight="semibold" className="text-body-sm text-ink">
             Бюджет
           </AppText>
           <Controller
@@ -266,13 +251,13 @@ export function OrderFormBody({
                       onPress={() => onChange(m)}
                       className={`h-10 items-center justify-center rounded-pill border px-4 ${
                         selected
-                          ? "border-accent bg-accent-soft"
+                          ? "border-ink bg-ink"
                           : "border-hairline bg-canvas active:opacity-70"
                       }`}
                     >
                       <AppText
                         weight="medium"
-                        className={`text-caption ${selected ? "text-accent" : "text-body"}`}
+                        className={`text-body-sm ${selected ? "text-on-primary" : "text-ink"}`}
                       >
                         {budgetModeLabel(m)}
                       </AppText>
@@ -340,7 +325,7 @@ function TextField(props: TextFieldProps) {
       name={props.name}
       render={({ field: { value, onChange, onBlur } }) => (
         <View>
-          <AppText weight="medium" className="text-caption text-muted">
+          <AppText weight="semibold" className="text-body-sm text-ink">
             {props.label}
           </AppText>
           <TextInput
@@ -384,7 +369,7 @@ function NumberField(props: NumberFieldProps) {
       name={props.name}
       render={({ field: { value, onChange, onBlur } }) => (
         <View>
-          <AppText weight="medium" className="text-caption text-muted">
+          <AppText weight="semibold" className="text-body-sm text-ink">
             {props.label}
           </AppText>
           <TextInput

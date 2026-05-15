@@ -1,62 +1,46 @@
 /**
- * CitySelector — chip-кнопка "Город ▾" + bottom-sheet со списком городов.
+ * CitySelector — chip-кнопка «Город ▾» + PickerSheet со списком городов.
  *
- * Состояние города пока хранится в Zustand store (см. ниже). Когда добавится
- * таблица `cities` в Supabase + Yandex Maps геолокация — заменим список.
+ * Источник данных: `MAJOR_CITIES` из `@/lib/location-config` (8 поселений).
+ * Глобальное состояние пользовательского города — `useUserCity` из
+ * `@/lib/use-user-city` (Zustand + persist + init-цикл AsyncStorage → geo →
+ * nearest → DEFAULT_CITY).
  *
  * Использование:
- *   <CitySelector />   // chip с текущим городом, тап открывает sheet
+ *   <CitySelector />   // chip с текущим городом, тап открывает PickerSheet
+ *
+ * Сёла — не показываются в этом селекторе (он про «город пользователя»,
+ * один уровень). Для иерархического выбора заказа — <LocationPicker> в
+ * `src/features/orders/LocationPicker.tsx`.
  */
 
-import { ChevronDown, Check, MapPin } from "lucide-react-native";
+import { ChevronDown, MapPin } from "lucide-react-native";
 import { useState } from "react";
-import { Pressable, View } from "react-native";
-import { create } from "zustand";
-import { persist, createJSONStorage } from "zustand/middleware";
-import { AppText } from "@/components/AppText";
-import { BottomSheet, Chip } from "@/components/ui";
-import { storage } from "@/lib/storage";
+import { Chip, PickerSheet, type PickerOption } from "@/components/ui";
+import { ALL_INGUSHETIA_CITY_ID, PICKER_CITIES } from "@/lib/location-config";
 import { useThemeColors } from "@/lib/use-theme-color";
+import { useUserCity } from "@/lib/use-user-city";
 
-/** Города Республики Ингушетия (старт). Расширяется при экспансии на СКФО. */
+/**
+ * Опции для PickerSheet: «Вся Ингушетия» первой, потом города из
+ * PICKER_CITIES (без раздельных Назрань/Магас — есть только объединённый
+ * `nazran-magas`, см. location-config.ts § hiddenInPicker).
+ */
 export const CITIES = [
-  { id: "magas", name: "Магас" },
-  { id: "nazran", name: "Назрань" },
-  { id: "sunzha", name: "Сунжа" },
-  { id: "malgobek", name: "Малгобек" },
-  { id: "karabulak", name: "Карабулак" },
+  { id: ALL_INGUSHETIA_CITY_ID, name: "Ингушетия" },
+  ...PICKER_CITIES,
 ] as const;
 
+/** @deprecated — используйте `string` напрямую (cityId — text PK в БД). */
 export type CityId = (typeof CITIES)[number]["id"];
 
-interface CityState {
-  cityId: CityId;
-  setCityId: (id: CityId) => void;
-}
-
-export const useCityStore = create<CityState>()(
-  persist(
-    (set) => ({
-      cityId: "magas",
-      setCityId: (id) => set({ cityId: id }),
-    }),
-    {
-      name: "xtrud-city",
-      version: 1,
-      storage: createJSONStorage(() => storage),
-    },
-  ),
-);
-
-export function getCityName(id: CityId): string {
-  return CITIES.find((c) => c.id === id)?.name ?? "Магас";
-}
+// Re-export для обратной совместимости. Новый код — импорт напрямую из @/lib/use-user-city.
+export { useCityStore, getCityName } from "@/lib/use-user-city";
 
 export function CitySelector() {
-  const cityId = useCityStore((s) => s.cityId);
-  const setCityId = useCityStore((s) => s.setCityId);
+  const { cityId, cityName, setCity } = useUserCity();
   const [open, setOpen] = useState(false);
-  const tc = useThemeColors(["ink", "mute", "primary"]);
+  const tc = useThemeColors(["ink", "mute"]);
 
   return (
     <>
@@ -67,47 +51,24 @@ export function CitySelector() {
         leftIcon={<MapPin size={14} strokeWidth={1.75} color={tc.mute} />}
         rightIcon={<ChevronDown size={14} strokeWidth={1.75} color={tc.mute} />}
       >
-        {getCityName(cityId)}
+        {cityName}
       </Chip>
 
-      <BottomSheet
+      <PickerSheet
         open={open}
         onClose={() => setOpen(false)}
-        title="Выберите город"
-        subtitle="Мастеров покажем именно в нём"
-      >
-        <View style={{ gap: 4 }}>
-          {CITIES.map((c) => {
-            const isSelected = c.id === cityId;
-            return (
-              <Pressable
-                key={c.id}
-                accessibilityRole="button"
-                onPress={() => {
-                  setCityId(c.id);
-                  setOpen(false);
-                }}
-                style={({ pressed }) => ({
-                  flexDirection: "row",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  paddingVertical: 14,
-                  paddingHorizontal: 4,
-                  opacity: pressed ? 0.7 : 1,
-                })}
-              >
-                <AppText
-                  weight={isSelected ? "semibold" : "regular"}
-                  style={{ color: tc.ink, fontSize: 16, lineHeight: 24 }}
-                >
-                  {c.name}
-                </AppText>
-                {isSelected ? <Check size={20} strokeWidth={2} color={tc.primary} /> : null}
-              </Pressable>
-            );
-          })}
-        </View>
-      </BottomSheet>
+        title="Город"
+        options={CITIES.map<PickerOption>((c) => ({
+          id: c.id,
+          title: c.name,
+          icon: <MapPin size={18} strokeWidth={1.75} color={tc.ink} />,
+        }))}
+        selectedId={cityId}
+        onSelect={(id) => {
+          setCity(id);
+          setOpen(false);
+        }}
+      />
     </>
   );
 }

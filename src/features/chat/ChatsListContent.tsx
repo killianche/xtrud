@@ -8,6 +8,7 @@
 
 import { useRouter } from "expo-router";
 import { MessageCircle } from "lucide-react-native";
+import { useEffect, useRef } from "react";
 import { Pressable, ScrollView, View } from "react-native";
 import { AppText } from "@/components/AppText";
 import { Avatar } from "@/components/Avatar";
@@ -16,6 +17,7 @@ import { OrderStatusBadge, type OrderStatusValue } from "@/components/OrderStatu
 import { CardListSkeleton } from "@/components/Skeleton";
 import { useAuthSession } from "@/features/auth/use-auth-session";
 import { isChatUnread, type MyChatWithRefs, useMyChats } from "@/features/chat/use-my-chats";
+import { scrollViewToTop, useTabScrollResetCounter } from "@/lib/tab-scroll-reset";
 
 interface ChatsListContentProps {
   variant?: "page" | "sidebar";
@@ -34,8 +36,17 @@ export function ChatsListContent({
   const hasChats = (chats?.length ?? 0) > 0;
   const isSidebar = variant === "sidebar";
 
+  // Tap-on-active-tab → scroll to top. Подписка только в page-режиме
+  // (sidebar — отдельный portal, ему scroll-reset не нужен).
+  const scrollRef = useRef<ScrollView>(null);
+  const resetCounter = useTabScrollResetCounter("chats");
+  useEffect(() => {
+    if (!isSidebar && resetCounter > 0) scrollViewToTop(scrollRef);
+  }, [resetCounter, isSidebar]);
+
   return (
     <ScrollView
+      ref={scrollRef}
       className="flex-1"
       contentContainerStyle={{ paddingBottom: 24 }}
       showsVerticalScrollIndicator={false}

@@ -78,14 +78,18 @@ export const lightColors = {
 
 export const darkColors = {
   // === BASE (инверсия light) ===
+  // Контраст подкачали 2026-05-14 по фидбэку user «в тёмной теме ничего не
+  // видно». Было: mute #6b, hairline #26, canvas-soft #11. На canvas #0a текст
+  // secondary тонул в фоне, бордеры outline-кнопок не различались.
+  // WCAG AA target для secondary text ≥ 4.5:1. Подняли все «middle» оттенки.
   canvas: "#0a0a0a",
-  "canvas-soft": "#111111",
-  "canvas-soft-2": "#1a1a1a",
+  "canvas-soft": "#161616",      // 11 → 16 (различим от canvas)
+  "canvas-soft-2": "#222222",    // 1a → 22 (card-row отделяется от фона)
   ink: "#fafafa",
-  body: "#a1a1a1",
-  mute: "#6b6b6b",
-  hairline: "#262626",
-  "hairline-strong": "#404040",
+  body: "#b8b8b8",               // a1 → b8 (description-text легче читать)
+  mute: "#999999",               // 6b → 99 (мета «13 лет опыта», «Назрань»)
+  hairline: "#333333",           // 26 → 33 (видимая граница строк/карточек)
+  "hairline-strong": "#525252",  // 40 → 52 (outline-кнопки Позвонить/WhatsApp)
   primary: "#fafafa",
   "on-primary": "#0a0a0a",
 
@@ -128,12 +132,14 @@ export const darkColors = {
   "badge-amber": "#fbbf24",
 
   // === COMPAT ALIASES ===
-  "surface-1": "#111111",
-  "surface-2": "#1a1a1a",
-  "surface-3": "#262626",
+  // Синхронизированы с base-токенами выше (canvas-soft / canvas-soft-2 /
+  // hairline / mute / hairline-strong подняты для контраста 2026-05-14).
+  "surface-1": "#161616",        // = canvas-soft
+  "surface-2": "#222222",        // = canvas-soft-2
+  "surface-3": "#333333",        // = hairline
   "hairline-soft": "#1f1f1f",
-  muted: "#6b6b6b",
-  "muted-soft": "#404040",
+  muted: "#999999",              // = mute
+  "muted-soft": "#525252",       // = hairline-strong
   accent: "#3291ff",
   "accent-soft": "#1a3a5c",
 } as const;

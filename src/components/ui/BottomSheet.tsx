@@ -6,12 +6,14 @@
  *   - Подтверждение опасных действий (отменить заказ)
  *
  * Реализация:
- *   - На native + web используем react-native Modal (animationType="slide")
- *     для одинакового поведения. Это самый простой и совместимый путь.
- *     Свайп-вниз для закрытия — добавим отдельно через gesture-handler если будет нужно.
- *   - Backdrop: чёрный 60% opacity, тап закрывает.
- *   - Контент: bg canvas, top corners radius 16px (по DESIGN.md xl).
- *   - Drag handle: тонкая полоска hairline-strong сверху для UX-намёка.
+ *   - `animationType="none"` на Modal + ручная split-анимация:
+ *     - Backdrop: opacity 0→1 (fade) — иначе «затемнение едет снизу вместе
+ *       с листом», что выглядит сломанно (фидбэк user 2026-05-14).
+ *     - Sheet: translateY +SHEET_DROP→0 (slide-up).
+ *   - При закрытии — reverse, потом setMounted(false), чтобы анимация
+ *     выхода успела отыграть до unmount.
+ *   - useNativeDriver=true — transform+opacity нативно работают (на web
+ *     fallback на JS-driver автоматически).
  *
  * Использование:
  *   <BottomSheet open={open} onClose={() => setOpen(false)} title="Войдите чтобы продолжить">
@@ -23,8 +25,8 @@
  */
 
 import { X } from "lucide-react-native";
-import { type ReactNode } from "react";
-import { Modal, Pressable, View } from "react-native";
+import { type ReactNode, useEffect, useRef, useState } from "react";
+import { Animated, Modal, Pressable, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
 import { useThemeColors } from "@/lib/use-theme-color";
@@ -38,7 +40,18 @@ export interface BottomSheetProps {
   children: ReactNode;
   /** Закрывать ли по тапу на backdrop. Default true. Для критических → false. */
   dismissibleOnBackdrop?: boolean;
+  /** Если true — лист занимает весь экран (full-screen modal). По умолчанию
+   *  bottom-sheet с минимальной высотой по содержимому. Используется для
+   *  селекторов с длинным списком, где нужно «на весь экран». */
+  fullScreen?: boolean;
 }
+
+/** Стартовое смещение листа вниз (вне viewport). Достаточно для любого
+ *  реалистичного контента action-sheet'а; если лист короче — slide-in
+ *  отыграет за те же 220ms просто из дальней точки. */
+const SHEET_DROP_PX = 600;
+const OPEN_DURATION = 220;
+const CLOSE_DURATION = 180;
 
 export function BottomSheet({
   open,
@@ -47,45 +60,102 @@ export function BottomSheet({
   subtitle,
   children,
   dismissibleOnBackdrop = true,
+  fullScreen = false,
 }: BottomSheetProps) {
   const insets = useSafeAreaInsets();
   const tc = useThemeColors(["canvas", "ink", "body", "hairline-strong", "mute"]);
 
+  // mounted остаётся true пока closing-анимация не завершится — чтобы лист
+  // не пропадал мгновенно при open=false.
+  const [mounted, setMounted] = useState(open);
+  const backdropOpacity = useRef(new Animated.Value(0)).current;
+  const sheetTranslateY = useRef(new Animated.Value(SHEET_DROP_PX)).current;
+
+  useEffect(() => {
+    if (open) {
+      setMounted(true);
+      Animated.parallel([
+        Animated.timing(backdropOpacity, {
+          toValue: 1,
+          duration: OPEN_DURATION,
+          useNativeDriver: true,
+        }),
+        Animated.timing(sheetTranslateY, {
+          toValue: 0,
+          duration: OPEN_DURATION,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    } else if (mounted) {
+      Animated.parallel([
+        Animated.timing(backdropOpacity, {
+          toValue: 0,
+          duration: CLOSE_DURATION,
+          useNativeDriver: true,
+        }),
+        Animated.timing(sheetTranslateY, {
+          toValue: SHEET_DROP_PX,
+          duration: CLOSE_DURATION,
+          useNativeDriver: true,
+        }),
+      ]).start(({ finished }) => {
+        if (finished) setMounted(false);
+      });
+    }
+  }, [open, mounted, backdropOpacity, sheetTranslateY]);
+
+  if (!mounted) return null;
+
   return (
     <Modal
-      visible={open}
+      visible={mounted}
       transparent
-      animationType="slide"
+      animationType="none"
       onRequestClose={onClose}
       statusBarTranslucent
     >
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel="Закрыть"
-        onPress={dismissibleOnBackdrop ? onClose : undefined}
+      {/* Backdrop — fade-in отдельно от sheet. Pressable снаружи Animated
+          ловит тап на затемнённой области, чтобы закрыть лист. */}
+      <Animated.View
         style={{
           flex: 1,
           backgroundColor: "rgba(0,0,0,0.6)",
+          opacity: backdropOpacity,
           justifyContent: "flex-end",
         }}
       >
-        {/* Сам лист — не пробрасывает тап родителю (иначе любой тап внутри закроет sheet) */}
         <Pressable
-          onPress={() => {
-            // no-op: блок proporopagation
-          }}
+          accessibilityRole="button"
+          accessibilityLabel="Закрыть"
+          onPress={dismissibleOnBackdrop ? onClose : undefined}
           style={{
-            backgroundColor: tc.canvas,
-            borderTopLeftRadius: 16,
-            borderTopRightRadius: 16,
+            position: "absolute",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+          }}
+        />
+        {/* Сам лист — translateY slide-up. bg-canvas через className
+            (NativeWind), не inline tc.canvas — потому что в RN-Web Modal
+            рендерится в portal вне основного DOM-дерева, и CSS-vars для
+            `rgb(var(--canvas))` теряются → лист становится прозрачным (баг
+            user 2026-05-14). className сохраняет cascade. */}
+        <Animated.View
+          className="bg-canvas"
+          style={{
+            transform: [{ translateY: sheetTranslateY }],
+            borderTopLeftRadius: fullScreen ? 0 : 16,
+            borderTopRightRadius: fullScreen ? 0 : 16,
             paddingHorizontal: 20,
-            paddingTop: 12,
+            paddingTop: insets.top + (fullScreen ? 16 : 12),
             paddingBottom: insets.bottom + 20,
             // На web даёт максимальную ширину 480px для desktop view.
             // На mobile native max-width не сработает.
             maxWidth: 480,
             width: "100%",
             alignSelf: "center",
+            ...(fullScreen ? { flex: 1 } : {}),
           }}
         >
           {/* Drag handle */}
@@ -128,8 +198,8 @@ export function BottomSheet({
           ) : null}
 
           {children}
-        </Pressable>
-      </Pressable>
+        </Animated.View>
+      </Animated.View>
     </Modal>
   );
 }

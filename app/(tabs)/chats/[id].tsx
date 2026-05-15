@@ -27,6 +27,7 @@ import {
 import { useMarkChatRead } from "@/features/chat/use-mark-chat-read";
 import { useMyChats } from "@/features/chat/use-my-chats";
 import { useSendMessage } from "@/features/chat/use-send-message";
+import { useSafeBack } from "@/lib/use-safe-back";
 import { useTabBarVisibility } from "@/lib/tabbar-visibility";
 import { useThemeColors } from "@/lib/use-theme-color";
 
@@ -45,6 +46,7 @@ export default function ChatThreadScreen() {
   useRealtimeChatMessages(id);
   const sendMessage = useSendMessage();
   const markRead = useMarkChatRead(userId);
+  const goBack = useSafeBack("/(tabs)/chats" as const);
   const markReadMutate = markRead.mutate;
   const tc = useThemeColors(["ink", "muted-soft", "on-primary"]);
 
@@ -122,7 +124,7 @@ export default function ChatThreadScreen() {
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Назад"
-          onPress={() => router.back()}
+          onPress={goBack}
           hitSlop={12}
           className="h-10 w-10 items-center justify-center rounded-full active:opacity-70 hover:bg-surface-2"
         >

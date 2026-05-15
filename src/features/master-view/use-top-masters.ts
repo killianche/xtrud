@@ -19,9 +19,16 @@ export type TopMaster = {
   >;
   profile: Pick<
     Tables<"master_profiles">,
-    "rating_overall_avg" | "rating_overall_count" | "closed_deals" | "experience_years"
+    | "rating_overall_avg"
+    | "rating_overall_count"
+    | "closed_deals"
+    | "experience_years"
+    | "availability_status"
+    | "availability_until"
   >;
   city: Pick<Tables<"cities">, "id" | "name"> | null;
+  /** Имена L2-категорий мастера (для строки «чем занимается» в карточке). */
+  categories: string[];
 };
 
 export function useTopMasters(limit = 7) {
@@ -33,6 +40,7 @@ export function useTopMasters(limit = 7) {
         .select(
           `
           rating_overall_avg, rating_overall_count, closed_deals, experience_years,
+          availability_status, availability_until,
           user:users!master_profiles_user_id_fkey (
             id, first_name, last_name, avatar_url, city_id, district, onboarding_completed_at
           )
@@ -51,6 +59,8 @@ export function useTopMasters(limit = 7) {
         rating_overall_count: number;
         closed_deals: number;
         experience_years: number | null;
+        availability_status: TopMaster["profile"]["availability_status"];
+        availability_until: string | null;
         user:
           | (Pick<
               Tables<"users">,
@@ -78,6 +88,30 @@ export function useTopMasters(limit = 7) {
         citiesMap = new Map(cityData?.map((c) => [c.id, c]) ?? []);
       }
 
+      // Подтянем категории всех отфильтрованных мастеров одним запросом.
+      const masterIds = filtered
+        .map((r) => r.user?.id)
+        .filter((v): v is string => !!v);
+      const categoriesMap = new Map<string, string[]>();
+      if (masterIds.length > 0) {
+        const { data: catRows, error: catErr } = await supabase
+          .from("master_categories")
+          .select("master_id, l2:categories_l2(name_ru, sort_order)")
+          .in("master_id", masterIds)
+          .order("created_at", { ascending: true });
+        if (catErr) throw catErr;
+        type CatRow = {
+          master_id: string;
+          l2: { name_ru: string; sort_order: number } | null;
+        };
+        for (const row of (catRows ?? []) as unknown as CatRow[]) {
+          if (!row.l2) continue;
+          const list = categoriesMap.get(row.master_id) ?? [];
+          list.push(row.l2.name_ru);
+          categoriesMap.set(row.master_id, list);
+        }
+      }
+
       return filtered
         .map<TopMaster | null>((r) => {
           if (!r.user) return null;
@@ -89,8 +123,11 @@ export function useTopMasters(limit = 7) {
               rating_overall_count: r.rating_overall_count,
               closed_deals: r.closed_deals,
               experience_years: r.experience_years,
+              availability_status: r.availability_status,
+              availability_until: r.availability_until,
             },
             city: r.user.city_id ? (citiesMap.get(r.user.city_id) ?? null) : null,
+            categories: categoriesMap.get(r.user.id) ?? [],
           };
         })
         .filter((m): m is TopMaster => m !== null);

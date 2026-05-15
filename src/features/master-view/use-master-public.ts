@@ -36,6 +36,8 @@ export type MasterPublicProfile = {
     | "status"
     | "account_type"
     | "team_size"
+    | "availability_status"
+    | "availability_until"
   > | null;
   city: { id: string; name: string } | null;
 };
@@ -57,7 +59,7 @@ export function useMasterPublicProfile(masterId: string | null | undefined) {
       const { data: masterData, error: masterErr } = await supabase
         .from("master_profiles")
         .select(
-          "bio, experience_years, has_tools, has_transport, service_radius_km, rating_overall_avg, rating_overall_count, closed_deals, languages, status, account_type, team_size",
+          "bio, experience_years, has_tools, has_transport, service_radius_km, rating_overall_avg, rating_overall_count, closed_deals, languages, status, account_type, team_size, availability_status, availability_until",
         )
         .eq("user_id", masterId)
         .maybeSingle();
@@ -122,6 +124,28 @@ type ReviewsPage = { rows: ReviewWithAuthor[]; nextCursor: string | null };
  * Возвращает useInfiniteQuery — caller использует `data.pages.flatMap(p => p.rows)`
  * и `fetchNextPage` / `hasNextPage` для UI кнопки «Показать ещё».
  */
+/**
+ * Phone мастера для прямого контакта (tel: / wa.me) с публичной страницы.
+ * Через RPC `get_master_phone` (миграция 0040) — обходит RLS на users (phone
+ * живёт в auth.users), но фильтрует только активных мастеров.
+ * Возвращает null для клиентов / неактивных / несуществующих.
+ */
+export function useMasterPhone(masterId: string | null | undefined) {
+  return useQuery<string | null>({
+    queryKey: ["master-phone", masterId],
+    queryFn: async () => {
+      if (!masterId) return null;
+      const { data, error } = await supabase.rpc("get_master_phone", {
+        p_master_id: masterId,
+      });
+      if (error) throw error;
+      return (data as string | null) ?? null;
+    },
+    enabled: !!masterId,
+    staleTime: 5 * 60_000,
+  });
+}
+
 export function useReviewsForTarget(
   targetId: string | null | undefined,
   direction: Tables<"reviews">["direction"] = "client_to_master",

@@ -3,8 +3,9 @@
 // Использует тот же queryKey ['master-services', masterId], что и MasterServicesSection,
 // поэтому при редактировании владельцем кэш инвалидируется и список обновляется автоматически.
 
-import { ActivityIndicator, View } from "react-native";
+import { View } from "react-native";
 import { AppText } from "@/components/AppText";
+import { Skeleton } from "@/components/ui";
 import {
   formatPriceRange,
   SERVICE_UNIT_LABELS,
@@ -13,15 +14,29 @@ import {
 
 interface MasterServicesListProps {
   masterId: string;
+  /** Если true — собственный заголовок «Услуги» не рисуется (используется
+   *  когда секция вложена под общим заголовком, см. master/[id] после
+   *  объединения «Что делаю» + «Услуги» 2026-05-14). */
+  hideTitle?: boolean;
 }
 
-export function MasterServicesList({ masterId }: MasterServicesListProps) {
+export function MasterServicesList({ masterId, hideTitle = false }: MasterServicesListProps) {
   const { data: services, isLoading, error } = useMasterServices(masterId);
 
   if (isLoading) {
+    // Skeleton под реальный layout — 3 строки с теми же размерами что и
+    // настоящий service-row (h-14 ≈ p-3 + 2 строки текста). Радиус и border
+    // как у настоящих карточек, чтобы при смене состояния layout не дёргался.
     return (
-      <View className="items-center py-6">
-        <ActivityIndicator />
+      <View className={hideTitle ? "gap-2" : "mt-4 gap-2"}>
+        {[0, 1, 2].map((i) => (
+          <Skeleton
+            key={i}
+            className="rounded-lg"
+            height={60}
+            width="100%"
+          />
+        ))}
       </View>
     );
   }
@@ -32,25 +47,35 @@ export function MasterServicesList({ masterId }: MasterServicesListProps) {
 
   return (
     <View>
-      <AppText weight="semibold" className="text-title-lg text-ink">
-        Прайс-лист
-      </AppText>
-      <View className="mt-4 gap-2">
+      {!hideTitle ? (
+        <AppText weight="semibold" className="text-title-md text-ink">
+          Услуги
+        </AppText>
+      ) : null}
+      {/* Единый стиль с категориями-направлениями: bg-canvas-soft (Card-soft),
+          padding 16, radius xl. Унифицирует визуал «Услуги» на master detail —
+          раньше прайс выглядел иначе чем категории и казался «другой раздел»
+          (фидбэк user 2026-05-14). */}
+      <View className={hideTitle ? "gap-3" : "mt-4 gap-3"}>
         {services.map((service) => (
           <View
             key={service.id}
-            className="flex-row items-center justify-between gap-3 rounded-lg border border-hairline bg-canvas p-3"
+            className="rounded-xl bg-canvas-soft p-4"
           >
-            <View className="flex-1">
-              <AppText weight="semibold" className="text-body-md text-ink" numberOfLines={1}>
+            <View className="flex-row items-center justify-between gap-2">
+              <AppText
+                weight="semibold"
+                className="text-ink text-body-md flex-1"
+                numberOfLines={1}
+              >
                 {service.title}
               </AppText>
-              <AppText className="mt-0.5 text-caption text-muted">
-                {SERVICE_UNIT_LABELS[service.unit]}
+              <AppText weight="mono" className="text-ink text-mono-sm">
+                {formatPriceRange(service.price_min, service.price_max)}
               </AppText>
             </View>
-            <AppText weight="semibold" className="text-body-md text-ink">
-              {formatPriceRange(service.price_min, service.price_max)}
+            <AppText className="mt-1 text-caption text-mute">
+              {SERVICE_UNIT_LABELS[service.unit]}
             </AppText>
           </View>
         ))}

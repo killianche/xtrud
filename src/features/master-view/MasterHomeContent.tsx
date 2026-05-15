@@ -6,6 +6,7 @@ import { ChevronRight, Inbox, Plus } from "lucide-react-native";
 import { ActivityIndicator, Pressable, View } from "react-native";
 import { AppText } from "@/components/AppText";
 import { SafetyBanner } from "@/components/SafetyBanner";
+import { AvailabilitySwitcher } from "@/features/master-view/AvailabilitySwitcher";
 import { useMyMasterCategories } from "@/features/master-categories/use-my-categories";
 import { useThemeColors } from "@/lib/use-theme-color";
 
@@ -22,6 +23,9 @@ export function MasterHomeContent({ userId }: MasterHomeContentProps) {
 
   return (
     <View className="gap-6 px-6">
+      {/* Availability switcher — наверху, как «онлайн» в такси */}
+      <AvailabilitySwitcher userId={userId} />
+
       {/* Safety banner */}
       <SafetyBanner />
 

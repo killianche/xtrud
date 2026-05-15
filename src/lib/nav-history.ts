@@ -29,23 +29,41 @@ import { create } from "zustand";
 
 interface NavHistoryState {
   stack: string[];
+  /** Timestamp последнего push — для intermediate-redirect debounce.
+   *  Если новый push приходит < INTERMEDIATE_MS после предыдущего, считаем
+   *  что это transient pathname во время router.push (например, мастер
+   *  пушит `/(tabs)/orders/[id]` → expo-router проходит через
+   *  `/(tabs)/orders/index` который содержит `<Redirect href="/(tabs)" />`
+   *  → потом `/(tabs)/orders/[id]`). usePathname ловит intermediate path и
+   *  без debounce'а он попадает в stack — потом goBack возвращает туда. */
+  lastPushAt: number;
   push: (path: string) => void;
   /** Снимает top (текущий) и возвращает новый top (предыдущий). undefined если стек был ≤1. */
   goBack: () => string | undefined;
 }
 
 const MAX_STACK = 50;
+const INTERMEDIATE_MS = 150;
 
 export const useNavHistory = create<NavHistoryState>((set, get) => ({
   stack: [],
+  lastPushAt: 0,
   push: (path) =>
     set((s) => {
       const top = s.stack[s.stack.length - 1];
       if (top === path) return s;
+      const now = Date.now();
+      // Intermediate redirect: pathname меняется внутри одного router.push.
+      // Заменяем последнюю entry вместо append, чтобы в стек попадал только
+      // финальный path (а не цепочка transient redirect-ов).
+      if (now - s.lastPushAt < INTERMEDIATE_MS && s.stack.length > 0) {
+        const next = [...s.stack.slice(0, -1), path];
+        return { stack: next, lastPushAt: now };
+      }
       const next = [...s.stack, path];
       // cap
       if (next.length > MAX_STACK) next.splice(0, next.length - MAX_STACK);
-      return { stack: next };
+      return { stack: next, lastPushAt: now };
     }),
   goBack: () => {
     const s = get();

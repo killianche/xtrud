@@ -8,7 +8,10 @@
  * же самое — компактно на главной.
  *
  * Что показываем:
- *   - Tab pills «Я откликнулся (N)» / «Меня выбрали (N)»
+ *   - Tab pills «Я откликнулся» / «Меня выбрали (N)»
+ *     Badge ТОЛЬКО на «Меня выбрали» — это уведомление о новой заявке от клиента.
+ *     На «Я откликнулся» badge не нужен — это просто история собственных откликов,
+ *     не сигнал требующий внимания (фидбек user 2026-05-15).
  *   - Список заказов по активному табу с OrderRow variant'ом
  *     (responded → Hourglass amber / assigned → CheckCircle success)
  *
@@ -117,7 +120,6 @@ export function MasterDashboardOrders({ userId }: MasterDashboardOrdersProps) {
         />
         <TabPill
           label="Я откликнулся"
-          count={activeResponses.length}
           selected={tab === "responded"}
           onPress={() => setTab("responded")}
         />
@@ -308,12 +310,15 @@ function EmptyTabState({ tab, accentColor }: { tab: LocalTab; accentColor: strin
 
 function TabPill({
   label,
-  count,
+  count = 0,
   selected,
   onPress,
 }: {
   label: string;
-  count: number;
+  /** Если 0 или не передан — badge не рендерится. Используется только
+   *  на «Меня выбрали» (фидбек user 2026-05-15: badge как уведомление,
+   *  не как счётчик списка). */
+  count?: number;
   selected: boolean;
   onPress: () => void;
 }) {

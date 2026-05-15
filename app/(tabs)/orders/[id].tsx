@@ -912,10 +912,9 @@ function ClientMasterResponseCard({
 
   return (
     <View className={cardClassName} style={isRejected ? { opacity: 0.6 } : undefined}>
-      {/* Header: Avatar + (Name | Price на одной inline-строке) + (Срок ниже).
-          Раньше Avatar + Name стояли в row, а цена и × летели справа отдельным
-          столбцом — было сжато и криво. Теперь: имя слева flex-1, цена справа
-          mono — выровнены baseline, читаются как пара. */}
+      {/* Header: Avatar + Name (full-width). Цена вынесена ПОД имя
+          самостоятельной строкой — раньше inline с именем и при длинных
+          ценах вроде «2 500 – 3 000 ₽» имя обрезалось на «Ислам То…». */}
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={`Профиль ${masterName}`}
@@ -930,26 +929,29 @@ function ClientMasterResponseCard({
         />
 
         <View className="flex-1 min-w-0">
-          <View className="flex-row items-baseline justify-between gap-2">
-            <AppText
-              weight="semibold"
-              className="flex-1 text-body-md text-ink"
-              numberOfLines={1}
-            >
-              {masterName}
-            </AppText>
+          <AppText
+            weight="semibold"
+            className="text-body-md text-ink"
+            numberOfLines={1}
+          >
+            {masterName}
+          </AppText>
+          <View className="mt-0.5 flex-row items-baseline gap-2">
             <AppText
               weight={isNegotiable ? "semibold" : "mono"}
               className={`${isNegotiable ? "text-body-sm" : "text-body-md"} text-ink`}
             >
               {priceText}
             </AppText>
+            {response.lead_time ? (
+              <>
+                <AppText className="text-caption text-muted-soft">·</AppText>
+                <AppText className="flex-1 text-caption text-mute" numberOfLines={1}>
+                  {response.lead_time}
+                </AppText>
+              </>
+            ) : null}
           </View>
-          {response.lead_time ? (
-            <AppText className="mt-0.5 text-caption text-mute" numberOfLines={1}>
-              Срок: {response.lead_time}
-            </AppText>
-          ) : null}
         </View>
       </Pressable>
 
@@ -1001,11 +1003,11 @@ function ClientMasterResponseCard({
             {isBusy ? (
               <ActivityIndicator size="small" color={tc.mute} />
             ) : (
-              <AppText
-                weight="semibold"
-                className="text-button"
-                style={{ color: tc["on-primary"] }}
-              >
+              // text-on-primary через className (CSS-var правильно подхватывается
+              // RNW + native NativeWind). Inline style {color: tc["on-primary"]}
+              // на web иногда теряется из-за специфичности — текст становился
+              // почти чёрным на чёрной кнопке.
+              <AppText weight="semibold" className="text-button text-on-primary">
                 Выбрать
               </AppText>
             )}

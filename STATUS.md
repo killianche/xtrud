@@ -4,7 +4,73 @@
 
 ---
 
-## Текущее состояние (2026-05-15 поздно ночь — drop радиуса + drop 8 out-of-scope L1)
+## Текущее состояние (2026-05-15 ночь — Phosphor как UI icon set по умолчанию)
+
+**Главное:** Заменил иконки в TabBar с Lucide на **Phosphor React Native**. Фидбэк user: «иконки внизу обычные, хочу ультрасовременные дизайнерские». Phosphor даёт 6 weights, **filled-vs-outline** active state (как Instagram/Threads/X/Linear), fluid corners. Pattern зафиксирован как стандарт для всего нового UI.
+
+**Что сделано:**
+
+1. **Установлен `phosphor-react-native@3.0.6`** — зависит от уже стоящего `react-native-svg`.
+2. **TabBar мигрирован** ([`app/(tabs)/_layout.tsx`](app/(tabs)/_layout.tsx) + [`src/components/TabBar.tsx`](src/components/TabBar.tsx)):
+   - `Home → House`, `ClipboardList → ClipboardText`, `MessageCircle → ChatCircle`, `User → UserCircle`, `Search → MagnifyingGlass`, `CirclePlus → PlusCircle`.
+   - Active state: `weight="bold" → "fill"` (вместо `strokeWidth 1.5 → 2.25`).
+   - **Pill-подложка** `bg-canvas-soft-2` (px-14 py-1 rounded-full) под активной иконкой — chip-style focus как в Material 3.
+3. **Документация:**
+   - Новый файл [`docs/UI_ICONS.md`](docs/UI_ICONS.md) — полная инструкция: когда/какой weight, размеры, **маппинг Lucide → Phosphor** (28+ типичных иконок), anti-patterns, история.
+   - [`docs/ICONS.md`](docs/ICONS.md) — cross-link на UI_ICONS.md (разграничение: цветные L2 vs моно UI).
+   - [`DESIGN.md`](DESIGN.md) — новый пункт «6. UI-иконки — Phosphor (моно)» в § UI patterns.
+   - [`.claude/rules/design-quality.md`](.claude/rules/design-quality.md) — обновлено правило про иконки (Phosphor + размеры + weights).
+   - [`CLAUDE.md`](CLAUDE.md) — секция «Никаких эмодзи в UI» обновлена: Phosphor дефолт, Lucide legacy.
+
+**Verify в preview:** ✅ Light + dark, оба режима роли (клиент 5 табов / мастер 4 таба). House filled с pill-подложкой на active, остальные bold-outline. TS clean.
+
+**Lucide в legacy-коде** (~80-120 мест в кнопках, ScreenHeader, OrderRow, формах) — мигрируем постепенно по мере правки экранов, не отдельным sweep'ом. Правило: трогаешь файл — заменяй imports на Phosphor по таблице из UI_ICONS.md.
+
+---
+
+## Прежнее состояние (2026-05-15 поздно вечер — удалена master-страница «Заявки»)
+
+**Главное:** Раньше у мастера во вкладке `/orders` была страница «Заявки» с двумя tab-pill «Я откликнулся / Меня выбрали». 2026-05-15 её таб убрали из `TabBar` (содержимое переехало в `MasterDashboardOrders` на главной мастера), но сам файл `app/(tabs)/orders/index.tsx` продолжал содержать master-вьюху и был доступен по прямому URL (на десктопе — через ссылку «Заказы» в `WebShell`). Сейчас вырезано окончательно.
+
+**Что сделано:**
+
+1. **[`app/(tabs)/orders/index.tsx`](app/(tabs)/orders/index.tsx)** — выпилен `MasterOrdersView` + `RespondedTab` + `AssignedTab` + локальный `isActiveResponse` + sticky-tab logic + связанные импорты. Для `active_role === "master"` теперь `<Redirect href="/(tabs)" />`. Для клиента — без изменений (`ClientOrdersView` как было).
+2. **Удалён** [`src/features/orders/master-orders-tab-store.ts`](src/features/orders/master-orders-tab-store.ts) — zustand-стор `stickyTab` использовался только удалённой master-вьюхой.
+3. **[`src/components/WebShell.tsx`](src/components/WebShell.tsx)** — ссылка «Заказы» в top-nav теперь скрыта для мастера (как и в `TabBar`). Мастер на десктопе видит только «Главная / Чаты». «Поиск заказов» у мастера на десктопе пока живёт через `/orders/search` URL (отдельной кнопки в WebShell нет — TODO если понадобится).
+
+**Verify в preview:** ✅ `/orders` под клиентом рендерит «Мои заказы» + empty state, табы корректные, консоль чистая. Master-redirect проверен через TS-типы и логику кода (live-логин под мастером не делал в этой сессии).
+
+**Что НЕ трогали (намеренно):**
+- `useMyResponses`, `useOrdersAssignedToMe`, `useUnreadResponsesCount`, `useRealtimeMyResponses` — продолжают использоваться `MasterDashboardOrders` (мастер home) и client `_layout.tsx` (orders-badge для клиента).
+- `MasterDashboardOrders.tsx` — это новое место «заявок» мастера, не редактировалось.
+
+---
+
+## Прежнее состояние (2026-05-15 поздно вечер — drop диапазона цен из заказов)
+
+**Главное:** Полная переделка модели цены заказов и откликов. Раньше было `price_mode ∈ {exact, range, negotiable}` + `price_min` + `price_max` (диапазон). По фидбэку user 2026-05-15 «убрать диапазоны из всех заказов, чтобы была только одна цена» — переход на `price_kind ∈ {fixed, from, up_to, negotiable}` + одно числовое `price_value`. Plus добавил ценник и превью описания на /orders/search (раньше отсутствовали).
+
+**Что сделано:**
+
+1. **Миграция [`0069_orders_remove_price_range.sql`](supabase/migrations/0069_orders_remove_price_range.sql)** (применена через MCP) — новый enum `order_price_kind`, добавлены `orders.budget_kind|budget_value` и `order_responses.price_kind|price_value`, backfill (`exact→fixed`, `range`+min→`from`, `range`+max-only→`up_to` с переносом max в value, `range`+both→`from` с берём min), DROP `budget_mode/budget_min/budget_max` + `price_mode/price_min/price_max`, DROP старый enum `order_budget_mode` CASCADE, новые CHECK-constraints (`negotiable` ↔ value IS NULL, иначе value >= 0). Также пересоздан RPC `start_chat_with_master` (0053) — welcome-message форматируется по новой схеме.
+2. **`database.ts`** — regenerate (1650 строк). Старого enum `order_budget_mode` нет, новый `order_price_kind: "fixed" | "from" | "up_to" | "negotiable"`.
+3. **`order-schema.ts`** — `orderPriceKindOptions`, `OrderPriceKind`, `priceKindLabel()`, общий `formatPrice(kind, value)` («1 500 ₽» / «от 1 500 ₽» / «до 5 000 ₽» / «Цена договорная»), zod: `budgetKind` + `budgetValue` (вместо `budgetMode/budgetMin/budgetMax`).
+4. **Hooks** — `use-create-order.ts`, `use-update-order.ts`, `use-order-responses.ts`, `use-my-responses.ts` переписаны под новый contract (input → kind+value).
+5. **UI формы** — `OrderFormBody.tsx` рендерит 4 chip (Точная/От/До/Договорная) + одно NumberField с динамическим лейблом. Слово «Диапазон» удалено. `new.tsx`, `edit/[id].tsx` обновлены под defaults `budgetKind/budgetValue`.
+6. **OrderDetail (`orders/[id].tsx`)** — `formatBudget` и `formatResponsePrice` через `formatPrice`, форма отклика мастера тоже 4 chip + одно поле, removed price_max input.
+7. **OrderRow + /orders/search** — новые опциональные props `budgetKind`, `budgetValue`, `description`. На /orders/search OrderRow теперь рендерит описание в 2 строки и ценник mono-ink ниже category-eyebrow (фидбэк user «ценники не отображаются — очень плохо», «описание заказа можно 1-2 строки отобразить»).
+
+**Verify в preview:** ✅ /orders/search показывает «от 2 000 ₽», «Цена договорная» + 2-строчные описания (light + dark). ✅ /orders/new рендерит 4 chip-бюджет с динамическим NumberField лейблом «Сумма ₽ / От ₽ / До ₽», поле скрыто для «Договорная». ✅ tsc clean.
+
+**Структурные решения:**
+- Имя `*_mode` → `*_kind` для ясности (новая семантика «способ задания цены»). `*_min` → `*_value` так как для `up_to` это уже не «минимум».
+- Унифицирован один enum `order_price_kind` на обе таблицы — раньше тоже был общий `order_budget_mode`.
+
+**Полировка `/orders/search` (2026-05-15 поздняя ночь):** убрана status-точка «● Открыта» из карточек — лента уже фильтруется на `.eq("status","open")`, дублировать лейбл на каждой строке — шум. Meta-row теперь начинается с urgency. Этот экран зафиксирован в [`UI_PATTERNS.md §3.3`](UI_PATTERNS.md) как **canonical reference** для всех плоских inbox-листов (hairline-разделители, inline-иконка 16px, mono time/budget, 2-line description). Любой новый list-экран копирует именно его.
+
+---
+
+## Прежнее состояние (2026-05-15 поздно ночь — drop радиуса + drop 8 out-of-scope L1)
 
 **Главное:** Полная чистка нерелевантных категорий и удаление радиуса выезда. Фидбек user 2026-05-15: «у нас сервис под ремонт+стройку+клининг, удали всё лишнее полностью; раньше радиус убирали с UI, но он остался в коде».
 

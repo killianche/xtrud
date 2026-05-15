@@ -200,3 +200,97 @@
 
 - Почистить упоминания радиуса в research/*.md и AUDIT_2026-05-12.md (они исторические, не критично — но кто-то может запутаться). Не сделал в этой сессии — не блокер.
 - В demo-fixture.sql (seed) и старых seed-миграциях (0036, 0038, 0039, 0054) есть INSERT'ы с `service_radius_km` / `category_radius_km`. После миграции 0067 эти миграции при «свежем накате с нуля» упадут — поля больше не существуют. **Это известный долг.** Если будем пересоздавать БД — нужно либо отредактировать старые seed'ы (но это меняет историю миграций — плохо), либо создать миграцию-патч.
+
+---
+
+# Session summary — 2026-05-15 (вечер 5: drop диапазона цен из заказов)
+
+## TL;DR
+
+Полная переделка модели цены `orders` и `order_responses`: убрана возможность задавать диапазон (price_min..price_max) — теперь один числовой `*_value` + enum `price_kind` (`fixed | from | up_to | negotiable`). Параллельно на `/orders/search` добавлен ценник + 2-строчное описание заказа в карточках OrderRow (раньше отсутствовали).
+
+## Закрытые задачи
+
+1. **Миграция [`0069_orders_remove_price_range.sql`](supabase/migrations/0069_orders_remove_price_range.sql)** — новый enum `order_price_kind`, новые колонки `budget_kind/budget_value` и `price_kind/price_value`, backfill для существующих записей, DROP старых колонок и enum, CHECK-constraints, переопределение RPC `start_chat_with_master` (0053) под новую схему. Применена через `mcp__supabase__apply_migration`. Файл переименован с `0068_` на `0069_` (был конфликт с уже занятым 0068 — drop-out-of-scope-categories).
+2. **`database.ts`** — regenerate через `mcp__supabase__generate_typescript_types`.
+3. **`src/features/orders/order-schema.ts`** — `orderPriceKindOptions`, тип `OrderPriceKind`, helper'ы `priceKindLabel()` и `formatPrice(kind, value)`. Заменены поля zod-схемы `budgetMode/budgetMin/budgetMax` → `budgetKind/budgetValue`.
+4. **Hooks** — `use-create-order.ts`, `use-update-order.ts`, `use-order-responses.ts`, `use-my-responses.ts` переписаны под новый contract (kind+value).
+5. **`OrderFormBody.tsx`** — 4 chip-кнопки (Точная/От/До/Договорная) + одно NumberField с динамическим лейблом. Удалено слово «Диапазон» и второе поле.
+6. **`app/(tabs)/orders/new.tsx`, `app/(tabs)/orders/edit/[id].tsx`** — defaults и submit под новый contract.
+7. **`app/(tabs)/orders/[id].tsx`** — `formatBudget` и `formatResponsePrice` через общий `formatPrice`. Форма отклика мастера: 4 chip + одно price-input поле.
+8. **`OrderRow.tsx` + `/orders/search`** — добавлены props `budgetKind`, `budgetValue`, `description`. OrderRow рендерит описание заказа в 2 строки и ценник mono-ink под category-eyebrow.
+
+## Новые правила и решения
+
+- **Модель цены: один kind + одно value, никаких диапазонов.** Зафиксировано в `order-schema.ts` (типы и форматтер) + комментарий в миграции 0069. Применяется к `orders.budget_*` и `order_responses.price_*`. Why: пользователь явно сказал «убрать диапазоны». Применяется ВСЕГДА для заказов и откликов (НЕ распространяется на `master_services` — это прайс мастера, отдельный домен).
+- **`*_kind` + `*_value` именования вместо `*_mode` + `*_min/_max`.** Why: новая семантика «способ задания цены и одно значение» — старые имена `_min/_max` вводили в заблуждение для `up_to` (где значение это max).
+- **Общий форматтер `formatPrice(kind, value)`** в `order-schema.ts`. Why: один источник истины — раньше форматирование было дублировано в `orders/[id].tsx` (2 функции) с `range` ветвлением. Теперь все consumers (OrderRow, OrderDetail, форма) делегируют.
+- **OrderRow поддерживает опциональные `budgetKind`/`budgetValue`/`description`** — если не передать, ничего лишнего не рендерится. Why: компонент используется в 5+ местах, не везде нужны цены и описания. На /orders/search — нужны.
+
+## Новые компоненты / паттерны
+
+- `formatPrice(kind: OrderPriceKind, value: number | null): string` (`src/features/orders/order-schema.ts`) — единый форматтер для UI цены заказа/отклика. Возвращает «1 500 ₽» / «от 1 500 ₽» / «до 5 000 ₽» / «Цена договорная». Использовать ВЕЗДЕ где надо показать цену из orders или order_responses.
+- `priceKindLabel(kind)` — короткий лейбл для chip-кнопок («Точная» / «От» / «До» / «Договорная»).
+
+## Anti-patterns обнаруженные в сессии
+
+- **Дубликат форматтера в каждом consumer'е** (раньше `formatBudget` в orders/[id].tsx + `formatResponsePrice` там же + потенциально ещё). Когда меняется модель — переписывать каждый. Правильно: один общий помощник в схеме, consumers делегируют.
+- **`*_mode` для enum, который описывает структуру значения** — путает. `*_kind` лучше отражает «способ задания», `*_mode` чаще про state-machine (как `display_mode: 'dark'/'light'`).
+- **Применение DDL до того как обновлён код** — рискованно: пока бэкенд уже новый, а код ещё ссылается на старые поля, runtime ошибки. Здесь сделал в правильном порядке: миграция → regen types → обновление всех hooks → форма → UI → TS check → preview.
+
+## Verification — что реально проверено в preview
+
+- ✅ `/orders/search` (light + dark): описание заказа в 2 строки под title (truncate с «…»), ценник под описанием (mono ink: «от 2 000 ₽», «Цена договорная»). Бэкфилл существующих `range` записей сработал — «Замена смесителя на кухне» теперь «от 2 000 ₽» (раньше был `range, min=2000`).
+- ✅ `/orders/new`: 4 chip-кнопки бюджета (Точная / От / До / Договорная), при выборе `fixed` лейбл поля = «Сумма, ₽», при `from` = «От, ₽», при `up_to` = «До, ₽», при `negotiable` поле скрыто. Diff against предыдущей версии — никаких упоминаний слова «Диапазон».
+- ✅ `npx tsc --noEmit` clean.
+
+## Открытые вопросы / TODO
+
+- **`master_services`** (прайс мастера) всё ещё хранит `price_min/price_max`. По фидбэку «удалим цены в диапазоне» 2026-05-15 уже частично почищено — отображение в UI берёт только нижнюю границу, но в БД диапазон остался. Если хотим полностью унифицировать модель — отдельная миграция (не в этой задаче, user про master_services не упоминал явно в этом запросе).
+- **`research/*.md`, `AUDIT_2026-05-12.md`** — могут остаться упоминания старой модели price_mode='range' / диапазона. Не критично, исторические доки.
+
+---
+
+# Late-night addendum (Phosphor UI icon migration)
+
+## TL;DR
+
+Заменил иконки в TabBar c Lucide на Phosphor по фидбэку «хочу ультрасовременные дизайнерские иконки внизу». Phosphor — теперь дефолтный icon set для всех новых UI-иконок проекта (TabBar, headers, buttons, status, chips). Lucide → legacy, мигрируем постепенно. Pattern зафиксирован в новом `docs/UI_ICONS.md` + cross-links в 5 других doc-файлах.
+
+## Закрытые задачи
+
+1. **TabBar icon redesign** — `Home/ClipboardList/MessageCircle/User/Search/CirclePlus` (Lucide) → `House/ClipboardText/ChatCircle/UserCircle/MagnifyingGlass/PlusCircle` (Phosphor). Файлы: `app/(tabs)/_layout.tsx`, `src/components/TabBar.tsx`.
+2. **Active state: `weight="bold" → "fill"`** вместо `strokeWidth 1.5 → 2.25`. Иконка active мгновенно читается как залитая фигура.
+3. **Pill-подложка** `bg-canvas-soft-2` (px-14 py-1 rounded-full) под активной иконкой — chip-style focus indicator как Material 3 / Apple Music.
+4. **Документация** — `docs/UI_ICONS.md` (новый), `docs/ICONS.md` (cross-link), `DESIGN.md` (новый пункт § UI patterns 6), `.claude/rules/design-quality.md` (правило про иконки), `CLAUDE.md` (раздел про эмодзи), `STATUS.md`.
+
+## Новые правила и решения
+
+- **Phosphor — дефолт для моно UI-иконок** — `CLAUDE.md` § «Никаких эмодзи в UI», `.claude/rules/design-quality.md` § «DESIGN.md единственный источник истины», `docs/UI_ICONS.md` (источник истины). **Why:** Lucide (Feather) даёт слабую разницу active/inactive (только strokeWidth), Phosphor с 6 weights решает это нативно — `bold`→`fill` это огромная визуальная разница без увеличения размера.
+- **Active state в navigation = `bold` → `fill`** — DESIGN.md § «UI patterns 6». **Why:** паттерн всех топ-приложений 2024-26 (Instagram, Threads, X, Linear, Cron, Mercury). User-фидбэк подтвердил: «хорошо выглядят, оставляем».
+- **Pill-подложка `bg-canvas-soft-2` под активной nav-иконкой** — `src/components/TabBar.tsx` шапка-комментарий + `docs/UI_ICONS.md`. **Why:** chip-style focus indicator из Material 3, мягкий контраст не агрессивный.
+- **Lucide остаётся в legacy, мигрируется по мере правки** — `docs/UI_ICONS.md`. **Why:** ~80-120 мест с Lucide — большой sweep, делать одним коммитом рискованно. Правило «трогаешь файл — мигрируй» накапливает миграцию органично.
+
+## Новые компоненты / паттерны
+
+- **Phosphor `<House weight="fill">` + pill-подложка** — паттерн для всех bottom-tab активных состояний. См. `src/components/TabBar.tsx`.
+- **Таблица маппинга Lucide → Phosphor** в `docs/UI_ICONS.md` — 28+ типичных иконок (`Home→House`, `Search→MagnifyingGlass`, `MessageCircle→ChatCircle`, `User→UserCircle`, `ClipboardList→ClipboardText`, `Chevron*→Caret*`, `AlertCircle→WarningCircle`, `Settings→Gear`, `Mail→Envelope`, и др.). Использовать при любой правке legacy-кода.
+
+## Anti-patterns обнаруженные в сессии
+
+- **Active state только через `strokeWidth`** (Lucide-паттерн) — слабая разница для пользователя на mobile. Решение: использовать icon-set с filled-вариантами.
+- **Mixing icon-sets на одном экране** — стилистический разнобой. Lucide тоньше, Phosphor чуть плотнее. Правило: если на экране уже Phosphor — мигрируй все иконки этого экрана разом, не точечно.
+- **Hex inline `color="#000"`** для иконок — не работает в dark mode. Использовать `tc.ink/mute` через `useThemeColors` или `currentColor` на web с tailwind-classes на parent.
+- **`weight="thin"` / `"light"` в production UI** — не читается на mobile. Минимум `bold` для inactive.
+
+## Verification — что реально проверено в preview
+
+- ✅ Light theme, клиент: 5 табов — House (active, filled, pill), ClipboardText, PlusCircle, ChatCircle, UserCircle (bold outline).
+- ✅ Light theme, мастер: 4 таба — House (active, filled, pill), MagnifyingGlass, ChatCircle, UserCircle. Tabs «Заказы» и «Создать» спрятаны как и должны.
+- ✅ DOM-проверка: `paddingHorizontal: 14px`, `borderRadius: 999px`, `backgroundColor: rgb(245, 245, 245)` для active pill в light theme. В dark — `rgb(34, 34, 34)` (canvas-soft-2).
+- ⚠️ `tsc --noEmit` — запущено в фоне, ошибок не выдал. Lucide-импорты в TabBar/_layout полностью удалены, ничего сломаться не должно.
+
+## Открытые вопросы / TODO
+
+- **WebShell** ([`src/components/WebShell.tsx`](src/components/WebShell.tsx)) — desktop navigation (≥768px) всё ещё использует Lucide (`Home/ClipboardList/MessageCircle/User`). Не трогал в этой итерации — user сказал «также я тебе в следующем сообщении укажу, где надо поставить эти иконки», жду список мест.
+- **Постепенная миграция Lucide → Phosphor** в legacy: ScreenHeader (back-иконка ChevronLeft), OrderRow, FeaturedRequests, кнопки в формах, status-индикаторы, list-rows. Делать по мере правки экранов, не отдельным sweep'ом.

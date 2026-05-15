@@ -179,6 +179,19 @@ export const useOrdersSearchFiltersStore = create<State>((set) => ({
 //   - Sticky footer с большой primary-кнопкой «Применить» + ссылкой «Сбросить».
 ```
 
+### 6. UI-иконки — Phosphor (моно)
+
+Все моно UI-иконки (TabBar, ScreenHeader back, кнопки, chips, status, list-chevrons, form-fields) — **Phosphor React Native** (`phosphor-react-native`). Lucide — только legacy, в новом коде не использовать.
+
+Правила weights:
+- **Inactive / outline:** `weight="bold"`
+- **Active / selected / status-fill:** `weight="fill"`
+- `regular`/`light`/`thin` — не использовать в production UI (слабая читаемость на mobile).
+
+Active state в navigation = `fill` + ink color + pill-подложка `bg-canvas-soft-2` (px-14 py-1 rounded-full). См. [`src/components/TabBar.tsx`](src/components/TabBar.tsx).
+
+**Полная инструкция, маппинг Lucide → Phosphor, anti-patterns:** [`docs/UI_ICONS.md`](docs/UI_ICONS.md). Цветные иконки L2-категорий — отдельный документ [`docs/ICONS.md`](docs/ICONS.md) (Iconify CDN, не Phosphor).
+
 ## Активная палитра — оригинал из Vercel ниже
 
 ---

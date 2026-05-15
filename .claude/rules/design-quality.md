@@ -20,7 +20,7 @@
 - Радиусы — `rounded-md` (8) / `rounded-lg` (12, дефолт карточек) / `rounded-xl` (16, hero/special) / `rounded-full` (pill).
 - Шрифты — `<AppText weight="..." />` с правильным weight. `mono` weight (Geist Mono) для метрик «★ 4.9», «1 200 ₽», «12 км».
 - Spacing — Tailwind scale (mt-2/3/4/6/8/10/12). Между секциями hero — mt-10 или mt-12. Внутри секции элементы — gap-2/3.
-- Иконки — Lucide React Native, размер 14-20 (inline) / 24 (кнопки) / 28 (плитки) / 32+ (hero), strokeWidth 1.5-2 (1.75 default).
+- Иконки — **Phosphor React Native** (`phosphor-react-native`) для нового UI-кода. Размер 18-20 (inline) / 22-24 (кнопки, chip) / 26 (TabBar) / 28 (ScreenHeader back) / 32+ (hero). Weight: `bold` (inactive) / `fill` (active/selected/status). Lucide — только legacy, не использовать в новом коде. Полная инструкция и маппинг Lucide → Phosphor — [`docs/UI_ICONS.md`](../../docs/UI_ICONS.md). Цветные иконки L2-категорий — [`docs/ICONS.md`](../../docs/ICONS.md) (Iconify CDN, не Phosphor).
 
 ### 3. Hierarchy — один primary action
 

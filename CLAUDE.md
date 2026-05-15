@@ -13,6 +13,8 @@
 - **Хостинг кода:** GitHub (обязательно с первой минуты)
 - **Темы:** light + dark с переключателем
 - **Дизайн:** Vercel-based (`DESIGN.md`, активирована 2026-05-13). 3 override'а под marketplace перечислены в блоке «xtrud overrides» внутри `DESIGN.md`.
+- **🎨 UI-паттерны и архетипы экранов:** [`UI_PATTERNS.md`](UI_PATTERNS.md) — единый кук-бук «как делать страницы» (header / list / chip / hero / filters / empty-state). **Перед проектированием любого нового экрана читать первым.**
+- **Product scope (MVP):** в каталоге показывается **только L1 `construction`** (Строительство и ремонт). Остальные 9 L1 (Дом и быт, Авто, Бьюти, Образование и т.д.) — скрыты. Управление scope — `IN_SCOPE_L1_IDS` в [`src/lib/product-scope.ts`](src/lib/product-scope.ts). Подробно — `CATEGORIES_AND_PROFILES.md` → раздел «Product scope (MVP)».
 
 ---
 
@@ -37,10 +39,11 @@
 
 Эмоджи (💧 ⚡ 🔨 🛠️ 🚪 и т.п.) — **не иконки**. Они выглядят как «детский placeholder», ломают Vercel-эстетику и читаются по-разному на разных платформах. Запрещено использовать их в UI как замену иконкам категорий, статусов, кнопок, badges.
 
-Когда нужны цветные/современные/минималистичные иконки — реализовать через:
-- **Lucide React Native** (моно, текущий дефолт) + tinted background (как в FeaturedRequests)
-- **Iconify CDN** с конкретным курированным сетом (`flat-color-icons`, `fluent-color`) — согласовать сет с пользователем перед интеграцией
-- **AI-generated SVG** — через external image-gen pipeline (DALL-E / SDXL), сохранять в репо, не CDN
+Когда нужны современные/минималистичные иконки — реализовать через:
+- **Phosphor React Native** (`phosphor-react-native`) — **дефолт для моно UI-иконок** с 2026-05-15. 6 weights (`thin/light/regular/bold/fill/duotone`), активный state `bold→fill`. Полная инструкция и маппинг Lucide → Phosphor в [`docs/UI_ICONS.md`](docs/UI_ICONS.md).
+- **Iconify CDN** (`twemoji`, `fluent-color`) — для **цветных** иконок L2-категорий услуг. Маппинг и API в [`docs/ICONS.md`](docs/ICONS.md). Новый сет согласовать с пользователем перед интеграцией.
+- **Lucide React Native** — только legacy, в новом коде не использовать. Постепенно мигрируется на Phosphor.
+- **AI-generated SVG** — через external image-gen pipeline (DALL-E / SDXL), сохранять в репо, не CDN.
 
 Эмодзи допустимы только в **текстовом контенте** (тексты заданий пользователя, copy кнопок типа «Ваш номер скрыт 📵» если запрошено), но никогда как замена visual-icon.
 

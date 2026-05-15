@@ -4,7 +4,7 @@ import {
   ThemeProvider as NavThemeProvider,
 } from "@react-navigation/native";
 import { Slot, Tabs } from "expo-router";
-import { ClipboardList, Home, MessageCircle, User } from "lucide-react-native";
+import { ChatCircle, ClipboardText, House, UserCircle } from "phosphor-react-native";
 import { Platform, useWindowDimensions } from "react-native";
 import { TabBar } from "@/components/TabBar";
 import { WebShell } from "@/components/WebShell";
@@ -98,7 +98,7 @@ export default function TabsLayout() {
         options={{
           title: "Главная",
           tabBarIcon: ({ color, focused }) => (
-            <Home color={color} size={24} strokeWidth={focused ? 2.25 : 1.5} />
+            <House color={color} size={26} weight={focused ? "fill" : "bold"} />
           ),
         }}
       />
@@ -107,7 +107,7 @@ export default function TabsLayout() {
         options={{
           title: "Заказы",
           tabBarIcon: ({ color, focused }) => (
-            <ClipboardList color={color} size={24} strokeWidth={focused ? 2.25 : 1.5} />
+            <ClipboardText color={color} size={26} weight={focused ? "fill" : "bold"} />
           ),
           tabBarBadge: ordersBadge,
           tabBarBadgeStyle: badgeStyle,
@@ -127,7 +127,7 @@ export default function TabsLayout() {
         options={{
           title: "Чаты",
           tabBarIcon: ({ color, focused }) => (
-            <MessageCircle color={color} size={24} strokeWidth={focused ? 2.25 : 1.5} />
+            <ChatCircle color={color} size={26} weight={focused ? "fill" : "bold"} />
           ),
           tabBarBadge: chatsBadge,
           tabBarBadgeStyle: badgeStyle,
@@ -138,7 +138,7 @@ export default function TabsLayout() {
         options={{
           title: "Профиль",
           tabBarIcon: ({ color, focused }) => (
-            <User color={color} size={24} strokeWidth={focused ? 2.25 : 1.5} />
+            <UserCircle color={color} size={26} weight={focused ? "fill" : "bold"} />
           ),
         }}
       />

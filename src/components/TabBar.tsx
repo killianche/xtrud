@@ -9,14 +9,20 @@
  * («Войти и написать»), и сама эстетика «жирного круга» противоречит Vercel-
  * минимализму. Сделали 5-й таб обычной иконкой Plus + подпись «Создать».
  *
- * Активный таб: ink + semibold + stroke 2.25.
- * Неактивный:    mute + regular + stroke 1.5.
+ * Активный таб: ink + filled icon (Phosphor weight="fill") + pill-подложка
+ *                bg-canvas-soft-2 под иконкой.
+ * Неактивный:    mute + bold outline (Phosphor weight="bold").
+ *
+ * Icon set: Phosphor (2026-05-15) — заменил Lucide для большего «modern app»
+ * feel + явная fill/outline разница active-state (паттерн Instagram/Threads/X
+ * /Linear). Pill даёт chip-style focus-индикатор как в Material 3.
+ *
  * Таб «Создать» — обычный неактивный таб, тап → router.push('/orders/new').
  */
 
 import type { BottomTabBarProps } from "@react-navigation/bottom-tabs";
 import { usePathname, useRouter } from "expo-router";
-import { CirclePlus, Search } from "lucide-react-native";
+import { MagnifyingGlass, PlusCircle } from "phosphor-react-native";
 import { Platform, Pressable, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
@@ -36,7 +42,7 @@ export function TabBar({ state, descriptors, navigation }: BottomTabBarProps) {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const pathname = usePathname();
-  const tc = useThemeColors(["canvas", "hairline", "ink", "mute"]);
+  const tc = useThemeColors(["canvas", "canvas-soft-2", "hairline", "ink", "mute"]);
   const tabBarHidden = useTabBarVisibility((s) => s.hidden);
 
   // N2: кнопка «+ Создать заказ» — только для клиента. Мастер не создаёт
@@ -64,7 +70,12 @@ export function TabBar({ state, descriptors, navigation }: BottomTabBarProps) {
   ).filter((r): r is NonNullable<typeof r> => Boolean(r));
 
   // Левая часть: index + orders. Правая: chats + profile.
-  const leftRoutes = orderedRoutes.filter((r) => r.name === "index" || r.name === "orders");
+  // Для мастера orders-таб скрыт — заявки переехали на главную (под
+  // «Готовы работать?»), второй таб дублировал бы тот же контент. См.
+  // фидбэк user 2026-05-15. Клиент видит «Мои заказы» как обычно.
+  const leftRoutes = orderedRoutes.filter(
+    (r) => r.name === "index" || (r.name === "orders" && !isMasterRole),
+  );
   const rightRoutes = orderedRoutes.filter((r) => r.name === "chats" || r.name === "profile");
 
   const renderTab = (route: (typeof state.routes)[number]) => {
@@ -72,7 +83,15 @@ export function TabBar({ state, descriptors, navigation }: BottomTabBarProps) {
     if (!descriptor) return null;
     const { options } = descriptor;
     const globalIndex = state.routes.findIndex((r) => r.key === route.key);
-    const isFocused = state.index === globalIndex;
+    let isFocused = state.index === globalIndex;
+
+    // Взаимоисключение: когда мастер на /orders/search, expo-router считает
+    // активным таб `orders` (т.к. /orders/search живёт под `orders` родителем).
+    // Но визуально активна средняя «лупа» — поэтому таб «Заказы» в этом случае
+    // НЕ должен подсвечиваться, иначе обе кнопки горят одновременно.
+    if (route.name === "orders" && isSearchActive) {
+      isFocused = false;
+    }
 
     const label = typeof options.title === "string" ? options.title : route.name;
     const badge = options.tabBarBadge;
@@ -116,8 +135,17 @@ export function TabBar({ state, descriptors, navigation }: BottomTabBarProps) {
           justifyContent: "center",
         }}
       >
-        <View style={{ position: "relative" }}>
-          {options.tabBarIcon?.({ focused: isFocused, color: iconColor, size: 28 })}
+        <View
+          style={{
+            position: "relative",
+            paddingHorizontal: 14,
+            paddingVertical: 4,
+            borderRadius: 999,
+            backgroundColor: isFocused ? tc["canvas-soft-2"] : "transparent",
+          }}
+          className={isWeb ? (isFocused ? "bg-canvas-soft-2" : undefined) : undefined}
+        >
+          {options.tabBarIcon?.({ focused: isFocused, color: iconColor, size: 26 })}
 
           {badge !== undefined && badge !== null && (
             <View
@@ -192,11 +220,21 @@ export function TabBar({ state, descriptors, navigation }: BottomTabBarProps) {
             justifyContent: "center",
           }}
         >
-          <Search
-            size={28}
-            strokeWidth={isSearchActive ? 2.25 : 1.75}
-            color={isWeb ? "currentColor" : isSearchActive ? tc.ink : tc.mute}
-          />
+          <View
+            style={{
+              paddingHorizontal: 14,
+              paddingVertical: 4,
+              borderRadius: 999,
+              backgroundColor: isSearchActive ? tc["canvas-soft-2"] : "transparent",
+            }}
+            className={isWeb ? (isSearchActive ? "bg-canvas-soft-2" : undefined) : undefined}
+          >
+            <MagnifyingGlass
+              size={26}
+              weight={isSearchActive ? "fill" : "bold"}
+              color={isWeb ? "currentColor" : isSearchActive ? tc.ink : tc.mute}
+            />
+          </View>
         </Pressable>
       ) : (
         <Pressable
@@ -210,11 +248,19 @@ export function TabBar({ state, descriptors, navigation }: BottomTabBarProps) {
             justifyContent: "center",
           }}
         >
-          <CirclePlus
-            size={28}
-            strokeWidth={1.75}
-            color={isWeb ? "currentColor" : tc.mute}
-          />
+          <View
+            style={{
+              paddingHorizontal: 14,
+              paddingVertical: 4,
+              borderRadius: 999,
+            }}
+          >
+            <PlusCircle
+              size={26}
+              weight="bold"
+              color={isWeb ? "currentColor" : tc.mute}
+            />
+          </View>
         </Pressable>
       )}
 

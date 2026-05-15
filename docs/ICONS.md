@@ -2,9 +2,11 @@
 
 **Имя для запроса:** «цветные иконки категорий», «category color icons», «брендовые иконки».
 
+> **Этот документ — про цветные иконки L2-категорий услуг** (через Iconify CDN). UI-иконки приложения (TabBar / кнопки / навигация / статусы — моно) — отдельный документ: [`UI_ICONS.md`](UI_ICONS.md) (Phosphor React Native).
+
 ## TL;DR
 
-Одна функция — один источник истины для цветных SVG-иконок категорий L2 по всему сайту: `getCategoryColorIconUrl(l2Id)` в [`src/lib/category-color-icons.ts`](../src/lib/category-color-icons.ts). Возвращает URL цветной SVG из [Iconify CDN](https://api.iconify.design) — `twemoji` (плоские цветные эмодзи Twitter) и `fluent-color` (Microsoft Fluent 2D). Если категории нет в маппинге — возвращает `null` (caller использует моно-Lucide-fallback).
+Одна функция — один источник истины для цветных SVG-иконок категорий L2 по всему сайту: `getCategoryColorIconUrl(l2Id)` в [`src/lib/category-color-icons.ts`](../src/lib/category-color-icons.ts). Возвращает URL цветной SVG из [Iconify CDN](https://api.iconify.design) — `twemoji` (плоские цветные эмодзи Twitter) и `fluent-color` (Microsoft Fluent 2D). Если категории нет в маппинге — возвращает `null` (caller использует моно-Phosphor-fallback, см. [`UI_ICONS.md`](UI_ICONS.md)).
 
 ## Когда использовать
 

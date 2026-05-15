@@ -5,11 +5,13 @@
 //
 // Sprint 31.5.
 
-import { ListPlus, Pencil, Plus, Trash2 } from "lucide-react-native";
-import { useState } from "react";
-import { ActivityIndicator, Alert, Modal, Pressable, TextInput, View } from "react-native";
+import { Edit3, ListPlus, Pencil, Plus, Sparkles, Trash2 } from "lucide-react-native";
+import { useEffect, useMemo, useState } from "react";
+import { ActivityIndicator, Alert, Modal, Pressable, ScrollView, TextInput, View } from "react-native";
 import { AppText } from "@/components/AppText";
 import { EmptyState } from "@/components/EmptyState";
+import { useCategoriesL3ByL2 } from "@/features/categories/use-categories-l3-by-l2";
+import { useMyMasterCategories } from "@/features/master-categories/use-my-categories";
 import {
   formatServicePrice,
   MASTER_SERVICES_MAX,
@@ -206,11 +208,36 @@ interface ServiceFormContentProps {
 
 function ServiceFormContent({ initial, masterId, onClose }: ServiceFormContentProps) {
   const upsert = useUpsertMasterService(masterId);
-  const tc = useThemeColors(["ink", "muted-soft"]);
+  const tc = useThemeColors(["ink", "muted-soft", "accent"]);
+
+  // P0-4: загружаем категории мастера для выбора L2.
+  // L3-список грузим лениво по выбранной L2.
+  const { data: myCategories } = useMyMasterCategories(masterId ?? undefined);
+
+  // L2 — для НОВОЙ услуги по умолчанию выбираем первую категорию мастера
+  // (если она одна — экономит клик). Для редактирования — берём из initial.
+  const initialL2 = initial?.l2_id ?? myCategories?.[0]?.l2_id ?? null;
+  const [selectedL2, setSelectedL2] = useState<string | null>(initialL2);
+
+  // Когда myCategories догрузились (и initial без l2), выставляем default.
+  useEffect(() => {
+    if (selectedL2 == null && initial?.l2_id == null && myCategories?.[0]) {
+      setSelectedL2(myCategories[0].l2_id);
+    }
+  }, [myCategories, selectedL2, initial?.l2_id]);
+
+  const { data: l3List } = useCategoriesL3ByL2(selectedL2);
 
   const initialKind: ServicePricingKind = initial?.pricing_kind ?? "fixed";
   const [pricingKind, setPricingKind] = useState<ServicePricingKind>(initialKind);
   const [title, setTitle] = useState(initial?.title ?? "");
+  const [selectedL3, setSelectedL3] = useState<string | null>(initial?.l3_id ?? null);
+  // freeMode = режим "своя формулировка". При создании новой услуги по
+  // умолчанию false (показываем готовый список); при редактировании — true,
+  // если у legacy-записи нет l3_id (значит, мастер вписывал руками).
+  const [freeMode, setFreeMode] = useState<boolean>(
+    initial != null && initial.l3_id == null,
+  );
   const [priceMin, setPriceMin] = useState(
     initial?.price_min == null ? "" : String(initial.price_min),
   );
@@ -219,6 +246,24 @@ function ServiceFormContent({ initial, masterId, onClose }: ServiceFormContentPr
   );
   const [unit, setUnit] = useState<ServiceUnit>(initial?.unit ?? "per_task");
   const [submitError, setSubmitError] = useState<string | null>(null);
+
+  // Найти выбранный L3 объект (для показа его avg_check_rub как placeholder).
+  const selectedL3Obj = useMemo(
+    () => l3List?.find((x) => x.id === selectedL3) ?? null,
+    [l3List, selectedL3],
+  );
+
+  // При выборе L3 из готового списка — автозаполняем title (если пустой
+  // или совпадает с предыдущим L3.name_ru — чтобы не затирать ручные правки).
+  const pickL3 = (l3: { id: string; name_ru: string; avg_check_rub: number | null }) => {
+    setSelectedL3(l3.id);
+    // Перезаписываем title только если он пустой ИЛИ совпадает с предыдущим
+    // выбранным L3 (т.е. мастер ничего не редактировал руками).
+    const prevL3 = l3List?.find((x) => x.id === selectedL3);
+    if (!title.trim() || (prevL3 && title.trim() === prevL3.name_ru.trim())) {
+      setTitle(l3.name_ru);
+    }
+  };
 
   // При переключении pricing_kind очищаем поля, которые не имеют смысла
   // в новом режиме (priceMax — только для range; priceMin — только не для quote).
@@ -234,7 +279,22 @@ function ServiceFormContent({ initial, masterId, onClose }: ServiceFormContentPr
     setSubmitError(null);
   };
 
+  // Применить рекомендованную цену из avg_check_rub.
+  const applyRecommendedPrice = () => {
+    if (selectedL3Obj?.avg_check_rub != null) {
+      setPriceMin(String(selectedL3Obj.avg_check_rub));
+      // Для diapazon — авто-проставим +50% как верхнюю границу.
+      if (pricingKind === "range") {
+        setPriceMax(String(Math.round(selectedL3Obj.avg_check_rub * 1.5)));
+      }
+    }
+  };
+
   const handleSubmit = async () => {
+    if (!selectedL2) {
+      setSubmitError("Сначала выберите категорию");
+      return;
+    }
     if (!title.trim() || title.trim().length < 2) {
       setSubmitError("Название от 2 символов");
       return;
@@ -254,6 +314,8 @@ function ServiceFormContent({ initial, masterId, onClose }: ServiceFormContentPr
           price_max: null,
           unit,
           pricing_kind: pricingKind,
+          l2_id: selectedL2,
+          l3_id: freeMode ? null : selectedL3,
         });
         onClose();
       } catch (e) {
@@ -290,6 +352,8 @@ function ServiceFormContent({ initial, masterId, onClose }: ServiceFormContentPr
         price_max: max,
         unit,
         pricing_kind: pricingKind,
+        l2_id: selectedL2,
+        l3_id: freeMode ? null : selectedL3,
       });
       onClose();
     } catch (e) {
@@ -301,7 +365,9 @@ function ServiceFormContent({ initial, masterId, onClose }: ServiceFormContentPr
   const isBusy = upsert.isPending;
   const placeholderColor = tc["muted-soft"];
   const inkColor = tc.ink;
+  const accentColor = tc.accent;
   const isValid =
+    !!selectedL2 &&
     title.trim().length >= 2 &&
     (pricingKind === "quote" || priceMin.trim() !== "");
   const showPriceMin = pricingKind !== "quote";
@@ -310,12 +376,147 @@ function ServiceFormContent({ initial, masterId, onClose }: ServiceFormContentPr
   // смысла без цены).
   const showUnit = pricingKind === "fixed" || pricingKind === "range";
 
+  // Placeholder для поля цены — рекомендованное значение из L3.avg_check_rub.
+  const pricePlaceholder = selectedL3Obj?.avg_check_rub
+    ? String(selectedL3Obj.avg_check_rub)
+    : pricingKind === "hourly"
+      ? "800"
+      : "1500";
+
+  const noCategoriesYet = (myCategories?.length ?? 0) === 0;
+
   return (
     <View className="flex-1 items-center justify-center bg-black/60 px-6">
-      <View className="w-full max-w-md rounded-xl bg-canvas p-6">
+      <View className="w-full max-w-md rounded-xl bg-canvas p-6 max-h-[90vh]">
         <AppText weight="bold" className="text-title-lg tracking-tight text-ink">
           {initial ? "Изменить услугу" : "Новая услуга"}
         </AppText>
+
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          contentContainerStyle={{ paddingBottom: 8 }}
+        >
+
+        {/* P0-4: блок выбора категории и услуги из готового списка.
+            При freeMode скрываем список L3 и просим ввести title руками. */}
+        {noCategoriesYet ? (
+          <View className="mt-4 rounded-md border border-hairline bg-canvas-soft p-3">
+            <AppText weight="semibold" className="text-body-sm text-ink">
+              Сначала выберите категории
+            </AppText>
+            <AppText className="mt-1 text-caption text-muted">
+              Без категорий нельзя добавить услугу. Откройте «Профиль → Категории»
+              и выберите 1-5 направлений в которых работаете.
+            </AppText>
+          </View>
+        ) : (
+          <View className="mt-4">
+            <AppText weight="medium" className="text-caption text-muted">
+              Категория
+            </AppText>
+            <View className="mt-1.5 flex-row flex-wrap gap-2">
+              {(myCategories ?? []).map((mc) => {
+                const selected = selectedL2 === mc.l2_id;
+                return (
+                  <Pressable
+                    key={mc.l2_id}
+                    accessibilityRole="radio"
+                    accessibilityState={{ selected }}
+                    onPress={() => {
+                      setSelectedL2(mc.l2_id);
+                      // При смене категории сбрасываем L3-выбор и title (если он
+                      // был автоподставлен из L3 — иначе оставляем).
+                      const prevL3 = l3List?.find((x) => x.id === selectedL3);
+                      if (prevL3 && title.trim() === prevL3.name_ru.trim()) {
+                        setTitle("");
+                      }
+                      setSelectedL3(null);
+                    }}
+                    className={`rounded-pill border px-3 py-1.5 active:opacity-70 ${
+                      selected
+                        ? "border-ink bg-ink"
+                        : "border-hairline bg-canvas hover:bg-surface-2"
+                    }`}
+                  >
+                    <AppText
+                      weight={selected ? "semibold" : "medium"}
+                      className={`text-caption ${selected ? "text-on-primary" : "text-ink"}`}
+                    >
+                      {mc.l2?.name_ru ?? mc.l2_id}
+                    </AppText>
+                  </Pressable>
+                );
+              })}
+            </View>
+          </View>
+        )}
+
+        {/* Pre-defined L3 услуги для выбранной L2 (skip в freeMode) */}
+        {!freeMode && !noCategoriesYet && selectedL2 && l3List && l3List.length > 0 ? (
+          <View className="mt-4">
+            <View className="flex-row items-center justify-between">
+              <AppText weight="medium" className="text-caption text-muted">
+                Готовые услуги в этой категории
+              </AppText>
+              <Pressable
+                onPress={() => {
+                  setFreeMode(true);
+                  setSelectedL3(null);
+                }}
+                accessibilityRole="button"
+                hitSlop={6}
+                className="flex-row items-center gap-1 active:opacity-60"
+              >
+                <Edit3 size={12} strokeWidth={2} color={accentColor} />
+                <AppText weight="medium" className="text-caption text-accent">
+                  Своя формулировка
+                </AppText>
+              </Pressable>
+            </View>
+            <View className="mt-1.5 flex-row flex-wrap gap-1.5">
+              {l3List.map((l3) => {
+                const selected = selectedL3 === l3.id;
+                return (
+                  <Pressable
+                    key={l3.id}
+                    accessibilityRole="radio"
+                    accessibilityState={{ selected }}
+                    onPress={() => pickL3(l3)}
+                    className={`rounded-pill border px-2.5 py-1 active:opacity-70 ${
+                      selected
+                        ? "border-accent bg-accent-soft"
+                        : "border-hairline bg-canvas hover:bg-surface-2"
+                    }`}
+                  >
+                    <AppText
+                      weight={selected ? "semibold" : "medium"}
+                      className={`text-caption ${selected ? "text-accent" : "text-ink"}`}
+                    >
+                      {l3.name_ru}
+                    </AppText>
+                  </Pressable>
+                );
+              })}
+            </View>
+          </View>
+        ) : null}
+
+        {/* В freeMode — кнопка «вернуться к готовым услугам» */}
+        {freeMode && !noCategoriesYet && selectedL2 ? (
+          <View className="mt-3 flex-row items-center justify-end">
+            <Pressable
+              onPress={() => setFreeMode(false)}
+              accessibilityRole="button"
+              hitSlop={6}
+              className="active:opacity-60"
+            >
+              <AppText weight="medium" className="text-caption text-link">
+                ← Готовые услуги
+              </AppText>
+            </Pressable>
+          </View>
+        ) : null}
 
         <View className="mt-4">
           <AppText weight="medium" className="text-caption text-muted">
@@ -323,8 +524,20 @@ function ServiceFormContent({ initial, masterId, onClose }: ServiceFormContentPr
           </AppText>
           <TextInput
             value={title}
-            onChangeText={setTitle}
-            placeholder="Например, Установка смесителя"
+            onChangeText={(t) => {
+              setTitle(t);
+              // Если мастер редактирует title после выбора L3 — переходим
+              // в freeMode (значит, он уточняет формулировку).
+              const prevL3 = l3List?.find((x) => x.id === selectedL3);
+              if (prevL3 && t.trim() !== prevL3.name_ru.trim()) {
+                // Не флипаем freeMode — оставляем l3_id как ссылку, но
+                // сохраним пользовательскую формулировку. Это корректное
+                // поведение из плана (см. P0-2 и MASTER_ACCOUNT_PLAN P0-4).
+              }
+            }}
+            placeholder={
+              selectedL3Obj?.name_ru ?? "Например, Установка смесителя"
+            }
             placeholderTextColor={placeholderColor}
             maxLength={100}
             style={{ color: inkColor }}
@@ -366,42 +579,66 @@ function ServiceFormContent({ initial, masterId, onClose }: ServiceFormContentPr
         </View>
 
         {showPriceMin && (
-          <View className="mt-3 flex-row gap-3">
-            <View className="flex-1">
-              <AppText weight="medium" className="text-caption text-muted">
-                {pricingKind === "hourly"
-                  ? "₽ / час"
-                  : pricingKind === "range"
-                    ? "Цена от, ₽"
-                    : "Цена, ₽"}
-              </AppText>
-              <TextInput
-                value={priceMin}
-                onChangeText={setPriceMin}
-                placeholder={pricingKind === "hourly" ? "800" : "1500"}
-                placeholderTextColor={placeholderColor}
-                keyboardType="number-pad"
-                style={{ color: inkColor }}
-                className="mt-1.5 h-11 rounded-md border border-hairline bg-canvas px-3 text-body-md"
-              />
-            </View>
-            {showPriceMax && (
+          <>
+            <View className="mt-3 flex-row gap-3">
               <View className="flex-1">
                 <AppText weight="medium" className="text-caption text-muted">
-                  До, ₽
+                  {pricingKind === "hourly"
+                    ? "₽ / час"
+                    : pricingKind === "range"
+                      ? "Цена от, ₽"
+                      : "Цена, ₽"}
                 </AppText>
                 <TextInput
-                  value={priceMax}
-                  onChangeText={setPriceMax}
-                  placeholder="3000"
+                  value={priceMin}
+                  onChangeText={setPriceMin}
+                  placeholder={pricePlaceholder}
                   placeholderTextColor={placeholderColor}
                   keyboardType="number-pad"
                   style={{ color: inkColor }}
                   className="mt-1.5 h-11 rounded-md border border-hairline bg-canvas px-3 text-body-md"
                 />
               </View>
-            )}
-          </View>
+              {showPriceMax && (
+                <View className="flex-1">
+                  <AppText weight="medium" className="text-caption text-muted">
+                    До, ₽
+                  </AppText>
+                  <TextInput
+                    value={priceMax}
+                    onChangeText={setPriceMax}
+                    placeholder={
+                      selectedL3Obj?.avg_check_rub
+                        ? String(Math.round(selectedL3Obj.avg_check_rub * 1.5))
+                        : "3000"
+                    }
+                    placeholderTextColor={placeholderColor}
+                    keyboardType="number-pad"
+                    style={{ color: inkColor }}
+                    className="mt-1.5 h-11 rounded-md border border-hairline bg-canvas px-3 text-body-md"
+                  />
+                </View>
+              )}
+            </View>
+            {/* P0-4: hint с рекомендованной ценой из avg_check_rub +
+                кнопка «применить». Видно только если выбран L3 со known
+                ставкой и поле цены ещё пустое (иначе мастер уже сам
+                ввёл — не мешаем). */}
+            {selectedL3Obj?.avg_check_rub && priceMin.trim() === "" ? (
+              <Pressable
+                onPress={applyRecommendedPrice}
+                accessibilityRole="button"
+                hitSlop={6}
+                className="mt-2 flex-row items-center gap-1.5 self-start active:opacity-60"
+              >
+                <Sparkles size={12} strokeWidth={2} color={accentColor} />
+                <AppText weight="medium" className="text-caption text-accent">
+                  В среднем берут {selectedL3Obj.avg_check_rub.toLocaleString("ru-RU")} ₽
+                  — применить
+                </AppText>
+              </Pressable>
+            ) : null}
+          </>
         )}
 
         {showUnit && (
@@ -444,6 +681,8 @@ function ServiceFormContent({ initial, masterId, onClose }: ServiceFormContentPr
             </AppText>
           </View>
         )}
+
+        </ScrollView>
 
         <View className="mt-6 flex-row gap-3">
           <Pressable

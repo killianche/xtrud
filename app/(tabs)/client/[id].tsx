@@ -10,7 +10,7 @@
  * в chat header (если собеседник-клиент).
  */
 
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useLocalSearchParams } from "expo-router";
 import { CheckCircle, WarningCircle, MapPin, Star } from "phosphor-react-native";
 import { useMemo } from "react";
 import { ActivityIndicator, ScrollView, View } from "react-native";
@@ -28,7 +28,6 @@ import { useThemeColors } from "@/lib/use-theme-color";
 
 export default function ClientPublicScreen() {
   const insets = useSafeAreaInsets();
-  const router = useRouter();
   const params = useLocalSearchParams<{ id: string }>();
   const clientId = typeof params.id === "string" ? params.id : null;
 
@@ -47,8 +46,12 @@ export default function ClientPublicScreen() {
   return (
     <View className="flex-1 bg-canvas" style={{ paddingTop: insets.top }}>
       {/* Стандартный ScreenHeader — height 64, h-12 back, без title (имя
-          клиента показывается hero-блоком ниже с аватаром). */}
-      <ScreenHeader title="" onBack={() => router.back()} />
+          клиента показывается hero-блоком ниже с аватаром).
+          onBack идёт через useSafeBack — он берёт предыдущий path из
+          in-app nav-history stack (см. src/lib/nav-history.ts). router.back()
+          здесь не подходит: orders/[id] → client/[id] на вебе делается через
+          history.replaceState, browser-history уже потерял точку возврата. */}
+      <ScreenHeader title="" onBack={goBack} />
 
       <ScrollView
         contentContainerStyle={{ paddingBottom: insets.bottom + 32 }}

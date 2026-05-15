@@ -63,6 +63,7 @@ import {
 import { useMarkResponsesViewed } from "@/features/orders/use-unread-responses";
 import { ReportModal } from "@/features/reports/ReportModal";
 import { useMyReviewForOrder, useSubmitReview } from "@/features/reviews/use-reviews";
+import { confirmAsync } from "@/lib/confirm";
 import { useSafeBack } from "@/lib/use-safe-back";
 import { useThemeColors } from "@/lib/use-theme-color";
 import type { Tables } from "@/types/database";
@@ -1429,20 +1430,19 @@ function CompletionSection({ orderId, order, userId }: CompletionSectionProps) {
     : "Клиент увидит запрос на подтверждение и сможет оставить отзыв.";
 
   // Confirm dialog перед action — это state-transition, нельзя случайно
-  // тапать. Раньше filled primary pill читался как обычная кнопка.
-  const onConfirmPress = () => {
+  // тапать. Раньше Alert.alert не работал на web (no-op в react-native-web)
+  // → кнопка «Я закончил работу» не реагировала. Используем confirmAsync,
+  // который проксирует на window.confirm на web и Alert.alert на native.
+  const onConfirmPress = async () => {
     if (isBusy) return;
-    Alert.alert(
-      isClient ? "Подтвердить, что работа выполнена?" : "Завершить заказ?",
-      captionText,
-      [
-        { text: "Отмена", style: "cancel" },
-        {
-          text: isClient ? "Подтвердить" : "Завершить",
-          onPress: () => completeOrder.mutate({ orderId, userId }),
-        },
-      ],
-    );
+    const confirmed = await confirmAsync({
+      title: isClient ? "Подтвердить, что работа выполнена?" : "Завершить заказ?",
+      message: captionText,
+      confirmText: isClient ? "Подтвердить" : "Завершить",
+      cancelText: "Отмена",
+    });
+    if (!confirmed) return;
+    completeOrder.mutate({ orderId, userId });
   };
 
   return (

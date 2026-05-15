@@ -1,6 +1,6 @@
 import { useRouter } from "expo-router";
-import { Plus } from "lucide-react-native";
-import { useEffect, useRef, useState } from "react";
+import { ChevronDown, ChevronUp, Plus } from "lucide-react-native";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { scrollViewToTop, useTabScrollResetCounter } from "@/lib/tab-scroll-reset";
@@ -14,6 +14,10 @@ import { useMyOrders } from "@/features/orders/use-my-orders";
 import { useMyResponses } from "@/features/orders/use-my-responses";
 import { useOrdersAssignedToMe } from "@/features/orders/use-orders-assigned-to-me";
 import { useMarkFeedSeen } from "@/features/orders/use-unread-feed";
+import {
+  type MasterTab as MasterTabFromStore,
+  useMasterOrdersTabStore,
+} from "@/features/orders/master-orders-tab-store";
 import { usePullToRefresh } from "@/hooks/use-pull-to-refresh";
 import { useThemeColor } from "@/lib/use-theme-color";
 
@@ -145,7 +149,12 @@ interface MasterOrdersViewProps {
 function MasterOrdersView({ userId }: MasterOrdersViewProps) {
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const [tab, setTab] = useState<MasterTab>("new");
+  // Sticky tab сохраняется в Zustand при каждом setTab — back из /orders/[id]
+  // вернёт на тот таб, откуда мастер ушёл. Default 'new' при первом заходе.
+  const stickyTab = useMasterOrdersTabStore((s) => s.stickyTab);
+  const setStickyTab = useMasterOrdersTabStore((s) => s.setStickyTab);
+  const tab = stickyTab;
+  const setTab = (next: MasterTabFromStore) => setStickyTab(next);
 
   // Sprint 13.1 — помечаем feed просмотренным при mount, чтобы tab-badge обнулился.
   const markFeedSeen = useMarkFeedSeen(userId);
@@ -177,6 +186,14 @@ function MasterOrdersView({ userId }: MasterOrdersViewProps) {
   // "Новые" = feed без тех, на что я уже откликнулся
   const feedRows = feed?.pages.flatMap((p) => p.rows) ?? [];
   const newFeed = feedRows.filter((o) => !respondedOrderIds.has(o.id));
+
+  // Активные отклики = клиент ещё думает (sent/viewed) или работа идёт
+  // (accepted + order in_progress). Остальные — архив (rejected, withdrawn,
+  // completed, cancelled). Badge показывает только активные.
+  const activeResponsesCount = useMemo(() => {
+    if (!myResponses) return 0;
+    return myResponses.filter((r) => isActiveResponse(r)).length;
+  }, [myResponses]);
 
   const hasCategories = l2Ids.length > 0;
   const refresh = usePullToRefresh();
@@ -217,7 +234,7 @@ function MasterOrdersView({ userId }: MasterOrdersViewProps) {
           />
           <TabPill
             label="Я откликнулся"
-            count={myResponses?.length ?? 0}
+            count={activeResponsesCount}
             selected={tab === "responded"}
             onPress={() => setTab("responded")}
           />
@@ -454,7 +471,37 @@ interface RespondedTabProps {
   onOrderPress: (id: string) => void;
 }
 
+/**
+ * Активный отклик = клиент ещё думает (sent/viewed) ИЛИ работа идёт
+ * (accepted + order.status='in_progress'). Все остальные — архив:
+ * - response rejected / withdrawn (клиент отклонил или мастер отозвал)
+ * - order completed / cancelled (работа закончена или отменена)
+ */
+export function isActiveResponse(
+  r: import("@/features/orders/use-my-responses").MyResponseWithOrder,
+): boolean {
+  const respStatus = r.response.status;
+  const orderStatus = r.order.status;
+  if (orderStatus === "completed" || orderStatus === "cancelled") return false;
+  if (respStatus === "rejected" || respStatus === "withdrawn") return false;
+  return true;
+}
+
 function RespondedTab({ responses, isLoading, onOrderPress }: RespondedTabProps) {
+  const [archiveOpen, setArchiveOpen] = useState(false);
+  const inkColor = useThemeColor("ink");
+
+  // Делим отклики на активные + архив (в одном проходе).
+  const { active, archived } = useMemo(() => {
+    const active: typeof responses = [];
+    const archived: typeof responses = [];
+    for (const r of responses) {
+      if (isActiveResponse(r)) active.push(r);
+      else archived.push(r);
+    }
+    return { active, archived };
+  }, [responses]);
+
   if (isLoading) {
     return (
       <View className="mt-8 items-center px-6">
@@ -474,25 +521,69 @@ function RespondedTab({ responses, isLoading, onOrderPress }: RespondedTabProps)
     );
   }
 
+  const renderRow = (r: typeof responses[number]) => {
+    const { order, response } = r;
+    return (
+      <OrderRow
+        key={response.id}
+        id={order.id}
+        title={order.title}
+        categoryName={order.l2?.name_ru ?? order.l2_id}
+        categoryIcon={order.l2?.icon ?? null}
+        categoryL2Id={order.l2_id}
+        cityName={order.city?.name ?? order.city_id ?? "Вся Ингушетия"}
+        district={order.district}
+        urgency={order.urgency}
+        responsesCount={order.responses_count}
+        createdAt={response.created_at}
+        status={order.status}
+        onPress={() => onOrderPress(order.id)}
+      />
+    );
+  };
+
   return (
     <View className="mt-6 gap-3 px-6">
-      {responses.map(({ order, response }) => (
-        <OrderRow
-          key={response.id}
-          id={order.id}
-          title={order.title}
-          categoryName={order.l2?.name_ru ?? order.l2_id}
-          categoryIcon={order.l2?.icon ?? null}
-          categoryL2Id={order.l2_id}
-          cityName={order.city?.name ?? order.city_id ?? "Вся Ингушетия"}
-          district={order.district}
-          urgency={order.urgency}
-          responsesCount={order.responses_count}
-          createdAt={response.created_at}
-          status={order.status}
-          onPress={() => onOrderPress(order.id)}
-        />
-      ))}
+      {/* Активные — всегда видны */}
+      {active.length > 0 ? (
+        active.map(renderRow)
+      ) : archived.length > 0 ? (
+        <View className="rounded-md bg-canvas-soft p-4">
+          <AppText weight="medium" className="text-body-sm text-muted">
+            Сейчас нет активных откликов
+          </AppText>
+          <AppText className="mt-1 text-caption text-muted-soft">
+            Все ваши прошлые отклики — в архиве ниже.
+          </AppText>
+        </View>
+      ) : null}
+
+      {/* Архив — collapsible toggle */}
+      {archived.length > 0 ? (
+        <View className="mt-2">
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={archiveOpen ? "Скрыть архив" : "Показать архив"}
+            onPress={() => setArchiveOpen((v) => !v)}
+            className="flex-row items-center justify-between rounded-md border border-hairline bg-canvas px-4 py-3 active:opacity-70"
+          >
+            <View>
+              <AppText weight="semibold" className="text-body-sm text-ink">
+                Архив откликов
+              </AppText>
+              <AppText className="mt-0.5 text-caption text-muted">
+                Завершённые, отклонённые и отозванные · {archived.length}
+              </AppText>
+            </View>
+            {archiveOpen ? (
+              <ChevronUp size={18} strokeWidth={2} color={inkColor} />
+            ) : (
+              <ChevronDown size={18} strokeWidth={2} color={inkColor} />
+            )}
+          </Pressable>
+          {archiveOpen ? <View className="mt-3 gap-3">{archived.map(renderRow)}</View> : null}
+        </View>
+      ) : null}
     </View>
   );
 }

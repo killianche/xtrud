@@ -1,16 +1,19 @@
 import * as ImagePicker from "expo-image-picker";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
-import { CaretLeft, ImageSquare, Info, ChatCenteredText, PaperPlaneTilt, X } from "phosphor-react-native";
+import { ChevronLeft, Info } from "lucide-react-native";
+import { ImageSquare, ChatCenteredText, PaperPlaneTilt, X } from "phosphor-react-native";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Image,
   KeyboardAvoidingView,
+  Modal,
   Platform,
   Pressable,
   ScrollView,
   TextInput,
   View,
+  useWindowDimensions,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
@@ -77,6 +80,8 @@ export default function ChatThreadScreen() {
   // в Storage через useSendMessage.
   const [pendingImageUri, setPendingImageUri] = useState<string | null>(null);
   const [reportMessageId, setReportMessageId] = useState<string | null>(null);
+  // Lightbox: тап на изображение-сообщение → fullscreen Modal с image.
+  const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null);
   const scrollRef = useRef<ScrollView>(null);
 
   const onPickImage = async () => {
@@ -148,22 +153,24 @@ export default function ChatThreadScreen() {
       className="flex-1 bg-canvas"
       style={{ paddingTop: insets.top }}
     >
-      {/* Header — Telegram/Linear-стиль:
-            - back-кнопка (round 40, тёмный фон в dark mode незаметен, но в hit-зоне)
-            - avatar собеседника 36 (tap → его профиль)
-            - двустрочный блок: имя ink, ниже — мелкая meta (статус-бадж + title заказа)
-            - правый info-button → деталь заказа (так чат остаётся "про разговор",
-              а meta-инфа доступна одним тапом)
-          Воздух: py-3, gap-3 — раньше py-2 / gap-2, всё слипалось. */}
-      <View className="flex-row items-center gap-3 border-hairline-soft border-b px-3 py-3">
+      {/* Header — ScreenHeader-стандарт: height 64, h-12 w-12 back с lucide
+          ChevronLeft 28px strokeWidth 2.25, gap-2 (8), px-3. Middle slot:
+          tap по имени/аватару → профиль собеседника. Right: info-кнопка
+          (h-10 w-10) → деталь заказа.
+          (Раньше был самописный py-3 / h-10 back с phosphor CaretLeft fill
+          weight=bold — выбивалось из стандарта, фидбэк user 2026-05-15.) */}
+      <View
+        className="flex-row items-center gap-2 border-hairline-soft border-b px-3"
+        style={{ height: 64 }}
+      >
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Назад"
           onPress={goBack}
-          hitSlop={12}
-          className="h-10 w-10 items-center justify-center rounded-full active:opacity-70 hover:bg-surface-2"
+          hitSlop={8}
+          className="h-12 w-12 items-center justify-center rounded-full active:bg-canvas-soft"
         >
-          <CaretLeft size={22} weight="bold" color={tc.ink} />
+          <ChevronLeft size={28} strokeWidth={2.25} color={tc.ink} />
         </Pressable>
 
         <Pressable
@@ -179,29 +186,19 @@ export default function ChatThreadScreen() {
             url={partner?.avatar_url ?? null}
             name={partnerName}
             seed={partner?.id ?? null}
-            size="md"
+            size="sm"
           />
+          {/* Только имя собеседника. Статус заказа + заголовок переехали в
+              floating-чип ниже. Avatar sm (32px) + title-md (~18px) — имя
+              крупнее аватара (фидбэк user 2026-05-16). */}
           <View className="flex-1 min-w-0">
             <AppText
               weight="semibold"
-              className="text-body-md text-ink"
+              className="text-title-lg text-ink"
               numberOfLines={1}
             >
               {partnerName}
             </AppText>
-            <View className="mt-0.5 flex-row items-center gap-2">
-              {chat?.order?.status ? (
-                <OrderStatusBadge status={chat.order.status as OrderStatusValue} />
-              ) : null}
-              {chat?.order?.title ? (
-                <AppText
-                  className="flex-1 text-caption text-muted"
-                  numberOfLines={1}
-                >
-                  {chat.order.title}
-                </AppText>
-              ) : null}
-            </View>
           </View>
         </Pressable>
 
@@ -211,12 +208,47 @@ export default function ChatThreadScreen() {
             accessibilityLabel="Открыть заказ"
             onPress={() => router.push(`/(tabs)/orders/${chat.order_id}` as never)}
             hitSlop={8}
-            className="h-10 w-10 items-center justify-center rounded-full active:opacity-70 hover:bg-surface-2"
+            className="h-10 w-10 items-center justify-center rounded-full active:bg-canvas-soft"
           >
-            <Info size={20} weight="bold" color={tc["muted-soft"]} />
+            <Info size={20} strokeWidth={2} color={tc["muted-soft"]} />
           </Pressable>
         ) : null}
       </View>
+
+      {/* Floating order chip — плавающий «остров» с контекстом заказа над
+          лентой сообщений. Tap → деталь заказа. Why: разгружает header
+          (фидбэк user 2026-05-15), но не теряет связь чата с заказом. */}
+      {chat?.order_id && (chat.order?.status || chat.order?.title) ? (
+        <View className="items-center pt-3 pb-1">
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Открыть заказ"
+            onPress={() => router.push(`/(tabs)/orders/${chat.order_id}` as never)}
+            className="flex-row items-center gap-2 rounded-pill border border-hairline bg-canvas px-3 py-1.5 active:opacity-70"
+            style={{
+              shadowColor: "#000",
+              shadowOffset: { width: 0, height: 1 },
+              shadowOpacity: 0.08,
+              shadowRadius: 4,
+              elevation: 2,
+              maxWidth: "92%",
+            }}
+          >
+            {chat.order?.status ? (
+              <OrderStatusBadge status={chat.order.status as OrderStatusValue} />
+            ) : null}
+            {chat.order?.title ? (
+              <AppText
+                className="text-caption text-mute"
+                numberOfLines={1}
+                style={{ flexShrink: 1 }}
+              >
+                {chat.order.title}
+              </AppText>
+            ) : null}
+          </Pressable>
+        </View>
+      ) : null}
 
       {/* Messages */}
       <ScrollView
@@ -248,7 +280,13 @@ export default function ChatThreadScreen() {
         )}
 
         {messages &&
-          renderMessagesWithSeparators(messages, userId, partner, setReportMessageId)}
+          renderMessagesWithSeparators(
+            messages,
+            userId,
+            partner,
+            setReportMessageId,
+            setPreviewImageUrl,
+          )}
 
         {sendMessage.error && (
           <AppText weight="medium" className="mt-2 text-caption text-error">
@@ -333,6 +371,13 @@ export default function ChatThreadScreen() {
           onClose={() => setReportMessageId(null)}
         />
       )}
+
+      {/* Lightbox: тап на фото-сообщение открывает fullscreen Modal.
+          Tap куда угодно по экрану — закрывает. */}
+      <ImageLightbox
+        url={previewImageUrl}
+        onClose={() => setPreviewImageUrl(null)}
+      />
     </KeyboardAvoidingView>
   );
 }
@@ -352,11 +397,14 @@ function MessageBubble({
   isMine,
   partner,
   onLongPress,
+  onImagePress,
 }: {
   message: ChatMessage;
   isMine: boolean;
   partner: ChatPartner;
   onLongPress?: (messageId: string) => void;
+  /** Тап на image-сообщение → lightbox. */
+  onImagePress?: (url: string) => void;
 }) {
   const time = new Date(message.created_at).toLocaleTimeString("ru-RU", {
     hour: "2-digit",
@@ -378,15 +426,28 @@ function MessageBubble({
     return (
       <View className="max-w-[80%] self-end">
         {imageUrl ? (
-          <Image
-            source={{ uri: imageUrl }}
-            style={{ width: 220, height: 220, borderRadius: 16, marginBottom: displayText ? 4 : 0 }}
-            resizeMode="cover"
-          />
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Открыть фото"
+            onPress={() => onImagePress?.(imageUrl)}
+            style={({ pressed }) => ({ opacity: pressed ? 0.85 : 1 })}
+          >
+            <Image
+              source={{ uri: imageUrl }}
+              style={{ width: 220, height: 220, borderRadius: 16, marginBottom: displayText ? 4 : 0 }}
+              resizeMode="cover"
+            />
+          </Pressable>
         ) : null}
         {displayText ? (
-          <View className="rounded-2xl bg-primary px-4 py-2">
-            <AppText className="text-body-md text-on-primary">{displayText}</AppText>
+          // Outgoing bubble: bg-accent-soft (Telegram-style tinted blue).
+          // bg-primary раньше делал bubble белым в dark theme — слишком яркий
+          // для длинных сообщений (фидбек user 2026-05-16). accent-soft
+          // адаптивен: light = #d3e5ff (пастельно-голубой), dark = #1a3a5c
+          // (deep dark-blue). text-ink тоже адаптивен (ink/white) — контраст
+          // сохраняется в обеих темах.
+          <View className="rounded-2xl bg-accent-soft px-4 py-2">
+            <AppText className="text-body-md text-ink">{displayText}</AppText>
           </View>
         ) : null}
         <AppText className="mt-1 text-right text-caption-xs text-muted-soft">{time}</AppText>
@@ -406,6 +467,9 @@ function MessageBubble({
       <View className="flex-shrink">
         <Pressable
           onLongPress={handleLongPress}
+          onPress={() => {
+            if (imageUrl) onImagePress?.(imageUrl);
+          }}
           accessibilityHint="Долгое нажатие — пожаловаться на сообщение"
           delayLongPress={400}
         >
@@ -434,6 +498,7 @@ function renderMessagesWithSeparators(
   userId: string | undefined,
   partner: ChatPartner,
   onLongPress: (messageId: string) => void,
+  onImagePress: (url: string) => void,
 ): React.ReactNode[] {
   let lastDateKey: string | null = null;
   const items: React.ReactNode[] = [];
@@ -451,6 +516,7 @@ function renderMessagesWithSeparators(
         isMine={m.sender_id === userId}
         partner={partner}
         onLongPress={onLongPress}
+        onImagePress={onImagePress}
       />,
     );
   }
@@ -489,4 +555,45 @@ function formatDateLabel(date: Date): string {
     month: "long",
     year: "numeric",
   });
+}
+
+/**
+ * ImageLightbox — fullscreen-preview одной картинки. Tap by-area закрывает.
+ * Простая реализация без zoom/pan (этого достаточно для chat-фото).
+ */
+function ImageLightbox({ url, onClose }: { url: string | null; onClose: () => void }) {
+  const insets = useSafeAreaInsets();
+  const { width, height } = useWindowDimensions();
+  const visible = !!url;
+  return (
+    <Modal
+      visible={visible}
+      transparent
+      animationType="fade"
+      onRequestClose={onClose}
+      statusBarTranslucent
+    >
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Закрыть фото"
+        onPress={onClose}
+        style={{
+          flex: 1,
+          backgroundColor: "rgba(0,0,0,0.95)",
+          alignItems: "center",
+          justifyContent: "center",
+          paddingTop: insets.top,
+          paddingBottom: insets.bottom,
+        }}
+      >
+        {url ? (
+          <Image
+            source={{ uri: url }}
+            style={{ width, height: height - insets.top - insets.bottom }}
+            resizeMode="contain"
+          />
+        ) : null}
+      </Pressable>
+    </Modal>
+  );
 }

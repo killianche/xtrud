@@ -16,7 +16,7 @@
 
 import type { BottomTabBarProps } from "@react-navigation/bottom-tabs";
 import { useRouter } from "expo-router";
-import { CirclePlus } from "lucide-react-native";
+import { CirclePlus, Search } from "lucide-react-native";
 import { Platform, Pressable, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
@@ -167,11 +167,24 @@ export function TabBar({ state, descriptors, navigation }: BottomTabBarProps) {
       {/* Левая часть. */}
       {leftRoutes.map(renderTab)}
 
-      {/* N2: Таб «Создать» — только для клиента (мастер не создаёт заказы).
-          Если master active_role — отрендерим пустой spacer, чтобы остальные
-          табы остались равноширокими (4 таба × flex:1). */}
+      {/* Центральный таб: для клиента — «+ Создать заказ», для мастера —
+          «🔍 Поиск заказов» (фидбэк user 2026-05-15: «отдельная кнопка
+          поиск в нижнем меню, заходя на которой все заказы сайта»).
+          Мастер не создаёт заказы; клиент не «ищет» бирже. */}
       {isMasterRole ? (
-        <View style={{ flex: 1 }} />
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Поиск заказов"
+          onPress={() => router.push("/orders/search" as never)}
+          className={isWeb ? "text-mute" : undefined}
+          style={{
+            flex: 1,
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <Search size={28} strokeWidth={1.75} color={isWeb ? "currentColor" : tc.mute} />
+        </Pressable>
       ) : (
         <Pressable
           accessibilityRole="button"

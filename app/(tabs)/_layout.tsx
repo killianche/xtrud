@@ -150,6 +150,7 @@ export default function TabsLayout() {
       <Tabs.Screen name="admin" options={{ href: null }} />
       <Tabs.Screen name="useful" options={{ href: null }} />
       <Tabs.Screen name="search" options={{ href: null }} />
+      <Tabs.Screen name="orders/search" options={{ href: null }} />
     </Tabs>
     </NavThemeProvider>
   );

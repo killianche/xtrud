@@ -50,12 +50,14 @@ export function MasterHomeContent({ userId }: MasterHomeContentProps) {
           редактируются через /profile, не нужны на daily-use главной. */}
 
       {/* CTA «Поиск заказов» — большая заметная кнопка на main entry-point
-          для мастера. Ведёт на /orders где search-input + chip-фильтр L2 (N3). */}
+          для мастера. Ведёт на /orders/search где ВСЕ open-заявки сайта
+          (а не только в моих категориях) + фильтры (L1/L2/сортировка) +
+          умный поиск с раскладка-fix. */}
       {hasCategories ? (
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Поиск заказов"
-          onPress={() => router.push("/(tabs)/orders")}
+          onPress={() => router.push("/(tabs)/orders/search")}
           className="flex-row items-center gap-3 rounded-xl bg-ink p-4 active:opacity-80"
         >
           <View className="h-10 w-10 items-center justify-center rounded-full bg-on-primary/10">

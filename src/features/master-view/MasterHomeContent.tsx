@@ -23,8 +23,10 @@ import { useRouter } from "expo-router";
 import { Plus } from "phosphor-react-native";
 import { Pressable, View } from "react-native";
 import { AppText } from "@/components/AppText";
+import { useUserRecord } from "@/features/auth/use-user-record";
 import { AvailabilitySwitcher } from "@/features/master-view/AvailabilitySwitcher";
 import { MasterDashboardOrders } from "@/features/master-view/MasterDashboardOrders";
+import { ResponseLimitBadge } from "@/features/master-view/ResponseLimitBadge";
 import { useMyMasterCategories } from "@/features/master-categories/use-my-categories";
 import { useThemeColor } from "@/lib/use-theme-color";
 
@@ -35,9 +37,11 @@ interface MasterHomeContentProps {
 export function MasterHomeContent({ userId }: MasterHomeContentProps) {
   const router = useRouter();
   const { data: myCats } = useMyMasterCategories(userId);
+  const { data: user } = useUserRecord(userId);
   const onPrimary = useThemeColor("on-primary");
 
   const hasCategories = (myCats?.length ?? 0) > 0;
+  const firstName = user?.first_name?.trim();
 
   return (
     // Root БЕЗ горизонтального padding — карточки заказов внутри
@@ -46,6 +50,17 @@ export function MasterHomeContent({ userId }: MasterHomeContentProps) {
     // действительно нужен (статус, callout). Negative margin в RNW работает
     // нестабильно, поэтому правильнее не задавать его вообще.
     <View className="gap-8">
+      {/* Greeting + квота откликов в одной строке. Приветствие на ингушской/
+          мусульманской традиции — «Ассаламу алейкум» (фидбек user 2026-05-16).
+          Квота справа как компактный pill (раньше была full-width card —
+          доминировала на экране, для постоянной инфы это избыточно). */}
+      <View className="px-4 flex-row items-center justify-between gap-3">
+        <AppText weight="bold" className="flex-1 text-title-lg text-ink" numberOfLines={1}>
+          Ассаламу алейкум{firstName ? `, ${firstName}` : ""}
+        </AppText>
+        {hasCategories ? <ResponseLimitBadge variant="pill" /> : null}
+      </View>
+
       <View className="px-4">
         <AvailabilitySwitcher userId={userId} />
       </View>

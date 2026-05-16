@@ -23,9 +23,17 @@ rm -rf dist
 npx expo export --platform web
 
 # Деплой на корень subdomain (xtrud.alanbani.ru) — absolute paths в HTML
-# (`/_expo/...`, `/favicon.ico`) работают как есть, патч не нужен.
-# (раньше был sed-patch /xtrud/ префикса для subpath alanbani.ru/xtrud/ —
-#  убран 2026-05-16 после переезда на subdomain).
+# (`/_expo/...`, `/favicon.ico`) работают как есть, baseUrl-патч не нужен.
+
+# ⚠️ ОБЯЗАТЕЛЬНЫЙ ПАТЧ для Expo SDK 54: bundle содержит `import.meta`
+# который требует ES-module-загрузки, но `expo export` пишет
+# `<script src="..." defer>` без `type="module"`. Браузер парсит как
+# classic script → SyntaxError → ВЕСЬ bundle тихо отказывает, белый
+# экран, ноль ошибок в console. Лечится post-process'ом.
+# Та же история что для local preview (см. scripts/build-web-local.mjs).
+echo "→ Patching dist/index.html (script type=module для SDK 54)..."
+sed -i.bak -E 's|<script ([^>]*src="/_expo/[^"]+"[^>]*)defer></script>|<script type="module" \1defer></script>|g' dist/index.html
+rm dist/index.html.bak
 
 echo "→ Packing..."
 tar czf /tmp/xtrud-dist.tgz -C dist .

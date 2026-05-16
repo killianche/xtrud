@@ -50,12 +50,13 @@ export function MasterHomeContent({ userId }: MasterHomeContentProps) {
     // действительно нужен (статус, callout). Negative margin в RNW работает
     // нестабильно, поэтому правильнее не задавать его вообще.
     <View className="gap-8">
-      {/* Greeting + квота откликов в одной строке. Приветствие на ингушской/
-          мусульманской традиции — «Ассаламу алейкум» (фидбек user 2026-05-16).
-          Квота справа как компактный pill (раньше была full-width card —
-          доминировала на экране, для постоянной инфы это избыточно). */}
-      <View className="px-4 flex-row items-center justify-between gap-3">
-        <AppText weight="bold" className="flex-1 text-title-lg text-ink" numberOfLines={1}>
+      {/* Greeting (Ассаламу алейкум — ингушская/мусульманская традиция,
+          фидбек user 2026-05-16) — отдельной строкой full-width чтобы не
+          усекаться рядом с pill. Квота откликов ниже — компактный pill
+          self-start (раньше пробовали в одной flex-row, длинное имя обрезало
+          приветствие). */}
+      <View className="px-4 gap-2">
+        <AppText weight="bold" className="text-title-lg text-ink" numberOfLines={1}>
           Ассаламу алейкум{firstName ? `, ${firstName}` : ""}
         </AppText>
         {hasCategories ? <ResponseLimitBadge variant="pill" /> : null}

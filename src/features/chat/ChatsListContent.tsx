@@ -7,8 +7,8 @@
 // На variant="sidebar" подсвечивает выбранный чат и компактнее (без display-заголовка).
 
 import { useRouter } from "expo-router";
-import { ChatCircle } from "phosphor-react-native";
-import { useEffect, useRef } from "react";
+import { Briefcase, ChatCircle, User } from "phosphor-react-native";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Pressable, ScrollView, View } from "react-native";
 import { AppText } from "@/components/AppText";
 import { Avatar } from "@/components/Avatar";
@@ -36,9 +36,27 @@ export function ChatsListContent({
   const { data: user } = useUserRecord(userId);
   const isMasterRole = user?.active_role === "master";
   const { data: chats, isLoading, error, refetch } = useMyChats(userId);
-
-  const hasChats = (chats?.length ?? 0) > 0;
   const isSidebar = variant === "sidebar";
+
+  // Dual-role filter (фидбэк user 2026-05-16): у пользователей с двумя ролями
+  // (Клиент + Мастер) в одном списке смешивались чаты обеих ролей. По
+  // умолчанию показываем только чаты текущей active_role; toggle «Все чаты»
+  // переключает на полный список с бейджами роли на каждой строке.
+  // Toggle отображается только когда чаты есть в обеих ролях — иначе
+  // переключатель бесполезен и сбивает с толку.
+  const [showAll, setShowAll] = useState(false);
+
+  const { filteredChats, hasChatsInBothRoles } = useMemo(() => {
+    const list = chats ?? [];
+    const asMaster = list.filter((c) => c.master_id === userId);
+    const asClient = list.filter((c) => c.client_id === userId);
+    const bothRoles = asMaster.length > 0 && asClient.length > 0;
+    if (showAll) return { filteredChats: list, hasChatsInBothRoles: bothRoles };
+    const roleFiltered = isMasterRole ? asMaster : asClient;
+    return { filteredChats: roleFiltered, hasChatsInBothRoles: bothRoles };
+  }, [chats, userId, isMasterRole, showAll]);
+
+  const hasChats = filteredChats.length > 0;
 
   // Tap-on-active-tab → scroll to top. Подписка только в page-режиме
   // (sidebar — отдельный portal, ему scroll-reset не нужен).
@@ -67,6 +85,28 @@ export function ChatsListContent({
         </View>
       )}
 
+      {/* Role-filter toggle. Виден только если у пользователя есть чаты в
+          обеих ролях (dual-role с активными диалогами). Левый pill — текущая
+          active_role, правый — «Все чаты». В режиме «Все» каждая строка
+          получает бейдж роли (см. ChatListRow showRoleBadge). */}
+      {hasChatsInBothRoles ? (
+        <View className={isSidebar ? "px-3 py-2" : "px-4 pb-2"}>
+          <View className="flex-row gap-1 rounded-lg bg-canvas-soft-2 p-1">
+            <RoleFilterPill
+              icon={isMasterRole ? Briefcase : User}
+              label={isMasterRole ? "Как мастер" : "Как клиент"}
+              selected={!showAll}
+              onPress={() => setShowAll(false)}
+            />
+            <RoleFilterPill
+              label="Все чаты"
+              selected={showAll}
+              onPress={() => setShowAll(true)}
+            />
+          </View>
+        </View>
+      ) : null}
+
       {isLoading && (
         <View className={`${isSidebar ? "p-4" : "mt-6 px-6"}`}>
           <CardListSkeleton count={4} />
@@ -92,13 +132,14 @@ export function ChatsListContent({
 
       {!isLoading && !error && hasChats && (
         <View className={isSidebar ? "gap-2 p-2" : "mt-2"}>
-          {chats?.map((c) => (
+          {filteredChats.map((c) => (
             <ChatListRow
               key={c.id}
               chat={c}
               userId={userId}
               compact={isSidebar}
               isSelected={isSidebar && selectedChatId === c.id}
+              showRoleBadge={showAll && hasChatsInBothRoles}
               onPress={() => router.push(`/(tabs)/chats/${c.id}` as never)}
             />
           ))}
@@ -129,12 +170,17 @@ interface ChatListRowProps {
   onPress: () => void;
   compact?: boolean;
   isSelected?: boolean;
+  /** В режиме «Все чаты» (dual-role) показываем бейдж роли возле имени —
+   *  чтобы пользователь понимал, в каком контексте идёт разговор. */
+  showRoleBadge?: boolean;
 }
 
-function ChatListRow({ chat, userId, onPress, compact, isSelected }: ChatListRowProps) {
+function ChatListRow({ chat, userId, onPress, compact, isSelected, showRoleBadge }: ChatListRowProps) {
   const partner = chat.client_id === userId ? chat.master : chat.client;
   const partnerName =
     [partner?.first_name, partner?.last_name].filter(Boolean).join(" ") || "Собеседник";
+  // В этом чате текущий пользователь — мастер если master_id совпадает.
+  const userIsMasterInChat = chat.master_id === userId;
   const lastActivity = chat.last_message_at
     ? new Date(chat.last_message_at).toLocaleDateString("ru-RU", {
         day: "2-digit",
@@ -183,6 +229,18 @@ function ChatListRow({ chat, userId, onPress, compact, isSelected }: ChatListRow
           {unread && <View className="h-2 w-2 rounded-full bg-accent" />}
         </View>
         <View className="mt-1 flex-row items-center gap-2">
+          {showRoleBadge ? (
+            <View className="flex-row items-center gap-1 rounded-full bg-canvas-soft-2 px-2 py-0.5">
+              {userIsMasterInChat ? (
+                <Briefcase size={10} weight="bold" color="currentColor" className="text-mute" />
+              ) : (
+                <User size={10} weight="bold" color="currentColor" className="text-mute" />
+              )}
+              <AppText weight="semibold" className="text-caption-xs text-mute">
+                {userIsMasterInChat ? "как мастер" : "как клиент"}
+              </AppText>
+            </View>
+          ) : null}
           {chat.order?.status && (
             <OrderStatusBadge status={chat.order.status as OrderStatusValue} />
           )}
@@ -200,6 +258,57 @@ function ChatListRow({ chat, userId, onPress, compact, isSelected }: ChatListRow
         weight={unread ? "semibold" : "regular"}
       >
         {lastActivity}
+      </AppText>
+    </Pressable>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// RoleFilterPill — pill в segmented control над списком. Точная копия паттерна
+// TabPill из MasterDashboardOrders (rounded-md, shadow на selected, bg-canvas).
+// ---------------------------------------------------------------------------
+
+interface RoleFilterPillProps {
+  icon?: typeof Briefcase;
+  label: string;
+  selected: boolean;
+  onPress: () => void;
+}
+
+function RoleFilterPill({ icon: Icon, label, selected, onPress }: RoleFilterPillProps) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityState={{ selected }}
+      onPress={onPress}
+      className={`flex-1 h-9 flex-row items-center justify-center gap-1.5 rounded-md px-3 ${
+        selected ? "bg-canvas" : "active:opacity-60"
+      }`}
+      style={
+        selected
+          ? {
+              shadowColor: "#000",
+              shadowOffset: { width: 0, height: 1 },
+              shadowOpacity: 0.08,
+              shadowRadius: 3,
+              elevation: 2,
+            }
+          : undefined
+      }
+    >
+      {Icon ? (
+        <Icon
+          size={14}
+          weight="bold"
+          color="currentColor"
+          className={selected ? "text-ink" : "text-mute"}
+        />
+      ) : null}
+      <AppText
+        weight={selected ? "semibold" : "medium"}
+        className={`text-body-sm ${selected ? "text-ink" : "text-mute"}`}
+      >
+        {label}
       </AppText>
     </Pressable>
   );

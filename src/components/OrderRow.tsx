@@ -72,6 +72,10 @@ export interface OrderRowProps {
    *  в 2 строки. На /orders/search показываем для контекста (фидбэк user 2026-05-15
    *  «описание заказа можно 1-2 строки отобразить»). */
   description?: string | null;
+  /** Мастер уже отправил отклик на этот заказ (для индикации в /orders/search).
+   *  Рендерим маленький pill «Вы откликнулись» в meta-row + лёгкая тень фона
+   *  всей карточки, чтобы взгляд сразу различал «новые» vs «трогал». */
+  alreadyResponded?: boolean;
 }
 
 /**
@@ -118,11 +122,23 @@ const STATUS_META: Record<OrderStatusValue, StatusMeta> = {
     textClass: "text-ink",
     dimmed: false,
   },
+  awaiting_confirmation: {
+    label: "Ждёт подтверждения",
+    dotClass: "bg-muted-soft",
+    textClass: "text-ink",
+    dimmed: false,
+  },
   completed: {
     label: "Завершён",
     dotClass: "bg-muted-soft",
     textClass: "text-mute",
     dimmed: true,
+  },
+  disputed: {
+    label: "Спор",
+    dotClass: "bg-muted-soft",
+    textClass: "text-ink",
+    dimmed: false,
   },
   cancelled: { label: "Отменён", dotClass: "bg-muted-soft", textClass: "text-mute", dimmed: true },
   expired: { label: "Истёк", dotClass: "bg-muted-soft", textClass: "text-mute", dimmed: true },
@@ -150,12 +166,25 @@ export function OrderRow(props: OrderRowProps) {
     <Icon size={16} weight="bold" color={tc.ink} />
   );
 
+  const respondedLabel = props.alreadyResponded ? "Вы откликнулись" : null;
+  const ariaLabel = `${props.title} — ${statusMeta?.label ?? ""}${
+    respondedLabel ? `, ${respondedLabel.toLowerCase()}` : ""
+  }`;
+
+  // Если мастер уже откликнулся — приглушённый фон (canvas-soft) вместо canvas.
+  // Текст не приглушаем — заказ остаётся читаемым, просто визуально «помечен
+  // как уже трогал». Это типовой паттерн «прочитанной» строки в инбоксах
+  // (Apple Mail, Gmail, Linear).
+  const bgClass = props.alreadyResponded
+    ? "border-b border-hairline bg-canvas-soft px-5 py-4 active:bg-canvas-soft-2 hover:bg-canvas-soft-2"
+    : "border-b border-hairline bg-canvas px-5 py-4 active:bg-canvas-soft hover:bg-canvas-soft";
+
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={`${props.title} — ${statusMeta?.label ?? ""}`}
+      accessibilityLabel={ariaLabel}
       onPress={props.onPress}
-      className="border-b border-hairline bg-canvas px-5 py-4 active:bg-canvas-soft hover:bg-canvas-soft"
+      className={bgClass}
       style={dimmed ? { opacity: 0.7 } : undefined}
     >
       {/* Row 1: [icon + title flex-1] + time. Иконка inline, чуть смещена
@@ -207,6 +236,19 @@ export function OrderRow(props: OrderRowProps) {
       {/* Row 5: status-dot + status + · + meta. Перенос строк gap-y-1
           на случай длинных локаций. */}
       <View className="mt-2 flex-row flex-wrap items-center gap-x-2 gap-y-1">
+        {/* «Вы откликнулись» pill — accent-soft, маленький. Стоит первым
+            в meta-row, чтобы мастер сразу видел status'ы своих откликов
+            в фиде /orders/search. */}
+        {props.alreadyResponded ? (
+          <>
+            <View className="rounded-pill bg-accent-soft px-2 py-0.5">
+              <AppText weight="semibold" className="text-caption-xs text-accent">
+                Вы откликнулись
+              </AppText>
+            </View>
+            <AppText className="text-caption text-muted-soft">·</AppText>
+          </>
+        ) : null}
         {statusMeta ? (
           <View className="flex-row items-center gap-1.5">
             <View className={`h-2 w-2 rounded-full ${statusMeta.dotClass}`} />

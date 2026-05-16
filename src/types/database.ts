@@ -1,10 +1,3 @@
-// AUTO-GENERATED Supabase database types.
-//
-// Регенерация после изменения схемы:
-//   mcp__60860ed0-af83-4b0e-869b-1e21dbf91dac__generate_typescript_types
-// или CLI:
-//   npx supabase gen types typescript --project-id wgeimsajvjkzrrnfrnkb > src/types/database.ts
-
 export type Json =
   | string
   | number
@@ -115,6 +108,7 @@ export type Database = {
         Row: {
           cover_image_url: string | null
           created_at: string
+          fts_doc: unknown
           icon: string
           id: string
           is_active: boolean
@@ -127,6 +121,7 @@ export type Database = {
         Insert: {
           cover_image_url?: string | null
           created_at?: string
+          fts_doc?: unknown
           icon: string
           id: string
           is_active?: boolean
@@ -139,6 +134,7 @@ export type Database = {
         Update: {
           cover_image_url?: string | null
           created_at?: string
+          fts_doc?: unknown
           icon?: string
           id?: string
           is_active?: boolean
@@ -162,6 +158,7 @@ export type Database = {
         Row: {
           avg_check_rub: number | null
           created_at: string
+          fts_doc: unknown
           icon: string | null
           id: string
           is_active: boolean
@@ -175,6 +172,7 @@ export type Database = {
         Insert: {
           avg_check_rub?: number | null
           created_at?: string
+          fts_doc?: unknown
           icon?: string | null
           id: string
           is_active?: boolean
@@ -188,6 +186,7 @@ export type Database = {
         Update: {
           avg_check_rub?: number | null
           created_at?: string
+          fts_doc?: unknown
           icon?: string | null
           id?: string
           is_active?: boolean
@@ -204,6 +203,48 @@ export type Database = {
             columns: ["l2_id"]
             isOneToOne: false
             referencedRelation: "categories_l2"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      category_terms: {
+        Row: {
+          created_at: string
+          id: string
+          l2_id: string | null
+          l3_id: string | null
+          term: string
+          weight: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          l2_id?: string | null
+          l3_id?: string | null
+          term: string
+          weight?: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          l2_id?: string | null
+          l3_id?: string | null
+          term?: string
+          weight?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "category_terms_l2_id_fkey"
+            columns: ["l2_id"]
+            isOneToOne: false
+            referencedRelation: "categories_l2"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "category_terms_l3_id_fkey"
+            columns: ["l3_id"]
+            isOneToOne: false
+            referencedRelation: "categories_l3"
             referencedColumns: ["id"]
           },
         ]
@@ -260,7 +301,7 @@ export type Database = {
           {
             foreignKeyName: "chats_order_id_fkey"
             columns: ["order_id"]
-            isOneToOne: true
+            isOneToOne: false
             referencedRelation: "orders"
             referencedColumns: ["id"]
           },
@@ -292,38 +333,6 @@ export type Database = {
           sort_order?: number
         }
         Relationships: []
-      }
-      master_service_areas: {
-        Row: {
-          id: string
-          master_id: string
-          kind: "city" | "district"
-          location_id: string
-          created_at: string
-        }
-        Insert: {
-          id?: string
-          master_id: string
-          kind: "city" | "district"
-          location_id: string
-          created_at?: string
-        }
-        Update: {
-          id?: string
-          master_id?: string
-          kind?: "city" | "district"
-          location_id?: string
-          created_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "master_service_areas_master_id_fkey"
-            columns: ["master_id"]
-            isOneToOne: false
-            referencedRelation: "master_profiles"
-            referencedColumns: ["user_id"]
-          },
-        ]
       }
       master_categories: {
         Row: {
@@ -403,6 +412,7 @@ export type Database = {
             | Database["public"]["Enums"]["home_clients_policy"]
             | null
           inn: string | null
+          is_hidden_from_search: boolean
           languages: string[]
           legal_name: string | null
           ogrn: string | null
@@ -414,10 +424,14 @@ export type Database = {
           updated_at: string
           user_id: string
           verification_level: number
+          whatsapp_phone: string | null
+          whatsapp_same_as_phone: boolean
           work_schedule: Json
         }
         Insert: {
           account_type?: Database["public"]["Enums"]["master_account_type"]
+          availability_status?: Database["public"]["Enums"]["availability_status"]
+          availability_until?: string | null
           bio?: string | null
           closed_deals?: number
           created_at?: string
@@ -428,6 +442,7 @@ export type Database = {
             | Database["public"]["Enums"]["home_clients_policy"]
             | null
           inn?: string | null
+          is_hidden_from_search?: boolean
           languages?: string[]
           legal_name?: string | null
           ogrn?: string | null
@@ -439,10 +454,14 @@ export type Database = {
           updated_at?: string
           user_id: string
           verification_level?: number
+          whatsapp_phone?: string | null
+          whatsapp_same_as_phone?: boolean
           work_schedule?: Json
         }
         Update: {
           account_type?: Database["public"]["Enums"]["master_account_type"]
+          availability_status?: Database["public"]["Enums"]["availability_status"]
+          availability_until?: string | null
           bio?: string | null
           closed_deals?: number
           created_at?: string
@@ -453,6 +472,7 @@ export type Database = {
             | Database["public"]["Enums"]["home_clients_policy"]
             | null
           inn?: string | null
+          is_hidden_from_search?: boolean
           languages?: string[]
           legal_name?: string | null
           ogrn?: string | null
@@ -464,6 +484,8 @@ export type Database = {
           updated_at?: string
           user_id?: string
           verification_level?: number
+          whatsapp_phone?: string | null
+          whatsapp_same_as_phone?: boolean
           work_schedule?: Json
         }
         Relationships: [
@@ -473,6 +495,38 @@ export type Database = {
             isOneToOne: true
             referencedRelation: "users"
             referencedColumns: ["id"]
+          },
+        ]
+      }
+      master_service_areas: {
+        Row: {
+          created_at: string
+          id: string
+          kind: Database["public"]["Enums"]["master_area_kind"]
+          location_id: string
+          master_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          kind: Database["public"]["Enums"]["master_area_kind"]
+          location_id: string
+          master_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          kind?: Database["public"]["Enums"]["master_area_kind"]
+          location_id?: string
+          master_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "master_service_areas_master_id_fkey"
+            columns: ["master_id"]
+            isOneToOne: false
+            referencedRelation: "master_profiles"
+            referencedColumns: ["user_id"]
           },
         ]
       }
@@ -542,6 +596,39 @@ export type Database = {
             referencedColumns: ["user_id"]
           },
         ]
+      }
+      master_verifications: {
+        Row: {
+          passport_main_path: string
+          rejection_reason: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          selfie_path: string
+          status: Database["public"]["Enums"]["verification_status"]
+          submitted_at: string
+          user_id: string
+        }
+        Insert: {
+          passport_main_path: string
+          rejection_reason?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          selfie_path: string
+          status?: Database["public"]["Enums"]["verification_status"]
+          submitted_at?: string
+          user_id: string
+        }
+        Update: {
+          passport_main_path?: string
+          rejection_reason?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          selfie_path?: string
+          status?: Database["public"]["Enums"]["verification_status"]
+          submitted_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       messages: {
         Row: {
@@ -676,9 +763,8 @@ export type Database = {
           master_id: string
           message: string
           order_id: string
-          price_max: number | null
-          price_min: number | null
-          price_mode: Database["public"]["Enums"]["order_budget_mode"]
+          price_kind: Database["public"]["Enums"]["order_price_kind"]
+          price_value: number | null
           status: Database["public"]["Enums"]["response_status"]
           updated_at: string
         }
@@ -690,9 +776,8 @@ export type Database = {
           master_id: string
           message: string
           order_id: string
-          price_max?: number | null
-          price_min?: number | null
-          price_mode?: Database["public"]["Enums"]["order_budget_mode"]
+          price_kind?: Database["public"]["Enums"]["order_price_kind"]
+          price_value?: number | null
           status?: Database["public"]["Enums"]["response_status"]
           updated_at?: string
         }
@@ -704,9 +789,8 @@ export type Database = {
           master_id?: string
           message?: string
           order_id?: string
-          price_max?: number | null
-          price_min?: number | null
-          price_mode?: Database["public"]["Enums"]["order_budget_mode"]
+          price_kind?: Database["public"]["Enums"]["order_price_kind"]
+          price_value?: number | null
           status?: Database["public"]["Enums"]["response_status"]
           updated_at?: string
         }
@@ -734,23 +818,88 @@ export type Database = {
           },
         ]
       }
+      order_status_log: {
+        Row: {
+          created_at: string
+          from_status: Database["public"]["Enums"]["order_status"] | null
+          id: string
+          metadata: Json | null
+          order_id: string
+          to_status: Database["public"]["Enums"]["order_status"]
+          transition_code: string | null
+          triggered_by: string | null
+          triggered_kind: string
+        }
+        Insert: {
+          created_at?: string
+          from_status?: Database["public"]["Enums"]["order_status"] | null
+          id?: string
+          metadata?: Json | null
+          order_id: string
+          to_status: Database["public"]["Enums"]["order_status"]
+          transition_code?: string | null
+          triggered_by?: string | null
+          triggered_kind: string
+        }
+        Update: {
+          created_at?: string
+          from_status?: Database["public"]["Enums"]["order_status"] | null
+          id?: string
+          metadata?: Json | null
+          order_id?: string
+          to_status?: Database["public"]["Enums"]["order_status"]
+          transition_code?: string | null
+          triggered_by?: string | null
+          triggered_kind?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_status_log_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_status_log_triggered_by_fkey"
+            columns: ["triggered_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       orders: {
         Row: {
-          budget_max: number | null
-          budget_min: number | null
-          budget_mode: Database["public"]["Enums"]["order_budget_mode"]
+          awaiting_confirmation_until: string | null
+          budget_kind: Database["public"]["Enums"]["order_price_kind"]
+          budget_value: number | null
+          cancel_reason: string | null
+          cancelled_by: string | null
           city_id: string | null
           client_id: string
+          completed_at: string | null
+          completion_kind: string | null
           contact_mode: Database["public"]["Enums"]["order_contact_mode"]
           created_at: string
+          created_via: Database["public"]["Enums"]["order_created_via"]
           description: string
+          dispute_opened_by: string | null
+          dispute_reason: string | null
+          disputed_at: string | null
           district: string | null
           executor_type: Database["public"]["Enums"]["order_executor_type"]
           expires_at: string
           id: string
           l2_id: string
           l3_ids: string[]
+          last_activity_at: string | null
+          master_marked_done_at: string | null
+          picked_at: string | null
           picked_master_id: string | null
+          resolution_kind: string | null
+          resolved_at: string | null
+          resolved_by: string | null
           responses_count: number
           status: Database["public"]["Enums"]["order_status"]
           title: string
@@ -758,21 +907,35 @@ export type Database = {
           urgency: Database["public"]["Enums"]["order_urgency"]
         }
         Insert: {
-          budget_max?: number | null
-          budget_min?: number | null
-          budget_mode?: Database["public"]["Enums"]["order_budget_mode"]
+          awaiting_confirmation_until?: string | null
+          budget_kind?: Database["public"]["Enums"]["order_price_kind"]
+          budget_value?: number | null
+          cancel_reason?: string | null
+          cancelled_by?: string | null
           city_id?: string | null
           client_id: string
+          completed_at?: string | null
+          completion_kind?: string | null
           contact_mode?: Database["public"]["Enums"]["order_contact_mode"]
           created_at?: string
+          created_via?: Database["public"]["Enums"]["order_created_via"]
           description: string
+          dispute_opened_by?: string | null
+          dispute_reason?: string | null
+          disputed_at?: string | null
           district?: string | null
           executor_type?: Database["public"]["Enums"]["order_executor_type"]
           expires_at?: string
           id?: string
           l2_id: string
           l3_ids?: string[]
+          last_activity_at?: string | null
+          master_marked_done_at?: string | null
+          picked_at?: string | null
           picked_master_id?: string | null
+          resolution_kind?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
           responses_count?: number
           status?: Database["public"]["Enums"]["order_status"]
           title: string
@@ -780,21 +943,35 @@ export type Database = {
           urgency?: Database["public"]["Enums"]["order_urgency"]
         }
         Update: {
-          budget_max?: number | null
-          budget_min?: number | null
-          budget_mode?: Database["public"]["Enums"]["order_budget_mode"]
+          awaiting_confirmation_until?: string | null
+          budget_kind?: Database["public"]["Enums"]["order_price_kind"]
+          budget_value?: number | null
+          cancel_reason?: string | null
+          cancelled_by?: string | null
           city_id?: string | null
           client_id?: string
+          completed_at?: string | null
+          completion_kind?: string | null
           contact_mode?: Database["public"]["Enums"]["order_contact_mode"]
           created_at?: string
+          created_via?: Database["public"]["Enums"]["order_created_via"]
           description?: string
+          dispute_opened_by?: string | null
+          dispute_reason?: string | null
+          disputed_at?: string | null
           district?: string | null
           executor_type?: Database["public"]["Enums"]["order_executor_type"]
           expires_at?: string
           id?: string
           l2_id?: string
           l3_ids?: string[]
+          last_activity_at?: string | null
+          master_marked_done_at?: string | null
+          picked_at?: string | null
           picked_master_id?: string | null
+          resolution_kind?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
           responses_count?: number
           status?: Database["public"]["Enums"]["order_status"]
           title?: string
@@ -802,6 +979,13 @@ export type Database = {
           urgency?: Database["public"]["Enums"]["order_urgency"]
         }
         Relationships: [
+          {
+            foreignKeyName: "orders_cancelled_by_fkey"
+            columns: ["cancelled_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "orders_city_id_fkey"
             columns: ["city_id"]
@@ -812,6 +996,13 @@ export type Database = {
           {
             foreignKeyName: "orders_client_id_fkey"
             columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orders_dispute_opened_by_fkey"
+            columns: ["dispute_opened_by"]
             isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
@@ -830,141 +1021,9 @@ export type Database = {
             referencedRelation: "users"
             referencedColumns: ["id"]
           },
-        ]
-      }
-      team_members: {
-        Row: {
-          joined_at: string
-          role: Database["public"]["Enums"]["team_member_role"]
-          team_id: string
-          user_id: string
-        }
-        Insert: {
-          joined_at?: string
-          role?: Database["public"]["Enums"]["team_member_role"]
-          team_id: string
-          user_id: string
-        }
-        Update: {
-          joined_at?: string
-          role?: Database["public"]["Enums"]["team_member_role"]
-          team_id?: string
-          user_id?: string
-        }
-        Relationships: [
           {
-            foreignKeyName: "team_members_team_id_fkey"
-            columns: ["team_id"]
-            isOneToOne: false
-            referencedRelation: "teams"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "team_members_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      user_contacts: {
-        Row: {
-          created_at: string
-          display_name: string | null
-          phone_normalized: string
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          display_name?: string | null
-          phone_normalized: string
-          user_id: string
-        }
-        Update: {
-          created_at?: string
-          display_name?: string | null
-          phone_normalized?: string
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "user_contacts_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      vouches: {
-        Row: {
-          comment: string | null
-          created_at: string
-          id: string
-          voucher_id: string
-          vouchee_id: string
-        }
-        Insert: {
-          comment?: string | null
-          created_at?: string
-          id?: string
-          voucher_id: string
-          vouchee_id: string
-        }
-        Update: {
-          comment?: string | null
-          created_at?: string
-          id?: string
-          voucher_id?: string
-          vouchee_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "vouches_voucher_id_fkey"
-            columns: ["voucher_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "vouches_vouchee_id_fkey"
-            columns: ["vouchee_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      teams: {
-        Row: {
-          created_at: string
-          description: string | null
-          id: string
-          name: string
-          owner_id: string
-          updated_at: string
-        }
-        Insert: {
-          created_at?: string
-          description?: string | null
-          id?: string
-          name: string
-          owner_id: string
-          updated_at?: string
-        }
-        Update: {
-          created_at?: string
-          description?: string | null
-          id?: string
-          name?: string
-          owner_id?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "teams_owner_id_fkey"
-            columns: ["owner_id"]
+            foreignKeyName: "orders_resolved_by_fkey"
+            columns: ["resolved_by"]
             isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
@@ -1149,6 +1208,106 @@ export type Database = {
           },
         ]
       }
+      team_members: {
+        Row: {
+          joined_at: string
+          role: Database["public"]["Enums"]["team_member_role"]
+          team_id: string
+          user_id: string
+        }
+        Insert: {
+          joined_at?: string
+          role?: Database["public"]["Enums"]["team_member_role"]
+          team_id: string
+          user_id: string
+        }
+        Update: {
+          joined_at?: string
+          role?: Database["public"]["Enums"]["team_member_role"]
+          team_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_members_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "team_members_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      teams: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          owner_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+          owner_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          owner_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "teams_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_contacts: {
+        Row: {
+          created_at: string
+          display_name: string | null
+          phone_normalized: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          display_name?: string | null
+          phone_normalized: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          display_name?: string | null
+          phone_normalized?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_contacts_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       users: {
         Row: {
           active_role: Database["public"]["Enums"]["user_active_role"]
@@ -1258,20 +1417,57 @@ export type Database = {
           },
         ]
       }
+      vouches: {
+        Row: {
+          comment: string | null
+          created_at: string
+          id: string
+          vouchee_id: string
+          voucher_id: string
+        }
+        Insert: {
+          comment?: string | null
+          created_at?: string
+          id?: string
+          vouchee_id: string
+          voucher_id: string
+        }
+        Update: {
+          comment?: string | null
+          created_at?: string
+          id?: string
+          vouchee_id?: string
+          voucher_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vouches_vouchee_id_fkey"
+            columns: ["vouchee_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vouches_voucher_id_fkey"
+            columns: ["voucher_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      accept_response: { Args: { p_response_id: string }; Returns: undefined }
-      start_chat_with_master: {
-        Args: { p_order_id: string; p_master_id: string }
+      _availability_expires_at: {
+        Args: { p_status: Database["public"]["Enums"]["availability_status"] }
         Returns: string
       }
-      reject_response: {
-        Args: { p_response_id: string }
-        Returns: undefined
-      }
+      accept_response: { Args: { p_response_id: string }; Returns: undefined }
+      auto_confirm_completions: { Args: never; Returns: number }
+      cancel_stale_in_progress: { Args: never; Returns: number }
       complete_master_onboarding: {
         Args: {
           p_bio: string
@@ -1285,36 +1481,33 @@ export type Database = {
         }
         Returns: undefined
       }
+      confirm_completion: { Args: { p_order_id: string }; Returns: undefined }
+      confirm_work_done: {
+        Args: {
+          p_l2_id?: string
+          p_master_id: string
+          p_order_id?: string
+          p_review_rating?: number
+          p_review_text?: string
+          p_title?: string
+        }
+        Returns: string
+      }
       count_common_contacts_with: {
         Args: { p_other_user_id: string }
         Returns: number
       }
-      count_vouches_for: {
-        Args: { p_target_user_id: string }
-        Returns: number
-      }
-      confirm_work_done: {
-        Args: {
-          p_master_id: string
-          p_order_id?: string
-          p_l2_id?: string
-          p_title?: string
-          p_review_rating?: number
-          p_review_text?: string
-        }
-        Returns: string
-      }
+      count_vouches_for: { Args: { p_target_user_id: string }; Returns: number }
       expire_availability: { Args: never; Returns: number }
       expire_old_orders: { Args: never; Returns: number }
       get_master_phone: { Args: { p_master_id: string }; Returns: string }
-      set_availability: {
-        Args: { p_status: Database["public"]["Enums"]["availability_status"] }
-        Returns: string
-      }
+      get_master_stats: { Args: never; Returns: Json }
+      get_response_limit_today: { Args: never; Returns: Json }
       is_current_user_admin: { Args: never; Returns: boolean }
       mark_chat_read: { Args: { p_chat_id: string }; Returns: undefined }
       mark_feed_seen: { Args: never; Returns: undefined }
       mark_notifications_read: { Args: { p_ids?: string[] }; Returns: number }
+      mark_order_done: { Args: { p_order_id: string }; Returns: undefined }
       mark_order_responses_viewed: {
         Args: { p_order_id: string }
         Returns: undefined
@@ -1328,33 +1521,46 @@ export type Database = {
         }
         Returns: undefined
       }
+      open_dispute: {
+        Args: { p_order_id: string; p_reason: string }
+        Returns: undefined
+      }
+      reject_response: { Args: { p_response_id: string }; Returns: undefined }
+      reopen_order: { Args: { p_order_id: string }; Returns: undefined }
+      search_categories: {
+        Args: { p_limit?: number; p_query: string }
+        Returns: {
+          id: string
+          kind: string
+          l2_id: string
+          name_ru: string
+          score: number
+          source: string
+        }[]
+      }
+      set_availability: {
+        Args: { p_status: Database["public"]["Enums"]["availability_status"] }
+        Returns: string
+      }
       set_master_categories: {
         Args: { p_l2_ids: string[] }
         Returns: undefined
-      }
-      get_master_stats: {
-        Args: Record<string, never>
-        Returns: Json
-      }
-      get_response_limit_today: {
-        Args: Record<string, never>
-        Returns: Json
       }
       set_master_service_areas: {
         Args: { p_cities: string[]; p_districts: string[] }
         Returns: undefined
       }
-      search_categories: {
-        Args: { p_query: string; p_limit?: number }
-        Returns: {
-          kind: string
-          id: string
-          name_ru: string
-          l2_id: string
-          score: number
-          source: string
-        }[]
+      show_limit: { Args: never; Returns: number }
+      show_trgm: { Args: { "": string }; Returns: string[] }
+      start_chat_with_master: {
+        Args: { p_master_id: string; p_order_id: string }
+        Returns: string
       }
+      terminate_cooperation: {
+        Args: { p_order_id: string; p_reason?: string }
+        Returns: undefined
+      }
+      withdraw_response: { Args: { p_response_id: string }; Returns: undefined }
     }
     Enums: {
       article_status: "draft" | "published" | "archived"
@@ -1367,6 +1573,7 @@ export type Database = {
       category_urgency: "urgent" | "week" | "month"
       home_clients_policy: "anytime" | "with_male_present" | "women_only"
       master_account_type: "solo" | "brigade" | "company"
+      master_area_kind: "city" | "district"
       master_pricing_mode: "per_hour" | "per_unit" | "negotiable" | "on_quote"
       master_status: "draft" | "pending" | "active" | "suspended" | "archived"
       notification_type:
@@ -1377,14 +1584,17 @@ export type Database = {
         | "new_message"
         | "review_received"
         | "system"
-      order_budget_mode: "exact" | "range" | "negotiable"
       order_contact_mode: "chat_only" | "phone_open" | "phone_masked"
+      order_created_via: "wizard" | "ad_hoc_completion"
       order_executor_type: "any" | "solo" | "brigade" | "company"
+      order_price_kind: "fixed" | "from" | "up_to" | "negotiable"
       order_status:
         | "draft"
         | "open"
         | "in_progress"
+        | "awaiting_confirmation"
         | "completed"
+        | "disputed"
         | "cancelled"
         | "expired"
       order_urgency: "urgent" | "this_week" | "this_month" | "flexible"
@@ -1402,17 +1612,18 @@ export type Database = {
       response_status: "sent" | "viewed" | "accepted" | "rejected" | "withdrawn"
       review_direction: "client_to_master" | "master_to_client"
       review_status: "visible" | "hidden" | "pending"
-      service_pricing_kind: "fixed" | "range" | "hourly" | "quote"
+      service_pricing_kind: "fixed" | "from" | "up_to" | "range" | "hourly" | "quote"
       service_unit: "per_hour" | "per_task" | "per_m2" | "per_day"
-      team_member_role: "owner" | "member"
       tax_status:
         | "individual"
         | "self_employed"
         | "individual_entrepreneur"
         | "legal_entity"
+      team_member_role: "owner" | "member"
       user_active_role: "client" | "master"
       user_gender: "male" | "female" | "unspecified"
       user_status: "active" | "suspended" | "banned" | "deleted"
+      verification_status: "pending" | "approved" | "rejected"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1541,6 +1752,7 @@ export const Constants = {
   public: {
     Enums: {
       article_status: ["draft", "published", "archived"],
+      availability_status: ["today", "this_week", "next_week", "unavailable"],
       category_seasonality: [
         "year_round",
         "summer",
@@ -1550,6 +1762,7 @@ export const Constants = {
       category_urgency: ["urgent", "week", "month"],
       home_clients_policy: ["anytime", "with_male_present", "women_only"],
       master_account_type: ["solo", "brigade", "company"],
+      master_area_kind: ["city", "district"],
       master_pricing_mode: ["per_hour", "per_unit", "negotiable", "on_quote"],
       master_status: ["draft", "pending", "active", "suspended", "archived"],
       notification_type: [
@@ -1561,14 +1774,17 @@ export const Constants = {
         "review_received",
         "system",
       ],
-      order_budget_mode: ["exact", "range", "negotiable"],
       order_contact_mode: ["chat_only", "phone_open", "phone_masked"],
+      order_created_via: ["wizard", "ad_hoc_completion"],
       order_executor_type: ["any", "solo", "brigade", "company"],
+      order_price_kind: ["fixed", "from", "up_to", "negotiable"],
       order_status: [
         "draft",
         "open",
         "in_progress",
+        "awaiting_confirmation",
         "completed",
+        "disputed",
         "cancelled",
         "expired",
       ],
@@ -1588,18 +1804,20 @@ export const Constants = {
       response_status: ["sent", "viewed", "accepted", "rejected", "withdrawn"],
       review_direction: ["client_to_master", "master_to_client"],
       review_status: ["visible", "hidden", "pending"],
-      service_pricing_kind: ["fixed", "range", "hourly", "quote"],
+      service_pricing_kind: ["fixed", "from", "up_to", "range", "hourly", "quote"],
       service_unit: ["per_hour", "per_task", "per_m2", "per_day"],
-      team_member_role: ["owner", "member"],
       tax_status: [
         "individual",
         "self_employed",
         "individual_entrepreneur",
         "legal_entity",
       ],
+      team_member_role: ["owner", "member"],
       user_active_role: ["client", "master"],
       user_gender: ["male", "female", "unspecified"],
       user_status: ["active", "suspended", "banned", "deleted"],
+      verification_status: ["pending", "approved", "rejected"],
     },
   },
 } as const
+

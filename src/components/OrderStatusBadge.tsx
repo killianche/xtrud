@@ -4,13 +4,15 @@
 // OrderRow, header чата (когда заказ-context). Цвета через токены: success-soft,
 // surface-2, warning-soft, error-soft + текст соответствующего semantic-цвета.
 //
-// 6 статусов из docs/order-states.md:
-//   draft     — серый
-//   open      — синий (accent — заявка опубликована, ждёт мастеров)
-//   in_progress — yellow/amber (работа идёт)
-//   completed — зелёный (выполнено)
-//   cancelled — серый (отменено)
-//   expired   — серый (истёк срок)
+// 8 статусов из docs/lifecycle.md §2.1:
+//   draft                 — серый (зарезервирован)
+//   open                  — синий (accent — заявка опубликована, ждёт мастеров)
+//   in_progress           — yellow/amber (работа идёт)
+//   awaiting_confirmation — accent-soft (мастер пометил выполнено, клиент решает)
+//   completed             — зелёный (выполнено)
+//   disputed              — error-soft (открыт спор, ждём саппорта)
+//   cancelled             — серый (отменено)
+//   expired               — серый (истёк срок)
 
 import { View } from "react-native";
 import { AppText } from "@/components/AppText";
@@ -19,7 +21,9 @@ export type OrderStatusValue =
   | "draft"
   | "open"
   | "in_progress"
+  | "awaiting_confirmation"
   | "completed"
+  | "disputed"
   | "cancelled"
   | "expired";
 
@@ -39,7 +43,13 @@ const STYLES: Record<OrderStatusValue, BadgeStyle> = {
   draft: { label: "Черновик", bgClass: "bg-surface-2", textClass: "text-muted" },
   open: { label: "Открыта", bgClass: "bg-accent-soft", textClass: "text-accent" },
   in_progress: { label: "В работе", bgClass: "bg-warning-soft", textClass: "text-warning" },
+  awaiting_confirmation: {
+    label: "Ждёт подтверждения",
+    bgClass: "bg-accent-soft",
+    textClass: "text-accent",
+  },
   completed: { label: "Завершён", bgClass: "bg-success-soft", textClass: "text-success" },
+  disputed: { label: "Спор", bgClass: "bg-error-soft", textClass: "text-error" },
   cancelled: { label: "Отменён", bgClass: "bg-surface-2", textClass: "text-muted" },
   expired: { label: "Истёк", bgClass: "bg-surface-2", textClass: "text-muted" },
 };

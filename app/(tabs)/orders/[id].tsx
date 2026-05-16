@@ -40,6 +40,11 @@ import {
 import { useAcceptResponse } from "@/features/orders/use-accept-response";
 import { useCancelOrder } from "@/features/orders/use-cancel-order";
 import { useCompleteOrder } from "@/features/orders/use-complete-order";
+import { useConfirmCompletion } from "@/features/orders/use-confirm-completion";
+import { useMarkOrderDone } from "@/features/orders/use-mark-order-done";
+import { canReopenOrder, useReopenOrder } from "@/features/orders/use-reopen-order";
+import { useTerminateCooperation } from "@/features/orders/use-terminate-cooperation";
+import { useWithdrawResponse } from "@/features/orders/use-withdraw-response";
 import { type OrderDetail, useOrderDetail } from "@/features/orders/use-order-detail";
 import {
   type OrderResponseWithMaster,
@@ -171,6 +176,7 @@ export default function OrderDetailScreen() {
           <OrderInfoBlock order={order} isOwner={isOwner} />
 
           {userId && id && <CompletionSection orderId={id} order={order} userId={userId} />}
+          {userId && id && <ReopenSection orderId={id} order={order} userId={userId} />}
 
           {isOwner && id && order && (
             <ClientResponsesSection
@@ -1086,10 +1092,11 @@ function MasterResponseSection({
 }: MasterResponseSectionProps) {
   const { data: myResponse, isLoading } = useMyResponseForOrder(orderId, masterId);
   const submitResponse = useSubmitResponse();
+  const withdrawResponse = useWithdrawResponse();
   // P0-5: дневной лимит откликов (5/день). Не блокируем UI, но блокируем
   // submit + показываем понятное сообщение если лимит исчерпан.
   const { data: responseLimit } = useResponseLimit();
-  const tc = useThemeColors(["muted-soft"]);
+  const tc = useThemeColors(["muted-soft", "ink", "error"]);
 
   const isPickedMaster = pickedMasterId === masterId;
   const orderClosed = orderStatus !== "open";
@@ -1149,19 +1156,52 @@ function MasterResponseSection({
     const iconColor = isPickedMaster ? "#10b981" : "#2563eb";
     const textColor = isPickedMaster ? "text-success" : "text-accent";
 
+    // T15: можно отозвать пока response в sent/viewed (до accept).
+    const canWithdraw =
+      orderStatus === "open" &&
+      (myResponse.status === "sent" || myResponse.status === "viewed");
+    const isBusyWithdraw = withdrawResponse.isPending;
+
+    const onWithdrawPress = async () => {
+      if (isBusyWithdraw) return;
+      const confirmed = await confirmAsync({
+        title: "Отозвать отклик?",
+        message:
+          "Клиент получит уведомление. Восстановить отклик нельзя — можно создать новый.",
+        confirmText: "Отозвать",
+        cancelText: "Отмена",
+      });
+      if (!confirmed) return;
+      withdrawResponse.mutate({ responseId: myResponse.id, orderId, masterId });
+    };
+
+    // Минимализм 2026-05-16: убрана дублирующая строка «Клиент выбрал вас 🎉»
+    // (для isPickedMaster). Когда мастера уже выбрали — status «В работе» в
+    // header заказа + primary CTA «Работа выполнена» снизу уже сигналят это.
+    // Третий раз сообщать с emoji — шум. Border нейтральный (hairline) для
+    // isPickedMaster, accent остаётся для pending status'ов.
     return (
       <View className="mt-10 px-6">
         <AppText weight="semibold" className="text-title-lg text-ink">
           Ваш отклик
         </AppText>
-        <View className={`mt-3 rounded-lg border ${accentClass} p-4`}>
-          <View className="flex-row items-center gap-2">
-            <ChatCenteredText size={16} weight="bold" color={iconColor} />
-            <AppText weight="semibold" className={`text-body-md ${textColor}`}>
-              {isPickedMaster ? "Клиент выбрал вас 🎉" : responseStatusLabel(myResponse.status)}
-            </AppText>
-          </View>
-          <AppText weight="medium" className="mt-2 text-body-md text-ink">
+        <View
+          className={`mt-3 rounded-lg border ${
+            isPickedMaster ? "border-hairline bg-canvas-soft" : accentClass
+          } p-4`}
+        >
+          {!isPickedMaster && (
+            <View className="flex-row items-center gap-2">
+              <ChatCenteredText size={16} weight="bold" color={iconColor} />
+              <AppText weight="semibold" className={`text-body-md ${textColor}`}>
+                {responseStatusLabel(myResponse.status)}
+              </AppText>
+            </View>
+          )}
+          <AppText
+            weight="medium"
+            className={`${isPickedMaster ? "" : "mt-2 "}text-body-md text-ink`}
+          >
             {formatResponsePrice(myResponse)}
           </AppText>
           {myResponse.lead_time && (
@@ -1169,6 +1209,25 @@ function MasterResponseSection({
           )}
           <AppText className="mt-2 text-body-sm text-body">{myResponse.message}</AppText>
         </View>
+        {canWithdraw ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Отозвать отклик"
+            disabled={isBusyWithdraw}
+            onPress={onWithdrawPress}
+            className="mt-3 h-11 flex-row items-center justify-center gap-2 rounded-pill border border-hairline bg-canvas active:bg-canvas-soft"
+          >
+            <X size={16} weight="bold" color={tc.ink} />
+            <AppText weight="medium" className="text-button-sm text-ink">
+              {isBusyWithdraw ? "Отзываем..." : "Отозвать отклик"}
+            </AppText>
+          </Pressable>
+        ) : null}
+        {withdrawResponse.error && (
+          <AppText weight="medium" className="mt-2 text-caption text-error">
+            {withdrawResponse.error.message}
+          </AppText>
+        )}
       </View>
     );
   }
@@ -1386,84 +1445,281 @@ interface CompletionSectionProps {
   userId: string;
 }
 
+/**
+ * CompletionSection — кнопки управления статусом заказа в /orders/[id].
+ *
+ * Источник истины: docs/lifecycle.md §4 (матрица переходов).
+ *
+ * Что показываем (по role × status):
+ *
+ *   in_progress:
+ *     - client  → «Подтвердить выполнение» (T4) + «Прекратить сотрудничество» (T6t)
+ *     - master  → «Работа выполнена»     (T8) + «Прекратить сотрудничество» (T6t)
+ *
+ *   awaiting_confirmation:
+ *     - client  → «Подтвердить выполнение» (T5) + «Прекратить сотрудничество» (T6t)
+ *     - master  → «Ждём подтверждения клиента, осталось X» (read-only) + «Прекратить сотрудничество» (T6t)
+ *
+ *   disputed:
+ *     - оба → read-only «Спор открыт N дней назад. Саппорт рассмотрит ~5 рабочих дней.»
+ *       (Существующие до 2026-05-16 disputed-заказы; новых UI не создаёт.)
+ *
+ *   cancelled/expired (для клиента в 7-дневном окне) → отдельная ReopenSection (T9).
+ *   completed → review-секция (ниже в этом файле, не здесь).
+ *   open → ничего не показываем (форма отклика мастера / список откликов клиента).
+ *
+ * Изменено 2026-05-16: вместо «Открыть спор» — «Прекратить сотрудничество»
+ * (T6t terminate_cooperation). По фидбэку user: спор слишком тяжёлый для
+ * нашего рынка, чаще нужен простой выход «работа не дошла до конца».
+ */
 function CompletionSection({ orderId, order, userId }: CompletionSectionProps) {
-  const completeOrder = useCompleteOrder();
-  const tc = useThemeColors(["mute", "success"]);
-  const canComplete =
-    order.status === "in_progress" &&
-    (order.client_id === userId || order.picked_master_id === userId);
+  const markDone = useMarkOrderDone();
+  const confirmCompletion = useConfirmCompletion();
+  const terminateCooperation = useTerminateCooperation();
+  const tc = useThemeColors(["mute", "success", "error", "ink"]);
 
-  if (!canComplete) return null;
-
-  const isBusy = completeOrder.isPending;
   const isClient = order.client_id === userId;
+  const isPickedMaster = order.picked_master_id === userId;
+  const status = order.status;
 
-  const buttonLabel = isClient ? "Подтвердить выполнение" : "Я закончил работу";
-  const captionText = isClient
-    ? "Заказ перейдёт в «Завершён», и вы сможете оставить отзыв. Действие нельзя отменить."
-    : "Клиент увидит запрос на подтверждение и сможет оставить отзыв.";
+  // disputed — read-only блок для legacy-заказов (новых UI больше не создаёт,
+  // RPC open_dispute остался для будущей админки через service_role).
+  if (status === "disputed" && (isClient || isPickedMaster)) {
+    const daysAgo = order.disputed_at
+      ? Math.max(0, Math.floor((Date.now() - new Date(order.disputed_at).getTime()) / (1000 * 60 * 60 * 24)))
+      : null;
+    return (
+      <View className="mt-8 px-5">
+        <View className="rounded-lg border border-error bg-error-soft p-4">
+          <AppText weight="semibold" className="text-body-md text-error">
+            Спор открыт
+            {daysAgo !== null ? ` ${daysAgo} ${daysAgo === 1 ? "день" : daysAgo < 5 ? "дня" : "дней"} назад` : ""}
+          </AppText>
+          <AppText className="mt-2 text-body-sm text-body">
+            Саппорт рассмотрит обращение в течение 5 рабочих дней и закроет заказ в пользу одной из сторон.
+          </AppText>
+          {order.dispute_reason ? (
+            <AppText className="mt-2 text-caption text-muted">
+              Причина: {order.dispute_reason}
+            </AppText>
+          ) : null}
+        </View>
+      </View>
+    );
+  }
 
-  // Confirm dialog перед action — это state-transition, нельзя случайно
-  // тапать. Раньше Alert.alert не работал на web (no-op в react-native-web)
-  // → кнопка «Я закончил работу» не реагировала. Используем confirmAsync,
-  // который проксирует на window.confirm на web и Alert.alert на native.
-  const onConfirmPress = async () => {
+  // Если не active lifecycle status или not a participant — ничего не показываем
+  if (status !== "in_progress" && status !== "awaiting_confirmation") return null;
+  if (!isClient && !isPickedMaster) return null;
+
+  const isBusy =
+    markDone.isPending ||
+    confirmCompletion.isPending ||
+    terminateCooperation.isPending;
+
+  // ===== Primary button label / handler =====
+  let primaryLabel: string;
+  let primaryHandler: () => Promise<void>;
+  let primaryEnabled = true;
+  let primaryError: string | null = null;
+  let primaryCaption: string;
+
+  if (isClient) {
+    primaryLabel = "Подтвердить выполнение";
+    primaryCaption = status === "awaiting_confirmation"
+      ? "Мастер сообщил, что работа выполнена. Подтвердите — заказ перейдёт в «Завершён», и вы сможете оставить отзыв."
+      : "Заказ перейдёт в «Завершён», и вы сможете оставить отзыв. Действие нельзя отменить.";
+    primaryError = confirmCompletion.error?.message ?? null;
+    primaryHandler = async () => {
+      if (isBusy) return;
+      const confirmed = await confirmAsync({
+        title: "Подтвердить, что работа выполнена?",
+        message: primaryCaption,
+        confirmText: "Подтвердить",
+        cancelText: "Отмена",
+      });
+      if (!confirmed) return;
+      confirmCompletion.mutate({ orderId, userId });
+    };
+  } else if (status === "in_progress") {
+    primaryLabel = "Работа выполнена";
+    primaryCaption = "Клиент получит уведомление и подтвердит за 72 часа — либо заказ закроется автоматически.";
+    primaryError = markDone.error?.message ?? null;
+    primaryHandler = async () => {
+      if (isBusy) return;
+      const confirmed = await confirmAsync({
+        title: "Пометить заказ выполненным?",
+        message: primaryCaption,
+        confirmText: "Да, выполнено",
+        cancelText: "Отмена",
+      });
+      if (!confirmed) return;
+      markDone.mutate({ orderId, userId });
+    };
+  } else {
+    // master + awaiting_confirmation: read-only countdown
+    primaryEnabled = false;
+    primaryLabel = "Ждём клиента";
+    const hoursLeft = order.awaiting_confirmation_until
+      ? Math.max(0, Math.floor((new Date(order.awaiting_confirmation_until).getTime() - Date.now()) / (1000 * 60 * 60)))
+      : null;
+    primaryCaption = hoursLeft !== null
+      ? `Клиент подтвердит выполнение или оспорит. Осталось ${hoursLeft} ч до auto-закрытия.`
+      : "Клиент подтвердит выполнение или оспорит в течение 72 часов.";
+    primaryHandler = async () => {};
+  }
+
+  // Минималистичный layout (2026-05-16):
+  //   - Убран eyebrow «ЗАВЕРШЕНИЕ РАБОТЫ» — заголовок не нужен, действие
+  //     самоочевидно из контекста заказа со статусом «В работе».
+  //   - Primary CTA — solid bg-success + white text (раньше green outline →
+  //     не было ясной иерархии с secondary). Это happy-path.
+  //   - Secondary «Прекратить сотрудничество» — text-only ghost (без border),
+  //     text-mute (не red, чтобы не визуально конкурировать с primary).
+  //   - Длинный caption удалён — это инфо есть в confirm-modal.
+  return (
+    <View className="mt-8 px-5">
+      {primaryEnabled ? (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={primaryLabel}
+          disabled={isBusy}
+          onPress={primaryHandler}
+          className={`h-12 flex-row items-center justify-center gap-2 rounded-pill ${
+            isBusy ? "bg-canvas-soft" : "bg-success active:opacity-80"
+          }`}
+        >
+          {isBusy ? (
+            <ActivityIndicator size="small" color={tc.mute} />
+          ) : (
+            <>
+              <CheckCircle size={18} weight="fill" color="#ffffff" />
+              <AppText weight="semibold" className="text-button text-white">
+                {primaryLabel}
+              </AppText>
+            </>
+          )}
+        </Pressable>
+      ) : (
+        // Read-only «Ждём клиента» — серый pill + caption с countdown'ом
+        // (количество часов до auto-закрытия — это полезная инфо до клика).
+        <>
+          <View className="h-12 flex-row items-center justify-center gap-2 rounded-pill bg-canvas-soft">
+            <Clock size={18} weight="bold" color={tc.mute} />
+            <AppText weight="semibold" className="text-button text-mute">
+              {primaryLabel}
+            </AppText>
+          </View>
+          <AppText className="mt-2 text-center text-caption text-mute">
+            {primaryCaption}
+          </AppText>
+        </>
+      )}
+
+      {primaryError && (
+        <AppText weight="medium" className="mt-2 text-center text-caption text-error">
+          {primaryError}
+        </AppText>
+      )}
+
+      {/* Secondary destructive action — text-only ghost, не должен конкурировать
+          по визуальному весу с primary. Confirm-dialog содержит всю инфу о
+          последствиях. */}
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Прекратить сотрудничество"
+        disabled={isBusy}
+        onPress={async () => {
+          if (isBusy) return;
+          const confirmed = await confirmAsync({
+            title: "Прекратить сотрудничество?",
+            message:
+              "Заказ закроется со статусом «отменён» — работа не была выполнена. Другая сторона получит уведомление.",
+            confirmText: "Да, прекратить",
+            cancelText: "Отмена",
+          });
+          if (!confirmed) return;
+          terminateCooperation.mutate({ orderId, userId });
+        }}
+        className="mt-3 h-10 items-center justify-center active:opacity-60"
+      >
+        <AppText weight="medium" className="text-caption text-mute">
+          Прекратить сотрудничество
+        </AppText>
+      </Pressable>
+
+      {terminateCooperation.error && (
+        <AppText weight="medium" className="mt-2 text-center text-caption text-error">
+          {terminateCooperation.error.message}
+        </AppText>
+      )}
+    </View>
+  );
+}
+
+// ============================================================================
+// ReopenSection — кнопка «Возобновить» для cancelled/expired в 7-дневном окне.
+// Доступна только клиенту-владельцу заказа. RPC reopen_order (T9).
+// См. docs/lifecycle.md §4 (T9).
+// ============================================================================
+
+interface ReopenSectionProps {
+  orderId: string;
+  order: OrderDetail;
+  userId: string;
+}
+
+function ReopenSection({ orderId, order, userId }: ReopenSectionProps) {
+  const reopenOrder = useReopenOrder();
+  const tc = useThemeColors(["accent"]);
+
+  const isOwner = order.client_id === userId;
+  if (!isOwner) return null;
+  if (!canReopenOrder(order.status, order.updated_at)) return null;
+
+  const isBusy = reopenOrder.isPending;
+  const daysLeft = Math.max(
+    0,
+    7 - Math.floor((Date.now() - new Date(order.updated_at).getTime()) / (1000 * 60 * 60 * 24)),
+  );
+
+  const onPress = async () => {
     if (isBusy) return;
     const confirmed = await confirmAsync({
-      title: isClient ? "Подтвердить, что работа выполнена?" : "Завершить заказ?",
-      message: captionText,
-      confirmText: isClient ? "Подтвердить" : "Завершить",
+      title: "Возобновить заказ?",
+      message: "Заявка снова станет открытой на 14 дней. Мастера получат уведомление и смогут откликнуться.",
+      confirmText: "Возобновить",
       cancelText: "Отмена",
     });
     if (!confirmed) return;
-    completeOrder.mutate({ orderId, userId });
+    reopenOrder.mutate({ orderId, userId });
   };
 
   return (
     <View className="mt-8 px-5">
-      {/* Section label — mono eyebrow «Завершение работы», как другие секции. */}
-      <AppText
-        weight="mono"
-        className="text-mono-caption text-mute uppercase tracking-widest"
-      >
-        Завершение работы
+      <AppText weight="mono" className="text-mono-caption text-mute uppercase tracking-widest">
+        Возобновление
       </AppText>
-
-      {/* Кнопка — outline-success вместо filled. Это серьёзное state-transition
-          (заказ переходит в completed), требует осознанного тапа. После клика
-          — Alert.alert confirm. Раньше был filled black/primary pill — читался
-          как обычная кнопка, легко нажать случайно. */}
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel={buttonLabel}
+        accessibilityLabel="Возобновить заказ"
         disabled={isBusy}
-        onPress={onConfirmPress}
+        onPress={onPress}
         className={`mt-3 h-12 flex-row items-center justify-center gap-2 rounded-pill border-2 ${
-          isBusy
-            ? "border-hairline bg-canvas-soft"
-            : "border-success bg-canvas active:bg-success-soft"
+          isBusy ? "border-hairline bg-canvas-soft" : "border-accent bg-canvas active:bg-accent-soft"
         }`}
       >
-        {isBusy ? (
-          <ActivityIndicator size="small" color={tc.mute} />
-        ) : (
-          <>
-            <CheckCircle size={18} weight="bold" color={tc.success} />
-            <AppText
-              weight="semibold"
-              className="text-button text-success"
-            >
-              {buttonLabel}
-            </AppText>
-          </>
-        )}
+        <CaretRight size={18} weight="bold" color={tc.accent} />
+        <AppText weight="semibold" className="text-button text-accent">
+          {isBusy ? "Возобновляем..." : "Возобновить заказ"}
+        </AppText>
       </Pressable>
       <AppText className="mt-3 text-center text-caption text-mute">
-        {captionText}
+        Окно возобновления закроется через {daysLeft} {daysLeft === 1 ? "день" : daysLeft < 5 ? "дня" : "дней"}.
       </AppText>
-      {completeOrder.error && (
+      {reopenOrder.error && (
         <AppText weight="medium" className="mt-2 text-center text-caption text-error">
-          {completeOrder.error.message}
+          {reopenOrder.error.message}
         </AppText>
       )}
     </View>

@@ -74,7 +74,7 @@ export function ChatsListContent({
       showsVerticalScrollIndicator={false}
     >
       {!isSidebar && (
-        <ScreenHeader title="Чаты" subtitle="Общение с мастерами по вашим задачам." />
+        <ScreenHeader title="Чаты" />
       )}
 
       {isSidebar && (

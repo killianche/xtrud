@@ -1,7 +1,6 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import type { IconComponent } from "@/types/icon";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
-import { CheckCircle, CaretLeft, Lock, ChatCenteredText, Tag, UserCheck } from "phosphor-react-native";
+import { CheckCircle, Lock } from "phosphor-react-native";
 import { useCallback, useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, View } from "react-native";
@@ -216,29 +215,19 @@ export default function NewOrderScreen() {
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        {/* Hero — Vercel value-card. H1 → 3-step row (Pencil / ChatCenteredText
-            / Lock — все 3 согласованы с privacy обещанием) → выделенная
-            privacy-плашка снизу. Eyebrow «НОВЫЙ ЗАКАЗ» убран — дублировал
-            title в ScreenHeader. */}
+        {/* Hero — единственный privacy-trust блок (Lock + объяснение что
+            номер скрыт). Eyebrow + H1 + 3-step row удалены — контекст экрана
+            самоочевиден из ScreenHeader title «Новый заказ». */}
         <View className="px-6 pb-8">
           {/* H1 «Опишите задачу — мастера отзовутся» удалён 2026-05-16 —
               дублировал title ScreenHeader «Новый заказ». Контекст экрана
               самоочевиден из header'а. */}
 
-          {/* «Как это работает» — единая info card с двумя смысловыми блоками:
-              сверху 3-step (что получит клиент), снизу privacy-trust (номер скрыт).
-              Объединение в одну карточку с внутренним hairline-divider создаёт
-              визуальную гармонию: оба блока — части одного нарратива «как заказ
-              работает», а не два разных компонента. */}
-          <View className="mt-6 rounded-xl border border-hairline bg-canvas-soft overflow-hidden">
-            <View className="flex-row items-start gap-2 px-5 py-5">
-              <StepItem icon={ChatCenteredText} label="Получите отклики" />
-              <StepItem icon={Tag} label="Посмотрите цены от мастеров" />
-              <StepItem icon={UserCheck} label="Выберите подходящего" />
-            </View>
-
-            <View className="h-px bg-hairline" />
-
+          {/* Privacy-trust card — единственный info-блок в hero (2026-05-16
+              user: «удали верхнюю часть, оставь только про Номер скрыт»).
+              3-step row «Получите отклики / Посмотрите цены / Выберите
+              подходящего» удалён — повторял очевидное про процесс. */}
+          <View className="mt-2 rounded-xl border border-hairline bg-canvas-soft">
             <View className="flex-row items-start gap-3 px-5 py-5">
               <View className="h-10 w-10 items-center justify-center rounded-full bg-ink">
                 <Lock size={18} weight="bold" color={tc["on-primary"]} />
@@ -313,27 +302,3 @@ export default function NewOrderScreen() {
   );
 }
 
-// ----------------------------------------------------------------------------
-// StepItem — единичный пункт в горизонтальном 3-step row hero-блока.
-// Tinted circle (canvas-soft-2 + hairline) + Lucide-иконка + 2-строчный label.
-// Без декоративного фона — Vercel-эстетика, ink-on-canvas минимализм.
-// ----------------------------------------------------------------------------
-
-function StepItem({ icon: Icon, label }: { icon: IconComponent; label: string }) {
-  return (
-    <View className="flex-1 items-center gap-2">
-      {/* Кружок белый (bg-canvas) — выделяется на bg-canvas-soft карточке.
-          Размер 40dp согласован с Lock-кружком в privacy-блоке ниже. */}
-      <View className="h-10 w-10 items-center justify-center rounded-full bg-canvas border border-hairline">
-        <Icon size={18} weight="bold" color="currentColor" className="text-ink" />
-      </View>
-      <AppText
-        weight="medium"
-        className="text-caption text-ink text-center"
-        numberOfLines={3}
-      >
-        {label}
-      </AppText>
-    </View>
-  );
-}

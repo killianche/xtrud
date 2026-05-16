@@ -1,5 +1,63 @@
 # Session summary — 2026-05-15
 
+День разделён на три блока в порядке времени: **ночь** (Sprint P0 master-account), **день** (web-навигация и confirm), **поздний вечер** (Phosphor icons, мастер-редизайн, верификация). Каждый блок — отдельный раздел ниже.
+
+---
+
+# Ночь — Sprint P0 master-account
+
+## TL;DR
+
+За одну сессию закрыты **9 из 9 P0-задач** из [`research/MASTER_ACCOUNT_PLAN.md`](research/MASTER_ACCOUNT_PLAN.md) — функциональный блок master-аккаунта доведён до уровня готовности «Sprint 1». Master может полноценно зарегистрироваться, выбрать категории через bottom-sheet с поиском, сформировать прайс-лист с pre-defined услугами и placeholder-ценами, видеть лимит откликов 5/день в шапке, переписываться с клиентом с фото-вложениями. Клиент получил умный поиск услуг с поддержкой синонимов, морфологии, опечаток и неправильной раскладки.
+
+## Закрытые задачи (10 коммитов)
+
+| # | Задача | Commit | Сложность | Что |
+|---|---|---|---|---|
+| 1 | P0-1 | [`ec4be72`] | L | Унификация цен на `master_services` (миграция 0055 — DEPRECATE pricing_mode) |
+| 2 | P0-2 | [`34c6c9b`] | M | l2_id + l3_id в master_services + backfill (миграция 0056) |
+| 3 | P0-10 | [`c44471b`] | S | service_pricing_kind enum + 4 toggle UI (миграция 0057) |
+| 4 | P0-3 | [`24ab7a1`] | L | Иерархический picker категорий с поиском в onboarding |
+| 5 | docs | [`42a774b`] | — | N1-N4 master-home tasks + 13 client-side ideas |
+| 6 | P0-4 | [`a935d67`] | L | Pre-defined L3 услуги + автозаполнение + placeholder-цены (миграция 0058) |
+| 7 | P0-5 | [`9e59358`] | M | Daily response limit 5/день + бейдж + UI блокировок (миграция 0059) |
+| 8 | P0-7 | [`ba5d6ed`] | S | users.is_demo флаг + backfill 21 demo-master (миграция 0060) |
+| 9 | P0-6 | [`eb22593`] | M | Фото-attachments в чате (Storage + RLS + UI, миграция 0061) |
+| 10 | P0-NEW | [`38d0b5d`] | L | Умный поиск услуг (миграции 0062 + 0063 + thesaurus 86 терминов + JS раскладка-фикс) |
+| 11 | P0-8 | [`2f5cf0d`] | M | Главная мастера = лента 3 свежих заказов (вместо empty state) |
+| 12 | P0-9 | [doc-коммит] | S | Доки: STATUS, MASTER_ACCOUNT_SPEC, TASKS, SESSION_SUMMARY |
+
+## Новые правила и решения (ночь)
+
+- **Архитектура цен:** `master_services` — единственный источник истины. Поля `master_categories.pricing_mode/pricing/attributes` помечены DEPRECATED, не используются новым кодом, оставлены для backward compat с seed.
+- **Daily limit 5/день:** хардкод в trigger БД и RPC. В будущем — платная разблокировка через user-tier (как Яндекс 199 ₽/нед).
+- **Умный поиск:** UNION 3 слоёв (synonym 1.0 / FTS 0.7 / trigram 0.5×similarity) + раскладка-фикс на клиенте (2 параллельных запроса). Эталон Thumbtack.
+- **avg_check_rub** в `categories_l3` — источник для placeholder-цен в форме «Новая услуга».
+- **`is_demo` флаг** как инфраструктура для будущей фильтрации seed из публичной выдачи.
+
+## Новые компоненты / паттерны (ночь)
+
+- `<ResponseLimitBadge />` (`src/features/master-view/`) — компактный pill-бейдж лимита откликов в шапке master-главной.
+- `<CategoryChip />` (внутри `app/(onboarding)/master-categories.tsx`) — стандартизированный chip для multi-select категорий.
+- `formatServicePrice()` (`src/features/master-services/use-master-services.ts`) — единственный helper для отображения цены услуги. **Все потребители прайса обязаны использовать его**, не дублировать логику.
+- `useSearchCategories(query)` (`src/features/categories/`) — главный API для умного поиска. Возвращает `{hits, wasFlipped, flippedQuery}`. Cached 30s.
+- `flipLayout(input)` (`src/lib/keyboard-layout.ts`) — раскладка-фикс QWERTY↔ЙЦУКЕН на чистом JS, 35 пар символов.
+
+## Anti-patterns обнаруженные ночью
+
+- ❌ **Reading огромных Supabase-types output напрямую** — `generate_typescript_types` отдаёт 54+ КБ JSON, читать целиком переполняет контекст. Лучше: ручное обновление `database.ts` точечно для новых полей (мы знаем что добавили).
+- ❌ **`numeric` vs `real` в RETURN TABLE** PL/pgSQL — `similarity()` возвращает `real`, явное приведение к `numeric` падает с error 42804. Решение: declare колонки как `real` или явный `::real` cast.
+- ❌ **`window.scrollTo(0, X)` в RN-Web ScrollView** — не работает. Для тестов брать `document.body.innerText` через `preview_eval` без скролла.
+- ❌ **`tabBarBadge` для master/client разной семантики** — у клиента badge = unread responses, у мастера = unread feed. Уже корректно разделено в `_layout.tsx`.
+
+## Известные регрессии (ночь)
+
+- **Demo-логин падает в /verify** — «Database error querying schema» при `+79000000003 / 000000`. Воспроизводилось 2026-05-15 после миграций 0055-0063. В TASKS.md как открытый bug.
+
+---
+
+# День — web-навигация и confirm
+
 ## TL;DR
 
 Починены две системные web-проблемы: (1) кнопка «Выйти из аккаунта» не работала, потому что `Alert.alert` в react-native-web — no-op; (2) кнопка «Назад» уводила «куда попало» при переходах между detail-экранами, потому что Expo Router в `(tabs)` делает `history.replaceState` на cross-tab переходах, и ни `router.back()`, ни `window.history.back()` не возвращают к предыдущему экрану. Введены два общих хелпера: `confirmAsync()` (платформенно-зависимый confirm) и nav-history Zustand-стек (трекер pathname'ов независимо от browser/RN history). Оба фикса верифицированы в preview.
@@ -294,3 +352,81 @@
 
 - **WebShell** ([`src/components/WebShell.tsx`](src/components/WebShell.tsx)) — desktop navigation (≥768px) всё ещё использует Lucide (`Home/ClipboardList/MessageCircle/User`). Не трогал в этой итерации — user сказал «также я тебе в следующем сообщении укажу, где надо поставить эти иконки», жду список мест.
 - **Постепенная миграция Lucide → Phosphor** в legacy: ScreenHeader (back-иконка ChevronLeft), OrderRow, FeaturedRequests, кнопки в формах, status-индикаторы, list-rows. Делать по мере правки экранов, не отдельным sweep'ом.
+
+---
+
+# Поздняя ночь — фильтры поиска заказов: defaults из профиля + quick-select
+
+## TL;DR
+
+На `/orders/search` мастер при первом заходе сразу получает **defaults в фильтрах** из своих категорий профиля (`master_categories`) — релевантная выдача без ручной настройки. На `/orders/search/filters` добавлен блок **«Из вашего профиля»** — горизонтальный ряд chip'ов с цветными иконками L2 (Сантехника, Электрика…); тап = toggle прямо в store, без захода в полный multi-select picker.
+
+## Закрытые задачи
+
+1. **Store** [`src/features/orders/orders-search-filters-store.ts`](src/features/orders/orders-search-filters-store.ts) — добавлено поле `initializedForUserId: string | null` и action `initFromMasterCategories(userId, ids)`. Идемпотентность по `userId`: повторный вызов для того же мастера — no-op. После `clearAll` пустой scope не перезаливается, чтобы можно было увидеть «все категории». Logout/login другого юзера → defaults подставятся заново.
+2. **/orders/search/index.tsx** — подписался на `useMyMasterCategories(userId)`, `useEffect` вызывает `initFromMasterCategories` когда данные пришли.
+3. **/orders/search/filters.tsx** — тот же эффект продублирован (поддержка deep-link / refresh). Добавлен компонент `ProfileCategoryChip` (h-10 pill, accent-soft когда selected + Check-индикатор, иначе canvas + цветная Iconify-иконка категории). Блок «Из вашего профиля» рендерится сразу под trigger «Выберите категории», скрыт если у мастера 0 категорий.
+
+## Verify в preview
+
+✅ Trigger «Выбрано 3 · Сантехника, Электрика», chip'ы Сантехника/Электрика подсвечены accent-soft + ✓, кнопка «Применить · 3», «Сбросить все фильтры» доступна. TS clean.
+
+---
+
+# Поздняя ночь — мастер-верификация (часть 1: backend)
+
+## TL;DR
+
+Запущена опциональная фича верификации мастера: мастер загружает селфи + фото главной страницы паспорта → ждёт ручной проверки админом → после approval на профиле появляется badge «Паспорт подтверждён». В этой сессии — **только backend (миграция, RLS, Storage)**. Frontend (хуки, экран /profile/verification, nudge на /profile, badge у других юзеров) — следующая часть.
+
+## Закрытые задачи
+
+1. **Миграция** [`supabase/migrations/0070_master_verifications.sql`](supabase/migrations/0070_master_verifications.sql) применена в prod:
+   - ENUM `verification_status` (`pending / approved / rejected`).
+   - TABLE `master_verifications` (1:1 с `auth.users`, поля `selfie_path`, `passport_main_path`, `status`, `submitted_at`, `reviewed_at`, `reviewed_by`, `rejection_reason`).
+   - Индекс `(status, submitted_at DESC)` для будущего админ-листа pending.
+2. **RLS** — SELECT/INSERT/UPDATE/DELETE только owner. `INSERT` форсирует `status='pending'`. `UPDATE` разрешён только из `rejected → pending` (re-submit). Юзер физически не может сам выставить себе `approved`. Service-role (будущая админка) обходит RLS.
+3. **Trigger `sync_master_verification_level`** — при `approved` поднимает `master_profiles.verification_level` до ≥1, при revoke (approved → не-approved или DELETE row'а) сбрасывает обратно в 0. `verification_level` уже было в схеме — переиспользуем, не плодя `is_verified`.
+4. **PRIVATE Storage bucket `master-verifications`** (public=false) + 4 RLS policies (`INSERT/SELECT/UPDATE/DELETE` — только owner в свою папку `{user_id}/...`).
+5. **TS-типы регенерированы** — `Tables<"master_verifications">` и `Enums<"verification_status">` доступны.
+
+## Новые правила и решения
+
+- **PII в отдельной таблице, не в master_profiles** — `master_verifications` изолирует sensitive поля (пути к фото паспорта). Это даёт независимый scope RLS: можно дать публичному запросу читать `master_profiles.verification_level` (badge) без риска утечки путей к паспорту.
+- **Trigger SECURITY DEFINER** для sync `verification_level` — без `DEFINER` UPDATE из триггера упадёт на RLS `master_profiles`. **Why:** триггер должен иметь возможность поднять level даже когда автор изменения (админ через service_role или сам юзер при re-submit) не имеет прямого UPDATE-доступа к master_profiles.
+- **Path-only хранение в БД** — bucket-id фиксированный (`master-verifications`), в БД только `{user_id}/file.jpg`. Признанный паттерн в проекте (см. avatars, portfolio).
+- **DiceBear / Iconify CDN недопустимы для паспорта** — paspport-фотки идут в PRIVATE bucket, signed URLs (TTL ≤ 1h) только для самого юзера. Никаких publicUrl.
+
+## Новые компоненты / паттерны
+
+- **PRIVATE Storage bucket pattern** — `public=false` + RLS на `storage.objects` со scope по первому сегменту пути (`(storage.foldername(name))[1] = auth.uid()::text`). Использовать для PII (паспорт, документы, payouts).
+- **RLS-защита status enum** — `WITH CHECK` форсирует `status = 'pending'` на INSERT/UPDATE юзера. Service-role обходит. Паттерн «юзер пишет только пользовательский статус, админ — только админский».
+
+## Anti-patterns
+
+- ❌ **Public bucket для PII** — фото паспорта в `public=true` bucket даже с уникальным UUID-путём это утечка. Только private + signed URLs.
+- ❌ **Хранение verified-флага в публичной таблице без триггера** — если поле меняется отдельно от source-of-truth `master_verifications.status`, легко получить рассинхрон. Триггер — единственный путь sync.
+
+## Что НЕ сделано (часть 2 в следующей сессии)
+
+- Хуки `useMyVerification` / `useSubmitVerification` (`src/features/verification/`).
+- Экран `/profile/verification` (full-screen: инструкция, 2 image-picker'а, кнопка «Отправить на проверку», состояния pending/approved/rejected).
+- Nudge-карточка на `/profile/index.tsx` (только мастер): «Подтвердите личность» / «На проверке» / «Паспорт подтверждён ✓».
+- Badge «Паспорт подтверждён» на детальной странице мастера + в карточках мастеров.
+- Спецификация фичи в [`docs/VERIFICATION.md`](docs/VERIFICATION.md) — да, написана уже в этой сессии (см. файл).
+
+---
+
+# Поздняя ночь — аудит документации
+
+## TL;DR
+
+Прошёл по корню проекта + `docs/` + `legacy/` + `research/`, объединил два дубликата SESSION_SUMMARY за 2026-05-15 (night + day-evening), создал спецификацию [`docs/VERIFICATION.md`](docs/VERIFICATION.md) для новой фичи, обновил CLAUDE.md «Структура документации». Список «лишнего» к удалению предложен пользователю отдельным сообщением — без его явного «удаляй» ничего не трогается.
+
+## Объединено
+
+- **SESSION_SUMMARY_2026-05-15-night.md** → начало `SESSION_SUMMARY_2026-05-15.md` (раздел «Ночь»). Файл удалён. Нарушал правило CLAUDE.md «один файл за день, дописывать в конец, не плодить новые».
+
+## Создано
+
+- [`docs/VERIFICATION.md`](docs/VERIFICATION.md) — спецификация фичи мастер-верификации (схема БД, RLS, Storage bucket, planned UI flow, статусы, security).

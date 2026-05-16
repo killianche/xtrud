@@ -17,7 +17,15 @@
 
 ## 🚧 В работе сейчас
 
-_пусто_
+- 🚧 **Мастер-верификация (часть 2 — frontend)** — после части 1 (backend, миграция 0070, RLS, Storage, типы — done). Часть 2: хуки `useMyVerification`/`useSubmitVerification`, экран `/profile/verification`, nudge-карточка на `/profile`, badge «Паспорт подтверждён» у других юзеров. Спецификация — [`docs/VERIFICATION.md`](docs/VERIFICATION.md).
+
+---
+
+## ✅ Sprint K master-search + verification backend (2026-05-15 поздняя ночь)
+
+- [x] **Defaults фильтров поиска заказов из master_categories** — `/orders/search` при первом заходе мастера подставляет его профильные категории. Идемпотентно по userId. См. [`src/features/orders/orders-search-filters-store.ts`](src/features/orders/orders-search-filters-store.ts).
+- [x] **Quick-select chips «Из вашего профиля»** на /filters — toggle прямо из chip без захода в полный picker. См. [`app/(tabs)/orders/search/filters.tsx`](app/(tabs)/orders/search/filters.tsx).
+- [x] **Master verification backend** — миграция `0070_master_verifications` (enum + table + RLS + trigger + private storage bucket). Спецификация в [`docs/VERIFICATION.md`](docs/VERIFICATION.md).
 
 ---
 
@@ -58,7 +66,7 @@ _пусто_
 ### N-задачи (доработки master-главной из фидбека 2026-05-15)
 - [ ] **N1** — Убрать блок «Ваши категории» с master-главной (оставить только в профиле). См. [research/NEW_TASKS_MASTER_HOME.md](research/NEW_TASKS_MASTER_HOME.md).
 - [ ] **N2** — Убрать кнопку «+ Создать заказ» из master-режима (мастер не создаёт заказы).
-- [ ] **N3** — Добавить **«Поиск заказов» для мастера** — лента активных заявок клиентов с расширенными фильтрами (категория/L3 / город / район / срочность / бюджет). Использует тот же `useSearchCategories` инфраструктуру что P0-NEW.
+- [~] **N3** — «Поиск заказов» для мастера. **Сделано:** лента + multi-select L2 категорий + сортировка (новые/срочные) + defaults из master_categories + quick-select chips из профиля (2026-05-15). **Осталось:** фильтры по городу/району/бюджету/срочности.
 - [ ] **N4** — Спроектировать систему push-уведомлений (приложение + web): 7 событий мастера, native (FCM/APNs) + Web Push, quiet hours, preferences. Полный план в [research/NEW_TASKS_MASTER_HOME.md](research/NEW_TASKS_MASTER_HOME.md) §N4.
 
 ### Ещё одна задача наполнения данных
@@ -103,7 +111,7 @@ _Все открытые задачи которые подняли но не з
 
 ### 🔴 Критично для launch
 - [ ] **Real OTP** — выбрать SMS-провайдер (Exolve / smsc.ru / SMS Aero) + подключение через Supabase Auth
-- [ ] **Master verification UI** — пошаговый экран с паспортом + опытом + бейджи. Поле `verification_level` в БД есть.
+- [~] **Master verification UI** — backend готов 2026-05-15 (миграция 0070, RLS, private Storage bucket — см. [`docs/VERIFICATION.md`](docs/VERIFICATION.md)). Frontend часть 2 (хуки + экран /profile/verification + nudge + badge) — в работе.
 - [ ] **Master services CRUD UI** — таблица `master_services` есть, UI add/edit/delete нет
 - [ ] **Welcome onboarding slides** — 3-5 страниц до phone-экрана
 - [ ] **Vercel migration для web** — заменить deploy/web.sh + alanbani.ru на vercel-домен (пользователь сказал «пока не мигрируем»)

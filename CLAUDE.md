@@ -261,6 +261,22 @@ git push
 - **RLS включён на каждой таблице** с пользовательскими данными. Без исключений
 - Миграции — через файлы в `supabase/migrations/`, не правкой схемы вручную в дашборде
 
+### №6: auth-политика — никакого email
+
+xtrud **не использует email** ни для авторизации, ни для уведомлений, ни для контакта с пользователем. Идентификация — **только номер телефона** (SMS-OTP через Supabase Auth). В будущем добавится **логин + пароль** (поверх phone), но **email не появится никогда**.
+
+**Почему:** в Республике Ингушетия и регионах СНГ телефон — универсальный идентификатор; email используется редко, путает пользователей, и его потеря/смена создаёт точки отказа в восстановлении. WhatsApp-кнопка на мастер-профиле — отдельная история (sprint 0079), это для прямого контакта, не для аутентификации.
+
+**Правила для AI:**
+
+- ❌ НЕ запрашивать email в формах регистрации, онбординга, редактирования профиля, заказа.
+- ❌ НЕ показывать email в UI (settings, profile, header chips). Технический `auth.users.email = <phone>@xtrud-demo.local` существует только потому, что Supabase Auth требует email-колонку — это **синтетика**, в UI её прятать.
+- ❌ НЕ добавлять «Написать на email» в саппорт-секциях. Только Telegram / WhatsApp / в-приложении чат.
+- ❌ НЕ слать transactional/marketing email. Notifications — только Push (Expo) + Push-aware in-app banner.
+- ✅ Если в будущем добавляется email — только как **опциональный** канал «для бухгалтерии» (счета юр.лицам) и **только после явного согласования с пользователем-владельцем проекта**.
+
+При обнаружении email-полей или email-логики в legacy-коде/новых задачах — снести и заменить на phone/Telegram, либо явно отметить в отчёте «❓ нашёл email-зависимость, надо решить».
+
 ---
 
 ## Чек-лист перед началом любой работы
@@ -304,9 +320,20 @@ git push
 | `DESIGN.md` | **Текущая дизайн-система — Vercel-based** (Geist + Inter fallback, near-white canvas + ink primary, pill buttons, 12px card radius override). Активна с 2026-05-13. Это ВЕДУЩИЙ источник истины по визуалу. |
 | `CROSS_PLATFORM_RULES.md` | 20 жёстких правил вёрстки для iOS/Android/web (density-independent пиксели, размеры шрифтов и т.п.). Соседствует с DESIGN.md. |
 | `CATEGORIES_AND_PROFILES.md` | Таксономия услуг (10 L1 + 64 L2 + 290 L3), схема БД профилей, dual-role логика. Основной справочник по данным. |
-| `docs/ICONS.md` | **Цветные иконки категорий** через `getCategoryColorIconUrl` (Iconify CDN, twemoji + fluent-color). Маппинг L2 → SVG, правила добавления, где используется. Читать перед UI-задачами с категориями. |
+| `UI_PATTERNS.md` | Кук-бук «как делать страницы»: header / list / chip / hero / filters / empty-state. Перед проектированием любого нового экрана. |
+| `MASTER_ACCOUNT_SPEC.md` | Спецификация мастер-аккаунта (Sprint P0): прайс-лист, лимит откликов, фото в чате, умный поиск. История P0-1…P0-10. |
+| `MASTER_REDESIGN_SPEC.md` | Спецификация редизайна главной мастера (2026-05-15). Активная работа. |
+| `docs/ICONS.md` | **Цветные иконки категорий** через `getCategoryColorIconUrl` (Iconify CDN, twemoji + fluent-color). Маппинг L2 → SVG. Перед UI-задачами с категориями. |
+| `docs/UI_ICONS.md` | **Моно UI-иконки — Phosphor React Native** (с 2026-05-15). 6 weights, маппинг Lucide → Phosphor, размеры/active state. Перед любой UI-правкой с иконками. |
+| `docs/VERIFICATION.md` | **Мастер-верификация (паспорт):** схема БД (`master_verifications`), RLS, private Storage bucket, planned UI flow, security. Backend готов 2026-05-15. |
+| `docs/location-system.md` | Система гео: m2m мастер ↔ зоны работы (города/районы), схема `master_service_areas`. |
+| `docs/lifecycle.md` | **Единый источник истины** по lifecycle: 8 статусов order + 5 откликов, 15 переходов, audit log, cron, edge cases, RPC контракт. Перед любой правкой state-machine читать первым. |
+| `docs/order-states.md` | ⚠️ Legacy. Базовый state-machine (6 статусов, T1–T7). Расширен `lifecycle.md`. Читать только для исторической справки. |
+| `docs/chat-states.md` | State-machine чата: создание, unread-логика, lifecycle. |
 | `AUDIT_2026-05-12.md` | UX/UI аудит Sprint 21: 113 проблем (33🔴/47🟡/33🟢) с рекомендациями и Lazyweb-референсами. Читать перед редизайном. |
+| `SESSION_SUMMARY_YYYY-MM-DD.md` | Расширенные отчёты крупных сессий (по дате). Один файл за день, дописывать в конец, не плодить новые. |
 | `DEMO_ACCOUNTS.md` | Тестовые аккаунты для preview (10 клиентов + 20 мастеров) с логинами/паролями. |
+| `research/*.md` | Глубокие audit/research-доки (master-account план, US/RU master аудит, search-аудит, current-state). Источник для крупных решений; после реализации сверять с STATUS.md. |
 | `legacy/AUDIT_CONCEPT.md` | **Legacy.** Concept-уровневый аудит: 4 главных риска бизнес-модели + противоречия в продакт-доке (Sprint 1-я версия). |
 | `legacy/ROADMAP_2026-05-12.md` | **Legacy.** Roadmap Sprint 21. Текущий план — в `STATUS.md` + `TASKS.md`. |
 | `legacy/DESIGN_CALCOM.md`, `legacy/DESIGN_SYSTEM.md`, `legacy/DESIGN_REFERENCE_CALCOM.md` | **Legacy.** Cal.com-inspired дизайн-система, заменена Vercel 2026-05-13. |

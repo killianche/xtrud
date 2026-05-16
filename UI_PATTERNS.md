@@ -249,6 +249,8 @@ Middle slot — **псевдо-таб** (Pressable, НЕ настоящий Tabs
 
 **Файл:** [`src/components/OrderRow.tsx`](src/components/OrderRow.tsx) (эталон).
 
+**Canonical reference** — экран `/orders/search` ([`app/(tabs)/orders/search/index.tsx`](app/(tabs)/orders/search/index.tsx)). Зафиксирован 2026-05-15 как gold-standard для всех плоских inbox-листов в продукте: hairline-разделители без скруглений, inline-иконка 16px перед title, mono time справа, category-eyebrow, 2-line description, mono budget строкой, meta-row (urgency · location · опц. responses). Любой новый list-экран копирует именно эту визуальную структуру.
+
 **Стиль list-row (full-bleed):**
 
 ```tsx
@@ -289,6 +291,10 @@ Middle slot — **псевдо-таб** (Pressable, НЕ настоящий Tabs
   - `/orders/search` — лента всех open-заказов
   - `/orders` master tabs (Я откликнулся / Меня выбрали)
   - `MasterDashboardOrders` — дашборд на главной мастера
+
+**Видимость status-точки и лейбла («● Открыта», «● В работе», «● Завершён»):**
+- Default — **показывается** (передай `status={o.status}`). Используется в `/orders` (Мои заказы клиента / архив), в master-табах (Я откликнулся / Меня выбрали), в `MasterDashboardOrders` — там в одном списке могут быть разные статусы и status-метка несёт инфу.
+- На `/orders/search` — **скрыта** (`status` prop не передаётся). Феед фильтруется по `.eq("status","open")` на запросе, поэтому показывать «● Открыта» на каждой карточке — шумный noise: пользователь и так знает, что в поиске только открытые заявки. Закрытые / in_progress сюда никогда не попадают (фидбэк user 2026-05-15). Это часть canonical-дизайна `/orders/search`: meta-row начинается сразу с urgency.
 
 Если делаешь новый row-компонент (например, ChatRow) — копируй эту структуру.
 

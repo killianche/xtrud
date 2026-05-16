@@ -4,7 +4,115 @@
 
 ---
 
-## Текущее состояние (2026-05-15 ночь — массовая миграция Lucide → Phosphor)
+## Текущее состояние (2026-05-16 поздним вечером — services-suggest редизайн + новые pricing kinds)
+
+**Главное:** Доработки экрана `/profile/services-suggest` под фидбэк user:
+1. Убрал дефолтные ценники `≈ X ₽` из списка готовых услуг — список чистый.
+2. При выборе услуги цена не предзаполняется (placeholder «Цена», value пустой) — мастер сам вводит.
+3. Добавил 4 chip-варианта типа цены: **Точная / От / До / Договорная**. Раньше был только «от» (по сути `range`). Новые kinds потребовали миграции [`0080`](supabase/migrations/0080_service_pricing_kind_add_from_up_to.sql) — `ALTER TYPE service_pricing_kind ADD VALUE 'from', 'up_to'`.
+4. Блок «Своя услуга» поднял наверх (был в конце длинного списка) и сжал — теперь collapse-by-default pill `+ Своя услуга`, тап → компактная inline-форма (title + chip-kind + цена + кнопка).
+
+**Сопутствующие правки помимо services-suggest:**
+- [`use-master-services.ts`](src/features/master-services/use-master-services.ts) — `PRICING_KIND_LABELS`/`HINT`/`OPTIONS` для новых kinds. Новый `PRICING_KIND_OPTIONS` (5 kinds, без legacy `range`). `formatServicePrice` исправлен: `fixed` теперь даёт `«1 500 ₽»` (раньше ошибочно `«от 1 500 ₽»`), `up_to` → `«до X ₽»`.
+- [`MasterServicesList.tsx`](src/features/master-services/MasterServicesList.tsx) — read-only display на `/master/[id]` теперь корректно показывает все kinds (`fixed` без префикса, `up_to` с «до»).
+- [`MasterServicesSection.tsx`](src/features/master-services/MasterServicesSection.tsx) — CRUD-форма прайса в edit-master. State переименован `priceMin`→`priceValue`, `priceMax`→`priceMaxLegacy`. На submit kind `up_to` пишет value в `price_max`, остальные — в `price_min`. Picker больше не показывает `range` (но editing legacy `range`-записей работает).
+
+**Verify в preview:** ✅ tsc clean. Открыл `/profile/services-suggest?l2=plumbing` — список без ценников, «+ Своя услуга» вверху, тап на L3 раскрывает 4 chip-pill (Точная/От/До/Договорная) + пустое поле «Цена». Тап на «Своя услуга» → компактная форма раскрывается. Переключение на «Договорная» скрывает поле цены. 3 скриншота сохранены.
+
+**Что НЕ сделано / отложено:**
+- Backfill legacy `pricing_kind='range'` записей → `from`. Сейчас они читаемые, но «правильнее» мигрировать (отдельная миграция data-fix + потенциальный rebuild enum чтобы дропнуть значение — PG не даёт `DROP VALUE`).
+- `/orders/[id]` форма отклика мастера — там другой enum (`order_price_kind` с теми же значениями `fixed/from/up_to/negotiable`), формат уже корректный, не трогал.
+
+---
+
+## Прежнее состояние (2026-05-16 поздно — UX-доработки lifecycle + лого + reviews CTA)
+
+**Главное:** Доработки на основе фидбэка user после первого lifecycle-релиза:
+1. **«Прекратить сотрудничество» вместо «Открыть спор»** — спор слишком тяжёлый для нашего рынка; вместо него простая bilateral-отмена. Миграция 0077 + новая RPC `terminate_cooperation` + новый UI-кнопка.
+2. **«Вы откликнулись» badge** в `/orders/search` — мастер сразу видит, на какие заявки уже отправлял отклик.
+3. **Логотип xtrud вместо House** в TabBar (mobile) и WebShell (desktop) — фирменный SVG-маркер для «Главной».
+4. **«Как меня видят» CTA** в `/profile` — переход на свой публичный профиль с reviews (mutual reviews уже работают: оба написания + отображение, просто не было прямой ссылки).
+
+**Что сделано:**
+
+1. **Backend:**
+   - [`0077_terminate_cooperation_rpc.sql`](supabase/migrations/0077_terminate_cooperation_rpc.sql) применена к prod. RPC `terminate_cooperation(order_id, reason?)` — обе стороны (client/picked_master) могут перевести `in_progress`/`awaiting_confirmation` → `cancelled` с `cancel_reason='cooperation_ended_by_<role>'`. Push другой стороне, audit log `T6t`. Policy `orders_picked_master_lifecycle` расширена на `cancelled` в WITH CHECK.
+   - TS-типы регенерированы — есть `terminate_cooperation` в `Functions`.
+
+2. **Frontend — Lifecycle UI:**
+   - [`use-terminate-cooperation.ts`](src/features/orders/use-terminate-cooperation.ts) — новый хук (RPC + invalidations).
+   - [`app/(tabs)/orders/[id].tsx`](app/(tabs)/orders/[id].tsx) — заменил «Открыть спор» на «Прекратить сотрудничество» (destructive style, простой `confirmAsync` без формы — спор был с reason-textarea). Удалил `DisputeBottomSheet` (~60 строк, git-recoverable). Импорт `useOpenDispute` тоже убран. Disputed-статус и `open_dispute` RPC остаются в БД для будущей админки.
+
+3. **Frontend — «Я откликнулся» badge в поиске:**
+   - [`app/(tabs)/orders/search/index.tsx`](app/(tabs)/orders/search/index.tsx) — подписан на `useMyResponses`, собираю Set<order_id> non-withdrawn responses, передаю `alreadyResponded` в `<OrderRow>`.
+   - [`OrderRow.tsx`](src/components/OrderRow.tsx) — новый prop `alreadyResponded`. Если true: фон карточки `canvas-soft` вместо `canvas` (как «прочитанная» в Mail/Gmail) + accent-soft pill «Вы откликнулись» первым элементом в meta-row + accessibilityLabel дополнен.
+
+4. **Frontend — Логотип:**
+   - [`app/(tabs)/_layout.tsx`](app/(tabs)/_layout.tsx) — `tabBarIcon` для «Главной»: `<XtrudLogo size={24} color={color} />` вместо `<House />`. Active state теперь не через fill (логотип сам по себе сплошной), только через TabBar pill-background.
+   - [`WebShell.tsx`](src/components/WebShell.tsx) — desktop top-nav: для item `match='/'` рендерится `<XtrudLogo size={18} color={active ? ink : muted} />` через special-case, остальные пункты как обычно через `item.icon`.
+   - Логотип — существующий [`<XtrudLogo>`](src/components/XtrudLogo.tsx), inline SVG из react-native-svg (cross-platform).
+
+5. **Frontend — «Как меня видят»:**
+   - [`app/(tabs)/profile/index.tsx`](app/(tabs)/profile/index.tsx) — добавлены 2 CTA-пресссбла (client → `/client/{my_id}`, master → `/master/{my_id}`). На обеих страницах уже есть `<ReviewsSection>` со всеми отзывами от другой стороны (mutual reviews infrastructure уже была реализована, добавил только entry point).
+
+6. **Mutual reviews — проверка:** реализация уже есть end-to-end:
+   - Master review form: [`MasterReviewSection`](app/(tabs)/orders/[id].tsx:1858) на `/orders/[id]` для `completed`-заказов где мастер picked.
+   - Client review form: [`ClientReviewSection`](app/(tabs)/orders/[id].tsx:1725) аналогично для клиента-владельца.
+   - Display: [`<ReviewsSection>`](src/features/master-view/ReviewsSection.tsx) на `/client/[id]` (`direction='master_to_client'`) и `/master/[id]` (`direction='client_to_master'`).
+   - DB trigger `recalc_master_rating` (миграция 0016) обновляет рейтинги для обеих сторон.
+
+**Verify в preview:** tsc clean. Скриншот показал:
+- Логотип xtrud в TabBar (нижний левый, active с pill-подложкой).
+- Логотип xtrud в desktop header (рядом с brand-text).
+- Все остальные табы работают (поиск, чаты, профиль).
+
+**Что НЕ сделано:**
+- Удалить `useOpenDispute` хук и RPC `open_dispute` из БД — оставил для будущей админки. Если решим что не нужно — отдельной миграцией.
+- E2E-тест нового flow «Прекратить сотрудничество» (нет настроенного Maestro/Playwright под этот сценарий).
+- Notifications cascade под `cooperation_terminated` — push идёт, но без cascade-warning'ов.
+
+---
+
+## Прежнее состояние (2026-05-16 — расширенный lifecycle заказа v2)
+
+**Главное:** Расширен state-machine заказа с 6 до 8 статусов + 15 переходов. Добавлены `awaiting_confirmation` (мастер пометил выполнено, клиент ждёт 72ч) и `disputed` (открытый спор, SLA саппорта 5 рабочих дней). Полностью реализован lifecycle: backend (6 миграций), frontend (5 хуков + 2 секции в /orders/[id]). Спецификация — [`docs/lifecycle.md`](docs/lifecycle.md).
+
+**Что сделано:**
+
+1. **Аналитика** — [`docs/lifecycle.md`](docs/lifecycle.md), 13 разделов: research по Profi.ru / YouDo / TaskRabbit / Thumbtack / Airbnb / Uber, full state diagram (8 статусов, 15 transitions T1–T15), edge cases, audit log, карма-предложения.
+2. **Backend (6 миграций, все применены к prod):**
+   - `0071_lifecycle_enum_additions.sql` — `ALTER TYPE order_status ADD VALUE awaiting_confirmation, disputed`. Вынесено отдельной миграцией (PG-ограничение).
+   - `0072_lifecycle_columns_and_constraints.sql` — 12 новых колонок (picked_at, master_marked_done_at, awaiting_confirmation_until, completed_at, completion_kind, last_activity_at, cancelled_by/_reason, dispute_*, resolved_*, resolution_kind) + 3 consistency-CHECK + индексы. Исправлен баг `orders_picked_only_if_in_progress`. Default `expires_at` 30d→14d.
+   - `0073_order_status_log.sql` — audit log таблица + AFTER UPDATE trigger + backfill.
+   - `0074_lifecycle_rpcs.sql` — 5 RPCs: `withdraw_response` (T15), `mark_order_done` (T8), `confirm_completion` (T4/T5), `open_dispute` (T10/T12), `reopen_order` (T9). Все SECURITY INVOKER + push + audit log.
+   - `0075_lifecycle_crons.sql` — 2 ночных pg_cron: `nightly_auto_confirm` (04:00 UTC, T11) и `nightly_cancel_stale` (05:00 UTC, T13 после 30d). Plus trigger `trg_bump_order_activity_on_message`.
+   - `0076_lifecycle_rls.sql` — DROP `orders_picked_master_can_complete`, новая `orders_picked_master_lifecycle`, расширены owner/read policies.
+3. **TS-типы регенерированы** ([`src/types/database.ts`](src/types/database.ts)) — новые enums, RPCs, columns, table.
+4. **Frontend — 5 хуков** в [`src/features/orders/`](src/features/orders/): `use-withdraw-response`, `use-mark-order-done`, `use-confirm-completion`, `use-open-dispute`, `use-reopen-order` (plus pure-helper `canReopenOrder`). `use-complete-order` — deprecated-обёртка над `useConfirmCompletion` для backwards-compat.
+5. **Frontend — UI:**
+   - [`app/(tabs)/orders/[id].tsx`](app/(tabs)/orders/[id].tsx): `CompletionSection` полностью переписан (role × status × CTA matrix), новые `ReopenSection` и `DisputeBottomSheet`, кнопка «Отозвать отклик» в `MasterResponseSection`.
+   - [`OrderStatusBadge.tsx`](src/components/OrderStatusBadge.tsx) + [`OrderRow.tsx`](src/components/OrderRow.tsx) — 2 новых статуса (awaiting_confirmation → accent-soft, disputed → error-soft).
+   - [`MasterDashboardOrders.isActiveResponse`](src/features/master-view/MasterDashboardOrders.tsx) — исключает `expired`/`disputed`/`awaiting_confirmation` в дополнение к `completed`/`cancelled`.
+6. **Verify в preview:** ✅ tsc clean. Открыл `/orders/{id}` для master + in_progress — рендерятся «Работа выполнена», caption «Клиент получит уведомление...», «Открыть спор», «Ваш отклик» card. Console clean. Скриншот сохранён.
+
+**Bonus баг-фикс (предыдущий коммит этой сессии):** `MasterDashboardOrders.isActiveResponse` дублировал accepted-отклики в табах «Меня выбрали» и «Я откликнулся» — добавлен `respStatus === 'accepted' → return false`.
+
+**Что НЕ сделано (deferred на v2):**
+- Карма-система (§8 lifecycle.md): таблица `user_reputation` + soft-warn/hide-profile thresholds. Сначала собираем данные через `order_status_log`.
+- Double-blind отзывы (§6).
+- Notifications cascade warnings (§5.2): T-7d / T-1d expire / T+24h-48h awaiting / T+1/7/13 review reminders.
+- `nightly_close_review_windows` cron.
+- Admin UI для саппорта (T14).
+- Client/master delete → SET NULL.
+
+**Anti-patterns пойманные:**
+- `ALTER TYPE ENUM ADD VALUE` нельзя в одной транзакции с использованием нового значения — split на 2 миграции.
+- Старый constraint `orders_picked_only_if_in_progress` блокировал бы T6, заменён на `orders_picked_only_after_accept` (picked NOT NULL ⟹ status ∈ workflow-set).
+- Без `last_activity_at` cron `cancel_stale_in_progress` ничего бы не отменял — добавили + bump-trigger на messages.
+
+---
+
+## Прежнее состояние (2026-05-15 ночь — массовая миграция Lucide → Phosphor)
 
 **Главное:** Закончил перенос **всего UI** с Lucide React Native на Phosphor React Native — продолжение work'а после Phosphor в TabBar (коммит `5044f53`). 56 файлов, ~250 use-site'ов, скрипт [`scripts/migrate-lucide-to-phosphor.mjs`](scripts/migrate-lucide-to-phosphor.mjs) для механической части + точечные правки для Star fill / Image conflict / generic types. Категорийные иконки (Iconify CDN цветные + Lucide моно-fallback для не-mapped L2) — НЕ тронуты по правилу user'а «иконки категорий хорошие, не трогать».
 

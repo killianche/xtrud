@@ -77,3 +77,4 @@ memory/
 
 # Claude Code локальные настройки — личные, не команды
 .claude/settings.local.json
+.claude/scheduled_tasks.lock

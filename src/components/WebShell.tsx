@@ -91,15 +91,18 @@ export function WebShell({ children, chatsBadge, ordersBadge }: WebShellProps) {
           className="mx-auto w-full flex-row items-center justify-between px-8 py-3"
           style={{ maxWidth: 1120 }}
         >
-          {/* Logo + brand */}
+          {/* Brand-mark — XtrudLogo (тот же что в TabBar для главной).
+              Раньше был текст «xtrud» — но он дублировался с hero-page
+              где «xtrud»+локация (фидбек user 2026-05-16: «xtrud 2 раза
+              написано»). Теперь WebShell использует только icon как
+              app-shell brand, а page hero оставляет полный «xtrud». */}
           <Pressable
             accessibilityRole="link"
+            accessibilityLabel="На главную"
             onPress={() => router.push("/(tabs)")}
             className="hover:opacity-70"
           >
-            <AppText weight="display" className="text-title-lg tracking-tight text-ink">
-              xtrud
-            </AppText>
+            <XtrudLogo size={28} color={tc.ink} />
           </Pressable>
 
           {/* Nav links */}

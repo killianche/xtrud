@@ -1,16 +1,23 @@
 /**
  * Typeahead-поиск услуг — паттерн Яндекс.Услуги.
  *
- * UX (точная копия скрина-эталона):
- *   1. Drag-handle сверху (декоративный, сигнал «modal-like»)
- *   2. Большой инпут (display-md, bold) + X-кнопка clear справа
- *   3. Тонкая hairline-линия под инпутом
+ * UX:
+ *   1. Большой инпут (display-md, bold) + X-кнопка clear справа
+ *   2. Тонкая hairline-линия под инпутом
+ *   3. Banner «Возможно, вы искали: <flipped>» если RPC отдал результат после раскладки-fix
  *   4. Заголовок секции «Подходящие услуги или специалисты» (mute, sm)
  *   5. Список услуг — каждая в одну строку, semibold
  *      Подсветка совпавшей подстроки: **жирная чёрная**, остальная — серая mute.
  *
- * Источник данных: L2 (видимые) + L3 от этих L2 — через `useSearchableServices`.
- * Фильтр клиент-сайд (~60 записей, мгновенно).
+ * **Источник данных (2026-05-16):**
+ *   - Запрос пустой → `useSearchableServices` (browse-mode, плоский список L2+L3, ~60 записей).
+ *   - Запрос ≥2 символов → `useSearchCategories` (RPC `search_categories`):
+ *       synonym (`category_terms`) + FTS (`russian` tsvector) + trigram (`pg_trgm`)
+ *       + раскладка-fix («jhjnf» → «работа»).
+ *   Раньше использовался ТОЛЬКО client-side ILIKE — synonym/FTS/раскладка-fix
+ *   были написаны в БД, но не вызывались из UI. Симптом: поиск «обои» давал 0,
+ *   хотя synonym `обои → finishing` лежал в БД. См.
+ *   `.claude/rules/connect-the-dots.md` — правило заведено по этому случаю.
  *
  * Тап по строке → /category/[l2_id]. Если type=l3 → переход на ту же L2
  * (детальная фильтрация по l3 — отдельной задачей).
@@ -22,9 +29,17 @@ import { useCallback, useMemo, useRef, useState } from "react";
 import { FlatList, Pressable, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
+import { useSearchCategories } from "@/features/categories/use-search-categories";
 import { useSearchableServices } from "@/features/categories/use-searchable-services";
-import { filterServicesByQuery, highlightMatch } from "@/lib/highlight-match";
+import { highlightMatch } from "@/lib/highlight-match";
 import { useSafeBack } from "@/lib/use-safe-back";
+
+interface SearchListItem {
+  id: string;
+  l2_id: string;
+  name_ru: string;
+  type: "l2" | "l3";
+}
 
 export default function SearchScreen() {
   const insets = useSafeAreaInsets();
@@ -45,13 +60,42 @@ export default function SearchScreen() {
     }, []),
   );
 
-  const { data: services = [], isLoading } = useSearchableServices();
+  const trimmedQuery = query.trim();
+  const isBrowseMode = trimmedQuery.length < 2;
 
-  // Пустой query → показываем все услуги (browse-mode). Любой ввод → фильтр.
-  const results = useMemo(
-    () => filterServicesByQuery(services, query, 80),
-    [services, query],
+  // Browse-режим (пустой query / 1 символ) — плоский список всех видимых L2+L3.
+  // Не использует RPC: server-roundtrip на каждое нажатие тяжелее чем in-memory
+  // фильтр по 60 записям.
+  const { data: services = [], isLoading: browseLoading } = useSearchableServices();
+
+  // Search-режим (≥2 символов) — RPC с synonym/FTS/trigram + раскладка-fix.
+  // RPC возвращает score-ranked hits; client-side фильтр не нужен.
+  const { data: searchResult, isLoading: searchLoading } = useSearchCategories(
+    trimmedQuery,
+    20,
   );
+
+  const results: SearchListItem[] = useMemo(() => {
+    if (isBrowseMode) {
+      return services.slice(0, 80).map((s) => ({
+        id: s.id,
+        l2_id: s.l2_id,
+        name_ru: s.name_ru,
+        type: s.type,
+      }));
+    }
+    if (!searchResult) return [];
+    return searchResult.hits.map((h) => ({
+      id: h.id,
+      l2_id: h.l2_id,
+      name_ru: h.name_ru,
+      type: h.kind,
+    }));
+  }, [isBrowseMode, services, searchResult]);
+
+  const isLoading = isBrowseMode ? browseLoading : searchLoading;
+  const wasFlipped = !isBrowseMode && (searchResult?.wasFlipped ?? false);
+  const flippedQuery = !isBrowseMode ? searchResult?.flippedQuery ?? null : null;
 
   return (
     <View className="flex-1 bg-canvas" style={{ paddingTop: insets.top }}>
@@ -109,6 +153,20 @@ export default function SearchScreen() {
       {/* Hairline под инпутом. */}
       <View className="mx-5 h-px bg-hairline" />
 
+      {/* Banner «Возможно, вы искали ...» — Google-pattern. Появляется когда
+          исходный query 0 хитов, а RPC нашёл flipped (например, набрал «jhjnf»
+          в латинской раскладке — реально хотел «работа»). */}
+      {wasFlipped && flippedQuery ? (
+        <View className="mx-5 mt-3 rounded-md border border-hairline bg-canvas-soft px-3 py-2">
+          <AppText className="text-caption text-mute">
+            Возможно, вы искали:{" "}
+            <AppText weight="semibold" className="text-ink">
+              {flippedQuery}
+            </AppText>
+          </AppText>
+        </View>
+      ) : null}
+
       {/* Список услуг. Пустой query → browse (все категории), есть query →
           фильтр с bold-подсветкой совпадений. */}
       {isLoading ? (
@@ -148,7 +206,10 @@ export default function SearchScreen() {
               paddingBottom: insets.bottom + 24,
             }}
           renderItem={({ item }) => {
-            const segments = highlightMatch(item.name_ru, query);
+            // Для wasFlipped подсвечиваем flippedQuery (по нему искали), а не
+            // оригинальный набор-в-неправильной-раскладке.
+            const highlightQuery = wasFlipped && flippedQuery ? flippedQuery : query;
+            const segments = highlightMatch(item.name_ru, highlightQuery);
             return (
               <Pressable
                 accessibilityRole="button"

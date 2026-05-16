@@ -1612,7 +1612,13 @@ export type Database = {
       response_status: "sent" | "viewed" | "accepted" | "rejected" | "withdrawn"
       review_direction: "client_to_master" | "master_to_client"
       review_status: "visible" | "hidden" | "pending"
-      service_pricing_kind: "fixed" | "from" | "up_to" | "range" | "hourly" | "quote"
+      service_pricing_kind:
+        | "fixed"
+        | "range"
+        | "hourly"
+        | "quote"
+        | "from"
+        | "up_to"
       service_unit: "per_hour" | "per_task" | "per_m2" | "per_day"
       tax_status:
         | "individual"
@@ -1804,7 +1810,14 @@ export const Constants = {
       response_status: ["sent", "viewed", "accepted", "rejected", "withdrawn"],
       review_direction: ["client_to_master", "master_to_client"],
       review_status: ["visible", "hidden", "pending"],
-      service_pricing_kind: ["fixed", "from", "up_to", "range", "hourly", "quote"],
+      service_pricing_kind: [
+        "fixed",
+        "range",
+        "hourly",
+        "quote",
+        "from",
+        "up_to",
+      ],
       service_unit: ["per_hour", "per_task", "per_m2", "per_day"],
       tax_status: [
         "individual",

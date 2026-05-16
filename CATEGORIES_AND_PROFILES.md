@@ -91,14 +91,53 @@
 - `turnkey` — Стройка дома под ключ | `Home` | 2 500 000 ₽ | month
 
 ##### L2 — Отделочные работы `finishing` — `Paintbrush`
-- `plaster` — Штукатурка стен | `Paintbrush` | 350 ₽/м² | week
-- `putty` — Шпаклёвка | `Paintbrush` | 250 ₽/м² | week
-- `painting-interior` — Покраска стен / потолков | `Paintbrush` | 200 ₽/м² | week
-- `wallpaper` — Поклейка обоев | `Layers` | 250 ₽/м² | week
-- `tiling-floor` — Укладка плитки на пол | `Grid3x3` | 800 ₽/м² | week
-- `tiling-wall` — Облицовка стен плиткой | `Grid3x3` | 900 ₽/м² | week
-- `laminate` — Укладка ламината / паркета | `Grid3x3` | 400 ₽/м² | week
-- `floor-screed` — Стяжка пола | `Layers` | 600 ₽/м² | week
+> ⚠️ **DEPRECATED (2026-05-16):** L2 `finishing` помечен `is_visible=false`. Был задуман как агрегатор «всё про отделку», но потом разбит на отдельные L2 (`painting`, `tiling`, `drywall`, `floors`, `ceilings` и т.д.). L3 ниже фактически живут в новых L2 — см. соответствующие разделы. Этот блок оставлен для исторической справки.
+>
+> **Где живёт что:**
+> - Штукатурка, шпаклёвка, покраска, **обои**, декоративные покрытия → L2 `painting` (см. ниже)
+> - Плитка → L2 `tiling`
+> - Полы / ламинат / стяжка → L2 `floors`
+> - Гипсокартон → L2 `drywall`
+> - Потолки → L2 `ceilings` / `tension-ceilings`
+
+##### L2 — Штукатурка, шпаклёвка, покраска `painting` — `Paintbrush`
+**Покраска (sort 10..70):**
+- `paint-walls` — Покраска стен | `Paintbrush` | 350 ₽/м² | week
+- `paint-ceiling` — Покраска потолка | `Paintbrush` | 400 ₽/м² | week
+- `paint-facade` — Покраска фасада | `Paintbrush` | 500 ₽/м² | week
+- `paint-radiator` — Покраска радиаторов / труб | `Paintbrush` | 800 ₽ | week
+- `paint-finish-putty` — Финишная шпаклёвка под покраску | `Paintbrush` | 250 ₽/м² | week
+- `paint-sanding` — Шлифовка стен | `Paintbrush` | 200 ₽/м² | week
+- `paint-decorative` — Декоративная покраска | `Paintbrush` | 1 200 ₽/м² | week
+
+**Обои (sort 80..150, добавлено 2026-05-16):**
+- `wallpaper-vinyl` — Поклейка виниловых обоев | `Layers` | 350 ₽/м² | week
+- `wallpaper-fleece` — Поклейка флизелиновых обоев | `Layers` | 400 ₽/м² | week
+- `wallpaper-paper` — Поклейка бумажных обоев | `Layers` | 250 ₽/м² | week
+- `wallpaper-paintable` — Поклейка обоев под покраску | `Layers` | 300 ₽/м² | week
+- `wallpaper-photo` — Поклейка фотообоев | `Image` | 450 ₽/м² | week
+- `wallpaper-liquid` — Нанесение жидких обоев | `Droplet` | 600 ₽/м² | week
+- `wallpaper-removal` — Удаление старых обоев | `Trash2` | 150 ₽/м² | week
+- `wallpaper-repair` — Ремонт обоев (стыки, пузыри) | `Wrench` | 500 ₽ | week
+
+**Декоративная штукатурка (sort 160..190, добавлено 2026-05-16):**
+- `plaster-venetian` — Венецианская штукатурка | `Sparkles` | 1 500 ₽/м² | month
+- `plaster-koroed` — Штукатурка короед | `Layers` | 500 ₽/м² | month
+- `plaster-silk` — Шёлковая штукатурка | `Sparkles` | 1 200 ₽/м² | month
+- `plaster-microcement` — Микроцемент / арт-бетон | `Square` | 1 800 ₽/м² | month
+
+**Базовая штукатурка / шпаклёвка (sort 200..250, перенесено из deprecated `plaster-putty` в 2026-05-16):**
+- `plaster-machine` — Машинная штукатурка | `Paintbrush` | 350 ₽/м² | week
+- `plaster-manual` — Ручная штукатурка | `Paintbrush` | 400 ₽/м² | week
+- `plaster-beacons` — Штукатурка по маякам | `Paintbrush` | 450 ₽/м² | week
+- `putty-walls` — Шпаклёвка стен | `Paintbrush` | 250 ₽/м² | week
+- `putty-ceiling` — Шпаклёвка потолка | `Paintbrush` | 280 ₽/м² | week
+- `walls-level` — Выравнивание стен | `Paintbrush` | 350 ₽/м² | week
+
+**Известные synonyms в `category_terms`:** обои, оклейка, поклеить обои, переклеить, флизелин, флизелиновые, винил, виниловые, бумажные обои, фотообои, жидкие обои, снять/удалить/содрать обои, ремонт обоев, декоративная штукатурка, декоратив, фактурка, венецианка, венецианская, короед, шёлковая штукатурка, микроцемент, арт-бетон, бетон-эффект.
+
+##### L2 — Плитка и мозаика, ламинат, стяжка
+Перенесено в L2 `tiling` (плитка), `floors` (ламинат, стяжка), `drywall` (гипсокартон). См. таблицу всех L2 ниже.
 
 ##### L2 — Электрика `electrical` — `Zap`
 - `outlet-replace` — Замена розетки / выключателя | `Plug` | 800 ₽ | urgent

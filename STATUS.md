@@ -4,7 +4,42 @@
 
 ---
 
-## Текущее состояние (2026-05-16 ночь — комплексный аудит 4 параллельными агентами)
+## Текущее состояние (2026-05-16 поздно ночью — search RPC wired up + walls/decor таксономия)
+
+**Главное:** Закрыты 3 root cause бага «поиск «обои» → 0 результатов» + заведено новое правило про **«готовый бэк, не подключён в UI»**.
+
+**Что починили:**
+1. **Search-экран подключён к RPC.** `app/(tabs)/search.tsx` теперь использует `useSearchCategories` (RPC `search_categories` с synonym/FTS/trigram/раскладка-fix) вместо client-side ILIKE через `useSearchableServices`. Запрос «обои» → возвращает L2 `painting` (по synonym) + L3 `wallpaper-vinyl`/`wallpaper-fleece`/... (по trigram/FTS).
+2. **Синоним «обои» перевешен с скрытого `finishing` на видимый `painting`.** Миграция [`0082`](supabase/migrations/0082_walls_decor_taxonomy.sql).
+3. **Таксономия стен/декора расширена** (12 новых L3, согласно competitor audit Profi.ru / Яндекс / Avito):
+   - 8 L3 для обоев под `painting`: `wallpaper-vinyl`, `wallpaper-fleece`, `wallpaper-paper`, `wallpaper-paintable`, `wallpaper-photo`, `wallpaper-liquid`, `wallpaper-removal`, `wallpaper-repair`.
+   - 4 L3 декоративной штукатурки под `painting`: `plaster-venetian`, `plaster-koroed`, `plaster-silk`, `plaster-microcement`.
+4. **18+ синонимов в `category_terms`:** оклейка, поклеить, флизелин, винил, фотообои, жидкие обои, удалить/содрать обои, декоративная штукатурка, венецианка, короед, микроцемент, арт-бетон, и т.д.
+
+**Новое правило для AI-сессий:** [`.claude/rules/connect-the-dots.md`](.claude/rules/connect-the-dots.md) — каждый написанный RPC / hook / migration обязан иметь пометку «где используется в UI». Если ещё нигде — TODO в STATUS.md, не «допилим в следующем спринте».
+
+**Файлы:**
+- [`app/(tabs)/search.tsx`](app/(tabs)/search.tsx) — переключение на `useSearchCategories`, удаление `filterServicesByQuery` / `useSearchableServices` импортов.
+- [`supabase/migrations/0082_walls_decor_taxonomy.sql`](supabase/migrations/0082_walls_decor_taxonomy.sql) — 12 L3 + 18 synonyms + перевязка `обои → painting`.
+- [`CATEGORIES_AND_PROFILES.md`](CATEGORIES_AND_PROFILES.md) — раздел Painting обновлён с новыми L3.
+- [`src/types/database.ts`](src/types/database.ts) — regenerated.
+
+**Verify:** `SELECT * FROM search_categories('обои', 10)` после миграции возвращает 9 хитов (L2 painting + 8 wallpaper L3). UI `/search` с query=«обои» теперь покажет список услуг.
+
+**Готовый бэк, не подключён в UI (раздел для отслеживания):**
+
+| Что | Где написано | Где НЕ подключено | Приоритет |
+|-----|-------------|-------------------|-----------|
+| ✅ ~~RPC `search_categories`~~ | `supabase/migrations/0074_*.sql` | ~~`app/(tabs)/search.tsx`~~ — **подключено 2026-05-16** | DONE |
+| ⚠️ Новый L2 `wall-decor` (молдинги, лепнина, 3D-панели, буазери, отделка тканью) | Research-агент 2026-05-16: подтверждено как пропуск | Не создано — нужен новый цветной icon в Iconify (twemoji/fluent-color) + согласование с пользователем | LOW (нишевое для Ингушетии) |
+
+**Отложено сознательно:**
+- L2 `wall-decor` (декоративные элементы стен) — отложено: требует icon-согласования. Заведено как блокер ниже.
+- L3 `mural-painting` / `wall-cork` — отложено пока нет ни одного мастера такого профиля (research-агент: «пустой L3 → empty-state, вреден»).
+
+---
+
+## Прежнее состояние (2026-05-16 ночь — комплексный аудит 4 параллельными агентами)
 
 **Главное:** Полный аудит проекта в 4 параллельных deep-dive'а: внутренний код-инвентарь (Explore agent), RU-конкуренты 2024-2026 (general-purpose), Global-конкуренты 2024-2026 (general-purpose), AI/modern-tech 2024-2026 (general-purpose). Синтез в `AUDIT_2026-05-16.md`.
 

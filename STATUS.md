@@ -4,7 +4,71 @@
 
 ---
 
-## Текущее состояние (2026-05-16 поздним вечером — services-suggest редизайн + новые pricing kinds)
+## Текущее состояние (2026-05-16 ночь — комплексный аудит 4 параллельными агентами)
+
+**Главное:** Полный аудит проекта в 4 параллельных deep-dive'а: внутренний код-инвентарь (Explore agent), RU-конкуренты 2024-2026 (general-purpose), Global-конкуренты 2024-2026 (general-purpose), AI/modern-tech 2024-2026 (general-purpose). Синтез в `AUDIT_2026-05-16.md`.
+
+**Ключевые выводы:**
+1. **Проект на ~75% MVP** — backend production-ready (80 миграций), frontend покрывает core flow (auth → onboarding → lifecycle 8 статусов → chats → reviews → mutual rating). Code clean (0 ts-ignore, 0 console.log).
+2. **Индустрия ушла в AI-эру 2024-2026:** Thumbtack+Angi в ChatGPT, Booksy в Google AI Mode, Avito Avi+Avi Pro (12 млрд ₽), Алиса AI с агентом записи на 40K салонов, Avito Подработка ИИ-колл-центр (x2 конверсия). У xtrud — 0 AI-фич, без них к 2027 будет устаревшим.
+3. **Юла угрожает USP:** 50 free откликов/день, безлимит 95 ₽/мес — у нас 5/день. Удержание через master-tools и AI — survival.
+4. **Боль конкурентов = наша возможность:** Profi/Avito/YouDo массово теряют доверие исполнителей (фейковые заказы, удаление позитивных отзывов, блокировки 6-летних аккаунтов). Наш free-tier + прозрачность = острейший USP когда-либо.
+
+**Артефакты аудита:**
+- [`AUDIT_2026-05-16.md`](AUDIT_2026-05-16.md) — финальный синтез: что есть → чего нет → 35 фич с приоритезацией + Sprint 22-25 план
+- [`research/INTERNAL_CODE_AUDIT_2026-05-16.md`](research/INTERNAL_CODE_AUDIT_2026-05-16.md) — что реально в коде vs документации
+- [`research/RU_COMPETITORS_2026-05-16.md`](research/RU_COMPETITORS_2026-05-16.md) — Profi/Я.Услуги/Avito/YouDo/Юла/Workle с фокусом на 2024-2026 новости
+- [`research/GLOBAL_COMPETITORS_2026-05-16.md`](research/GLOBAL_COMPETITORS_2026-05-16.md) — 14 западных платформ
+- [`research/AI_MODERN_TECH_2026-05-16.md`](research/AI_MODERN_TECH_2026-05-16.md) — tech-stack рекомендации (Claude Haiku, Replicate, Sumsub, МТС Exolve, Telegram MA), цены, AI-bookings
+
+**Phase 1 must-have (Sprint 22-25, ~8 недель):** master verification frontend, обязательный прайс-лист (drop «договорная» default), дашборд статистики мастеру, «Время первого ответа» бейдж + lead-decay, шаблоны быстрых ответов, Instant Match push, AI-генератор описания услуги (фото→текст+теги), AI-фильтр спам-откликов (embedding sim), OpenAI Moderation на UGC, public master pages с schema.org для SEO/Google AI, real OTP, AI-визард создания заявки (голос/текст→JSON), Telegram Mini App + @xtrudbot AI-агент. Бюджет AI-stack $50-150/мес.
+
+---
+
+## Прежнее состояние (2026-05-16 поздно — desktop UX: header consolidation + sticky + chips inline + back на auth)
+
+**Главное:** 4 правки desktop UX по фидбэку user, ушедших одним блоком:
+
+1. **WebShell header consolidation на desktop.** Раньше на desktop было 2 хедера один над другим: WebShell (logo + nav + theme + avatar) + внутренний `<TopBar>` главной (logo + «xtrud» + CitySelector + Войти). Дублировал визуально. Теперь CitySelector + auth-кнопка (Войти / аватар) живут **в WebShell**, а `<TopBar>` главной скрывается через `isDesktopWeb`-флаг. На mobile (где WebShell не активен) `<TopBar>` остаётся как раньше.
+2. **Back-кнопка на `/auth/phone`.** Раньше анон-пользователь, нажавший «Войти» и передумавший вводить номер, оказывался в тупике (web — нет swipe-back, native — `headerShown:false`). Добавлен CaretLeft + `useSafeBack("/")` сверху экрана.
+3. **Sticky category-header на desktop.** `/category/[id]` имел auto-hide шапки на скролле (Telegram/iOS-style — скрывается при скролле вниз, появляется при скролле вверх). На широком экране это раздражает: пользователь не хочет терять контекст «Сантехника + фильтры». Hide-on-scroll отключён при `isDesktopWeb`.
+4. **Chips inline с заголовком на desktop.** В `/category/[id]` чипы Город / Услуга / Сортировка раньше рисовались строкой ниже title. На широком экране пустое место справа от заголовка не использовалось. Теперь на desktop chips рендерятся в той же строке, справа (по запросу user «чтобы на одном метре находились»). На mobile сохранён прежний layout (chips ниже title — узкий экран не вмещает 3 pill + back + title).
+
+**Файлы:**
+- [`src/components/WebShell.tsx`](src/components/WebShell.tsx) — добавлены CitySelector + auth-button (Войти/Avatar) в right actions, удалена отдельная аватар-кнопка с фейк-User-иконкой.
+- [`app/(tabs)/index.tsx`](app/(tabs)/index.tsx) — `isDesktopWeb`-флаг, `<TopBar>` скрыт на desktop.
+- [`app/(auth)/phone.tsx`](app/(auth)/phone.tsx) — back-кнопка сверху + `useSafeBack`.
+- [`app/(tabs)/category/[id].tsx`](app/(tabs)/category/[id].tsx) — `handleScroll` skip on desktop, chips inline в header-row, padding-top контента считается через флаг.
+
+**Verify в preview:** ✅ tsc clean. Скриншоты: home/desktop (один header, аватар справа), category/desktop (Сантехника + chips на одной строке, после scroll 2000px оба headers всё ещё видны), home/mobile (TopBar остался как раньше), /phone (back-кнопка в left-top + клик возвращает на `/profile`).
+
+**Аудит остальных tab-страниц.** Только `/category/[id]` использовал translateY auto-hide. Остальные (`/orders`, `/chats`, `/profile`, `/master/[id]`) рендерят `<ScreenHeader>` siblings к ScrollView (вне scroll-контейнера), поэтому хедер уже sticky относительно WebShell — отдельная правка не нужна.
+
+**+ master nav fix:** В WebShell для роли `master` отсутствовала ссылка «Поиск заказов» — на mobile эта кнопка живёт центральной в TabBar, на desktop её забыли вынести. Теперь WebShell для master: **Главная / Поиск заказов / Чаты** (вместо просто Главная / Чаты). Файл — [`src/components/WebShell.tsx`](src/components/WebShell.tsx). Verify: открыл `/orders/search` через клик в WebShell — лента заявок (`Покрасить стену`, `Замена смесителя` и т.д.) отрисовалась, подсветка активна.
+
+**+ lifecycle RPC fix (миграция 0081):** User кликнул «Прекратить сотрудничество» на `/orders/[id]` → `permission denied for function notify_user`. Root cause: все 6 lifecycle RPC (`withdraw_response`, `mark_order_done`, `confirm_completion`, `open_dispute`, `reopen_order`, `terminate_cooperation`) объявлены `SECURITY INVOKER`, а `notify_user` имеет `REVOKE EXECUTE ... FROM authenticated` (по соображениям безопасности — иначе клиент мог бы спамить push). Внутренний вызов `notify_user` из RPC валился. Миграция [0081](supabase/migrations/0081_lifecycle_rpcs_security_definer.sql) переводит все 6 RPC на `SECURITY DEFINER` — функция работает от роли owner (имеет EXECUTE на `notify_user`), а собственные auth.uid()-проверки внутри RPC по-прежнему авторизуют пользователя. Verify: эмулировал authenticated-вызов в SQL под picked_master_id — order перешёл `in_progress → cancelled`, лог записан, ошибок нет.
+
+---
+
+## Прежнее состояние (2026-05-16 поздно — desktop responsive: категории grid + hero мастера 16:9)
+
+**Главное:** Адаптация двух экранов под широкие вьюпорты (desktop / tablet), по фидбэку user:
+
+1. **«Все мастера» в 1-колоночном list-view → grid 2/3 столбца на desktop.** При ширине ≥ 768 (tablet) — 2 колонки, ≥ 1024 (laptop+) — 3. На mobile (< 768) сохраняется list-view с hairline-разделителями (Yelp/TaskRabbit-паттерн для длинных списков 30+ категорий на узком экране). Desktop grid: карточки с border-hairline + bg-canvas + rounded-lg, gap через padding половинок. Lazyweb-референсы: afterpay/people/zara — marketplace категории на широком экране всегда подаются grid'ом.
+
+2. **Hero-галерея мастера: было 4:5 (1120×1400 на desktop = огромный экран до фолда) → стало landscape 16:9 с потолком 520px на desktop.** На mobile сохраняется 4:5 (Wildberries-style портретное превью лучше для узкого экрана). Lazyweb-референс: Airbnb/Booking listing detail — hero landscape ~2:1, никогда не растягивается до 1400px. Skeleton-плейсхолдер тоже адаптирован.
+
+**Файлы:**
+- [`app/(tabs)/index.tsx`](app/(tabs)/index.tsx:608) — `AllCategories` теперь имеет `isGrid` ветку с `useWindowDimensions()`-based колонками. Inline `flexDirection/flexWrap` через `style={}` (на `Animated.View` NativeWind-классы `flex-row/flex-wrap` иногда не докатывают через RN-Web).
+- [`app/(tabs)/master/[id].tsx`](app/(tabs)/master/[id].tsx:74) — `PortfolioPager` + skeleton-блок hero вычисляют высоту по `isDesktop` флагу (viewport ≥ 768): `Math.min(width × 9/16, 520)`.
+
+**Verify в preview:** ✅ tsc clean. Скриншоты: desktop 1280px — категории 3 колонки, профиль мастера hero 1120×520 (вместо 1120×1400); tablet 768px — категории 2 колонки; mobile 375px — list-view как раньше.
+
+**Anti-pattern зафиксирован:** `<Animated.View className="flex-row flex-wrap">` на RN-Web даёт `flex-direction: column` (классы Tailwind не доходят до computed style). Для row-wrap на Animated.View — всегда inline style.
+
+---
+
+## Прежнее состояние (2026-05-16 поздним вечером — services-suggest редизайн + новые pricing kinds)
 
 **Главное:** Доработки экрана `/profile/services-suggest` под фидбэк user:
 1. Убрал дефолтные ценники `≈ X ₽` из списка готовых услуг — список чистый.

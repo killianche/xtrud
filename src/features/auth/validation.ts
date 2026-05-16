@@ -14,10 +14,21 @@ export function digitsOnly(input: string): string {
 /**
  * Форматирует строку цифр в маску `+7 XXX XXX-XX-XX`.
  * Принимает любой ввод (с/без +7), вытаскивает первые 10 цифр кода+номера.
+ *
+ * Bugfix 2026-05-16: раньше при каждом ввода маска absorbed `+7` префикс
+ * как «цифры», поэтому повторный onChangeText генерировал phantom-семёрки
+ * (типа +7 9 → +7 79 → +7 779 ...). Фикс: первым шагом снимаем literal
+ * префикс `+7` (или `+`) ДО digitsOnly, чтобы его `7` не считалась цифрой
+ * номера. Бывшая ветка `if (d.length === 11 && d[0]===7|8)` оставлена для
+ * paste-кейсов вроде `89001234567` / `79001234567` (без `+`).
+ *
+ * Важно: НЕ снимаем bare leading `7` — Kazakhstan-номера законно начинаются
+ * с 7 (700/707/747/771/775/777/778). Только literal `+7`.
  */
 export function formatPhoneMask(input: string): string {
-  let d = digitsOnly(input);
-  // Если ввели с ведущей 7 или 8 — отбрасываем (берём остальные 10 цифр)
+  const stripped = input.replace(/^\+7/, "");
+  let d = digitsOnly(stripped);
+  // Paste-кейс: ввели 11 цифр с ведущей 7 или 8 (без +).
   if (d.length === 11 && (d[0] === "7" || d[0] === "8")) {
     d = d.slice(1);
   }
@@ -33,10 +44,12 @@ export function formatPhoneMask(input: string): string {
 
 /**
  * Нормализует ввод в E.164-style `+7XXXXXXXXXX`.
- * Для хранения в БД.
+ * Для хранения в БД. Симметрична formatPhoneMask: literal `+7` снимается
+ * до digitsOnly, чтобы не считать prefix-семёрку как цифру номера.
  */
 export function normalizePhone(input: string): string {
-  let d = digitsOnly(input);
+  const stripped = input.replace(/^\+7/, "");
+  let d = digitsOnly(stripped);
   if (d.length === 11 && (d[0] === "7" || d[0] === "8")) {
     d = d.slice(1);
   }

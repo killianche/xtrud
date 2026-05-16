@@ -1,0 +1,44 @@
+# Caddy блок для xtrud.alanbani.ru (production).
+#
+# ⚠️ ЭТО КОПИЯ ДЛЯ ССЫЛКИ. Активный конфиг — /etc/caddy/Caddyfile на VPS
+# `root@62.113.106.30`. При правке: SSH → правка → `caddy validate` →
+# `systemctl reload caddy`. Бэкап автоматом: `Caddyfile.bak.<timestamp>`.
+#
+# Зачем cache-headers (фидбэк user 2026-05-16: «обновления должны работать
+# у клиентов сразу, без очистки истории»):
+#
+# - Хешированные JS/CSS/изображения (`/_expo/...`, `/assets/...`) — immutable
+#   год кэша. Hash в имени файла гарантирует уникальность. После пересборки
+#   `expo export` старый bundle лежит в кэше браузера безвредно, потому что
+#   index.html ссылается на новый hash.
+# - index.html + SPA-fallback (любой /route) — `no-cache, must-revalidate`.
+#   Браузер обязан валидировать ETag через If-None-Match. Если ETag совпал
+#   (нет нового деплоя) → сервер отвечает 304 без re-download (~200 байт).
+#   Если ETag другой (был деплой) → fresh download → новый bundle URL.
+#
+# Эффект: после `bash deploy/web.sh` любой клиент при следующем заходе
+# (или F5) сразу получает свежий код. Очистка кэша/истории не нужна.
+
+xtrud.alanbani.ru {
+    encode gzip
+    header {
+        Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+        X-Content-Type-Options "nosniff"
+        Referrer-Policy "strict-origin-when-cross-origin"
+        -Server
+    }
+    root * /var/www/xtrud
+
+    # Cache busting — см. шапку файла.
+    @immutable path /_expo/* /assets/*
+    header @immutable Cache-Control "public, max-age=31536000, immutable"
+    @htmlLike not path /_expo/* /assets/*
+    header @htmlLike Cache-Control "no-cache, must-revalidate"
+
+    try_files {path} {path}.html {path}/index.html /index.html
+    file_server
+    log {
+        output file /var/log/caddy/xtrud.log
+        format json
+    }
+}

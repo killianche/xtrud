@@ -76,6 +76,12 @@ export default function MasterPublicScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ id: string }>();
   const masterId = typeof params.id === "string" ? params.id : null;
+  const { width: viewportWidth } = useWindowDimensions();
+  // Desktop hero не должен растягиваться до 1400px — на широком экране это
+  // вытесняет всё ниже фолда. Lazyweb-паттерн (Airbnb/Booking listing detail)
+  // — landscape 16:9 с потолком 520px. Mobile сохраняет портретные 4:5.
+  const isDesktopHero = viewportWidth >= 768;
+  const heroAspect = isDesktopHero ? 16 / 9 : PORTFOLIO_RATIO;
 
   const { session } = useAuthSession();
   const currentUserId = session?.user?.id;
@@ -188,7 +194,11 @@ export default function MasterPublicScreen() {
           <View style={{ position: "relative" }}>
             <Skeleton
               width="100%"
-              style={{ aspectRatio: PORTFOLIO_RATIO }}
+              style={
+                isDesktopHero
+                  ? { height: Math.min((viewportWidth * 9) / 16, 520) }
+                  : { aspectRatio: heroAspect }
+              }
             />
             {/* Back button оставляем активным даже на skeleton — пользователь
                 должен иметь возможность уйти, если передумал ждать. */}
@@ -679,7 +689,15 @@ function PortfolioPager({
   // onLayout и считаем индекс относительно неё.
   const [containerWidth, setContainerWidth] = useState(screenWidth);
   const [index, setIndex] = useState(0);
-  const heroHeight = containerWidth / PORTFOLIO_RATIO; // 4:5 → height = width * 5/4
+  // На desktop (≥ 768) hero не должен расти до 1400px — это огромный блок,
+  // вытесняющий всё остальное за фолд. Lazyweb-паттерн (Airbnb/Booking listing
+  // detail) — landscape ~16:9, потолок ~520px. На mobile сохраняем 4:5
+  // (Wildberries-style), потому что портретный hero лучше для маркетплейс-карточки
+  // на узком экране.
+  const isDesktop = containerWidth >= 768;
+  const heroHeight = isDesktop
+    ? Math.min((containerWidth * 9) / 16, 520)
+    : containerWidth / PORTFOLIO_RATIO; // 4:5 → height = width * 5/4
 
   // onScroll + throttle вместо onMomentumScrollEnd. На RN-Web нет настоящего
   // momentum — momentum-event иногда не вызывается, dot-индикатор «зависает»

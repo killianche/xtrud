@@ -11,6 +11,13 @@
 # Старый /xtrud/* subpath на alanbani.ru → 301-redirect на subdomain (для legacy ссылок).
 # Если изменишь Caddy — не забудь `ssh root@HOST 'systemctl reload caddy'`.
 #
+# Cache headers (важно!): xtrud-блок Caddy ставит `Cache-Control: no-cache,
+# must-revalidate` на index.html (и SPA-fallback) и `immutable` на хешированные
+# ассеты. Эффект: пользователи получают обновления СРАЗУ после deploy, без
+# очистки кэша. Источник истины — `deploy/Caddyfile.xtrud.example` (snippet
+# для копирования). Если случайно сломаешь cache headers — рестарт деплоев
+# перестанет доходить до клиентов.
+#
 # Когда мигрируем на Vercel/CF Pages (план из CLAUDE.md) — этот скрипт удалить.
 
 set -euo pipefail

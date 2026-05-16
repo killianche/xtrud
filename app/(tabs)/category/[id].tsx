@@ -19,9 +19,11 @@ import {
   Image,
   type NativeScrollEvent,
   type NativeSyntheticEvent,
+  Platform,
   Pressable,
   ScrollView,
   View,
+  useWindowDimensions,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
@@ -77,6 +79,13 @@ export default function CategoryDetailScreen() {
   // историю до приложения.
   const goBack = useSafeBack("/" as const);
 
+  // Desktop-web — отключаем auto-hide шапки. На большом экране хедер всегда
+  // sticky (WebShell + категория-row): пользователь хочет видеть фильтры
+  // постоянно (фидбэк user 2026-05-16). На mobile сохраняем hide-on-scroll
+  // (Telegram/iOS-style) — там экономия места критична.
+  const { width: viewportWidth } = useWindowDimensions();
+  const isDesktopWeb = Platform.OS === "web" && viewportWidth >= 768;
+
   // Auto-hide header при скролле вниз / re-show при скролле вверх (Telegram/iOS-style).
   // useNativeDriver: false — на web нет нативного драйвера, на iOS/Android тоже работает
   // нормально для дешёвой translateY-анимации (200ms).
@@ -86,6 +95,7 @@ export default function CategoryDetailScreen() {
 
   const handleScroll = useCallback(
     (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+      if (isDesktopWeb) return; // hide-on-scroll отключён для desktop
       const y = e.nativeEvent.contentOffset.y;
       const dy = y - lastScrollY.current;
       lastScrollY.current = y;
@@ -117,7 +127,7 @@ export default function CategoryDetailScreen() {
         }).start();
       }
     },
-    [translateY],
+    [translateY, isDesktopWeb],
   );
 
   const categoryName = data?.category.name_ru ?? "Категория";
@@ -178,7 +188,12 @@ export default function CategoryDetailScreen() {
             маленькая, хедер тоже маленькая написано»). Back-кнопка 48×48
             (h-12 w-12) — комфортный тач-таргет, chevron 28 strokeWidth 2.25
             для большей контрастности. Title display-md weight=bold (700)
-            — Airbnb / Booking detail-pattern. */}
+            — Airbnb / Booking detail-pattern.
+
+            На desktop chips размещаются справа от заголовка в той же строке
+            (фидбэк user 2026-05-16: «чипы напротив сантехника на одном метре»).
+            На mobile chips остаются под заголовком — на узком экране одна
+            строка не вмещает back + title + 3 chip pill. */}
         <View
           className="flex-row items-center gap-2 px-3 bg-canvas"
           style={{ height: HEADER_BAR_HEIGHT }}
@@ -198,54 +213,82 @@ export default function CategoryDetailScreen() {
           >
             {categoryName}
           </AppText>
+          {isDesktopWeb ? (
+            <View className="flex-row items-center" style={{ gap: 6 }}>
+              <FilterChip
+                label={cityLabel}
+                icon={MapPin}
+                active={cityFilter !== "all"}
+                onPress={() => setOpenSheet("city")}
+              />
+              {services.length > 0 ? (
+                <FilterChip
+                  label={l3Label}
+                  icon={ListChecks}
+                  active={!!l3Filter}
+                  onPress={() => setOpenSheet("l3")}
+                />
+              ) : null}
+              <FilterChip
+                label={sortLabel}
+                icon={sortBy === "experience" ? Briefcase : sortBy === "availability" ? Calendar : Star}
+                active={sortBy !== "rating"}
+                onPress={() => setOpenSheet("sort")}
+              />
+            </View>
+          ) : null}
         </View>
 
         {/* Quick filter chips — горизонтальный scroll. flexGrow:0 чтобы не
             расползался по высоте (иначе схлопывается до ~12px). Tight
-            paddingHorizontal:12 — chips ближе к краю экрана как у Airbnb. */}
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          className="bg-canvas"
-          style={{ flexGrow: 0, flexShrink: 0, height: CHIPS_BAR_HEIGHT }}
-          contentContainerStyle={{
-            paddingHorizontal: 12,
-            paddingVertical: 6,
-            gap: 6,
-            alignItems: "center",
-          }}
-        >
-          <FilterChip
-            label={cityLabel}
-            icon={MapPin}
-            active={cityFilter !== "all"}
-            onPress={() => setOpenSheet("city")}
-          />
-          {/* Чип «Услуга» только если есть L3-подкатегории. */}
-          {services.length > 0 ? (
+            paddingHorizontal:12 — chips ближе к краю экрана как у Airbnb.
+            На desktop этот блок скрыт — chips перенесены в title-row выше. */}
+        {!isDesktopWeb ? (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            className="bg-canvas"
+            style={{ flexGrow: 0, flexShrink: 0, height: CHIPS_BAR_HEIGHT }}
+            contentContainerStyle={{
+              paddingHorizontal: 12,
+              paddingVertical: 6,
+              gap: 6,
+              alignItems: "center",
+            }}
+          >
             <FilterChip
-              label={l3Label}
-              icon={ListChecks}
-              active={!!l3Filter}
-              onPress={() => setOpenSheet("l3")}
+              label={cityLabel}
+              icon={MapPin}
+              active={cityFilter !== "all"}
+              onPress={() => setOpenSheet("city")}
             />
-          ) : null}
-          <FilterChip
-            label={sortLabel}
-            // Иконка меняется с выбором сортировки — пользователь видит
-            // что именно активно (рейтинг ★ / опыт 💼 / готовность 📅).
-            icon={sortBy === "experience" ? Briefcase : sortBy === "availability" ? Calendar : Star}
-            active={sortBy !== "rating"}
-            onPress={() => setOpenSheet("sort")}
-          />
-        </ScrollView>
+            {/* Чип «Услуга» только если есть L3-подкатегории. */}
+            {services.length > 0 ? (
+              <FilterChip
+                label={l3Label}
+                icon={ListChecks}
+                active={!!l3Filter}
+                onPress={() => setOpenSheet("l3")}
+              />
+            ) : null}
+            <FilterChip
+              label={sortLabel}
+              // Иконка меняется с выбором сортировки — пользователь видит
+              // что именно активно (рейтинг ★ / опыт 💼 / готовность 📅).
+              icon={sortBy === "experience" ? Briefcase : sortBy === "availability" ? Calendar : Star}
+              active={sortBy !== "rating"}
+              onPress={() => setOpenSheet("sort")}
+            />
+          </ScrollView>
+        ) : null}
       </Animated.View>
 
       <ScrollView
         contentContainerStyle={{
           // Резервируем место под скрываемую шапку — иначе первый мастер
-          // уезжает под неё при первом рендере.
-          paddingTop: insets.top + HIDEABLE_HEIGHT,
+          // уезжает под неё при первом рендере. На desktop chips inline
+          // c заголовком, поэтому только HEADER_BAR_HEIGHT.
+          paddingTop: insets.top + (isDesktopWeb ? HEADER_BAR_HEIGHT : HIDEABLE_HEIGHT),
           paddingBottom: insets.bottom + 24,
         }}
         showsVerticalScrollIndicator={false}

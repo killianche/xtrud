@@ -64,6 +64,17 @@ export async function signInAnonymouslyWithPhone(
     if (!data.session) {
       return { ok: false, error: "Сессия не создана" };
     }
+    // Фидбэк user 2026-05-16: «если у аккаунта есть режим мастера — пускай
+    // сразу открывается мастер, а не вид клиента». Для всех is_master=true
+    // ставим active_role='master' на каждом логине. .eq("is_master", true)
+    // работает как guard: для чистых клиентов UPDATE затронет 0 строк (no-op).
+    // CHECK-constraint user_active_role_consistent (active_role='master' ⇒
+    // is_master=true) выполняется автоматически.
+    await supabase
+      .from("users")
+      .update({ active_role: "master" })
+      .eq("id", data.user.id)
+      .eq("is_master", true);
     return { ok: true };
   }
 

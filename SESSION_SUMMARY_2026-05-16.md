@@ -188,3 +188,183 @@ D. **«Как меня видят» CTA на `/profile`** (фидбэк user: «
 - `src/features/master-services/MasterServicesList.tsx`
 - `src/features/master-services/MasterServicesSection.tsx`
 - `app/(tabs)/profile/services-suggest.tsx` (полная переписка)
+
+
+---
+
+## Session block N — Desktop responsive (категории grid + master hero 16:9)
+
+### Контекст
+User в браузерной версии (1280px viewport) обнаружил два визуальных провала:
+1. Секция «Все мастера» на главной — 30+ категорий list-view в одну колонку → бесконечная простыня.
+2. Карточка мастера `/master/[id]` — hero-фото портретное 4:5 на ширине 1120px → высота 1400px, основной контент (имя, рейтинг, описание, услуги) уезжает за фолд.
+
+Просьба: сделать категории в 2-3 столбца на desktop; уменьшить hero у мастера до разумного размера, как в больших референсах.
+
+### Lazyweb-референсы
+- Категории grid: afterpay/categories-home (grid тайлов), people/shopping-kitchen (multi-column grid), zara/search (grid). Все marketplace на широком экране — grid, не list.
+- Master hero: Airbnb/listing detail, Booking/property — landscape (~2:1, никогда не 5:4 портрет), потолок ~580px высоты.
+
+### Решение
+**Брейкпойнты через `useWindowDimensions()` + inline width%:**
+- `< 768` (mobile): сохранён list-view категорий + 4:5 hero.
+- `≥ 768` (tablet): grid 2 колонки, hero 16:9 c потолком 520px.
+- `≥ 1024` (laptop+): grid 3 колонки, hero 16:9 c потолком 520px.
+
+**Категории grid** (`AllCategories` в `app/(tabs)/index.tsx:608`):
+- Карточки `rounded-lg border-hairline bg-canvas`, иконка-в-круге + название + caret-right (та же визуальная единица, что и в list-view, просто в bordered card).
+- Wrapper: `flexDirection: row, flexWrap: wrap, marginHorizontal: -6`; каждый items в `View` с `width: '${100/columns}%', padding: 6` — Tailwind-style gap через padding половинок (без `gap` потому что flex-wrap + gap иногда даёт перенос лишних пикселей в RN-Web).
+
+**Master hero** (`PortfolioPager` + skeleton в `app/(tabs)/master/[id].tsx`):
+- На desktop `heroHeight = Math.min(containerWidth × 9/16, 520)` — landscape с потолком 520px, чтобы на ultrawide hero не разрастался до 700px+.
+- Skeleton отдельно — использует `viewportWidth` (из родительского `useWindowDimensions`), потому что у него нет своего onLayout-измерения.
+
+### Anti-pattern зафиксирован
+**`<Animated.View className="flex-row flex-wrap">` на RN-Web** даёт `computed display: flex; flex-direction: column; flex-wrap: nowrap` — Tailwind-классы flex-direction/flex-wrap не докатывают до Animated.View через NativeWind transform на web. `mt-4` / `px-5` работают, а `flex-row` / `flex-wrap` — нет.
+
+**Правило:** для row-wrap layout'а на Animated.View — всегда inline `style={{flexDirection: "row", flexWrap: "wrap"}}`, не className.
+
+### Verify в preview
+- `npx tsc --noEmit` clean.
+- Desktop 1280: `Сантехника(x=80)`, `Электрика(x=457)`, `Ремонт(x=834)` на одной строке (3 колонки); hero `1120×520`.
+- Tablet 768: `Сантехника(x=0)`, `Электрика(x=390)` на одной строке (2 колонки).
+- Mobile 375: flex-direction=column, list-view как раньше.
+- 2 скриншота: home/desktop-3col + master/desktop-hero-landscape.
+
+### Файлы изменены
+- `app/(tabs)/index.tsx` — `AllCategories`: добавлен `isGrid`-branch (grid 2/3 cols), импорт `useWindowDimensions`.
+- `app/(tabs)/master/[id].tsx` — `PortfolioPager.heroHeight` desktop-aware; outer skeleton тоже использует desktop-flag.
+- `STATUS.md` — новая секция «Текущее состояние».
+
+---
+
+## Session block N+1 — Desktop UX: header consolidation, sticky, auth back
+
+### Контекст
+После предыдущего блока (категории grid + hero мастера 16:9) user прислал серию правок по компьютерной версии:
+1. На главной — два хедера один над другим (WebShell-bar с «xtrud» текстом + внутренний TopBar страницы с логотипом + Назрань + Войти).
+2. На `/auth/phone` нет back-кнопки — пользователь, передумавший вводить номер, в тупике.
+3. На скролле на category-page хедер с фильтрами пропадает.
+4. Чипы Город/Услуга/Сортировка на category-page лежат ниже заголовка — пустое место справа.
+
+### Решения
+
+**1. Header consolidation.** CitySelector + auth-button перенесены из page-TopBar в WebShell right-actions. Page-TopBar условно скрывается через `isDesktopWeb` (Platform.OS === "web" && width >= 768). Mobile поведение сохраняется.
+
+**2. Back-кнопка на auth/phone.** Добавлен CaretLeft 24/bold + `useSafeBack("/")` в верх экрана. Размер 40×40 тач-таргет, padding `-ml-2` чтобы chevron выровнялся с левым краем content.
+
+**3. Sticky category header на desktop.** `handleScroll` rано выходит при `isDesktopWeb`, translateY-анимация не стартует. На mobile сохранена auto-hide.
+
+**4. Chips inline.** На desktop chips рендерятся в той же строке `flex-row` с back+title (после flex-1 title), правый край. Mobile renders chips в отдельном ScrollView ниже (как было).
+
+### Anti-pattern зафиксирован
+**Дублирование navigation между WebShell и page-TopBar.** WebShell задумывался как app-shell на desktop (logo + nav links + theme + auth), а страницы рисовали свой собственный header с теми же элементами. Получалось 2 этажа nav-а: один в WebShell, второй в начале каждой страницы. Правильнее — WebShell **полный** desktop-shell (включая city/auth), страницы внутри него рисуют **только page-specific** контент.
+
+### Verify в preview
+- `npx tsc --noEmit` clean.
+- Desktop /  — один header: SVG-logo слева + Главная/Заказы/Чаты + theme-toggle + Назрань-pill + аватар (или Войти если анон). Внутренний TopBar нет; Hero «Найдутся мастера» сразу под WebShell.
+- Desktop /category/plumbing — title «Сантехника» + chips «Ингушетия / Услуга / По рейтингу» на одной строке (Y=85 / Y=81). После scroll 2000px и WebShell, и category-row остаются на экране (Y=16, Y=85).
+- Mobile / — TopBar остался: SVG-logo + «xtrud» + Назрань + (Войти если анон).
+- Back-кнопка на /auth/phone добавлена в коде (TS clean), визуальный verify невозможен — protected-route redirect отправляет logged-in user обратно.
+
+### Файлы изменены
+- `src/components/WebShell.tsx` — added CitySelector + auth-button, removed standalone avatar-User-icon block.
+- `app/(tabs)/index.tsx` — `isDesktopWeb`-флаг + условный render `<TopBar>`.
+- `app/(auth)/phone.tsx` — back-кнопка через `useSafeBack`.
+- `app/(tabs)/category/[id].tsx` — `isDesktopWeb`-флаг, skip hide-on-scroll, inline chips в title-row, conditional padding-top.
+
+---
+
+## Session block N+2 — Закрытие открытых пунктов (sticky-аудит + visual back-verify)
+
+### Закрытые задачи
+
+1. **Sticky-аудит всех tab-страниц.** Проверил `app/(tabs)/orders/index.tsx`, `chats/index.tsx`, `profile/index.tsx`, `master/[id].tsx`. Только `category/[id]` имел auto-hide animation (translateY). Остальные используют `<ScreenHeader>` как sibling-элемент к ScrollView — то есть ScreenHeader **вне** scroll-контейнера и остаётся sticky относительно WebShell. Дополнительные правки не нужны.
+
+2. **Visual verify back-кнопки на `/phone`.** Sign out → клик «Войти» в WebShell → `/phone` показал back-кнопка в left-top (x=16, y=16) → screenshot подтверждает; клик back → возврат на `/profile`. Работает.
+
+### Anti-pattern (упомянутый ранее в этом дне): уточнение
+Я писал, что «дублирование navigation между WebShell и page-TopBar — anti-pattern». При sticky-аудите подтвердилось: остальные страницы делают правильно — кладут ScreenHeader **сиблингом** ScrollView (не внутри). Это автоматически даёт sticky-поведение, плюс не дублирует функционал WebShell. **Шаблон для новых tab-страниц:**
+
+```tsx
+<View className="flex-1 bg-canvas">
+  <ScreenHeader title="…" />     {/* outside ScrollView → sticky */}
+  <ScrollView>
+    {/* page content */}
+  </ScrollView>
+</View>
+```
+
+НЕ:
+```tsx
+<View>
+  <ScrollView>
+    <ScreenHeader title="…" />   {/* inside ScrollView → scrolls away */}
+    ...
+  </ScrollView>
+</View>
+```
+
+Это правило стоит зафиксировать в `UI_PATTERNS.md` следующей правкой.
+
+---
+
+## Session block N+3 — Master nav fix в WebShell
+
+### Контекст
+User: «Подправь вид мастера, когда ты со стороны мастера работаешь. Там в хедре у компьютерной версии не бывает кнопок поиска заказов и так далее.»
+
+### Проблема
+В `WebShell.tsx` для роли `master` рисовался nav без ссылки `/orders/search`. Старый комментарий объяснял: «На desktop отдельной кнопки «Поиск» нет; мастеру логично уходить с главной (там и поиск, и его текущие заявки).» Это было неправильно — мастер на mobile получает центральный таб «🔍 Поиск заказов» в TabBar, а на desktop теряет этот доступ.
+
+### Решение
+В `WebShell.navItems`:
+- client (как было): Главная / Заказы / Чаты
+- master (новое): Главная / **Поиск заказов** / Чаты — `{ href: "/(tabs)/orders/search", match: "/orders/search", label: "Поиск заказов", icon: MagnifyingGlass }`.
+
+Тип `NavItem.href` расширен на `"/(tabs)/orders/search"`.
+
+### Verify в preview
+- TS clean.
+- Sign in под `+79000000003` (Руслан Хамхоев, master).
+- WebShell теперь показывает 3 ссылки: Главная (active) / Поиск заказов / Чаты.
+- Клик «Поиск заказов» → `/orders/search` → лента open-заявок ("Покрасить стену в детской", "Замена смесителя на кухне", "Прорвало трубу в санузле" — 5 заявок) рендерится, link подсвечен.
+
+---
+
+## Session block N+4 — Bug fix: lifecycle RPC + permission denied for notify_user
+
+### Контекст
+User: «нажал прекратить сотрудничество, выдало ошибку. Надо полностью сделать рабочим весь функционал». На скриншоте видна красная надпись `permission denied for function notify_user` после клика «Прекратить сотрудничество» на `/orders/[id]`.
+
+### Root cause анализ
+1. `notify_user` (миграция 0027) — `SECURITY DEFINER`, читает vault-secret и шлёт async-push через pg_net.
+2. Миграция 0018 делает `REVOKE EXECUTE ON FUNCTION public.notify_user FROM authenticated` — правильно: иначе авторизованный пользователь мог бы вызвать её напрямую с supabase-js и спамить push любому user_id (notify_user не знает кто вызывает, она только проверяет существование secret'а).
+3. Lifecycle RPC (миграция 0074: `withdraw_response`, `mark_order_done`, `confirm_completion`, `open_dispute`, `reopen_order` + миграция 0077: `terminate_cooperation`) — все `SECURITY INVOKER` → действуют от имени authenticated → внутренний `PERFORM notify_user(...)` падает с permission denied.
+4. То есть из 6 lifecycle RPC ни одна не могла отправить push, и `terminate_cooperation` даже не могла завершить транзакцию (т.к. notify_user падал до конца, всё откатывалось). Это была **тихая бомба** — user обнаружил только сейчас при первом фактическом клике на `terminate_cooperation` в проде.
+
+### Решение — миграция 0081
+`ALTER FUNCTION ... SECURITY DEFINER` для всех 6 RPC. Безопасно, потому что каждая внутри:
+1. Проверяет `auth.uid() != NULL`.
+2. Проверяет участие пользователя в заказе (client_id / picked_master_id / master_id для responses).
+3. Проверяет валидность source-status для перехода.
+
+SECURITY DEFINER даёт функции доступ к `notify_user` (как owner), а bypass RLS на orders/order_responses безопасен потому что функция сама себе RLS.
+
+### Verify
+Эмулировал authenticated-вызов через SQL:
+```sql
+SET LOCAL ROLE authenticated;
+SET LOCAL request.jwt.claim.sub = '<picked_master_id>';
+PERFORM public.terminate_cooperation('<order_id>', 'тест после фикса 0081');
+```
+Результат: order перешёл `in_progress → cancelled`, `cancelled_by` = picked_master_id, `cancel_reason` записан, лог `order_status_log` с `transition_code='T6t'` появился. Никакого `permission denied`. Откатил тестовое изменение для дальнейшего ручного UI-теста.
+
+Visual UI verify в preview частично — клик на «Прекратить сотрудничество» открывает BottomSheet, который блокирует preview_eval (Playwright timeout). Renderer повис, пришлось перезапустить preview-сервер. RPC-результат подтверждён на DB-уровне — UI просто оборачивает этот же вызов через supabase-js `.rpc('terminate_cooperation', ...)`.
+
+### Anti-pattern зафиксирован
+**SECURITY INVOKER RPC + call to SECURITY DEFINER notify_user, без grant на notify_user для authenticated.** Если RPC должен слать push — должен быть SECURITY DEFINER. Альтернатива (GRANT EXECUTE на notify_user authenticated) — небезопасна, открывает spam push. Чек-лист для будущих lifecycle RPC: если внутри `PERFORM notify_user(...)` → объявляй RPC `SECURITY DEFINER` (+ auth.uid() check в начале).
+
+### Файлы изменены
+- `supabase/migrations/0081_lifecycle_rpcs_security_definer.sql` (новый, applied)
+- `STATUS.md` (новая запись в Current state)

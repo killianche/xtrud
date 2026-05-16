@@ -21,7 +21,7 @@
 import { useRouter } from "expo-router";
 import { CaretRight, Drop, SignIn, MagnifyingGlass, Sparkle, Lightning } from "phosphor-react-native";
 import { useEffect, useRef } from "react";
-import { Animated, FlatList, Image, Pressable, ScrollView, View } from "react-native";
+import { Animated, FlatList, Image, Platform, Pressable, ScrollView, View, useWindowDimensions } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { getCategoryColorIconUrl } from "@/lib/category-color-icons";
 import { getCategoryIcon } from "@/lib/category-icons";
@@ -54,6 +54,11 @@ export default function HomeTab() {
 
   const activeRole = user?.active_role ?? "client";
   const refresh = usePullToRefresh();
+  const { width: viewportWidth } = useWindowDimensions();
+  // На desktop WebShell уже рендерит logo + nav + CitySelector + auth-кнопку
+  // в top-nav. Внутренний TopBar (логотип + xtrud-текст + город + Войти)
+  // дублирует эту функциональность → прячем на desktop.
+  const isDesktopWeb = Platform.OS === "web" && viewportWidth >= 768;
 
   // Tap-on-active-tab → scroll to top (стандартный mobile-pattern).
   // TabBar trigger'ит счётчик при тапе на focused-таб «Главная».
@@ -74,7 +79,9 @@ export default function HomeTab() {
       showsVerticalScrollIndicator={false}
       refreshControl={refresh.control}
     >
-      <TopBar userId={userId} userName={user?.first_name ?? null} avatarUrl={user?.avatar_url ?? null} />
+      {!isDesktopWeb ? (
+        <TopBar userId={userId} userName={user?.first_name ?? null} avatarUrl={user?.avatar_url ?? null} />
+      ) : null}
 
       {activeRole === "master" && userId ? (
         <View className="mt-6">
@@ -606,6 +613,13 @@ function MasterMiniCard({
 
 function AllCategories({ onCategoryPress }: { onCategoryPress: (id: string) => void }) {
   const { data: categories, isLoading, error } = useVisibleCategories();
+  const { width } = useWindowDimensions();
+  // На desktop колонок 2-3 (Lazyweb-паттерн: afterpay/people/zara — категории
+  // в marketplace на широком вьюпорте подаются grid'ом, не длинной колонкой
+  // ~30+ строк). Mobile остаётся 1 столбец — там grid 2x проигрывает list-view
+  // по сканируемости.
+  const columns = width >= 1024 ? 3 : width >= 768 ? 2 : 1;
+  const isGrid = columns > 1;
 
   // Fade-in реального списка при появлении (skeleton → categories), чтобы
   // переход не был резким. См. ту же логику в TopMasters.
@@ -654,6 +668,54 @@ function AllCategories({ onCategoryPress }: { onCategoryPress: (id: string) => v
             Категории ещё не настроены. Свяжитесь с поддержкой.
           </AppText>
         </View>
+      ) : isGrid ? (
+        // Desktop grid: 2 (md) / 3 (lg) колонки, карточки с бордером,
+        // gap-y/gap-x через padding половинок. Без hairline-разделителей —
+        // карточки сами по себе образуют визуальные ячейки.
+        // NB: flexDirection/flexWrap через style — на Animated.View
+        // NativeWind-классы flex-row/flex-wrap иногда не докатывают через
+        // RN-Web (фактический display:flex остаётся column).
+        <Animated.View
+          className="mt-4 px-5"
+          style={{
+            opacity,
+            flexDirection: "row",
+            flexWrap: "wrap",
+            marginHorizontal: -6,
+          }}
+        >
+          {categories.map((cat) => {
+            const Icon = getCategoryIcon(cat.icon);
+            const colorUrl = getCategoryColorIconUrl(cat.id);
+            return (
+              <View
+                key={cat.id}
+                style={{ width: `${100 / columns}%`, paddingHorizontal: 6, paddingVertical: 6 }}
+              >
+                <Pressable
+                  onPress={() => onCategoryPress(cat.id)}
+                  accessibilityRole="button"
+                  accessibilityLabel={cat.name_ru}
+                  className="flex-row items-center gap-3 px-4 py-3 rounded-lg border border-hairline bg-canvas active:bg-canvas-soft-2"
+                >
+                  <View className="h-10 w-10 items-center justify-center rounded-full bg-canvas-soft text-ink">
+                    {colorUrl ? (
+                      <Image source={{ uri: colorUrl }} style={{ width: 24, height: 24 }} />
+                    ) : (
+                      <Icon size={20} weight="bold" color="currentColor" />
+                    )}
+                  </View>
+                  <AppText weight="semibold" className="flex-1 text-body-md text-ink" numberOfLines={1}>
+                    {cat.name_ru}
+                  </AppText>
+                  <View className="text-mute">
+                    <CaretRight size={18} weight="bold" color="currentColor" />
+                  </View>
+                </Pressable>
+              </View>
+            );
+          })}
+        </Animated.View>
       ) : (
         <Animated.View className="mt-4" style={{ opacity }}>
           {categories.map((cat, idx) => {

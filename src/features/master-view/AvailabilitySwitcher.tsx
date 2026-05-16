@@ -85,11 +85,12 @@ export function AvailabilitySwitcher({ userId }: { userId: string }) {
 
   return (
     <View>
-      {/* Header: «Статус» (укоротили с «Ваш статус») + countdown в моно.
-          Меньше визуального шума, в стиле HUD заголовков игр. */}
+      {/* Header: «Готовность взять заказ» (раньше «Статус» — без контекста
+          мастер не понимал что именно переключают; user 2026-05-16: «готовность
+          взять заказ напиши, вместо статус»). + countdown в моно. */}
       <View className="flex-row items-baseline justify-between">
         <AppText weight="semibold" className="text-body-sm text-mute uppercase tracking-widest">
-          Статус
+          Готовность взять заказ
         </AppText>
         {countdown ? (
           <AppText weight="mono" className="text-mono-caption text-mute">

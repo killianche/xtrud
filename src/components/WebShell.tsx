@@ -4,10 +4,11 @@
 // На mobile / narrow web компонент не используется (см. (tabs)/_layout.tsx).
 
 import { Link, usePathname, useRouter } from "expo-router";
-import { ClipboardText, House, ChatCircle, Moon, Sun, User } from "phosphor-react-native";
+import { ClipboardText, House, ChatCircle, MagnifyingGlass, Moon, Sun, SignIn } from "phosphor-react-native";
 import { Pressable, View } from "react-native";
 import { AppText } from "@/components/AppText";
 import { Avatar } from "@/components/Avatar";
+import { CitySelector } from "@/components/CitySelector";
 import { XtrudLogo } from "@/components/XtrudLogo";
 import { useAuthSession } from "@/features/auth/use-auth-session";
 import { useUserRecord } from "@/features/auth/use-user-record";
@@ -21,7 +22,7 @@ interface WebShellProps {
 }
 
 interface NavItem {
-  href: "/(tabs)" | "/(tabs)/orders" | "/(tabs)/chats" | "/(tabs)/profile";
+  href: "/(tabs)" | "/(tabs)/orders" | "/(tabs)/orders/search" | "/(tabs)/chats" | "/(tabs)/profile";
   match: string;
   label: string;
   icon: typeof House;
@@ -37,11 +38,14 @@ export function WebShell({ children, chatsBadge, ordersBadge }: WebShellProps) {
   const { data: user } = useUserRecord(userId);
   const { colorScheme, preference, setPreference } = useColorScheme();
 
-  // Ссылка «Заказы» — только клиент. У мастера эта страница убрана
-  // (фидбэк user 2026-05-15): «Я откликнулся / Меня выбрали» переехали
-  // на главную мастера, а лента новых заявок — на /orders/search. На
-  // desktop отдельной кнопки «Поиск» нет; мастеру логично уходить с
-  // главной (там и поиск, и его текущие заявки).
+  // Ссылки разные для двух ролей:
+  //   - client: Главная / Заказы / Чаты — «Заказы» это его собственные заявки.
+  //   - master: Главная / Поиск заказов / Чаты — «Поиск» это лента всех
+  //     open-заявок (route /orders/search). На mobile это центральный таб
+  //     TabBar (фидбэк user 2026-05-15: «отдельная кнопка поиск в нижнем меню»);
+  //     на desktop эту кнопку забыли вынести в WebShell (фидбэк user 2026-05-16:
+  //     «в хедре у компьютерной версии не бывает кнопок поиска заказов»).
+  //     Теперь и там, и там есть.
   const isMasterRole = user?.active_role === "master";
   const navItems: NavItem[] = [
     // Главная использует фирменный логотип xtrud вместо House.
@@ -49,7 +53,14 @@ export function WebShell({ children, chatsBadge, ordersBadge }: WebShellProps) {
     // ниже первый item (match='/') рендерится через XtrudLogo.
     { href: "/(tabs)", match: "/", label: "Главная", icon: House },
     ...(isMasterRole
-      ? []
+      ? [
+          {
+            href: "/(tabs)/orders/search" as const,
+            match: "/orders/search",
+            label: "Поиск заказов",
+            icon: MagnifyingGlass,
+          },
+        ]
       : [
           {
             href: "/(tabs)/orders" as const,
@@ -150,7 +161,12 @@ export function WebShell({ children, chatsBadge, ordersBadge }: WebShellProps) {
             })}
           </View>
 
-          {/* Theme toggle + avatar */}
+          {/* Right actions: theme + city + auth (Войти если анон, аватар если
+              авторизован). Раньше тут были только theme + avatar; CitySelector
+              и «Войти» жили внутри страниц (TopBar в home, ScreenHeader rightActions
+              в category). На desktop это дублировало хедер — выглядело как 2
+              этажа nav-а. Перенесли city/auth в WebShell, страницы теперь не
+              рисуют свой top-bar при isDesktopWeb. */}
           <View className="flex-row items-center gap-2">
             <Pressable
               accessibilityRole="button"
@@ -164,20 +180,34 @@ export function WebShell({ children, chatsBadge, ordersBadge }: WebShellProps) {
                 <Moon size={18} weight="bold" color={tc.ink} />
               )}
             </Pressable>
-            <Pressable
-              accessibilityRole="link"
-              accessibilityLabel={fullName}
-              onPress={() => router.push("/(tabs)/profile")}
-              className="rounded-full hover:opacity-70"
-            >
-              {user?.avatar_url ? (
-                <Avatar url={user.avatar_url} name={fullName} seed={user.id} size="sm" />
-              ) : (
-                <View className="h-9 w-9 items-center justify-center rounded-full border border-hairline bg-surface-2">
-                  <User size={18} weight="bold" color={tc.ink} />
-                </View>
-              )}
-            </Pressable>
+            <CitySelector />
+            {userId ? (
+              <Pressable
+                accessibilityRole="link"
+                accessibilityLabel={fullName}
+                onPress={() => router.push("/(tabs)/profile")}
+                className="rounded-full hover:opacity-70"
+              >
+                <Avatar
+                  url={user?.avatar_url ?? null}
+                  name={fullName}
+                  seed={user?.id ?? userId}
+                  size="sm"
+                />
+              </Pressable>
+            ) : (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Войти"
+                onPress={() => router.push("/(auth)/phone" as never)}
+                className="h-11 flex-row items-center gap-1.5 rounded-pill border px-4 active:opacity-70 border-hairline bg-canvas hover:bg-surface-2"
+              >
+                <SignIn size={16} weight="bold" color={tc.ink} />
+                <AppText weight="semibold" className="text-button text-ink">
+                  Войти
+                </AppText>
+              </Pressable>
+            )}
           </View>
         </View>
       </View>

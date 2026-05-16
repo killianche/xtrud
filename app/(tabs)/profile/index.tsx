@@ -177,7 +177,11 @@ export default function ProfileScreen() {
     ? (masterProfile?.rating_overall_count ?? 0)
     : user.rating_as_client_count;
 
-  const isClient = !user.is_master;
+  // Видимость секций — по active_role (текущий режим), не по is_master
+  // (наличие master-профиля в БД). Мастер, переключившийся на «Клиент»
+  // через role-switcher, видит только client-секции; обратно — все
+  // master-кнопки возвращаются (фидбек user 2026-05-16).
+  const isClient = user.active_role === "client";
 
   return (
     <View className="flex-1 bg-canvas" style={{ paddingTop: insets.top }}>
@@ -431,8 +435,10 @@ export default function ProfileScreen() {
           </>
         ) : null}
 
-        {/* Master-only sections */}
-        {user.is_master && (
+        {/* Master-only sections — видим только когда active_role='master'.
+            Если мастер переключился на client-режим (role-switcher выше) —
+            секции скрываются, остаётся client-edit. */}
+        {user.is_master && user.active_role === "master" && (
           <>
             {/* Edit master profile shortcut */}
             <Pressable

@@ -70,10 +70,7 @@ export default function SearchScreen() {
 
   // Search-режим (≥2 символов) — RPC с synonym/FTS/trigram + раскладка-fix.
   // RPC возвращает score-ranked hits; client-side фильтр не нужен.
-  const { data: searchResult, isLoading: searchLoading } = useSearchCategories(
-    trimmedQuery,
-    20,
-  );
+  const { data: searchResult, isLoading: searchLoading } = useSearchCategories(trimmedQuery, 20);
 
   const results: SearchListItem[] = useMemo(() => {
     if (isBrowseMode) {
@@ -95,7 +92,7 @@ export default function SearchScreen() {
 
   const isLoading = isBrowseMode ? browseLoading : searchLoading;
   const wasFlipped = !isBrowseMode && (searchResult?.wasFlipped ?? false);
-  const flippedQuery = !isBrowseMode ? searchResult?.flippedQuery ?? null : null;
+  const flippedQuery = !isBrowseMode ? (searchResult?.flippedQuery ?? null) : null;
 
   return (
     <View className="flex-1 bg-canvas" style={{ paddingTop: insets.top }}>
@@ -190,9 +187,7 @@ export default function SearchScreen() {
       ) : (
         <>
           <View className="px-5 mt-6">
-            <AppText className="text-body-sm text-mute">
-              Подходящие услуги или специалисты
-            </AppText>
+            <AppText className="text-body-sm text-mute">Подходящие услуги или специалисты</AppText>
           </View>
           <FlatList
             data={results}
@@ -205,33 +200,33 @@ export default function SearchScreen() {
               // подрезает последние строки на iPhone X+.
               paddingBottom: insets.bottom + 24,
             }}
-          renderItem={({ item }) => {
-            // Для wasFlipped подсвечиваем flippedQuery (по нему искали), а не
-            // оригинальный набор-в-неправильной-раскладке.
-            const highlightQuery = wasFlipped && flippedQuery ? flippedQuery : query;
-            const segments = highlightMatch(item.name_ru, highlightQuery);
-            return (
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={item.name_ru}
-                onPress={() => router.push(`/category/${item.l2_id}` as never)}
-                className="py-3 active:opacity-60"
-              >
-                <AppText className="text-body-lg" numberOfLines={1}>
-                  {segments.map((seg, idx) => (
-                    <AppText
-                      // biome-ignore lint/suspicious/noArrayIndexKey: stable segment index
-                      key={idx}
-                      weight={seg.match ? "semibold" : "regular"}
-                      className={seg.match ? "text-ink" : "text-mute"}
-                    >
-                      {seg.text}
-                    </AppText>
-                  ))}
-                </AppText>
-              </Pressable>
-            );
-          }}
+            renderItem={({ item }) => {
+              // Для wasFlipped подсвечиваем flippedQuery (по нему искали), а не
+              // оригинальный набор-в-неправильной-раскладке.
+              const highlightQuery = wasFlipped && flippedQuery ? flippedQuery : query;
+              const segments = highlightMatch(item.name_ru, highlightQuery);
+              return (
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={item.name_ru}
+                  onPress={() => router.push(`/category/${item.l2_id}` as never)}
+                  className="py-3 active:opacity-60"
+                >
+                  <AppText className="text-body-lg" numberOfLines={1}>
+                    {segments.map((seg, idx) => (
+                      <AppText
+                        // biome-ignore lint/suspicious/noArrayIndexKey: stable segment index
+                        key={idx}
+                        weight={seg.match ? "semibold" : "regular"}
+                        className={seg.match ? "text-ink" : "text-mute"}
+                      >
+                        {seg.text}
+                      </AppText>
+                    ))}
+                  </AppText>
+                </Pressable>
+              );
+            }}
           />
         </>
       )}

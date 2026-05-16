@@ -32,6 +32,8 @@ export type MasterInCategory = {
     | "team_size"
     | "availability_status"
     | "availability_until"
+    | "whatsapp_phone"
+    | "whatsapp_same_as_phone"
   > | null;
   city: Pick<Tables<"cities">, "id" | "name"> | null;
 };
@@ -53,6 +55,8 @@ type Row = {
     | "team_size"
     | "availability_status"
     | "availability_until"
+    | "whatsapp_phone"
+    | "whatsapp_same_as_phone"
   > | null;
 };
 
@@ -73,6 +77,8 @@ export function useMastersByL2(l2Id: string | null | undefined) {
           profile:master_profiles!master_categories_master_id_fkey (
             rating_overall_avg, rating_overall_count, closed_deals, experience_years, bio,
             account_type, team_size, availability_status, availability_until,
+            is_hidden_from_search,
+            whatsapp_phone, whatsapp_same_as_phone,
             user:users!master_profiles_user_id_fkey (
               id, first_name, last_name, avatar_url, city_id, district
             )
@@ -81,6 +87,14 @@ export function useMastersByL2(l2Id: string | null | undefined) {
         )
         .eq("l2_id", l2Id);
       if (error) throw error;
+
+      // Sprint 0078: фильтруем мастеров, которые сами скрыли профиль через
+      // /profile/settings → «Скрыть профиль от клиентов». Делаем на клиенте
+      // после fetch — PostgREST embedded-filter синтаксис плохо сочетается
+      // с alias'ами FK. См. docs/lifecycle.md (privacy section TBD).
+      const filtered = (data ?? []).filter(
+        (r) => r.profile?.is_hidden_from_search !== true,
+      );
 
       // Развёртываем nested user из profile → row.user (чтобы дальнейший код
       // работал с прежним shape).
@@ -92,7 +106,7 @@ export function useMastersByL2(l2Id: string | null | undefined) {
             })
           | null;
       };
-      const rows: Row[] = ((data ?? []) as unknown as NestedRow[]).map((r) => ({
+      const rows: Row[] = (filtered as unknown as NestedRow[]).map((r) => ({
         master_id: r.master_id,
         user: r.profile?.user ?? null,
         profile: r.profile
@@ -106,6 +120,8 @@ export function useMastersByL2(l2Id: string | null | undefined) {
               team_size: r.profile.team_size,
               availability_status: r.profile.availability_status,
               availability_until: r.profile.availability_until,
+              whatsapp_phone: r.profile.whatsapp_phone,
+              whatsapp_same_as_phone: r.profile.whatsapp_same_as_phone,
             }
           : null,
       }));

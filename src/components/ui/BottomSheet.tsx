@@ -26,7 +26,7 @@
  * LocationFilterSheet и т.п.), удалить можно после очистки.
  */
 
-import { CaretLeft } from "phosphor-react-native";
+import { ChevronLeft } from "lucide-react-native";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import { Animated, Modal, Platform, Pressable, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -145,7 +145,7 @@ export function BottomSheet({
                 borderRadius: 24,
               })}
             >
-              <CaretLeft size={28} weight="fill" color={sheetInkColor} />
+              <ChevronLeft size={28} strokeWidth={2.25} color={sheetInkColor} />
             </Pressable>
             <View style={{ flex: 1, minWidth: 0 }}>
               {title ? (

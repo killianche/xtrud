@@ -40,13 +40,31 @@ import { useThemeColor } from "@/lib/use-theme-color";
 
 type LocalTab = "responded" | "assigned";
 
-/** Активные отклики = клиент ещё думает или работа идёт. Архив (rejected,
- *  withdrawn, completed без accept) не показываем — он на /orders/[id]. */
+/** Активные отклики = клиент ещё думает (отклик в статусе sent/viewed).
+ *  Исключаем:
+ *    - accepted → этот заказ уже в табе «Меня выбрали», дублирование не нужно
+ *    - rejected/withdrawn → история, не активный отклик
+ *    - terminal-статусы заказа (completed/cancelled/expired/disputed) → нет смысла
+ *      показывать в «Я откликнулся» — мастер ничего не может сделать.
+ *      awaiting_confirmation тоже исключаем: если order дошёл сюда, отклик
+ *      этого мастера должен быть accepted (тогда отфильтрован выше). Если по
+ *      какой-то причине нет — это inconsistent state, лучше не показывать.
+ *  Архив доступен на /orders/[id]. См. docs/lifecycle.md §2.1. */
 function isActiveResponse(r: MyResponseWithOrder): boolean {
   const orderStatus = r.order.status;
   const respStatus = r.response.status;
-  if (orderStatus === "completed" || orderStatus === "cancelled") return false;
-  if (respStatus === "rejected" || respStatus === "withdrawn") return false;
+  if (
+    orderStatus === "completed" ||
+    orderStatus === "cancelled" ||
+    orderStatus === "expired" ||
+    orderStatus === "disputed" ||
+    orderStatus === "awaiting_confirmation"
+  ) {
+    return false;
+  }
+  if (respStatus === "accepted" || respStatus === "rejected" || respStatus === "withdrawn") {
+    return false;
+  }
   return true;
 }
 
@@ -58,8 +76,8 @@ export function MasterDashboardOrders({ userId }: MasterDashboardOrdersProps) {
   const router = useRouter();
   const [tab, setTab] = useState<LocalTab>("assigned");
   const [archiveOpen, setArchiveOpen] = useState(false);
-  const inkColor = useThemeColor("ink");
   const accentColor = useThemeColor("accent");
+  const muteColor = useThemeColor("mute");
 
   const { data: myResponses, isLoading: respLoading } = useMyResponses(userId);
   const { data: assigned, isLoading: assignedLoading } =
@@ -108,17 +126,19 @@ export function MasterDashboardOrders({ userId }: MasterDashboardOrdersProps) {
 
   return (
     <View>
-      {/* Segmented control: внешний контейнер rounded-lg (12px), внутренние
-          кнопки получат rounded-md (8px). Прямоугольная форма с лёгким
-          скруглением — стиль Vercel/Linear. */}
-      <View className="mx-4 flex-row gap-1 rounded-lg bg-canvas-soft-2 p-1">
-        <TabPill
+      {/* Twitter/X-style tab-bar: текстовые табы без подложки, с accent-underline
+          под активным. Compact и «игровой» — как stream/feed selector. По
+          фидбэку user 2026-05-16: «попробуй другой дизайн переключателя,
+          может убрать». Заменил segmented-control с shadow + bg-canvas
+          на underline-tabs. */}
+      <View className="mx-4 flex-row gap-6 border-b border-hairline">
+        <TabUnderline
           label="Меня выбрали"
           count={activeAssigned.length}
           selected={tab === "assigned"}
           onPress={() => setTab("assigned")}
         />
-        <TabPill
+        <TabUnderline
           label="Я откликнулся"
           selected={tab === "responded"}
           onPress={() => setTab("responded")}
@@ -164,37 +184,29 @@ export function MasterDashboardOrders({ userId }: MasterDashboardOrdersProps) {
               ))}
 
               {/* Архив (completed/cancelled/expired) — collapsible.
-                  По фидбэку user 2026-05-15: «завершённые скрыть, можно
-                  раскрыть посмотреть». Если активных нет, но есть архив —
-                  тоже показываем кнопку. */}
+                  Secondary action, не должен отвлекать от активных заявок.
+                  По фидбэку user 2026-05-16: «менее заметная кнопка». Убран
+                  border + bg + py-3 — теперь footer-link стиль (text-mute
+                  caption + маленький chevron), inline по центру. */}
               {archivedAssigned.length > 0 ? (
                 <>
-                  {/* Toggle-кнопка в padding'е, чтобы не приклеивалась
-                      к краям. Карточки списка — full-bleed. */}
-                  <View className="mx-4 mt-4">
-                    <Pressable
-                      accessibilityRole="button"
-                      accessibilityLabel={
-                        archiveOpen ? "Скрыть завершённые" : "Показать завершённые"
-                      }
-                      onPress={() => setArchiveOpen((v) => !v)}
-                      className="flex-row items-center justify-between rounded-md border border-hairline bg-canvas px-4 py-3 active:opacity-70"
-                    >
-                      <View className="flex-1">
-                        <AppText weight="semibold" className="text-body-sm text-ink">
-                          Завершённые заявки
-                        </AppText>
-                        <AppText className="mt-0.5 text-caption text-mute">
-                          {archivedAssigned.length} {archivedAssigned.length === 1 ? "заявка" : "заявок"}
-                        </AppText>
-                      </View>
-                      {archiveOpen ? (
-                        <CaretUp size={18} weight="bold" color={inkColor} />
-                      ) : (
-                        <CaretDown size={18} weight="bold" color={inkColor} />
-                      )}
-                    </Pressable>
-                  </View>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={
+                      archiveOpen ? "Скрыть завершённые" : "Показать завершённые"
+                    }
+                    onPress={() => setArchiveOpen((v) => !v)}
+                    className="mt-4 mb-1 flex-row items-center justify-center gap-1.5 px-4 py-2 active:opacity-50"
+                  >
+                    <AppText weight="medium" className="text-caption text-mute">
+                      Завершённые · {archivedAssigned.length}
+                    </AppText>
+                    {archiveOpen ? (
+                      <CaretUp size={12} weight="bold" color={muteColor} />
+                    ) : (
+                      <CaretDown size={12} weight="bold" color={muteColor} />
+                    )}
+                  </Pressable>
                   {archiveOpen ? (
                     <View className="mt-3">
                       {archivedAssigned.map((o) => (
@@ -308,16 +320,14 @@ function EmptyTabState({ tab, accentColor }: { tab: LocalTab; accentColor: strin
   );
 }
 
-function TabPill({
+function TabUnderline({
   label,
   count = 0,
   selected,
   onPress,
 }: {
   label: string;
-  /** Если 0 или не передан — badge не рендерится. Используется только
-   *  на «Меня выбрали» (фидбек user 2026-05-15: badge как уведомление,
-   *  не как счётчик списка). */
+  /** Если 0 или не передан — badge не рендерится. */
   count?: number;
   selected: boolean;
   onPress: () => void;
@@ -327,36 +337,25 @@ function TabPill({
       accessibilityRole="button"
       accessibilityState={{ selected }}
       onPress={onPress}
-      // flex-1 → каждый pill занимает половину ширины. Inner rounded-md
-      // (8px) — менее «таблеточная» форма, более «segmented control» как у
-      // Vercel/Linear. h-10 — компактнее, дышит лучше при rounded-md.
-      className={`flex-1 h-10 flex-row items-center justify-center gap-2 rounded-md px-4 ${
-        selected ? "bg-canvas" : "active:opacity-60"
-      }`}
+      className="flex-row items-center gap-2 pb-3 pt-2 active:opacity-60"
       style={
         selected
           ? {
-              shadowColor: "#000",
-              shadowOffset: { width: 0, height: 1 },
-              shadowOpacity: 0.08,
-              shadowRadius: 3,
-              elevation: 2,
+              borderBottomWidth: 2,
+              borderBottomColor: "rgb(var(--ink))",
+              marginBottom: -1, // overlap родительского border-b 1px чтобы accent был flush
             }
           : undefined
       }
     >
       <AppText
         weight={selected ? "semibold" : "medium"}
-        className={`text-body-sm ${selected ? "text-ink" : "text-mute"}`}
+        className={`text-body-md ${selected ? "text-ink" : "text-mute"}`}
       >
         {label}
       </AppText>
       {count > 0 ? (
         // Notification-style badge: красный (error-токен) как iOS unread badge.
-        // Маленький — h-4 min-w-4 px-1 + text-[10px]. Фидбэк user 2026-05-15:
-        // «синие badges заменить на красные как у обычных уведомлений, поменьше».
-        // На неselected — тот же красный (notification всегда заметна), но
-        // приглушённая через opacity 0.55 чтобы не доминировать.
         <View
           className="h-4 min-w-4 items-center justify-center rounded-full bg-error px-1"
           style={selected ? undefined : { opacity: 0.55 }}

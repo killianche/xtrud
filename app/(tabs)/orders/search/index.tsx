@@ -42,6 +42,7 @@ import {
   useOrdersSearchFiltersStore,
 } from "@/features/orders/orders-search-filters-store";
 import { useAllOpenOrders } from "@/features/orders/use-all-open-orders";
+import { useMyResponses } from "@/features/orders/use-my-responses";
 import { useThemeColor } from "@/lib/use-theme-color";
 
 export default function OrdersSearchScreen() {
@@ -89,6 +90,17 @@ export default function OrdersSearchScreen() {
   } = useAllOpenOrders({ userId, l2Ids: effectiveL2Ids, sort });
 
   const allOrders = (feed?.pages ?? []).flatMap((p) => p.rows);
+
+  // Сет order_id, на которые мастер уже откликнулся (любой статус кроме
+  // withdrawn). Используется для маркера «Вы откликнулись» в OrderRow,
+  // чтобы мастер сразу видел в фиде поиска, какие заявки он уже трогал.
+  // Withdrawn исключаем — отозванный отклик не считается активным.
+  const myResponsesQ = useMyResponses(userId);
+  const respondedOrderIds = new Set(
+    (myResponsesQ.data ?? [])
+      .filter((r) => r.response.status !== "withdrawn")
+      .map((r) => r.response.order_id),
+  );
 
   // Animated fade-in списка (UI_PATTERNS §3.7) — opacity 0→1 за 280ms когда
   // данные пришли. Skeleton → real list переход не должен быть «дёрганый».
@@ -154,6 +166,7 @@ export default function OrdersSearchScreen() {
                 budgetKind={o.budget_kind}
                 budgetValue={o.budget_value}
                 description={o.description}
+                alreadyResponded={respondedOrderIds.has(o.id)}
                 onPress={() =>
                   router.push(`/(tabs)/orders/${o.id}` as never)
                 }

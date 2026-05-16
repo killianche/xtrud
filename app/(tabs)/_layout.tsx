@@ -4,7 +4,8 @@ import {
   ThemeProvider as NavThemeProvider,
 } from "@react-navigation/native";
 import { Slot, Tabs } from "expo-router";
-import { ChatCircle, ClipboardText, House, UserCircle } from "phosphor-react-native";
+import { ChatCircle, ClipboardText, UserCircle } from "phosphor-react-native";
+import { XtrudLogo } from "@/components/XtrudLogo";
 import { Platform, useWindowDimensions } from "react-native";
 import { TabBar } from "@/components/TabBar";
 import { WebShell } from "@/components/WebShell";
@@ -97,8 +98,8 @@ export default function TabsLayout() {
         name="index"
         options={{
           title: "Главная",
-          tabBarIcon: ({ color, focused }) => (
-            <House color={color} size={26} weight={focused ? "fill" : "bold"} />
+          tabBarIcon: ({ color }) => (
+            <XtrudLogo size={24} color={color} />
           ),
         }}
       />

@@ -36,14 +36,46 @@ import { type Href, useRouter } from "expo-router";
 import { useCallback } from "react";
 import { useNavHistory } from "./nav-history";
 
+/** Извлекает namespace-сегмент из expo-router пути:
+ *  "/(tabs)/chats" → "chats", "/orders/abc" → "orders", "/chats/xyz" → "chats". */
+function tabSegment(path: string): string | null {
+  const cleaned = path.replace(/^\/\(tabs\)\//, "/").replace(/^\//, "");
+  const seg = cleaned.split("/")[0];
+  return seg || null;
+}
+
+/** Сегментов в пути (без /(tabs)/ и без query). Detail-страницы имеют ≥2
+ *  (например, /chats/abc, /orders/xyz). Tab-корни — 1 (/profile, /chats). */
+function segmentsCount(path: string): number {
+  const cleaned = path.replace(/^\/\(tabs\)\//, "/").replace(/^\//, "").split("?")[0];
+  if (!cleaned) return 0;
+  return cleaned.split("/").filter(Boolean).length;
+}
+
 export function useSafeBack(fallback: Href) {
   const router = useRouter();
   const goBackInStack = useNavHistory((s) => s.goBack);
   return useCallback(() => {
     const prev = goBackInStack();
     if (prev) {
-      router.replace(prev as Href);
-      return;
+      // Detail-страница (≥2 сегмента: /chats/abc, /orders/xyz) — это
+      // «реальный экран откуда пришёл», возвращаемся всегда, независимо от
+      // таба. Без этого back из /orders/[id] (после chat → order) уводил в
+      // корень orders-таба → у клиента это main-страница (фидбэк user
+      // 2026-05-16). С этим — возвращаемся в /chats/abc.
+      if (segmentsCount(prev) >= 2) {
+        router.replace(prev as Href);
+        return;
+      }
+      // prev — tab-корень (/profile, /chats). Если его таб совпадает с
+      // fallback — используем его. Если другой (profile vs chats) —
+      // приоритет у fallback, чтобы не «прыгало» между табами.
+      const prevSeg = tabSegment(prev);
+      const fbSeg = typeof fallback === "string" ? tabSegment(fallback) : null;
+      if (!fbSeg || prevSeg === fbSeg) {
+        router.replace(prev as Href);
+        return;
+      }
     }
     router.replace(fallback);
   }, [router, fallback, goBackInStack]);

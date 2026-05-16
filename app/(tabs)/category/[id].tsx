@@ -621,8 +621,10 @@ function MasterRow({
         {/* Услуги мастера с ценами — топ-3. Формат «от X до Y ₽» / «X ₽».
             Unit показываем только если значимый (м² / час / день) — для
             per_task «за работу» опускаем (понятно по контексту).
-            Текст услуги body-md (16px), цена mono-md (16px) — фидбэк
-            user 2026-05-14 «маленькие шрифты, увеличить на 2-3-4px». */}
+            Текст услуги body-sm (14px), цена mono-sm (~13px) — фидбэк user
+            2026-05-15 «сделай шрифт этого блока на три пикселя меньше».
+            Раньше body-md/mono-md (16px) был визуально равен bio и забирал
+            внимание. */}
         {topServices.length > 0 ? (
           <View className="mt-3 gap-1">
             {topServices.map((s) => {
@@ -632,10 +634,10 @@ function MasterRow({
               const priceText = formatServicePrice(s);
               return (
                 <View key={s.id} className="flex-row items-center justify-between gap-2">
-                  <AppText className="text-body text-body-md flex-1" numberOfLines={1}>
+                  <AppText className="text-body text-body-sm flex-1" numberOfLines={1}>
                     {s.title}
                   </AppText>
-                  <AppText weight="mono" className="text-ink text-mono-md">
+                  <AppText weight="mono" className="text-ink text-mono-sm">
                     {priceText}
                   </AppText>
                 </View>
@@ -715,16 +717,21 @@ function MasterRow({
               Позвонить
             </AppText>
           </Pressable>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="WhatsApp"
-            onPress={handleContact}
-            className="flex-1 items-center justify-center h-10 rounded-full bg-canvas-soft active:bg-canvas-soft-2"
-          >
-            <AppText weight="medium" className="text-body-sm text-ink">
-              WhatsApp
-            </AppText>
-          </Pressable>
+          {/* Sprint 0079: кнопка WhatsApp только если у мастера указан
+              WhatsApp (явный whatsapp_phone ИЛИ same_as_phone=true). */}
+          {profile?.whatsapp_same_as_phone === true ||
+          (profile?.whatsapp_phone && profile.whatsapp_phone.length >= 5) ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="WhatsApp"
+              onPress={handleContact}
+              className="flex-1 items-center justify-center h-10 rounded-full bg-canvas-soft active:bg-canvas-soft-2"
+            >
+              <AppText weight="medium" className="text-body-sm text-ink">
+                WhatsApp
+              </AppText>
+            </Pressable>
+          ) : null}
         </View>
       </>
     </Pressable>
@@ -936,17 +943,21 @@ function MasterRowGallery({
             Позвонить
           </AppText>
         </Pressable>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="WhatsApp"
-          onPress={handleContact}
-          className="flex-1 flex-row items-center justify-center gap-2 h-10 rounded-full bg-canvas-soft border border-hairline active:opacity-70"
-        >
-          <ChatCircle size={16} weight="bold" color="currentColor" className="text-ink" />
-          <AppText weight="medium" className="text-body-sm text-ink">
-            WhatsApp
-          </AppText>
-        </Pressable>
+        {/* Sprint 0079: WhatsApp кнопка скрыта если у мастера не указан номер. */}
+        {profile?.whatsapp_same_as_phone === true ||
+        (profile?.whatsapp_phone && profile.whatsapp_phone.length >= 5) ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="WhatsApp"
+            onPress={handleContact}
+            className="flex-1 flex-row items-center justify-center gap-2 h-10 rounded-full bg-canvas-soft border border-hairline active:opacity-70"
+          >
+            <ChatCircle size={16} weight="bold" color="currentColor" className="text-ink" />
+            <AppText weight="medium" className="text-body-sm text-ink">
+              WhatsApp
+            </AppText>
+          </Pressable>
+        ) : null}
       </View>
     </Pressable>
   );

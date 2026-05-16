@@ -64,9 +64,10 @@ export interface SubmitResponseInput {
   orderId: string;
   masterId: string;
   l2Id: string;
-  priceMin: number | null;
-  priceMax: number | null;
-  priceMode: Database["public"]["Enums"]["order_budget_mode"];
+  /** Способ задания цены (fixed/from/up_to/negotiable). */
+  priceKind: Database["public"]["Enums"]["order_price_kind"];
+  /** Одно числовое значение цены в ₽. NULL для negotiable. */
+  priceValue: number | null;
   leadTime: string;
   message: string;
 }
@@ -80,14 +81,8 @@ export function useSubmitResponse() {
         order_id: input.orderId,
         master_id: input.masterId,
         l2_id: input.l2Id,
-        price_min: input.priceMode === "negotiable" ? null : input.priceMin,
-        price_max:
-          input.priceMode === "negotiable"
-            ? null
-            : input.priceMode === "exact"
-              ? input.priceMin
-              : input.priceMax,
-        price_mode: input.priceMode,
+        price_kind: input.priceKind,
+        price_value: input.priceKind === "negotiable" ? null : input.priceValue,
         lead_time: input.leadTime || null,
         message: input.message,
       };

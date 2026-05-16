@@ -13,8 +13,8 @@ import { supabase } from "@/lib/supabase";
 export interface UpdateMyProfileInput {
   first_name: string;
   last_name: string | null;
-  city_id: string | null;
-  district: string | null;
+  // city_id / district 2026-05-16: убраны из UI. Поля legacy в БД остаются
+  // для совместимости с seed-данными, но клиент не пишет их через этот хук.
 }
 
 export function useUpdateMyProfile(userId: string | undefined) {
@@ -27,8 +27,6 @@ export function useUpdateMyProfile(userId: string | undefined) {
         .update({
           first_name: input.first_name.trim() || null,
           last_name: input.last_name?.trim() || null,
-          city_id: input.city_id,
-          district: input.district?.trim() || null,
         })
         .eq("id", userId);
       if (error) throw error;

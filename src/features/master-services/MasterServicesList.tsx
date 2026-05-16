@@ -63,11 +63,24 @@ export function MasterServicesList({ masterId, hideTitle = false }: MasterServic
         {services.map((service) => {
           const kind: ServicePricingKind = service.pricing_kind ?? "fixed";
           const isQuote = kind === "quote";
-          // Текст цены: для quote — «Договорная», для остальных — диапазон
-          // (formatPriceRange сам ставит «Договорная» если price_min=null).
-          const priceText = isQuote
-            ? "Договорная"
-            : formatPriceRange(service.price_min, service.price_max);
+          // Текст цены — без юнита, юнит выносим в unitText ниже:
+          //   fixed → «1 500 ₽», from/range → «от 1 500 ₽», up_to → «до 2 000 ₽»,
+          //   hourly → «от 1 500 ₽», quote → «Договорная».
+          let priceText: string;
+          if (isQuote) {
+            priceText = "Договорная";
+          } else if (kind === "up_to") {
+            const value = service.price_max ?? service.price_min;
+            priceText = value == null ? "Договорная" : `до ${value.toLocaleString("ru-RU")} ₽`;
+          } else if (kind === "fixed") {
+            priceText =
+              service.price_min == null
+                ? "Договорная"
+                : `${service.price_min.toLocaleString("ru-RU")} ₽`;
+          } else {
+            // from / range (legacy) / hourly — «от X ₽».
+            priceText = formatPriceRange(service.price_min, service.price_max);
+          }
           // Подпись под ценой: для hourly — «за час», для quote скрываем,
           // для остальных — единица из SERVICE_UNIT_LABELS.
           const unitText = isQuote

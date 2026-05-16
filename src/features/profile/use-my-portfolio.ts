@@ -13,7 +13,10 @@ import type { Tables } from "@/types/database";
 
 export type PortfolioItem = Tables<"portfolio_items">;
 
-export const PORTFOLIO_MAX = 12;
+// 2026-05-15: 12→50 по фидбэку user — мастера хотят больше работ показывать,
+// особенно отделочники/спецтехника. Compression pipeline ≈100 KB/фото,
+// 50 = ~5 MB на портфолио, приемлемо.
+export const PORTFOLIO_MAX = 50;
 
 export function portfolioKey(masterId: string | null | undefined) {
   return ["portfolio", masterId] as const;
@@ -28,8 +31,13 @@ export function useMasterPortfolio(masterId: string | null | undefined) {
         .from("portfolio_items")
         .select("*")
         .eq("master_id", masterId)
-        .order("sort_order", { ascending: true })
-        .order("created_at", { ascending: true });
+        // Newest-first: при INSERT мы выставляем sort_order = max + 1, поэтому
+        // DESC по sort_order = свежие фото сверху. Фидбэк user 2026-05-16:
+        // «фото добавлять последние отображать сверху». Применяется ко всем
+        // потребителям (master/[id] публичный, category/[id] карточки,
+        // profile/index preview, /profile/portfolio управление).
+        .order("sort_order", { ascending: false })
+        .order("created_at", { ascending: false });
       if (error) throw error;
       return data ?? [];
     },

@@ -8,7 +8,9 @@ import { supabase } from "@/lib/supabase";
 import type { Database, Enums } from "@/types/database";
 
 export type OrderUrgency = Enums<"order_urgency">;
-export type OrderBudgetMode = Enums<"order_budget_mode">;
+/** Тип цены — fixed | from | up_to | negotiable. Заменил OrderBudgetMode
+ *  с устаревшим диапазоном (миграция 0068). */
+export type OrderPriceKind = Enums<"order_price_kind">;
 
 export interface CreateOrderInput {
   clientId: string;
@@ -18,9 +20,10 @@ export interface CreateOrderInput {
   cityId: string;
   district: string;
   urgency: OrderUrgency;
-  budgetMode: OrderBudgetMode;
-  budgetMin: number | null;
-  budgetMax: number | null;
+  /** Способ задания бюджета (fixed/from/up_to/negotiable). */
+  budgetKind: OrderPriceKind;
+  /** Одно числовое значение в ₽. NULL для negotiable. */
+  budgetValue: number | null;
 }
 
 export function useCreateOrder() {
@@ -37,9 +40,8 @@ export function useCreateOrder() {
         city_id: input.cityId === ALL_INGUSHETIA_CITY ? null : input.cityId,
         district: input.district || null,
         urgency: input.urgency,
-        budget_mode: input.budgetMode,
-        budget_min: input.budgetMin,
-        budget_max: input.budgetMax,
+        budget_kind: input.budgetKind,
+        budget_value: input.budgetKind === "negotiable" ? null : input.budgetValue,
         status: "open",
       };
       const { data, error } = await supabase.from("orders").insert(payload).select("id").single();

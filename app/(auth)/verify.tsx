@@ -8,6 +8,7 @@ import { AppText } from "@/components/AppText";
 import { OtpInput, type OtpInputHandle } from "@/components/OtpInput";
 import { useSendOtp, useVerifyOtp } from "@/features/auth/use-auth-mutations";
 import { type OtpFormValues, otpFormSchema } from "@/features/auth/validation";
+import { useSafeBack } from "@/lib/use-safe-back";
 
 const COOLDOWN_SEC = 60;
 
@@ -21,6 +22,9 @@ export default function VerifyScreen() {
 
   const sendOtp = useSendOtp();
   const verifyOtp = useVerifyOtp();
+  // safeBack — fallback на phone-screen для случаев когда verify открывается
+  // напрямую (deeplink / refresh) и в history нет phone-screen.
+  const goBack = useSafeBack("/(auth)/phone" as const);
 
   const {
     control,
@@ -82,7 +86,7 @@ export default function VerifyScreen() {
         <View>
           <Pressable
             accessibilityRole="button"
-            onPress={() => router.back()}
+            onPress={goBack}
             hitSlop={12}
             className="mb-6 self-start"
           >

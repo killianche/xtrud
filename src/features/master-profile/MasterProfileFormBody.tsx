@@ -8,9 +8,9 @@
  * Caller предоставляет свой submit и кнопку.
  */
 
-import { Car, Wrench } from "phosphor-react-native";
+import { Car, Check, WhatsappLogo, Wrench } from "phosphor-react-native";
 import type { Control, FieldErrors, FieldPath } from "react-hook-form";
-import { Controller } from "react-hook-form";
+import { Controller, useWatch } from "react-hook-form";
 import { Pressable, TextInput, View } from "react-native";
 import { AppText } from "@/components/AppText";
 import type { MasterProfileFormValues } from "@/features/auth/master-profile-schema";
@@ -159,7 +159,101 @@ export function MasterProfileFormBody({
           />
         </View>
       </View>
+
+      {/* WhatsApp — sprint 0079. Чекбокс «совпадает с основным» + опц. явный
+          номер. Если оба пусты, кнопка WhatsApp не показывается клиентам. */}
+      <WhatsappSection control={control} errors={errors} isBusy={isBusy} />
     </>
+  );
+}
+
+// ============================================================================
+// WhatsApp section — чекбокс «совпадает» + conditional TextInput.
+// ============================================================================
+
+interface WhatsappSectionProps {
+  control: FormControl;
+  errors: FieldErrors<MasterProfileFormValues>;
+  isBusy: boolean;
+}
+
+function WhatsappSection({ control, errors, isBusy }: WhatsappSectionProps) {
+  const mutedSoftColor = useThemeColor("muted-soft");
+  const accentColor = useThemeColor("accent");
+  const sameAsPhone = useWatch({ control, name: "whatsappSameAsPhone" });
+
+  return (
+    <View className="mt-6 px-6">
+      <View className="flex-row items-center gap-2">
+        <WhatsappLogo size={16} weight="bold" color={accentColor} />
+        <AppText weight="medium" className="text-caption text-muted">
+          WhatsApp
+        </AppText>
+      </View>
+
+      {/* Checkbox row — «совпадает с основным номером». */}
+      <Controller
+        control={control}
+        name="whatsappSameAsPhone"
+        render={({ field: { value, onChange } }) => (
+          <Pressable
+            accessibilityRole="checkbox"
+            accessibilityState={{ checked: value, disabled: isBusy }}
+            disabled={isBusy}
+            onPress={() => onChange(!value)}
+            className="mt-2 flex-row items-center gap-3 rounded-md border border-hairline bg-canvas px-3 py-3 active:opacity-70"
+          >
+            <View
+              className={`h-5 w-5 items-center justify-center rounded border-2 ${
+                value ? "border-accent bg-accent" : "border-hairline bg-canvas"
+              }`}
+            >
+              {value ? <Check size={12} weight="bold" color="#ffffff" /> : null}
+            </View>
+            <AppText weight="medium" className="flex-1 text-body-sm text-ink">
+              Совпадает с основным номером
+            </AppText>
+          </Pressable>
+        )}
+      />
+
+      {/* Conditional: если чекбокс снят — показываем поле ввода. Пустое значит
+          «WhatsApp не указан, кнопка не отображается клиентам». */}
+      {!sameAsPhone ? (
+        <Controller
+          control={control}
+          name="whatsappPhone"
+          render={({ field: { value, onChange, onBlur } }) => (
+            <View className="mt-3">
+              <TextInput
+                value={value ?? ""}
+                onBlur={onBlur}
+                onChangeText={onChange}
+                placeholder="+7 999 123-45-67 (опционально)"
+                placeholderTextColor={mutedSoftColor}
+                keyboardType="phone-pad"
+                inputMode="tel"
+                maxLength={20}
+                maxFontSizeMultiplier={1.3}
+                className={`h-12 rounded-md border bg-canvas px-3 text-body-md text-ink ${
+                  errors.whatsappPhone ? "border-error" : "border-hairline"
+                }`}
+                editable={!isBusy}
+              />
+              {errors.whatsappPhone ? (
+                <AppText weight="medium" className="mt-2 text-caption text-error">
+                  {errors.whatsappPhone.message}
+                </AppText>
+              ) : (
+                <AppText className="mt-2 text-caption text-mute">
+                  Оставьте пустым, если WhatsApp у вас нет — кнопка не отобразится клиентам.
+                </AppText>
+              )}
+            </View>
+          )}
+        />
+      ) : null}
+    </View>
   );
 }
 

@@ -22,7 +22,20 @@ export const findDistrictByVillage = _findDistrictByVillage;
 export const isDistrict = (value: string): boolean => isDistrictName(value);
 
 export const orderUrgencyOptions = ["urgent", "this_week", "this_month", "flexible"] as const;
-export const orderBudgetModeOptions = ["exact", "range", "negotiable"] as const;
+
+/**
+ * Способ задания цены — соответствует enum `order_price_kind` в БД.
+ * Раньше было `order_budget_mode` (`exact | range | negotiable`) с диапазоном
+ * (price_min/price_max). По фидбэку user 2026-05-15 «убрать диапазоны из всех
+ * заказов» — модель изменена на 4 варианта с одним числовым значением:
+ *   - fixed       — точная цена
+ *   - from        — «от X ₽»
+ *   - up_to       — «до X ₽»
+ *   - negotiable  — договорная (без числа)
+ * См. supabase/migrations/0068_orders_remove_price_range.sql.
+ */
+export const orderPriceKindOptions = ["fixed", "from", "up_to", "negotiable"] as const;
+export type OrderPriceKind = (typeof orderPriceKindOptions)[number];
 
 export function urgencyLabel(u: (typeof orderUrgencyOptions)[number]): string {
   switch (u) {
@@ -37,6 +50,37 @@ export function urgencyLabel(u: (typeof orderUrgencyOptions)[number]): string {
   }
 }
 
+/** Короткий лейбл для chip-кнопки в форме. */
+export function priceKindLabel(k: OrderPriceKind): string {
+  switch (k) {
+    case "fixed":
+      return "Точная";
+    case "from":
+      return "От";
+    case "up_to":
+      return "До";
+    case "negotiable":
+      return "Договорная";
+  }
+}
+
+/**
+ * Форматирование цены для отображения в UI (карточки, заголовки).
+ * Возвращает «1 500 ₽», «от 1 500 ₽», «до 5 000 ₽», «Цена договорная».
+ */
+export function formatPrice(kind: OrderPriceKind, value: number | null): string {
+  if (kind === "negotiable" || value === null) return "Цена договорная";
+  const num = new Intl.NumberFormat("ru-RU").format(value);
+  switch (kind) {
+    case "fixed":
+      return `${num} ₽`;
+    case "from":
+      return `от ${num} ₽`;
+    case "up_to":
+      return `до ${num} ₽`;
+  }
+}
+
 export const createOrderSchema = z.object({
   l2Id: z.string().min(1, "Выберите категорию"),
   title: z.string().min(5, "Минимум 5 символов").max(120, "Максимум 120 символов"),
@@ -48,9 +92,9 @@ export const createOrderSchema = z.object({
   cityId: z.string().min(1, "Выберите город"),
   district: z.string().max(60, "Максимум 60 символов"),
   urgency: z.enum(orderUrgencyOptions),
-  budgetMode: z.enum(orderBudgetModeOptions),
-  budgetMin: z.number().int().min(0).nullable(),
-  budgetMax: z.number().int().min(0).nullable(),
+  budgetKind: z.enum(orderPriceKindOptions),
+  /** Одно числовое значение цены. NULL для negotiable. */
+  budgetValue: z.number().int().min(0).nullable(),
 });
 
 export type CreateOrderFormValues = z.infer<typeof createOrderSchema>;

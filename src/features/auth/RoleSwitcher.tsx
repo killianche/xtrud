@@ -4,9 +4,12 @@
 // Single-role пользователи (только клиент или только мастер) не видят
 // переключатель — у них всегда одна роль.
 //
-// Сегментный 2-toggle «Клиент / Мастер» в стиле iOS UISegmentedControl.
-// При тапе → useSetActiveRole mutation + invalidate user → весь UI
-// перерисовывается с новой ролью (главная, табы, бейджи).
+// Стиль — Linear/Vercel-segmented toggle в едином pill-контейнере:
+// `border-hairline bg-canvas-soft p-1`, активная половина — `bg-canvas` +
+// subtle shadow, неактивная — `bg-canvas-soft` без бордера. Совпадает с
+// `ClientThemeSegmented` на этой же странице. Фидбэк user 2026-05-16:
+// «эти две кнопки сделай переключателями между собой» — раньше были два
+// раздельных pill-chip'а, сейчас один сегментированный switch.
 //
 // Размещение: src/features/auth/ (рядом с use-set-active-role.ts).
 // Используется в app/(tabs)/profile/index.tsx.
@@ -27,44 +30,58 @@ interface RoleSwitcherProps {
   isClient: boolean;
 }
 
+const OPTS: Array<{ value: ActiveRole; label: string; Icon: typeof User }> = [
+  { value: "client", label: "Клиент", Icon: User },
+  { value: "master", label: "Мастер", Icon: Briefcase },
+];
+
 export function RoleSwitcher({ userId, currentRole, isMaster, isClient }: RoleSwitcherProps) {
   const setRole = useSetActiveRole();
-  const tc = useThemeColors(["ink", "mute", "on-primary"]);
+  const tc = useThemeColors(["ink", "mute"]);
 
   // Скрываем переключатель если пользователь single-role.
   if (!isMaster || !isClient) return null;
 
   const handleSwitch = (role: ActiveRole) => {
-    if (role === currentRole) return;
+    if (role === currentRole || setRole.isPending) return;
     setRole.mutate({ userId, role });
   };
 
   return (
-    <View>
-      <AppText weight="medium" className="text-caption text-muted">
-        Сейчас вы
-      </AppText>
-      <View className="mt-2 flex-row rounded-pill bg-surface-2 p-1">
-        <RoleToggle
-          icon={User}
-          label="Клиент"
-          active={currentRole === "client"}
-          disabled={setRole.isPending}
-          onPress={() => handleSwitch("client")}
-          activeColor={tc.ink}
-          inactiveColor={tc.mute}
-          activeText={tc["on-primary"]}
-        />
-        <RoleToggle
-          icon={Briefcase}
-          label="Мастер"
-          active={currentRole === "master"}
-          disabled={setRole.isPending}
-          onPress={() => handleSwitch("master")}
-          activeColor={tc.ink}
-          inactiveColor={tc.mute}
-          activeText={tc["on-primary"]}
-        />
+    <View className="items-center">
+      <View className="flex-row items-center rounded-pill border border-hairline bg-canvas-soft p-1">
+        {OPTS.map(({ value, label, Icon }) => {
+          const isSel = currentRole === value;
+          return (
+            <Pressable
+              key={value}
+              accessibilityRole="radio"
+              accessibilityState={{ selected: isSel, disabled: setRole.isPending }}
+              accessibilityLabel={label}
+              disabled={setRole.isPending}
+              onPress={() => handleSwitch(value)}
+              className={`h-9 flex-row items-center justify-center gap-1.5 rounded-pill px-4 ${
+                isSel ? "bg-canvas" : "active:opacity-60"
+              }`}
+              style={
+                isSel
+                  ? {
+                      boxShadow:
+                        "0 1px 2px rgba(0,0,0,0.06), 0 0 0 1px rgba(0,0,0,0.04)",
+                    }
+                  : undefined
+              }
+            >
+              <Icon size={14} weight="bold" color={isSel ? tc.ink : tc.mute} />
+              <AppText
+                weight={isSel ? "semibold" : "medium"}
+                className={`text-body-sm ${isSel ? "text-ink" : "text-mute"}`}
+              >
+                {label}
+              </AppText>
+            </Pressable>
+          );
+        })}
       </View>
       {setRole.error ? (
         <AppText weight="medium" className="mt-2 text-caption text-error">
@@ -72,62 +89,5 @@ export function RoleSwitcher({ userId, currentRole, isMaster, isClient }: RoleSw
         </AppText>
       ) : null}
     </View>
-  );
-}
-
-interface RoleToggleProps {
-  icon: typeof User;
-  label: string;
-  active: boolean;
-  disabled: boolean;
-  onPress: () => void;
-  activeColor: string;
-  inactiveColor: string;
-  activeText: string;
-}
-
-function RoleToggle({
-  icon: Icon,
-  label,
-  active,
-  disabled,
-  onPress,
-  activeColor,
-  inactiveColor,
-  activeText,
-}: RoleToggleProps) {
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityState={{ selected: active, disabled }}
-      disabled={disabled}
-      onPress={onPress}
-      // Active state — soft-bg canvas (как iOS segmented control), не filled-ink.
-      // По фидбэку user 2026-05-15: filled-black слишком давит. Контраст
-      // активного состояния — типографический (semibold ink) vs неактивного
-      // (medium mute), а не цветовой.
-      className={`flex-1 flex-row items-center justify-center gap-1.5 rounded-pill h-10 ${
-        active ? "bg-canvas" : "active:opacity-60"
-      }`}
-      style={
-        active
-          ? {
-              shadowColor: "#000",
-              shadowOffset: { width: 0, height: 1 },
-              shadowOpacity: 0.06,
-              shadowRadius: 2,
-              elevation: 1,
-            }
-          : undefined
-      }
-    >
-      <Icon size={16} weight="bold" color={active ? activeColor : inactiveColor} />
-      <AppText
-        weight={active ? "semibold" : "medium"}
-        className={`text-body-sm ${active ? "text-ink" : "text-mute"}`}
-      >
-        {label}
-      </AppText>
-    </Pressable>
   );
 }

@@ -31,9 +31,9 @@ import { useUserRecord } from "@/features/auth/use-user-record";
 import { useCities } from "@/features/cities/use-cities";
 import { MasterProfileFormBody } from "@/features/master-profile/MasterProfileFormBody";
 import { useUpdateMasterProfile } from "@/features/master-profile/use-update-master-profile";
-import { MasterServicesSection } from "@/features/master-services/MasterServicesSection";
 import { ServiceAreasSection } from "@/features/master-profile/ServiceAreasSection";
 import { supabase } from "@/lib/supabase";
+import { useSafeBack } from "@/lib/use-safe-back";
 import { useTabBarVisibility } from "@/lib/tabbar-visibility";
 import type { Tables } from "@/types/database";
 
@@ -78,6 +78,8 @@ export default function EditMasterScreen() {
       experienceYears: 0,
       hasTools: false,
       hasTransport: false,
+      whatsappSameAsPhone: true,
+      whatsappPhone: "",
     },
     mode: "onChange",
   });
@@ -93,14 +95,21 @@ export default function EditMasterScreen() {
       experienceYears: masterProfile.experience_years ?? 0,
       hasTools: masterProfile.has_tools,
       hasTransport: masterProfile.has_transport,
+      // Sprint 0079: WhatsApp prefill из master_profiles.
+      whatsappSameAsPhone: masterProfile.whatsapp_same_as_phone ?? false,
+      whatsappPhone: masterProfile.whatsapp_phone ?? "",
     });
   }, [user, masterProfile, reset]);
+
+  // safeBack — fallback /(tabs)/profile, потому что edit-master открывается
+  // из /profile, и при cross-stack push'е expo-router теряет history.
+  const goBack = useSafeBack("/(tabs)/profile" as const);
 
   const onSubmit = handleSubmit(async (values) => {
     if (!userId) return;
     try {
       await updateMaster.mutateAsync({ userId, ...values });
-      router.back();
+      goBack();
     } catch (_e) {
       // updateMaster.error
     }
@@ -125,12 +134,12 @@ export default function EditMasterScreen() {
               {
                 text: "Выйти",
                 style: "destructive",
-                onPress: () => router.back(),
+                onPress: () => goBack(),
               },
             ]);
             return;
           }
-          router.back();
+          goBack();
         }}
       />
 
@@ -171,9 +180,11 @@ export default function EditMasterScreen() {
             isBusy={isBusy}
           />
 
-          <View className="mt-8">
-            <MasterServicesSection masterId={userId} />
-          </View>
+          {/* «Прайс-лист» (MasterServicesSection) удалён из редактора профиля
+              по фидбэку user 2026-05-15: «прайс-лист отсюда полностью убрать,
+              у нас есть отдельный блок Услуги и цены, там всё это записывается».
+              Точка входа в редактирование услуг — карточка «Услуги и цены» на
+              /profile, ведёт на отдельный экран. */}
 
           {/* P1-3: где работает мастер (multi-select городов и районов). */}
           <View className="mt-8">

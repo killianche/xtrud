@@ -26,6 +26,10 @@ export interface UpdateMasterProfileInput {
   experienceYears: number;
   hasTools: boolean;
   hasTransport: boolean;
+  // Sprint 0079: WhatsApp.
+  whatsappSameAsPhone: boolean;
+  /** Пустая строка = не указан. Игнорируется если whatsappSameAsPhone=true. */
+  whatsappPhone: string;
 }
 
 export function useUpdateMasterProfile() {
@@ -44,6 +48,12 @@ export function useUpdateMasterProfile() {
         .eq("id", input.userId);
       if (usersErr) throw usersErr;
 
+      // Sprint 0079: WhatsApp. constraint master_profiles_whatsapp_xor:
+      // same=true ⟹ phone NULL. Trim + empty → NULL.
+      const trimmed = input.whatsappPhone.trim();
+      const whatsappPhone =
+        input.whatsappSameAsPhone || trimmed === "" ? null : trimmed;
+
       const { error: profileErr } = await supabase
         .from("master_profiles")
         .update({
@@ -51,6 +61,8 @@ export function useUpdateMasterProfile() {
           experience_years: input.experienceYears,
           has_tools: input.hasTools,
           has_transport: input.hasTransport,
+          whatsapp_same_as_phone: input.whatsappSameAsPhone,
+          whatsapp_phone: whatsappPhone,
         })
         .eq("user_id", input.userId);
       if (profileErr) throw profileErr;

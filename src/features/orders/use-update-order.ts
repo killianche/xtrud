@@ -18,9 +18,10 @@ export interface UpdateOrderInput {
   cityId: string;
   district: string;
   urgency: Database["public"]["Enums"]["order_urgency"];
-  budgetMode: Database["public"]["Enums"]["order_budget_mode"];
-  budgetMin: number | null;
-  budgetMax: number | null;
+  /** Способ задания бюджета (fixed/from/up_to/negotiable). */
+  budgetKind: Database["public"]["Enums"]["order_price_kind"];
+  /** Одно числовое значение в ₽. NULL для negotiable. */
+  budgetValue: number | null;
 }
 
 export function useUpdateOrder() {
@@ -35,9 +36,8 @@ export function useUpdateOrder() {
         city_id: input.cityId,
         district: input.district || null,
         urgency: input.urgency,
-        budget_mode: input.budgetMode,
-        budget_min: input.budgetMin,
-        budget_max: input.budgetMax,
+        budget_kind: input.budgetKind,
+        budget_value: input.budgetKind === "negotiable" ? null : input.budgetValue,
       };
       const { error } = await supabase.from("orders").update(payload).eq("id", input.orderId);
       if (error) throw error;

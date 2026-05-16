@@ -27,12 +27,58 @@ export const AVATAR_PRESET = {
 };
 
 export const PORTFOLIO_PRESET = {
-  maxDimension: 1600,
-  compress: 0.85,
+  // 2026-05-15: 1600→1920 по фидбэку «добавлять с определённым разрешением».
+  // 1920px — стандарт detail-image у Airbnb/Behance, баланс качества/веса
+  // (≈100-150 KB на JPEG q=0.82). Старые загрузки не пересжимаются.
+  maxDimension: 1920,
+  compress: 0.82,
   format: ImageManipulator.SaveFormat.JPEG as const,
   contentType: "image/jpeg",
   extension: "jpg",
 };
+
+/** Aspect-ratio guard для портфолио: если кадр сильно "кривой" (вытянутая
+ *  полоска или экстремально-узкий), центрально обрезаем к 4:5. Это даёт
+ *  Wildberries-style консистентный grid у клиента и убирает шум от
+ *  случайных скриншотов/панорам. Фидбэк user 2026-05-15: «если разрешения
+ *  кривые, обрезать». */
+const PORTFOLIO_MIN_ASPECT = 0.5; // 1:2 — всё что у́же → обрезать
+const PORTFOLIO_MAX_ASPECT = 2.0; // 2:1 — всё что шире → обрезать
+const PORTFOLIO_TARGET_ASPECT = 4 / 5; // 0.8 — после crop'а так
+
+function maybeCropAction(
+  width: number,
+  height: number,
+): ImageManipulator.Action | null {
+  if (width <= 0 || height <= 0) return null;
+  const aspect = width / height;
+  if (aspect >= PORTFOLIO_MIN_ASPECT && aspect <= PORTFOLIO_MAX_ASPECT) {
+    return null;
+  }
+  // Целевое окно: width * PORTFOLIO_TARGET_ASPECT = height (вертикальный 4:5).
+  // Не выходим за границы исходника.
+  let targetW: number;
+  let targetH: number;
+  if (aspect > PORTFOLIO_MAX_ASPECT) {
+    // слишком широкое → сужаем по высоте
+    targetH = height;
+    targetW = Math.round(height * PORTFOLIO_TARGET_ASPECT);
+  } else {
+    // слишком узкое → сужаем по высоте до target-aspect
+    targetW = width;
+    targetH = Math.round(width / PORTFOLIO_TARGET_ASPECT);
+  }
+  const originX = Math.max(0, Math.round((width - targetW) / 2));
+  const originY = Math.max(0, Math.round((height - targetH) / 2));
+  return {
+    crop: {
+      originX,
+      originY,
+      width: targetW,
+      height: targetH,
+    },
+  };
+}
 
 export type ResizePreset = typeof AVATAR_PRESET;
 
@@ -121,9 +167,17 @@ function extractAsset(result: ImagePicker.ImagePickerResult): PickedImage | null
 export async function resizeImage(
   source: PickedImage,
   preset: ResizePreset,
+  opts?: { applyAspectGuard?: boolean },
 ): Promise<{ uri: string; width: number; height: number }> {
+  const actions: ImageManipulator.Action[] = [];
+  // Aspect-guard (только для портфолио, opt-in) — крайне-широкие или
+  // крайне-узкие фото центрально обрезаем к 4:5.
+  if (opts?.applyAspectGuard) {
+    const crop = maybeCropAction(source.width, source.height);
+    if (crop) actions.push(crop);
+  }
   const resized = calcResizedDimensions(source, { maxDimension: preset.maxDimension });
-  const actions: ImageManipulator.Action[] = resized ? [{ resize: resized }] : [];
+  if (resized) actions.push({ resize: resized });
 
   const result = await ImageManipulator.manipulateAsync(source.uri, actions, {
     compress: preset.compress,
@@ -264,4 +318,100 @@ export async function pickResizeUploadPortfolio(userId: string): Promise<{
 function randomId(): string {
   // Не-крипто UUID-подобный id — для имени файла достаточно.
   return `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
+// ============================================================================
+// Multi-pick + batch upload (портфолио)
+// ============================================================================
+
+/** Multi-pick из галереи: до `maxCount` фото за раз. Камера не поддерживает
+ *  multi-select, поэтому всегда library. По фидбэку user 2026-05-15:
+ *  «добавлять до 50 фотографий», «удобно работать». */
+export async function pickMultiplePortfolioImages(
+  maxCount: number,
+): Promise<PickedImage[]> {
+  const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+  if (!perm.granted) {
+    Alert.alert("Нет доступа к фото", "Разрешите доступ в настройках приложения.");
+    return [];
+  }
+  const result = await ImagePicker.launchImageLibraryAsync({
+    mediaTypes: ["images"],
+    allowsMultipleSelection: true,
+    selectionLimit: maxCount,
+    quality: 1,
+  });
+  if (result.canceled) return [];
+  return result.assets.map((a) => ({
+    uri: a.uri,
+    width: a.width,
+    height: a.height,
+  }));
+}
+
+/** Одно фото для портфолио — resize + crop + upload. Используется batch'ем
+ *  ниже, но можно вызвать одиночно (для legacy одно-фото flow). */
+export async function processAndUploadPortfolioPhoto(
+  userId: string,
+  picked: PickedImage,
+): Promise<{ path: string; publicUrl: string }> {
+  const resized = await resizeImage(picked, PORTFOLIO_PRESET, {
+    applyAspectGuard: true,
+  });
+  const filename = `${randomId()}.${PORTFOLIO_PRESET.extension}`;
+  return await uploadImage({
+    bucket: "portfolio",
+    path: `${userId}/${filename}`,
+    localUri: resized.uri,
+    contentType: PORTFOLIO_PRESET.contentType,
+    upsert: false,
+  });
+}
+
+/** Batch upload портфолио. Параллельно по `concurrency` штук за раз —
+ *  чтобы не забивать сеть и не превышать Supabase Storage rate-limits.
+ *  Возвращает массив результатов в порядке входа (включая ошибки). */
+export async function uploadPortfolioBatch(
+  userId: string,
+  items: PickedImage[],
+  opts?: {
+    concurrency?: number;
+    onProgress?: (done: number, total: number) => void;
+  },
+): Promise<
+  Array<{ ok: true; path: string; publicUrl: string } | { ok: false; error: string }>
+> {
+  const concurrency = opts?.concurrency ?? 3;
+  const results: Array<
+    { ok: true; path: string; publicUrl: string } | { ok: false; error: string }
+  > = new Array(items.length);
+  let done = 0;
+  let cursor = 0;
+
+  async function worker() {
+    while (true) {
+      const i = cursor++;
+      if (i >= items.length) return;
+      const item = items[i];
+      if (!item) return;
+      try {
+        const r = await processAndUploadPortfolioPhoto(userId, item);
+        results[i] = { ok: true, ...r };
+      } catch (e) {
+        results[i] = {
+          ok: false,
+          error: e instanceof Error ? e.message : String(e),
+        };
+      }
+      done++;
+      opts?.onProgress?.(done, items.length);
+    }
+  }
+
+  const workers = Array.from(
+    { length: Math.min(concurrency, items.length) },
+    () => worker(),
+  );
+  await Promise.all(workers);
+  return results;
 }

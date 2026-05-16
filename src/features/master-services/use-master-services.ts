@@ -23,18 +23,35 @@ export const SERVICE_UNIT_LABELS: Record<ServiceUnit, string> = {
 };
 
 export const PRICING_KIND_LABELS: Record<ServicePricingKind, string> = {
-  fixed: "Фикс. цена",
-  range: "Диапазон",
+  fixed: "Точная",
+  from: "От",
+  up_to: "До",
   hourly: "Почасовая",
   quote: "Договорная",
+  range: "Диапазон", // legacy — UI новых форм не предлагает, см. PRICING_KIND_OPTIONS
 };
 
 export const PRICING_KIND_HINT: Record<ServicePricingKind, string> = {
   fixed: "Одна точная цена за услугу",
-  range: "Цена «от X до Y» — клиент видит вилку",
+  from: "«От X ₽» — стартовая цена, может быть выше",
+  up_to: "«До X ₽» — потолок, может быть ниже",
   hourly: "Цена за час работы",
   quote: "По запросу — цена после осмотра",
+  range: "Цена «от X до Y» — клиент видит вилку (legacy)",
 };
+
+/**
+ * Опции pricing_kind, которые показывает picker нового UI. `range` намеренно
+ * убран — фидбэк user 2026-05-15/2026-05-16: «диапазоны не нужны, либо от,
+ * либо до». Legacy-данные с `range` остаются читаемыми (см. formatServicePrice).
+ */
+export const PRICING_KIND_OPTIONS: ServicePricingKind[] = [
+  "fixed",
+  "from",
+  "up_to",
+  "hourly",
+  "quote",
+];
 
 export function masterServicesKey(masterId: string | null | undefined) {
   return ["master-services", masterId] as const;
@@ -156,24 +173,31 @@ export function useDeleteMasterService(masterId: string | null | undefined) {
 }
 
 /**
- * Форматирует диапазон цены: "от 1000 ₽", "1000–2000 ₽", и т.д.
- *
- * Для pricing_kind='quote' цена может быть NULL — в этом случае возвращаем
- * "Договорная" (см. formatServicePrice ниже как полный helper).
+ * Legacy helper: возвращает «от X ₽» для не-null цены, иначе «Договорная».
+ * Используется одним legacy-местом (`MasterServicesList`); новый код вызывает
+ * `formatServicePrice`, которое уважает `pricing_kind` и не лепит «от» к
+ * точной цене.
  */
-export function formatPriceRange(priceMin: number | null, priceMax: number | null): string {
+export function formatPriceRange(priceMin: number | null, _priceMax: number | null): string {
   if (priceMin == null) return "Договорная";
-  const min = formatPrice(priceMin);
-  if (priceMax == null || priceMax === priceMin) return `от ${min}`;
-  return `${min}–${formatPrice(priceMax)}`;
+  return `от ${formatPrice(priceMin)}`;
 }
 
 /**
  * Форматирует цену услуги с учётом pricing_kind.
- * - quote → "Договорная" (без unit)
- * - hourly → "1500 ₽/час"
- * - fixed → "1500 ₽" + unit
- * - range → "1000–2000 ₽" + unit
+ *
+ * - quote        → «Договорная» (без unit)
+ * - hourly       → «от 1500 ₽ / час» (час — единственный режим, где префикс
+ *                  «от» подразумевается всегда)
+ * - fixed        → «1500 ₽» (без префикса)
+ * - from         → «от 1500 ₽»
+ * - up_to        → «до 2000 ₽»
+ * - range (lega) → «от 1500 ₽» (price_max игнорируется — см. user feedback
+ *                  2026-05-15 «убрать диапазоны»)
+ *
+ * Юнит `per_task` («за работу») по фидбэку user 2026-05-15 не отображаем —
+ * это дефолтный case без особенностей измерения, suffix только засоряет.
+ * Значимые юниты (м², м.п., день, смена) остаются.
  */
 export function formatServicePrice(service: {
   pricing_kind?: ServicePricingKind | null;
@@ -183,9 +207,32 @@ export function formatServicePrice(service: {
 }): string {
   const kind = service.pricing_kind ?? "fixed";
   if (kind === "quote") return "Договорная";
-  const range = formatPriceRange(service.price_min, service.price_max);
-  if (kind === "hourly") return `${range} / час`;
-  return `${range} · ${SERVICE_UNIT_LABELS[service.unit]}`;
+
+  // hourly особый случай — price_min используется как ставка за час.
+  if (kind === "hourly") {
+    if (service.price_min == null) return "Договорная";
+    return `от ${formatPrice(service.price_min)} / час`;
+  }
+
+  // up_to: показываем price_max (если есть), иначе price_min (legacy fallback).
+  if (kind === "up_to") {
+    const value = service.price_max ?? service.price_min;
+    if (value == null) return "Договорная";
+    const base = `до ${formatPrice(value)}`;
+    return service.unit === "per_task"
+      ? base
+      : `${base} · ${SERVICE_UNIT_LABELS[service.unit]}`;
+  }
+
+  // fixed / from / range (legacy) — все смотрят на price_min.
+  if (service.price_min == null) return "Договорная";
+  const base =
+    kind === "fixed"
+      ? formatPrice(service.price_min)
+      : `от ${formatPrice(service.price_min)}`;
+  return service.unit === "per_task"
+    ? base
+    : `${base} · ${SERVICE_UNIT_LABELS[service.unit]}`;
 }
 
 function formatPrice(value: number): string {

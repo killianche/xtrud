@@ -128,15 +128,8 @@ export default function ClientPublicScreen() {
                 )}
               </View>
 
-              {profile.data.city && (
-                <View className="mt-2 flex-row items-center gap-1">
-                  <MapPin size={14} weight="bold" color={tc["muted-soft"]} />
-                  <AppText className="text-body-sm text-muted">
-                    {profile.data.city.name}
-                    {profile.data.user.district ? `, ${profile.data.user.district}` : ""}
-                  </AppText>
-                </View>
-              )}
+              {/* Город/район клиента НЕ показываем (2026-05-16) — личная
+                  «домашняя» точка не нужна в публичном профиле. */}
 
               <AppText className="mt-2 text-caption-xs text-muted-soft">
                 На xtrud с {formatJoinDate(profile.data.user.created_at)}

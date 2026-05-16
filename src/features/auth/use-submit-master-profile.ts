@@ -15,6 +15,10 @@ export interface SubmitMasterProfileInput {
   experienceYears: number;
   hasTools: boolean;
   hasTransport: boolean;
+  // Sprint 0079: WhatsApp.
+  whatsappSameAsPhone: boolean;
+  /** Пустая строка = не указан. Игнорируется если whatsappSameAsPhone=true. */
+  whatsappPhone: string;
 }
 
 export function useSubmitMasterProfile() {
@@ -33,9 +37,25 @@ export function useSubmitMasterProfile() {
         p_has_transport: input.hasTransport,
       });
       if (error) throw error;
+
+      // Sprint 0079: WhatsApp поля живут вне RPC complete_master_onboarding —
+      // UPDATE после. RPC создаёт row в master_profiles (UPSERT), мы её апдейтим.
+      // constraint master_profiles_whatsapp_xor: same=true ⟹ phone NULL.
+      const trimmed = input.whatsappPhone.trim();
+      const whatsappPhone =
+        input.whatsappSameAsPhone || trimmed === "" ? null : trimmed;
+      const { error: waErr } = await supabase
+        .from("master_profiles")
+        .update({
+          whatsapp_same_as_phone: input.whatsappSameAsPhone,
+          whatsapp_phone: whatsappPhone,
+        })
+        .eq("user_id", input.userId);
+      if (waErr) throw waErr;
     },
     onSuccess: (_data, { userId }) => {
       queryClient.invalidateQueries({ queryKey: userRecordKey(userId) });
+      queryClient.invalidateQueries({ queryKey: ["master-public", userId] });
     },
   });
 }

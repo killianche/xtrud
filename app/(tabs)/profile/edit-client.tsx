@@ -12,7 +12,6 @@
  */
 
 import { useRouter } from "expo-router";
-import { CaretRight, MapPin } from "phosphor-react-native";
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -26,8 +25,6 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
-import { CITIES, type CityId } from "@/components/CitySelector";
-import { PickerSheet, type PickerOption } from "@/components/ui";
 import { useAuthSession } from "@/features/auth/use-auth-session";
 import { useUserRecord } from "@/features/auth/use-user-record";
 import { useUpdateMyProfile } from "@/features/profile/use-update-my-profile";
@@ -48,9 +45,6 @@ export default function EditClientScreen() {
 
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
-  const [cityId, setCityId] = useState<CityId>("all");
-  const [district, setDistrict] = useState("");
-  const [cityOpen, setCityOpen] = useState(false);
   const [didInit, setDidInit] = useState(false);
 
   // Один раз префиллим форму актуальными значениями после загрузки user.
@@ -58,23 +52,13 @@ export default function EditClientScreen() {
     if (!user || didInit) return;
     setFirstName(user.first_name ?? "");
     setLastName(user.last_name ?? "");
-    setCityId(((user.city_id as CityId) ?? "all"));
-    setDistrict(user.district ?? "");
     setDidInit(true);
   }, [user, didInit]);
-
-  const cityOptions: PickerOption[] = CITIES.filter((c) => c.id !== "all").map((c) => ({
-    id: c.id,
-    title: c.name,
-  }));
-  const cityLabel = CITIES.find((c) => c.id === cityId)?.name ?? "Не выбрано";
 
   const isDirty =
     didInit &&
     ((firstName ?? "") !== (user?.first_name ?? "") ||
-      (lastName ?? "") !== (user?.last_name ?? "") ||
-      cityId !== ((user?.city_id as CityId) ?? "all") ||
-      (district ?? "") !== (user?.district ?? ""));
+      (lastName ?? "") !== (user?.last_name ?? ""));
 
   const canSave = firstName.trim().length >= 2 && isDirty && !update.isPending;
 
@@ -84,8 +68,7 @@ export default function EditClientScreen() {
       {
         first_name: firstName,
         last_name: lastName,
-        city_id: cityId === "all" ? null : cityId,
-        district,
+        // city_id / district 2026-05-16: не сохраняем — поле UI убрано.
       },
       {
         onSuccess: () => goBack(),
@@ -186,56 +169,10 @@ export default function EditClientScreen() {
           </AppText>
         ) : null}
 
-        {/* ============================================================
-            Секция «ГДЕ ВЫ ЖИВЁТЕ» — город (picker) + район (input)
-        ============================================================ */}
-        <SectionCaption>Где вы живёте</SectionCaption>
-        <View className="mx-4 overflow-hidden rounded-lg border border-hairline bg-canvas">
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={`Город: ${cityLabel}`}
-            onPress={() => setCityOpen(true)}
-            className="flex-row items-center gap-3 px-4 py-3 active:bg-canvas-soft"
-          >
-            <View className="h-9 w-9 items-center justify-center rounded-md bg-canvas-soft">
-              <MapPin size={16} weight="bold" color={tc.ink} />
-            </View>
-            <View className="flex-1">
-              <AppText className="text-caption text-mute">Город</AppText>
-              <AppText weight="medium" className="mt-0.5 text-body-md text-ink">
-                {cityLabel}
-              </AppText>
-            </View>
-            <CaretRight size={18} weight="bold" color={tc["muted-soft"]} />
-          </Pressable>
-          <View className="h-px bg-hairline mx-4" />
-          <FieldRow label="Район">
-            <NakedInput
-              value={district}
-              onChangeText={setDistrict}
-              placeholder="например, Центр"
-              autoCapitalize="words"
-              maxLength={80}
-            />
-          </FieldRow>
-        </View>
-        <AppText className="mt-2 px-4 text-caption text-mute">
-          Поможем подобрать ближайших мастеров.
-        </AppText>
+        {/* Секция «Где вы живёте» удалена 2026-05-16: личный город/район
+            клиента не используется в продукте. Мастера прикрепляются к
+            районам через master_service_areas. */}
       </ScrollView>
-
-      <PickerSheet
-        open={cityOpen}
-        title="Выберите город"
-        subtitle="Республика Ингушетия"
-        options={cityOptions}
-        selectedId={cityId === "all" ? null : cityId}
-        onSelect={(id) => {
-          if (id) setCityId(id as CityId);
-          setCityOpen(false);
-        }}
-        onClose={() => setCityOpen(false)}
-      />
     </KeyboardAvoidingView>
   );
 }

@@ -8,6 +8,7 @@ import { ClipboardText, House, ChatCircle, Moon, Sun, User } from "phosphor-reac
 import { Pressable, View } from "react-native";
 import { AppText } from "@/components/AppText";
 import { Avatar } from "@/components/Avatar";
+import { XtrudLogo } from "@/components/XtrudLogo";
 import { useAuthSession } from "@/features/auth/use-auth-session";
 import { useUserRecord } from "@/features/auth/use-user-record";
 import { useColorScheme } from "@/hooks/use-color-scheme";
@@ -43,6 +44,9 @@ export function WebShell({ children, chatsBadge, ordersBadge }: WebShellProps) {
   // главной (там и поиск, и его текущие заявки).
   const isMasterRole = user?.active_role === "master";
   const navItems: NavItem[] = [
+    // Главная использует фирменный логотип xtrud вместо House.
+    // icon-поле остаётся House как fallback-тип, но в render-цикле
+    // ниже первый item (match='/') рендерится через XtrudLogo.
     { href: "/(tabs)", match: "/", label: "Главная", icon: House },
     ...(isMasterRole
       ? []
@@ -103,6 +107,7 @@ export function WebShell({ children, chatsBadge, ordersBadge }: WebShellProps) {
             {navItems.map((item) => {
               const active = isActive(item.match);
               const Icon = item.icon;
+              const isHome = item.match === "/";
               return (
                 <Link key={item.match} href={item.href} asChild>
                   <Pressable
@@ -111,7 +116,11 @@ export function WebShell({ children, chatsBadge, ordersBadge }: WebShellProps) {
                       active ? "bg-surface-2" : ""
                     }`}
                   >
-                    <Icon size={18} weight="bold" color={active ? tc.ink : tc.muted} />
+                    {isHome ? (
+                      <XtrudLogo size={18} color={active ? tc.ink : tc.muted} />
+                    ) : (
+                      <Icon size={18} weight="bold" color={active ? tc.ink : tc.muted} />
+                    )}
                     <AppText
                       weight={active ? "semibold" : "medium"}
                       className={`text-body-sm ${active ? "text-ink" : "text-muted"}`}

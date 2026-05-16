@@ -36,6 +36,10 @@ export default function MasterProfileScreen() {
       experienceYears: 0,
       hasTools: false,
       hasTransport: false,
+      // Sprint 0079: WhatsApp. Default — «совпадает с основным», большинство
+      // мастеров используют один номер.
+      whatsappSameAsPhone: true,
+      whatsappPhone: "",
     },
     mode: "onChange",
   });

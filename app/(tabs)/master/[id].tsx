@@ -16,7 +16,7 @@
 
 import { LinearGradient } from "expo-linear-gradient";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { Buildings, CaretLeft, Flag, MapPin, Star, Users, Wrench } from "phosphor-react-native";
+import { Buildings, CaretLeft, DotsThreeVertical, Flag, MapPin, Star, Users, Wrench } from "phosphor-react-native";
 import { useState } from "react";
 import {
   FlatList,
@@ -31,7 +31,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
-import { Avatar, Button, Card, Skeleton, normalizeAvatarUrl } from "@/components/ui";
+import { Avatar, BottomSheet, Button, Card, Skeleton, normalizeAvatarUrl } from "@/components/ui";
 
 // PRICING_MODE_LABELS убран 2026-05-15 (P0-1 в research/MASTER_ACCOUNT_PLAN.md).
 // Цены — единственным источником master_services, отображаются через
@@ -41,6 +41,7 @@ import { Avatar, Button, Card, Skeleton, normalizeAvatarUrl } from "@/components
 import { useAuthSession } from "@/features/auth/use-auth-session";
 import { getCategoryColorIconUrl } from "@/lib/category-color-icons";
 import { useSafeBack } from "@/lib/use-safe-back";
+import { resolveWhatsappDigits } from "@/lib/whatsapp";
 import { MasterServicesList } from "@/features/master-services/MasterServicesList";
 import { ReviewsSection } from "@/features/master-view/ReviewsSection";
 import {
@@ -94,6 +95,7 @@ export default function MasterPublicScreen() {
 
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const [reportOpen, setReportOpen] = useState(false);
+  const [actionMenuOpen, setActionMenuOpen] = useState(false);
   const [confirmWorkOpen, setConfirmWorkOpen] = useState(false);
 
   const u = profile.data?.user;
@@ -112,7 +114,14 @@ export default function MasterPublicScreen() {
   // Если phone null (мастер новый, без auth.phone) — fallback на orders/new.
   const phoneRaw = masterPhone.data ?? null;
   const phoneTel = phoneRaw?.replace(/[^\d+]/g, "") ?? null; // "+79991234567"
-  const phoneWa = phoneTel?.replace(/^\+/, "") ?? null; // "79991234567"
+
+  // Sprint 0079: WhatsApp — отдельный номер ИЛИ совпадает с основным, либо
+  // не указан. Если null — кнопка WhatsApp не отображается.
+  const phoneWa = resolveWhatsappDigits({
+    whatsappPhone: m?.whatsapp_phone,
+    whatsappSameAsPhone: m?.whatsapp_same_as_phone,
+    masterPhone: phoneRaw,
+  });
 
   const handleCall = () => {
     if (phoneTel) {
@@ -125,8 +134,6 @@ export default function MasterPublicScreen() {
   const handleWhatsApp = () => {
     if (phoneWa) {
       Linking.openURL(`https://wa.me/${phoneWa}`);
-    } else {
-      handleContact();
     }
   };
 
@@ -174,8 +181,9 @@ export default function MasterPublicScreen() {
               1. portfolio загружается или profile загружается → skeleton 4:5
               2. есть фото → swipeable галерея 4:5 (Wildberries-style)
               3. fallback на 16:9 аватар.
-            Это даёт progressive cascade: пользователь сразу видит структуру
-            экрана + контролы, контент проявляется секциями сверху вниз. */}
+            Back и overflow (⋮) — overlay-кнопки поверх hero (фидбэк user
+            2026-05-15: «верни как было — overlay, не отдельный canvas-header»).
+            Flag заменён на DotsThreeVertical → BottomSheet с «Пожаловаться». */}
         {portfolio.isLoading || profile.isLoading ? (
           <View style={{ position: "relative" }}>
             <Skeleton
@@ -210,7 +218,7 @@ export default function MasterPublicScreen() {
               style={{ position: "absolute", top: 0, left: 0, right: 0, height: 80 }}
               pointerEvents="none"
             />
-            {/* Back + Flag */}
+            {/* Back + Overflow (⋮) */}
             <View
               className="absolute left-0 right-0 flex-row items-center justify-between px-4"
               style={{ top: insets.top + 8 }}
@@ -226,11 +234,11 @@ export default function MasterPublicScreen() {
               {!isOwnProfile && (
                 <Pressable
                   accessibilityRole="button"
-                  accessibilityLabel="Пожаловаться"
-                  onPress={() => setReportOpen(true)}
+                  accessibilityLabel="Действия"
+                  onPress={() => setActionMenuOpen(true)}
                   className="h-9 w-9 items-center justify-center rounded-full bg-black/50 active:opacity-70"
                 >
-                  <Flag size={18} weight="bold" color="#fff" />
+                  <DotsThreeVertical size={20} weight="bold" color="#fff" />
                 </Pressable>
               )}
             </View>
@@ -275,11 +283,11 @@ export default function MasterPublicScreen() {
               {!isOwnProfile && (
                 <Pressable
                   accessibilityRole="button"
-                  accessibilityLabel="Пожаловаться"
-                  onPress={() => setReportOpen(true)}
+                  accessibilityLabel="Действия"
+                  onPress={() => setActionMenuOpen(true)}
                   className="h-9 w-9 items-center justify-center rounded-full bg-black/50 active:opacity-70"
                 >
-                  <Flag size={18} weight="bold" color="#fff" />
+                  <DotsThreeVertical size={20} weight="bold" color="#fff" />
                 </Pressable>
               )}
             </View>
@@ -375,12 +383,8 @@ export default function MasterPublicScreen() {
                   </View>
                 ) : null}
 
-                {cityName ? (
-                  <View className="flex-row items-center gap-1">
-                    <MapPin size={14} weight="bold" color="currentColor" className="text-mute" />
-                    <AppText className="text-body text-body-sm">{cityName}</AppText>
-                  </View>
-                ) : null}
+                {/* Город мастера НЕ показываем (2026-05-16) — где он работает,
+                    видно в секции «Где работаете» (master_service_areas). */}
               </View>
 
               {/* Row 2: опыт · бригада/компания (inline через bullets у text-mute).
@@ -454,16 +458,21 @@ export default function MasterPublicScreen() {
                   Позвонить
                 </AppText>
               </Pressable>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Написать в WhatsApp"
-                onPress={handleWhatsApp}
-                className="flex-1 items-center justify-center h-10 rounded-full bg-canvas-soft active:bg-canvas-soft-2"
-              >
-                <AppText weight="medium" className="text-body-sm text-ink">
-                  WhatsApp
-                </AppText>
-              </Pressable>
+              {/* Sprint 0079: кнопка WhatsApp только если у мастера указан
+                  WhatsApp (явный номер или same_as_phone=true). Иначе
+                  скрываем — клиент не видит «пустую» кнопку. */}
+              {phoneWa ? (
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Написать в WhatsApp"
+                  onPress={handleWhatsApp}
+                  className="flex-1 items-center justify-center h-10 rounded-full bg-canvas-soft active:bg-canvas-soft-2"
+                >
+                  <AppText weight="medium" className="text-body-sm text-ink">
+                    WhatsApp
+                  </AppText>
+                </Pressable>
+              ) : null}
             </View>
           )}
 
@@ -587,6 +596,44 @@ export default function MasterPublicScreen() {
           onChangeIndex={setLightboxIndex}
           onClose={() => setLightboxIndex(null)}
         />
+      ) : null}
+
+      {/* Action menu — overflow ⋮ из header. Один пункт «Пожаловаться»
+          (паттерн как на orders/[id]). Открывается из header'а, само
+          действие — открыть ReportModal. */}
+      {!isOwnProfile ? (
+        <BottomSheet
+          open={actionMenuOpen}
+          onClose={() => setActionMenuOpen(false)}
+          title="Действия"
+        >
+          <View className="pb-2">
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => {
+                setActionMenuOpen(false);
+                setReportOpen(true);
+              }}
+              style={({ pressed }) => ({
+                opacity: pressed ? 0.7 : 1,
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 12,
+                paddingHorizontal: 20,
+                paddingVertical: 14,
+              })}
+            >
+              <View
+                className="h-9 w-9 items-center justify-center rounded-md bg-error-soft"
+              >
+                <Flag size={18} weight="bold" color="#ef4444" />
+              </View>
+              <AppText weight="semibold" className="text-body-md text-error">
+                Пожаловаться
+              </AppText>
+            </Pressable>
+          </View>
+        </BottomSheet>
       ) : null}
 
       {/* Report modal */}

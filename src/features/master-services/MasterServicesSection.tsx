@@ -18,6 +18,7 @@ import {
   type MasterService,
   PRICING_KIND_HINT,
   PRICING_KIND_LABELS,
+  PRICING_KIND_OPTIONS,
   SERVICE_UNIT_LABELS,
   type ServicePricingKind,
   type ServiceUnit,
@@ -185,7 +186,10 @@ interface ServiceFormModalProps {
 }
 
 const UNIT_OPTIONS: ServiceUnit[] = ["per_hour", "per_task", "per_m2", "per_day"];
-const KIND_OPTIONS: ServicePricingKind[] = ["fixed", "range", "hourly", "quote"];
+// `range` сознательно НЕ показываем в picker — фидбэк user 2026-05-15/2026-05-16
+// «диапазоны не нужны». Legacy-данные с `range` остаются читаемыми
+// (PRICING_KIND_LABELS / formatServicePrice их понимают), но новых не создаём.
+const KIND_OPTIONS: ServicePricingKind[] = PRICING_KIND_OPTIONS;
 
 function ServiceFormModal({ visible, initial, masterId, onClose }: ServiceFormModalProps) {
   // formKey меняется при смене initial → ServiceFormContent ремаунтится со свежим state.
@@ -238,11 +242,22 @@ function ServiceFormContent({ initial, masterId, onClose }: ServiceFormContentPr
   const [freeMode, setFreeMode] = useState<boolean>(
     initial != null && initial.l3_id == null,
   );
-  const [priceMin, setPriceMin] = useState(
-    initial?.price_min == null ? "" : String(initial.price_min),
-  );
-  const [priceMax, setPriceMax] = useState(
-    initial?.price_max == null ? "" : String(initial.price_max),
+  // priceValue — единое поле «цена» которое мастер вводит в форме. На submit
+  // мы переносим его в price_min (для fixed/from/hourly/range) или price_max
+  // (для up_to). Это упрощает UI: один input независимо от kind, label меняется.
+  const [priceValue, setPriceValue] = useState(() => {
+    if (initial == null) return "";
+    if (initial.pricing_kind === "up_to") {
+      return initial.price_max == null ? "" : String(initial.price_max);
+    }
+    return initial.price_min == null ? "" : String(initial.price_min);
+  });
+  // priceMaxLegacy — только для редактирования legacy записей с kind='range'.
+  // Новые kind=range создать нельзя (KIND_OPTIONS его не показывает).
+  const [priceMaxLegacy, setPriceMaxLegacy] = useState(
+    initial?.pricing_kind === "range" && initial.price_max != null
+      ? String(initial.price_max)
+      : "",
   );
   const [unit, setUnit] = useState<ServiceUnit>(initial?.unit ?? "per_task");
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -266,26 +281,32 @@ function ServiceFormContent({ initial, masterId, onClose }: ServiceFormContentPr
   };
 
   // При переключении pricing_kind очищаем поля, которые не имеют смысла
-  // в новом режиме (priceMax — только для range; priceMin — только не для quote).
+  // в новом режиме. priceValue — для всех кроме quote. priceMaxLegacy —
+  // только для legacy range.
   const handleKindChange = (k: ServicePricingKind) => {
     setPricingKind(k);
     if (k === "quote") {
-      setPriceMin("");
-      setPriceMax("");
+      setPriceValue("");
+      setPriceMaxLegacy("");
     } else if (k !== "range") {
-      setPriceMax("");
+      setPriceMaxLegacy("");
     }
     if (k === "hourly") setUnit("per_hour");
     setSubmitError(null);
   };
 
-  // Применить рекомендованную цену из avg_check_rub.
+  // Применить рекомендованную цену из avg_check_rub. P0-4: «гарантирую
+  // ориентир по рынку». Для up_to берём +30% от avg (порог), для остальных —
+  // как есть.
   const applyRecommendedPrice = () => {
     if (selectedL3Obj?.avg_check_rub != null) {
-      setPriceMin(String(selectedL3Obj.avg_check_rub));
-      // Для diapazon — авто-проставим +50% как верхнюю границу.
+      if (pricingKind === "up_to") {
+        setPriceValue(String(Math.round(selectedL3Obj.avg_check_rub * 1.3)));
+      } else {
+        setPriceValue(String(selectedL3Obj.avg_check_rub));
+      }
       if (pricingKind === "range") {
-        setPriceMax(String(Math.round(selectedL3Obj.avg_check_rub * 1.5)));
+        setPriceMaxLegacy(String(Math.round(selectedL3Obj.avg_check_rub * 1.5)));
       }
     }
   };
@@ -325,21 +346,27 @@ function ServiceFormContent({ initial, masterId, onClose }: ServiceFormContentPr
       return;
     }
 
-    const min = parseInt(priceMin.replace(/\s/g, ""), 10);
+    const value = parseInt(priceValue.replace(/\s/g, ""), 10);
     const max =
-      pricingKind === "range" && priceMax.trim() !== ""
-        ? parseInt(priceMax.replace(/\s/g, ""), 10)
+      pricingKind === "range" && priceMaxLegacy.trim() !== ""
+        ? parseInt(priceMaxLegacy.replace(/\s/g, ""), 10)
         : null;
 
-    if (Number.isNaN(min) || min < 0) {
+    if (Number.isNaN(value) || value < 0) {
       setSubmitError("Укажите цену");
       return;
     }
+    // Распределение по price_min / price_max в зависимости от kind:
+    //   up_to        → price_min=null, price_max=value
+    //   range legacy → price_min=value, price_max=max (отдельный input)
+    //   остальные    → price_min=value, price_max=null
+    const min = pricingKind === "up_to" ? null : value;
+    const maxOut = pricingKind === "up_to" ? value : max;
     if (pricingKind === "range" && max == null) {
       setSubmitError("Укажите максимальную цену для диапазона");
       return;
     }
-    if (max != null && max < min) {
+    if (pricingKind === "range" && max != null && min != null && max < min) {
       setSubmitError("Максимальная цена должна быть ≥ минимальной");
       return;
     }
@@ -349,7 +376,7 @@ function ServiceFormContent({ initial, masterId, onClose }: ServiceFormContentPr
         id: initial?.id,
         title: title.trim(),
         price_min: min,
-        price_max: max,
+        price_max: maxOut,
         unit,
         pricing_kind: pricingKind,
         l2_id: selectedL2,
@@ -369,14 +396,30 @@ function ServiceFormContent({ initial, masterId, onClose }: ServiceFormContentPr
   const isValid =
     !!selectedL2 &&
     title.trim().length >= 2 &&
-    (pricingKind === "quote" || priceMin.trim() !== "");
-  const showPriceMin = pricingKind !== "quote";
-  const showPriceMax = pricingKind === "range";
-  // Unit не показываем для hourly (он зафиксирован per_hour) и quote (не имеет
-  // смысла без цены).
-  const showUnit = pricingKind === "fixed" || pricingKind === "range";
+    (pricingKind === "quote" || priceValue.trim() !== "");
+  const showPriceValue = pricingKind !== "quote";
+  const showPriceMaxLegacy = pricingKind === "range";
+  // Unit показываем только для kind'ов где он имеет смысл — точная/«от»/«до»/
+  // диапазон. hourly зафиксирован на per_hour автоматически, quote не имеет цены.
+  const showUnit =
+    pricingKind === "fixed" ||
+    pricingKind === "from" ||
+    pricingKind === "up_to" ||
+    pricingKind === "range";
 
-  // Placeholder для поля цены — рекомендованное значение из L3.avg_check_rub.
+  // Label для поля цены по kind. Placeholder подсказывает «правильный»
+  // порядок цены, но не предзаполняет — фидбэк user 2026-05-16: «цену
+  // пускай человек сам заполняет».
+  const priceLabel =
+    pricingKind === "hourly"
+      ? "₽ / час"
+      : pricingKind === "range"
+        ? "Цена от, ₽"
+        : pricingKind === "up_to"
+          ? "Цена до, ₽"
+          : pricingKind === "from"
+            ? "Цена от, ₽"
+            : "Цена, ₽";
   const pricePlaceholder = selectedL3Obj?.avg_check_rub
     ? String(selectedL3Obj.avg_check_rub)
     : pricingKind === "hourly"
@@ -578,20 +621,16 @@ function ServiceFormContent({ initial, masterId, onClose }: ServiceFormContentPr
           </AppText>
         </View>
 
-        {showPriceMin && (
+        {showPriceValue && (
           <>
             <View className="mt-3 flex-row gap-3">
               <View className="flex-1">
                 <AppText weight="medium" className="text-caption text-muted">
-                  {pricingKind === "hourly"
-                    ? "₽ / час"
-                    : pricingKind === "range"
-                      ? "Цена от, ₽"
-                      : "Цена, ₽"}
+                  {priceLabel}
                 </AppText>
                 <TextInput
-                  value={priceMin}
-                  onChangeText={setPriceMin}
+                  value={priceValue}
+                  onChangeText={setPriceValue}
                   placeholder={pricePlaceholder}
                   placeholderTextColor={placeholderColor}
                   keyboardType="number-pad"
@@ -599,14 +638,14 @@ function ServiceFormContent({ initial, masterId, onClose }: ServiceFormContentPr
                   className="mt-1.5 h-11 rounded-md border border-hairline bg-canvas px-3 text-body-md"
                 />
               </View>
-              {showPriceMax && (
+              {showPriceMaxLegacy && (
                 <View className="flex-1">
                   <AppText weight="medium" className="text-caption text-muted">
                     До, ₽
                   </AppText>
                   <TextInput
-                    value={priceMax}
-                    onChangeText={setPriceMax}
+                    value={priceMaxLegacy}
+                    onChangeText={setPriceMaxLegacy}
                     placeholder={
                       selectedL3Obj?.avg_check_rub
                         ? String(Math.round(selectedL3Obj.avg_check_rub * 1.5))
@@ -624,7 +663,7 @@ function ServiceFormContent({ initial, masterId, onClose }: ServiceFormContentPr
                 кнопка «применить». Видно только если выбран L3 со known
                 ставкой и поле цены ещё пустое (иначе мастер уже сам
                 ввёл — не мешаем). */}
-            {selectedL3Obj?.avg_check_rub && priceMin.trim() === "" ? (
+            {selectedL3Obj?.avg_check_rub && priceValue.trim() === "" ? (
               <Pressable
                 onPress={applyRecommendedPrice}
                 accessibilityRole="button"

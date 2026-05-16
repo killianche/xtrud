@@ -22,7 +22,7 @@
 import { useRouter } from "expo-router";
 import { CaretLeft, ImageSquare, Trash } from "phosphor-react-native";
 import { useState } from "react";
-import { Alert, Image, Pressable, ScrollView, View } from "react-native";
+import { Alert, Image, Pressable, ScrollView, useWindowDimensions, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
 import { useAuthSession } from "@/features/auth/use-auth-session";
@@ -46,6 +46,12 @@ export default function PortfolioScreen() {
   const userId = session?.user?.id ?? null;
   const goBack = useSafeBack("/(tabs)/profile" as const);
   const tc = useThemeColors(["ink", "mute", "muted-soft", "canvas-soft"]);
+
+  // Ширина одной плитки grid'а. 3 колонки, gap 8 px между, side-padding 16 px.
+  // width:"32%" не работало корректно: 3 × 32% = 96% + 2*8 px gap → overflow
+  // на узких экранах, items откатывались в 2-колоночный layout. Считаем явно.
+  const { width: screenW } = useWindowDimensions();
+  const tileSize = Math.floor((screenW - 32 - 16) / 3);
 
   const portfolio = useMasterPortfolio(userId);
   const addItem = useAddPortfolioItem(userId);
@@ -161,20 +167,14 @@ export default function PortfolioScreen() {
       <ScrollView
         contentContainerStyle={{
           paddingHorizontal: 16,
+          paddingTop: 8,
           paddingBottom: insets.bottom + 100,
         }}
         showsVerticalScrollIndicator={false}
       >
-        {/* Description */}
-        <View className="mt-2 mb-4 px-2">
-          <AppText className="text-body-sm text-mute">
-            Фото работ повышают доверие клиентов. Минимум 6 — заметно сильнее
-            конверсия. Загружая, мы автоматически уменьшаем разрешение до
-            1920×1920 и обрезаем экстремальные пропорции.
-          </AppText>
-        </View>
-
-        {/* Grid */}
+        {/* Grid — 3 колонки. Описание-подсказка убрана по фидбэку user
+            2026-05-16 (избыточный текст; контракт «сожмём до 1920×1920»
+            всё равно прозрачен через прогресс-бар при загрузке). */}
         {portfolio.isLoading ? (
           <View className="flex-row flex-wrap" style={{ gap: 8 }}>
             {Array.from({ length: 6 }).map((_, i) => (
@@ -182,7 +182,7 @@ export default function PortfolioScreen() {
                 // biome-ignore lint/suspicious/noArrayIndexKey: skeleton row
                 key={i}
                 className="rounded-md bg-canvas-soft-2"
-                style={{ width: "32%", aspectRatio: 1 }}
+                style={{ width: tileSize, height: tileSize }}
               />
             ))}
           </View>
@@ -209,7 +209,7 @@ export default function PortfolioScreen() {
               <View
                 key={item.id}
                 className="overflow-hidden rounded-md bg-canvas-soft-2"
-                style={{ width: "32%", aspectRatio: 1, position: "relative" }}
+                style={{ width: tileSize, height: tileSize, position: "relative" }}
               >
                 <Image
                   source={{ uri: item.url }}
@@ -281,9 +281,7 @@ export default function PortfolioScreen() {
               weight="semibold"
               className={`text-body-md ${slotsLeft === 0 ? "text-mute" : "text-on-primary"}`}
             >
-              {slotsLeft === 0
-                ? "Лимит достигнут"
-                : `Добавить фото (осталось ${slotsLeft})`}
+              {slotsLeft === 0 ? "Лимит достигнут" : "Добавить фото"}
             </AppText>
           </Pressable>
         )}

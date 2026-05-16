@@ -7,6 +7,7 @@ import { useForm } from "react-hook-form";
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
+import { ScreenHeader } from "@/components/ui";
 import { useAuthSession } from "@/features/auth/use-auth-session";
 import { useVisibleCategories } from "@/features/categories/use-visible-categories";
 import { useCities } from "@/features/cities/use-cities";
@@ -204,39 +205,25 @@ export default function NewOrderScreen() {
       className="flex-1 bg-canvas"
       style={{ paddingTop: insets.top }}
     >
-      {/* Header: только back (progress убран — single-screen форма). */}
-      <View className="flex-row items-center px-3 py-1 pb-2">
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Назад"
-          onPress={goBack}
-          hitSlop={12}
-          className="h-9 w-9 items-center justify-center rounded-full active:opacity-70"
-        >
-          <CaretLeft size={20} weight="bold" color={tc.ink} />
-        </Pressable>
-      </View>
+      {/* Стандартный <ScreenHeader title="Новый заказ" /> — единый header
+          для всех full-screen экранов (см. DESIGN.md §UI patterns 1).
+          Раньше был ad-hoc header (h-9 back-кнопка + дублирующий mono-eyebrow
+          в hero) — фидбек user 2026-05-16 «у нас есть стандарт, применить». */}
+      <ScreenHeader title="Новый заказ" onBack={goBack} />
 
       <ScrollView
         contentContainerStyle={{ paddingBottom: insets.bottom + 96 }}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        {/* Hero — Vercel value-card. Eyebrow (mono) → H1 → subtitle → 3-step
-            row (Pencil / ChatCenteredText / Lock — все 3 согласованы с privacy
-            обещанием) → выделенная privacy-плашка снизу.
-            Никаких декоративных кругов / случайного violet — чистая
-            типографическая иерархия + один акцентный privacy-trust блок. */}
+        {/* Hero — Vercel value-card. H1 → 3-step row (Pencil / ChatCenteredText
+            / Lock — все 3 согласованы с privacy обещанием) → выделенная
+            privacy-плашка снизу. Eyebrow «НОВЫЙ ЗАКАЗ» убран — дублировал
+            title в ScreenHeader. */}
         <View className="px-6 pb-8">
           <AppText
-            weight="mono"
-            className="text-mono-caption text-mute uppercase tracking-widest"
-          >
-            Новый заказ
-          </AppText>
-          <AppText
             weight="display"
-            className="mt-2 text-display-md text-ink"
+            className="text-display-md text-ink"
           >
             Опишите задачу — мастера отзовутся
           </AppText>

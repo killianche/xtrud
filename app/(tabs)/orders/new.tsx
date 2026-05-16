@@ -221,12 +221,9 @@ export default function NewOrderScreen() {
             privacy-плашка снизу. Eyebrow «НОВЫЙ ЗАКАЗ» убран — дублировал
             title в ScreenHeader. */}
         <View className="px-6 pb-8">
-          <AppText
-            weight="display"
-            className="text-display-md text-ink"
-          >
-            Опишите задачу — мастера отзовутся
-          </AppText>
+          {/* H1 «Опишите задачу — мастера отзовутся» удалён 2026-05-16 —
+              дублировал title ScreenHeader «Новый заказ». Контекст экрана
+              самоочевиден из header'а. */}
 
           {/* «Как это работает» — единая info card с двумя смысловыми блоками:
               сверху 3-step (что получит клиент), снизу privacy-trust (номер скрыт).

@@ -14,23 +14,30 @@ import { Pressable, TextInput, View } from "react-native";
 import { AppText } from "@/components/AppText";
 import { CategoryPicker } from "@/components/CategoryPicker";
 import { LocationPicker } from "@/features/orders/LocationPicker";
-import type { CreateOrderFormValues } from "@/features/orders/order-schema";
+import type { CreateOrderFormValues, OrderPriceKind } from "@/features/orders/order-schema";
 import {
-  orderBudgetModeOptions,
+  orderPriceKindOptions,
   orderUrgencyOptions,
+  priceKindLabel,
   urgencyLabel,
 } from "@/features/orders/order-schema";
 import { useThemeColor } from "@/lib/use-theme-color";
 import type { Tables } from "@/types/database";
 
-export function budgetModeLabel(m: (typeof orderBudgetModeOptions)[number]): string {
-  switch (m) {
-    case "exact":
-      return "Точная цена";
-    case "range":
-      return "Диапазон";
+/**
+ * Плейсхолдер числового поля для конкретного kind.
+ * Для negotiable поле скрывается, для остальных подсказка отражает смысл.
+ */
+function priceFieldLabel(k: OrderPriceKind): string {
+  switch (k) {
+    case "fixed":
+      return "Сумма, ₽";
+    case "from":
+      return "От, ₽";
+    case "up_to":
+      return "До, ₽";
     case "negotiable":
-      return "Договорная";
+      return "";
   }
 }
 
@@ -39,7 +46,7 @@ type FormControl = Control<CreateOrderFormValues>;
 interface OrderFormBodyProps {
   control: FormControl;
   errors: FieldErrors<CreateOrderFormValues>;
-  budgetMode: CreateOrderFormValues["budgetMode"];
+  budgetKind: CreateOrderFormValues["budgetKind"];
   isBusy: boolean;
   categories: Pick<Tables<"categories_l2">, "id" | "name_ru" | "icon">[] | undefined;
   cities: Pick<Tables<"cities">, "id" | "name">[] | undefined;
@@ -57,7 +64,7 @@ interface OrderFormBodyProps {
 export function OrderFormBody({
   control,
   errors,
-  budgetMode,
+  budgetKind,
   isBusy,
   categories,
   cities,
@@ -75,7 +82,7 @@ export function OrderFormBody({
       {showContent && (
         <View className="px-6">
           <TextField
-            label="В двух словах"
+            label="Опишите задачу в двух словах"
             placeholder="Заменить смеситель на кухне"
             control={control}
             name="title"
@@ -210,13 +217,13 @@ export function OrderFormBody({
                       onPress={() => onChange(u)}
                       className={`h-10 items-center justify-center rounded-pill border px-4 ${
                         selected
-                          ? "border-ink bg-ink"
+                          ? "border-accent bg-accent-soft"
                           : "border-hairline bg-canvas active:opacity-70"
                       }`}
                     >
                       <AppText
                         weight="medium"
-                        className={`text-body-sm ${selected ? "text-on-primary" : "text-ink"}`}
+                        className={`text-body-sm ${selected ? "text-accent" : "text-ink"}`}
                       >
                         {urgencyLabel(u)}
                       </AppText>
@@ -229,7 +236,9 @@ export function OrderFormBody({
         </View>
       )}
 
-      {/* Бюджет — Шаг 3 */}
+      {/* Бюджет — 4 chip-варианта + одно числовое поле. Раньше был «Диапазон»
+          с двумя полями (от/до) — выпилили по фидбэку user 2026-05-15
+          «убрать диапазоны из всех заказов». См. order-schema.ts. */}
       {showBudgetCity && (
         <View className="mt-6 px-6">
           <AppText weight="semibold" className="text-body-sm text-ink">
@@ -237,29 +246,29 @@ export function OrderFormBody({
           </AppText>
           <Controller
             control={control}
-            name="budgetMode"
+            name="budgetKind"
             render={({ field: { value, onChange } }) => (
               <View className="mt-2 flex-row flex-wrap gap-2">
-                {orderBudgetModeOptions.map((m) => {
-                  const selected = value === m;
+                {orderPriceKindOptions.map((k) => {
+                  const selected = value === k;
                   return (
                     <Pressable
-                      key={m}
+                      key={k}
                       accessibilityRole="button"
                       accessibilityState={{ selected }}
                       disabled={isBusy}
-                      onPress={() => onChange(m)}
+                      onPress={() => onChange(k)}
                       className={`h-10 items-center justify-center rounded-pill border px-4 ${
                         selected
-                          ? "border-ink bg-ink"
+                          ? "border-accent bg-accent-soft"
                           : "border-hairline bg-canvas active:opacity-70"
                       }`}
                     >
                       <AppText
                         weight="medium"
-                        className={`text-body-sm ${selected ? "text-on-primary" : "text-ink"}`}
+                        className={`text-body-sm ${selected ? "text-accent" : "text-ink"}`}
                       >
-                        {budgetModeLabel(m)}
+                        {priceKindLabel(k)}
                       </AppText>
                     </Pressable>
                   );
@@ -267,30 +276,16 @@ export function OrderFormBody({
               </View>
             )}
           />
-          {budgetMode !== "negotiable" && (
-            <View className="mt-3 flex-row gap-3">
-              <View className="flex-1">
-                <NumberField
-                  label={budgetMode === "exact" ? "Сумма, ₽" : "От, ₽"}
-                  placeholder="1500"
-                  control={control}
-                  name="budgetMin"
-                  error={errors.budgetMin?.message}
-                  disabled={isBusy}
-                />
-              </View>
-              {budgetMode === "range" && (
-                <View className="flex-1">
-                  <NumberField
-                    label="До, ₽"
-                    placeholder="5000"
-                    control={control}
-                    name="budgetMax"
-                    error={errors.budgetMax?.message}
-                    disabled={isBusy}
-                  />
-                </View>
-              )}
+          {budgetKind !== "negotiable" && (
+            <View className="mt-3">
+              <NumberField
+                label={priceFieldLabel(budgetKind)}
+                placeholder="1500"
+                control={control}
+                name="budgetValue"
+                error={errors.budgetValue?.message}
+                disabled={isBusy}
+              />
             </View>
           )}
         </View>
@@ -305,7 +300,7 @@ type StringFieldName = Extract<
   FieldPath<CreateOrderFormValues>,
   "title" | "description" | "district"
 >;
-type NumberFieldName = Extract<FieldPath<CreateOrderFormValues>, "budgetMin" | "budgetMax">;
+type NumberFieldName = Extract<FieldPath<CreateOrderFormValues>, "budgetValue">;
 
 interface TextFieldProps {
   label: string;

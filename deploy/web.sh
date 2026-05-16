@@ -21,6 +21,20 @@ echo "→ Building Expo web bundle..."
 rm -rf dist
 npx expo export --platform web
 
+# Site деплоится в /xtrud/ subpath, но `expo export` пишет в HTML
+# абсолютные пути `/_expo/...` и `/favicon.ico` — без префикса. Без патча
+# браузер запрашивает их с корня alanbani.ru и получает 404. Делаем
+# post-process через sed: подставляем префикс /xtrud/ для всех absolute
+# paths в index.html. (app.json остаётся `web.output: single` для локалки —
+# не трогаем; правка только в финальном dist.)
+echo "→ Patching dist/index.html (baseUrl /xtrud)..."
+sed -i.bak \
+  -e 's|href="/_expo/|href="/xtrud/_expo/|g' \
+  -e 's|src="/_expo/|src="/xtrud/_expo/|g' \
+  -e 's|href="/favicon.ico"|href="/xtrud/favicon.ico"|g' \
+  dist/index.html
+rm dist/index.html.bak
+
 echo "→ Packing..."
 tar czf /tmp/xtrud-dist.tgz -C dist .
 

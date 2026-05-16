@@ -13,7 +13,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
-import { CaretRight, ClipboardText, Eye, SignIn, SignOut, MapPin, ChatCircle, Moon, Pencil, Plus, ShieldCheck, DeviceMobile, Star, Sun, User } from "phosphor-react-native";
+import { CaretRight, ClipboardText, Eye, Gear, SignIn, SignOut, ChatCircle, Moon, Pencil, Plus, ShieldCheck, DeviceMobile, Star, Sun, User } from "phosphor-react-native";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, Alert, Pressable, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -58,7 +58,6 @@ export default function ProfileScreen() {
   }, [profileResetCounter]);
 
   const { data: user, isLoading: userLoading } = useUserRecord(userId);
-  const { data: cityName } = useCityName(user?.city_id ?? null);
   const { data: masterProfile } = useMyMasterProfile(userId, user?.is_master === true);
   // Quick stats для клиента (для master есть отдельные экраны со своими счётчиками).
   const { data: myOrders } = useMyOrders(user?.is_master ? undefined : userId);
@@ -182,20 +181,17 @@ export default function ProfileScreen() {
 
   return (
     <View className="flex-1 bg-canvas" style={{ paddingTop: insets.top }}>
-      {/* Унифицированный ScreenHeader — без back (это таб). Для клиента справа
-          компактная иконка-pencil как rightAction → /profile/edit-client. */}
+      {/* Унифицированный ScreenHeader — без back (это таб). Справа всегда
+          ⚙ Gear → /settings (приватность, тема, аккаунт, поддержка). Edit
+          профиля доступен из body-карточки «Редактировать профиль». */}
       <ScreenHeader
         title="Профиль"
-        rightAction={
-          isClient
-            ? {
-                label: "Изменить",
-                Icon: Pencil,
-                onPress: () => router.push("/(tabs)/profile/edit-client" as never),
-                accessibilityLabel: "Редактировать профиль",
-              }
-            : undefined
-        }
+        rightAction={{
+          label: "Настройки",
+          Icon: Gear,
+          onPress: () => router.push("/(tabs)/profile/settings" as never),
+          accessibilityLabel: "Настройки",
+        }}
       />
 
       <ScrollView
@@ -286,15 +282,10 @@ export default function ProfileScreen() {
                 ) : null}
               </View>
 
-              {cityName ? (
-                <View className="mt-2 flex-row items-center gap-1">
-                  <MapPin size={13} weight="bold" color={themeColors["muted-soft"]} />
-                  <AppText className="text-body-sm text-mute">
-                    {cityName}
-                    {user.district ? ` · ${user.district}` : ""}
-                  </AppText>
-                </View>
-              ) : null}
+              {/* Город/район личного юзера НЕ показываем (2026-05-16):
+                  это «домашняя» точка, не нужна на профиле. Для мастера
+                  важно где он РАБОТАЕТ — это в master_service_areas
+                  (отдельный блок «Где работаете» в edit-master). */}
 
               {/* P1-8: переключатель ролей для dual-role users.
                   Видим только если у пользователя is_master И is_client. */}
@@ -367,12 +358,9 @@ export default function ProfileScreen() {
               ) : null}
             </View>
 
-            {cityName ? (
-              <AppText className="mt-1 text-body-sm text-muted">
-                {cityName}
-                {user.district ? `, ${user.district}` : ""}
-              </AppText>
-            ) : null}
+            {/* Город/район мастера НЕ показываем (2026-05-16): личный «дом»
+                нерелевантен в публичном/собственном профиле. Где мастер
+                работает — в master_service_areas, отдельный блок ниже. */}
 
             {/* P1-8: переключатель ролей для dual-role users.
                 Видим только если у пользователя is_master И is_client. */}
@@ -433,11 +421,13 @@ export default function ProfileScreen() {
                   Редактировать профиль
                 </AppText>
                 <AppText className="mt-0.5 text-body-sm text-mute">
-                  Имя, фамилия, город, район
+                  Имя и фамилия
                 </AppText>
               </View>
               <CaretRight size={20} weight="bold" color={themeColors["muted-soft"]} />
             </Pressable>
+
+            {/* «Как меня видят мастера» CTA удалён 2026-05-16 (фидбэк user). */}
           </>
         ) : null}
 
@@ -450,16 +440,13 @@ export default function ProfileScreen() {
               onPress={() => router.push("/(tabs)/profile/edit-master" as never)}
               className="mx-6 mt-3 flex-row items-center justify-between rounded-lg border border-hairline bg-canvas p-4 active:opacity-70"
             >
-              <View className="flex-1">
-                <AppText weight="semibold" className="text-body-md text-ink">
-                  Редактировать профиль
-                </AppText>
-                <AppText className="mt-0.5 text-body-sm text-muted">
-                  Имя, город, bio, опыт, инструмент и транспорт
-                </AppText>
-              </View>
+              <AppText weight="semibold" className="flex-1 text-body-md text-ink">
+                Редактировать профиль
+              </AppText>
               <CaretRight size={20} weight="bold" color={themeColors["muted-soft"]} />
             </Pressable>
+
+            {/* «Как меня видят клиенты» CTA удалён 2026-05-16 (фидбэк user). */}
 
             {/* Categories shortcut */}
             <Pressable
@@ -467,14 +454,9 @@ export default function ProfileScreen() {
               onPress={() => router.push("/(onboarding)/master-categories")}
               className="mx-6 mt-3 flex-row items-center justify-between rounded-lg border border-hairline bg-canvas p-4 active:opacity-70"
             >
-              <View className="flex-1">
-                <AppText weight="semibold" className="text-body-md text-ink">
-                  Категории
-                </AppText>
-                <AppText className="mt-0.5 text-body-sm text-muted">
-                  Выбор L2 услуг, которые вы предлагаете
-                </AppText>
-              </View>
+              <AppText weight="semibold" className="flex-1 text-body-md text-ink">
+                Категории
+              </AppText>
               <CaretRight size={20} weight="bold" color={themeColors["muted-soft"]} />
             </Pressable>
 
@@ -486,14 +468,9 @@ export default function ProfileScreen() {
               onPress={() => router.push("/(tabs)/profile/services-suggest" as never)}
               className="mx-6 mt-3 flex-row items-center justify-between rounded-lg border border-hairline bg-canvas p-4 active:opacity-70"
             >
-              <View className="flex-1">
-                <AppText weight="semibold" className="text-body-md text-ink">
-                  Услуги и цены
-                </AppText>
-                <AppText className="mt-0.5 text-body-sm text-muted">
-                  Добавить из шаблона: «Замена смесителя», «Установка унитаза» и т.д.
-                </AppText>
-              </View>
+              <AppText weight="semibold" className="flex-1 text-body-md text-ink">
+                Услуги и цены
+              </AppText>
               <CaretRight size={20} weight="bold" color={themeColors["muted-soft"]} />
             </Pressable>
 
@@ -507,15 +484,9 @@ export default function ProfileScreen() {
               onPress={() => router.push("/(tabs)/profile/portfolio" as never)}
               className="mx-6 mt-3 flex-row items-center justify-between rounded-lg border border-hairline bg-canvas p-4 active:opacity-70"
             >
-              <View className="flex-1">
-                <AppText weight="semibold" className="text-body-md text-ink">
-                  Портфолио
-                </AppText>
-                <AppText className="mt-0.5 text-body-sm text-muted">
-                  {portfolio.data?.length ?? 0} из {PORTFOLIO_MAX} фото —
-                  добавляйте работы, чтобы повысить доверие
-                </AppText>
-              </View>
+              <AppText weight="semibold" className="flex-1 text-body-md text-ink">
+                Портфолио
+              </AppText>
               <CaretRight size={20} weight="bold" color={themeColors["muted-soft"]} />
             </Pressable>
 
@@ -817,26 +788,11 @@ function GuestProfileScreen({ insets, themeColors, onLogin }: GuestProfileScreen
 }
 
 // ----------------------------------------------------------------------------
-// Локальные хуки — read-only city name + master_profiles для рейтинга
+// Локальные хуки — master_profiles для рейтинга
+//
+// useCityName удалён 2026-05-16: личный город/район юзера больше не отображаем
+// (user request). Где мастер работает — master_service_areas, отдельный блок.
 // ----------------------------------------------------------------------------
-
-function useCityName(cityId: string | null) {
-  return useQuery<string | null>({
-    queryKey: ["city-name", cityId],
-    queryFn: async () => {
-      if (!cityId) return null;
-      const { data, error } = await supabase
-        .from("cities")
-        .select("name")
-        .eq("id", cityId)
-        .maybeSingle();
-      if (error) throw error;
-      return data?.name ?? null;
-    },
-    enabled: !!cityId,
-    staleTime: 60 * 60_000,
-  });
-}
 
 function useMyMasterProfile(userId: string | null | undefined, enabled: boolean) {
   return useQuery<Tables<"master_profiles"> | null>({

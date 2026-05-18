@@ -69,8 +69,20 @@ export const PAIR_CITIES: Record<string, readonly string[]> = {
   "nazran-magas": ["nazran", "magas"],
 };
 
-/** Город по умолчанию для нового пользователя без AsyncStorage / без геолокации. */
-export const DEFAULT_CITY_ID = "nazran";
+/** Город по умолчанию для нового пользователя без AsyncStorage / без геолокации.
+ *  Пара `nazran-magas` (миграция 0051), потому что Назрань и Магас фактически
+ *  единая агломерация — раздельные id оставлены `hiddenInPicker` только для
+ *  backward-compat старых записей. */
+export const DEFAULT_CITY_ID = "nazran-magas";
+
+/** Нормализатор legacy cityId. Старые AsyncStorage / users.city_id могут
+ *  содержать раздельные `nazran` / `magas` (до миграции 0051) — для UI
+ *  превращаем их в пару. БД-значения не трогаем (фильтрация по PAIR_CITIES
+ *  работает на серверном уровне), это чисто display-нормализация. */
+export function normalizeCityId(id: string): string {
+  if (id === "nazran" || id === "magas") return "nazran-magas";
+  return id;
+}
 
 /** Спец-id для UI-значения «Вся Ингушетия» (на submit конвертируется в NULL
  *  для orders.city_id). См. миграцию 0049_orders_city_optional.sql. */
@@ -81,11 +93,13 @@ export const ALL_INGUSHETIA_CITY_ID = "all";
 // Точки — административные центры. Источник: open-data РИ.
 // ============================================================================
 
+/** Координаты только для опций, которые видны пользователю в picker
+ *  (PICKER_CITIES). Раздельные `nazran` и `magas` намеренно НЕ включены —
+ *  иначе `getNearestCity` мог бы вернуть один из них, и UI стал бы
+ *  показывать «Назрань» вместо «Назрань · Магас». Точка `nazran-magas` —
+ *  середина между двумя административными центрами. */
 export const CITY_COORDINATES: Record<string, { lat: number; lng: number }> = {
-  // Назрань · Магас — точка посередине двух центров (для getNearestCity).
   "nazran-magas": { lat: 43.1973, lng: 44.7862 },
-  nazran: { lat: 43.226, lng: 44.7636 },
-  magas: { lat: 43.1685, lng: 44.8087 },
   karabulak: { lat: 43.3105, lng: 44.8987 },
   malgobek: { lat: 43.5285, lng: 44.5926 },
   sunzha: { lat: 43.3262, lng: 45.0473 },
@@ -241,10 +255,14 @@ export function isVillageName(value: string): boolean {
   return value in _villageToDistrict;
 }
 
-/** Получить имя города по id из MAJOR_CITIES. Fallback на default. */
+/** Получить имя города по id из MAJOR_CITIES. Fallback на default.
+ *  Применяет normalizeCityId — legacy `nazran` / `magas` отображаются как
+ *  «Назрань · Магас» (единая агломерация). БД-значения нетронуты, это
+ *  только display-уровень. */
 export function getCityName(id: string): string {
   if (id === ALL_INGUSHETIA_CITY_ID) return "Вся Ингушетия";
-  return MAJOR_CITIES.find((c) => c.id === id)?.name ?? "Ингушетия";
+  const normalized = normalizeCityId(id);
+  return MAJOR_CITIES.find((c) => c.id === normalized)?.name ?? "Ингушетия";
 }
 
 // ============================================================================

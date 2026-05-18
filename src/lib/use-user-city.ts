@@ -24,7 +24,10 @@
  * **Семантика cityId:**
  *   - валидный id из MAJOR_CITIES (8 поселений) — конкретный город
  *   - "all" — «Вся Ингушетия» (без привязки)
- *   - default (Назрань) при первом запуске до завершения init
+ *   - default (`nazran-magas`, «Назрань · Магас») при первом запуске до завершения init.
+ *     После миграции 0051 раздельные `nazran`/`magas` помечены `hiddenInPicker` —
+ *     юзер их не выбирает руками, но старые persisted значения автомиграцией
+ *     (migrate v3→v4 в zustand persist) приводятся к паре.
  */
 
 import { useEffect, useState } from "react";
@@ -36,6 +39,7 @@ import {
   DEFAULT_CITY_ID,
   getCityName as _getCityName,
   getNearestCity,
+  normalizeCityId,
 } from "@/lib/location-config";
 import { storage } from "@/lib/storage";
 
@@ -60,13 +64,18 @@ export const useCityStore = create<CityState>()(
       cityId: DEFAULT_CITY_ID,
       isInitialized: false,
       isUserChoice: false,
-      setCity: (id) => set({ cityId: id, isInitialized: true, isUserChoice: true }),
+      setCity: (id) =>
+        set({
+          cityId: normalizeCityId(id),
+          isInitialized: true,
+          isUserChoice: true,
+        }),
       _markInitialized: (cityId, isUserChoice) =>
-        set({ cityId, isInitialized: true, isUserChoice }),
+        set({ cityId: normalizeCityId(cityId), isInitialized: true, isUserChoice }),
     }),
     {
       name: "xtrud-city",
-      version: 3,
+      version: 4,
       storage: createJSONStorage(() => storage),
       // Партиализация: НЕ персистим isInitialized (всегда false при cold start —
       // переинициализируем). Сохраняем только cityId + isUserChoice (последний
@@ -75,6 +84,18 @@ export const useCityStore = create<CityState>()(
         cityId: state.cityId,
         isUserChoice: state.isUserChoice,
       }),
+      // Миграция v3 → v4: старые persisted cityId='nazran' / 'magas' пришли
+      // из эпохи до миграции 0051 (когда раздельные Назрань и Магас были
+      // top-level в picker'е). Сейчас единая опция «Назрань · Магас»,
+      // нормализуем automatically чтобы пользователь не видел старое значение
+      // в header pill после deploy.
+      migrate: (persistedState, version) => {
+        const state = (persistedState ?? {}) as Partial<CityState>;
+        if (version < 4 && typeof state.cityId === "string") {
+          return { ...state, cityId: normalizeCityId(state.cityId) };
+        }
+        return state;
+      },
     },
   ),
 );

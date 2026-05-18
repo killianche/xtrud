@@ -19,21 +19,23 @@
  */
 
 import { useRouter } from "expo-router";
-import { CaretRight, Drop, SignIn, MagnifyingGlass, Sparkle, Lightning } from "phosphor-react-native";
-import { useEffect, useRef } from "react";
+import { CaretDown, CaretRight, Drop, MapPin, SignIn, MagnifyingGlass, Sparkle, Lightning } from "phosphor-react-native";
+import { useEffect, useRef, useState } from "react";
 import { Animated, FlatList, Image, Platform, Pressable, ScrollView, View, useWindowDimensions } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { getCategoryColorIconUrl } from "@/lib/category-color-icons";
 import { getCategoryIcon } from "@/lib/category-icons";
 import { AppText } from "@/components/AppText";
-import { CitySelector, useCityStore, getCityName } from "@/components/CitySelector";
-import { Avatar, Button, Card, Skeleton } from "@/components/ui";
+import { CITIES, useCityStore, getCityName } from "@/components/CitySelector";
+import { Avatar, Button, Card, PickerSheet, Skeleton, type PickerOption } from "@/components/ui";
 import { XtrudLogo } from "@/components/XtrudLogo";
-import { useThemeColor } from "@/lib/use-theme-color";
+import { useUserCity } from "@/lib/use-user-city";
+import { useThemeColors } from "@/lib/use-theme-color";
 import { HelpCallout } from "@/components/HelpCallout";
 import { useAuthSession } from "@/features/auth/use-auth-session";
 import { useUserRecord } from "@/features/auth/use-user-record";
 import { useVisibleCategories } from "@/features/categories/use-visible-categories";
+import { HowItWorks } from "@/features/home/HowItWorks";
 import { MasterHomeContent } from "@/features/master-view/MasterHomeContent";
 import {
   AVAILABILITY_DOT,
@@ -110,20 +112,26 @@ export default function HomeTab() {
 // ============================================================================
 
 /**
- * TopBar — брендинг главной (лого + wordmark «xtrud») + right actions.
+ * TopBar — брендинг главной + город + auth-кнопка.
  *
- * Контейнер по габаритам совпадает с `<ScreenHeader>` (height 64, gap-2, px-3),
- * но слева — лого + wordmark вместо title. Это «домашняя» шапка приложения
- * (фидбэк user 2026-05-15 «xtrud с логотипом поставь» — раньше тут было
- * приветствие «Привет, Руслан», но брендинг важнее на главном экране).
+ * **Two-row layout** (паттерн Yandex Eats / Avito Доставка / Wolt):
+ *   - Row 1 (h-11): лого + wordmark «xtrud» слева, «Войти» pill справа.
+ *   - Row 2 (h-7):  компактный city-trigger «📍 Назрань · Магас ▾» муtenta,
+ *                   без бордера — выглядит как метаданные «где я живу».
  *
- *   - left: `<XtrudLogo size={28} />` + «xtrud» display-md bold (gap-2)
- *   - right actions: CitySelector pill + (анон) кнопка «Войти» pill
- *     (оба h-11 в стиле ScreenHeader.rightAction)
+ * Почему two-row (фидбэк user 2026-05-16). Раньше всё было в одну строку
+ * (лого+wordmark + CitySelector pill + Войти pill), но после миграции 0051
+ * city-pill стал «Назрань · Магас» (~187px), wordmark «xtrud» с
+ * `numberOfLines={1}` сжимался до «x...». Two-row решает overflow без
+ * скрытия brand'а или сокращения city-метки.
  *
- * Avatar/profile-shortcut и приветствие в header не нужны — профиль
- * открывается через 5-й таб TabBar, hero ниже сам по себе достаточно тёплый
- * («Найдутся мастера» и т.п.).
+ * Compact city-trigger inline'ом (Pressable + PickerSheet) — не используем
+ * <CitySelector> компонент, потому что он жёстко возвращает h-11 pill
+ * (паттерн ScreenHeader.rightAction, актуален для других экранов и WebShell
+ * desktop). Здесь нужен тонкий text-link стиль.
+ *
+ * Container height: ~76 (row 1: 44 + gap 4 + row 2: 28). Hero ниже стоит
+ * на mt-12 — отступ остаётся визуально читаемым.
  */
 function TopBar({
   userId,
@@ -135,42 +143,81 @@ function TopBar({
   avatarUrl: string | null;
 }) {
   const router = useRouter();
-  const inkColor = useThemeColor("ink");
+  const tc = useThemeColors(["ink", "muted"]);
+  const { cityId, cityName, setCity } = useUserCity();
+  const [cityOpen, setCityOpen] = useState(false);
   // userName / avatarUrl сейчас не используются в шапке (брендинг важнее
   // приветствия). Оставлены в props на случай возврата приветственной строки.
   void userName;
   void avatarUrl;
-  return (
-    <View
-      className="flex-row items-center gap-2 px-3"
-      style={{ height: 64 }}
-    >
-      <View className="flex-1 min-w-0 flex-row items-center gap-2">
-        <XtrudLogo size={28} />
-        <AppText
-          weight="bold"
-          className="text-display-md tracking-tight text-ink"
-          numberOfLines={1}
-        >
-          xtrud
-        </AppText>
-      </View>
 
-      <CitySelector />
-      {!userId ? (
+  return (
+    <>
+      <View className="px-3 pt-2 pb-1">
+        {/* Row 1: brand (left) + auth (right). */}
+        <View className="flex-row items-center justify-between" style={{ height: 44 }}>
+          <Pressable
+            accessibilityRole="link"
+            accessibilityLabel="xtrud"
+            onPress={() => router.push("/(tabs)" as never)}
+            className="flex-row items-center gap-2 active:opacity-70"
+          >
+            <XtrudLogo size={28} color={tc.ink} />
+            <AppText
+              weight="bold"
+              className="text-display-md tracking-tight text-ink"
+            >
+              xtrud
+            </AppText>
+          </Pressable>
+
+          {!userId ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Войти"
+              onPress={() => router.push("/(auth)/phone" as never)}
+              className="h-10 flex-row items-center gap-1.5 rounded-pill border px-4 active:opacity-70 border-hairline bg-canvas"
+            >
+              <SignIn size={16} weight="bold" color={tc.ink} />
+              <AppText weight="semibold" className="text-button text-ink">
+                Войти
+              </AppText>
+            </Pressable>
+          ) : null}
+        </View>
+
+        {/* Row 2: compact city-trigger — text-link стиль, без бордера. */}
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Войти"
-          onPress={() => router.push("/(auth)/phone" as never)}
-          className="h-11 flex-row items-center gap-1.5 rounded-pill border px-4 active:opacity-70 border-hairline bg-canvas hover:bg-surface-2"
+          accessibilityLabel={`Город: ${cityName}`}
+          onPress={() => setCityOpen(true)}
+          className="self-start flex-row items-center gap-1 -ml-0.5 mt-1 px-1 py-1 rounded-md active:opacity-60 active:bg-canvas-soft"
         >
-          <SignIn size={16} weight="bold" color={inkColor} />
-          <AppText weight="semibold" className="text-button text-ink">
-            Войти
+          <MapPin size={14} weight="bold" color={tc.muted} />
+          <AppText weight="medium" className="text-body-sm text-muted">
+            {cityName}
           </AppText>
+          <CaretDown size={12} weight="bold" color={tc.muted} />
         </Pressable>
-      ) : null}
-    </View>
+      </View>
+
+      <PickerSheet
+        open={cityOpen}
+        onClose={() => setCityOpen(false)}
+        title="Город"
+        searchable={false}
+        options={CITIES.map<PickerOption>((c) => ({
+          id: c.id,
+          title: c.name,
+          icon: <MapPin size={18} weight="bold" color={tc.ink} />,
+        }))}
+        selectedId={cityId}
+        onSelect={(id) => {
+          setCity(id);
+          setCityOpen(false);
+        }}
+      />
+    </>
   );
 }
 
@@ -196,6 +243,10 @@ function ClientHome({ onCategoryPress, onMasterPress, onDescribeTask }: ClientHo
       <TopMasters onMasterPress={onMasterPress} />
       <DescribeTaskCallout onPress={() => onDescribeTask()} />
       <AllCategories onCategoryPress={onCategoryPress} />
+      {/* «Как это работает» — Profi-style 5-card explainer-блок. БЕЗ красной
+          CTA-кнопки (фидбэк user 2026-05-18). Иллюстрации сейчас — Phosphor
+          duotone placeholder, hand-drawn doodles планируются отдельно. */}
+      <HowItWorks />
       {/* Help-плашка под полным списком категорий — «не нашли мастера?» */}
       <View className="mt-8 mx-5">
         <HelpCallout
@@ -391,44 +442,51 @@ function Hero({
       "0 2px 10px rgba(0,0,0,0.03), 0 1px 2px rgba(0,0,0,0.015)";
 
   return (
-    <View className="px-5 mt-10">
-      <AppText weight="display" className="text-display-lg tracking-tight text-ink">
-        Найдутся мастера
+    // Hero-блок «занимает большую часть above-the-fold» — фидбэк user
+    // 2026-05-16, референс Profi.ru/TaskRabbit/Yelp (Lazyweb scan):
+    //   - крупный H1 на 2 строки (одна — не достаточно «крупно»),
+    //   - тонкий subtitle сразу под H1 (продаёт ценность одним предложением),
+    //   - очень большой search-bar (h-16, иконка 24, body-lg),
+    //   - pb-14 на контейнере → «Часто заказывают» уезжает за фолд, фокус
+    //     остаётся на главном действии.
+    // Никаких дополнительных контролов в hero — один primary action.
+    <View className="px-5 mt-12 pb-14">
+      <AppText
+        weight="display"
+        className="text-display-xl tracking-tight text-ink"
+        style={{ lineHeight: 52 }}
+      >
+        Найдутся{"\n"}мастера
       </AppText>
 
-      {/* PRIMARY: большой SearchBar — главное действие. По паттерну TaskRabbit
-          search-first: один visual-anchor сверху, никаких отвлекающих
-          элементов вокруг (H1 + search достаточно).
+      {/* PRIMARY: гигантский SearchBar — главное действие.
           Theme-aware визуал:
             - light: hairline-border + мягкий drop-shadow
-            - dark:  белая обводка (border-ink) + яркое white glow,
-                     иконка и placeholder тоже белые (text-ink) — как primary action.
-          Border-классы для разных тем — чтобы CSS-var корректно резолвилась в
-          обоих portal'ах (light → border-hairline, dark → border-ink). */}
-      <View className="mt-6">
+            - dark:  белая обводка (border-ink) + мягкое glow,
+                     иконка и placeholder белые — как primary action. */}
+      <View className="mt-8">
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Поиск мастеров"
           onPress={() => router.push("/search" as never)}
-          className={`flex-row items-center gap-3 h-14 rounded-xl bg-canvas border px-5 active:opacity-70 ${
+          className={`flex-row items-center gap-3 h-16 rounded-xl bg-canvas border px-5 active:opacity-70 ${
             isDark ? "border-ink/30" : "border-hairline"
           }`}
           style={{ boxShadow: searchShadow }}
         >
           <MagnifyingGlass
-            size={20}
+            size={24}
             weight="bold"
             color="currentColor"
             className={isDark ? "text-ink" : "text-mute"}
           />
           <AppText
-            className={`flex-1 text-body-md ${isDark ? "text-ink" : "text-mute"}`}
+            className={`flex-1 text-body-lg ${isDark ? "text-ink" : "text-mute"}`}
           >
             Специалист или услуга…
           </AppText>
         </Pressable>
       </View>
-
     </View>
   );
 }

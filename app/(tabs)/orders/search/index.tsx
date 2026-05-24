@@ -36,13 +36,13 @@ import { OrderRow } from "@/components/OrderRow";
 import { OrderRowsSkeleton } from "@/components/OrderRowsSkeleton";
 import { ScreenHeader } from "@/components/ui";
 import { useAuthSession } from "@/features/auth/use-auth-session";
-import { useMyMasterCategories } from "@/features/master-categories/use-my-categories";
 import {
   countActiveFilters,
   useOrdersSearchFiltersStore,
 } from "@/features/orders/orders-search-filters-store";
 import { useAllOpenOrders } from "@/features/orders/use-all-open-orders";
 import { useMyResponses } from "@/features/orders/use-my-responses";
+import { useMarkFeedSeen } from "@/features/orders/use-unread-feed";
 import { useThemeColor } from "@/lib/use-theme-color";
 
 export default function OrdersSearchScreen() {
@@ -57,28 +57,35 @@ export default function OrdersSearchScreen() {
   // оставить только L2 категории).
   const filters = useOrdersSearchFiltersStore();
   const { l2Ids, sort, clearAll } = filters;
-  const initFromMasterCategories = useOrdersSearchFiltersStore(
-    (s) => s.initFromMasterCategories,
-  );
   const activeCount = countActiveFilters(filters);
   const hasActiveFilters = activeCount > 0;
 
-  // 2026-05-15: при первом заходе мастера подставляем в фильтры его
-  // профильные категории (master_categories) — он сразу видит релевантные
-  // заявки. Идемпотентно: повторно для того же userId не перезаливаем,
-  // чтобы «Сбросить все фильтры» работал по ожиданию пользователя.
-  const myMasterCategories = useMyMasterCategories(userId);
-  useEffect(() => {
-    if (!userId || !myMasterCategories.data) return;
-    initFromMasterCategories(
-      userId,
-      myMasterCategories.data
-        .map((mc) => mc.l2_id)
-        .filter((id): id is string => !!id),
-    );
-  }, [userId, myMasterCategories.data, initFromMasterCategories]);
+  // 2026-05-21: автоподстановка фильтра по master_categories ОТКЛЮЧЕНА.
+  // Раньше при первом заходе мастера в фильтр автоматически подставлялись
+  // его L2-категории (master_categories) → он видел только релевантные.
+  // Проблема: если у мастера 1 категория, а open-orders в БД в других
+  // категориях — он видел «Открытых заявок нет» (ложный empty state).
+  // Также клиент с центральной кнопкой «Смотреть заказы» (Sprint 2026-05-20)
+  // тоже попадает на этот экран — у него нет master_categories, но
+  // initFromMasterCategories(userId, []) ставил initializedForUserId,
+  // блокируя дальнейшую инициализацию.
+  //
+  // Новое поведение: показываем ВСЕ open-orders по умолчанию. Если мастер
+  // хочет отфильтровать — нажимает «Фильтры» и сам выбирает категории
+  // (там можно одним тапом «применить мои категории» — отдельная задача).
 
   const effectiveL2Ids = l2Ids.length > 0 ? l2Ids : null;
+
+  // P1-3 (LAUNCH_READINESS): при заходе мастера в /orders/search сбрасываем
+  // unread-badge на TabBar (RPC mark_feed_seen обновляет
+  // users.feed_last_seen_at = now()). До этого badge только рос.
+  const markSeen = useMarkFeedSeen(userId);
+  const markSeenMutate = markSeen.mutate;
+  useEffect(() => {
+    if (!userId) return;
+    markSeenMutate();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId]);
 
   const {
     data: feed,
@@ -166,7 +173,10 @@ export default function OrdersSearchScreen() {
                 budgetKind={o.budget_kind}
                 budgetValue={o.budget_value}
                 description={o.description}
+                coverUrl={o.photo_urls?.[0] ?? null}
+                photosCount={o.photo_urls?.length ?? 0}
                 alreadyResponded={respondedOrderIds.has(o.id)}
+                showRespondButton
                 onPress={() =>
                   router.push(`/(tabs)/orders/${o.id}` as never)
                 }

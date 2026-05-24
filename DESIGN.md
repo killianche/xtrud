@@ -238,6 +238,16 @@ colors:
   selection-bg: "#171717"
   selection-fg: "#f2f2f2"
 
+# ⚠️ ОБНОВЛЕНО 2026-05-23 — ОСНОВНОЙ ШРИФТ ТЕПЕРЬ СИСТЕМНЫЙ (НЕ Geist).
+# По решению владельца «супер стандартный и везде быстро открывающийся шрифт».
+# Везде используется системный стек (ноль загрузки, мгновенный рендер):
+#   sans:  -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif
+#   mono:  ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace
+# То есть iOS/macOS/Safari → SF Pro; Windows → Segoe UI; Android → Roboto.
+# `fontFamily: Geist...` в таблице ниже — ИСТОРИЧЕСКОЕ, фактический источник истины
+# по шрифту — src/components/AppText.tsx + tailwind.config.ts (там системный стек).
+# Размеры/веса/трекинг из таблицы остаются в силе.
+
 typography:
   display-xl:
     fontFamily: Geist, Inter, system-ui, -apple-system, sans-serif

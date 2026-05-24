@@ -131,11 +131,6 @@ export function JitSignupSheet({ open, onClose, onSignedUp }: JitSignupSheetProp
       open={open}
       onClose={handleClose}
       title={step === "phone-name" ? "Последний шаг — войдите" : "Введите код из SMS"}
-      subtitle={
-        step === "phone-name"
-          ? "Чтобы получить отклики от мастеров, подтвердите номер. Это занимает 30 секунд."
-          : `Отправили код на ${formatPhoneMask(phone)}. Введите 6 цифр (на этапе тестирования любой код подойдёт).`
-      }
     >
       <View className="gap-3 mt-2">
         {step === "phone-name" ? (

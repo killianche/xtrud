@@ -27,7 +27,13 @@ REMOTE_DIR="${REMOTE_DIR:-/var/www/xtrud}"
 
 echo "→ Building Expo web bundle..."
 rm -rf dist
-npx expo export --platform web
+# Demo-вход (телефоны +79000… → email/пароль 'xtrud') ВКЛЮЧЁН: xtrud.alanbani.ru —
+# это демо/превью-площадка, на которую владелец заходит тестовыми аккаунтами и
+# админом (+7 900 000-00-99), см. DEMO_ACCOUNTS.md. Перед РЕАЛЬНЫМ публичным
+# запуском (реальные пользователи) — убрать EXPO_PUBLIC_ENABLE_DEMO, иначе любой
+# сможет войти под demo-аккаунтом с паролем 'xtrud'.
+# --clear: сброс Metro-кэша, иначе флаг может заинлайниться из старого кэша как false.
+EXPO_PUBLIC_ENABLE_DEMO=true npx expo export --platform web --clear
 
 # Деплой на корень subdomain (xtrud.alanbani.ru) — absolute paths в HTML
 # (`/_expo/...`, `/favicon.ico`) работают как есть, baseUrl-патч не нужен.

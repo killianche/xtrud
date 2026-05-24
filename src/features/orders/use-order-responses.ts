@@ -2,6 +2,12 @@
 // 1. useOrderResponses — клиент видит все отклики на свой заказ.
 // 2. useMyResponseForOrder — мастер проверяет, отправлял ли он отклик.
 // 3. useSubmitResponse — мастер шлёт отклик.
+//
+// 2026-05-20: модель сменилась на «classifieds» — клиент звонит/пишет в WhatsApp
+// напрямую по номеру мастера (см. /master/[id]). Сам номер живёт в auth.users
+// и недоступен через RLS — карточка отклика подгружает phone через RPC
+// `get_master_phone` (см. useMasterPhone), а whatsapp-поля — через
+// `useMasterPublicProfile`. Здесь join только на public.users.
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { sortResponses } from "@/features/orders/sort-responses";

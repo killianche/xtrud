@@ -1,12 +1,25 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { Check, CheckCircle, CaretRight, Clock, Flag, MapPin, ChatCenteredText, DotsThree, Pencil, Star, Wallet, X } from "phosphor-react-native";
-import { useEffect, useRef, useState } from "react";
+import {
+  ArrowCounterClockwise,
+  CaretRight,
+  Check,
+  CheckCircle,
+  Clock,
+  Flag,
+  MapPin,
+  DotsThree,
+  Pencil,
+  Phone,
+  Trash,
+  WhatsappLogo,
+  X,
+} from "phosphor-react-native";
+import { useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import {
   ActivityIndicator,
   Alert,
-  Animated,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -15,35 +28,26 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { openExternalUrl } from "@/lib/open-link";
 import { z } from "zod";
 import { AppText } from "@/components/AppText";
 import { Avatar } from "@/components/Avatar";
 import { OrderStatusBadge } from "@/components/OrderStatusBadge";
 import { useAuthSession } from "@/features/auth/use-auth-session";
+import { useSetActiveRole } from "@/features/auth/use-set-active-role";
 import { useUserRecord } from "@/features/auth/use-user-record";
 import { BottomSheet, ScreenHeader } from "@/components/ui";
-import { useMyChats } from "@/features/chat/use-my-chats";
-import { useStartChatWithMaster } from "@/features/chat/use-start-chat";
+import { OrderPhotoCarousel } from "@/features/orders/OrderPhotoCarousel";
 import { useRejectResponse } from "@/features/orders/use-reject-response";
-import {
-  OutcomeTrackingModal,
-  SNOOZE_MS,
-  shouldShowOutcomePrompt,
-  useOutcomeStore,
-} from "@/features/orders/OutcomeTrackingModal";
 import {
   formatPrice,
   orderPriceKindOptions,
   priceKindLabel,
   urgencyLabel,
 } from "@/features/orders/order-schema";
-import { useAcceptResponse } from "@/features/orders/use-accept-response";
-import { useCancelOrder } from "@/features/orders/use-cancel-order";
-import { useCompleteOrder } from "@/features/orders/use-complete-order";
-import { useConfirmCompletion } from "@/features/orders/use-confirm-completion";
-import { useMarkOrderDone } from "@/features/orders/use-mark-order-done";
+import { type CancelReason, useCancelOrder } from "@/features/orders/use-cancel-order";
+import { useDeleteOrder } from "@/features/orders/use-delete-order";
 import { canReopenOrder, useReopenOrder } from "@/features/orders/use-reopen-order";
-import { useTerminateCooperation } from "@/features/orders/use-terminate-cooperation";
 import { useWithdrawResponse } from "@/features/orders/use-withdraw-response";
 import { type OrderDetail, useOrderDetail } from "@/features/orders/use-order-detail";
 import {
@@ -53,17 +57,22 @@ import {
   useSubmitResponse,
 } from "@/features/orders/use-order-responses";
 import {
+  useMasterPhone,
+  useMasterPublicProfile,
+} from "@/features/master-view/use-master-public";
+import {
   isDailyLimitError,
   useResponseLimit,
 } from "@/features/orders/use-response-limit";
 import { useMarkResponsesViewed } from "@/features/orders/use-unread-responses";
 import { ReportModal } from "@/features/reports/ReportModal";
-import { useMyReviewForOrder, useSubmitReview } from "@/features/reviews/use-reviews";
-import { useColorScheme } from "@/hooks/use-color-scheme";
+import { useColorScheme, useDomColorScheme } from "@/hooks/use-color-scheme";
+import { useAuthReturnUrlStore } from "@/lib/auth-return-url-store";
 import { darkColors, lightColors } from "@/lib/colors";
 import { confirmAsync } from "@/lib/confirm";
 import { useSafeBack } from "@/lib/use-safe-back";
 import { useThemeColors } from "@/lib/use-theme-color";
+import { resolveWhatsappDigits } from "@/lib/whatsapp";
 import type { Database, Tables } from "@/types/database";
 
 // ============================================================================
@@ -97,15 +106,13 @@ export default function OrderDetailScreen() {
   const tc = useThemeColors(["ink", "muted-soft", "body", "mute"]);
   const [reportOpen, setReportOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  // Шит выбора причины закрытия заказа («нашёл мастера» / «больше не нужно»).
+  const [closeSheetOpen, setCloseSheetOpen] = useState(false);
 
   // safeBack: на вебе orders/[id] и master/[id] живут в разных tab-стеках, поэтому
   // router.back() при cross-stack переходе срабатывает не туда. На web падаем
   // на window.history.back(), на native — обычный back с fallback'ом на список заказов.
   const goBack = useSafeBack("/(tabs)/orders" as const);
-
-  // Резолвим chat по order_id из my-chats (без отдельного запроса).
-  const { data: myChats } = useMyChats(userId);
-  const orderChat = myChats?.find((c) => c.order_id === id) ?? null;
 
   // Sprint 12.3 — при open order detail (если owner) помечаем отклики просмотренными.
   const markResponsesViewed = useMarkResponsesViewed(userId);
@@ -114,20 +121,61 @@ export default function OrderDetailScreen() {
     if (isOwner && id) markResponsesMutate(id);
   }, [isOwner, id, markResponsesMutate]);
 
-  // Outcome tracking modal — Sprint 9.3.
+  // 2026-05-21 (план ORDER_LIFECYCLE_CLIENT_PLAN.md): три действия клиента над
+  // заказом — «Закрыть» (open → cancelled, с выбором причины), «Удалить»
+  // (только cancelled/expired) и «Открыть заново» (cancelled/expired в окне
+  // 7 дней). «Завершить» больше нет — успешный исход = «Закрыть → нашёл мастера».
   const cancelOrder = useCancelOrder();
-  const completeOrder = useCompleteOrder();
-  const dismissFor = useOutcomeStore((s) => s.dismissFor);
-  const showOutcomePrompt =
-    !!order &&
-    !!id &&
-    shouldShowOutcomePrompt({
-      isOwner,
-      orderStatus: order.status,
-      pickedMasterId: order.picked_master_id,
-      updatedAt: order.updated_at,
-      orderId: id,
+  const deleteOrder = useDeleteOrder();
+  const reopenOrder = useReopenOrder();
+
+  // Заказ закрыт клиентом или истёк → доступны «Удалить» / «Открыть заново».
+  const isClosedHistory =
+    !!order && (order.status === "cancelled" || order.status === "expired");
+  const canReopen = !!order && canReopenOrder(order.status, order.updated_at);
+
+  // Закрытие заказа с выбранной причиной. Вызывается из CloseReasonSheet.
+  const handleCloseWithReason = (reason: CancelReason) => {
+    if (!id || !userId) return;
+    setCloseSheetOpen(false);
+    cancelOrder.mutate(
+      { orderId: id, clientId: userId, reason },
+      { onError: (e) => Alert.alert("Не удалось закрыть", e.message) },
+    );
+  };
+
+  // Удаление заказа из «Истории». Подтверждение через confirmAsync
+  // (работает и на вебе, в отличие от Alert.alert). После удаления уходим назад.
+  const handleDelete = async () => {
+    if (!id || !userId) return;
+    setMenuOpen(false);
+    const confirmed = await confirmAsync({
+      title: "Удалить заказ?",
+      message:
+        "Заказ исчезнет из «Моих заказов» навсегда вместе с откликами. Это нельзя отменить.",
+      confirmText: "Удалить",
+      cancelText: "Отмена",
+      destructive: true,
     });
+    if (!confirmed) return;
+    deleteOrder.mutate(
+      { orderId: id, clientId: userId },
+      {
+        onSuccess: () => goBack(),
+        onError: (e) => Alert.alert("Не удалось удалить", e.message),
+      },
+    );
+  };
+
+  // Открыть заново — возвращает заказ в ленту мастеров (+14 дней).
+  const handleReopen = () => {
+    if (!id || !userId) return;
+    setMenuOpen(false);
+    reopenOrder.mutate(
+      { orderId: id, userId },
+      { onError: (e) => Alert.alert("Не удалось открыть заново", e.message) },
+    );
+  };
 
   return (
     <KeyboardAvoidingView
@@ -175,15 +223,16 @@ export default function OrderDetailScreen() {
         >
           <OrderInfoBlock order={order} isOwner={isOwner} />
 
-          {userId && id && <CompletionSection orderId={id} order={order} userId={userId} />}
-          {userId && id && <ReopenSection orderId={id} order={order} userId={userId} />}
+          {isOwner && id && userId && order ? (
+            <CloseOrderHint
+              order={order}
+              orderId={id}
+              onCloseRequested={() => setCloseSheetOpen(true)}
+            />
+          ) : null}
 
           {isOwner && id && order && (
-            <ClientResponsesSection
-              orderId={id}
-              order={order}
-              chatId={orderChat?.id ?? null}
-            />
+            <ClientResponsesSection orderId={id} order={order} />
           )}
           {!isOwner && isMasterRole && userId && id && (
             <MasterResponseSection
@@ -194,50 +243,22 @@ export default function OrderDetailScreen() {
               pickedMasterId={order.picked_master_id}
             />
           )}
-
-          {isOwner && id && order.status === "completed" && userId && order.picked_master_id && (
-            <ClientReviewSection
-              orderId={id}
-              clientId={userId}
-              masterId={order.picked_master_id}
-              l2Id={order.l2_id}
-            />
-          )}
-
-          {!isOwner &&
-            isMasterRole &&
-            id &&
-            order.status === "completed" &&
-            userId &&
-            order.picked_master_id === userId && (
-              <MasterReviewSection
-                orderId={id}
-                masterId={userId}
-                clientId={order.client_id}
-                l2Id={order.l2_id}
-              />
-            )}
+          {/* Sprint 2026-05-20: клиент-визитёр на чужом заказе.
+              Логика по ветвям:
+              - is_master=true (dual-role, сейчас в режиме клиента) → быстро
+                переключиться в master-режим и сразу увидеть MasterResponseSection.
+                Никакого онбординга, просто one-tap switch.
+              - is_master=false (чистый клиент) → CTA «Стать мастером»,
+                запоминаем return-URL, отправляем на онбординг мастера. После
+                finalize_master_onboarding() возврат на этот же заказ. */}
+          {!isOwner && !isMasterRole && id && order.status === "open" ? (
+            user?.is_master && userId ? (
+              <SwitchToMasterCTA userId={userId} />
+            ) : (
+              <BecomeMasterCTA orderId={id} />
+            )
+          ) : null}
         </ScrollView>
-      )}
-
-      {id && order && userId && (
-        <OutcomeTrackingModal
-          visible={showOutcomePrompt}
-          isBusy={cancelOrder.isPending || completeOrder.isPending}
-          onCompletedOffline={() => {
-            completeOrder.mutate(
-              { orderId: id, userId },
-              { onSuccess: () => dismissFor(id, SNOOZE_MS) },
-            );
-          }}
-          onNoDeal={() => {
-            cancelOrder.mutate(
-              { orderId: id, clientId: order.client_id },
-              { onSuccess: () => dismissFor(id, SNOOZE_MS) },
-            );
-          }}
-          onSnooze={() => dismissFor(id, SNOOZE_MS)}
-        />
       )}
 
       {id && (
@@ -250,14 +271,23 @@ export default function OrderDetailScreen() {
       )}
 
       {/* Action menu — bottom-sheet с действиями по заказу. Заменяет россыпь
-          круглых icon-buttons в шапке, чтобы не путать с status-pill. */}
+          круглых icon-buttons в шапке, чтобы не путать с status-pill.
+          Набор действий зависит от статуса (план §3 «состояние → действия»):
+            open:               Редактировать, Закрыть заказ
+            cancelled/expired:  Открыть заново (в окне 7 дней), Удалить
+            чужой заказ:        Пожаловаться */}
       {order && id && userId ? (
         <BottomSheet
           open={menuOpen}
           onClose={() => setMenuOpen(false)}
           title="Действия с заказом"
         >
-          <View className="gap-1 pb-2">
+          {/* Группировка (план §3 «состояние → действия»): сначала
+              «безопасные» действия (редактировать / открыть заново / закрыть),
+              затем — после тонкого разделителя — необратимое «Удалить» красным.
+              Это паттерн iOS action-sheet: деструктив отделён и визуально
+              выделен, чтобы не нажать случайно. */}
+          <View className="gap-0.5 px-2 pb-2">
             {isOwner && order.status === "open" ? (
               <ActionMenuItem
                 icon={Pencil}
@@ -268,34 +298,33 @@ export default function OrderDetailScreen() {
                 }}
               />
             ) : null}
-            {isOwner && (order.status === "open" || order.status === "in_progress") ? (
+            {isOwner && order.status === "open" ? (
               <ActionMenuItem
-                icon={Flag}
-                label="Отменить заказ"
-                destructive
+                icon={CheckCircle}
+                label="Закрыть заказ"
                 onPress={() => {
                   setMenuOpen(false);
-                  Alert.alert(
-                    "Отменить заказ?",
-                    "Отменённый заказ нельзя восстановить. Мастера больше не смогут откликнуться.",
-                    [
-                      { text: "Назад", style: "cancel" },
-                      {
-                        text: "Отменить заказ",
-                        style: "destructive",
-                        onPress: () => {
-                          cancelOrder.mutate(
-                            { orderId: id, clientId: userId },
-                            {
-                              onError: (e) =>
-                                Alert.alert("Не удалось отменить", e.message),
-                            },
-                          );
-                        },
-                      },
-                    ],
-                  );
+                  setCloseSheetOpen(true);
                 }}
+              />
+            ) : null}
+            {isOwner && isClosedHistory && canReopen ? (
+              <ActionMenuItem
+                icon={ArrowCounterClockwise}
+                label="Открыть заново"
+                onPress={handleReopen}
+              />
+            ) : null}
+            {/* Разделитель перед деструктивным действием (только если оно есть). */}
+            {isOwner && isClosedHistory ? (
+              <View className="my-1.5 border-t border-hairline" />
+            ) : null}
+            {isOwner && isClosedHistory ? (
+              <ActionMenuItem
+                icon={Trash}
+                label="Удалить заказ"
+                destructive
+                onPress={handleDelete}
               />
             ) : null}
             {!isOwner ? (
@@ -312,6 +341,18 @@ export default function OrderDetailScreen() {
           </View>
         </BottomSheet>
       ) : null}
+
+      {/* Шит выбора причины закрытия — две крупные кнопки «Нашёл мастера» /
+          «Больше не нужно». Обе ведут в cancelled, но пишут разный
+          cancel_reason (план §4). */}
+      {order && id && userId ? (
+        <CloseReasonSheet
+          open={closeSheetOpen}
+          pending={cancelOrder.isPending}
+          onClose={() => setCloseSheetOpen(false)}
+          onPick={handleCloseWithReason}
+        />
+      ) : null}
     </KeyboardAvoidingView>
   );
 }
@@ -326,9 +367,15 @@ interface ActionMenuItemProps {
 function ActionMenuItem({ icon: Icon, label, destructive, onPress }: ActionMenuItemProps) {
   // BottomSheet рендерится в react-native-web Modal portal, CSS-vars
   // `rgb(var(--X))` там не резолвятся. Получаем hex напрямую из палитры.
-  const { colorScheme } = useColorScheme();
-  const palette = colorScheme === "dark" ? darkColors : lightColors;
+  // ВАЖНО: на web используем DOM-тему (читает <html class>), а не системную
+  // через useColorScheme() — иначе при системной dark + ручной light в DOM
+  // (через ThemeSwitcher) цвета инвертируются и получается белый текст
+  // на белом canvas (баг-кейс «Редактировать заказ невидимо», 2026-05-19).
   const isWeb = Platform.OS === "web";
+  const domScheme = useDomColorScheme();
+  const { colorScheme } = useColorScheme();
+  const palette =
+    (isWeb ? domScheme : colorScheme) === "dark" ? darkColors : lightColors;
   const tc = useThemeColors(["ink", "error"]);
   const inkColor = isWeb ? palette.ink : tc.ink;
   const errorColor = isWeb ? palette.error : tc.error;
@@ -351,22 +398,23 @@ function ActionMenuItem({ icon: Icon, label, destructive, onPress }: ActionMenuI
         opacity: pressed ? 0.7 : 1,
         flexDirection: "row",
         alignItems: "center",
-        gap: 12,
-        paddingHorizontal: 20,
+        gap: 14,
+        borderRadius: 12,
+        paddingHorizontal: 12,
         paddingVertical: 12,
       })}
     >
       <View
         style={{
-          height: 32,
-          width: 32,
+          height: 38,
+          width: 38,
           alignItems: "center",
           justifyContent: "center",
-          borderRadius: 8,
+          borderRadius: 10,
           backgroundColor: slotBg,
         }}
       >
-        <Icon size={18} weight="bold" color={iconColor} />
+        <Icon size={20} weight="bold" color={iconColor} />
       </View>
       <AppText
         weight="medium"
@@ -374,6 +422,304 @@ function ActionMenuItem({ icon: Icon, label, destructive, onPress }: ActionMenuI
       >
         {label}
       </AppText>
+    </Pressable>
+  );
+}
+
+// ============================================================================
+// SwitchToMasterCTA — карточка для DUAL-ROLE юзера (is_master=true), который
+// сейчас в клиент-режиме (active_role='client') смотрит чужой заказ.
+//
+// Принципиально отличается от BecomeMasterCTA: онбординг проходить не нужно,
+// мастер-профиль уже есть. One-tap switch → активируется master-режим →
+// useUserRecord инвалидируется → MasterResponseSection появится автоматически
+// в том же рендере (страница останется на месте).
+//
+// Sprint 2026-05-20: «если он уже мастер, его переключают на мастер, ну и
+// откликаться может» — фидбэк юзера.
+// ============================================================================
+
+function SwitchToMasterCTA({ userId }: { userId: string }) {
+  const setActiveRole = useSetActiveRole();
+
+  const handlePress = () => {
+    if (setActiveRole.isPending) return;
+    setActiveRole.mutate(
+      { userId, role: "master" },
+      {
+        onError: (e) => {
+          Alert.alert(
+            "Не удалось переключить роль",
+            e instanceof Error ? e.message : "Попробуйте позже.",
+          );
+        },
+      },
+    );
+  };
+
+  return (
+    <View className="mt-8 mx-5 rounded-xl border border-hairline bg-canvas-soft p-5">
+      <AppText weight="semibold" className="text-title-md text-ink">
+        Откликнуться на заказ
+      </AppText>
+      <AppText className="mt-2 text-body-sm text-mute">
+        Переключим вас в режим мастера — после этого появится форма отклика.
+      </AppText>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Откликнуться (переключиться в режим мастера)"
+        onPress={handlePress}
+        disabled={setActiveRole.isPending}
+        className={`mt-4 h-12 flex-row items-center justify-center rounded-md px-5 ${
+          setActiveRole.isPending ? "bg-surface-3" : "bg-primary active:opacity-80"
+        }`}
+      >
+        <AppText weight="semibold" className="text-button text-on-primary">
+          {setActiveRole.isPending ? "Переключаем…" : "Откликнуться"}
+        </AppText>
+      </Pressable>
+    </View>
+  );
+}
+
+// ============================================================================
+// BecomeMasterCTA — карточка для клиента на чужом заказе
+// «Стать мастером и откликнуться». Запоминает return-URL и ведёт на onboarding.
+// ============================================================================
+
+function BecomeMasterCTA({ orderId }: { orderId: string }) {
+  const router = useRouter();
+  const tc = useThemeColors(["accent"]);
+  const { session } = useAuthSession();
+  const userId = session?.user?.id;
+
+  const handlePress = () => {
+    // Запоминаем куда вернуться после онбординга (consume в master-photo.tsx).
+    useAuthReturnUrlStore.getState().setReturnUrl(`/(tabs)/orders/${orderId}`);
+    if (!userId) {
+      // Гость — сначала регистрация по телефону. После signup AuthGate
+      // (onboarding_completed_at IS NULL) сам отправит на /(onboarding)/role,
+      // где гость выберет «мастер» → master-onboarding → возврат на заказ.
+      router.push("/(auth)/phone" as never);
+    } else {
+      // Залогинен как клиент → СРАЗУ на первый шаг мастер-онбординга, минуя
+      // экран выбора роли. Why: role.tsx редиректит на /(tabs) любого, у кого
+      // onboarding_completed_at уже заполнен (а у действующего клиента он
+      // заполнен) — поэтому через role путь «стать мастером» обрывался у
+      // существующих клиентов (баг 2026-05-21). master-profile/categories/photo
+      // guard'ов на onboarding_completed_at не имеют; финальный шаг
+      // finalize_master_onboarding ставит is_master+active_role=master и
+      // возвращает на заказ через returnUrl.
+      router.push("/(onboarding)/master-profile" as never);
+    }
+  };
+
+  return (
+    <View className="mt-8 mx-5 rounded-xl border border-hairline bg-canvas-soft p-5">
+      <AppText weight="semibold" className="text-title-md text-ink">
+        Хотите взять этот заказ?
+      </AppText>
+      <AppText className="mt-2 text-body-sm text-mute">
+        Зарегистрируйтесь как мастер — мы вернём вас сюда сразу после регистрации.
+      </AppText>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Стать мастером и откликнуться"
+        onPress={handlePress}
+        className="mt-4 h-12 flex-row items-center justify-center rounded-md bg-primary active:opacity-80 px-5"
+      >
+        <AppText weight="semibold" className="text-button text-on-primary">
+          Стать мастером и откликнуться
+        </AppText>
+      </Pressable>
+    </View>
+  );
+}
+
+// ============================================================================
+// CloseOrderHint — баннер «Нашли мастера? Закройте заказ».
+// Показывается клиенту-владельцу, когда:
+//   - order.status === 'open'
+//   - order.created_at старше 24 часов
+//   - есть хотя бы 1 отклик
+// Это паттерн Avito/Profi.ru: реминд клиенту закрыть заказ чтобы остановить
+// поток откликов от мастеров. Без этого мастера продолжают писать даже когда
+// клиент уже нашёл подрядчика офлайн.
+// ============================================================================
+
+interface CloseOrderHintProps {
+  order: NonNullable<ReturnType<typeof useOrderDetail>["data"]>;
+  orderId: string;
+  /** Открыть шит выбора причины закрытия (единый флоу с action-меню). */
+  onCloseRequested: () => void;
+}
+
+function CloseOrderHint({ order, orderId, onCloseRequested }: CloseOrderHintProps) {
+  const tc = useThemeColors(["accent", "muted-soft"]);
+  const { data: responses } = useOrderResponses(orderId);
+
+  // Условия показа
+  const isOpen = order.status === "open";
+  const createdMs = order.created_at ? new Date(order.created_at).getTime() : 0;
+  const ageHours = createdMs > 0 ? (Date.now() - createdMs) / 3_600_000 : 0;
+  const activeResponseCount = (responses ?? []).filter((r) => r.status !== "rejected").length;
+  const shouldShow = isOpen && ageHours >= 24 && activeResponseCount >= 1;
+
+  if (!shouldShow) return null;
+
+  return (
+    <View className="mt-6 mx-5 rounded-xl border border-accent bg-accent-soft p-4 flex-row items-start gap-3">
+      <CheckCircle size={22} weight="fill" color={tc.accent} />
+      <View className="flex-1">
+        <AppText weight="semibold" className="text-body-md text-ink">
+          Уже нашли мастера?
+        </AppText>
+        <AppText className="mt-1 text-body-sm text-body">
+          Закройте заказ — мастера перестанут писать отклики.
+        </AppText>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Закрыть заказ"
+          onPress={onCloseRequested}
+          className="mt-3 h-10 self-start flex-row items-center justify-center px-4 rounded-full bg-primary active:opacity-80"
+        >
+          <AppText weight="semibold" className="text-button text-on-primary">
+            Закрыть заказ
+          </AppText>
+        </Pressable>
+      </View>
+    </View>
+  );
+}
+
+// ============================================================================
+// CloseReasonSheet — bottom-sheet выбора причины закрытия заказа.
+//
+// Две крупные кнопки (план §4):
+//   - «Я нашёл мастера»   → cancel_reason = 'found_master'   (успех)
+//   - «Больше не нужно»   → cancel_reason = 'no_longer_needed' (передумал)
+//
+// Обе ведут заказ в статус cancelled — разница только в сохранённой причине.
+// Это замена прежней путаницы «Закрыть» vs «Завершить»: один экран, понятный
+// выбор. Отзыв при «нашёл мастера» — отдельная задача (отложена владельцем).
+//
+// Заголовок-вопрос без подзаголовка (правило §G design-quality.md).
+// ============================================================================
+
+interface CloseReasonSheetProps {
+  open: boolean;
+  pending: boolean;
+  onClose: () => void;
+  onPick: (reason: CancelReason) => void;
+}
+
+function CloseReasonSheet({ open, pending, onClose, onPick }: CloseReasonSheetProps) {
+  return (
+    <BottomSheet open={open} onClose={onClose} title="Почему закрываете заказ?">
+      {/* Два крупных варианта-карточки (Lazyweb: DoorDash refund-sheet, Linear
+          status-picker). Каждый — иконка в круге + заголовок + описание справа.
+          «Нашёл мастера» — позитивный исход (success-tint), «Больше не нужно» —
+          нейтральный. Оба → cancelled, разница в cancel_reason. */}
+      <View className="gap-2 px-5 pb-2">
+        <CloseReasonOption
+          icon={CheckCircle}
+          title="Я нашёл мастера"
+          description="Договорился с подрядчиком — задача закрыта успешно."
+          tone="success"
+          disabled={pending}
+          onPress={() => onPick("found_master")}
+        />
+        <CloseReasonOption
+          icon={X}
+          title="Больше не нужно"
+          description="Передумал или решил вопрос другим способом."
+          tone="neutral"
+          disabled={pending}
+          onPress={() => onPick("no_longer_needed")}
+        />
+
+        {/* Честное предупреждение о последствиях (паттерн Avito при снятии).
+            Это не subtitle под H1, а сноска внизу списка вариантов. */}
+        <AppText className="mt-2 text-caption text-mute" style={{ lineHeight: 18 }}>
+          Мастера перестанут видеть заказ и не смогут откликнуться. Контакты
+          мастеров, которые уже откликнулись, останутся у вас.
+        </AppText>
+      </View>
+    </BottomSheet>
+  );
+}
+
+// CloseReasonOption — карточка-вариант причины закрытия. Рендерится в
+// BottomSheet (Modal-портал), где CSS-vars не резолвятся, поэтому цвета берём
+// hex'ом из палитры по DOM-теме (как ActionMenuItem).
+interface CloseReasonOptionProps {
+  icon: typeof CheckCircle;
+  title: string;
+  description: string;
+  tone: "success" | "neutral";
+  disabled: boolean;
+  onPress: () => void;
+}
+
+function CloseReasonOption({
+  icon: Icon,
+  title,
+  description,
+  tone,
+  disabled,
+  onPress,
+}: CloseReasonOptionProps) {
+  const isWeb = Platform.OS === "web";
+  const domScheme = useDomColorScheme();
+  const { colorScheme } = useColorScheme();
+  const palette = (isWeb ? domScheme : colorScheme) === "dark" ? darkColors : lightColors;
+  const iconColor = tone === "success" ? palette.success : palette.ink;
+  const slotBg = tone === "success" ? palette["success-soft"] : palette["canvas-soft"];
+
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={title}
+      disabled={disabled}
+      onPress={onPress}
+      style={({ pressed }) => ({
+        opacity: pressed || disabled ? 0.7 : 1,
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 14,
+        borderRadius: 16,
+        borderWidth: 1,
+        borderColor: palette.hairline,
+        backgroundColor: palette.canvas,
+        paddingVertical: 14,
+        paddingHorizontal: 16,
+      })}
+    >
+      <View
+        style={{
+          height: 44,
+          width: 44,
+          alignItems: "center",
+          justifyContent: "center",
+          borderRadius: 12,
+          backgroundColor: slotBg,
+        }}
+      >
+        <Icon size={24} weight={tone === "success" ? "fill" : "bold"} color={iconColor} />
+      </View>
+      <View style={{ flex: 1, minWidth: 0 }}>
+        <AppText
+          weight="semibold"
+          style={{ color: palette.ink, fontSize: 16, lineHeight: 22 }}
+        >
+          {title}
+        </AppText>
+        <AppText
+          style={{ color: palette.mute, fontSize: 13, lineHeight: 18, marginTop: 2 }}
+        >
+          {description}
+        </AppText>
+      </View>
     </Pressable>
   );
 }
@@ -390,16 +736,19 @@ interface OrderInfoBlockProps {
 }
 
 function OrderInfoBlock({ order, isOwner }: OrderInfoBlockProps) {
-  const router = useRouter();
   const clientDisplay =
     [order.client?.first_name, order.client?.last_name].filter(Boolean).join(" ") || "Клиент";
-  const clientRating = order.client?.rating_as_client_avg;
-  const clientRatingCount = order.client?.rating_as_client_count ?? 0;
-  const tc = useThemeColors(["muted-soft", "mute", "ink", "warning"]);
+  // Имя, которое видит мастер: введённое клиентом в заказе (contact_name) →
+  // иначе регистрационное. Профиль/рейтинг/переход НЕ показываем — просто имя
+  // (решение владельца 2026-05-24).
+  const contactDisplay = order.contact_name?.trim() || clientDisplay;
+  const tc = useThemeColors(["muted-soft", "mute", "ink", "warning", "error"]);
 
   // Бюджет — отдельный display-режим: разделяем сумму и пометку «договорной».
   const budgetText = formatBudget(order);
   const isNegotiable = order.budget_kind === "negotiable";
+  // Срочный заказ — мета «Срочно» красным (как в Linear-референсе детали).
+  const isUrgent = order.urgency === "urgent";
 
   return (
     <View className="px-5 pt-2">
@@ -423,11 +772,16 @@ function OrderInfoBlock({ order, isOwner }: OrderInfoBlockProps) {
         {order.title}
       </AppText>
 
-      {/* Meta row — urgency + location, с иконками */}
+      {/* Meta row — срочность + локация. Срочный заказ выделен красным. */}
       <View className="mt-3 flex-row flex-wrap items-center gap-x-3 gap-y-1">
         <View className="flex-row items-center gap-1.5">
-          <Clock size={13} weight="bold" color={tc.mute} />
-          <AppText className="text-body-sm text-mute">{urgencyLabel(order.urgency)}</AppText>
+          <Clock size={13} weight="bold" color={isUrgent ? tc.error : tc.mute} />
+          <AppText
+            weight={isUrgent ? "semibold" : "regular"}
+            className={`text-body-sm ${isUrgent ? "text-error-deep" : "text-mute"}`}
+          >
+            {urgencyLabel(order.urgency)}
+          </AppText>
         </View>
         <AppText className="text-caption text-muted-soft">·</AppText>
         <View className="flex-row items-center gap-1.5">
@@ -439,19 +793,16 @@ function OrderInfoBlock({ order, isOwner }: OrderInfoBlockProps) {
         </View>
       </View>
 
-      {/* Budget hero — крупно, mono. Это первая цифра, на которую смотрит мастер. */}
+      {/* Бюджет — крупный блок с подписью и линией сверху (Linear-референс). */}
       {budgetText ? (
-        <View className="mt-5 flex-row items-center gap-2">
-          <Wallet size={18} weight="bold" color={tc.ink} />
-          {isNegotiable ? (
-            <AppText weight="semibold" className="text-title-md text-ink">
-              Цена договорная
-            </AppText>
-          ) : (
-            <AppText weight="mono" className="text-title-lg text-ink">
-              {budgetText}
-            </AppText>
-          )}
+        <View className="mt-5 border-t border-hairline pt-4">
+          <AppText className="text-caption uppercase tracking-wide text-mute">Бюджет</AppText>
+          <AppText
+            weight={isNegotiable ? "semibold" : "mono"}
+            className="mt-1 text-display-md text-ink tracking-tight"
+          >
+            {isNegotiable ? "Цена договорная" : budgetText}
+          </AppText>
         </View>
       ) : null}
 
@@ -462,22 +813,23 @@ function OrderInfoBlock({ order, isOwner }: OrderInfoBlockProps) {
         </AppText>
       ) : null}
 
-      {/* Author card — рендерится ТОЛЬКО для мастера. Клиент-владелец не должен
-          видеть «Заказчик: Алина Тестова» внутри своего же заказа — это
-          избыточная информация (он и так знает, что заказ его). */}
+      {/* Фото заказа — карусель 4:3 после описания (дизайн-спека §4).
+          Full-bleed: вырываемся из px-5 родителя через -mx-5. Нет фото →
+          OrderPhotoCarousel возвращает null, секции не видно. */}
+      {order.photo_urls && order.photo_urls.length > 0 ? (
+        <View className="mt-6 -mx-5">
+          <OrderPhotoCarousel urls={order.photo_urls} />
+        </View>
+      ) : null}
+
+      {/* Заказчик — ПРОСТО ИМЯ (решение владельца 2026-05-24): не кнопка, без
+          перехода в профиль и без рейтинга. Показываем contact_name (имя,
+          которое клиент указал в заказе) → иначе регистрационное имя. Аватар —
+          инициалы по показываемому имени (фото аккаунта не раскрываем). Видно
+          только мастеру: клиент-владелец и так знает, что заказ его. */}
       {!isOwner ? (
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={`Профиль клиента ${clientDisplay}`}
-          onPress={() => router.push(`/client/${order.client_id}` as never)}
-          className="mt-6 flex-row items-center gap-3 rounded-xl border border-hairline bg-canvas-soft p-3 active:bg-canvas hover:bg-canvas"
-        >
-          <Avatar
-            url={order.client?.avatar_url ?? null}
-            name={clientDisplay}
-            seed={order.client?.id ?? order.client_id}
-            size="md"
-          />
+        <View className="mt-6 flex-row items-center gap-3 rounded-xl border border-hairline bg-canvas-soft p-3">
+          <Avatar url={null} name={contactDisplay} seed={contactDisplay} size="md" />
           <View className="flex-1 min-w-0">
             <AppText
               weight="medium"
@@ -491,22 +843,10 @@ function OrderInfoBlock({ order, isOwner }: OrderInfoBlockProps) {
               className="mt-0.5 text-body-md text-ink"
               numberOfLines={1}
             >
-              {clientDisplay}
+              {contactDisplay}
             </AppText>
           </View>
-          {clientRating != null && clientRatingCount > 0 ? (
-            <View className="flex-row items-center gap-1">
-              <Star size={13} weight="fill" color={tc.warning} />
-              <AppText weight="mono" className="text-mono-caption text-ink">
-                {clientRating.toFixed(1)}
-              </AppText>
-              <AppText weight="mono" className="text-mono-caption text-mute">
-                ({clientRatingCount})
-              </AppText>
-            </View>
-          ) : null}
-          <CaretRight size={16} weight="bold" color={tc["muted-soft"]} />
-        </Pressable>
+        </View>
       ) : null}
     </View>
   );
@@ -522,62 +862,31 @@ function formatBudget(o: {
 
 // ============================================================================
 // Client responses section — клиент видит отклики на свой заказ
+//
+// 2026-05-20 «classifieds»: убрана кнопка «Выбрать этого мастера»
+// (accept_response) и кнопка «Написать» (in-app chat). Каждая карточка
+// показывает 3 прямые контакт-кнопки: «Позвонить», «WhatsApp», «Профиль».
+// Reject (скрыть отклик) оставлен — это локальное действие клиента, без
+// уведомлений. Sections «picked / actionable / passive» свёрнуты в единый
+// список — модели «выбранного мастера» больше нет.
 // ============================================================================
 
 interface ClientResponsesSectionProps {
   orderId: string;
   order: OrderDetail;
-  /** chat-id если он уже существует (после accept) — для кнопки «Открыть чат». */
-  chatId?: string | null;
 }
 
-function ClientResponsesSection({ orderId, order, chatId }: ClientResponsesSectionProps) {
-  const router = useRouter();
+function ClientResponsesSection({ orderId, order }: ClientResponsesSectionProps) {
   const tc = useThemeColors(["muted-soft"]);
   const { data: responses, isLoading, error } = useOrderResponses(orderId);
-  const acceptResponse = useAcceptResponse();
-  const startChat = useStartChatWithMaster();
   const rejectResponse = useRejectResponse();
 
-  // Точечный pending-state: какой именно мастер сейчас в процессе действия.
+  // Точечный pending-state: какой именно отклик сейчас скрывается.
   // Без этого `mutation.isPending` triggers loading-state у ВСЕХ карточек,
   // потому что один TanStack mutation общий для всех откликов.
-  const [pendingWriteMasterId, setPendingWriteMasterId] = useState<string | null>(null);
-  const [pendingAcceptResponseId, setPendingAcceptResponseId] = useState<string | null>(null);
   const [pendingRejectResponseId, setPendingRejectResponseId] = useState<string | null>(null);
   // Раскрыт ли блок «Скрытые отклики» (по умолчанию свёрнут).
   const [hiddenExpanded, setHiddenExpanded] = useState(false);
-
-  // Кнопка «Написать» на карточке мастера — создаёт chat (или открывает
-  // существующий) и уводит в /chats/[id]. До accept_response.
-  const onWriteToMaster = (masterId: string) => {
-    if (pendingWriteMasterId) return;
-    setPendingWriteMasterId(masterId);
-    startChat.mutate(
-      { orderId, masterId, clientUserId: order.client_id },
-      {
-        onSuccess: (newChatId) => {
-          setPendingWriteMasterId(null);
-          router.push(`/chats/${newChatId}` as never);
-        },
-        onError: (e) => {
-          setPendingWriteMasterId(null);
-          Alert.alert("Не удалось открыть чат", e.message);
-        },
-      },
-    );
-  };
-
-  const onAcceptResponseClick = (responseId: string) => {
-    if (pendingAcceptResponseId) return;
-    setPendingAcceptResponseId(responseId);
-    acceptResponse.mutate(
-      { responseId, orderId, clientId: order.client_id },
-      {
-        onSettled: () => setPendingAcceptResponseId(null),
-      },
-    );
-  };
 
   // Кнопка «Скрыть» на карточке: confirm → reject_response RPC.
   // Карточка переезжает в collapsible-секцию «Скрытые» внизу.
@@ -608,26 +917,22 @@ function ClientResponsesSection({ orderId, order, chatId }: ClientResponsesSecti
 
   const hasResponses = (responses?.length ?? 0) > 0;
   const isOpen = order.status === "open";
-  const pickedResponse = responses?.find((r) => r.master_id === order.picked_master_id);
-  // Активные = не picked + не rejected. Rejected — в отдельную секцию.
-  const allOthers = responses?.filter((r) => r.master_id !== order.picked_master_id) ?? [];
-  const activeOthers = allOthers.filter((r) => r.status !== "rejected");
-  const rejectedOthers = allOthers.filter((r) => r.status === "rejected");
-  const activeCount = activeOthers.length + (pickedResponse ? 1 : 0);
+  const activeResponses = (responses ?? []).filter((r) => r.status !== "rejected");
+  const rejectedResponses = (responses ?? []).filter((r) => r.status === "rejected");
 
   return (
     <View className="mt-8 px-5">
-      {/* Heading: «Отклики · N» или «Ваш мастер» */}
+      {/* Heading: «Отклики · N» */}
       <View className="flex-row items-baseline justify-between gap-2">
         <AppText
           weight="semibold"
           className="text-title-md text-ink tracking-tight"
         >
-          {pickedResponse ? "Ваш мастер" : "Отклики"}
+          Отклики
         </AppText>
         {hasResponses ? (
           <AppText weight="mono" className="text-mono-caption text-mute">
-            {pickedResponse ? "1 выбран" : `${activeCount}`}
+            {activeResponses.length}
           </AppText>
         ) : null}
       </View>
@@ -644,7 +949,7 @@ function ClientResponsesSection({ orderId, order, chatId }: ClientResponsesSecti
         </AppText>
       )}
 
-      {/* Empty state — обещаем «обычно за час». Vercel-style тонкая карточка. */}
+      {/* Empty state. */}
       {!isLoading && !error && !hasResponses && (
         <View className="mt-3 rounded-xl border border-hairline bg-canvas-soft p-4">
           <AppText weight="medium" className="text-body-sm text-ink">
@@ -657,49 +962,14 @@ function ClientResponsesSection({ orderId, order, chatId }: ClientResponsesSecti
         </View>
       )}
 
-      {/* Picked master — hero-card зелёный success. Воздух mt-5 между
-          заголовком «Ваш мастер» и карточкой — раньше шла впритык, выглядело
-          сплющенно (фидбэк user 2026-05-15). */}
-      {pickedResponse ? (
-        <View className="mt-5">
-          <ClientMasterResponseCard
-            key={pickedResponse.id}
-            response={pickedResponse}
-            variant="picked"
-            chatId={chatId ?? null}
-            isBusy={pendingAcceptResponseId === pickedResponse.id}
-            isWriting={pendingWriteMasterId === pickedResponse.master_id}
-            isRejecting={false}
-            onAccept={() => onAcceptResponseClick(pickedResponse.id)}
-            onOpenMaster={() => router.push(`/master/${pickedResponse.master_id}` as never)}
-            onOpenChat={() => {
-              if (chatId) router.push(`/chats/${chatId}` as never);
-            }}
-            onWrite={() => onWriteToMaster(pickedResponse.master_id)}
-            onReject={undefined}
-          />
-        </View>
-      ) : null}
-
-      {/* Active others */}
-      {activeOthers.length > 0 ? (
+      {/* Активные отклики. */}
+      {activeResponses.length > 0 ? (
         <View className="mt-3 gap-2">
-          {activeOthers.map((r) => (
+          {activeResponses.map((r) => (
             <ClientMasterResponseCard
               key={r.id}
               response={r}
-              variant={
-                isOpen && (r.status === "sent" || r.status === "viewed")
-                  ? "actionable"
-                  : "passive"
-              }
-              chatId={null}
-              isBusy={pendingAcceptResponseId === r.id}
-              isWriting={pendingWriteMasterId === r.master_id}
               isRejecting={pendingRejectResponseId === r.id}
-              onAccept={() => onAcceptResponseClick(r.id)}
-              onOpenMaster={() => router.push(`/master/${r.master_id}` as never)}
-              onWrite={() => onWriteToMaster(r.master_id)}
               onReject={
                 isOpen
                   ? () => {
@@ -715,9 +985,8 @@ function ClientResponsesSection({ orderId, order, chatId }: ClientResponsesSecti
         </View>
       ) : null}
 
-      {/* Скрытые отклики — collapsible. Не маячат в общем списке, но
-          доступны при необходимости (вернуть/просмотреть). */}
-      {rejectedOthers.length > 0 ? (
+      {/* Скрытые отклики — collapsible. */}
+      {rejectedResponses.length > 0 ? (
         <View className="mt-4">
           <Pressable
             accessibilityRole="button"
@@ -733,7 +1002,7 @@ function ClientResponsesSection({ orderId, order, chatId }: ClientResponsesSecti
               </AppText>
               <View className="rounded-full bg-canvas-soft-2 px-2 py-0.5">
                 <AppText weight="mono" className="text-mono-caption text-mute">
-                  {rejectedOthers.length}
+                  {rejectedResponses.length}
                 </AppText>
               </View>
             </View>
@@ -748,202 +1017,104 @@ function ClientResponsesSection({ orderId, order, chatId }: ClientResponsesSecti
           </Pressable>
           {hiddenExpanded ? (
             <View className="mt-2 gap-2">
-              {rejectedOthers.map((r) => (
+              {rejectedResponses.map((r) => (
                 <ClientMasterResponseCard
                   key={r.id}
                   response={r}
-                  variant="rejected"
-                  chatId={null}
-                  isBusy={false}
-                  isWriting={false}
                   isRejecting={false}
-                  onAccept={() => {}}
-                  onOpenMaster={() => router.push(`/master/${r.master_id}` as never)}
-                  onWrite={() => onWriteToMaster(r.master_id)}
                   onReject={undefined}
+                  rejected
                 />
               ))}
             </View>
           ) : null}
         </View>
       ) : null}
-
-      {acceptResponse.error && (
-        <AppText weight="medium" className="mt-3 text-caption text-error">
-          Не удалось принять отклик. {acceptResponse.error.message}
-        </AppText>
-      )}
     </View>
   );
 }
 
 // ----------------------------------------------------------------------------
-// Master response card (TaskRabbit + Vercel-tier)
+// Master response card (classifieds, 2026-05-20)
 //
 // Layout:
-//   ┌─ Avatar(md) ─ Name + ★rating ─────────── Price-pill ─┐
-//   │              message body (2-3 lines)                │
-//   │              ⏱ срок (если указан)                    │
-//   │              ─── divider ───                         │
-//   │     [Принять primary]  [Написать ghost-icon] ┃ Профиль│
-//   └──────────────────────────────────────────────────────┘
+//   ┌─ Avatar(md) ─ Name ─────────────────────── Price (mono) ─┐
+//   │              ⏱ срок (если указан)                       │
+//   │              message body (до 4 строк)                   │
+//   │     [Позвонить]  [WhatsApp]  [Профиль]                   │
+//   │     ─── Не подходит (text-link) ───                      │
+//   └──────────────────────────────────────────────────────────┘
 //
-// Variants:
-//   - picked: бордер success + bg success-soft, primary CTA «Открыть чат»
-//   - actionable: open + status=sent, primary CTA «Принять»
-//   - passive: всё прочее (other-picked, withdrawn) — без actions
-//   - rejected: muted opacity 0.55
+// Контакты:
+//   - Позвонить — Linking.openURL("tel:<phone>"). Phone грузим через RPC
+//     get_master_phone (useMasterPhone), он живёт в auth.users.
+//   - WhatsApp — Linking.openURL("https://wa.me/<digits>"). Берётся из
+//     master_profiles.whatsapp_phone / whatsapp_same_as_phone через
+//     useMasterPublicProfile + resolveWhatsappDigits.
+//   - Профиль — router.push(`/master/<id>`).
+//
+// Если phone ещё не загружен — кнопка «Позвонить» неактивна (loader).
+// Если у мастера нет WhatsApp — кнопка не отображается.
 // ----------------------------------------------------------------------------
-type MasterCardVariant = "picked" | "actionable" | "passive" | "rejected";
 
 interface ClientMasterResponseCardProps {
   response: OrderResponseWithMaster;
-  variant: MasterCardVariant;
-  chatId: string | null;
-  isBusy: boolean;
-  isWriting: boolean;
   isRejecting: boolean;
-  onAccept: () => void;
-  onOpenMaster: () => void;
-  onOpenChat?: () => void;
-  onWrite: () => void;
   /** Если undefined — кнопка «Скрыть» не показывается (заказ закрыт /
-   *  rejected уже / picked-вариант). */
+   *  rejected уже). */
   onReject: (() => void) | undefined;
+  /** Render variant: rejected — приглушённый (opacity 0.6) для скрытых. */
+  rejected?: boolean;
 }
 
 function ClientMasterResponseCard({
   response,
-  variant,
-  chatId,
-  isBusy,
-  isWriting,
   isRejecting,
-  onAccept,
-  onOpenMaster,
-  onOpenChat,
-  onWrite,
   onReject,
+  rejected,
 }: ClientMasterResponseCardProps) {
-  const tc = useThemeColors(["ink", "mute", "muted-soft", "warning", "success", "on-primary"]);
+  const router = useRouter();
+  const tc = useThemeColors(["ink", "mute"]);
+
+  // Phone (auth.users) — через RPC get_master_phone. Возвращает null если
+  // мастер не активен или у него нет auth.phone.
+  const masterPhone = useMasterPhone(response.master_id);
+  // WhatsApp (master_profiles) — публично читаемо по RLS.
+  const masterPublic = useMasterPublicProfile(response.master_id);
+
+  const phoneRaw = masterPhone.data ?? null;
+  const phoneTel = phoneRaw?.replace(/[^\d+]/g, "") ?? null;
+  const phoneWa = resolveWhatsappDigits({
+    whatsappPhone: masterPublic.data?.master?.whatsapp_phone,
+    whatsappSameAsPhone: masterPublic.data?.master?.whatsapp_same_as_phone,
+    masterPhone: phoneRaw,
+  });
 
   const masterName =
     [response.master?.first_name, response.master?.last_name].filter(Boolean).join(" ") || "Мастер";
   const priceText = formatResponsePrice(response);
   const isNegotiable = response.price_kind === "negotiable";
 
-  const isPicked = variant === "picked";
-  const isActionable = variant === "actionable";
-  const isRejected = variant === "rejected";
-
-  const cardClassName = isPicked
-    ? "rounded-xl border-2 border-success bg-success-soft p-4"
-    : "rounded-xl border border-hairline bg-canvas p-4 hover:bg-canvas-soft";
-
-  // Picked-вариант рендерится по другой структуре — больше воздуха, цена
-  // отдельным блоком, ВЫБРАН выходит из-под имени. Это «свой мастер»,
-  // главная карточка экрана — её нельзя сжимать.
-  if (isPicked) {
-    return (
-      <View className={cardClassName}>
-        {/* Row 1: avatar + (name + meta) + ВЫБРАН pill */}
-        <View className="flex-row items-center gap-3">
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={`Профиль ${masterName}`}
-            onPress={onOpenMaster}
-            className="flex-1 flex-row items-center gap-3 active:opacity-70"
-          >
-            <Avatar
-              url={response.master?.avatar_url ?? null}
-              name={masterName}
-              seed={response.master?.id ?? response.master_id}
-              size="md"
-            />
-            <View className="flex-1 min-w-0">
-              <AppText
-                weight="semibold"
-                className="text-body-md text-ink"
-                numberOfLines={1}
-              >
-                {masterName}
-              </AppText>
-              {response.lead_time ? (
-                <View className="mt-0.5 flex-row items-center gap-1">
-                  <Clock size={12} weight="bold" color={tc["muted-soft"]} />
-                  <AppText className="text-caption text-mute" numberOfLines={1}>
-                    {response.lead_time}
-                  </AppText>
-                </View>
-              ) : null}
-            </View>
-          </Pressable>
-          <View className="rounded-full bg-success px-2.5 py-1">
-            <AppText
-              weight="bold"
-              className="text-caption-xs"
-              style={{ color: tc["on-primary"], letterSpacing: 0.5 }}
-            >
-              ВЫБРАН
-            </AppText>
-          </View>
-        </View>
-
-        {/* Price block — отдельная строка с label слева и value mono справа.
-            Раньше цена висела в углу под бейджем «ВЫБРАН» — было сжато
-            и нечитаемо. */}
-        <View className="mt-4 flex-row items-baseline justify-between border-t border-success/30 pt-3">
-          <AppText
-            weight="medium"
-            className="text-caption text-mute uppercase tracking-wider"
-            style={{ letterSpacing: 0.5 }}
-          >
-            Цена
-          </AppText>
-          <AppText
-            weight={isNegotiable ? "semibold" : "mono"}
-            className={`${isNegotiable ? "text-body-md" : "text-title-md"} text-ink`}
-          >
-            {priceText}
-          </AppText>
-        </View>
-
-        {/* Message body */}
-        {response.message ? (
-          <AppText
-            className="mt-3 text-body-sm text-body"
-            style={{ lineHeight: 20 }}
-          >
-            {response.message}
-          </AppText>
-        ) : null}
-
-        {/* CTA — «Открыть чат» (full-width primary). */}
-        {chatId && onOpenChat ? (
-          <Pressable
-            accessibilityRole="button"
-            onPress={onOpenChat}
-            className="mt-5 h-12 flex-row items-center justify-center gap-2 rounded-pill bg-ink active:opacity-80"
-          >
-            <ChatCenteredText size={16} weight="bold" color={tc["on-primary"]} />
-            <AppText weight="semibold" className="text-button text-on-primary">
-              Открыть чат
-            </AppText>
-          </Pressable>
-        ) : null}
-      </View>
-    );
-  }
+  const onCall = () => {
+    if (phoneTel) openExternalUrl(`tel:${phoneTel}`);
+  };
+  const onWhatsApp = () => {
+    if (phoneWa) openExternalUrl(`https://wa.me/${phoneWa}`);
+  };
+  const onProfile = () => {
+    router.push(`/master/${response.master_id}` as never);
+  };
 
   return (
-    <View className={cardClassName} style={isRejected ? { opacity: 0.6 } : undefined}>
-      {/* Header: Avatar + Name (full-width). Цена вынесена ПОД имя
-          самостоятельной строкой — раньше inline с именем и при длинных
-          ценах вроде «2 500 – 3 000 ₽» имя обрезалось на «Ислам То…». */}
+    <View
+      className="rounded-xl border border-hairline bg-canvas p-4"
+      style={rejected ? { opacity: 0.6 } : undefined}
+    >
+      {/* Header: avatar + name + price (mono справа). */}
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={`Профиль ${masterName}`}
-        onPress={onOpenMaster}
+        onPress={onProfile}
         className="flex-row items-center gap-3 active:opacity-70"
       >
         <Avatar
@@ -952,7 +1123,6 @@ function ClientMasterResponseCard({
           seed={response.master?.id ?? response.master_id}
           size="md"
         />
-
         <View className="flex-1 min-w-0">
           <AppText
             weight="semibold"
@@ -961,87 +1131,98 @@ function ClientMasterResponseCard({
           >
             {masterName}
           </AppText>
-          <View className="mt-0.5 flex-row items-baseline gap-2">
-            <AppText
-              weight={isNegotiable ? "semibold" : "mono"}
-              className={`${isNegotiable ? "text-body-sm" : "text-body-md"} text-ink`}
-            >
-              {priceText}
-            </AppText>
-            {response.lead_time ? (
-              <>
-                <AppText className="text-caption text-muted-soft">·</AppText>
-                <AppText className="flex-1 text-caption text-mute" numberOfLines={1}>
-                  {response.lead_time}
-                </AppText>
-              </>
-            ) : null}
-          </View>
+          {response.lead_time ? (
+            <View className="mt-0.5 flex-row items-center gap-1">
+              <Clock size={12} weight="bold" color={tc.mute} />
+              <AppText className="text-caption text-mute" numberOfLines={1}>
+                {response.lead_time}
+              </AppText>
+            </View>
+          ) : null}
         </View>
+        <AppText
+          weight={isNegotiable ? "semibold" : "mono"}
+          className={`${isNegotiable ? "text-body-md" : "text-title-md"} text-ink`}
+        >
+          {priceText}
+        </AppText>
       </Pressable>
 
-      {/* Message body */}
+      {/* Сообщение мастера. */}
       {response.message ? (
         <AppText
           className="mt-3 text-body-sm text-body"
           style={{ lineHeight: 20 }}
-          numberOfLines={4}
+          numberOfLines={6}
         >
           {response.message}
         </AppText>
       ) : null}
 
-      {/* Status hint для rejected */}
-      {isRejected ? (
+      {/* Status hint для rejected. */}
+      {rejected ? (
         <AppText weight="medium" className="mt-2 text-caption text-muted-soft">
           Скрыто
         </AppText>
       ) : null}
 
-      {/* Action row — две кнопки БЕЗ иконок (фидбэк user 2026-05-15):
-          - «Написать» (outline pill)
-          - «Выбрать» (filled black primary pill — Vercel-style, не неон-success) */}
-      {isActionable ? (
+      {/* Контакт-кнопки. В скрытых не показываем. */}
+      {!rejected ? (
         <View className="mt-4 flex-row gap-2">
           <Pressable
             accessibilityRole="button"
-            disabled={isWriting}
-            onPress={onWrite}
-            className="h-11 flex-1 items-center justify-center rounded-pill border border-hairline bg-canvas active:bg-canvas-soft"
+            accessibilityLabel="Позвонить мастеру"
+            disabled={!phoneTel}
+            onPress={onCall}
+            className={`h-11 flex-1 flex-row items-center justify-center gap-1.5 rounded-pill ${
+              phoneTel ? "bg-ink active:opacity-85" : "bg-canvas-soft-2"
+            }`}
           >
-            {isWriting ? (
-              <ActivityIndicator size="small" color={tc.ink} />
+            {phoneTel ? (
+              <>
+                <Phone size={16} weight="bold" color="rgb(var(--on-primary))" />
+                <AppText weight="semibold" className="text-button-sm text-on-primary">
+                  Позвонить
+                </AppText>
+              </>
+            ) : masterPhone.isLoading ? (
+              <ActivityIndicator size="small" color={tc.mute} />
             ) : (
-              <AppText weight="semibold" className="text-button text-ink">
-                Написать
+              <AppText weight="medium" className="text-button-sm text-mute">
+                Нет номера
               </AppText>
             )}
           </Pressable>
+
+          {phoneWa ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Написать в WhatsApp"
+              onPress={onWhatsApp}
+              className="h-11 flex-1 flex-row items-center justify-center gap-1.5 rounded-pill border border-hairline bg-canvas active:bg-canvas-soft"
+            >
+              <WhatsappLogo size={16} weight="bold" color={tc.ink} />
+              <AppText weight="semibold" className="text-button-sm text-ink">
+                WhatsApp
+              </AppText>
+            </Pressable>
+          ) : null}
+
           <Pressable
             accessibilityRole="button"
-            disabled={isBusy}
-            onPress={onAccept}
-            className={`h-11 flex-1 items-center justify-center rounded-pill ${
-              isBusy ? "bg-canvas-soft-2" : "bg-ink active:opacity-85"
-            }`}
+            accessibilityLabel={`Открыть профиль ${masterName}`}
+            onPress={onProfile}
+            className="h-11 flex-1 flex-row items-center justify-center gap-1.5 rounded-pill border border-hairline bg-canvas active:bg-canvas-soft"
           >
-            {isBusy ? (
-              <ActivityIndicator size="small" color={tc.mute} />
-            ) : (
-              // text-on-primary через className (CSS-var правильно подхватывается
-              // RNW + native NativeWind). Inline style {color: tc["on-primary"]}
-              // на web иногда теряется из-за специфичности — текст становился
-              // почти чёрным на чёрной кнопке.
-              <AppText weight="semibold" className="text-button text-on-primary">
-                Выбрать
-              </AppText>
-            )}
+            <CaretRight size={16} weight="bold" color={tc.ink} />
+            <AppText weight="semibold" className="text-button-sm text-ink">
+              Профиль
+            </AppText>
           </Pressable>
         </View>
       ) : null}
 
-      {/* «Не подходит» — text-link под кнопками. Заменяет круглую «×»
-          в углу карточки (фидбэк: «иксик непонятный, некрасивый»). */}
+      {/* «Не подходит» — text-link под кнопками. */}
       {onReject ? (
         <Pressable
           accessibilityRole="button"
@@ -1096,7 +1277,7 @@ function MasterResponseSection({
   // P0-5: дневной лимит откликов (5/день). Не блокируем UI, но блокируем
   // submit + показываем понятное сообщение если лимит исчерпан.
   const { data: responseLimit } = useResponseLimit();
-  const tc = useThemeColors(["muted-soft", "ink", "error"]);
+  const tc = useThemeColors(["muted-soft", "mute", "ink", "error", "on-primary"]);
 
   const isPickedMaster = pickedMasterId === masterId;
   const orderClosed = orderStatus !== "open";
@@ -1153,7 +1334,6 @@ function MasterResponseSection({
     const accentClass = isPickedMaster
       ? "border-success bg-success-soft"
       : "border-accent bg-accent-soft";
-    const iconColor = isPickedMaster ? "#10b981" : "#2563eb";
     const textColor = isPickedMaster ? "text-success" : "text-accent";
 
     // T15: можно отозвать пока response в sent/viewed (до accept).
@@ -1181,26 +1361,31 @@ function MasterResponseSection({
     // Третий раз сообщать с emoji — шум. Border нейтральный (hairline) для
     // isPickedMaster, accent остаётся для pending status'ов.
     return (
-      <View className="mt-10 px-6">
-        <AppText weight="semibold" className="text-title-lg text-ink">
-          Ваш отклик
-        </AppText>
+      <View className="mt-10 px-5">
+        {/* Секция-лейбл «ВАШ ОТКЛИК» + линия (Linear-референс). */}
+        <View className="flex-row items-center gap-3">
+          <AppText
+            weight="medium"
+            className="text-caption uppercase text-mute"
+            style={{ letterSpacing: 1 }}
+          >
+            Ваш отклик
+          </AppText>
+          <View className="h-px flex-1 bg-hairline" />
+        </View>
         <View
-          className={`mt-3 rounded-lg border ${
+          className={`mt-4 rounded-2xl border ${
             isPickedMaster ? "border-hairline bg-canvas-soft" : accentClass
           } p-4`}
         >
           {!isPickedMaster && (
-            <View className="flex-row items-center gap-2">
-              <ChatCenteredText size={16} weight="bold" color={iconColor} />
-              <AppText weight="semibold" className={`text-body-md ${textColor}`}>
-                {responseStatusLabel(myResponse.status)}
-              </AppText>
-            </View>
+            <AppText weight="semibold" className={`text-body-md ${textColor}`}>
+              {responseStatusLabel(myResponse.status)}
+            </AppText>
           )}
           <AppText
-            weight="medium"
-            className={`${isPickedMaster ? "" : "mt-2 "}text-body-md text-ink`}
+            weight="mono"
+            className={`${isPickedMaster ? "" : "mt-2 "}text-title-md text-ink`}
           >
             {formatResponsePrice(myResponse)}
           </AppText>
@@ -1215,7 +1400,7 @@ function MasterResponseSection({
             accessibilityLabel="Отозвать отклик"
             disabled={isBusyWithdraw}
             onPress={onWithdrawPress}
-            className="mt-3 h-11 flex-row items-center justify-center gap-2 rounded-pill border border-hairline bg-canvas active:bg-canvas-soft"
+            className="mt-3 h-12 flex-row items-center justify-center gap-2 rounded-xl border border-hairline bg-canvas active:bg-canvas-soft"
           >
             <X size={16} weight="bold" color={tc.ink} />
             <AppText weight="medium" className="text-button-sm text-ink">
@@ -1246,174 +1431,237 @@ function MasterResponseSection({
   }
 
   // Форма отклика
+  //
+  // 2026-05-20 — визуально отделили блок «Ваш отклик» от деталей заказа.
+  // Раньше форма шла плоско под автор-карточкой и сливалась с контентом
+  // выше: мастер не сразу понимал, что «вот тут моё действие».
+  //
+  // Решение — Linear/Vercel/Stripe гибрид:
+  //   1) full-width hairline-divider (через negative margins пересекает
+  //      external padding ScrollView'а),
+  //   2) eyebrow-label сверху в caps + tracking-wider («ВАШ ОТКЛИК») —
+  //      перекликается с подписью «ЗАКАЗЧИК» на карточке клиента → визуально
+  //      связывает обе секции в одну ритмику,
+  //   3) короткий, самоочевидный H1 «Откликнуться на заказ» (без
+  //      подзаголовка — правило §G design-quality.md),
+  //   4) форма остаётся плоско на canvas, без обёртки в bg-canvas-soft —
+  //      иначе получится «карточка-в-карточке» (matrёшка-anti-pattern с
+  //      авторской карточкой выше).
+  //
+  // Lazyweb-источники: Stripe (caps section labels), Linear (hairline +
+  // воздух между секциями), Depop «Make an offer» (компактный self-contained
+  // блок без вложенных боксов). Profi.ru и Thumbtack по этому паттерну делают
+  // отдельную карточку — осознанно НЕ повторяем, чтобы избежать matрёшки.
+  const canSubmit = isValid && !isBusy && !limitReached;
   return (
-    <View className="mt-10 gap-4 px-6">
-      <AppText weight="semibold" className="text-title-lg text-ink">
-        Отправить отклик
-      </AppText>
-
-      {/* Price mode */}
-      <View>
-        <AppText weight="medium" className="text-caption text-muted">
-          Цена
+    <View className="mt-10 px-5">
+      {/* Секция-лейбл «ВАШ ОТКЛИК» + линия (Linear-референс). */}
+      <View className="flex-row items-center gap-3">
+        <AppText
+          weight="medium"
+          className="text-caption uppercase text-mute"
+          style={{ letterSpacing: 1 }}
+        >
+          Ваш отклик
         </AppText>
-        <Controller
-          control={control}
-          name="priceKind"
-          render={({ field: { value, onChange } }) => (
-            <View className="mt-2 flex-row flex-wrap gap-2">
-              {orderPriceKindOptions.map((k) => {
-                const selected = value === k;
-                return (
-                  <Pressable
-                    key={k}
-                    accessibilityRole="button"
-                    accessibilityState={{ selected }}
-                    disabled={isBusy}
-                    onPress={() => onChange(k)}
-                    className={`h-10 items-center justify-center rounded-pill border px-4 ${
-                      selected
-                        ? "border-accent bg-accent-soft"
-                        : "border-hairline bg-canvas active:opacity-70"
-                    }`}
-                  >
-                    <AppText
-                      weight="medium"
-                      className={`text-caption ${selected ? "text-accent" : "text-body"}`}
+        <View className="h-px flex-1 bg-hairline" />
+      </View>
+
+      {/* Карточка формы — белая, скруглённая (Linear). Цена / Срок / Сообщение
+          разделены тонкими линиями. */}
+      <View className="mt-4 overflow-hidden rounded-2xl border border-hairline bg-canvas">
+        {/* Цена — крупное поле с подчёркиванием + чипы режима. */}
+        <View className="p-5">
+          <AppText weight="medium" className="text-body-sm text-ink">
+            Ваша цена
+          </AppText>
+          <Controller
+            control={control}
+            name="priceValue"
+            render={({ field: { value, onChange, onBlur } }) => {
+              const negotiable = priceKind === "negotiable";
+              return (
+                <View
+                  className={`mt-3 flex-row items-baseline gap-2 border-b pb-2 ${
+                    !negotiable && value != null ? "border-hairline-strong" : "border-hairline"
+                  }`}
+                >
+                  <TextInput
+                    value={negotiable || value == null ? "" : String(value)}
+                    onBlur={onBlur}
+                    onChangeText={(raw) => {
+                      const cleaned = raw.replace(/\D/g, "");
+                      onChange(cleaned === "" ? null : Number.parseInt(cleaned, 10));
+                    }}
+                    editable={!negotiable && !isBusy}
+                    placeholder={
+                      negotiable
+                        ? "Договорная"
+                        : priceKind === "from"
+                          ? "От суммы"
+                          : priceKind === "up_to"
+                            ? "До суммы"
+                            : "20 000"
+                    }
+                    placeholderTextColor={tc["muted-soft"]}
+                    keyboardType="number-pad"
+                    inputMode="numeric"
+                    maxFontSizeMultiplier={1.3}
+                    className={`flex-1 ${negotiable ? "text-muted-soft" : "text-ink"}`}
+                    style={{
+                      paddingVertical: 2,
+                      fontSize: 28,
+                      fontWeight: "700",
+                      letterSpacing: -0.5,
+                      fontVariant: ["tabular-nums"],
+                    }}
+                  />
+                  <AppText className="text-title-md text-mute">₽</AppText>
+                </View>
+              );
+            }}
+          />
+          <Controller
+            control={control}
+            name="priceKind"
+            render={({ field: { value, onChange } }) => (
+              <View className="mt-4 flex-row flex-wrap gap-2">
+                {orderPriceKindOptions.map((k) => {
+                  const selected = value === k;
+                  return (
+                    <Pressable
+                      key={k}
+                      accessibilityRole="button"
+                      accessibilityState={{ selected }}
+                      disabled={isBusy}
+                      onPress={() => onChange(k)}
+                      className={`h-9 items-center justify-center rounded-md border px-3 ${
+                        selected
+                          ? "border-accent bg-accent-soft"
+                          : "border-hairline bg-canvas active:opacity-70"
+                      }`}
                     >
-                      {priceKindLabel(k)}
-                    </AppText>
-                  </Pressable>
-                );
-              })}
-            </View>
-          )}
-        />
-        {priceKind !== "negotiable" && (
-          <View className="mt-3">
-            <Controller
-              control={control}
-              name="priceValue"
-              render={({ field: { value, onChange, onBlur } }) => (
+                      <AppText
+                        weight="medium"
+                        className={`text-caption ${selected ? "text-accent" : "text-body"}`}
+                      >
+                        {priceKindLabel(k)}
+                      </AppText>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            )}
+          />
+        </View>
+
+        <View className="h-px bg-hairline" />
+
+        {/* Срок (опц.) */}
+        <View className="p-5">
+          <Controller
+            control={control}
+            name="leadTime"
+            render={({ field: { value, onChange, onBlur } }) => (
+              <View>
+                <AppText weight="medium" className="text-body-sm text-ink">
+                  Срок <AppText className="text-caption text-muted-soft">(опционально)</AppText>
+                </AppText>
                 <TextInput
-                  value={value === null ? "" : String(value)}
+                  value={value}
                   onBlur={onBlur}
-                  onChangeText={(raw) => {
-                    const cleaned = raw.replace(/\D/g, "");
-                    onChange(cleaned === "" ? null : Number.parseInt(cleaned, 10));
-                  }}
-                  placeholder={
-                    priceKind === "fixed" ? "Сумма, ₽" : priceKind === "from" ? "От, ₽" : "До, ₽"
-                  }
+                  onChangeText={onChange}
+                  placeholder="Завтра / 2–3 дня / на следующей неделе"
                   placeholderTextColor={tc["muted-soft"]}
-                  keyboardType="number-pad"
-                  inputMode="numeric"
+                  maxLength={100}
                   maxFontSizeMultiplier={1.3}
-                  className="h-12 rounded-md border border-hairline bg-canvas px-3 text-body-md text-ink"
+                  className={`mt-2 border-b pb-2 text-body-md text-ink ${
+                    value ? "border-hairline-strong" : "border-hairline"
+                  }`}
                   editable={!isBusy}
                 />
-              )}
-            />
-          </View>
-        )}
-      </View>
+              </View>
+            )}
+          />
+        </View>
 
-      {/* Lead time */}
-      <View>
-        <Controller
-          control={control}
-          name="leadTime"
-          render={({ field: { value, onChange, onBlur } }) => (
-            <View>
-              <AppText weight="medium" className="text-caption text-muted">
-                Срок (опц.)
-              </AppText>
-              <TextInput
-                value={value}
-                onBlur={onBlur}
-                onChangeText={onChange}
-                placeholder="Завтра / 2-3 дня / на следующей неделе"
-                placeholderTextColor={tc["muted-soft"]}
-                maxLength={100}
-                maxFontSizeMultiplier={1.3}
-                className="mt-2 h-12 rounded-md border border-hairline bg-canvas px-3 text-body-md text-ink"
-                editable={!isBusy}
-              />
-            </View>
-          )}
-        />
-      </View>
+        <View className="h-px bg-hairline" />
 
-      {/* Message */}
-      <View>
-        <Controller
-          control={control}
-          name="message"
-          render={({ field: { value, onChange, onBlur } }) => (
-            <View>
-              <AppText weight="medium" className="text-caption text-muted">
-                Сообщение клиенту
-              </AppText>
-              <TextInput
-                value={value}
-                onBlur={onBlur}
-                onChangeText={onChange}
-                placeholder="Здравствуйте, готов взять. Опыт в этой задаче..."
-                placeholderTextColor={tc["muted-soft"]}
-                multiline
-                numberOfLines={4}
-                maxLength={1000}
-                textAlignVertical="top"
-                maxFontSizeMultiplier={1.3}
-                className={`mt-2 min-h-24 rounded-md border bg-canvas px-3 py-3 text-body-md text-ink ${
-                  errors.message ? "border-error" : "border-hairline"
-                }`}
-                editable={!isBusy}
-              />
-              {errors.message && (
-                <AppText weight="medium" className="mt-2 text-caption text-error">
-                  {errors.message.message}
+        {/* Сообщение клиенту */}
+        <View className="p-5">
+          <Controller
+            control={control}
+            name="message"
+            render={({ field: { value, onChange, onBlur } }) => (
+              <View>
+                <AppText weight="medium" className="text-body-sm text-ink">
+                  Сообщение клиенту
                 </AppText>
-              )}
-            </View>
-          )}
-        />
+                <TextInput
+                  value={value}
+                  onBlur={onBlur}
+                  onChangeText={onChange}
+                  placeholder="Здравствуйте, готов взять. Опыт в этой задаче…"
+                  placeholderTextColor={tc["muted-soft"]}
+                  multiline
+                  numberOfLines={4}
+                  maxLength={1000}
+                  textAlignVertical="top"
+                  maxFontSizeMultiplier={1.3}
+                  className={`mt-2 min-h-24 border-b pb-2 text-body-md text-ink ${
+                    errors.message
+                      ? "border-error"
+                      : value
+                        ? "border-hairline-strong"
+                        : "border-hairline"
+                  }`}
+                  editable={!isBusy}
+                />
+                {errors.message && (
+                  <AppText weight="medium" className="mt-2 text-caption text-error">
+                    {errors.message.message}
+                  </AppText>
+                )}
+              </View>
+            )}
+          />
+        </View>
       </View>
 
       {limitReached && (
-        <View className="rounded-md border border-hairline bg-canvas-soft p-3">
+        <View className="mt-4 rounded-xl border border-hairline bg-canvas-soft p-3">
           <AppText weight="semibold" className="text-body-sm text-ink">
             Лимит откликов на сегодня исчерпан
           </AppText>
           <AppText className="mt-1 text-caption text-muted">
-            Вы отправили {responseLimit?.used ?? 5} из {responseLimit?.max ?? 5} откликов.
-            Завтра в 00:00 (МСК) появятся новые. В будущем планируется опция
-            «больше откликов» — пока всё бесплатно.
+            Вы отправили {responseLimit?.used ?? 5} из {responseLimit?.max ?? 5} откликов. Завтра
+            в 00:00 (МСК) появятся новые.
           </AppText>
         </View>
       )}
       {submitError && !limitReached && (
-        <AppText weight="medium" className="text-caption text-error">
+        <AppText weight="medium" className="mt-3 text-caption text-error">
           {limitError
             ? "Лимит откликов на сегодня исчерпан — попробуйте завтра."
             : `Не удалось отправить отклик. ${submitError}`}
         </AppText>
       )}
 
+      {/* Кнопка отклика — full-width чёрная с галочкой (Linear). */}
       <Pressable
         accessibilityRole="button"
-        disabled={!isValid || isBusy || limitReached}
+        disabled={!canSubmit}
         onPress={onSubmit}
-        className={`h-12 items-center justify-center rounded-md ${
-          isValid && !isBusy && !limitReached ? "bg-primary active:opacity-80" : "bg-surface-3"
+        className={`mt-4 h-12 flex-row items-center justify-center gap-2 rounded-xl ${
+          canSubmit ? "bg-primary active:opacity-80" : "bg-surface-3"
         }`}
       >
-        <AppText weight="semibold" className="text-button text-on-primary">
-          {limitReached
-            ? "Лимит исчерпан"
-            : isBusy
-              ? "Отправляем..."
-              : "Отправить отклик"}
+        {canSubmit ? <Check size={18} weight="bold" color={tc["on-primary"]} /> : null}
+        <AppText
+          weight="semibold"
+          className={`text-button ${canSubmit ? "text-on-primary" : "text-muted-soft"}`}
+        >
+          {limitReached ? "Лимит исчерпан" : isBusy ? "Отправляем…" : "Откликнуться"}
         </AppText>
       </Pressable>
     </View>
@@ -1433,561 +1681,4 @@ function responseStatusLabel(s: Tables<"order_responses">["status"]): string {
     case "withdrawn":
       return "Отклик отозван";
   }
-}
-
-// ============================================================================
-// Completion section — кнопка "Работа выполнена" для in_progress (обе стороны)
-// ============================================================================
-
-interface CompletionSectionProps {
-  orderId: string;
-  order: OrderDetail;
-  userId: string;
-}
-
-/**
- * CompletionSection — кнопки управления статусом заказа в /orders/[id].
- *
- * Источник истины: docs/lifecycle.md §4 (матрица переходов).
- *
- * Что показываем (по role × status):
- *
- *   in_progress:
- *     - client  → «Подтвердить выполнение» (T4) + «Прекратить сотрудничество» (T6t)
- *     - master  → «Работа выполнена»     (T8) + «Прекратить сотрудничество» (T6t)
- *
- *   awaiting_confirmation:
- *     - client  → «Подтвердить выполнение» (T5) + «Прекратить сотрудничество» (T6t)
- *     - master  → «Ждём подтверждения клиента, осталось X» (read-only) + «Прекратить сотрудничество» (T6t)
- *
- *   disputed:
- *     - оба → read-only «Спор открыт N дней назад. Саппорт рассмотрит ~5 рабочих дней.»
- *       (Существующие до 2026-05-16 disputed-заказы; новых UI не создаёт.)
- *
- *   cancelled/expired (для клиента в 7-дневном окне) → отдельная ReopenSection (T9).
- *   completed → review-секция (ниже в этом файле, не здесь).
- *   open → ничего не показываем (форма отклика мастера / список откликов клиента).
- *
- * Изменено 2026-05-16: вместо «Открыть спор» — «Прекратить сотрудничество»
- * (T6t terminate_cooperation). По фидбэку user: спор слишком тяжёлый для
- * нашего рынка, чаще нужен простой выход «работа не дошла до конца».
- */
-function CompletionSection({ orderId, order, userId }: CompletionSectionProps) {
-  const markDone = useMarkOrderDone();
-  const confirmCompletion = useConfirmCompletion();
-  const terminateCooperation = useTerminateCooperation();
-  const tc = useThemeColors(["mute", "success", "error", "ink"]);
-
-  const isClient = order.client_id === userId;
-  const isPickedMaster = order.picked_master_id === userId;
-  const status = order.status;
-
-  // disputed — read-only блок для legacy-заказов (новых UI больше не создаёт,
-  // RPC open_dispute остался для будущей админки через service_role).
-  if (status === "disputed" && (isClient || isPickedMaster)) {
-    const daysAgo = order.disputed_at
-      ? Math.max(0, Math.floor((Date.now() - new Date(order.disputed_at).getTime()) / (1000 * 60 * 60 * 24)))
-      : null;
-    return (
-      <View className="mt-8 px-5">
-        <View className="rounded-lg border border-error bg-error-soft p-4">
-          <AppText weight="semibold" className="text-body-md text-error">
-            Спор открыт
-            {daysAgo !== null ? ` ${daysAgo} ${daysAgo === 1 ? "день" : daysAgo < 5 ? "дня" : "дней"} назад` : ""}
-          </AppText>
-          <AppText className="mt-2 text-body-sm text-body">
-            Саппорт рассмотрит обращение в течение 5 рабочих дней и закроет заказ в пользу одной из сторон.
-          </AppText>
-          {order.dispute_reason ? (
-            <AppText className="mt-2 text-caption text-muted">
-              Причина: {order.dispute_reason}
-            </AppText>
-          ) : null}
-        </View>
-      </View>
-    );
-  }
-
-  // Если не active lifecycle status или not a participant — ничего не показываем
-  if (status !== "in_progress" && status !== "awaiting_confirmation") return null;
-  if (!isClient && !isPickedMaster) return null;
-
-  const isBusy =
-    markDone.isPending ||
-    confirmCompletion.isPending ||
-    terminateCooperation.isPending;
-
-  // ===== Primary button label / handler =====
-  let primaryLabel: string;
-  let primaryHandler: () => Promise<void>;
-  let primaryEnabled = true;
-  let primaryError: string | null = null;
-  let primaryCaption: string;
-
-  if (isClient) {
-    primaryLabel = "Подтвердить выполнение";
-    primaryCaption = status === "awaiting_confirmation"
-      ? "Мастер сообщил, что работа выполнена. Подтвердите — заказ перейдёт в «Завершён», и вы сможете оставить отзыв."
-      : "Заказ перейдёт в «Завершён», и вы сможете оставить отзыв. Действие нельзя отменить.";
-    primaryError = confirmCompletion.error?.message ?? null;
-    primaryHandler = async () => {
-      if (isBusy) return;
-      const confirmed = await confirmAsync({
-        title: "Подтвердить, что работа выполнена?",
-        message: primaryCaption,
-        confirmText: "Подтвердить",
-        cancelText: "Отмена",
-      });
-      if (!confirmed) return;
-      confirmCompletion.mutate({ orderId, userId });
-    };
-  } else if (status === "in_progress") {
-    primaryLabel = "Работа выполнена";
-    primaryCaption = "Клиент получит уведомление и подтвердит за 72 часа — либо заказ закроется автоматически.";
-    primaryError = markDone.error?.message ?? null;
-    primaryHandler = async () => {
-      if (isBusy) return;
-      const confirmed = await confirmAsync({
-        title: "Пометить заказ выполненным?",
-        message: primaryCaption,
-        confirmText: "Да, выполнено",
-        cancelText: "Отмена",
-      });
-      if (!confirmed) return;
-      markDone.mutate({ orderId, userId });
-    };
-  } else {
-    // master + awaiting_confirmation: read-only countdown
-    primaryEnabled = false;
-    primaryLabel = "Ждём клиента";
-    const hoursLeft = order.awaiting_confirmation_until
-      ? Math.max(0, Math.floor((new Date(order.awaiting_confirmation_until).getTime() - Date.now()) / (1000 * 60 * 60)))
-      : null;
-    primaryCaption = hoursLeft !== null
-      ? `Клиент подтвердит выполнение или оспорит. Осталось ${hoursLeft} ч до auto-закрытия.`
-      : "Клиент подтвердит выполнение или оспорит в течение 72 часов.";
-    primaryHandler = async () => {};
-  }
-
-  // Минималистичный layout (2026-05-16):
-  //   - Убран eyebrow «ЗАВЕРШЕНИЕ РАБОТЫ» — заголовок не нужен, действие
-  //     самоочевидно из контекста заказа со статусом «В работе».
-  //   - Primary CTA — solid bg-success + white text (раньше green outline →
-  //     не было ясной иерархии с secondary). Это happy-path.
-  //   - Secondary «Прекратить сотрудничество» — text-only ghost (без border),
-  //     text-mute (не red, чтобы не визуально конкурировать с primary).
-  //   - Длинный caption удалён — это инфо есть в confirm-modal.
-  return (
-    <View className="mt-8 px-5">
-      {primaryEnabled ? (
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={primaryLabel}
-          disabled={isBusy}
-          onPress={primaryHandler}
-          className={`h-12 flex-row items-center justify-center gap-2 rounded-pill ${
-            isBusy ? "bg-canvas-soft" : "bg-success active:opacity-80"
-          }`}
-        >
-          {isBusy ? (
-            <ActivityIndicator size="small" color={tc.mute} />
-          ) : (
-            <>
-              <CheckCircle size={18} weight="fill" color="#ffffff" />
-              <AppText weight="semibold" className="text-button text-white">
-                {primaryLabel}
-              </AppText>
-            </>
-          )}
-        </Pressable>
-      ) : (
-        // Read-only «Ждём клиента» — серый pill + caption с countdown'ом
-        // (количество часов до auto-закрытия — это полезная инфо до клика).
-        <>
-          <View className="h-12 flex-row items-center justify-center gap-2 rounded-pill bg-canvas-soft">
-            <Clock size={18} weight="bold" color={tc.mute} />
-            <AppText weight="semibold" className="text-button text-mute">
-              {primaryLabel}
-            </AppText>
-          </View>
-          <AppText className="mt-2 text-center text-caption text-mute">
-            {primaryCaption}
-          </AppText>
-        </>
-      )}
-
-      {primaryError && (
-        <AppText weight="medium" className="mt-2 text-center text-caption text-error">
-          {primaryError}
-        </AppText>
-      )}
-
-      {/* Secondary destructive action — text-only ghost, не должен конкурировать
-          по визуальному весу с primary. Confirm-dialog содержит всю инфу о
-          последствиях. */}
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel="Прекратить сотрудничество"
-        disabled={isBusy}
-        onPress={async () => {
-          if (isBusy) return;
-          const confirmed = await confirmAsync({
-            title: "Прекратить сотрудничество?",
-            message:
-              "Заказ закроется со статусом «отменён» — работа не была выполнена. Другая сторона получит уведомление.",
-            confirmText: "Да, прекратить",
-            cancelText: "Отмена",
-          });
-          if (!confirmed) return;
-          terminateCooperation.mutate({ orderId, userId });
-        }}
-        className="mt-3 h-10 items-center justify-center active:opacity-60"
-      >
-        <AppText weight="medium" className="text-caption text-mute">
-          Прекратить сотрудничество
-        </AppText>
-      </Pressable>
-
-      {terminateCooperation.error && (
-        <AppText weight="medium" className="mt-2 text-center text-caption text-error">
-          {terminateCooperation.error.message}
-        </AppText>
-      )}
-    </View>
-  );
-}
-
-// ============================================================================
-// ReopenSection — кнопка «Возобновить» для cancelled/expired в 7-дневном окне.
-// Доступна только клиенту-владельцу заказа. RPC reopen_order (T9).
-// См. docs/lifecycle.md §4 (T9).
-// ============================================================================
-
-interface ReopenSectionProps {
-  orderId: string;
-  order: OrderDetail;
-  userId: string;
-}
-
-function ReopenSection({ orderId, order, userId }: ReopenSectionProps) {
-  const reopenOrder = useReopenOrder();
-  const tc = useThemeColors(["accent"]);
-
-  const isOwner = order.client_id === userId;
-  if (!isOwner) return null;
-  if (!canReopenOrder(order.status, order.updated_at)) return null;
-
-  const isBusy = reopenOrder.isPending;
-  const daysLeft = Math.max(
-    0,
-    7 - Math.floor((Date.now() - new Date(order.updated_at).getTime()) / (1000 * 60 * 60 * 24)),
-  );
-
-  const onPress = async () => {
-    if (isBusy) return;
-    const confirmed = await confirmAsync({
-      title: "Возобновить заказ?",
-      message: "Заявка снова станет открытой на 14 дней. Мастера получат уведомление и смогут откликнуться.",
-      confirmText: "Возобновить",
-      cancelText: "Отмена",
-    });
-    if (!confirmed) return;
-    reopenOrder.mutate({ orderId, userId });
-  };
-
-  return (
-    <View className="mt-8 px-5">
-      <AppText weight="mono" className="text-mono-caption text-mute uppercase tracking-widest">
-        Возобновление
-      </AppText>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel="Возобновить заказ"
-        disabled={isBusy}
-        onPress={onPress}
-        className={`mt-3 h-12 flex-row items-center justify-center gap-2 rounded-pill border-2 ${
-          isBusy ? "border-hairline bg-canvas-soft" : "border-accent bg-canvas active:bg-accent-soft"
-        }`}
-      >
-        <CaretRight size={18} weight="bold" color={tc.accent} />
-        <AppText weight="semibold" className="text-button text-accent">
-          {isBusy ? "Возобновляем..." : "Возобновить заказ"}
-        </AppText>
-      </Pressable>
-      <AppText className="mt-3 text-center text-caption text-mute">
-        Окно возобновления закроется через {daysLeft} {daysLeft === 1 ? "день" : daysLeft < 5 ? "дня" : "дней"}.
-      </AppText>
-      {reopenOrder.error && (
-        <AppText weight="medium" className="mt-2 text-center text-caption text-error">
-          {reopenOrder.error.message}
-        </AppText>
-      )}
-    </View>
-  );
-}
-
-// ============================================================================
-// Client review section — после завершения, форма отзыва
-// ============================================================================
-
-interface ClientReviewSectionProps {
-  orderId: string;
-  clientId: string;
-  masterId: string;
-  l2Id: string;
-}
-
-function ClientReviewSection({ orderId, clientId, masterId, l2Id }: ClientReviewSectionProps) {
-  const { data: myReview, isLoading } = useMyReviewForOrder(orderId, clientId);
-  const submitReview = useSubmitReview();
-  const [rating, setRating] = useState<number>(0);
-  const [text, setText] = useState("");
-  const tc = useThemeColors(["muted-soft", "warning"]);
-
-  if (isLoading) return null;
-
-  if (myReview) {
-    return (
-      <View className="mt-10 px-6">
-        <AppText weight="semibold" className="text-title-lg text-ink">
-          Ваш отзыв
-        </AppText>
-        <View className="mt-3 rounded-lg border border-hairline bg-surface-2 p-4">
-          <View className="flex-row gap-1">
-            {[1, 2, 3, 4, 5].map((s) => {
-              const filled = s <= myReview.rating;
-              return (
-                <Star
-                  key={s}
-                  size={18}
-                  weight={filled ? "fill" : "bold"}
-                  color={filled ? tc.warning : tc["muted-soft"]}
-                />
-              );
-            })}
-          </View>
-          {myReview.text && (
-            <AppText className="mt-2 text-body-sm text-body">{myReview.text}</AppText>
-          )}
-        </View>
-      </View>
-    );
-  }
-
-  const isBusy = submitReview.isPending;
-  const canSubmit = rating >= 1 && rating <= 5 && !isBusy;
-
-  const onSubmit = async () => {
-    if (!canSubmit) return;
-    try {
-      await submitReview.mutateAsync({
-        orderId,
-        authorId: clientId,
-        targetId: masterId,
-        l2Id,
-        rating,
-        text,
-        direction: "client_to_master",
-      });
-    } catch (_e) {
-      // через submitReview.error
-    }
-  };
-
-  return (
-    <View className="mt-10 px-6">
-      <AppText weight="semibold" className="text-title-lg text-ink">
-        Оцените мастера
-      </AppText>
-      <AppText className="mt-1 text-body-sm text-muted">
-        Ваш отзыв помогает другим клиентам выбрать.
-      </AppText>
-
-      <View className="mt-4 flex-row gap-2">
-        {[1, 2, 3, 4, 5].map((s) => (
-          <Pressable
-            key={s}
-            accessibilityRole="button"
-            accessibilityLabel={`${s} звёзд`}
-            onPress={() => setRating(s)}
-            disabled={isBusy}
-            hitSlop={4}
-            className="active:opacity-70"
-          >
-            <Star
-              size={36}
-              weight={s <= rating ? "fill" : "bold"}
-              color={s <= rating ? tc.warning : tc["muted-soft"]}
-            />
-          </Pressable>
-        ))}
-      </View>
-
-      <TextInput
-        value={text}
-        onChangeText={setText}
-        placeholder="Расскажите о работе мастера (опц.)"
-        placeholderTextColor={tc["muted-soft"]}
-        multiline
-        numberOfLines={3}
-        maxLength={2000}
-        textAlignVertical="top"
-        maxFontSizeMultiplier={1.3}
-        className="mt-4 min-h-24 rounded-md border border-hairline bg-canvas px-3 py-3 text-body-md text-ink"
-        editable={!isBusy}
-      />
-
-      {submitReview.error && (
-        <AppText weight="medium" className="mt-2 text-caption text-error">
-          {submitReview.error.message}
-        </AppText>
-      )}
-
-      <Pressable
-        accessibilityRole="button"
-        disabled={!canSubmit}
-        onPress={onSubmit}
-        className={`mt-4 h-12 items-center justify-center rounded-md ${
-          canSubmit ? "bg-primary active:opacity-80" : "bg-surface-3"
-        }`}
-      >
-        <AppText weight="semibold" className="text-button text-on-primary">
-          {isBusy ? "Сохраняем..." : "Оставить отзыв"}
-        </AppText>
-      </Pressable>
-    </View>
-  );
-}
-
-// ============================================================================
-// Master review section — мастер оценивает клиента после завершения
-// ============================================================================
-
-interface MasterReviewSectionProps {
-  orderId: string;
-  masterId: string;
-  clientId: string;
-  l2Id: string;
-}
-
-function MasterReviewSection({ orderId, masterId, clientId, l2Id }: MasterReviewSectionProps) {
-  const { data: myReview, isLoading } = useMyReviewForOrder(orderId, masterId);
-  const submitReview = useSubmitReview();
-  const [rating, setRating] = useState<number>(0);
-  const [text, setText] = useState("");
-  const tc = useThemeColors(["muted-soft", "warning"]);
-
-  if (isLoading) return null;
-
-  if (myReview) {
-    return (
-      <View className="mt-10 px-6">
-        <AppText weight="semibold" className="text-title-lg text-ink">
-          Ваш отзыв о клиенте
-        </AppText>
-        <View className="mt-3 rounded-lg border border-hairline bg-surface-2 p-4">
-          <View className="flex-row gap-1">
-            {[1, 2, 3, 4, 5].map((s) => {
-              const filled = s <= myReview.rating;
-              return (
-                <Star
-                  key={s}
-                  size={18}
-                  weight={filled ? "fill" : "bold"}
-                  color={filled ? tc.warning : tc["muted-soft"]}
-                />
-              );
-            })}
-          </View>
-          {myReview.text && (
-            <AppText className="mt-2 text-body-sm text-body">{myReview.text}</AppText>
-          )}
-        </View>
-      </View>
-    );
-  }
-
-  const isBusy = submitReview.isPending;
-  const canSubmit = rating >= 1 && rating <= 5 && !isBusy;
-
-  const onSubmit = async () => {
-    if (!canSubmit) return;
-    try {
-      await submitReview.mutateAsync({
-        orderId,
-        authorId: masterId,
-        targetId: clientId,
-        l2Id,
-        rating,
-        text,
-        direction: "master_to_client",
-      });
-    } catch (_e) {
-      // submitReview.error
-    }
-  };
-
-  return (
-    <View className="mt-10 px-6">
-      <AppText weight="semibold" className="text-title-lg text-ink">
-        Оцените клиента
-      </AppText>
-      <AppText className="mt-1 text-body-sm text-muted">
-        Ваш отзыв помогает другим мастерам понять, с кем они работают.
-      </AppText>
-
-      <View className="mt-4 flex-row gap-2">
-        {[1, 2, 3, 4, 5].map((s) => (
-          <Pressable
-            key={s}
-            accessibilityRole="button"
-            accessibilityLabel={`${s} звёзд`}
-            onPress={() => setRating(s)}
-            disabled={isBusy}
-            hitSlop={4}
-            className="active:opacity-70"
-          >
-            <Star
-              size={36}
-              weight={s <= rating ? "fill" : "bold"}
-              color={s <= rating ? tc.warning : tc["muted-soft"]}
-            />
-          </Pressable>
-        ))}
-      </View>
-
-      <TextInput
-        value={text}
-        onChangeText={setText}
-        placeholder="Каким был клиент? Корректно ли описал задачу, оплатил вовремя? (опц.)"
-        placeholderTextColor={tc["muted-soft"]}
-        multiline
-        numberOfLines={3}
-        maxLength={2000}
-        textAlignVertical="top"
-        maxFontSizeMultiplier={1.3}
-        className="mt-4 min-h-24 rounded-md border border-hairline bg-canvas px-3 py-3 text-body-md text-ink"
-        editable={!isBusy}
-      />
-
-      {submitReview.error && (
-        <AppText weight="medium" className="mt-2 text-caption text-error">
-          {submitReview.error.message}
-        </AppText>
-      )}
-
-      <Pressable
-        accessibilityRole="button"
-        disabled={!canSubmit}
-        onPress={onSubmit}
-        className={`mt-4 h-12 items-center justify-center rounded-md ${
-          canSubmit ? "bg-primary active:opacity-80" : "bg-surface-3"
-        }`}
-      >
-        <AppText weight="semibold" className="text-button text-on-primary">
-          {isBusy ? "Сохраняем..." : "Оставить отзыв"}
-        </AppText>
-      </Pressable>
-    </View>
-  );
 }

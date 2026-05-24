@@ -368,3 +368,137 @@ Visual UI verify в preview частично — клик на «Прекрат�
 ### Файлы изменены
 - `supabase/migrations/0081_lifecycle_rpcs_security_definer.sql` (новый, applied)
 - `STATUS.md` (новая запись в Current state)
+
+---
+
+## Session block N+5 — Taxonomy synonyms audit (миграция 0082)
+
+### Контекст
+User: «не вижу обычной категории Обои при поиске. Надо категории и подкатегории проверить и найти подобные проблемы и исправить».
+
+### Аудит — что нашли
+SQL-аудит `category_terms` против `categories_l2 is_visible=true`:
+
+1. **Dead synonyms.** 12 термов мапятся на L2 `appliances` (Бытовая техника) и `cleaning` (Клининг). Обе с l1=home-services, `is_visible=false` (Product scope MVP, только construction). RPC search_categories через `WHERE is_visible = true` исключает их. Юзер пишет «стиралка», «холодильник», «уборка», «химчистка», «генеральная» — пусто.
+
+2. **Категории без синонимов.** 24 из 34 visible L2 имели 0 термов в `category_terms`. Запросы «забор», «крыша», «ламинат», «паркет», «потолок», «мебель», «утепление», «гипсокартон», «бетон», «фасад», «кирпич», «дизайн», «сварка», «антенна», «натяжной потолок», «уборка после ремонта», «ремонт квартиры» — работали только через FTS по name_ru. FTS в russian-стеммере знает морфологию («забор/заборы/забором»), но не семантику («крыша» vs «кровля» — разные лексемы). Часто 0 хитов или нерелевантные.
+
+### Решение — миграция 0082
+1. **Remap** dead synonyms через UPDATE на construction-аналоги:
+   - `appliances` → `appliance-repair` (Ремонт бытовой техники).
+   - `cleaning` → `cleaning-post-renovation` (Уборка после ремонта).
+2. **Insert 160+ synonyms** для 24 пустых L2. Эталон Thumbtack expanded list ~1000 terms; добавили основные русскоязычные паттерны из Wordstat/Avito Услуги/Profi.ru:
+   - Прямой синоним (вес 100): «забор» → fences-gates, «крыша» → roofing.
+   - Народные термины (вес 90-100): «стиралка», «икея», «муж на час».
+   - Бренды / типы материалов (вес 90-100): «триколор», «армстронг», «короед».
+3. **Итого:** category_terms вырос с ~60 до 224 термов. 0 visible L2 без synonyms.
+
+### Verify
+SQL-test 15 проблемных запросов — все возвращают правильную L2 как top-hit (score 0.7–1.0). UI-test в preview: «обои» → top-hit «Штукатурка, шпаклёвка, покраска» с бейджем «Категория»; «забор» → top-hit «Заборы и ворота» с бейджем + L3 услуги под ним.
+
+### + UI improvement в /search.tsx
+Добавил pill-бейдж `«Категория»` справа от каждого L2-результата (`bg-canvas-soft-2`, text-caption mute). Раньше L2 «Штукатурка, шпаклёвка, покраска» и L3 «Поклейка обоев» рендерились одинаковым text-body-lg → пользователь не понимал что есть категория, что есть услуга внутри неё. Теперь L2 явно выделена.
+
+### Anti-pattern зафиксирован
+**Synonym мапятся на категории, которые UI не показывает.** При product scope-фильтре (MVP construction-only) hidden categories выпадают из search-RPC. Если synonyms не были мигрированы — мёртвый функционал, фронтенд молча возвращает 0 хитов. Чек-лист для будущих scope-изменений: при `is_visible=false` для L2 → пересмотреть category_terms, перенацелить на аналог или удалить.
+
+**Категории без synonyms на старте — мина замедленного действия.** FTS+trigram даёт ложное чувство покрытия (морфология + опечатки), но не семантику. Каждая новая L2 при создании ДОЛЖНА получать минимум 3-5 базовых synonyms сразу — иначе она невидима в поиске для всех кроме тех, кто угадал точное название.
+
+### Файлы изменены
+- `supabase/migrations/0082_category_synonyms_audit.sql` (новый, applied)
+- `app/(tabs)/search.tsx` — рендер `<Pressable>` теперь flex-row с условным pill «Категория» справа для item.type === 'l2'.
+- `STATUS.md`
+
+---
+
+## Session block N+6 — Wallpaper L2 split (миграция 0083)
+
+### Контекст
+После 0082 (synonyms audit) user: «почему нет Обои??». Search «обои» возвращал L2 «Штукатурка, шпаклёвка, покраска» с бейджем «Категория», но пользователь ждал именно «Обои» как top-result.
+
+### Решение
+Эталон Profi.ru/Avito Услуги: «Поклейка обоев» — отдельная top-level service category, не сабкатегория малярки. Мастер-обойщик ≠ маляр. Создана новая L2 `wallpaper`:
+
+1. INSERT в categories_l2: id='wallpaper', name_ru='Обои', icon='Paintbrush', l1='construction', sort_order=105.
+2. UPDATE 8 L3 wallpaper-* → l2_id='wallpaper': paper, vinyl, paintable, fleece, photo, liquid, removal, repair.
+3. UPDATE 4 обои-synonyms (обои, оклейка, переклеить, поклеить обои) → l2='wallpaper'. Добавлены ещё 7: поклейка, поклеить, наклеить обои, обойщик, фотообои, флизелин, флизелиновые.
+4. UPDATE painting.name_ru: «Штукатурка, шпаклёвка, покраска» → «Штукатурка и покраска» (короче, обои больше внутри нет).
+5. Frontend: `src/lib/category-color-icons.ts` — добавлен mapping `wallpaper: twemoji/scroll` (свиток = рулон).
+
+### Не трогали
+- master_categories: 3 мастера на painting остаются там; если они обойщики — добавят wallpaper через UI.
+- master_services: 0 строк с wallpaper-* l3_id.
+- orders (2) / reviews (1) с l2_id='painting': один заказ по title явно про обои («Поклеить обои в зале»), но автоматическая реклассификация по тексту небезопасна.
+
+### Verify
+- DB: `search_categories('обои')` → top-hit `Обои (l2, score 1, sources=fts+synonym+trigram)` + 4 L3 ниже под wallpaper l2_id.
+- UI (375px): /search «обои» → top «Обои» с бейджем «Категория» + 8 L3-услуг.
+
+### Anti-pattern зафиксирован
+**L2 имя содержит несколько концепций, при росте часть конкурирует с другими L2.** Bundled L2 типа «Штукатурка, шпаклёвка, покраска» удобен на старте (мало мастеров) но становится тормозом UX: поиск по любому из ключевых слов попадает в один и тот же container, search-выдача с одинаковыми L3-результатами для разных запросов. Решение — split, когда (а) есть критическая масса L3 одного типа (тут 8), (б) есть отдельный класс мастеров (обойщик ≠ маляр), (в) пользователи ищут по этому имени явно.
+
+### Файлы изменены
+- `supabase/migrations/0083_split_wallpaper_l2.sql` (новый, applied)
+- `src/lib/category-color-icons.ts` — wallpaper entry
+- `STATUS.md`
+
+---
+
+## Session block N+7 — Search overhaul (миграция 0084)
+
+### Контекст
+User: «у нас поиск кривой — рез не находит, а резк находит» → «почему такой ужасный поиск?» → «подключи агента, который подходящей роли». Запрос на research-уровень исследование с подключением спецагента.
+
+### Research-агент
+Спавнен general-purpose subagent с детальным брифом — изучить эталоны (Yandex.Услуги, Profi.ru, Avito Услуги, Google autocomplete, СберУслуги, TaskRabbit, Thumbtack, Baymard, Algolia, Meilisearch) + ответить на 7 технических вопросов (prefix-matching, ranking, did-you-mean, browse-mode и т.д.). Отчёт под 1500 слов, приоритезированный P0/P1/P2 + явные anti-patterns. 14 источников.
+
+### Root cause (4 бага)
+1. **No prefix-расширение.** `websearch_to_tsquery('russian', 'рез')` → лексема `рез` после стемминга. Стеммер работает по полным словам (лемматизация), не expand. Лемма «Резка» = `резк`. `рез` != `резк` → mismatch. Класс пострадавших: «рез», «тех», «обо», «сан», «лам», «гип», «кров», «окн», «нат», «эле» и т.д.
+2. **Trigram threshold глобальный 0.3.** 3-символьная подстрока vs 20-символьное имя категории даёт `similarity ~0.12 < 0.3` → trigram-слой не спасает.
+3. **Source-веса перепутаны.** `synonym weight/100` (0–1) vs `fts=0.7` фикс → синоним weight=50 (0.5) ПРОИГРЫВАЕТ FTS 0.7. Ручной тезаурус «обои → finishing» терял приоритет автоматическому стеммеру.
+4. **Без debounce.** На каждый keystroke RPC → мерцание + race conditions.
+
+### Решение — миграция 0084
+```sql
+-- Prefix-marker на последнем токене (не на каждом — эталон Algolia/Google):
+'сантехник плитка' → 'сантехник & плитка:*'
+'рез'              → 'рез:*' → ловит «Резка»
+```
+- Sanitize regex (`[^а-яёa-z0-9\s]`) для безопасного cast.
+- Fallback `plainto_tsquery` в EXCEPTION.
+- Dynamic trigram threshold: `length(q) <= 4 ? 0.18 : 0.3`.
+- Range-separated source: synonym `0.60..1.00`, fts `0.30..0.60`, trigram `0.00..0.30` → порядок гарантирован.
+- Type casts на `::numeric` для всех score-выражений (PG отказывается принимать `double precision` в `RETURNS TABLE (..., score numeric, ...)` без явного cast).
+
+### Frontend
+Новый хук `src/lib/use-debounced-value.ts` (универсальный, 200ms default). `/search.tsx`:
+- `trimmedQuery` → `debouncedQuery` для RPC-вызова.
+- `highlightQuery` тоже от `debouncedQuery` — синхрон с данными.
+
+### Verify (DB-test)
+14 запросов: рез → Резка / алмазное бурение (l3, 0.32, fts) ✓, тех → Мелкая бытовая техника ✓, обо → Обои (l2, 0.80) ✓, сан → Аварийный сантехник ✓, лам → Полы и стяжка (l2, 0.73, synonym ламинат) ✓, гип → Гипсокартон ✓, кров → Кровля ✓, окн → Окна и остекление ✓, нат → Натуральная черепица ✓, эле → Электрика ✓. Полные совпадения (обои, забор, крыша, ламинат) → score 1.00 от synonym. UI-test: «рез» в инпуте /search → top-hit «**Рез**ка / алмазное бурение» с bold-подсветкой.
+
+### Anti-pattern зафиксирован
+**`websearch_to_tsquery` для typeahead — это разовый ad-hoc query API**, не подходит для prefix-search. PG-документация четко описывает что для prefix нужен `to_tsquery(...':*')`. Сделал неправильно при первоначальной реализации (sprint 0062). Чек-лист для будущих PG-FTS: typeahead = `to_tsquery + :*`, full-document = `websearch_to_tsquery`.
+
+**Range-separated source weights — общий паттерн.** Если объединяешь N источников через UNION, дай каждому изолированный диапазон scores. Иначе соревнование внутри одного источника пересекается с другим.
+
+### Что отложили (P1/P2)
+Из отчёта агента:
+- **P1.1**: Browse popular+recent (вместо плоского списка 60 услуг). Требует AsyncStorage-ключ `xtrud:search:recent` + хардкод 8 «популярных». 2-3 часа.
+- **P1.2**: «Did you mean» через `levenshtein_less_equal` + extension `fuzzystrmatch`. Banner аналогично flipped-баннеру. 1-2 часа.
+- **P1.3**: Sectioned grouping (L2 крупно + 3-5 L3 под ней). Group по `l2_id` в `useMemo`. 1 час.
+- **P2**: ts_headline для серверной подсветки, master-результаты в поиске, аналитика search-log, voice-search (last — overkill).
+
+### Что НЕ делаем (явные anti-patterns от агента)
+- Elasticsearch / Meilisearch / Algolia — overkill для 300 строк каталога.
+- ML / vector-search / embeddings — overkill, тезаурус решает.
+- Глобальный `set_limit()` через `ALTER DATABASE` — сломает другие функции.
+- Prefix `:*` на ВСЕ токены — слишком много шума.
+- Trigger search с 1 символа — индустриальный стандарт 2 chars.
+
+### Файлы изменены
+- `supabase/migrations/0084_search_prefix_matching.sql` (новый, applied)
+- `src/lib/use-debounced-value.ts` (новый)
+- `app/(tabs)/search.tsx` (используется debouncedQuery)
+- `STATUS.md`

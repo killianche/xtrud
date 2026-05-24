@@ -3,6 +3,9 @@
  *
  * Паттерн как у LinkedIn / Notion / Cal.com:
  * - Есть `url` → expo-image с background placeholder
+ *   Если загрузка фейлится (Safari CORS / 404 / тайм-аут) → onError
+ *   переключает на инициалы/иконку. Без этого fallback в Safari оставался
+ *   пустой кружок bg-surface-2 — выглядело как «фото не загружается».
  * - Нет `url`, есть `name` → инициалы (1-2 буквы) на детерминированном цвете по seed
  * - Нет ни url ни name → нейтральный круг с иконкой `User` (без жёлтых точек и пастелей)
  *
@@ -12,9 +15,10 @@
 
 import { Image, type ImageContentFit } from "expo-image";
 import { User } from "phosphor-react-native";
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { View } from "react-native";
 import { AppText } from "@/components/AppText";
+import { realAvatarUrl } from "@/lib/avatar";
 import { useThemeColors } from "@/lib/use-theme-color";
 
 export type AvatarSize = "xs" | "sm" | "md" | "lg" | "xl";
@@ -55,18 +59,29 @@ export function Avatar({ url, name, seed, size = "md", contentFit = "cover" }: A
   const initials = useMemo(() => extractInitials(name), [name]);
   const bgColor = useMemo(() => pickColor(seed ?? name ?? ""), [seed, name]);
   const tc = useThemeColors(["surface-2", "muted"]);
+  // Реальное фото = только загрузка в Storage. DiceBear-заглушки → null →
+  // показываем инициалы (решение владельца 2026-05-23, src/lib/avatar.ts).
+  const resolvedUrl = useMemo(() => realAvatarUrl(url), [url]);
+  // Safari-fallback: см. шапку файла. При смене url сбрасываем флаг,
+  // чтобы новая попытка загрузки не была заблокирована предыдущей ошибкой.
+  const [imageFailed, setImageFailed] = useState(false);
+  useEffect(() => {
+    setImageFailed(false);
+  }, [resolvedUrl]);
 
-  if (url) {
+  if (resolvedUrl && !imageFailed) {
     return (
       <View
         style={{ width: dims.px, height: dims.px, borderRadius: dims.px / 2 }}
         className="overflow-hidden bg-surface-2"
       >
         <Image
-          source={{ uri: url }}
+          source={{ uri: resolvedUrl }}
           style={{ width: "100%", height: "100%" }}
           contentFit={contentFit}
           transition={150}
+          onError={() => setImageFailed(true)}
+          priority="high"
         />
       </View>
     );

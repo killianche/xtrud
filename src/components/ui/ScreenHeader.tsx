@@ -28,7 +28,7 @@
 //     }}
 //   />
 
-import { ChevronLeft } from "lucide-react-native";
+import { CaretLeft } from "phosphor-react-native";
 import { Pressable, View } from "react-native";
 import { AppText } from "@/components/AppText";
 import { useThemeColor } from "@/lib/use-theme-color";
@@ -93,7 +93,7 @@ export function ScreenHeader({ title, subtitle, onBack, rightAction, iconAction 
           hitSlop={8}
           className="h-12 w-12 items-center justify-center rounded-full active:bg-canvas-soft"
         >
-          <ChevronLeft size={28} strokeWidth={2.25} color={inkColor} />
+          <CaretLeft size={26} weight="bold" color={inkColor} />
         </Pressable>
       ) : null}
 

@@ -4,7 +4,7 @@
 // На mobile / narrow web компонент не используется (см. (tabs)/_layout.tsx).
 
 import { Link, usePathname, useRouter } from "expo-router";
-import { ClipboardText, House, ChatCircle, MagnifyingGlass, Moon, Sun, SignIn } from "phosphor-react-native";
+import { ClipboardText, House, MagnifyingGlass, Moon, Sun, SignIn } from "phosphor-react-native";
 import { Pressable, View } from "react-native";
 import { AppText } from "@/components/AppText";
 import { Avatar } from "@/components/Avatar";
@@ -17,19 +17,18 @@ import { useThemeColors } from "@/lib/use-theme-color";
 
 interface WebShellProps {
   children: React.ReactNode;
-  chatsBadge?: string;
   ordersBadge?: string;
 }
 
 interface NavItem {
-  href: "/(tabs)" | "/(tabs)/orders" | "/(tabs)/orders/search" | "/(tabs)/chats" | "/(tabs)/profile";
+  href: "/(tabs)" | "/(tabs)/orders" | "/(tabs)/orders/search" | "/(tabs)/profile";
   match: string;
   label: string;
   icon: typeof House;
   badge?: string;
 }
 
-export function WebShell({ children, chatsBadge, ordersBadge }: WebShellProps) {
+export function WebShell({ children, ordersBadge }: WebShellProps) {
   const pathname = usePathname();
   const router = useRouter();
   const tc = useThemeColors(["ink", "muted", "on-primary", "error"]);
@@ -39,13 +38,9 @@ export function WebShell({ children, chatsBadge, ordersBadge }: WebShellProps) {
   const { colorScheme, preference, setPreference } = useColorScheme();
 
   // Ссылки разные для двух ролей:
-  //   - client: Главная / Заказы / Чаты — «Заказы» это его собственные заявки.
-  //   - master: Главная / Поиск заказов / Чаты — «Поиск» это лента всех
-  //     open-заявок (route /orders/search). На mobile это центральный таб
-  //     TabBar (фидбэк user 2026-05-15: «отдельная кнопка поиск в нижнем меню»);
-  //     на desktop эту кнопку забыли вынести в WebShell (фидбэк user 2026-05-16:
-  //     «в хедре у компьютерной версии не бывает кнопок поиска заказов»).
-  //     Теперь и там, и там есть.
+  //   - client: Главная / Заказы — «Заказы» это его собственные заявки.
+  //   - master: Главная / Поиск заказов — лента всех open-заявок.
+  // Чаты удалены 2026-05-20 (classified-ads модель без in-app chat).
   const isMasterRole = user?.active_role === "master";
   const navItems: NavItem[] = [
     // Главная использует фирменный логотип xtrud вместо House.
@@ -70,13 +65,6 @@ export function WebShell({ children, chatsBadge, ordersBadge }: WebShellProps) {
             badge: ordersBadge,
           },
         ]),
-    {
-      href: "/(tabs)/chats",
-      match: "/chats",
-      label: "Чаты",
-      icon: ChatCircle,
-      badge: chatsBadge,
-    },
   ];
 
   const isActive = (match: string): boolean => {

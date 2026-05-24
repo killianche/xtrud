@@ -24,7 +24,7 @@
 //   правильное значение синхронно).
 
 import { useColorScheme as useNativeWindColorScheme } from "nativewind";
-import { useEffect } from "react";
+import { useEffect, useSyncExternalStore } from "react";
 import { Platform } from "react-native";
 import { type ThemePreference, useThemeStore } from "@/lib/theme";
 
@@ -53,6 +53,54 @@ function resolveSystemSchemeWeb(): "dark" | "light" {
 function resolveScheme(preference: ThemePreference): "dark" | "light" {
   if (preference === "dark" || preference === "light") return preference;
   return resolveSystemSchemeWeb();
+}
+
+/**
+ * Источник истины на web: фактический класс `<html>`.
+ *
+ * `+html.tsx` ставит `.dark` на `<html>` ДО первого React-рендера (theme-guard
+ * скрипт). NativeWind после гидрации тоже модифицирует этот класс. Это гарантирует
+ * что CSS-vars `rgb(var(--canvas))` зарезолвлены в нужной палитре.
+ *
+ * `Modal` на react-native-web рендерится в portal — теоретически вне React-дерева.
+ * Но `.dark` на `<html>` — корень всего DOM, и CSS-vars наследуются вниз через каскад.
+ * Поэтому inline-цвета (hex из darkColors/lightColors) должны соответствовать именно
+ * фактическому `<html class>`, не Zustand preference (он может быть в hydration race).
+ *
+ * Hook читает класс синхронно через `useSyncExternalStore` + MutationObserver — это
+ * tear-free для React 18 concurrent rendering.
+ */
+function subscribeToHtmlClass(callback: () => void): () => void {
+  if (typeof document === "undefined") return () => {};
+  const observer = new MutationObserver(callback);
+  observer.observe(document.documentElement, {
+    attributes: true,
+    attributeFilter: ["class"],
+  });
+  return () => observer.disconnect();
+}
+
+function getHtmlColorScheme(): "light" | "dark" {
+  if (typeof document === "undefined") return "light";
+  return document.documentElement.classList.contains("dark") ? "dark" : "light";
+}
+
+function getServerHtmlColorScheme(): "light" | "dark" {
+  return "light";
+}
+
+/**
+ * Резолвит colorScheme на web из фактического класса `<html>` — единственный
+ * корректный источник истины для inline-стилей в portal'ах (Modal, popover).
+ *
+ * Не использовать на native — там Appearance API через NativeWind.
+ */
+export function useDomColorScheme(): "light" | "dark" {
+  return useSyncExternalStore(
+    subscribeToHtmlClass,
+    getHtmlColorScheme,
+    getServerHtmlColorScheme,
+  );
 }
 
 export function useColorScheme() {

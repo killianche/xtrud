@@ -4,6 +4,20 @@
 
 Каждый экран и компонент должен выглядеть **финально**, а не «лишь бы работало». Не делай stub-дизайн в надежде «доработать потом» — пользователь увидит именно эту версию. Уровень — Vercel / Linear / Stripe / Airbnb, не «студенческий MVP».
 
+## ⚡ Pre-commit чек-лист (10 секунд)
+
+Перед закрытием задачи прогнать в голове:
+
+1. **Контраст текста на цветных фонах:** на каждый `bg-primary` / `bg-error` / `bg-success` есть `text-on-primary` рядом? Если нет — баг.
+2. **Никаких inline `style={{color:"#..."}}` / `backgroundColor:"#..."`** — только className с токенами.
+3. **Минимум 12px шрифт** — нет `text-caption-xs`, нет `fontSize: 10`.
+4. **Phosphor, не Lucide** — `lucide-react-native` импорт в новом файле = баг.
+5. **Mutex-выборы сбрасывают друг друга** — если «либо A, либо B», выбор одного обнуляет другое.
+6. **Никаких пустых onPress / `Alert.alert("Скоро")`** — либо реальная фича, либо контрол скрыт.
+7. **Никаких subtitle под заголовками** — `ScreenHeader.subtitle` / `BottomSheet.subtitle` / любые «помогающие» captions под H1 в Vercel-стиле запрещены. Title должен быть самоочевидным.
+
+Если хоть один пункт не пройден — это **баг, не «по дизайну»**. Подробности — §«ЖЁСТКИЕ ПРАВИЛА КОНТРАСТА» ниже.
+
 ## Контракт
 
 Перед закрытием любой UI-задачи (новый экран, новый компонент, существенная правка) **обязательно**:
@@ -18,7 +32,7 @@
 
 - Цвета — токены из `colors.ts` через **NativeWind className** (`bg-canvas`, `text-ink`, `border-hairline`). Не inline `style={{color:"#fff"}}` — он не работает в RNW с CSS-vars и ломает dark mode.
 - Радиусы — `rounded-md` (8) / `rounded-lg` (12, дефолт карточек) / `rounded-xl` (16, hero/special) / `rounded-full` (pill).
-- Шрифты — `<AppText weight="..." />` с правильным weight. `mono` weight (Geist Mono) для метрик «★ 4.9», «1 200 ₽», «12 км».
+- Шрифты — `<AppText weight="..." />` с правильным weight. Шрифт **системный** (SF Pro / Segoe / Roboto, с 2026-05-23 — Geist убран). `mono` weight (системный моноширинный) для метрик «★ 4.9», «1 200 ₽», «12 км».
 - Spacing — Tailwind scale (mt-2/3/4/6/8/10/12). Между секциями hero — mt-10 или mt-12. Внутри секции элементы — gap-2/3.
 - Иконки — **Phosphor React Native** (`phosphor-react-native`) для нового UI-кода. Размер 18-20 (inline) / 22-24 (кнопки, chip) / 26 (TabBar) / 28 (ScreenHeader back) / 32+ (hero). Weight: `bold` (inactive) / `fill` (active/selected/status). Lucide — только legacy, не использовать в новом коде. Полная инструкция и маппинг Lucide → Phosphor — [`docs/UI_ICONS.md`](../../docs/UI_ICONS.md). Цветные иконки L2-категорий — [`docs/ICONS.md`](../../docs/ICONS.md) (Iconify CDN, не Phosphor).
 
@@ -96,6 +110,142 @@
 - ❌ Web-1.0 — синие text-link'и вместо кнопок, центрированные блоки текста
 - ❌ Overengineering — 5 фильтров когда нужно 2, dropdown с 20 опций когда нужно 4 chip'а
 - ❌ MVP-styled — «потом доделаю» эстетика, half-finished components
+
+## 🚨 ЖЁСТКИЕ ПРАВИЛА КОНТРАСТА (П0, без исключений)
+
+Эти правила нарушаются регулярно и приводят к **невидимым** кнопкам и тексту. Если их не соблюдать — пользователь не видит CTA, проваливает регистрацию, не может отменить заказ. Каждое нарушение в коде = баг.
+
+### A. `bg-primary` (или любой цветной фон) ⇒ `text-on-primary` обязательно
+
+Класс `text-button` и `text-button-lg` в [`tailwind.config.ts`](../../tailwind.config.ts) определяют **только fontSize/lineHeight**, цвет НЕ задан. По умолчанию RN ставит `text-ink` (чёрный). Это значит:
+
+```tsx
+// ❌ ЗАПРЕЩЕНО — чёрный текст на чёрном фоне, пользователь НЕ видит надпись:
+<Pressable className="h-12 bg-primary">
+  <AppText className="text-button-lg">Опубликовать заказ</AppText>
+</Pressable>
+
+// ✅ ПРАВИЛЬНО — явный контрастный токен:
+<Pressable className="h-12 bg-primary">
+  <AppText className="text-button-lg text-on-primary">Опубликовать заказ</AppText>
+</Pressable>
+```
+
+Те же правила для `bg-error`, `bg-success`, `bg-warning`, `bg-info`. Любой цветной фон → текст внутри `text-on-primary` (= white в light, ink в dark — гарантированный контраст 4.5:1).
+
+**Проверка перед commit:**
+```bash
+grep -rn "bg-primary\|bg-error\|bg-success" app/ src/ --include="*.tsx" |
+  grep -v "text-on-primary\|text-on-error\|text-on-success" |
+  head -5
+```
+Если что-то нашлось без `text-on-*` в той же строке/рядом — это баг.
+
+### B. Никаких inline `style={{color:"#hex"}}` / `backgroundColor`
+
+NativeWind className даёт CSS-vars, которые правильно переключаются между light/dark и через ThemeSwitcher. Inline hex это ломает.
+
+```tsx
+// ❌ ЗАПРЕЩЕНО:
+<Text style={{ color: "#fff" }}>Привет</Text>
+<View style={{ backgroundColor: "#1a1a1a" }}>...</View>
+
+// ✅ ПРАВИЛЬНО:
+<AppText className="text-on-primary">Привет</AppText>
+<View className="bg-surface-dark">...</View>
+```
+
+**Исключения** (явно допустимые):
+- Hero-overlay `bg-black/50` через alpha modifier (`<View className="bg-black/50">`).
+- SVG-иконка из Phosphor (`<Heart color={tc.warning} />` ← это берёт значение из useThemeColors).
+- `+html.tsx` — корневые web-only meta-теги.
+
+### C. Минимальный размер шрифта — 12px
+
+```tsx
+// ❌ ЗАПРЕЩЕНО:
+<AppText className="text-caption-xs">...</AppText>   // 10px, нечитаемо
+<Text style={{ fontSize: 10 }}>...</Text>
+
+// ✅ ПРАВИЛЬНО:
+<AppText className="text-caption">...</AppText>           // 12px
+<AppText className="text-mono-caption">...</AppText>      // 12px моно (для цифр)
+```
+
+Если строка не помещается — `numberOfLines={1}` + `flex-shrink`, **не уменьшай шрифт**.
+
+### D. Иконки — только Phosphor React Native
+
+```tsx
+// ❌ ЗАПРЕЩЕНО (в новом коде):
+import { ChevronLeft, Info } from "lucide-react-native";
+
+// ✅ ПРАВИЛЬНО:
+import { CaretLeft, Info } from "phosphor-react-native";
+```
+
+Lucide остаётся **только** в `src/lib/category-icons.ts` как legacy (постепенно мигрируется). Любой новый компонент с Lucide — нарушение. Phosphor weight: `bold` (inactive) / `fill` (active/selected). Маппинг — [`docs/UI_ICONS.md`](../../docs/UI_ICONS.md).
+
+### E. Mutually exclusive selects — radio-семантика, не checkbox
+
+Если выбор «либо A, либо B» (мастер либо в районе, либо в конкретном селе; цена либо фикс, либо договорная) — то выбор одного **сбрасывает** другие. Иначе пользователь делает невозможный выбор (записан и район Назрановский, и село Плиево одновременно — что значит?).
+
+```tsx
+// ❌ ЗАПРЕЩЕНО:
+setSelectedDistrict("nazranovsky");
+setSelectedCity("plievo");          // оба активны, конфликт
+
+// ✅ ПРАВИЛЬНО:
+function selectDistrict(d) {
+  setSelectedDistrict(d);
+  setSelectedCity(null);             // сбросили mutex-партнёра
+}
+function selectCity(c) {
+  setSelectedCity(c);
+  setSelectedDistrict(null);
+}
+```
+
+### G. НИКАКИХ subtitle под заголовками экранов и шитов
+
+Vercel / Linear / Stripe принципиально не пишут «помогающий» текст под H1 — он визуально шумит и снижает доверие. Если заголовок не самоочевиден — переписать заголовок, **не добавлять подзаголовок**.
+
+```tsx
+// ❌ ЗАПРЕЩЕНО:
+<ScreenHeader
+  title="Где находится задача"
+  subtitle="Выберите либо город, либо район. Можно покрыть всю Ингушетию."
+/>
+<BottomSheet
+  title="Этот мастер выполнил работу?"
+  subtitle="Опишите что сделал Хава Аушева. Это поможет другим клиентам."
+/>
+<View>
+  <AppText>Вся Ингушетия</AppText>
+  <AppText className="text-caption text-mute">Заказ увидят мастера со всей республики</AppText>
+</View>
+
+// ✅ ПРАВИЛЬНО (или вообще без подзаголовка, или ёмкий title):
+<ScreenHeader title="Где находится задача" />
+<BottomSheet title="Этот мастер выполнил работу?" />
+<View>
+  <AppText>Вся Ингушетия</AppText>
+</View>
+```
+
+**Исключение** — Privacy/Terms-экраны с явной датой «Действует с 19 мая 2026», legal-disclaimer с обязательным юридическим текстом. Они **обязаны** иметь подзаголовок по требованию compliance.
+
+**Перед коммитом**: grep `subtitle=` и `text-caption text-mute` под H1/H2 — каждое подозрительное место удалить или переписать в title.
+
+### F. Stub'ы — запрещены в production-ready экранах
+
+```tsx
+// ❌ ЗАПРЕЩЕНО:
+onPress={() => {}}                                    // пустой handler
+onPress={() => Alert.alert("Скоро", "В разработке")}  // stub без entry в TASKS.md
+```
+
+Если нет времени реализовать — **не показывай** контрол вообще. Лучше отсутствие фичи, чем «потыкал и ничего».
 
 ## Что Vercel/Linear/Stripe делают и мы делаем
 

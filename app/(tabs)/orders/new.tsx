@@ -8,15 +8,22 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
 import { ScreenHeader } from "@/components/ui";
 import { useAuthSession } from "@/features/auth/use-auth-session";
+import { useUserRecord } from "@/features/auth/use-user-record";
 import { useVisibleCategories } from "@/features/categories/use-visible-categories";
 import { useCities } from "@/features/cities/use-cities";
 import { OrderFormBody } from "@/features/orders/OrderFormBody";
+import {
+  type LocalOrderPhoto,
+  OrderPhotosPicker,
+} from "@/features/orders/OrderPhotosPicker";
 import { type CreateOrderFormValues, createOrderSchema } from "@/features/orders/order-schema";
 import { useCreateOrder } from "@/features/orders/use-create-order";
+import { uploadOrderPhotosBatch } from "@/lib/image-upload";
 import { JitSignupSheet } from "@/features/auth/JitSignupSheet";
 import { type OrderDraft, useOrderDraftStore } from "@/lib/order-draft-store";
 import { useTabBarVisibility } from "@/lib/tabbar-visibility";
 import { useSafeBack } from "@/lib/use-safe-back";
+import { useScrollRestoration } from "@/lib/use-scroll-restoration";
 import { useThemeColors } from "@/lib/use-theme-color";
 
 // Order create — single-screen форма (раньше был 2-шаговый wizard, объединили
@@ -39,6 +46,8 @@ export default function NewOrderScreen() {
     }, [setTabBarHidden]),
   );
   const userId = session?.user?.id;
+  // Профиль — для подстановки имени из регистрации в поле «Ваше имя».
+  const { data: user } = useUserRecord(userId);
   const params = useLocalSearchParams<{ l2?: string; draft?: string }>();
   // Черновик описания, пришедший с главной (Hero inline-input).
   const initialDraft =
@@ -52,9 +61,18 @@ export default function NewOrderScreen() {
   const tc = useThemeColors(["ink", "on-primary", "success", "mute"]);
   // safeBack: при deeplink/refresh уходим на /orders, а не в пустоту.
   const goBack = useSafeBack("/(tabs)/orders" as const);
+  // Сохраняем позицию прокрутки формы при уходе на выбор категории
+  // (/orders/category-select) и возвращаем её обратно — иначе на web
+  // форма прыгает в самый верх (см. use-scroll-restoration.ts).
+  const { ref: scrollRef, onScroll: onFormScroll } = useScrollRestoration();
 
   const [createdOrderId, setCreatedOrderId] = useState<string | null>(null);
   const [signupSheetOpen, setSignupSheetOpen] = useState(false);
+  // Локально выбранные фото заказа (до 5). Грузятся в Storage при публикации,
+  // не сразу при выборе — см. publishWithUser + uploadOrderPhotosBatch.
+  const [photos, setPhotos] = useState<LocalOrderPhoto[]>([]);
+  const [uploadingPhotos, setUploadingPhotos] = useState(false);
+  const [photoError, setPhotoError] = useState<string | null>(null);
 
   // Persisted draft из Zustand — выживает любую навигацию (выбор категории,
   // случайное переключение табов, JIT-signup flow).
@@ -74,6 +92,7 @@ export default function NewOrderScreen() {
     defaultValues: {
       l2Id: draft.l2Id ?? "",
       title: draft.title ?? initialDraft.slice(0, 80),
+      contactName: draft.contactName ?? "",
       description: draft.description ?? initialDraft,
       cityId: draft.cityId ?? "",
       district: draft.district ?? "",
@@ -91,6 +110,16 @@ export default function NewOrderScreen() {
     }
   }, [params.l2, setValue]);
 
+  // Подставляем имя из регистрации в «Ваше имя» — только если пользователь
+  // ещё не вводил/не стирал его (draft.contactName === undefined). Эффект
+  // самозавершается: после setValue watch запишет draft.contactName. Если
+  // оставить пусто — при просмотре заказа всё равно покажется рег-имя.
+  useEffect(() => {
+    if (draft.contactName !== undefined || !user) return;
+    const regName = [user.first_name, user.last_name].filter(Boolean).join(" ").trim();
+    if (regName) setValue("contactName", regName);
+  }, [user, draft.contactName, setValue]);
+
   // Каждое изменение формы → в Zustand. Не теряем при mount/unmount.
   useEffect(() => {
     const sub = watch((values) => {
@@ -107,17 +136,39 @@ export default function NewOrderScreen() {
   // позже, чем handleSubmit замкнётся над текущим userId).
   const publishWithUser = async (uid: string) => {
     const values = getValues();
+    setPhotoError(null);
     try {
+      // 1. Фото грузим первыми — нужны их публичные URL для записи в заказ.
+      //    Если хоть одно не загрузилось — не создаём заказ, просим повторить
+      //    (лучше явная ошибка, чем заказ с «дырявой» галереей).
+      let photoUrls: string[] = [];
+      if (photos.length > 0) {
+        setUploadingPhotos(true);
+        const results = await uploadOrderPhotosBatch(
+          uid,
+          photos.map((p) => ({ uri: p.uri, width: p.width, height: p.height })),
+        );
+        setUploadingPhotos(false);
+        if (results.some((r) => !r.ok)) {
+          setPhotoError("Не удалось загрузить фото. Попробуйте ещё раз.");
+          return;
+        }
+        photoUrls = results.flatMap((r) => (r.ok ? [r.publicUrl] : []));
+      }
+
+      // 2. Создаём заказ с готовыми URL фото.
       const created = await createOrder.mutateAsync({
         clientId: uid,
         l2Id: values.l2Id,
         title: values.title,
+        contactName: values.contactName,
         description: values.description,
         cityId: values.cityId,
         district: values.district,
         urgency: values.urgency,
         budgetKind: values.budgetKind,
         budgetValue: values.budgetKind === "negotiable" ? null : values.budgetValue,
+        photoUrls,
       });
       const newId =
         created && typeof created === "object" && "id" in created
@@ -126,6 +177,7 @@ export default function NewOrderScreen() {
       clearDraft();
       setCreatedOrderId(newId ?? "submitted");
     } catch (_e) {
+      setUploadingPhotos(false);
       // отображается через createOrder.error
     }
   };
@@ -142,8 +194,8 @@ export default function NewOrderScreen() {
 
   const handlePublish = () => void onSubmit();
 
-  const isBusy = createOrder.isPending;
-  const submitError = createOrder.error?.message;
+  const isBusy = createOrder.isPending || uploadingPhotos;
+  const submitError = photoError ?? createOrder.error?.message;
 
   // ============================================================================
   // Success screen после публикации.
@@ -171,9 +223,9 @@ export default function NewOrderScreen() {
           <Pressable
             accessibilityRole="button"
             onPress={() => router.replace("/(tabs)/orders" as never)}
-            className="h-12 items-center justify-center rounded-md bg-primary active:opacity-80"
+            className="h-14 items-center justify-center rounded-full bg-primary active:opacity-80"
           >
-            <AppText weight="semibold" className="text-button" style={{ color: tc["on-primary"] }}>
+            <AppText weight="semibold" className="text-button-lg text-on-primary">
               К моим заказам
             </AppText>
           </Pressable>
@@ -211,32 +263,32 @@ export default function NewOrderScreen() {
       <ScreenHeader title="Новый заказ" onBack={goBack} />
 
       <ScrollView
-        contentContainerStyle={{ paddingBottom: insets.bottom + 96 }}
+        ref={scrollRef}
+        onScroll={onFormScroll}
+        scrollEventThrottle={16}
+        className="flex-1"
+        contentContainerStyle={{ paddingBottom: 28 }}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
         {/* Hero — единственный privacy-trust блок (Lock + объяснение что
             номер скрыт). Eyebrow + H1 + 3-step row удалены — контекст экрана
             самоочевиден из ScreenHeader title «Новый заказ». */}
-        <View className="px-6 pb-8">
-          {/* H1 «Опишите задачу — мастера отзовутся» удалён 2026-05-16 —
-              дублировал title ScreenHeader «Новый заказ». Контекст экрана
-              самоочевиден из header'а. */}
-
-          {/* Privacy-trust card — единственный info-блок в hero (2026-05-16
-              user: «удали верхнюю часть, оставь только про Номер скрыт»).
-              3-step row «Получите отклики / Посмотрите цены / Выберите
-              подходящего» удалён — повторял очевидное про процесс. */}
-          <View className="mt-2 rounded-xl border border-hairline bg-canvas-soft">
-            <View className="flex-row items-start gap-3 px-5 py-5">
-              <View className="h-10 w-10 items-center justify-center rounded-full bg-ink">
-                <Lock size={18} weight="bold" color={tc["on-primary"]} />
+        <View className="px-6 pt-3 pb-7">
+          {/* Privacy-trust card — единственный info-блок в hero. Airbnb-стиль:
+              мягкая rounded-2xl плашка, ink-кружок с замком, заголовок body-md +
+              читаемое тело body-sm. Это блок-доверие (контент), не подзаголовок
+              экрана — §G не нарушается. */}
+          <View className="rounded-2xl border border-hairline bg-canvas-soft">
+            <View className="flex-row items-start gap-3.5 px-5 py-5">
+              <View className="h-11 w-11 items-center justify-center rounded-full bg-ink">
+                <Lock size={20} weight="bold" color={tc["on-primary"]} />
               </View>
               <View className="flex-1">
-                <AppText weight="semibold" className="text-body-sm text-ink">
+                <AppText weight="semibold" className="text-body-md text-ink">
                   Ваш номер скрыт от мастеров
                 </AppText>
-                <AppText className="mt-1 text-caption text-body">
+                <AppText className="mt-1.5 text-body-sm text-body">
                   Мастера присылают только цену и срок выполнения. Написать или позвонить вам они смогут лишь после того, как вы сами это разрешите.
                 </AppText>
               </View>
@@ -252,6 +304,9 @@ export default function NewOrderScreen() {
           isBusy={isBusy}
           categories={categories}
           cities={cities}
+          photosSlot={
+            <OrderPhotosPicker photos={photos} onChange={setPhotos} disabled={isBusy} />
+          }
         />
 
         {submitError && (
@@ -262,31 +317,41 @@ export default function NewOrderScreen() {
           </View>
         )}
 
-        {/* Submit — один primary CTA на всю ширину (back-кнопка вверху
-            закрывает «отмена» интент). Vercel pattern: один conversion target. */}
-        <View className="mt-10 px-6">
-          <Pressable
-            accessibilityRole="button"
-            // Анону кнопка тоже доступна — на нажатие открывается JIT-signup sheet.
-            // Disabled остаётся только когда форма невалидна или категории ещё грузятся.
-            disabled={!canSubmit || isBusy || !categories}
-            onPress={handlePublish}
-            className={`h-14 items-center justify-center rounded-full ${
-              canSubmit && !isBusy && categories
-                ? "bg-primary active:opacity-80"
-                : "bg-canvas-soft-2"
+      </ScrollView>
+
+      {/* Sticky bottom CTA bar (Airbnb / depop / google-maps паттерн): главная
+          кнопка всегда на виду в нижней панели с hairline-разделителем сверху,
+          а не теряется в конце прокрутки. Один conversion target. */}
+      <View
+        className="border-t border-hairline bg-canvas px-6 pt-3"
+        style={{ paddingBottom: insets.bottom + 12 }}
+      >
+        <Pressable
+          accessibilityRole="button"
+          // Анону кнопка тоже доступна — на нажатие открывается JIT-signup sheet.
+          // Disabled остаётся только когда форма невалидна или категории ещё грузятся.
+          disabled={!canSubmit || isBusy || !categories}
+          onPress={handlePublish}
+          className={`h-14 items-center justify-center rounded-full ${
+            canSubmit && !isBusy && categories
+              ? "bg-primary active:opacity-80"
+              : "bg-canvas-soft-2"
+          }`}
+        >
+          <AppText
+            weight="semibold"
+            className={`text-button-lg ${
+              canSubmit && !isBusy && categories ? "text-on-primary" : "text-mute"
             }`}
           >
-            <AppText
-              weight="semibold"
-              className="text-button-lg"
-              style={{ color: canSubmit && !isBusy && categories ? tc["on-primary"] : tc.mute }}
-            >
-              {isBusy ? "Публикуем…" : !userId ? "Опубликовать заказ" : "Опубликовать заказ"}
-            </AppText>
-          </Pressable>
-        </View>
-      </ScrollView>
+            {uploadingPhotos
+              ? "Загружаем фото…"
+              : createOrder.isPending
+                ? "Публикуем…"
+                : "Опубликовать заказ"}
+          </AppText>
+        </Pressable>
+      </View>
 
       {/* JIT-signup sheet — открывается, если анон нажал «Опубликовать».
           После успешного login → автоматически публикует заказ. */}

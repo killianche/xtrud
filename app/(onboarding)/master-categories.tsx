@@ -20,6 +20,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
 import { OnboardingProgress } from "@/components/OnboardingProgress";
 import { useAuthSession } from "@/features/auth/use-auth-session";
+import { useExitOnboarding } from "@/features/auth/use-exit-onboarding";
 import { useCategoriesL1 } from "@/features/categories/use-categories-l1";
 import {
   type VisibleCategory,
@@ -47,6 +48,7 @@ export default function MasterCategoriesScreen() {
 
   const { session } = useAuthSession();
   const userId = session?.user?.id;
+  const { exit: exitOnboarding } = useExitOnboarding();
 
   const { data: visible, isLoading: visibleLoading } = useVisibleCategories();
   const { data: l1List, isLoading: l1Loading } = useCategoriesL1();
@@ -124,10 +126,10 @@ export default function MasterCategoriesScreen() {
 
   return (
     <View className="flex-1 bg-canvas" style={{ paddingTop: insets.top }}>
-      {/* Top bar: в onboarding — progress, в settings — back. */}
+      {/* Top bar: в onboarding — progress + кнопка «Отмена», в settings — back. */}
       {isOnboarding ? (
         <View className="py-4">
-          <OnboardingProgress step={2} total={4} />
+          <OnboardingProgress step={1} total={3} onCancel={exitOnboarding} />
         </View>
       ) : (
         <View className="flex-row items-center px-3 py-2">
@@ -143,13 +145,11 @@ export default function MasterCategoriesScreen() {
         </View>
       )}
 
-      {/* Header — компактный (раньше занимал много места) */}
+      {/* Header — без subtitle (design-quality §G). Хелпер «Выбрано N из 5» —
+          ниже под поиском, он динамический и заменяет статический сабтайтл. */}
       <View className="px-6 pb-3">
         <AppText weight="bold" className="text-display-sm tracking-tight text-ink">
           Ваши категории
-        </AppText>
-        <AppText className="mt-1 text-body-sm text-muted">
-          Выберите до {MAX_CATEGORIES} категорий — клиенты увидят вас в каждой.
         </AppText>
       </View>
 

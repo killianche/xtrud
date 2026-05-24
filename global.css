@@ -1,72 +1,15 @@
 /*
- * Шрифты — Vercel-based DESIGN system (с 2026-05-13).
- *
- * Geist (sans) + Geist Mono — основные шрифты.
- * Inter оставлен как fallback для native (через @expo-google-fonts/inter).
- *
- * Geist на web: variable webfont через jsdelivr (зеркало npm-пакета `geist`).
- * Geist на native: пока fallback на Inter — отдельной задачей `npm install geist`
- * + native font registration.
+ * Шрифты — СИСТЕМНЫЙ ШРИФТ (с 2026-05-23, решение владельца «супер стандартный
+ * и везде быстро открывающийся»). Ноль загрузки → мгновенный рендер, без флэша
+ * и без внешнего CDN:
+ *   - iOS/macOS/Safari → SF Pro;  Windows → Segoe UI;  Android → Roboto.
+ * Раньше был Geist (Vercel) с подгрузкой с jsdelivr — он тормозил первый показ.
+ * Выбор шрифта по назначению — в src/components/AppText.tsx и tailwind.config.ts.
  */
-
-/* Geist Variable (wght 100-900) */
-@font-face {
-  font-family: 'Geist';
-  font-style: normal;
-  font-weight: 100 900;
-  font-display: swap;
-  src: url('https://cdn.jsdelivr.net/npm/geist@1.4.2/dist/fonts/geist-sans/Geist-Variable.woff2') format('woff2-variations');
-}
-
-/* Geist Mono Variable */
-@font-face {
-  font-family: 'Geist Mono';
-  font-style: normal;
-  font-weight: 100 900;
-  font-display: swap;
-  src: url('https://cdn.jsdelivr.net/npm/geist@1.4.2/dist/fonts/geist-mono/GeistMono-Variable.woff2') format('woff2-variations');
-}
-
-/* Inter fallback (для native совместимости + если Geist не загрузится) */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
-/* Алиасы под RN-style имена шрифтов: AppText использует "Inter_400Regular" и т.д. */
-@font-face {
-  font-family: 'Inter_400Regular';
-  src: local('Inter'), local('Inter-Regular');
-  font-weight: 400;
-  font-style: normal;
-}
-@font-face {
-  font-family: 'Inter_500Medium';
-  src: local('Inter'), local('Inter-Medium');
-  font-weight: 500;
-  font-style: normal;
-}
-@font-face {
-  font-family: 'Inter_600SemiBold';
-  src: local('Inter'), local('Inter-SemiBold');
-  font-weight: 600;
-  font-style: normal;
-}
-@font-face {
-  font-family: 'Inter_700Bold';
-  src: local('Inter'), local('Inter-Bold');
-  font-weight: 700;
-  font-style: normal;
-}
-/* RN-style alias для display: на web AppText weight="display" получает Geist через
-   font-family resolved chain (Tailwind font-display = Geist в tailwind.config). */
-@font-face {
-  font-family: 'CalSans_600SemiBold';
-  src: local('Geist'), local('Cal Sans');
-  font-weight: 600;
-  font-style: normal;
-}
 
 /*
  * Дизайн-токены цветов как CSS-переменные.
@@ -185,22 +128,23 @@
 /* @generated:tokens-end */
 
 @layer base {
-  /* Кириллические OpenType-фичи Inter: cv11 — «к»/«л», ss01 — одностворчатая «а» */
-  html {
-    font-feature-settings: "cv11" 1, "ss01" 1;
+  /* Системный шрифт для всех веб-элементов вне AppText (инпуты, плейсхолдеры,
+     сырой DOM). SF Pro / Segoe / Roboto — у каждого устройства свой родной. */
+  html,
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   }
 
-  /* Дополняем tailwind-класс font-display feature settings и весом (font-family — из tailwind.config) */
+  /* Крупные заголовки (класс font-display) — полужирный вес. */
   .font-display {
     font-weight: 600;
-    font-feature-settings: "ss01" 1, "cv01" 1;
   }
 
-  /* Шрифтовые CSS-переменные (web-only; native использует fontFamily из tailwind.config) */
+  /* Шрифтовые CSS-переменные (web-only). */
   :root {
-    --font-sans: 'Inter';
-    --font-display: 'Cal Sans';
-    --font-heading: 'Cal Sans';
-    --font-mono: ui-monospace, 'SFMono-Regular', monospace;
+    --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --font-display: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --font-heading: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --font-mono: ui-monospace, "SFMono-Regular", "SF Mono", Menlo, Consolas, monospace;
   }
 }

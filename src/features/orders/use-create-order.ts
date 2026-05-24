@@ -16,6 +16,9 @@ export interface CreateOrderInput {
   clientId: string;
   l2Id: string;
   title: string;
+  /** Необязательное контактное имя, которое мастер увидит в заказе вместо
+   *  профиля заказчика. Пусто → NULL → покажем регистрационное имя. */
+  contactName?: string;
   description: string;
   cityId: string;
   district: string;
@@ -24,6 +27,8 @@ export interface CreateOrderInput {
   budgetKind: OrderPriceKind;
   /** Одно числовое значение в ₽. NULL для negotiable. */
   budgetValue: number | null;
+  /** Публичные URL фото заказа (до 5, обложка = [0]). Пусто = без фото. */
+  photoUrls?: string[];
 }
 
 export function useCreateOrder() {
@@ -31,17 +36,31 @@ export function useCreateOrder() {
 
   return useMutation({
     mutationFn: async (input: CreateOrderInput): Promise<{ id: string }> => {
+      // Description опционально (UI помечен «необязательно»). Если пустая
+      // строка — отправляем NULL вместо "" (миграция 0089 разрешает NULL и
+      // снимает min length=10).
+      const trimmedDesc = input.description?.trim() ?? "";
+      const trimmedName = input.contactName?.trim() ?? "";
       const payload: Database["public"]["Tables"]["orders"]["Insert"] = {
         client_id: input.clientId,
         l2_id: input.l2Id,
         title: input.title,
-        description: input.description,
-        // «Вся Ингушетия» = NULL (миграция 0045 сделала city_id nullable).
-        city_id: input.cityId === ALL_INGUSHETIA_CITY ? null : input.cityId,
+        // Пустое имя → NULL (при просмотре заказа покажем регистрационное).
+        contact_name: trimmedName.length === 0 ? null : trimmedName,
+        description: trimmedDesc.length === 0 ? null : trimmedDesc,
+        // city_id = NULL когда:
+        //   - выбрана «Вся Ингушетия» (миграция 0045 сделала city_id nullable);
+        //   - выбран район без города (LocationPicker позволяет «либо город,
+        //     либо район» — territориальный фильтр по district).
+        city_id:
+          input.cityId === ALL_INGUSHETIA_CITY || !input.cityId
+            ? null
+            : input.cityId,
         district: input.district || null,
         urgency: input.urgency,
         budget_kind: input.budgetKind,
         budget_value: input.budgetKind === "negotiable" ? null : input.budgetValue,
+        photo_urls: input.photoUrls && input.photoUrls.length > 0 ? input.photoUrls : [],
         status: "open",
       };
       const { data, error } = await supabase.from("orders").insert(payload).select("id").single();

@@ -12,6 +12,8 @@
  */
 
 import { useQuery } from "@tanstack/react-query";
+import { rankingSortValue } from "@/features/master-view/availability";
+import { shouldHideDemo } from "@/lib/demo-mode";
 import { supabase } from "@/lib/supabase";
 import type { Tables } from "@/types/database";
 
@@ -32,6 +34,7 @@ export type MasterInCategory = {
     | "team_size"
     | "availability_status"
     | "availability_until"
+    | "ranking_score"
     | "whatsapp_phone"
     | "whatsapp_same_as_phone"
   > | null;
@@ -55,6 +58,7 @@ type Row = {
     | "team_size"
     | "availability_status"
     | "availability_until"
+    | "ranking_score"
     | "whatsapp_phone"
     | "whatsapp_same_as_phone"
   > | null;
@@ -77,10 +81,10 @@ export function useMastersByL2(l2Id: string | null | undefined) {
           profile:master_profiles!master_categories_master_id_fkey (
             rating_overall_avg, rating_overall_count, closed_deals, experience_years, bio,
             account_type, team_size, availability_status, availability_until,
-            is_hidden_from_search,
+            ranking_score, is_hidden_from_search,
             whatsapp_phone, whatsapp_same_as_phone,
             user:users!master_profiles_user_id_fkey (
-              id, first_name, last_name, avatar_url, city_id, district
+              id, first_name, last_name, avatar_url, city_id, district, is_demo
             )
           )
           `,
@@ -89,12 +93,16 @@ export function useMastersByL2(l2Id: string | null | undefined) {
       if (error) throw error;
 
       // Sprint 0078: фильтруем мастеров, которые сами скрыли профиль через
-      // /profile/settings → «Скрыть профиль от клиентов». Делаем на клиенте
-      // после fetch — PostgREST embedded-filter синтаксис плохо сочетается
-      // с alias'ами FK. См. docs/lifecycle.md (privacy section TBD).
-      const filtered = (data ?? []).filter(
-        (r) => r.profile?.is_hidden_from_search !== true,
-      );
+      // /profile/settings → «Скрыть профиль от клиентов».
+      // Sprint 0092 P0-09: дополнительно скрываем demo-аккаунты в production
+      // (EXPO_PUBLIC_DEMO_MODE=false). Без этого реальные клиенты увидят
+      // 30 тестовых мастеров вперемешку.
+      const hideDemo = shouldHideDemo();
+      const filtered = (data ?? []).filter((r) => {
+        if (r.profile?.is_hidden_from_search === true) return false;
+        if (hideDemo && (r.profile as { user?: { is_demo?: boolean } } | null)?.user?.is_demo) return false;
+        return true;
+      });
 
       // Развёртываем nested user из profile → row.user (чтобы дальнейший код
       // работал с прежним shape).
@@ -120,6 +128,7 @@ export function useMastersByL2(l2Id: string | null | undefined) {
               team_size: r.profile.team_size,
               availability_status: r.profile.availability_status,
               availability_until: r.profile.availability_until,
+              ranking_score: r.profile.ranking_score,
               whatsapp_phone: r.profile.whatsapp_phone,
               whatsapp_same_as_phone: r.profile.whatsapp_same_as_phone,
             }
@@ -153,10 +162,22 @@ export function useMastersByL2(l2Id: string | null | undefined) {
         });
       }
 
+      // Сортировка по внутреннему рейтингу (MASTER_RANKING_PLAN.md Этап 1):
+      // ranking_score (отзывы + заполненность + отклики + активность + cold-start,
+      // считается ночным cron) + бонус доступности (быстрый фактор, «готов
+      // сегодня» поднимает мгновенно). Тай-брейк — закрытые сделки, затем стаж.
       list.sort((a, b) => {
-        const ra = a.profile?.rating_overall_avg ?? -1;
-        const rb = b.profile?.rating_overall_avg ?? -1;
-        if (rb !== ra) return rb - ra;
+        const sa = rankingSortValue(
+          a.profile?.ranking_score,
+          a.profile?.availability_status,
+          a.profile?.availability_until,
+        );
+        const sb = rankingSortValue(
+          b.profile?.ranking_score,
+          b.profile?.availability_status,
+          b.profile?.availability_until,
+        );
+        if (sb !== sa) return sb - sa;
         const da = a.profile?.closed_deals ?? 0;
         const db = b.profile?.closed_deals ?? 0;
         if (db !== da) return db - da;

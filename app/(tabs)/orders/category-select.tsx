@@ -114,7 +114,8 @@ export default function CategorySelectScreen() {
             placeholderTextColor="rgb(var(--mute) / 1)"
             className="flex-1 text-ink"
             style={{
-              fontFamily: "Geist, Inter, system-ui, sans-serif",
+              fontFamily:
+                '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
               fontSize: 20,
               fontWeight: "500",
               paddingVertical: 0,

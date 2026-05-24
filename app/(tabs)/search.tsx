@@ -1,38 +1,46 @@
 /**
- * Typeahead-поиск услуг — паттерн Яндекс.Услуги.
+ * Typeahead-поиск услуг — паттерн Profi.ru / Яндекс.Услуги.
  *
  * UX:
- *   1. Большой инпут (display-md, bold) + X-кнопка clear справа
- *   2. Тонкая hairline-линия под инпутом
- *   3. Banner «Возможно, вы искали: <flipped>» если RPC отдал результат после раскладки-fix
- *   4. Заголовок секции «Подходящие услуги или специалисты» (mute, sm)
- *   5. Список услуг — каждая в одну строку, semibold
- *      Подсветка совпавшей подстроки: **жирная чёрная**, остальная — серая mute.
+ *   1. Header с back-кнопкой + большим инпутом + X clear.
+ *   2. Пустой state (input length < 2):
+ *      - Если есть recent — chips «Недавние запросы» (с кнопкой «Очистить»)
+ *      - Chips «Популярные запросы» (из top_queries_7d или curated fallback)
+ *      - Под ними browse-list всех видимых категорий (как было раньше).
+ *   3. Search state (length ≥ 2):
+ *      - Banner «Возможно, вы искали: <flipped>» если RPC отдал flipped result
+ *      - Список результатов с bold-highlight совпадений + «Категория» badge
+ *      - Tap → /category/[l2_id] + push в recent history.
+ *   4. Empty state «Ничего не нашли» → подсказки + popular chips.
  *
- * **Источник данных (2026-05-16):**
- *   - Запрос пустой → `useSearchableServices` (browse-mode, плоский список L2+L3, ~60 записей).
- *   - Запрос ≥2 символов → `useSearchCategories` (RPC `search_categories`):
- *       synonym (`category_terms`) + FTS (`russian` tsvector) + trigram (`pg_trgm`)
- *       + раскладка-fix («jhjnf» → «работа»).
- *   Раньше использовался ТОЛЬКО client-side ILIKE — synonym/FTS/раскладка-fix
- *   были написаны в БД, но не вызывались из UI. Симптом: поиск «обои» давал 0,
- *   хотя synonym `обои → finishing` лежал в БД. См.
- *   `.claude/rules/connect-the-dots.md` — правило заведено по этому случаю.
+ * Логирование:
+ *   - Каждый debounced search-запрос (length ≥ 2) пишется в `search_queries_log`
+ *     через RPC `log_search_query(query, hits)` — fire-and-forget.
+ *   - Top-N запросов агрегируются server-side в `top_queries_7d` matview.
  *
- * Тап по строке → /category/[l2_id]. Если type=l3 → переход на ту же L2
- * (детальная фильтрация по l3 — отдельной задачей).
+ * Источник данных:
+ *   - Length < 2: `useSearchableServices` (плоский список L2+L3, in-memory).
+ *   - Length ≥ 2: `useSearchCategories` (RPC: synonym + FTS + trigram + раскладка).
+ *   - Popular chips: `usePopularQueries` (matview + fallback на category_terms).
  */
 
 import { useFocusEffect, useRouter } from "expo-router";
-import { CaretLeft, X } from "phosphor-react-native";
-import { useCallback, useMemo, useRef, useState } from "react";
-import { FlatList, Pressable, TextInput, View } from "react-native";
+import { CaretLeft, ClockCounterClockwise, TrendUp, X } from "phosphor-react-native";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { FlatList, Pressable, ScrollView, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
+import { useRecentSearches } from "@/features/categories/use-recent-searches";
+import {
+  useLogSearchQuery,
+  usePopularQueries,
+} from "@/features/categories/use-search-analytics";
 import { useSearchCategories } from "@/features/categories/use-search-categories";
 import { useSearchableServices } from "@/features/categories/use-searchable-services";
 import { highlightMatch } from "@/lib/highlight-match";
+import { useDebouncedValue } from "@/lib/use-debounced-value";
 import { useSafeBack } from "@/lib/use-safe-back";
+import { useThemeColors } from "@/lib/use-theme-color";
 
 interface SearchListItem {
   id: string;
@@ -44,14 +52,16 @@ interface SearchListItem {
 export default function SearchScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const tc = useThemeColors(["ink", "mute", "muted-soft"]);
   const [query, setQuery] = useState("");
   const inputRef = useRef<TextInput>(null);
-  // safeBack: deeplink/refresh → home (поиск открывается всегда из home).
   const goBack = useSafeBack("/" as const);
 
-  // Гарантированный autofocus + сброс query при каждом открытии экрана.
-  // RNW autoFocus иногда не срабатывает после navigation/cache — ручной
-  // .focus() через useFocusEffect перекрывает все edge-cases.
+  const { recent, push: pushRecent, clear: clearRecent } = useRecentSearches();
+  const popular = usePopularQueries(20);
+  const logQuery = useLogSearchQuery();
+
+  // autofocus + сброс query на каждое открытие экрана.
   useFocusEffect(
     useCallback(() => {
       setQuery("");
@@ -61,16 +71,17 @@ export default function SearchScreen() {
   );
 
   const trimmedQuery = query.trim();
-  const isBrowseMode = trimmedQuery.length < 2;
+  const debouncedQuery = useDebouncedValue(trimmedQuery, 200);
+  const isBrowseMode = debouncedQuery.length < 2;
 
-  // Browse-режим (пустой query / 1 символ) — плоский список всех видимых L2+L3.
-  // Не использует RPC: server-roundtrip на каждое нажатие тяжелее чем in-memory
-  // фильтр по 60 записям.
+  // Browse-режим — плоский список всех видимых L2+L3.
   const { data: services = [], isLoading: browseLoading } = useSearchableServices();
 
-  // Search-режим (≥2 символов) — RPC с synonym/FTS/trigram + раскладка-fix.
-  // RPC возвращает score-ranked hits; client-side фильтр не нужен.
-  const { data: searchResult, isLoading: searchLoading } = useSearchCategories(trimmedQuery, 20);
+  // Search-режим — RPC с synonym/FTS/trigram + раскладка-fix.
+  const { data: searchResult, isLoading: searchLoading } = useSearchCategories(
+    debouncedQuery,
+    20,
+  );
 
   const results: SearchListItem[] = useMemo(() => {
     if (isBrowseMode) {
@@ -94,9 +105,33 @@ export default function SearchScreen() {
   const wasFlipped = !isBrowseMode && (searchResult?.wasFlipped ?? false);
   const flippedQuery = !isBrowseMode ? (searchResult?.flippedQuery ?? null) : null;
 
+  // Логируем каждый завершённый search-запрос (после debounce) — один
+  // INSERT за запрос. Игнорируем browse-mode (length < 2).
+  const loggedQueryRef = useRef<string>("");
+  useEffect(() => {
+    if (isBrowseMode || searchLoading) return;
+    if (debouncedQuery === loggedQueryRef.current) return;
+    loggedQueryRef.current = debouncedQuery;
+    logQuery.mutate({
+      query: debouncedQuery,
+      hits: searchResult?.hits.length ?? 0,
+    });
+  }, [isBrowseMode, searchLoading, debouncedQuery, searchResult, logQuery]);
+
+  const onPickQuery = (q: string) => {
+    setQuery(q);
+    // autofocus → пользователь видит откуда взялась подсказка
+    inputRef.current?.focus();
+  };
+
+  const onResultPress = (item: SearchListItem) => {
+    pushRecent(debouncedQuery);
+    router.push(`/category/${item.l2_id}` as never);
+  };
+
   return (
     <View className="flex-1 bg-canvas" style={{ paddingTop: insets.top }}>
-      {/* Header: back-кнопка — выйти со страницы поиска. Drag-handle убран. */}
+      {/* Header: back-кнопка */}
       <View className="px-3 py-2">
         <Pressable
           accessibilityRole="button"
@@ -109,10 +144,7 @@ export default function SearchScreen() {
         </Pressable>
       </View>
 
-      {/* Большой инпут + X clear.
-          NOTE: X-кнопка позиционируется absolute справа (а не как flex-sibling)
-          — в react-native-web TextInput с flex-1 растягивается за пределы
-          контейнера, не оставляя места sibling'у. */}
+      {/* Большой инпут + X clear */}
       <View className="px-5 mt-4">
         <View className="relative">
           <TextInput
@@ -125,12 +157,13 @@ export default function SearchScreen() {
             returnKeyType="search"
             className="text-ink"
             style={{
-              fontFamily: "Geist, Inter, system-ui, sans-serif",
+              fontFamily:
+                '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
               fontWeight: "600",
               fontSize: 28,
               lineHeight: 36,
               paddingVertical: 4,
-              paddingRight: 44, // место под X-кнопку справа
+              paddingRight: 44,
             }}
           />
           {query.length > 0 && (
@@ -147,12 +180,9 @@ export default function SearchScreen() {
         </View>
       </View>
 
-      {/* Hairline под инпутом. */}
       <View className="mx-5 h-px bg-hairline" />
 
-      {/* Banner «Возможно, вы искали ...» — Google-pattern. Появляется когда
-          исходный query 0 хитов, а RPC нашёл flipped (например, набрал «jhjnf»
-          в латинской раскладке — реально хотел «работа»). */}
+      {/* Banner раскладки-fix */}
       {wasFlipped && flippedQuery ? (
         <View className="mx-5 mt-3 rounded-md border border-hairline bg-canvas-soft px-3 py-2">
           <AppText className="text-caption text-mute">
@@ -164,30 +194,132 @@ export default function SearchScreen() {
         </View>
       ) : null}
 
-      {/* Список услуг. Пустой query → browse (все категории), есть query →
-          фильтр с bold-подсветкой совпадений. */}
-      {isLoading ? (
+      {/* Контент */}
+      {isBrowseMode ? (
+        <ScrollView
+          keyboardShouldPersistTaps="handled"
+          contentContainerStyle={{
+            paddingBottom: insets.bottom + 24,
+          }}
+          showsVerticalScrollIndicator={false}
+        >
+          {/* Недавние запросы — chip row, only когда есть */}
+          {recent.length > 0 ? (
+            <View className="mt-4 px-5">
+              <View className="flex-row items-center justify-between">
+                <View className="flex-row items-center gap-1.5">
+                  <ClockCounterClockwise
+                    size={14}
+                    weight="bold"
+                    color={tc["muted-soft"]}
+                  />
+                  <AppText
+                    weight="mono"
+                    className="text-mono-caption text-mute uppercase tracking-widest"
+                  >
+                    Недавние
+                  </AppText>
+                </View>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Очистить историю"
+                  onPress={clearRecent}
+                  hitSlop={8}
+                  className="active:opacity-60"
+                >
+                  <AppText weight="medium" className="text-caption text-mute">
+                    Очистить
+                  </AppText>
+                </Pressable>
+              </View>
+              <View className="mt-3 flex-row flex-wrap gap-2">
+                {recent.map((q) => (
+                  <ChipQuery key={`rec-${q}`} label={q} onPress={() => onPickQuery(q)} />
+                ))}
+              </View>
+            </View>
+          ) : null}
+
+          {/* Блок «Популярные» скрыт по фидбэку юзера 2026-05-21.
+              Хук usePopularQueries оставлен (см. ниже), чтобы вернуть блок
+              можно было быстро — восстановить рендер из git history. */}
+
+          {/* Browse-list всех видимых L2+L3 — раньше был всегда, теперь
+              как «все категории» под chip-cloud. */}
+          {browseLoading ? (
+            <View className="mt-6 px-5">
+              {Array.from({ length: 6 }).map((_, i) => (
+                // biome-ignore lint/suspicious/noArrayIndexKey: skeleton row
+                <View key={i} className="py-3">
+                  <View className="h-5 w-2/3 rounded bg-canvas-soft-2" />
+                </View>
+              ))}
+            </View>
+          ) : results.length > 0 ? (
+            <>
+              <View className="mt-8 px-5">
+                <AppText
+                  weight="mono"
+                  className="text-mono-caption text-mute uppercase tracking-widest"
+                >
+                  Все категории
+                </AppText>
+              </View>
+              <View className="px-5">
+                {results.map((item) => (
+                  <ResultRow
+                    key={`${item.type}-${item.id}`}
+                    item={item}
+                    highlightQuery=""
+                    onPress={() => onResultPress(item)}
+                  />
+                ))}
+              </View>
+            </>
+          ) : null}
+        </ScrollView>
+      ) : isLoading ? (
         <View className="px-5 mt-4">
           {Array.from({ length: 6 }).map((_, i) => (
-            // biome-ignore lint/suspicious/noArrayIndexKey: stable position-based
+            // biome-ignore lint/suspicious/noArrayIndexKey: skeleton row
             <View key={i} className="py-3">
               <View className="h-5 w-2/3 rounded bg-canvas-soft-2" />
             </View>
           ))}
         </View>
       ) : results.length === 0 ? (
-        <View className="flex-1 items-center justify-center px-8">
+        <ScrollView
+          keyboardShouldPersistTaps="handled"
+          contentContainerStyle={{
+            paddingTop: 32,
+            paddingHorizontal: 24,
+            paddingBottom: insets.bottom + 24,
+          }}
+        >
           <AppText weight="bold" className="text-title-lg text-ink text-center">
             Ничего не нашли
           </AppText>
           <AppText className="mt-2 text-body-md text-mute text-center">
-            Попробуйте другое слово — «сантехник», «плиточник», «электрик».
+            Попробуйте другую формулировку или выберите из популярных:
           </AppText>
-        </View>
+          {popular.data && popular.data.length > 0 ? (
+            <View className="mt-6 flex-row flex-wrap gap-2 justify-center">
+              {popular.data.slice(0, 12).map((p) => (
+                <ChipQuery
+                  key={`empty-${p.query}`}
+                  label={p.query}
+                  onPress={() => onPickQuery(p.query)}
+                />
+              ))}
+            </View>
+          ) : null}
+        </ScrollView>
       ) : (
         <>
           <View className="px-5 mt-6">
-            <AppText className="text-body-sm text-mute">Подходящие услуги или специалисты</AppText>
+            <AppText className="text-body-sm text-mute">
+              Подходящие услуги или специалисты
+            </AppText>
           </View>
           <FlatList
             data={results}
@@ -196,40 +328,94 @@ export default function SearchScreen() {
             contentContainerStyle={{
               paddingHorizontal: 20,
               paddingTop: 8,
-              // home-indicator safe-area + воздух (24). Без +bottom список
-              // подрезает последние строки на iPhone X+.
               paddingBottom: insets.bottom + 24,
             }}
             renderItem={({ item }) => {
-              // Для wasFlipped подсвечиваем flippedQuery (по нему искали), а не
-              // оригинальный набор-в-неправильной-раскладке.
-              const highlightQuery = wasFlipped && flippedQuery ? flippedQuery : query;
-              const segments = highlightMatch(item.name_ru, highlightQuery);
+              const highlightQuery =
+                wasFlipped && flippedQuery ? flippedQuery : debouncedQuery;
               return (
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel={item.name_ru}
-                  onPress={() => router.push(`/category/${item.l2_id}` as never)}
-                  className="py-3 active:opacity-60"
-                >
-                  <AppText className="text-body-lg" numberOfLines={1}>
-                    {segments.map((seg, idx) => (
-                      <AppText
-                        // biome-ignore lint/suspicious/noArrayIndexKey: stable segment index
-                        key={idx}
-                        weight={seg.match ? "semibold" : "regular"}
-                        className={seg.match ? "text-ink" : "text-mute"}
-                      >
-                        {seg.text}
-                      </AppText>
-                    ))}
-                  </AppText>
-                </Pressable>
+                <ResultRow
+                  item={item}
+                  highlightQuery={highlightQuery}
+                  onPress={() => onResultPress(item)}
+                />
               );
             }}
           />
         </>
       )}
     </View>
+  );
+}
+
+// ============================================================================
+// ChipQuery — pill для recent / popular / empty-state suggestions.
+// ============================================================================
+
+function ChipQuery({ label, onPress }: { label: string; onPress: () => void }) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      onPress={onPress}
+      className="h-9 flex-row items-center rounded-pill border border-hairline bg-canvas-soft px-3.5 active:opacity-70"
+    >
+      <AppText weight="medium" className="text-body-sm text-ink">
+        {label}
+      </AppText>
+    </Pressable>
+  );
+}
+
+// ============================================================================
+// ResultRow — строка результата (browse + search).
+// ============================================================================
+
+function ResultRow({
+  item,
+  highlightQuery,
+  onPress,
+}: {
+  item: SearchListItem;
+  highlightQuery: string;
+  onPress: () => void;
+}) {
+  const segments = highlightQuery
+    ? highlightMatch(item.name_ru, highlightQuery)
+    : [{ text: item.name_ru, match: false }];
+  const isCategory = item.type === "l2";
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={item.name_ru}
+      onPress={onPress}
+      className="py-3 flex-row items-center gap-3 active:opacity-60"
+    >
+      <AppText className="flex-1 text-body-lg" numberOfLines={1}>
+        {segments.map((seg, idx) => (
+          <AppText
+            // biome-ignore lint/suspicious/noArrayIndexKey: stable segment index
+            key={idx}
+            weight={seg.match ? "semibold" : "regular"}
+            className={
+              highlightQuery
+                ? seg.match
+                  ? "text-ink"
+                  : "text-mute"
+                : "text-ink"
+            }
+          >
+            {seg.text}
+          </AppText>
+        ))}
+      </AppText>
+      {isCategory ? (
+        <View className="rounded-pill bg-canvas-soft-2 px-2.5 py-1">
+          <AppText weight="semibold" className="text-caption text-mute">
+            Категория
+          </AppText>
+        </View>
+      ) : null}
+    </Pressable>
   );
 }

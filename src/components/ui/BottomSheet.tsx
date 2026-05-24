@@ -26,12 +26,12 @@
  * LocationFilterSheet и т.п.), удалить можно после очистки.
  */
 
-import { ChevronLeft } from "lucide-react-native";
+import { CaretLeft } from "phosphor-react-native";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import { Animated, Modal, Platform, Pressable, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
-import { useColorScheme } from "@/hooks/use-color-scheme";
+import { useColorScheme, useDomColorScheme } from "@/hooks/use-color-scheme";
 import { darkColors, lightColors } from "@/lib/colors";
 import { useThemeColors } from "@/lib/use-theme-color";
 
@@ -66,8 +66,20 @@ export function BottomSheet({
   // CSS-vars `rgb(var(--X))` теряются в portal'е react-native-web Modal
   // (Modal рендерится вне основного DOM-дерева). Резолвим ВСЕ нужные цвета
   // вручную из палитры — иначе title и текст невидимы на canvas-фоне.
-  const { colorScheme } = useColorScheme();
+  //
+  // ВАЖНО: на web используем `useDomColorScheme()` (читает фактический
+  // `<html class>` через MutationObserver), а не `useColorScheme()` из Zustand.
+  // Причина — Zustand persist гидрируется async, и в момент первого открытия
+  // sheet'а preference может ещё быть default `system` → matchMedia вернёт
+  // OS-тему (часто dark), хотя `+html.tsx` theme-guard уже поставил light
+  // на `<html>`. Inline-палитра расходится с CSS-vars дочерних `bg-canvas`
+  // → «светлая тема, тёмный sheet». User feedback 2026-05-19.
   const isWeb = Platform.OS === "web";
+  // Один хук используется на обеих платформах — на native он попадёт в
+  // SSR-fallback ('light'), что нам не важно, потому что ниже мы возьмём `tc.*`.
+  const domScheme = useDomColorScheme();
+  const { colorScheme: nativeScheme } = useColorScheme();
+  const colorScheme = isWeb ? domScheme : nativeScheme;
   const palette = colorScheme === "dark" ? darkColors : lightColors;
   const sheetBgColor = isWeb ? palette.canvas : tc.canvas;
   const sheetInkColor = isWeb ? palette.ink : tc.ink;
@@ -105,8 +117,16 @@ export function BottomSheet({
       onRequestClose={onClose}
       statusBarTranslucent
     >
-      {/* Full-screen контейнер. Без backdrop'а — лист сам занимает viewport. */}
+      {/* Full-screen контейнер. Без backdrop'а — лист сам занимает viewport.
+          className="dark" / "" — на web Modal портал может оказаться вне корня
+          с .dark классом → CSS-vars (`rgb(var(--canvas-soft))`) у детей резолвятся
+          по светлой палитре, в то время как inline-цвета (sheetBgColor) — по
+          dark. Получается несогласованная смесь: тёмный bg + светлый accent-soft
+          (синеватый). Фикс — явно прокинуть `dark` класс на обёртку, чтобы
+          NativeWind резолвил все vars в этом поддереве через `.dark` селектор.
+          User feedback 2026-05-16: «в светлой теме неправильные цвета». */}
       <Animated.View
+        className={colorScheme === "dark" ? "dark" : ""}
         style={{
           flex: 1,
           backgroundColor: sheetBgColor,
@@ -145,7 +165,7 @@ export function BottomSheet({
                 borderRadius: 24,
               })}
             >
-              <ChevronLeft size={28} strokeWidth={2.25} color={sheetInkColor} />
+              <CaretLeft size={26} weight="bold" color={sheetInkColor} />
             </Pressable>
             <View style={{ flex: 1, minWidth: 0 }}>
               {title ? (

@@ -32,6 +32,7 @@ out/
 # Builds
 build/
 dist/
+dist_next/
 
 # Env / secrets — НИКОГДА не коммитим
 .env
@@ -78,3 +79,12 @@ memory/
 # Claude Code локальные настройки — личные, не команды
 .claude/settings.local.json
 .claude/scheduled_tasks.lock
+
+# Локальные бэкапы для отката дизайна — git сам версия истории, дубли не нужны
+.design-backups/
+
+# Скретч-референсы (HTML-дампы Linear и т.п.) — не проектные артефакты
+Linear *.html
+
+# Исходник-дроп фото (скопирован в assets/illustrations/order-bg.jpg)
+sss.jpg

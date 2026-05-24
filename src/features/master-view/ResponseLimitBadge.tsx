@@ -47,10 +47,15 @@ export function ResponseLimitBadge({ variant = "pill" }: ResponseLimitBadgeProps
 
   // ============== PILL variant ==============
   if (variant === "pill") {
-    const text =
-      used === 0 ? `${max} откликов сегодня` : `${used} из ${max} откликов`;
+    // Всегда показываем «сколько отправлено из лимита» (used/max), включая 0:
+    // «0 из 5 откликов», «1 из 5 откликов» … (фидбэк владельца 2026-05-24 —
+    // раньше при used===0 был особый текст «5 откликов сегодня», путал).
+    const text = `${used} из ${max} откликов`;
     return (
-      <View className="flex-row items-center gap-1.5 self-start rounded-pill bg-canvas-soft border border-hairline px-3 py-1.5">
+      // Без self-start — бейдж центрируется по вертикали вместе с логотипом
+      // (родитель в TopBar — items-center), а не «висит» в верхнем углу.
+      // bg-canvas (не canvas-soft) — чистый контурный pill без серой заливки.
+      <View className="flex-row items-center gap-1.5 rounded-pill bg-canvas border border-hairline px-3 py-1.5">
         <Lightning size={12} weight="fill" color={iconColor} />
         <AppText weight="medium" className="text-caption text-ink">
           {text}

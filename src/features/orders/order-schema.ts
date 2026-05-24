@@ -46,7 +46,7 @@ export function urgencyLabel(u: (typeof orderUrgencyOptions)[number]): string {
     case "this_month":
       return "В этом месяце";
     case "flexible":
-      return "Неважно";
+      return "Не срочно";
   }
 }
 
@@ -81,20 +81,36 @@ export function formatPrice(kind: OrderPriceKind, value: number | null): string 
   }
 }
 
-export const createOrderSchema = z.object({
-  l2Id: z.string().min(1, "Выберите категорию"),
-  title: z.string().min(5, "Минимум 5 символов").max(120, "Максимум 120 символов"),
-  // description — необязательное. Пустая строка допустима.
-  description: z.string().max(2000, "Максимум 2000 символов"),
-  // cityId: либо id города из таблицы cities, либо "all" для «Вся Ингушетия»
-  // (на submit конвертируется в null). Должно быть выбрано (.min(1)) — чтобы
-  // клиент явно сделал выбор, а не оставил пустое.
-  cityId: z.string().min(1, "Выберите город"),
-  district: z.string().max(60, "Максимум 60 символов"),
-  urgency: z.enum(orderUrgencyOptions),
-  budgetKind: z.enum(orderPriceKindOptions),
-  /** Одно числовое значение цены. NULL для negotiable. */
-  budgetValue: z.number().int().min(0).nullable(),
-});
+export const createOrderSchema = z
+  .object({
+    l2Id: z.string().min(1, "Выберите категорию"),
+    title: z.string().min(5, "Минимум 5 символов").max(120, "Максимум 120 символов"),
+    // contactName — необязательное имя, которое мастер увидит в заказе вместо
+    // профиля заказчика. Пустая строка допустима (тогда покажем имя из
+    // регистрации). Телефон НЕ собираем — модель «номер скрыт» не меняется.
+    contactName: z.string().max(80, "Максимум 80 символов"),
+    // description — необязательное. Пустая строка допустима.
+    description: z.string().max(2000, "Максимум 2000 символов"),
+    // cityId: либо id города из таблицы cities, либо "all" для «Вся Ингушетия»
+    // (на submit конвертируется в null), либо "" (тогда выбран район — см. ниже).
+    // Валидация «либо город, либо район» — в superRefine ниже.
+    cityId: z.string(),
+    district: z.string().max(60, "Максимум 60 символов"),
+    urgency: z.enum(orderUrgencyOptions),
+    budgetKind: z.enum(orderPriceKindOptions),
+    /** Одно числовое значение цены. NULL для negotiable. */
+    budgetValue: z.number().int().min(0).nullable(),
+  })
+  .superRefine((val, ctx) => {
+    // Локация обязательна — должен быть либо город (включая "all"=Вся
+    // Ингушетия), либо район. LocationPicker делает их взаимоисключающими.
+    if (!val.cityId && !val.district) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["cityId"],
+        message: "Выберите город или район",
+      });
+    }
+  });
 
 export type CreateOrderFormValues = z.infer<typeof createOrderSchema>;

@@ -6,7 +6,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { CaretLeft } from "phosphor-react-native";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import {
   ActivityIndicator,
@@ -22,11 +22,22 @@ import { useAuthSession } from "@/features/auth/use-auth-session";
 import { useVisibleCategories } from "@/features/categories/use-visible-categories";
 import { useCities } from "@/features/cities/use-cities";
 import { OrderFormBody } from "@/features/orders/OrderFormBody";
+import {
+  type LocalOrderPhoto,
+  OrderPhotosPicker,
+} from "@/features/orders/OrderPhotosPicker";
 import { type CreateOrderFormValues, createOrderSchema } from "@/features/orders/order-schema";
 import { useOrderDetail } from "@/features/orders/use-order-detail";
 import { useUpdateOrder } from "@/features/orders/use-update-order";
+import { uploadOrderPhotosBatch } from "@/lib/image-upload";
 import { useSafeBack } from "@/lib/use-safe-back";
+import { useScrollRestoration } from "@/lib/use-scroll-restoration";
 import { useThemeColor } from "@/lib/use-theme-color";
+
+/** Это уже загруженное (remote) фото — оставляем URL как есть, не перезагружаем. */
+function isRemotePhoto(uri: string): boolean {
+  return /^https?:/i.test(uri);
+}
 
 export default function EditOrderScreen() {
   const insets = useSafeAreaInsets();
@@ -47,6 +58,15 @@ export default function EditOrderScreen() {
   const goBack = useSafeBack(
     (orderId ? `/(tabs)/orders/${orderId}` : "/(tabs)/orders") as never,
   );
+  // Сохраняем позицию прокрутки при уходе на выбор категории и возвращаем
+  // её обратно — иначе на web форма прыгает в верх (use-scroll-restoration.ts).
+  const { ref: scrollRef, onScroll: onFormScroll } = useScrollRestoration();
+
+  // Фото заказа: смесь уже загруженных (remote URL) и только что добавленных
+  // (локальные). На сохранении грузим только новые, старые оставляем по URL.
+  const [photos, setPhotos] = useState<LocalOrderPhoto[]>([]);
+  const [uploadingPhotos, setUploadingPhotos] = useState(false);
+  const [photoError, setPhotoError] = useState<string | null>(null);
 
   const isOwner = !!userId && !!order && order.client_id === userId;
   const isEditable = !!order && order.status === "open";
@@ -62,6 +82,7 @@ export default function EditOrderScreen() {
     defaultValues: {
       l2Id: "",
       title: "",
+      contactName: "",
       description: "",
       cityId: "",
       district: "",
@@ -78,7 +99,9 @@ export default function EditOrderScreen() {
     reset({
       l2Id: order.l2_id,
       title: order.title,
-      description: order.description,
+      contactName: order.contact_name ?? "",
+      // description в БД nullable (миграция 0090) — в форме это пустая строка.
+      description: order.description ?? "",
       // city_id=null означает «Вся Ингушетия» — конвертируем обратно в "all" UI-значение
       cityId: order.city_id ?? "all",
       district: order.district ?? "",
@@ -86,33 +109,72 @@ export default function EditOrderScreen() {
       budgetKind: order.budget_kind,
       budgetValue: order.budget_value,
     });
+    // Существующие фото → в picker как remote-элементы (width/height неизвестны,
+    // не нужны: их не пересжимаем). Порядок сохраняем (обложка = индекс 0).
+    const existing = order.photo_urls ?? [];
+    setPhotos(
+      existing.map((url, i) => ({
+        id: `remote-${i}-${url}`,
+        uri: url,
+        width: 0,
+        height: 0,
+      })),
+    );
   }, [order, reset]);
 
   const budgetKind = watch("budgetKind");
 
   const onSubmit = handleSubmit(async (values) => {
     if (!orderId || !userId) return;
+    setPhotoError(null);
     try {
+      // 1. Грузим только НОВЫЕ (локальные) фото; старые остаются по своим URL.
+      const locals = photos.filter((p) => !isRemotePhoto(p.uri));
+      let uploadedByOrder: string[] = [];
+      if (locals.length > 0) {
+        setUploadingPhotos(true);
+        const results = await uploadOrderPhotosBatch(
+          userId,
+          locals.map((p) => ({ uri: p.uri, width: p.width, height: p.height })),
+        );
+        setUploadingPhotos(false);
+        if (results.some((r) => !r.ok)) {
+          setPhotoError("Не удалось загрузить фото. Попробуйте ещё раз.");
+          return;
+        }
+        uploadedByOrder = results.flatMap((r) => (r.ok ? [r.publicUrl] : []));
+      }
+
+      // 2. Собираем итоговый список В ПОРЯДКЕ picker'а: remote — как есть,
+      //    локальные — заменяем на свежезагруженный publicUrl. Обложка = индекс 0.
+      let li = 0;
+      const photoUrls = photos.map((p) =>
+        isRemotePhoto(p.uri) ? p.uri : (uploadedByOrder[li++] ?? p.uri),
+      );
+
       await updateOrder.mutateAsync({
         orderId,
         clientId: userId,
         l2Id: values.l2Id,
         title: values.title,
+        contactName: values.contactName,
         description: values.description,
         cityId: values.cityId,
         district: values.district,
         urgency: values.urgency,
         budgetKind: values.budgetKind,
         budgetValue: values.budgetKind === "negotiable" ? null : values.budgetValue,
+        photoUrls,
       });
       goBack();
     } catch (_e) {
+      setUploadingPhotos(false);
       // через updateOrder.error
     }
   });
 
-  const isBusy = updateOrder.isPending;
-  const submitError = updateOrder.error?.message;
+  const isBusy = updateOrder.isPending || uploadingPhotos;
+  const submitError = photoError ?? updateOrder.error?.message;
 
   return (
     <KeyboardAvoidingView
@@ -156,6 +218,9 @@ export default function EditOrderScreen() {
 
       {!isLoading && order && isOwner && isEditable && (
         <ScrollView
+          ref={scrollRef}
+          onScroll={onFormScroll}
+          scrollEventThrottle={16}
           contentContainerStyle={{ paddingBottom: insets.bottom + 24 }}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
@@ -176,6 +241,9 @@ export default function EditOrderScreen() {
             isBusy={isBusy}
             categories={categories}
             cities={cities}
+            photosSlot={
+              <OrderPhotosPicker photos={photos} onChange={setPhotos} disabled={isBusy} />
+            }
           />
 
           {submitError && (
@@ -198,7 +266,11 @@ export default function EditOrderScreen() {
               }`}
             >
               <AppText weight="semibold" className="text-button text-on-primary">
-                {isBusy ? "Сохраняем..." : "Сохранить"}
+                {uploadingPhotos
+                  ? "Загружаем фото…"
+                  : updateOrder.isPending
+                    ? "Сохраняем…"
+                    : "Сохранить"}
               </AppText>
             </Pressable>
           </View>

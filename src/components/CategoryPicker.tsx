@@ -18,7 +18,7 @@
  */
 
 import { useRouter } from "expo-router";
-import { CaretDown, MagnifyingGlass } from "phosphor-react-native";
+import { CaretRight, MagnifyingGlass } from "phosphor-react-native";
 import { useEffect, useMemo } from "react";
 import { Pressable, View } from "react-native";
 import { AppText } from "@/components/AppText";
@@ -70,22 +70,24 @@ export function CategoryPicker({ value, onChange, disabled, error }: CategoryPic
         accessibilityLabel="Выбрать категорию"
         disabled={disabled}
         onPress={() => router.push("/(tabs)/orders/category-select" as never)}
-        className={`mt-2 flex-row items-center gap-2 h-12 rounded-md bg-canvas border px-3 active:opacity-70 ${
+        className={`mt-2 flex-row items-center gap-3 h-14 rounded-lg bg-canvas border px-4 active:opacity-70 ${
           error ? "border-error" : "border-hairline"
         } ${disabled ? "opacity-50" : ""}`}
       >
         {selected ? (
           <SelectedDisplay icon={selected.icon} name={selected.name_ru} />
         ) : (
-          <View className="flex-1 flex-row items-center gap-2">
+          <View className="flex-1 flex-row items-center gap-3">
             <View className="text-mute">
-              <MagnifyingGlass size={18} weight="bold" color="currentColor" />
+              <MagnifyingGlass size={20} weight="bold" color="currentColor" />
             </View>
             <AppText className="flex-1 text-body-md text-mute">Выберите категорию</AppText>
           </View>
         )}
+        {/* CaretRight (а не CaretDown) — visual-signal, что тап открывает
+            отдельную страницу выбора, как у LocationPicker. */}
         <View className="text-mute">
-          <CaretDown size={18} weight="bold" color="currentColor" />
+          <CaretRight size={18} weight="bold" color="currentColor" />
         </View>
       </Pressable>
       {error && (
@@ -102,7 +104,7 @@ function SelectedDisplay({ icon, name }: { icon: string; name: string }) {
   return (
     <View className="flex-1 flex-row items-center gap-3">
       <View className="text-ink">
-        <Icon size={20} weight="bold" color="currentColor" />
+        <Icon size={22} weight="bold" color="currentColor" />
       </View>
       <AppText weight="semibold" className="flex-1 text-body-md text-ink" numberOfLines={1}>
         {name}

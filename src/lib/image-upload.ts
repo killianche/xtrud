@@ -10,7 +10,7 @@
 
 import * as ImageManipulator from "expo-image-manipulator";
 import * as ImagePicker from "expo-image-picker";
-import { Alert } from "react-native";
+import { Alert, Platform } from "react-native";
 import { calcResizedDimensions } from "./image-resize";
 import { supabase } from "./supabase";
 
@@ -104,6 +104,15 @@ export async function pickImage(opts: {
   aspect?: [number, number];
   title?: string;
 }): Promise<PickedImage | null> {
+  // На web Alert.alert с custom buttons не работает (react-native-web Alert
+  // не поддерживает onPress callbacks — кнопки игнорируются). Поэтому
+  // chooseSource() никогда не возвращает выбор, picker не запускается.
+  // Sprint 2026-05-20: на web используем <input type="file"> напрямую —
+  // браузер сам показывает системный picker (фото / файлы / drag-drop).
+  if (Platform.OS === "web") {
+    return await pickImageWeb();
+  }
+
   const source = await chooseSource(opts.title);
   if (!source) return null;
 
@@ -143,6 +152,88 @@ function chooseSource(title?: string): Promise<PickSource | null> {
       { text: "Галерея", onPress: () => resolve("library") },
       { text: "Отмена", style: "cancel", onPress: () => resolve(null) },
     ]);
+  });
+}
+
+/**
+ * Web picker через `<input type="file">`. Создаёт скрытый input, открывает
+ * системный диалог выбора файла, читает выбранное изображение через
+ * createObjectURL → возвращает PickedImage с реальными width/height
+ * (через Image() для замера размеров до resize).
+ *
+ * Resolve(null) если пользователь отменил выбор (фокус вернулся на window
+ * без change-event'а) или выбрал не-изображение.
+ *
+ * На web aspect-crop (1:1 / 4:3) не применяется — браузерный input не
+ * умеет кропить. Кроп делается уже в resizeImage через ImageManipulator,
+ * который умеет работать с blob URL'ами на web.
+ */
+function pickImageWeb(): Promise<PickedImage | null> {
+  return new Promise((resolve) => {
+    if (typeof document === "undefined") {
+      resolve(null);
+      return;
+    }
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = "image/*";
+    input.style.position = "fixed";
+    input.style.top = "-9999px";
+    input.style.left = "-9999px";
+    input.style.opacity = "0";
+
+    // Браузеры не вызывают onchange при отмене диалога — но вызывают
+    // 'cancel' event (новый стандарт, Chrome 113+) либо просто фокус
+    // возвращается. Используем оба пути с timeout fallback.
+    let settled = false;
+    const cleanup = () => {
+      if (input.parentNode) input.parentNode.removeChild(input);
+    };
+    const settle = (value: PickedImage | null) => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      resolve(value);
+    };
+
+    input.addEventListener("change", () => {
+      const file = input.files?.[0];
+      if (!file) {
+        settle(null);
+        return;
+      }
+      const objectUrl = URL.createObjectURL(file);
+      // Получаем размеры через Image() — нужны для resize-расчётов.
+      const img = new Image();
+      img.onload = () => {
+        settle({ uri: objectUrl, width: img.naturalWidth, height: img.naturalHeight });
+      };
+      img.onerror = () => {
+        URL.revokeObjectURL(objectUrl);
+        Alert.alert("Не удалось прочитать изображение", "Попробуйте другой файл.");
+        settle(null);
+      };
+      img.src = objectUrl;
+    });
+
+    // 'cancel' event — Chrome 113+ / Safari 17+. На старых браузерах
+    // fallback ниже через focus-event срабатывает.
+    input.addEventListener("cancel", () => settle(null));
+
+    // Fallback: если пользователь закрыл диалог без выбора и change/cancel
+    // не сработали, ловим возврат фокуса на window — даём 300мс на change
+    // event (он может прийти позже focus'а), затем считаем отменой.
+    const onFocus = () => {
+      window.removeEventListener("focus", onFocus);
+      setTimeout(() => settle(null), 500);
+    };
+    // Регистрируем focus-handler ПОСЛЕ клика — иначе он сработает на open.
+    setTimeout(() => {
+      window.addEventListener("focus", onFocus);
+    }, 0);
+
+    document.body.appendChild(input);
+    input.click();
   });
 }
 
@@ -201,7 +292,7 @@ export async function resizeImage(
  * чтобы клиент не показывал старое фото из кэша после re-upload.
  */
 export async function uploadImage(opts: {
-  bucket: "avatars" | "portfolio";
+  bucket: "avatars" | "portfolio" | "order-photos";
   path: string;
   localUri: string;
   contentType: string;
@@ -238,7 +329,7 @@ async function readAsArrayBuffer(uri: string): Promise<ArrayBuffer> {
 }
 
 export async function deleteFromBucket(opts: {
-  bucket: "avatars" | "portfolio";
+  bucket: "avatars" | "portfolio" | "order-photos";
   path: string;
 }): Promise<void> {
   const { error } = await supabase.storage.from(opts.bucket).remove([opts.path]);
@@ -324,29 +415,18 @@ function randomId(): string {
 // Multi-pick + batch upload (портфолио)
 // ============================================================================
 
-/** Multi-pick из галереи: до `maxCount` фото за раз. Камера не поддерживает
- *  multi-select, поэтому всегда library. По фидбэку user 2026-05-15:
- *  «добавлять до 50 фотографий», «удобно работать». */
+/** Multi-pick из галереи для портфолио: до `maxCount` фото за раз.
+ *
+ *  2026-05-24: теперь делегирует общему `pickMultipleImages` — у того есть
+ *  отдельная ВЕБ-ветка (`<input type="file" multiple>`) с корректной обработкой
+ *  отмены и замером размеров, и ограничение `slice(0, maxCount)`. Раньше эта
+ *  функция вызывала `launchImageLibraryAsync` напрямую — на сайте это работало
+ *  ненадёжно (как у заказов до унификации). Камера multi-select не умеет,
+ *  поэтому всегда галерея/файлы. */
 export async function pickMultiplePortfolioImages(
   maxCount: number,
 ): Promise<PickedImage[]> {
-  const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
-  if (!perm.granted) {
-    Alert.alert("Нет доступа к фото", "Разрешите доступ в настройках приложения.");
-    return [];
-  }
-  const result = await ImagePicker.launchImageLibraryAsync({
-    mediaTypes: ["images"],
-    allowsMultipleSelection: true,
-    selectionLimit: maxCount,
-    quality: 1,
-  });
-  if (result.canceled) return [];
-  return result.assets.map((a) => ({
-    uri: a.uri,
-    width: a.width,
-    height: a.height,
-  }));
+  return pickMultipleImages(maxCount);
 }
 
 /** Одно фото для портфолио — resize + crop + upload. Используется batch'ем
@@ -402,6 +482,170 @@ export async function uploadPortfolioBatch(
           ok: false,
           error: e instanceof Error ? e.message : String(e),
         };
+      }
+      done++;
+      opts?.onProgress?.(done, items.length);
+    }
+  }
+
+  const workers = Array.from(
+    { length: Math.min(concurrency, items.length) },
+    () => worker(),
+  );
+  await Promise.all(workers);
+  return results;
+}
+
+// ============================================================================
+// Order photos — мульти-выбор (cross-platform) + batch upload в order-photos
+//
+// Фото заказа (до 5) грузятся в bucket order-photos в момент ПУБЛИКАЦИИ заказа
+// (не сразу при выборе). Why: к моменту publish мы гарантированно знаем userId
+// (для анона он появляется после JIT-signup), путь {userId}/{uuid}.jpg проходит
+// RLS, и нет «осиротевших» файлов при отмене формы. В форме до публикации
+// показываются локальные миниатюры (мгновенно), сама загрузка — при «Опубликовать».
+// ============================================================================
+
+/** Web-вариант мульти-выбора через <input type="file" multiple>. Возвращает до
+ *  maxCount изображений с реальными размерами. Resolve([]) при отмене. */
+function pickMultipleImagesWeb(maxCount: number): Promise<PickedImage[]> {
+  return new Promise((resolve) => {
+    if (typeof document === "undefined") {
+      resolve([]);
+      return;
+    }
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = "image/*";
+    input.multiple = true;
+    input.style.position = "fixed";
+    input.style.top = "-9999px";
+    input.style.left = "-9999px";
+    input.style.opacity = "0";
+
+    let settled = false;
+    const cleanup = () => {
+      if (input.parentNode) input.parentNode.removeChild(input);
+    };
+    const settle = (value: PickedImage[]) => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      resolve(value);
+    };
+
+    input.addEventListener("change", async () => {
+      const files = Array.from(input.files ?? []).slice(0, maxCount);
+      if (files.length === 0) {
+        settle([]);
+        return;
+      }
+      const measured = await Promise.all(
+        files.map(
+          (file) =>
+            new Promise<PickedImage | null>((res) => {
+              const objectUrl = URL.createObjectURL(file);
+              const img = new Image();
+              img.onload = () =>
+                res({ uri: objectUrl, width: img.naturalWidth, height: img.naturalHeight });
+              img.onerror = () => {
+                URL.revokeObjectURL(objectUrl);
+                res(null);
+              };
+              img.src = objectUrl;
+            }),
+        ),
+      );
+      settle(measured.filter((m): m is PickedImage => m !== null));
+    });
+
+    input.addEventListener("cancel", () => settle([]));
+    const onFocus = () => {
+      window.removeEventListener("focus", onFocus);
+      setTimeout(() => settle([]), 500);
+    };
+    setTimeout(() => {
+      window.addEventListener("focus", onFocus);
+    }, 0);
+
+    document.body.appendChild(input);
+    input.click();
+  });
+}
+
+/** Cross-platform мульти-выбор изображений (до maxCount). На web —
+ *  <input multiple>, на мобайле — системный пикер галереи с selectionLimit. */
+export async function pickMultipleImages(maxCount: number): Promise<PickedImage[]> {
+  if (maxCount <= 0) return [];
+  if (Platform.OS === "web") {
+    return pickMultipleImagesWeb(maxCount);
+  }
+  const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+  if (!perm.granted) {
+    Alert.alert("Нет доступа к фото", "Разрешите доступ в настройках приложения.");
+    return [];
+  }
+  const result = await ImagePicker.launchImageLibraryAsync({
+    mediaTypes: ["images"],
+    allowsMultipleSelection: true,
+    selectionLimit: maxCount,
+    quality: 1,
+  });
+  if (result.canceled) return [];
+  return result.assets.slice(0, maxCount).map((a) => ({
+    uri: a.uri,
+    width: a.width,
+    height: a.height,
+  }));
+}
+
+/** Один кадр заказа → resize (1920px) → upload в order-photos/{userId}/{uuid}.jpg.
+ *  Без жёсткого aspect-crop: в карусели заказа фото показываются через cover. */
+async function processAndUploadOrderPhoto(
+  userId: string,
+  picked: PickedImage,
+): Promise<{ path: string; publicUrl: string }> {
+  const resized = await resizeImage(picked, PORTFOLIO_PRESET);
+  const filename = `${randomId()}.${PORTFOLIO_PRESET.extension}`;
+  return await uploadImage({
+    bucket: "order-photos",
+    path: `${userId}/${filename}`,
+    localUri: resized.uri,
+    contentType: PORTFOLIO_PRESET.contentType,
+    upsert: false,
+  });
+}
+
+/** Batch upload фото заказа. Сохраняет порядок входа (обложка = items[0]).
+ *  Возвращает результаты по индексам: { ok, publicUrl } | { ok:false, error }. */
+export async function uploadOrderPhotosBatch(
+  userId: string,
+  items: PickedImage[],
+  opts?: {
+    concurrency?: number;
+    onProgress?: (done: number, total: number) => void;
+  },
+): Promise<
+  Array<{ ok: true; path: string; publicUrl: string } | { ok: false; error: string }>
+> {
+  const concurrency = opts?.concurrency ?? 3;
+  const results: Array<
+    { ok: true; path: string; publicUrl: string } | { ok: false; error: string }
+  > = new Array(items.length);
+  let done = 0;
+  let cursor = 0;
+
+  async function worker() {
+    while (true) {
+      const i = cursor++;
+      if (i >= items.length) return;
+      const item = items[i];
+      if (!item) return;
+      try {
+        const r = await processAndUploadOrderPhoto(userId, item);
+        results[i] = { ok: true, ...r };
+      } catch (e) {
+        results[i] = { ok: false, error: e instanceof Error ? e.message : String(e) };
       }
       done++;
       opts?.onProgress?.(done, items.length);

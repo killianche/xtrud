@@ -19,6 +19,7 @@ const ICON_MAP: Record<string, string> = {
   doors: "twemoji/door",
   "locks-security": "fluent-color/lock-shield-24",
   painting: "fluent-color/paint-brush-24",
+  wallpaper: "twemoji/scroll",  // рулон = обои (Sprint 0083 split из painting)
   drywall: "twemoji/paintbrush",          // штукатурка = кисть/нанесение слоя
   tiling: "twemoji/chequered-flag",       // плитка/мозаика = клетчатая сетка
   floors: "twemoji/black-square-button",  // пол-плитка/паркет = квадрат

@@ -1,0 +1,271 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>xtrud — маркетплейс мастеров в Республике Ингушетия</title>
+    <meta
+      name="description"
+      content="Опишите задачу — мастера откликнутся за час. Сантехника, ремонт, отделка, электрика, уборка, авто, бьюти и десятки других категорий услуг в Ингушетии."
+    />
+    <meta name="theme-color" content="#0a0a0a" />
+
+    <!-- Open Graph -->
+    <meta property="og:title" content="xtrud — мастера Ингушетии" />
+    <meta
+      property="og:description"
+      content="Маркетплейс услуг в Республике Ингушетия. Найдите мастера за минуты."
+    />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://xtrud.ru" />
+    <meta property="og:image" content="https://xtrud.ru/og.png" />
+    <meta property="og:locale" content="ru_RU" />
+
+    <link rel="icon" href="/favicon.ico" />
+    <style>
+      :root {
+        --canvas: #fafafa;
+        --ink: #0a0a0a;
+        --body: #404040;
+        --mute: #737373;
+        --hairline: #e5e5e5;
+        --canvas-soft: #f5f5f5;
+        --primary: #0a0a0a;
+        --on-primary: #ffffff;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --canvas: #0a0a0a;
+          --ink: #fafafa;
+          --body: #d4d4d4;
+          --mute: #a3a3a3;
+          --hairline: #262626;
+          --canvas-soft: #171717;
+          --primary: #fafafa;
+          --on-primary: #0a0a0a;
+        }
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        background: var(--canvas);
+        color: var(--ink);
+        font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        line-height: 1.5;
+        -webkit-font-smoothing: antialiased;
+      }
+      .container {
+        max-width: 720px;
+        margin: 0 auto;
+        padding: 48px 24px 96px;
+      }
+      .logo {
+        font-weight: 700;
+        font-size: 22px;
+        letter-spacing: -0.02em;
+      }
+      h1 {
+        margin: 64px 0 16px;
+        font-size: 44px;
+        line-height: 1.1;
+        letter-spacing: -0.03em;
+        font-weight: 700;
+      }
+      .lead {
+        font-size: 18px;
+        color: var(--body);
+        margin: 0 0 32px;
+        max-width: 560px;
+      }
+      .cta-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin: 32px 0 56px;
+      }
+      .cta {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        height: 44px;
+        padding: 0 20px;
+        border-radius: 10px;
+        background: var(--primary);
+        color: var(--on-primary);
+        text-decoration: none;
+        font-weight: 600;
+        font-size: 15px;
+        transition: opacity 0.15s;
+      }
+      .cta:active {
+        opacity: 0.75;
+      }
+      .cta.ghost {
+        background: transparent;
+        color: var(--ink);
+        border: 1px solid var(--hairline);
+      }
+      .cta.disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
+        pointer-events: none;
+      }
+      .badge {
+        display: inline-block;
+        padding: 4px 10px;
+        border: 1px solid var(--hairline);
+        border-radius: 999px;
+        font-size: 12px;
+        color: var(--mute);
+        margin-bottom: 16px;
+      }
+      .section {
+        margin-top: 56px;
+      }
+      .section-eyebrow {
+        font-family: "Geist Mono", ui-monospace, "SF Mono", Consolas, monospace;
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        color: var(--mute);
+      }
+      .section h2 {
+        margin: 8px 0 16px;
+        font-size: 26px;
+        letter-spacing: -0.02em;
+        font-weight: 600;
+      }
+      .features {
+        display: grid;
+        gap: 16px;
+        grid-template-columns: 1fr 1fr;
+      }
+      @media (max-width: 600px) {
+        .features {
+          grid-template-columns: 1fr;
+        }
+      }
+      .feature {
+        padding: 20px;
+        border: 1px solid var(--hairline);
+        background: var(--canvas-soft);
+        border-radius: 12px;
+      }
+      .feature h3 {
+        margin: 0 0 6px;
+        font-size: 15px;
+        font-weight: 600;
+      }
+      .feature p {
+        margin: 0;
+        color: var(--body);
+        font-size: 14px;
+      }
+      .links {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 24px;
+        margin-top: 40px;
+        padding-top: 32px;
+        border-top: 1px solid var(--hairline);
+      }
+      .links a {
+        color: var(--ink);
+        text-decoration: none;
+        font-size: 14px;
+        font-weight: 500;
+      }
+      .links a:hover {
+        text-decoration: underline;
+      }
+      footer {
+        margin-top: 48px;
+        color: var(--mute);
+        font-size: 12px;
+      }
+      footer p {
+        margin: 4px 0;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="logo">xtrud</div>
+
+      <span class="badge" style="margin-top: 56px">в разработке · Республика Ингушетия</span>
+
+      <h1>Найдутся мастера</h1>
+      <p class="lead">
+        Опишите задачу — мастера откликнутся за час. Сантехника, ремонт, отделка, электрика,
+        уборка, авто, бьюти и десятки других категорий услуг.
+      </p>
+
+      <div class="cta-row">
+        <a class="cta disabled" href="#">App Store</a>
+        <a class="cta disabled" href="#">Google Play</a>
+        <a class="cta ghost" href="/support">Поддержка</a>
+      </div>
+
+      <div class="section">
+        <div class="section-eyebrow">КАК ЭТО РАБОТАЕТ</div>
+        <h2>Простой маркетплейс услуг</h2>
+        <div class="features">
+          <div class="feature">
+            <h3>1. Опишите задачу</h3>
+            <p>2-3 предложения, фото, категория, ваш город. Без долгих анкет.</p>
+          </div>
+          <div class="feature">
+            <h3>2. Получите отклики</h3>
+            <p>Мастера предложат цену и сроки. Лимит 5 в день — без спама.</p>
+          </div>
+          <div class="feature">
+            <h3>3. Выберите и договоритесь</h3>
+            <p>Чат с понравившимся мастером — фото, гео, согласование деталей.</p>
+          </div>
+          <div class="feature">
+            <h3>4. Оцените друг друга</h3>
+            <p>Двусторонние отзывы — рейтинг помогает следующим клиентам.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-eyebrow">ДОВЕРИЕ И БЕЗОПАСНОСТЬ</div>
+        <h2>Прозрачность каждой стороны</h2>
+        <div class="features">
+          <div class="feature">
+            <h3>Верификация мастеров</h3>
+            <p>Зелёный значок «паспорт подтверждён» на профиле — добровольная процедура.</p>
+          </div>
+          <div class="feature">
+            <h3>Номер скрыт до сделки</h3>
+            <p>Переписка только в чате xtrud. Номер не утекает к рекламе и спамерам.</p>
+          </div>
+          <div class="feature">
+            <h3>Жалоба в один тап</h3>
+            <p>Спам, мошенничество, оскорбления — модерация разбирает в 24 часа.</p>
+          </div>
+          <div class="feature">
+            <h3>Удаление аккаунта</h3>
+            <p>Один тап в Настройках — данные обезличиваются немедленно.</p>
+          </div>
+        </div>
+      </div>
+
+      <nav class="links">
+        <a href="/privacy">Политика конфиденциальности</a>
+        <a href="/terms">Условия использования</a>
+        <a href="/support">Поддержка</a>
+      </nav>
+
+      <footer>
+        <p>© xtrud, 2026. Маркетплейс услуг в Республике Ингушетия.</p>
+        <p>Сервис не оказывает услуги сам и не является стороной сделки между клиентом и мастером.</p>
+      </footer>
+    </div>
+  </body>
+</html>

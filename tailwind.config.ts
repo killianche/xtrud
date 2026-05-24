@@ -145,13 +145,30 @@ const config: Config = {
         snug: "-0.6px",
       },
       fontFamily: {
-        // Geist — основной sans (Vercel). На native подтянем через @expo-google-fonts/geist.
-        // На web — CSS @font-face через global.css (по образцу Inter).
-        sans: ["Geist", "Inter_400Regular", "system-ui", "sans-serif"],
-        // Display = тот же Geist в SemiBold (Vercel не делит на 2 семейства).
-        display: ["Geist", "Inter_700Bold", "system-ui", "sans-serif"],
-        // Mono для метрик в карточках (xtrud override — Vercel character).
-        mono: ["Geist Mono", "ui-monospace", "SFMono-Regular", "Menlo", "monospace"],
+        // Системный шрифт (с 2026-05-23): SF Pro (Apple) / Segoe (Windows) /
+        // Roboto (Android). Ноль загрузки, мгновенный рендер. Заменил Geist,
+        // который тянулся с внешнего CDN (jsdelivr) и грузился медленно.
+        sans: [
+          "-apple-system",
+          "BlinkMacSystemFont",
+          "Segoe UI",
+          "Roboto",
+          "Helvetica Neue",
+          "Arial",
+          "sans-serif",
+        ],
+        // Display = тот же системный sans (вес 600 задаётся в AppText/CSS).
+        display: [
+          "-apple-system",
+          "BlinkMacSystemFont",
+          "Segoe UI",
+          "Roboto",
+          "Helvetica Neue",
+          "Arial",
+          "sans-serif",
+        ],
+        // Mono для метрик в карточках — системный моноширинный.
+        mono: ["ui-monospace", "SFMono-Regular", "SF Mono", "Menlo", "Consolas", "monospace"],
       },
     },
   },

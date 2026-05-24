@@ -3,6 +3,9 @@
  *
  * Логика fallback'ов (по убыванию приоритета):
  *   1. `url` → expo-image с placeholder
+ *      Если загрузка фейлится (Safari + CORS / 404 / тайм-аут) → onError
+ *      переключает на инициалы/иконку (см. пункты 2-3). Это критично для
+ *      Safari, где expo-image без onError-fallback оставлял пустой кружок.
  *   2. инициалы из `name` → детерминированный пастельный фон по `seed`
  *   3. ни url, ни name → нейтральный кружок canvas-soft-2 + Lucide User в mute
  *
@@ -11,9 +14,10 @@
 
 import { Image, type ImageContentFit } from "expo-image";
 import { User } from "phosphor-react-native";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { View } from "react-native";
 import { AppText } from "@/components/AppText";
+import { realAvatarUrl } from "@/lib/avatar";
 
 export type AvatarSize = "xs" | "sm" | "md" | "lg" | "xl";
 
@@ -48,8 +52,15 @@ export function Avatar({ url, name, seed, size = "md", contentFit = "cover" }: A
   const initials = useMemo(() => extractInitials(name), [name]);
   const paletteClass = useMemo(() => pickPaletteClass(seed ?? name ?? ""), [seed, name]);
   const resolvedUrl = useMemo(() => normalizeAvatarUrl(url), [url]);
+  // Safari-fallback: если фото не загрузилось (CORS / 404 / неподдерж. формат)
+  // — переключаемся на инициалы/иконку. Сбрасываем state при смене URL,
+  // чтобы новая попытка не была заблокирована предыдущей ошибкой.
+  const [imageFailed, setImageFailed] = useState(false);
+  useMemo(() => {
+    setImageFailed(false);
+  }, [resolvedUrl]);
 
-  if (resolvedUrl) {
+  if (resolvedUrl && !imageFailed) {
     return (
       <View
         className="overflow-hidden bg-canvas-soft-2"
@@ -60,6 +71,11 @@ export function Avatar({ url, name, seed, size = "md", contentFit = "cover" }: A
           style={{ width: "100%", height: "100%" }}
           contentFit={contentFit}
           transition={150}
+          onError={() => setImageFailed(true)}
+          // Аватары в списках мастеров — критичный визуальный элемент,
+          // приоритет «high» поднимает их в очереди network-requests
+          // (важно на Safari mobile с медленным 3G/4G).
+          priority="high"
         />
       </View>
     );
@@ -106,20 +122,12 @@ function extractInitials(name?: string | null): string {
   return (first + last).toUpperCase();
 }
 
-// DiceBear avataaars-сидовые URL — это placeholder из demo-fixture, а не
-// загруженное пользователем фото. Перегенерируем в стиле shapes (моно-гео,
-// ближе к Vercel-эстетике) с тем же seed → внешний вид стабилен между сессиями.
-// Экспортируется для переиспользования в местах с прямым <Image source={uri}>
-// (master/[id] hero etc), где Avatar компонент не подходит по форме.
-export function normalizeAvatarUrl(url?: string | null): string | null {
-  if (!url) return null;
-  if (url.includes("api.dicebear.com") && url.includes("/avataaars/")) {
-    return url
-      .replace("/avataaars/", "/shapes/")
-      .replace(/[?&]backgroundColor=[^&]*/g, "");
-  }
-  return url;
-}
+// Любой `api.dicebear.com` URL — это сгенерированная заглушка (demo-fixture,
+// seed-fallback), а не загруженное пользователем фото → возвращаем null, чтобы
+// <Avatar> показал ИНИЦИАЛЫ (решение владельца 2026-05-23, см. src/lib/avatar.ts).
+// Имя `normalizeAvatarUrl` сохранено для обратной совместимости импортов
+// (favorites, master/[id]) — делегирует в единый realAvatarUrl.
+export const normalizeAvatarUrl = realAvatarUrl;
 
 function pickPaletteClass(seed: string): (typeof PALETTE_CLASSES)[number] {
   if (!seed) return PALETTE_CLASSES[0];

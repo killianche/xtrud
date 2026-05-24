@@ -40,7 +40,6 @@ export function LoginWall({ open, onClose, reason }: LoginWallProps) {
       open={open}
       onClose={onClose}
       title="Войдите чтобы продолжить"
-      subtitle={reason ?? "Регистрация занимает 30 секунд по номеру телефона."}
     >
       <View className="gap-3 mt-2">
         <Button size="lg" fullWidth onPress={handleLogin}>

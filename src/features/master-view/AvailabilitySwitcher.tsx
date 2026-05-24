@@ -1,18 +1,36 @@
 /**
- * AvailabilitySwitcher — компонент для master home: мастер ставит/меняет
- * статус готовности (today / this_week / next_week / unavailable).
+ * AvailabilitySwitcher — мастер ставит/меняет статус готовности
+ * (today / this_week / next_week / unavailable).
  *
  * Один тап — RPC set_availability → оптимистичное обновление профиля.
- * Под активным статусом — countdown «до 06:00» или «до воскресенья».
+ *
+ * ── Редизайн 2026-05-24 (компактный выпадающий список) ─────────────────────
+ * Раньше 4 чипа в сетке 2×2 занимали много места в верхней сводке. По фидбэку
+ * владельца («сделать компактным, выпадающим списком») заменено на:
+ *   - свёрнутый триггер (точка статуса + текущий статус + caret) — одна строка;
+ *   - по тапу разворачивается inline-список из 4 вариантов (точка + подпись +
+ *     галочка на текущем); тап по варианту — выставляет статус и сворачивает.
+ * Inline-раскрытие (а не overlay/portal) — без z-index артефактов на web.
+ *
+ * ── Редизайн 2026-05-24 (часть верхней сводки «убрать лишнее») ──────────────
+ * Убран отдельный uppercase-заголовок «ГОТОВНОСТЬ К ЗАКАЗАМ» — лишний третий
+ * «голос» в сводке. Сам триггер с зелёной точкой и текстом «Готов сегодня»
+ * самоочевиден, отдельная шапка не нужна (design-quality §G — без шумных
+ * заголовков-секций над самоочевидным контролом). Countdown «до 06:00» теперь
+ * тихой подписью внутри триггер-строки справа, перед caret — не отдельной
+ * строкой-шапкой. Контрол стал единственным элементом блока.
  */
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Pressable, ScrollView, View } from "react-native";
+import { CaretDown, CaretUp, Check } from "phosphor-react-native";
+import { useState } from "react";
+import { Pressable, View } from "react-native";
 import { AppText } from "@/components/AppText";
 import { supabase } from "@/lib/supabase";
+import { useThemeColors } from "@/lib/use-theme-color";
 import {
   AVAILABILITY_DOT,
-  AVAILABILITY_SHORT,
+  AVAILABILITY_LABELS,
   type AvailabilityStatus,
   effectiveStatus,
   useSetAvailability,
@@ -43,13 +61,6 @@ function useMyAvailability(userId: string | undefined) {
   });
 }
 
-/** «след. неделе» → «След. неделе». Только первая буква в заглавную, остальное
- *  как есть (важно, потому что точка в «след.» сохраняется). */
-function capitalizeFirst(s: string): string {
-  if (!s) return s;
-  return (s.charAt(0).toUpperCase() ?? "") + s.slice(1);
-}
-
 function formatCountdown(until: string | null | undefined): string | null {
   if (!until) return null;
   const dt = new Date(until);
@@ -66,105 +77,97 @@ function formatCountdown(until: string | null | undefined): string | null {
   return `до ${dt.getDate()}.${String(dt.getMonth() + 1).padStart(2, "0")}`;
 }
 
+/** Цветная точка статуса. backgroundColor берётся из AVAILABILITY_DOT (переменная,
+ *  не литерал-hex в JSX → не нарушает design-enforcement §B). */
+function Dot({ color, dim }: { color: string; dim?: boolean }) {
+  return (
+    <View
+      style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: color, opacity: dim ? 0.6 : 1 }}
+    />
+  );
+}
+
 export function AvailabilitySwitcher({ userId }: { userId: string }) {
   const queryClient = useQueryClient();
   const { data: my } = useMyAvailability(userId);
   const setAvailability = useSetAvailability();
+  const tc = useThemeColors(["mute", "ink"]);
+  const [open, setOpen] = useState(false);
 
   const current = effectiveStatus(my?.availability_status, my?.availability_until);
   const countdown = formatCountdown(my?.availability_until);
 
-  const handlePress = (status: AvailabilityStatus) => {
+  const handlePick = (status: AvailabilityStatus) => {
+    setOpen(false);
     if (setAvailability.isPending) return;
     if (status === current) return;
     setAvailability.mutate(status, {
       onSuccess: () =>
-        queryClient.invalidateQueries({ queryKey: ["my-master-profile", userId, "availability"] }),
+        queryClient.invalidateQueries({
+          queryKey: ["my-master-profile", userId, "availability"],
+        }),
     });
   };
 
   return (
     <View>
-      {/* Header: «Готовность взять заказ» (раньше «Статус» — без контекста
-          мастер не понимал что именно переключают; user 2026-05-16: «готовность
-          взять заказ напиши, вместо статус»). + countdown в моно. */}
-      <View className="flex-row items-baseline justify-between">
-        <AppText weight="semibold" className="text-body-sm text-mute uppercase tracking-widest">
-          Готовность взять заказ
+      {/* Свёрнутый триггер — одна строка: статус + countdown тихой подписью +
+          caret. Без отдельного uppercase-заголовка над ним. */}
+      <Pressable
+        accessibilityRole="button"
+        accessibilityState={{ expanded: open }}
+        accessibilityLabel="Изменить готовность к заказам"
+        onPress={() => setOpen((v) => !v)}
+        disabled={setAvailability.isPending}
+        className="h-12 flex-row items-center gap-2.5 rounded-lg border border-hairline bg-canvas px-3.5 active:opacity-70"
+      >
+        <Dot color={AVAILABILITY_DOT[current]} />
+        <AppText weight="semibold" className="flex-1 text-body-md text-ink" numberOfLines={1}>
+          {AVAILABILITY_LABELS[current]}
         </AppText>
         {countdown ? (
-          <AppText weight="mono" className="text-mono-caption text-mute">
+          <AppText weight="mono" className="text-caption text-mute">
             {countdown}
           </AppText>
         ) : null}
-      </View>
+        {open ? (
+          <CaretUp size={18} weight="bold" color={tc.mute} />
+        ) : (
+          <CaretDown size={18} weight="bold" color={tc.mute} />
+        )}
+      </Pressable>
 
-      {/* Horizontal chip-row (game-style activity selector а-ля Strava/Fitness):
-          4 compact pill'а в одну строку, h-9, scrollable horizontal если узко.
-          Active = solid accent fill + bright dot + on-primary text (filled chip),
-          inactive = canvas-soft + outline dot + mute text. По фидбэку user
-          2026-05-16 «сделай в игровом стиле, компактнее» — заменил 2×2 grid
-          h-12 (~120px суммарно) на single row h-9 (~36px). */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={{ paddingTop: 12, paddingRight: 8 }}
-      >
-        <View className="flex-row gap-2">
-          {OPTIONS.map((status) => {
+      {/* Раскрытый список вариантов (inline, без overlay). */}
+      {open ? (
+        <View className="mt-1.5 overflow-hidden rounded-lg border border-hairline bg-canvas">
+          {OPTIONS.map((status, i) => {
             const isActive = status === current;
-            const dotColor = AVAILABILITY_DOT[status];
             return (
               <Pressable
                 key={status}
                 accessibilityRole="button"
                 accessibilityState={{ selected: isActive }}
-                onPress={() => handlePress(status)}
+                onPress={() => handlePick(status)}
                 disabled={setAvailability.isPending}
-                // Active: «приподнятый» surface — bg-canvas + лёгкая тень,
-                // без border-кольца. Inactive: bg-canvas-soft (погружён) +
-                // тонкий hairline. Контраст surface + bold text + bright dot.
-                // Фидбэк user 2026-05-16: «не нравится чёрная обводка».
-                className={`h-9 flex-row items-center gap-2 rounded-pill px-3.5 active:opacity-70 ${
-                  isActive
-                    ? "border border-hairline bg-canvas"
-                    : "border border-hairline bg-canvas-soft"
-                }`}
-                style={
-                  isActive
-                    ? {
-                        shadowColor: "#000",
-                        shadowOffset: { width: 0, height: 1 },
-                        shadowOpacity: 0.06,
-                        shadowRadius: 2,
-                        elevation: 1,
-                      }
-                    : undefined
-                }
+                className={`h-11 flex-row items-center gap-2.5 px-3.5 active:opacity-70 ${
+                  i > 0 ? "border-t border-hairline" : ""
+                } ${isActive ? "bg-canvas-soft" : ""}`}
               >
-                <View
-                  style={{
-                    width: 8,
-                    height: 8,
-                    borderRadius: 4,
-                    backgroundColor: dotColor,
-                    opacity: isActive ? 1 : 0.5,
-                  }}
-                />
+                <Dot color={AVAILABILITY_DOT[status]} dim={!isActive} />
                 <AppText
                   weight={isActive ? "semibold" : "medium"}
-                  className={`text-body-sm ${
-                    isActive ? "text-ink" : "text-mute"
-                  }`}
+                  className="flex-1 text-body-md text-ink"
                   numberOfLines={1}
                 >
-                  {capitalizeFirst(AVAILABILITY_SHORT[status])}
+                  {AVAILABILITY_LABELS[status]}
                 </AppText>
+                {isActive ? <Check size={18} weight="bold" color={tc.ink} /> : null}
               </Pressable>
             );
           })}
         </View>
-      </ScrollView>
+      ) : null}
+
       {setAvailability.isError ? (
         <AppText className="mt-2 text-caption text-error">
           Не удалось обновить статус. Попробуйте ещё раз.

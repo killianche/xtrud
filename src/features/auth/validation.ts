@@ -58,15 +58,19 @@ export function normalizePhone(input: string): string {
 
 /**
  * Zod-схема экрана phone.tsx.
- * Принимает на вход уже отформатированную строку (через formatPhoneMask).
- * Проверяет что после очистки осталось ровно 10 цифр.
+ *
+ * Sprint 2026-05-20: после введения CountryCodeSelect поле phone содержит
+ * ТОЛЬКО digits (без +N префикса). Минимум 6 цифр (соответствует самым
+ * коротким E.164 номерам). Жёсткой длины не задаём — разные страны имеют
+ * разные форматы. Точную проверку по country.digitsLength делает компонент
+ * на submit при необходимости; для UX-валидации минимум 6 цифр достаточно.
  */
 export const phoneFormSchema = z.object({
   phone: z
     .string()
     .min(1, "Введите номер телефона")
-    .refine((v) => digitsOnly(v).replace(/^[78]/, "").length === 10, {
-      message: "Введите номер в формате +7 XXX XXX-XX-XX",
+    .refine((v) => digitsOnly(v).length >= 6, {
+      message: "Введите корректный номер телефона",
     }),
 });
 

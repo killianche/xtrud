@@ -50,7 +50,6 @@ export interface LocationFilterSheetProps {
   value: LocSet;
   onApply: (next: ReadonlySet<LocSetItem>) => void;
   title?: string;
-  subtitle?: string;
 }
 
 type Mode = "cities" | "villages";
@@ -61,7 +60,6 @@ export function LocationFilterSheet({
   value,
   onApply,
   title = "Локация",
-  subtitle = "Выберите города и сёла",
 }: LocationFilterSheetProps) {
   const tc = useThemeColors(["ink", "mute", "on-primary"]);
 
@@ -114,7 +112,7 @@ export function LocationFilterSheet({
   // --- режим "cities" ---
   if (mode === "cities") {
     return (
-      <BottomSheet open={open} onClose={onClose} title={title} subtitle={subtitle} fullScreen>
+      <BottomSheet open={open} onClose={onClose} title={title} fullScreen>
         <ScrollView
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
@@ -211,7 +209,6 @@ export function LocationFilterSheet({
       open={open}
       onClose={onClose}
       title="Выбор сёл"
-      subtitle="Можно выбрать несколько"
       fullScreen
     >
       {/* MagnifyingGlass input */}

@@ -4,6 +4,7 @@
 // status='open' (после принятия отклика заказ заморожен по бизнес-логике).
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { ALL_INGUSHETIA_CITY } from "@/features/orders/order-schema";
 import { myOrdersKey } from "@/features/orders/use-my-orders";
 import { orderDetailKey } from "@/features/orders/use-order-detail";
 import { supabase } from "@/lib/supabase";
@@ -14,6 +15,9 @@ export interface UpdateOrderInput {
   clientId: string;
   l2Id: string;
   title: string;
+  /** Необязательное контактное имя (мастер видит его вместо профиля заказчика).
+   *  Пусто → NULL. */
+  contactName?: string;
   description: string;
   cityId: string;
   district: string;
@@ -22,6 +26,13 @@ export interface UpdateOrderInput {
   budgetKind: Database["public"]["Enums"]["order_price_kind"];
   /** Одно числовое значение в ₽. NULL для negotiable. */
   budgetValue: number | null;
+  /**
+   * Итоговый список URL фото (обложка = индекс 0). Уже включает и оставленные
+   * старые фото, и публичные URL только что загруженных новых — экран edit
+   * собирает его перед вызовом (см. app/(tabs)/orders/edit/[id].tsx). Если
+   * undefined — поле photo_urls в БД не трогаем (back-compat).
+   */
+  photoUrls?: string[];
 }
 
 export function useUpdateOrder() {
@@ -29,16 +40,30 @@ export function useUpdateOrder() {
 
   return useMutation({
     mutationFn: async (input: UpdateOrderInput) => {
+      // Те же правила нормализации, что и в use-create-order:
+      //  - description пустая → NULL (миграция 0090);
+      //  - city_id = NULL когда «Вся Ингушетия» или выбран только район;
+      //  - budget_value = NULL для negotiable.
+      const trimmedDesc = input.description?.trim() ?? "";
+      const trimmedName = input.contactName?.trim() ?? "";
       const payload: Database["public"]["Tables"]["orders"]["Update"] = {
         l2_id: input.l2Id,
         title: input.title,
-        description: input.description,
-        city_id: input.cityId,
+        contact_name: trimmedName.length === 0 ? null : trimmedName,
+        description: trimmedDesc.length === 0 ? null : trimmedDesc,
+        city_id:
+          input.cityId === ALL_INGUSHETIA_CITY || !input.cityId
+            ? null
+            : input.cityId,
         district: input.district || null,
         urgency: input.urgency,
         budget_kind: input.budgetKind,
         budget_value: input.budgetKind === "negotiable" ? null : input.budgetValue,
       };
+      // photo_urls трогаем только если экран его передал (edit с фото-блоком).
+      if (input.photoUrls !== undefined) {
+        payload.photo_urls = input.photoUrls;
+      }
       const { error } = await supabase.from("orders").update(payload).eq("id", input.orderId);
       if (error) throw error;
     },

@@ -63,6 +63,21 @@ export const PICKER_CITIES: readonly CityRecord[] = MAJOR_CITIES.filter(
   (c) => !c.hiddenInPicker,
 );
 
+/**
+ * 🚨 ПРАВИЛО (владелец 2026-05-24): Назрань и Магас — единая агломерация,
+ * ВЕЗДЕ показываются ОДНОЙ плашкой «Назрань · Магас» (id `nazran-magas`),
+ * никогда раздельно. Раздельные id `nazran` / `magas` остаются в БД только
+ * для legacy-lookup имён старых записей — но в любых списках выбора скрыты.
+ *
+ * `HIDDEN_PICKER_CITY_IDS` — id, которые надо прятать из ВСЕХ списков выбора
+ * города, включая БД-список `supabase.cities` (см. `useCities` — экран выбора
+ * локации заказа берёт города оттуда, поэтому фильтр нужен и там, не только в
+ * config-списке PICKER_CITIES).
+ */
+export const HIDDEN_PICKER_CITY_IDS: readonly string[] = MAJOR_CITIES.filter(
+  (c) => c.hiddenInPicker,
+).map((c) => c.id);
+
 /** Спец-id «парных» городов — для master-feed: заказ city_id='nazran-magas'
  *  виден мастерам Назрани И Магаса. См. follow-up в TASKS.md. */
 export const PAIR_CITIES: Record<string, readonly string[]> = {

@@ -9,8 +9,8 @@
  * («Войти и написать»), и сама эстетика «жирного круга» противоречит Vercel-
  * минимализму. Сделали 5-й таб обычной иконкой Plus + подпись «Создать».
  *
- * Активный таб: ink + filled icon (Phosphor weight="fill") + pill-подложка
- *                bg-canvas-soft-2 под иконкой.
+ * Активный таб: accent (фирменный синий) + filled icon (Phosphor weight="fill")
+ *                + pill-подложка bg-canvas-soft-2 под иконкой.
  * Неактивный:    mute + bold outline (Phosphor weight="bold").
  *
  * Icon set: Phosphor (2026-05-15) — заменил Lucide для большего «modern app»
@@ -22,7 +22,7 @@
 
 import type { BottomTabBarProps } from "@react-navigation/bottom-tabs";
 import { usePathname, useRouter } from "expo-router";
-import { MagnifyingGlass, PlusCircle } from "phosphor-react-native";
+import { MagnifyingGlass } from "phosphor-react-native";
 import { Platform, Pressable, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
@@ -32,9 +32,11 @@ import { useTabBarVisibility } from "@/lib/tabbar-visibility";
 import { triggerTabScrollReset } from "@/lib/tab-scroll-reset";
 import { useThemeColors } from "@/lib/use-theme-color";
 
-// Порядок таб-роутов в навбаре. Между orders и chats — синтетический таб
-// «Создать» (не expo-router screen, просто Pressable → /orders/new).
-const TAB_ORDER = ["index", "orders", "chats", "profile"] as const;
+// Порядок таб-роутов в навбаре. В центр между left/right вставляется
+// синтетический таб «Смотреть заказы» (не expo-router screen, просто Pressable
+// → /orders/search). Вкладка `cases` («Кейсы») показывается ТОЛЬКО мастеру
+// (фильтр isMasterRole в rightRoutes), у клиента её нет.
+const TAB_ORDER = ["index", "orders", "cases", "profile"] as const;
 const TAB_HEIGHT = 52; // icon-only — ужали с 60 (был запас под текст-лейбл)
 const isWeb = Platform.OS === "web";
 
@@ -42,7 +44,14 @@ export function TabBar({ state, descriptors, navigation }: BottomTabBarProps) {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const pathname = usePathname();
-  const tc = useThemeColors(["canvas", "canvas-soft-2", "hairline", "ink", "mute"]);
+  const tc = useThemeColors([
+    "canvas",
+    "canvas-soft-2",
+    "hairline",
+    "ink",
+    "mute",
+    "accent",
+  ]);
   const tabBarHidden = useTabBarVisibility((s) => s.hidden);
 
   // N2: кнопка «+ Создать заказ» — только для клиента. Мастер не создаёт
@@ -76,7 +85,12 @@ export function TabBar({ state, descriptors, navigation }: BottomTabBarProps) {
   const leftRoutes = orderedRoutes.filter(
     (r) => r.name === "index" || (r.name === "orders" && !isMasterRole),
   );
-  const rightRoutes = orderedRoutes.filter((r) => r.name === "chats" || r.name === "profile");
+  // Правая часть: «Кейсы» (только мастер — его портфолио работ) + «Профиль».
+  // У клиента вкладки «Кейсы» нет. Восстановлено 2026-05-22 (фидбэк user:
+  // «в нижнем меню у мастера должна быть кнопка Кейсы / Ваши работы»).
+  const rightRoutes = orderedRoutes.filter(
+    (r) => (r.name === "cases" && isMasterRole) || r.name === "profile",
+  );
 
   const renderTab = (route: (typeof state.routes)[number]) => {
     const descriptor = descriptors[route.key];
@@ -102,7 +116,7 @@ export function TabBar({ state, descriptors, navigation }: BottomTabBarProps) {
     const badgeBg = bsRaw?.backgroundColor ?? "#ee0000";
     const badgeTextColor = bsRaw?.color ?? "#ffffff";
 
-    const tabColorHex = isFocused ? tc.ink : tc.mute;
+    const tabColorHex = isFocused ? tc.accent : tc.mute;
     const iconColor = isWeb ? "currentColor" : tabColorHex;
 
     const onPress = () => {
@@ -128,7 +142,7 @@ export function TabBar({ state, descriptors, navigation }: BottomTabBarProps) {
         accessibilityRole="tab"
         accessibilityState={{ selected: isFocused }}
         accessibilityLabel={options.tabBarAccessibilityLabel ?? label}
-        className={isWeb ? (isFocused ? "text-ink" : "text-mute") : undefined}
+        className={isWeb ? (isFocused ? "text-accent" : "text-mute") : undefined}
         style={{
           flex: 1,
           alignItems: "center",
@@ -203,66 +217,43 @@ export function TabBar({ state, descriptors, navigation }: BottomTabBarProps) {
       {/* Левая часть. */}
       {leftRoutes.map(renderTab)}
 
-      {/* Центральный таб: для клиента — «+ Создать заказ», для мастера —
-          «🔍 Поиск заказов» (фидбэк user 2026-05-15: «отдельная кнопка
-          поиск в нижнем меню, заходя на которой все заказы сайта»).
-          Мастер не создаёт заказы; клиент не «ищет» бирже. */}
-      {isMasterRole ? (
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Поиск заказов"
-          accessibilityState={{ selected: isSearchActive }}
-          onPress={() => router.push("/orders/search" as never)}
-          className={isWeb ? (isSearchActive ? "text-ink" : "text-mute") : undefined}
+      {/* Центральный таб: «🔍 Смотреть заказы» (лента всех открытых заказов
+          сайта, /orders/search). Sprint 2026-05-20 — раньше для клиента тут
+          была «+ Создать заказ», но фидбэк юзера: «и клиент могут смотреть
+          заказы». Кнопка «Создать заказ» переехала в шапку /orders как
+          rightAction.
+          Mutex с табом «Заказы»: когда активен /orders/search, expo-router
+          считает фокус на родителе `orders` — поэтому таб «Заказы» в этом
+          случае НЕ должен подсвечиваться, активна только средняя кнопка
+          (см. логику isSearchActive выше). */}
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Смотреть заказы"
+        accessibilityState={{ selected: isSearchActive }}
+        onPress={() => router.push("/orders/search" as never)}
+        className={isWeb ? (isSearchActive ? "text-accent" : "text-mute") : undefined}
+        style={{
+          flex: 1,
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        <View
           style={{
-            flex: 1,
-            alignItems: "center",
-            justifyContent: "center",
+            paddingHorizontal: 14,
+            paddingVertical: 4,
+            borderRadius: 999,
+            backgroundColor: isSearchActive ? tc["canvas-soft-2"] : "transparent",
           }}
+          className={isWeb ? (isSearchActive ? "bg-canvas-soft-2" : undefined) : undefined}
         >
-          <View
-            style={{
-              paddingHorizontal: 14,
-              paddingVertical: 4,
-              borderRadius: 999,
-              backgroundColor: isSearchActive ? tc["canvas-soft-2"] : "transparent",
-            }}
-            className={isWeb ? (isSearchActive ? "bg-canvas-soft-2" : undefined) : undefined}
-          >
-            <MagnifyingGlass
-              size={26}
-              weight={isSearchActive ? "fill" : "bold"}
-              color={isWeb ? "currentColor" : isSearchActive ? tc.ink : tc.mute}
-            />
-          </View>
-        </Pressable>
-      ) : (
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Создать заказ"
-          onPress={() => router.push("/orders/new" as never)}
-          className={isWeb ? "text-mute" : undefined}
-          style={{
-            flex: 1,
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
-          <View
-            style={{
-              paddingHorizontal: 14,
-              paddingVertical: 4,
-              borderRadius: 999,
-            }}
-          >
-            <PlusCircle
-              size={26}
-              weight="bold"
-              color={isWeb ? "currentColor" : tc.mute}
-            />
-          </View>
-        </Pressable>
-      )}
+          <MagnifyingGlass
+            size={26}
+            weight={isSearchActive ? "fill" : "bold"}
+            color={isWeb ? "currentColor" : isSearchActive ? tc.accent : tc.mute}
+          />
+        </View>
+      </Pressable>
 
       {/* Правая часть. */}
       {rightRoutes.map(renderTab)}

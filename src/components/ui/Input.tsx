@@ -71,7 +71,8 @@ export const Input = forwardRef<TextInput, InputProps>(function Input(
           className="flex-1 text-ink"
           style={{
             fontSize: dims.textSize,
-            fontFamily: '"Geist", "Inter", system-ui, sans-serif',
+            fontFamily:
+              '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
             paddingVertical: 0,
             // outlineStyle: убираем focus-ring на web.
             ...({ outlineStyle: "none" } as object),

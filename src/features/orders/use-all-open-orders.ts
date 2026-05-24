@@ -8,6 +8,7 @@
 
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { type OrderWithRefs } from "@/features/orders/use-my-orders";
+import { shouldHideDemo } from "@/lib/demo-mode";
 import { supabase } from "@/lib/supabase";
 
 const PAGE_SIZE = 20;
@@ -24,16 +25,29 @@ interface UseAllOpenOrdersInput {
 
 export function useAllOpenOrders({ userId, l2Ids, sort = "newest" }: UseAllOpenOrdersInput) {
   return useInfiniteQuery<Page>({
-    queryKey: ["all-open-orders", userId, l2Ids ?? null, sort] as const,
+    queryKey: ["all-open-orders", userId ?? "anon", l2Ids ?? null, sort] as const,
     initialPageParam: null as string | null,
     queryFn: async ({ pageParam }) => {
-      if (!userId) return { rows: [], nextCursor: null };
+      // 2026-05-21: анон (нет userId) ТОЖЕ видит ленту. Раньше тут был
+      // early-return пустого результата для анона → центральная кнопка
+      // «Смотреть заказы» (доступна всем с 2026-05-20) показывала пустой
+      // экран неавторизованным. RLS-политика orders_read_open_or_own
+      // разрешает читать open-orders всем (роль public), запрос безопасен.
+      // При попытке откликнуться анон упрётся в login-wall на странице
+      // заказа — это правильная точка авторизации.
       let q = supabase
         .from("orders")
-        .select("*, l2:categories_l2(id, name_ru, icon), city:cities(id, name)")
+        .select(
+          "*, l2:categories_l2(id, name_ru, icon), city:cities(id, name), client:users!orders_client_id_fkey(is_demo)",
+        )
         .eq("status", "open")
-        .neq("client_id", userId)
         .limit(PAGE_SIZE);
+
+      // Свои заказы не показываем в ленте — но только когда юзер известен.
+      // У анона своих заказов нет, фильтр не нужен.
+      if (userId) {
+        q = q.neq("client_id", userId);
+      }
 
       if (l2Ids && l2Ids.length > 0) {
         q = q.in("l2_id", l2Ids);
@@ -54,12 +68,20 @@ export function useAllOpenOrders({ userId, l2Ids, sort = "newest" }: UseAllOpenO
       }
       const { data, error } = await q;
       if (error) throw error;
-      const rows = (data ?? []) as unknown as OrderWithRefs[];
+      let rows = (data ?? []) as unknown as (OrderWithRefs & {
+        client?: { is_demo: boolean } | null;
+      })[];
+
+      // P0-09: скрываем заказы от demo-клиентов в production (EXPO_PUBLIC_DEMO_MODE=false).
+      if (shouldHideDemo()) {
+        rows = rows.filter((r) => r.client?.is_demo !== true);
+      }
+
       const nextCursor = rows.length === PAGE_SIZE ? (rows[rows.length - 1]?.created_at ?? null) : null;
-      return { rows, nextCursor };
+      return { rows: rows as OrderWithRefs[], nextCursor };
     },
     getNextPageParam: (last) => last.nextCursor,
-    enabled: !!userId,
+    // enabled всегда true — анон тоже грузит ленту (см. комментарий в queryFn).
     staleTime: 30_000,
   });
 }

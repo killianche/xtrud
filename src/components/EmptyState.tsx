@@ -15,7 +15,6 @@
 
 import { Pressable, View } from "react-native";
 import { AppText } from "@/components/AppText";
-import { useThemeColor } from "@/lib/use-theme-color";
 import type { IconComponent } from "@/types/icon";
 
 export interface EmptyStateProps {
@@ -51,7 +50,6 @@ export function EmptyState({
   void _icon;
   void _emoji;
   void _unused;
-  const onPrimaryColor = useThemeColor("on-primary");
 
   return (
     <View
@@ -69,7 +67,7 @@ export function EmptyState({
           onPress={onCtaPress}
           className="mt-5 h-11 items-center justify-center rounded-md bg-primary px-5 active:opacity-80"
         >
-          <AppText weight="semibold" style={{ color: onPrimaryColor }} className="text-button">
+          <AppText weight="semibold" className="text-button text-on-primary">
             {ctaLabel}
           </AppText>
         </Pressable>

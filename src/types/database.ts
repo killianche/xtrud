@@ -416,6 +416,7 @@ export type Database = {
           languages: string[]
           legal_name: string | null
           ogrn: string | null
+          ranking_score: number
           rating_overall_avg: number | null
           rating_overall_count: number
           status: Database["public"]["Enums"]["master_status"]
@@ -446,6 +447,7 @@ export type Database = {
           languages?: string[]
           legal_name?: string | null
           ogrn?: string | null
+          ranking_score?: number
           rating_overall_avg?: number | null
           rating_overall_count?: number
           status?: Database["public"]["Enums"]["master_status"]
@@ -476,6 +478,7 @@ export type Database = {
           languages?: string[]
           legal_name?: string | null
           ogrn?: string | null
+          ranking_score?: number
           rating_overall_avg?: number | null
           rating_overall_count?: number
           status?: Database["public"]["Enums"]["master_status"]
@@ -629,6 +632,48 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      master_views: {
+        Row: {
+          created_at: string
+          id: string
+          master_id: string
+          view_type: string
+          viewer_id: string | null
+          viewer_session_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          master_id: string
+          view_type: string
+          viewer_id?: string | null
+          viewer_session_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          master_id?: string
+          view_type?: string
+          viewer_id?: string | null
+          viewer_session_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "master_views_master_id_fkey"
+            columns: ["master_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "master_views_viewer_id_fkey"
+            columns: ["viewer_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       messages: {
         Row: {
@@ -881,9 +926,10 @@ export type Database = {
           completed_at: string | null
           completion_kind: string | null
           contact_mode: Database["public"]["Enums"]["order_contact_mode"]
+          contact_name: string | null
           created_at: string
           created_via: Database["public"]["Enums"]["order_created_via"]
-          description: string
+          description: string | null
           dispute_opened_by: string | null
           dispute_reason: string | null
           disputed_at: string | null
@@ -895,6 +941,7 @@ export type Database = {
           l3_ids: string[]
           last_activity_at: string | null
           master_marked_done_at: string | null
+          photo_urls: string[]
           picked_at: string | null
           picked_master_id: string | null
           resolution_kind: string | null
@@ -917,9 +964,10 @@ export type Database = {
           completed_at?: string | null
           completion_kind?: string | null
           contact_mode?: Database["public"]["Enums"]["order_contact_mode"]
+          contact_name?: string | null
           created_at?: string
           created_via?: Database["public"]["Enums"]["order_created_via"]
-          description: string
+          description?: string | null
           dispute_opened_by?: string | null
           dispute_reason?: string | null
           disputed_at?: string | null
@@ -931,6 +979,7 @@ export type Database = {
           l3_ids?: string[]
           last_activity_at?: string | null
           master_marked_done_at?: string | null
+          photo_urls?: string[]
           picked_at?: string | null
           picked_master_id?: string | null
           resolution_kind?: string | null
@@ -953,9 +1002,10 @@ export type Database = {
           completed_at?: string | null
           completion_kind?: string | null
           contact_mode?: Database["public"]["Enums"]["order_contact_mode"]
+          contact_name?: string | null
           created_at?: string
           created_via?: Database["public"]["Enums"]["order_created_via"]
-          description?: string
+          description?: string | null
           dispute_opened_by?: string | null
           dispute_reason?: string | null
           disputed_at?: string | null
@@ -967,6 +1017,7 @@ export type Database = {
           l3_ids?: string[]
           last_activity_at?: string | null
           master_marked_done_at?: string | null
+          photo_urls?: string[]
           picked_at?: string | null
           picked_master_id?: string | null
           resolution_kind?: string | null
@@ -1030,9 +1081,61 @@ export type Database = {
           },
         ]
       }
+      portfolio_cases: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          master_id: string
+          order_id: string | null
+          sort_order: number
+          title: string
+          updated_at: string
+          work_done_at: string | null
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          master_id: string
+          order_id?: string | null
+          sort_order?: number
+          title: string
+          updated_at?: string
+          work_done_at?: string | null
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          master_id?: string
+          order_id?: string | null
+          sort_order?: number
+          title?: string
+          updated_at?: string
+          work_done_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "portfolio_cases_master_id_fkey"
+            columns: ["master_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "portfolio_cases_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: true
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       portfolio_items: {
         Row: {
           caption: string | null
+          case_id: string | null
           created_at: string
           height: number | null
           id: string
@@ -1045,6 +1148,7 @@ export type Database = {
         }
         Insert: {
           caption?: string | null
+          case_id?: string | null
           created_at?: string
           height?: number | null
           id?: string
@@ -1057,6 +1161,7 @@ export type Database = {
         }
         Update: {
           caption?: string | null
+          case_id?: string | null
           created_at?: string
           height?: number | null
           id?: string
@@ -1068,6 +1173,13 @@ export type Database = {
           width?: number | null
         }
         Relationships: [
+          {
+            foreignKeyName: "portfolio_items_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "portfolio_cases"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "portfolio_items_master_id_fkey"
             columns: ["master_id"]
@@ -1208,6 +1320,33 @@ export type Database = {
           },
         ]
       }
+      search_queries_log: {
+        Row: {
+          hits_count: number
+          id: number
+          query_norm: string
+          query_raw: string
+          ts: string
+          user_id: string | null
+        }
+        Insert: {
+          hits_count?: number
+          id?: number
+          query_norm: string
+          query_raw: string
+          ts?: string
+          user_id?: string | null
+        }
+        Update: {
+          hits_count?: number
+          id?: number
+          query_norm?: string
+          query_raw?: string
+          ts?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       team_members: {
         Row: {
           joined_at: string
@@ -1308,11 +1447,45 @@ export type Database = {
           },
         ]
       }
+      user_favorites: {
+        Row: {
+          created_at: string
+          master_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          master_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          master_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_favorites_master_id_fkey"
+            columns: ["master_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_favorites_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       users: {
         Row: {
           active_role: Database["public"]["Enums"]["user_active_role"]
           avatar_url: string | null
           city_id: string | null
+          contact_phone: string | null
           created_at: string
           district: string | null
           first_name: string | null
@@ -1322,6 +1495,7 @@ export type Database = {
           is_demo: boolean
           is_master: boolean
           last_name: string | null
+          last_active_at: string | null
           last_seen_feed_at: string | null
           onboarding_completed_at: string | null
           rating_as_client_avg: number | null
@@ -1333,6 +1507,7 @@ export type Database = {
           active_role?: Database["public"]["Enums"]["user_active_role"]
           avatar_url?: string | null
           city_id?: string | null
+          contact_phone?: string | null
           created_at?: string
           district?: string | null
           first_name?: string | null
@@ -1342,6 +1517,7 @@ export type Database = {
           is_demo?: boolean
           is_master?: boolean
           last_name?: string | null
+          last_active_at?: string | null
           last_seen_feed_at?: string | null
           onboarding_completed_at?: string | null
           rating_as_client_avg?: number | null
@@ -1353,6 +1529,7 @@ export type Database = {
           active_role?: Database["public"]["Enums"]["user_active_role"]
           avatar_url?: string | null
           city_id?: string | null
+          contact_phone?: string | null
           created_at?: string
           district?: string | null
           first_name?: string | null
@@ -1362,6 +1539,7 @@ export type Database = {
           is_demo?: boolean
           is_master?: boolean
           last_name?: string | null
+          last_active_at?: string | null
           last_seen_feed_at?: string | null
           onboarding_completed_at?: string | null
           rating_as_client_avg?: number | null
@@ -1458,7 +1636,15 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      top_queries_7d: {
+        Row: {
+          avg_hits: number | null
+          last_seen: string | null
+          query_norm: string | null
+          searches: number | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       _availability_expires_at: {
@@ -1498,12 +1684,33 @@ export type Database = {
         Returns: number
       }
       count_vouches_for: { Args: { p_target_user_id: string }; Returns: number }
+      delete_my_account: { Args: never; Returns: Json }
+      enable_master_mode: { Args: never; Returns: undefined }
       expire_availability: { Args: never; Returns: number }
       expire_old_orders: { Args: never; Returns: number }
+      finalize_master_onboarding: { Args: never; Returns: undefined }
       get_master_phone: { Args: { p_master_id: string }; Returns: string }
       get_master_stats: { Args: never; Returns: Json }
+      get_my_master_view_stats: {
+        Args: never
+        Returns: {
+          impressions: number
+          profile_opens: number
+        }[]
+      }
+      get_popular_queries: {
+        Args: { p_limit?: number }
+        Returns: {
+          query: string
+          searches: number
+        }[]
+      }
       get_response_limit_today: { Args: never; Returns: Json }
       is_current_user_admin: { Args: never; Returns: boolean }
+      log_search_query: {
+        Args: { p_hits: number; p_query: string }
+        Returns: undefined
+      }
       mark_chat_read: { Args: { p_chat_id: string }; Returns: undefined }
       mark_feed_seen: { Args: never; Returns: undefined }
       mark_notifications_read: { Args: { p_ids?: string[] }; Returns: number }
@@ -1523,6 +1730,10 @@ export type Database = {
       }
       open_dispute: {
         Args: { p_order_id: string; p_reason: string }
+        Returns: undefined
+      }
+      record_master_view: {
+        Args: { p_master_id: string; p_session_id: string; p_view_type: string }
         Returns: undefined
       }
       reject_response: { Args: { p_response_id: string }; Returns: undefined }
@@ -1560,6 +1771,8 @@ export type Database = {
         Args: { p_order_id: string; p_reason?: string }
         Returns: undefined
       }
+      touch_last_active: { Args: never; Returns: undefined }
+      try_publish_master: { Args: { p_user_id: string }; Returns: undefined }
       withdraw_response: { Args: { p_response_id: string }; Returns: undefined }
     }
     Enums: {
@@ -1833,4 +2046,3 @@ export const Constants = {
     },
   },
 } as const
-

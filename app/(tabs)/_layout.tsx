@@ -3,17 +3,18 @@ import {
   DefaultTheme,
   ThemeProvider as NavThemeProvider,
 } from "@react-navigation/native";
-import { Slot, Tabs } from "expo-router";
-import { ChatCircle, ClipboardText, UserCircle } from "phosphor-react-native";
+import { Tabs } from "expo-router";
+import {
+  ClipboardText,
+  ImageSquare,
+  UserCircle,
+} from "phosphor-react-native";
 import { XtrudLogo } from "@/components/XtrudLogo";
-import { Platform, useWindowDimensions } from "react-native";
 import { TabBar } from "@/components/TabBar";
-import { WebShell } from "@/components/WebShell";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useAuthSession } from "@/features/auth/use-auth-session";
+import { useTouchLastActive } from "@/features/auth/use-touch-last-active";
 import { useUserRecord } from "@/features/auth/use-user-record";
-import { unreadChatsCount, useMyChats } from "@/features/chat/use-my-chats";
-import { useRealtimeMyChats } from "@/features/chat/use-realtime-my-chats";
 import { useMyMasterCategories } from "@/features/master-categories/use-my-categories";
 import { useRealtimeFeed, useUnreadFeedCount } from "@/features/orders/use-unread-feed";
 import {
@@ -34,11 +35,10 @@ export default function TabsLayout() {
   const isClientRole = (user?.active_role ?? "client") === "client";
   const isMasterRole = !isClientRole;
 
-  useRealtimeMyChats(userId);
-  useRealtimeMyResponses(isClientRole ? userId : null);
+  // Отмечаем онлайн-активность (рейтинг мастеров, Этап 2). Троттл внутри хука.
+  useTouchLastActive(!!userId);
 
-  const { data: chats } = useMyChats(userId);
-  const chatsBadge = badgeLabel(unreadChatsCount(chats, userId));
+  useRealtimeMyResponses(isClientRole ? userId : null);
 
   // Client-side: unread responses on my orders.
   const { data: unreadResponses = 0 } = useUnreadResponsesCount(isClientRole ? userId : null);
@@ -77,17 +77,8 @@ export default function TabsLayout() {
     },
   };
 
-  const { width } = useWindowDimensions();
-  const isDesktopWeb = Platform.OS === "web" && width >= 768;
-
-  if (isDesktopWeb) {
-    return (
-      <WebShell chatsBadge={chatsBadge} ordersBadge={ordersBadge}>
-        <Slot />
-      </WebShell>
-    );
-  }
-
+  // Десктопная WebShell-обёртка убрана 2026-05-21: сайт всегда в телефонном
+  // виде (PhoneFrame + useAppWidth), даже на широком окне → всегда нижние табы.
   return (
     <NavThemeProvider value={navTheme}>
     <Tabs
@@ -124,14 +115,15 @@ export default function TabsLayout() {
         })}
       />
       <Tabs.Screen
-        name="chats"
+        name="cases"
         options={{
-          title: "Чаты",
+          title: "Ваши работы",
+          // Только для мастера. У клиента — href: null = вкладка скрыта.
+          href: isMasterRole ? undefined : null,
+          // Иконка картинки — вкладка показывает фото работ (фидбэк user 2026-05-20).
           tabBarIcon: ({ color, focused }) => (
-            <ChatCircle color={color} size={26} weight={focused ? "fill" : "bold"} />
+            <ImageSquare color={color} size={26} weight={focused ? "fill" : "bold"} />
           ),
-          tabBarBadge: chatsBadge,
-          tabBarBadgeStyle: badgeStyle,
         }}
       />
       <Tabs.Screen
@@ -147,8 +139,9 @@ export default function TabsLayout() {
       <Tabs.Screen name="category/[id]" options={{ href: null }} />
       <Tabs.Screen name="master/[id]" options={{ href: null }} />
       <Tabs.Screen name="client/[id]" options={{ href: null }} />
-      <Tabs.Screen name="notifications" options={{ href: null }} />
       <Tabs.Screen name="admin" options={{ href: null }} />
+      <Tabs.Screen name="admin/ratings" options={{ href: null }} />
+      <Tabs.Screen name="admin/reports" options={{ href: null }} />
       <Tabs.Screen name="useful" options={{ href: null }} />
       <Tabs.Screen name="search" options={{ href: null }} />
       <Tabs.Screen name="orders/search" options={{ href: null }} />

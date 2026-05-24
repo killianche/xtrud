@@ -24,8 +24,10 @@ import { ScreenHeader } from "@/components/ui";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { RoleSwitcher } from "@/features/auth/RoleSwitcher";
 import { useAuthSession } from "@/features/auth/use-auth-session";
+import { useEnableMasterMode } from "@/features/auth/use-enable-master-mode";
 import { useUserRecord } from "@/features/auth/use-user-record";
-import { useMyChats, unreadChatsCount } from "@/features/chat/use-my-chats";
+import { MasterPublishChecklist } from "@/features/master-view/MasterPublishChecklist";
+import { useMasterPublishProgress } from "@/features/master-view/use-master-publish-progress";
 import { useMyOrders } from "@/features/orders/use-my-orders";
 import type { ThemePreference } from "@/lib/theme";
 import { PortfolioGrid } from "@/features/profile/PortfolioGrid";
@@ -47,7 +49,7 @@ import type { Tables } from "@/types/database";
 export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { session } = useAuthSession();
+  const { session, status: authStatus } = useAuthSession();
   const userId = session?.user?.id;
 
   // Tap-on-active-tab → scroll to top.
@@ -59,15 +61,19 @@ export default function ProfileScreen() {
 
   const { data: user, isLoading: userLoading } = useUserRecord(userId);
   const { data: masterProfile } = useMyMasterProfile(userId, user?.is_master === true);
+  // Чек-лист «сделайте профиль ярче» — рекламная подсказка для любого мастера
+  // (с 2026-05-20 профиль больше не скрывается автоматически). Карточка
+  // самоисчезает, когда publishProgress.isReady=true.
+  const { data: publishProgress } = useMasterPublishProgress(
+    userId,
+    user?.is_master === true,
+  );
   // Quick stats для клиента (для master есть отдельные экраны со своими счётчиками).
   const { data: myOrders } = useMyOrders(user?.is_master ? undefined : userId);
-  const { data: myChats } = useMyChats(user?.is_master ? undefined : userId);
   const ordersTotal = myOrders?.length ?? 0;
   const activeOrders = (myOrders ?? []).filter(
     (o) => o.status === "open" || o.status === "in_progress",
   ).length;
-  const chatsTotal = myChats?.length ?? 0;
-  const chatsUnread = unreadChatsCount(myChats, userId);
 
   const updateAvatar = useUpdateMyAvatar(userId);
   const removeAvatar = useRemoveMyAvatar(userId);
@@ -149,8 +155,22 @@ export default function ProfileScreen() {
     );
   };
 
-  // Анон (нет userId) → guest-state с CTA «Войти» вместо бесконечного спиннера.
-  // Spinner показываем ТОЛЬКО когда есть userId и идёт загрузка user record.
+  // Auth-сессия загружается асинхронно (~50-200мс на холодном входе).
+  // Пока status === "loading" — не рендерим GuestProfileScreen, иначе виден
+  // короткий flash гостевого экрана с CTA «Войти» перед тем как залогиненный
+  // user увидит свой профиль. См. диагностику task #5 (2026-05-20).
+  if (authStatus === "loading") {
+    return (
+      <View
+        className="flex-1 items-center justify-center bg-canvas"
+        style={{ paddingTop: insets.top }}
+      >
+        <ActivityIndicator />
+      </View>
+    );
+  }
+
+  // Анон (status=unauthenticated, нет userId) → guest-state с CTA «Войти».
   if (!userId) {
     return (
       <GuestProfileScreen
@@ -301,6 +321,19 @@ export default function ProfileScreen() {
                   isClient={user.is_client}
                 />
               </View>
+
+              {/* «Стать мастером» CTA (фидбэк user 2026-05-18). Только для
+                  client-only пользователей (is_master=false). Тап → RPC
+                  enable_master_mode (создаёт master_profiles {status:pending,
+                  is_hidden_from_search:true}) → push на master wizard для
+                  постепенного заполнения обязательных полей (категории →
+                  фото → bio/опыт). До завершения wizard'а мастер скрыт от
+                  каталога. */}
+              {!user.is_master ? (
+                <View className="mt-4 w-full max-w-xs">
+                  <BecomeMasterButton userId={user.id} />
+                </View>
+              ) : null}
             </View>
           </View>
         ) : (
@@ -391,19 +424,6 @@ export default function ProfileScreen() {
                 onPress={() => router.push("/(tabs)/orders" as never)}
               />
               <ClientStatTile
-                label="Чаты"
-                value={chatsTotal}
-                hint={
-                  chatsUnread > 0
-                    ? `${chatsUnread} новых`
-                    : chatsTotal > 0
-                      ? "Прочитано"
-                      : "Пока нет"
-                }
-                accent={chatsUnread > 0}
-                onPress={() => router.push("/(tabs)/chats" as never)}
-              />
-              <ClientStatTile
                 label="Отзывы"
                 value={ratingCount ?? 0}
                 hint={
@@ -431,8 +451,35 @@ export default function ProfileScreen() {
               <CaretRight size={20} weight="bold" color={themeColors["muted-soft"]} />
             </Pressable>
 
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => router.push("/(tabs)/profile/favorites" as never)}
+              className="mx-5 mt-2 flex-row items-center justify-between rounded-lg border border-hairline bg-canvas p-4 active:bg-canvas-soft"
+            >
+              <View className="flex-1">
+                <AppText weight="semibold" className="text-body-md text-ink">
+                  Закладки
+                </AppText>
+                <AppText className="mt-0.5 text-body-sm text-mute">
+                  Мастера, которых вы сохранили
+                </AppText>
+              </View>
+              <CaretRight size={20} weight="bold" color={themeColors["muted-soft"]} />
+            </Pressable>
+
             {/* «Как меня видят мастера» CTA удалён 2026-05-16 (фидбэк user). */}
           </>
+        ) : null}
+
+        {/* Чек-лист «сделайте профиль ярче» (фидбэк user 2026-05-20). С отказа
+            от автоскрытия видим любому мастеру с незаполненным профилем как
+            рекламная подсказка — больше фото и категорий = больше откликов.
+            Карточка самоисчезает, когда все 3 пункта выполнены (isReady=true). */}
+        {/* Sprint 2026-05-20: показываем ТОЛЬКО когда мастер реально в master-режиме.
+            Раньше условие user.is_master=true показывало карточку и в client-режиме
+            у dual-role пользователей. */}
+        {user.is_master && user.active_role === "master" && publishProgress && !publishProgress.isReady ? (
+          <MasterPublishChecklist progress={publishProgress} />
         ) : null}
 
         {/* Master-only sections — видим только когда active_role='master'.
@@ -480,26 +527,9 @@ export default function ProfileScreen() {
               <CaretRight size={20} weight="bold" color={themeColors["muted-soft"]} />
             </Pressable>
 
-            {/* Portfolio shortcut — preview 4 фото + ссылка на отдельный
-                экран /profile/portfolio. Управление (multi-upload до 50 фото
-                + сжатие + crop кривых) живёт в полноэкранном экране, не
-                в inline-блоке (фидбэк user 2026-05-15: «отдельная кнопочка,
-                чтобы было удобно работать»). */}
-            <Pressable
-              accessibilityRole="button"
-              onPress={() => router.push("/(tabs)/profile/portfolio" as never)}
-              className="mx-6 mt-3 flex-row items-center justify-between rounded-lg border border-hairline bg-canvas p-4 active:opacity-70"
-            >
-              <AppText weight="semibold" className="flex-1 text-body-md text-ink">
-                Портфолио
-              </AppText>
-              <CaretRight size={20} weight="bold" color={themeColors["muted-soft"]} />
-            </Pressable>
-
-            {/* Превью 4 фото портфолио убрано 2026-05-15 (фидбэк user
-                «вот эти четыре фотографии снизу убери — они там не нужны»).
-                Карточка-trigger «Портфолио» выше уже даёт счётчик и переход
-                на полноэкранный экран /profile/portfolio. */}
+            {/* Portfolio убран отсюда 2026-05-20: переехал в нижнее меню как
+                отдельная вкладка «Кейсы» (только для мастеров) + таб «Отзывы».
+                Старый роут /profile/portfolio оставлен — туда ведут detail-ссылки. */}
 
             {/* Компактный ghost-link «Посмотреть глазами клиента». Раньше
                 был большой card hero CTA — слишком яркий (фидбэк user 2026-05-15:
@@ -544,7 +574,7 @@ export default function ProfileScreen() {
             >
               <ShieldCheck size={18} weight="bold" color={themeColors.body} />
               <AppText weight="semibold" className="text-button text-body">
-                Модерация
+                Админка
               </AppText>
             </Pressable>
           </View>
@@ -799,6 +829,55 @@ function GuestProfileScreen({ insets, themeColors, onLogin }: GuestProfileScreen
 // useCityName удалён 2026-05-16: личный город/район юзера больше не отображаем
 // (user request). Где мастер работает — master_service_areas, отдельный блок.
 // ----------------------------------------------------------------------------
+
+// ----------------------------------------------------------------------------
+// BecomeMasterButton — кнопка «Я хочу стать мастером» (фидбэк user 2026-05-18).
+//
+// Тап → RPC enable_master_mode (создаёт скрытый master_profile с
+// status='pending', is_hidden_from_search=true) → push на master-wizard.
+// До завершения wizard'а мастер не виден в каталоге.
+// ----------------------------------------------------------------------------
+
+function BecomeMasterButton({ userId }: { userId: string }) {
+  const router = useRouter();
+  const enable = useEnableMasterMode(userId);
+
+  const handlePress = async () => {
+    if (enable.isPending) return;
+    try {
+      await enable.mutateAsync();
+      // После успеха пользователь стал мастером (status=pending, скрыт).
+      // Пушим на категории — там он выберет L2 и продолжит wizard
+      // master-photo → master-profile, который сбросит status в active.
+      router.push("/(onboarding)/master-categories?mode=onboarding" as never);
+    } catch (_e) {
+      // Ошибка отображается через enable.error в UI.
+    }
+  };
+
+  return (
+    <View className="items-stretch">
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Я хочу стать мастером"
+        disabled={enable.isPending}
+        onPress={handlePress}
+        className={`h-12 flex-row items-center justify-center gap-2 rounded-lg active:opacity-80 ${
+          enable.isPending ? "bg-canvas-soft" : "bg-ink"
+        }`}
+      >
+        <AppText weight="semibold" className="text-body-md text-on-primary">
+          {enable.isPending ? "Активируем…" : "Я хочу стать мастером"}
+        </AppText>
+      </Pressable>
+      {enable.error ? (
+        <AppText weight="medium" className="mt-2 text-caption text-error">
+          Не удалось активировать. {enable.error.message}
+        </AppText>
+      ) : null}
+    </View>
+  );
+}
 
 function useMyMasterProfile(userId: string | null | undefined, enabled: boolean) {
   return useQuery<Tables<"master_profiles"> | null>({

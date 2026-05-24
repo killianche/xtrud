@@ -1,0 +1,5 @@
+-- 0086_search_analytics.sql
+-- Аналитика поисковых запросов + trending chips:
+--   search_queries_log + RPC log_search_query(q, hits)
+--   top_queries_7d (materialized view, refresh hourly)
+--   RPC get_popular_queries(limit) — с fallback на curated synonyms

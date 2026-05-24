@@ -1,6 +1,15 @@
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useRouter } from "expo-router";
+import { useRef } from "react";
 import { useForm } from "react-hook-form";
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, View } from "react-native";
+import {
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  ScrollView,
+  View,
+} from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
 import { OnboardingProgress } from "@/components/OnboardingProgress";
@@ -9,17 +18,24 @@ import {
   masterProfileSchema,
 } from "@/features/auth/master-profile-schema";
 import { useAuthSession } from "@/features/auth/use-auth-session";
+import { useExitOnboarding } from "@/features/auth/use-exit-onboarding";
 import { useSubmitMasterProfile } from "@/features/auth/use-submit-master-profile";
 import { useCities } from "@/features/cities/use-cities";
 import { MasterProfileFormBody } from "@/features/master-profile/MasterProfileFormBody";
 
 export default function MasterProfileScreen() {
   const insets = useSafeAreaInsets();
+  const router = useRouter();
   const { session } = useAuthSession();
   const userId = session?.user?.id;
 
-  const { data: cities, isLoading: citiesLoading } = useCities();
+  // citiesLoading — отдельная переменная вместо `!cities`. Раньше пустой массив `[]`
+  // или undefined одинаково блокировали submit. Сейчас blocker = только пока запрос
+  // фактически в полёте.
+  const { isLoading: citiesLoading } = useCities();
   const submitMaster = useSubmitMasterProfile();
+  const scrollRef = useRef<ScrollView>(null);
+  const { exit: exitOnboarding } = useExitOnboarding();
 
   const {
     control,
@@ -34,29 +50,48 @@ export default function MasterProfileScreen() {
       district: "",
       bio: "",
       experienceYears: 0,
-      hasTools: false,
-      hasTransport: false,
-      // Sprint 0079: WhatsApp. Default — «совпадает с основным», большинство
-      // мастеров используют один номер.
       whatsappSameAsPhone: true,
       whatsappPhone: "",
+      // Sprint 2026-05-20 (миграция 0097): contact_phone.
+      contactSameAsPhone: true,
+      contactPhone: "",
     },
     mode: "onChange",
   });
 
-  const onSubmit = handleSubmit(async (values) => {
-    if (!userId) return;
-    try {
-      await submitMaster.mutateAsync({ userId, ...values });
-      // onSuccess → invalidate userRecord → AuthGate увидит
-      // onboarding_completed_at и редиректнет на /(tabs).
-    } catch (_e) {
-      // submitMaster.error
-    }
-  });
+  // Sprint 2026-05-20 reorder: profile теперь ПЕРВЫЙ шаг (1/3), не последний.
+  // submitMaster сохраняет данные через client + RLS, БЕЗ финализации онбординга.
+  // Финализация — на photo-шаге (3/3) через finalize_master_onboarding RPC.
+  const onSubmit = handleSubmit(
+    async (values) => {
+      if (!userId) return;
+      try {
+        await submitMaster.mutateAsync({ userId, ...values });
+        // Сохранили → идём на categories (2/3). Используем object-syntax
+        // вместо querystring — это надёжнее в Expo Router 6+, querystring
+        // мог дропаться при некоторых route-resolution edge cases.
+        router.push({
+          pathname: "/(onboarding)/master-categories",
+          params: { mode: "onboarding" },
+        } as never);
+      } catch (e) {
+        const message =
+          e instanceof Error ? e.message : "Неизвестная ошибка сервера.";
+        console.error("[MasterProfile submit]", e);
+        Alert.alert("Не удалось сохранить профиль", message);
+      }
+    },
+    (formErrors) => {
+      // Validation failed — скроллим к первой видимой ошибке, чтобы юзер
+      // понял что от него хотят. Без этого кнопка молча ничего не делала.
+      console.warn("[MasterProfile validation]", formErrors);
+      scrollRef.current?.scrollTo({ y: 0, animated: true });
+    },
+  );
 
   const isBusy = submitMaster.isPending;
   const submitError = submitMaster.error?.message;
+  const canSubmit = isValid && !isBusy && !!userId && !citiesLoading;
 
   return (
     <KeyboardAvoidingView
@@ -65,20 +100,18 @@ export default function MasterProfileScreen() {
       style={{ paddingTop: insets.top }}
     >
       <View className="py-4">
-        <OnboardingProgress step={4} total={4} />
+        <OnboardingProgress step={1} total={3} onCancel={exitOnboarding} />
       </View>
 
       <ScrollView
+        ref={scrollRef}
         contentContainerStyle={{ paddingBottom: insets.bottom + 24 }}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
         <View className="px-6 pb-6">
           <AppText weight="bold" className="text-display-sm tracking-tight text-ink">
-            Последний шаг
-          </AppText>
-          <AppText className="mt-2 text-body-md text-muted">
-            Расскажите о себе — это поможет клиентам выбрать вас.
+            Расскажите о себе
           </AppText>
         </View>
 
@@ -99,16 +132,14 @@ export default function MasterProfileScreen() {
         <View className="mt-8 px-6">
           <Pressable
             accessibilityRole="button"
-            disabled={!isValid || isBusy || !userId || !cities}
+            disabled={!canSubmit}
             onPress={onSubmit}
             className={`h-12 items-center justify-center rounded-md ${
-              isValid && !isBusy && userId && cities
-                ? "bg-primary active:opacity-80"
-                : "bg-surface-3"
+              canSubmit ? "bg-primary active:opacity-80" : "bg-surface-3"
             }`}
           >
             <AppText weight="semibold" className="text-button text-on-primary">
-              {isBusy ? "Сохраняем..." : "Завершить"}
+              {isBusy ? "Сохраняем..." : "Продолжить"}
             </AppText>
           </Pressable>
         </View>

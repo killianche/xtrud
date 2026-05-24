@@ -57,9 +57,18 @@ export function useAddPortfolioItem(masterId: string | null | undefined) {
   return useMutation<
     PortfolioItem,
     Error,
-    { url: string; storagePath: string; width?: number; height?: number }
+    {
+      url: string;
+      storagePath: string;
+      width?: number;
+      height?: number;
+      /** Опциональная привязка к кейсу (миграция 0085).
+       *  Если передан — фото показывается в case detail и в публичном
+       *  портфолио. Если null — legacy: фото без кейса. */
+      caseId?: string | null;
+    }
   >({
-    mutationFn: async ({ url, storagePath, width, height }) => {
+    mutationFn: async ({ url, storagePath, width, height, caseId }) => {
       if (!masterId) throw new Error("Не авторизованы");
 
       const { data: maxRow } = await supabase
@@ -80,14 +89,19 @@ export function useAddPortfolioItem(masterId: string | null | undefined) {
           width: width ?? null,
           height: height ?? null,
           sort_order: nextOrder,
+          case_id: caseId ?? null,
         })
         .select("*")
         .single();
       if (error) throw error;
       return data;
     },
-    onSuccess: () => {
+    onSuccess: (_data, vars) => {
       qc.invalidateQueries({ queryKey: portfolioKey(masterId) });
+      if (vars.caseId) {
+        qc.invalidateQueries({ queryKey: ["portfolio-cases", masterId] });
+        qc.invalidateQueries({ queryKey: ["portfolio-case", vars.caseId] });
+      }
     },
   });
 }

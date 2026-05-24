@@ -24,12 +24,14 @@ export interface UpdateMasterProfileInput {
   district: string;
   bio: string;
   experienceYears: number;
-  hasTools: boolean;
-  hasTransport: boolean;
   // Sprint 0079: WhatsApp.
   whatsappSameAsPhone: boolean;
   /** Пустая строка = не указан. Игнорируется если whatsappSameAsPhone=true. */
   whatsappPhone: string;
+  // Sprint 2026-05-20 (миграция 0097): contact_phone.
+  contactSameAsPhone: boolean;
+  /** Пустая строка = не указан. Если contactSameAsPhone=true — пишем NULL. */
+  contactPhone: string;
 }
 
 export function useUpdateMasterProfile() {
@@ -37,6 +39,16 @@ export function useUpdateMasterProfile() {
 
   return useMutation({
     mutationFn: async (input: UpdateMasterProfileInput) => {
+      // Sprint 2026-05-20 (миграция 0097): contact_phone.
+      //   contactSameAsPhone=true → NULL → читается через COALESCE на бэке.
+      //   contactSameAsPhone=false → trimmed value (или NULL если пусто).
+      const trimmedContact = input.contactPhone.trim();
+      const finalContactPhone = input.contactSameAsPhone
+        ? null
+        : trimmedContact === ""
+          ? null
+          : trimmedContact;
+
       const { error: usersErr } = await supabase
         .from("users")
         .update({
@@ -44,7 +56,10 @@ export function useUpdateMasterProfile() {
           last_name: input.lastName,
           city_id: input.cityId,
           district: input.district || null,
-        })
+          // contact_phone — миграция 0097, типы регенерятся следующим
+          // generate_typescript_types. Каст until then.
+          contact_phone: finalContactPhone,
+        } as never)
         .eq("id", input.userId);
       if (usersErr) throw usersErr;
 
@@ -54,13 +69,13 @@ export function useUpdateMasterProfile() {
       const whatsappPhone =
         input.whatsappSameAsPhone || trimmed === "" ? null : trimmed;
 
+      // has_tools / has_transport — legacy поля (удалены из UI 2026-05-19),
+      // не пишем — оставляем существующее значение в БД.
       const { error: profileErr } = await supabase
         .from("master_profiles")
         .update({
           bio: input.bio || null,
           experience_years: input.experienceYears,
-          has_tools: input.hasTools,
-          has_transport: input.hasTransport,
           whatsapp_same_as_phone: input.whatsappSameAsPhone,
           whatsapp_phone: whatsappPhone,
         })

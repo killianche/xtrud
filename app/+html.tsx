@@ -43,6 +43,8 @@ export default function Root({ children }: PropsWithChildren) {
     <html lang="ru">
       <head>
         <meta charSet="utf-8" />
+        {/* Заголовок вкладки браузера. Статичный — это название сайта. */}
+        <title>xtrud</title>
         <meta httpEquiv="X-UA-Compatible" content="IE=edge" />
         <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
         {/* theme-color — Safari iOS красит address-bar и notch-area в этот цвет.

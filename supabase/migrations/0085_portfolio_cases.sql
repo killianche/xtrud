@@ -1,0 +1,7 @@
+-- 0085_portfolio_cases.sql
+-- Портфолио как «кейсы» (фидбэк user 2026-05-18).
+-- См. подробности в комментарии RPC и таблицы внутри prod-БД.
+-- Структура:
+--   portfolio_cases (title, description, work_done_at, order_id, sort_order)
+--   portfolio_items.case_id — FK на portfolio_cases (nullable, legacy=NULL)
+--   trigger auto-create case при orders.status='completed' с picked_master_id

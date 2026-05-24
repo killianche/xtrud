@@ -1,0 +1,5 @@
+-- 0087_search_synonyms_expand.sql
+-- Расширение category_terms для топ-12 L2 (plumbing/electrical/windows/doors/
+-- locks-security/tiling/floors/ceilings/drywall/roofing/climate/handyman).
+-- ~85 новых synonym-terms, weight=100 (exact-match alias).
+-- Идемпотентно через WHERE NOT EXISTS.

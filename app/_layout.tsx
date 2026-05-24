@@ -1,20 +1,14 @@
 import "../global.css";
-import {
-  Inter_400Regular,
-  Inter_500Medium,
-  Inter_600SemiBold,
-  Inter_700Bold,
-  useFonts,
-} from "@expo-google-fonts/inter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Slot, useRouter, useSegments } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 import { useEffect, useState } from "react";
-import { Platform } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import "react-native-reanimated";
+import { AppErrorBoundary } from "@/components/AppErrorBoundary";
+import { PhoneFrame } from "@/components/PhoneFrame";
 import { useAuthSession } from "@/features/auth/use-auth-session";
 import { useUserRecord } from "@/features/auth/use-user-record";
 import { useRegisterPushToken } from "@/features/notifications/use-register-push-token";
@@ -35,9 +29,8 @@ import { NavHistoryTracker } from "@/lib/nav-history";
  * just-in-time через `<LoginWall>` на действиях (создание заказа, отправка сообщения,
  * оставление отзыва).
  *
- * Шрифт-gate: на native ждём загрузку Inter (Geist на native не доставлен, fallback).
- *             На web рендерим сразу — там Geist + Inter через @font-face подгружаются
- *             браузером лениво и не блокируют рендер. Это избавляет от SSR-flash null.
+ * Шрифт: системный (SF Pro / Segoe / Roboto) — грузить нечего, поэтому
+ *        шрифт-gate убран (2026-05-23). Старт мгновенный на всех платформах.
  */
 
 // Push-handler регистрируется в src/features/notifications/use-register-push-token
@@ -85,12 +78,16 @@ function AuthGate({ children }: { children: React.ReactNode }) {
     const inAuth = group === "(auth)";
     const inOnboarding = group === "(onboarding)";
     const inTabs = group === "(tabs)";
+    // /legal/* — Privacy Policy / Terms of Service. Доступны всем без auth
+    // (Apple/Google review проверяет ссылку из App Store description, должна
+    // открываться без логина). Пропускаем во всех ветках allowlist'ом.
+    const inLegal = group === "legal";
 
     // ============ АНОН ============
     if (status === "unauthenticated") {
-      // Анон в (tabs) или (auth) — пропускаем.
+      // Анон в (tabs) / (auth) / legal — пропускаем.
       // Анон в (onboarding) — невозможно без сессии, отправляем в (tabs).
-      if (inTabs || inAuth) return;
+      if (inTabs || inAuth || inLegal) return;
       if (inOnboarding) {
         router.replace("/(tabs)");
         return;
@@ -122,8 +119,9 @@ function AuthGate({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    // Не онбордил — отправляем в (onboarding), кроме (tabs) (анонимный просмотр OK).
-    if (!onboardingDone && !inOnboarding && !inTabs) {
+    // Не онбордил — отправляем в (onboarding), кроме (tabs) и legal (Privacy/Terms
+    // должны открываться на любом этапе).
+    if (!onboardingDone && !inOnboarding && !inTabs && !inLegal) {
       router.replace("/(onboarding)/role");
     }
     // Иначе — оставляем где есть.
@@ -133,13 +131,6 @@ function AuthGate({ children }: { children: React.ReactNode }) {
 }
 
 export default function RootLayout() {
-  const [fontsLoaded, fontsError] = useFonts({
-    Inter_400Regular,
-    Inter_500Medium,
-    Inter_600SemiBold,
-    Inter_700Bold,
-  });
-
   const [queryClient] = useState(
     () =>
       new QueryClient({
@@ -160,30 +151,27 @@ export default function RootLayout() {
   );
 
   useEffect(() => {
-    if (fontsLoaded || fontsError) {
-      SplashScreen.hideAsync().catch(() => {
-        /* web noop */
-      });
-    }
-  }, [fontsLoaded, fontsError]);
-
-  // На native ждём шрифты (избегаем flash без шрифтов).
-  // На web SSR — рендерим сразу. CSS @font-face подхватит Geist+Inter из global.css.
-  if (Platform.OS !== "web" && !fontsLoaded && !fontsError) {
-    return null;
-  }
+    // Системный шрифт не требует загрузки — прячем splash сразу после маунта.
+    SplashScreen.hideAsync().catch(() => {
+      /* web noop */
+    });
+  }, []);
 
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
-      <QueryClientProvider client={queryClient}>
-        <SafeAreaProvider>
-          <AuthGate>
-            <NavHistoryTracker />
-            <Slot />
-          </AuthGate>
-          <StatusBar style="auto" />
-        </SafeAreaProvider>
-      </QueryClientProvider>
-    </GestureHandlerRootView>
+    <AppErrorBoundary>
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        <QueryClientProvider client={queryClient}>
+          <SafeAreaProvider>
+            <AuthGate>
+              <NavHistoryTracker />
+              <PhoneFrame>
+                <Slot />
+              </PhoneFrame>
+            </AuthGate>
+            <StatusBar style="auto" />
+          </SafeAreaProvider>
+        </QueryClientProvider>
+      </GestureHandlerRootView>
+    </AppErrorBoundary>
   );
 }

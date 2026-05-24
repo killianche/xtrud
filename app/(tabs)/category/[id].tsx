@@ -12,7 +12,7 @@
 
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Briefcase, Calendar, CaretLeft, ListChecks, MapPin, ChatCircle, Phone, Star, Users } from "phosphor-react-native";
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Animated,
   FlatList,
@@ -23,10 +23,11 @@ import {
   Pressable,
   ScrollView,
   View,
-  useWindowDimensions,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
+import { cdnImage } from "@/lib/image-cdn";
+import { useAppWidth } from "@/lib/use-app-width";
 import { CITIES, type CityId } from "@/components/CitySelector";
 import { Avatar, PickerSheet, type PickerOption, Skeleton } from "@/components/ui";
 import { getCategoryColorIconUrl } from "@/lib/category-color-icons";
@@ -40,6 +41,7 @@ import {
   isAvailabilityVisible,
 } from "@/features/master-view/availability";
 import { type MasterInCategory, useMastersByL2 } from "@/features/master-view/use-masters-by-l2";
+import { useRecordMasterView } from "@/features/master-view/use-record-view";
 import {
   formatServicePrice,
   useMasterServices,
@@ -83,7 +85,7 @@ export default function CategoryDetailScreen() {
   // sticky (WebShell + категория-row): пользователь хочет видеть фильтры
   // постоянно (фидбэк user 2026-05-16). На mobile сохраняем hide-on-scroll
   // (Telegram/iOS-style) — там экономия места критична.
-  const { width: viewportWidth } = useWindowDimensions();
+  const viewportWidth = useAppWidth();
   const isDesktopWeb = Platform.OS === "web" && viewportWidth >= 768;
 
   // Auto-hide header при скролле вниз / re-show при скролле вверх (Telegram/iOS-style).
@@ -521,6 +523,12 @@ function MasterRow({
   onPress: () => void;
 }) {
   const u = master.user;
+  // Telemetry: impression при появлении row в списке категории. RPC сам
+  // дедупит за 24h, in-memory дедуп защищает от повторов в одной сессии.
+  const recordView = useRecordMasterView();
+  useEffect(() => {
+    if (u?.id) recordView(u.id, "impression");
+  }, [u?.id, recordView]);
   const profile = master.profile;
   const cityName = master.city?.name ?? null;
   const fullName = [u.first_name, u.last_name].filter(Boolean).join(" ") || "Мастер";
@@ -563,15 +571,15 @@ function MasterRow({
       className="px-5 py-5 active:bg-canvas-soft-2"
     >
       <>
-        {/* Header row: avatar + имя + meta. Bio и кнопки — full-width ниже,
-            от левого края карточки (фидбэк: под avatar пустое место). */}
-        <View className="flex-row gap-4">
-          {/* Аватар увеличен lg(64) → xl(96) — больше визуального веса
-              и узнаваемости (фидбэк user 2026-05-14). */}
-          <Avatar url={u.avatar_url} name={fullName} seed={u.id} size="xl" />
+        {/* Header row: компактный avatar 64px + имя + meta. Паттерн TaskRabbit
+            «Select-a-Tasker»: маленькая аватарка слева, дальше плотная мета.
+            Фото-портфолио показываем ниже как proof-of-skill, не как hero.
+            Фидбэк user 2026-05-20: «слишком большое место для фото, аватар
+            96px — слишком крупно для карточки списка». */}
+        <View className="flex-row gap-3">
+          <Avatar url={u.avatar_url} name={fullName} seed={u.id} size="lg" />
           <View className="flex-1">
-            {/* Имя + chip готовности (h-6, text-caption=12px) — больше чем
-                раньше (h-5/text-caption-xs выглядело мелко по фидбэку user). */}
+            {/* Имя + chip готовности (h-6, text-caption=12px) */}
             <View className="flex-row items-center gap-2">
               <AppText weight="semibold" className="text-ink text-body-lg flex-shrink" numberOfLines={1}>
                 {fullName}
@@ -607,51 +615,48 @@ function MasterRow({
               })()}
             </View>
 
-            {/* Trust-meta в 2 строки (фидбэк user 2026-05-14: «город ниже на
-                вторую строчку»):
-                  Row 1: Бригада · Рейтинг · Опыт (мета о мастере как профи)
-                  Row 2: 📍 Город (отдельный гео-контекст) */}
-            <View className="flex-row flex-wrap items-center gap-x-3 gap-y-1.5 mt-2">
+            {/* Мета-строка. Фидбэк user 2026-05-20: «если отзывов нет —
+                ничего не показывать». Раньше выводилось «★ Без отзывов»
+                (паттерн Avito), что создавало визуальный шум и негативный
+                сигнал у новичков. Теперь rating-блок просто отсутствует
+                при ratingCount === 0 (паттерн Airbnb/Booking/TaskRabbit).
+                Опыт и город всегда видны если есть данные. */}
+            <View className="flex-row flex-wrap items-center gap-x-3 gap-y-1 mt-1.5">
               {accountBadge ? (
                 <View className="flex-row items-center gap-1">
-                  <Users size={14} weight="bold" color="currentColor" className="text-mute" />
-                  <AppText className="text-mute text-body-sm">{accountBadge}</AppText>
+                  <Users size={13} weight="bold" color="currentColor" className="text-mute" />
+                  <AppText className="text-mute text-caption">{accountBadge}</AppText>
                 </View>
               ) : null}
 
               {rating !== null && ratingCount > 0 ? (
                 <View className="flex-row items-center gap-1">
-                  <Star size={14} weight="bold" color="currentColor" className="text-ink" />
-                  <AppText weight="mono" className="text-ink text-mono-sm">
+                  <Star size={13} weight="fill" color="currentColor" className="text-ink" />
+                  <AppText weight="mono" className="text-ink text-mono-caption">
                     {rating.toFixed(1)}
                   </AppText>
-                  <AppText weight="mono" className="text-mute text-mono-sm">
+                  <AppText weight="mono" className="text-mute text-mono-caption">
                     ({ratingCount})
                   </AppText>
                 </View>
-              ) : (
-                <View className="flex-row items-center gap-1">
-                  <Star size={14} weight="bold" color="currentColor" className="text-mute" />
-                  <AppText className="text-mute text-body-sm">Без отзывов</AppText>
-                </View>
-              )}
+              ) : null}
 
               {experience !== null && experience > 0 ? (
                 <View className="flex-row items-center gap-1">
-                  <Briefcase size={14} weight="bold" color="currentColor" className="text-mute" />
-                  <AppText className="text-mute text-body-sm">
+                  <Briefcase size={13} weight="bold" color="currentColor" className="text-mute" />
+                  <AppText className="text-mute text-caption">
                     {pluralizeYears(experience)} опыта
                   </AppText>
                 </View>
               ) : null}
-            </View>
 
-            {cityName ? (
-              <View className="flex-row items-center gap-1 mt-1.5">
-                <MapPin size={14} weight="bold" color="currentColor" className="text-mute" />
-                <AppText className="text-mute text-body-sm">{cityName}</AppText>
-              </View>
-            ) : null}
+              {cityName ? (
+                <View className="flex-row items-center gap-1">
+                  <MapPin size={13} weight="bold" color="currentColor" className="text-mute" />
+                  <AppText className="text-mute text-caption">{cityName}</AppText>
+                </View>
+              ) : null}
+            </View>
           </View>
         </View>
         {/* Bio — full-width, от левого края (не из правой колонки).
@@ -688,10 +693,13 @@ function MasterRow({
             })}
           </View>
         ) : null}
-        {/* VK-style 5-thumb preview портфолио. Видно прямо в листинге, не
-            заходя в профиль — клиент сразу проверяет качество работ. Тап на
-            миниатюру → переход на профиль (lightbox откроется там).
-            «+N» overlay на 5-й плашке если фото больше 5. */}
+        {/* Превью портфолио — фиксированные 80×80 миниатюры в ряд.
+            Фидбэк user 2026-05-20: «слишком большое место для фото, пусть
+            будут нормальные миниатюры». Раньше было flex:1 + aspectRatio:1
+            — при 1-2 фото плашка растягивалась почти на полэкрана.
+            Теперь чёткий thumbnail-ряд (паттерн Profi.ru/YouDo: proof-of-skill
+            без претензии на hero). Если фото меньше 5 — пустые слоты не
+            показываются. */}
         {previewPhotos.length > 0 ? (
           <View className="mt-3 flex-row gap-1.5">
             {previewPhotos.map((p, i) => {
@@ -703,37 +711,24 @@ function MasterRow({
                   accessibilityLabel={`Фото ${i + 1}`}
                   onPress={handleContact}
                   style={{
-                    flex: 1,
-                    aspectRatio: 1,
+                    width: 80,
+                    height: 80,
                     borderRadius: 8,
                     overflow: "hidden",
-                    backgroundColor: "#1a1a1a",
                     position: "relative",
                   }}
-                  className="active:opacity-70"
+                  className="bg-canvas-soft active:opacity-70"
                 >
                   <Image
-                    source={{ uri: p.url }}
+                    source={{ uri: cdnImage(p.url, { width: 80 }) }}
                     style={{ width: "100%", height: "100%" }}
                     resizeMode="cover"
                   />
                   {isLastSlot ? (
                     <View
-                      style={{
-                        position: "absolute",
-                        top: 0,
-                        left: 0,
-                        right: 0,
-                        bottom: 0,
-                        backgroundColor: "rgba(0,0,0,0.55)",
-                        alignItems: "center",
-                        justifyContent: "center",
-                      }}
+                      className="absolute inset-0 items-center justify-center bg-black/55"
                     >
-                      <AppText
-                        weight="semibold"
-                        style={{ color: "#fff", fontSize: 14 }}
-                      >
+                      <AppText weight="semibold" className="text-on-primary text-body-sm">
                         +{portfolioOverflow}
                       </AppText>
                     </View>
@@ -890,7 +885,7 @@ function MasterRowGallery({
                 />
                 <AppText
                   weight="medium"
-                  className="text-caption-xs"
+                  className="text-caption"
                   style={{ color: AVAILABILITY_DOT[status] }}
                 >
                   {AVAILABILITY_SHORT[status]}
@@ -912,17 +907,12 @@ function MasterRowGallery({
 
             {rating !== null && ratingCount > 0 ? (
               <View className="flex-row items-center gap-1.5">
-                <Star size={12} weight="bold" color="currentColor" className="text-mute" />
+                <Star size={12} weight="fill" color="currentColor" className="text-ink" />
                 <AppText weight="mono" className="text-mute text-mono-caption">
                   {rating.toFixed(1)} ({ratingCount})
                 </AppText>
               </View>
-            ) : (
-              <View className="flex-row items-center gap-1.5">
-                <Star size={12} weight="bold" color="currentColor" className="text-mute" />
-                <AppText className="text-mute text-caption">Без отзывов</AppText>
-              </View>
-            )}
+            ) : null}
 
             {experience !== null && experience > 0 ? (
               <View className="flex-row items-center gap-1.5">
@@ -1022,12 +1012,12 @@ function CompactPortfolioPager({
   };
   return (
     <View
+      className="bg-canvas-soft-2"
       style={{
         width: GALLERY_W,
         height: GALLERY_H,
         borderRadius: 12,
         overflow: "hidden",
-        backgroundColor: "#1a1a1a",
       }}
     >
       <FlatList
@@ -1042,7 +1032,7 @@ function CompactPortfolioPager({
         renderItem={({ item }) => (
           <Pressable onPress={onPress} style={{ width: GALLERY_W, height: GALLERY_H }}>
             <Image
-              source={{ uri: item.url }}
+              source={{ uri: cdnImage(item.url, { width: GALLERY_W }) }}
               style={{ width: "100%", height: "100%" }}
               resizeMode="cover"
             />

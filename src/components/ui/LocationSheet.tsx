@@ -47,8 +47,6 @@ export interface LocationSheetProps {
   onApply: (next: LocationFilter) => void;
   /** Заголовок sheet'а. По умолчанию «Где искать». */
   title?: string;
-  /** Subtitle под заголовком. */
-  subtitle?: string;
 }
 
 export function LocationSheet({
@@ -57,7 +55,6 @@ export function LocationSheet({
   value,
   onApply,
   title = "Где искать",
-  subtitle = "Выберите города и районы — можно несколько",
 }: LocationSheetProps) {
   const tc = useThemeColors(["ink", "mute", "accent"]);
 
@@ -102,7 +99,7 @@ export function LocationSheet({
   }
 
   return (
-    <BottomSheet open={open} onClose={onClose} title={title} subtitle={subtitle} fullScreen>
+    <BottomSheet open={open} onClose={onClose} title={title} fullScreen>
       <ScrollView
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"

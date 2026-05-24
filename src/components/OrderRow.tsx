@@ -1,41 +1,41 @@
-// OrderRow — строка заказа в списке (list-style, full-bleed).
+// OrderRow — строка заказа в списке (Linear-style, full-bleed).
 //
-// Layout (после фидбэка user 2026-05-15 «иконку маленькую рядом с
-// заголовком, текст с левого края, без большого slot'а слева»):
-//   - НЕТ border + rounded карточки. Это plain inbox-row, как Apple Mail
-//     или iOS Settings — разделение строк — `border-b border-hairline`,
-//     внутренний padding px-5 py-4.
-//   - **Иконка inline в начале заголовка** (16px, без подложки). Не
-//     отдельный slot слева, а маркер ровно перед title-текстом. Для
-//     variant='assigned' / 'responded' — Lucide-иконка цвета success /
-//     warning. Для 'default' — colorUrl (Iconify CDN) если есть, иначе
-//     Lucide categoryIcon.
-//   - Title + time в первой строке. Дальше — category, опц. description
-//     (2 строки), опц. ценник (mono ink), status-meta — всё на полную
-//     ширину контейнера без левого отступа.
-//   - **Parent НЕ должен давать gap-3 / px-X.** OrderRow сам управляет
-//     своим padding'ом — render parent: `<View>{rows}</View>`.
+// Редизайн 2026-05-24 по присланному владельцем референсу «Linear Design.html»
+// (карточки заказов). Взяли визуальный язык Linear: плоские строки-ряды без
+// рамок/теней (разделены тонкой линией снизу), цветная статус-плашка с точкой
+// (мягкая подложка + заглавный лейбл), плотная типографика, пунктирный
+// разделитель перед блоком цифр, табличные цифры. Все цвета — наши токены
+// (NativeWind className), поэтому корректно работает и тёмная тема.
 //
-// Старый дизайн (h-9 w-9 slot с подложкой): см. git log до 2026-05-15.
+// Что НЕ взяли (по указанию владельца / из-за наших данных):
+//   - метрику «Отклики 7/20» — исключено явно;
+//   - номер «01» слева — для ленты заказов это декор;
+//   - блок кнопок «Откликнуться/закладка» внутри карточки — лента видна и
+//     клиенту, и мастеру (разное действие); вся карточка кликается → детали;
+//   - «Срок · 84д» — у заказа нет дедлайна-обратного-отсчёта в данных ленты.
+//
+// Цвет статус-плашки привязан к срочности/статусу:
+//   - закрытые статусы (черновик/завершён/закрыта/истекла) → нейтральная;
+//   - иначе по срочности: Срочно → красная, На неделе → янтарная, остальное →
+//     нейтральная.
+//
+// Используется во всех лентах заказов (Поиск заказов, Мои заказы, ленты
+// мастера responded/assigned) — единый вид. Старый «inbox-row» дизайн — в git
+// history до 2026-05-24.
 
-import { MapPin } from "phosphor-react-native";
-import { Image, Pressable, View } from "react-native";
+import { Image as ExpoImage } from "expo-image";
+import { ArrowRight, MapPin } from "phosphor-react-native";
+import { type GestureResponderEvent, Pressable, View } from "react-native";
 import { AppText } from "@/components/AppText";
 import type { OrderStatusValue } from "@/components/OrderStatusBadge";
-import { getCategoryColorIconUrl } from "@/lib/category-color-icons";
+import { cdnBlur, cdnImage } from "@/lib/image-cdn";
 import { getCategoryIcon } from "@/lib/category-icons";
 import { formatPrice, urgencyLabel } from "@/features/orders/order-schema";
 import type { OrderPriceKind, OrderUrgency } from "@/features/orders/use-create-order";
-import { pluralizeResponses } from "@/lib/pluralize";
 import { useThemeColors } from "@/lib/use-theme-color";
 
-/** Визуальный variant для контекста списка:
- *  - `default` (поиск заказов / Мои заказы клиента) — иконка категории.
- *  - `responded` (мастер «Я откликнулся») — Hourglass + warning-soft фон,
- *    "ждёте ответа клиента".
- *  - `assigned` (мастер «Меня выбрали») — CheckCircle + success-soft фон,
- *    "вас выбрали, можно работать".
- *  По фидбэку user 2026-05-15: «чтобы я понимал какой это таб». */
+/** Визуальный variant для контекста списка (исторический prop, оставлен для
+ *  совместимости вызовов; на вид сейчас не влияет — иконка всегда категорийная). */
 export type OrderRowVariant = "default" | "responded" | "assigned";
 
 export interface OrderRowProps {
@@ -44,8 +44,7 @@ export interface OrderRowProps {
   categoryName: string;
   /** Lucide-icon ключ из categories_l2.icon. Fallback если нет color-иконки. */
   categoryIcon?: string | null;
-  /** L2 id для маппинга в цветную SVG-иконку (`getCategoryColorIconUrl`).
-   *  Если найдена цветная — рендерим её 24×24, иначе fallback Lucide. */
+  /** L2 id для маппинга в цветную SVG-иконку (`getCategoryColorIconUrl`). */
   categoryL2Id?: string | null;
   cityName: string;
   district?: string | null;
@@ -54,34 +53,31 @@ export interface OrderRowProps {
   createdAt: string;
   status?: OrderStatusValue;
   onPress?: () => void;
-  /** Контекст списка — меняет левую иконку и подложку. Default — категорийная
-   *  иконка. См. OrderRowVariant. */
   variant?: OrderRowVariant;
-  /** Показать счётчик откликов в meta-row. По умолчанию `true` (для клиента,
-   *  он владелец заказа и хочет знать сколько откликов пришло). Для мастера
-   *  скрываем — чужая инфа, ему не нужно знать конкуренцию (фидбэк user
-   *  2026-05-15: «мастер не должен видеть сколько откликов у заказа»). */
+  /** @deprecated «Отклики» убраны из карточки 2026-05-24 по указанию владельца. */
   showResponsesCount?: boolean;
-  /** Способ задания бюджета. Опционально — если не передан, ценник скрывается.
-   *  На /orders/search показываем ценник, чтобы мастер видел бюджет, не заходя
-   *  внутрь (фидбэк user 2026-05-15 «ценники не отображаются, очень плохо»). */
+  /** Способ задания бюджета. Если не передан — блок «Бюджет» скрыт. */
   budgetKind?: OrderPriceKind | null;
   /** Числовое значение бюджета в ₽. NULL для negotiable. */
   budgetValue?: number | null;
-  /** Описание заказа. Опционально — если передано, отрисовывается под title
-   *  в 2 строки. На /orders/search показываем для контекста (фидбэк user 2026-05-15
-   *  «описание заказа можно 1-2 строки отобразить»). */
+  /** Описание заказа — 2 строки превью под title. */
   description?: string | null;
-  /** Мастер уже отправил отклик на этот заказ (для индикации в /orders/search).
-   *  Рендерим маленький pill «Вы откликнулись» в meta-row + лёгкая тень фона
-   *  всей карточки, чтобы взгляд сразу различал «новые» vs «трогал». */
+  /** Мастер уже отправил отклик на этот заказ — чип «Вы откликнулись» + лёгкий
+   *  тонированный фон всей строки. */
   alreadyResponded?: boolean;
+  /** Показать кнопку «Откликнуться» в карточке. ТОЛЬКО в ленте «Поиск заказов»
+   *  (где мастер находит новые заказы). НЕ показываем в «Ваши отклики» /
+   *  «Мои заказы» / на главной мастера — там отклик уже отправлен либо это свой
+   *  заказ. Дополнительно скрывается, если на этот заказ уже откликнулись. */
+  showRespondButton?: boolean;
+  /** Обложка заказа (первое фото) — миниатюра справа. */
+  coverUrl?: string | null;
+  /** Всего фото у заказа — для бейджа «+N» поверх миниатюры. */
+  photosCount?: number;
 }
 
 /**
- * Короткая дата: «11 ч», «2 д», «23 мая» — без «назад», т.к. справа в
- * inbox-row нет места для длинных строк (раньше «11 ч назад» обрезался
- * status-pill'ом).
+ * Короткая дата: «11 ч», «2 д», «23 мая» — без «назад».
  */
 function timeAgoShort(iso: string): string {
   const created = new Date(iso).getTime();
@@ -97,87 +93,94 @@ function timeAgoShort(iso: string): string {
   return new Date(iso).toLocaleDateString("ru-RU", { day: "numeric", month: "short" });
 }
 
-/**
- * Цвет статус-точки + короткий лейбл. Точка маленькая (8px) — статус
- * читается как inline-метка, не как тяжёлый pill.
- */
-interface StatusMeta {
+interface PillStyle {
   label: string;
-  dotClass: string;
+  bgClass: string;
   textClass: string;
-  dimmed: boolean; // приглушаем карточку целиком для cancelled / expired
+  dotClass: string;
 }
 
-// Статусы НЕЦВЕТНЫЕ — все используют нейтральные mute/ink-токены вместо
-// accent/warning/success. Фидбэк user 2026-05-15: «слишком много цветов на
-// главной, статус в работе и т.д. сделать стандартным». Status считается
-// нейтральным маркером — текст-лейбл его называет, цвет не нужен. Dimmed-флаг
-// (draft/completed/cancelled/expired) делает всю карточку приглушённой.
-const STATUS_META: Record<OrderStatusValue, StatusMeta> = {
-  draft: { label: "Черновик", dotClass: "bg-muted-soft", textClass: "text-mute", dimmed: true },
-  open: { label: "Открыта", dotClass: "bg-muted-soft", textClass: "text-ink", dimmed: false },
-  in_progress: {
-    label: "В работе",
-    dotClass: "bg-muted-soft",
-    textClass: "text-ink",
-    dimmed: false,
-  },
-  awaiting_confirmation: {
-    label: "Ждёт подтверждения",
-    dotClass: "bg-muted-soft",
-    textClass: "text-ink",
-    dimmed: false,
-  },
-  completed: {
-    label: "Завершён",
-    dotClass: "bg-muted-soft",
-    textClass: "text-mute",
-    dimmed: true,
-  },
-  disputed: {
-    label: "Спор",
-    dotClass: "bg-muted-soft",
-    textClass: "text-ink",
-    dimmed: false,
-  },
-  cancelled: { label: "Отменён", dotClass: "bg-muted-soft", textClass: "text-mute", dimmed: true },
-  expired: { label: "Истёк", dotClass: "bg-muted-soft", textClass: "text-mute", dimmed: true },
+// Статусы, при которых заказ «неактивен» — плашку показываем нейтральной с
+// текстом статуса (важно для «Мои заказы» → история). Для активных заказов
+// плашка отражает срочность (главный сигнал в ленте поиска).
+const DIMMED_STATUS: Partial<Record<OrderStatusValue, string>> = {
+  draft: "Черновик",
+  completed: "Завершён",
+  cancelled: "Закрыта",
+  expired: "Истекла",
 };
 
+function pillFor(status: OrderStatusValue | undefined, urgency: OrderUrgency): PillStyle {
+  // 1) Закрытые/неактивные статусы → нейтральная плашка со статусом.
+  if (status && DIMMED_STATUS[status]) {
+    return {
+      label: DIMMED_STATUS[status] as string,
+      bgClass: "bg-surface-2",
+      textClass: "text-mute",
+      dotClass: "bg-muted-soft",
+    };
+  }
+  // 2) Активный заказ → плашка по срочности.
+  if (urgency === "urgent") {
+    return {
+      label: urgencyLabel("urgent"),
+      bgClass: "bg-error-soft",
+      textClass: "text-error-deep",
+      dotClass: "bg-error",
+    };
+  }
+  if (urgency === "this_week") {
+    return {
+      label: urgencyLabel("this_week"),
+      bgClass: "bg-warning-soft",
+      textClass: "text-warning-deep",
+      dotClass: "bg-warning",
+    };
+  }
+  return {
+    label: urgencyLabel(urgency),
+    bgClass: "bg-surface-2",
+    textClass: "text-mute",
+    dotClass: "bg-muted-soft",
+  };
+}
+
 export function OrderRow(props: OrderRowProps) {
-  const tc = useThemeColors(["ink", "muted-soft", "mute"]);
+  const tc = useThemeColors(["ink", "mute", "muted-soft", "on-primary"]);
+
+  // Кнопка «Откликнуться» дублирует тап по карточке (обе → открыть заказ).
+  // stopPropagation, чтобы на web клик по кнопке не всплыл к карточке и не
+  // вызвал onPress дважды. На native stopPropagation — безопасный no-op.
+  const handleRespond = (e: GestureResponderEvent) => {
+    e.stopPropagation?.();
+    props.onPress?.();
+  };
   const Icon = getCategoryIcon(props.categoryIcon);
-  // Mapping L2 id → colored SVG (fluent-color). Если в curated-словаре есть
-  // match — рендерим цветную иконку как на главной, иначе моно-Lucide.
-  const colorUrl = getCategoryColorIconUrl(props.categoryL2Id);
-  const statusMeta = props.status ? STATUS_META[props.status] : null;
-  const dimmed = statusMeta?.dimmed ?? false;
-  const variant = props.variant ?? "default";
+  const isDimmed = !!(props.status && DIMMED_STATUS[props.status]);
+  const pill = pillFor(props.status, props.urgency);
+  // Кнопка «Откликнуться» — только в ленте поиска и только если ещё не откликнулись.
+  const showButton = !!props.showRespondButton && !props.alreadyResponded;
 
-  // Inline-иконка в начале заголовка — ВСЕГДА category-иконка (Iconify-color
-  // или Lucide-fallback). Status-маркеры CheckCircle/Hourglass для variants
-  // assigned/responded убраны (фидбек user 2026-05-16): иконка статуса
-  // дублирует контекст таба — лента «Меня выбрали» / «Я откликнулся» уже
-  // фильтрует по статусу, ещё одна иконка перед каждой строкой — шум.
-  // Размер 16px — маркер, не визуальный анкор.
-  const inlineIcon = colorUrl ? (
-    <Image source={{ uri: colorUrl }} style={{ width: 16, height: 16 }} />
-  ) : (
-    <Icon size={16} weight="bold" color={tc.ink} />
-  );
+  // Ведущая иконка категории слева — монохромная line-иконка (Gravity-стиль).
+  // Заняла место номера «01» из референса (фидбэк владельца 2026-05-24:
+  // «вместо цифр — иконки категорий»). Сразу показывает категорию заказа.
+  const catIcon = <Icon size={20} color={tc.mute} />;
 
-  const respondedLabel = props.alreadyResponded ? "Вы откликнулись" : null;
-  const ariaLabel = `${props.title} — ${statusMeta?.label ?? ""}${
-    respondedLabel ? `, ${respondedLabel.toLowerCase()}` : ""
+  const ariaLabel = `${props.title} — ${pill.label}${
+    props.alreadyResponded ? ", вы откликнулись" : ""
   }`;
 
-  // Если мастер уже откликнулся — приглушённый фон (canvas-soft) вместо canvas.
-  // Текст не приглушаем — заказ остаётся читаемым, просто визуально «помечен
-  // как уже трогал». Это типовой паттерн «прочитанной» строки в инбоксах
-  // (Apple Mail, Gmail, Linear).
+  // Уже откликался → приглушённый фон строки (паттерн «прочитанного» инбокса).
+  // Разделитель между карточками — мягкая сплошная линия hairline-strong/50
+  // (полупрозрачный серый): карточки отделяются, но линия не «чёрная».
+  // Внутренний разделитель «Бюджета» — светлый пунктир hairline, так иерархия
+  // линий читается: сплошная серая = граница карточки, пунктир = внутри.
+  // ВАЖНО: классы border-цвета и bg ОБЯЗАНЫ быть через пробел. Раньше была
+  // склейка `hairline-strong/60bg-canvas` (без пробела) → NativeWind не понимал
+  // класс и рисовал границу дефолтным ТЁМНЫМ цветом (баг «чёрная линия»).
   const bgClass = props.alreadyResponded
-    ? "border-b border-hairline bg-canvas-soft px-5 py-4 active:bg-canvas-soft-2 hover:bg-canvas-soft-2"
-    : "border-b border-hairline bg-canvas px-5 py-4 active:bg-canvas-soft hover:bg-canvas-soft";
+    ? "border-b border-hairline-strong/50 bg-canvas-soft px-5 py-4 active:bg-canvas-soft-2 hover:bg-canvas-soft-2"
+    : "border-b border-hairline-strong/50 bg-canvas px-5 py-4 active:bg-canvas-soft hover:bg-canvas-soft";
 
   return (
     <Pressable
@@ -185,97 +188,128 @@ export function OrderRow(props: OrderRowProps) {
       accessibilityLabel={ariaLabel}
       onPress={props.onPress}
       className={bgClass}
-      style={dimmed ? { opacity: 0.7 } : undefined}
+      style={isDimmed ? { opacity: 0.7 } : undefined}
     >
-      {/* Row 1: [icon + title flex-1] + time. Иконка inline, чуть смещена
-          вниз (mt 3px) чтобы её центр совпал с cap-line первой строки текста. */}
-      <View className="flex-row items-start gap-2">
-        <View className="flex-1 min-w-0 flex-row items-start gap-1.5">
-          <View style={{ marginTop: 3 }}>{inlineIcon}</View>
+      <View className="flex-row items-start gap-3">
+        {/* Ведущая иконка категории слева (вместо номера «01» из референса). */}
+        <View style={{ marginTop: 2 }}>{catIcon}</View>
+        <View className="flex-1 min-w-0">
+          {/* Row 1: статус-плашка + название категории + время справа. */}
+          <View className="flex-row items-center gap-2">
+            <View
+              className={`flex-row items-center gap-1.5 self-start rounded-pill px-2 py-0.5 ${pill.bgClass}`}
+            >
+              <View className={`h-1.5 w-1.5 rounded-full ${pill.dotClass}`} />
+              <AppText weight="semibold" className={`text-caption ${pill.textClass}`}>
+                {pill.label}
+              </AppText>
+            </View>
+            <AppText className="min-w-0 flex-1 text-caption text-mute" numberOfLines={1}>
+              {props.categoryName}
+            </AppText>
+            <AppText weight="mono" className="text-mono-caption text-muted-soft">
+              {timeAgoShort(props.createdAt)}
+            </AppText>
+          </View>
+
+          {/* Row 2: заголовок. */}
           <AppText
             weight="semibold"
-            className="flex-1 text-body-md text-ink"
+            className="mt-2 text-body-md tracking-tight text-ink"
             numberOfLines={2}
           >
             {props.title}
           </AppText>
-        </View>
-        <AppText
-          weight="mono"
-          className="mt-0.5 text-mono-caption text-muted-soft"
-        >
-          {timeAgoShort(props.createdAt)}
-        </AppText>
-      </View>
 
-      {/* Row 2: category eyebrow — текст с левого края (без gap для иконки) */}
-      <AppText className="mt-1 text-caption text-mute" numberOfLines={1}>
-        {props.categoryName}
-      </AppText>
+          {/* Row 3 (опц.): описание, 2 строки. */}
+          {props.description && props.description.trim().length > 0 ? (
+            <AppText
+              className="mt-1 text-body-sm text-body"
+              numberOfLines={2}
+              style={{ lineHeight: 19 }}
+            >
+              {props.description}
+            </AppText>
+          ) : null}
 
-      {/* Row 3 (опц.): описание заказа в 2 строки — short preview для
-          контекста. Передаётся на /orders/search чтобы мастер сразу понимал
-          детали. */}
-      {props.description && props.description.trim().length > 0 ? (
-        <AppText
-          className="mt-1 text-body-sm text-body"
-          numberOfLines={2}
-          style={{ lineHeight: 19 }}
-        >
-          {props.description}
-        </AppText>
-      ) : null}
-
-      {/* Row 4 (опц.): ценник — отдельной строкой, mono для цифр. */}
-      {props.budgetKind ? (
-        <AppText weight="mono" className="mt-2 text-body-sm text-ink">
-          {formatPrice(props.budgetKind, props.budgetValue ?? null)}
-        </AppText>
-      ) : null}
-
-      {/* Row 5: status-dot + status + · + meta. Перенос строк gap-y-1
-          на случай длинных локаций. */}
-      <View className="mt-2 flex-row flex-wrap items-center gap-x-2 gap-y-1">
-        {/* «Вы откликнулись» pill — accent-soft, маленький. Стоит первым
-            в meta-row, чтобы мастер сразу видел status'ы своих откликов
-            в фиде /orders/search. */}
-        {props.alreadyResponded ? (
-          <>
-            <View className="rounded-pill bg-accent-soft px-2 py-0.5">
-              <AppText weight="semibold" className="text-caption-xs text-accent">
-                Вы откликнулись
-              </AppText>
-            </View>
-            <AppText className="text-caption text-muted-soft">·</AppText>
-          </>
-        ) : null}
-        {statusMeta ? (
-          <View className="flex-row items-center gap-1.5">
-            <View className={`h-2 w-2 rounded-full ${statusMeta.dotClass}`} />
-            <AppText weight="semibold" className={`text-caption ${statusMeta.textClass}`}>
-              {statusMeta.label}
+          {/* Row 4: локация. */}
+          <View className="mt-2 flex-row items-center gap-1">
+            <MapPin size={12} weight="bold" color={tc["muted-soft"]} />
+            <AppText className="text-caption text-mute" numberOfLines={1}>
+              {props.cityName}
+              {props.district ? ` · ${props.district}` : ""}
             </AppText>
           </View>
-        ) : null}
-        {statusMeta ? (
-          <AppText className="text-caption text-muted-soft">·</AppText>
-        ) : null}
-        <AppText className="text-caption text-mute">{urgencyLabel(props.urgency)}</AppText>
-        <AppText className="text-caption text-muted-soft">·</AppText>
-        <View className="flex-row items-center gap-1">
-          <MapPin size={11} weight="bold" color={tc["muted-soft"]} />
-          <AppText className="text-caption text-mute" numberOfLines={1}>
-            {props.cityName}
-            {props.district ? ` · ${props.district}` : ""}
-          </AppText>
+
+          {/* Row 5: пунктирный разделитель + «Бюджет» слева + справа либо кнопка
+              «Откликнуться» (лента поиска, ещё не откликнулся), либо чип
+              «Вы откликнулись» (уже откликнулся) — на месте кнопки. */}
+          {props.budgetKind || showButton || props.alreadyResponded ? (
+            <View className="mt-3 flex-row items-center justify-between gap-3 border-t border-dashed border-hairline pt-3">
+              {props.budgetKind ? (
+                <View className="min-w-0 flex-1">
+                  <AppText className="text-caption uppercase tracking-wide text-mute">
+                    Бюджет
+                  </AppText>
+                  <AppText
+                    weight="mono"
+                    className="mt-0.5 text-body-md text-ink"
+                    numberOfLines={1}
+                  >
+                    {formatPrice(props.budgetKind, props.budgetValue ?? null)}
+                  </AppText>
+                </View>
+              ) : (
+                <View className="flex-1" />
+              )}
+              {showButton ? (
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Откликнуться на заказ"
+                  onPress={handleRespond}
+                  className="flex-row items-center gap-1.5 self-end rounded-md bg-primary px-4 py-2 active:opacity-80"
+                >
+                  <AppText weight="semibold" className="text-body-sm text-on-primary">
+                    Откликнуться
+                  </AppText>
+                  <ArrowRight size={14} weight="bold" color={tc["on-primary"]} />
+                </Pressable>
+              ) : props.alreadyResponded ? (
+                <View className="self-end rounded-pill bg-accent-soft px-3 py-1.5">
+                  <AppText weight="semibold" className="text-caption text-accent">
+                    Вы откликнулись
+                  </AppText>
+                </View>
+              ) : null}
+            </View>
+          ) : null}
         </View>
-        {props.showResponsesCount !== false ? (
-          <>
-            <AppText className="text-caption text-muted-soft">·</AppText>
-            <AppText className="text-caption text-mute">
-              {pluralizeResponses(props.responsesCount)}
-            </AppText>
-          </>
+
+        {/* Миниатюра-обложка справа — только если у заказа есть фото.
+            Размеры заданы ИНЛАЙН (а не h-16/w-16) + alignSelf:flex-start —
+            иначе в flex-строке бокс растягивался по высоте строки и landscape-
+            фото обрезалось в высокую полоску (баг 2026-05-24). Фиксированный
+            квадрат 64×64 даёт аккуратную обложку как в Avito/Profi. */}
+        {props.coverUrl ? (
+          <View
+            className="overflow-hidden rounded-lg bg-canvas-soft-2"
+            style={{ width: 64, height: 64, alignSelf: "flex-start" }}
+          >
+            <ExpoImage
+              source={{ uri: cdnImage(props.coverUrl, { width: 64 }) }}
+              placeholder={{ uri: cdnBlur(props.coverUrl) }}
+              style={{ width: 64, height: 64 }}
+              contentFit="cover"
+              cachePolicy="memory-disk"
+            />
+            {props.photosCount && props.photosCount > 1 ? (
+              <View className="absolute bottom-1 right-1 rounded-pill bg-black/50 px-1.5 py-0.5">
+                <AppText weight="mono" className="text-caption text-on-dark">
+                  +{props.photosCount - 1}
+                </AppText>
+              </View>
+            ) : null}
+          </View>
         ) : null}
       </View>
     </Pressable>

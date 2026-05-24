@@ -27,7 +27,10 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
 import { useAuthSession } from "@/features/auth/use-auth-session";
 import { useUserRecord } from "@/features/auth/use-user-record";
+import { formatPhoneMask } from "@/features/auth/validation";
+import { ChangePhoneSheet } from "@/features/profile/ChangePhoneSheet";
 import { useUpdateMyProfile } from "@/features/profile/use-update-my-profile";
+import { useUserPrivate } from "@/features/profile/use-user-private";
 import { useSafeBack } from "@/lib/use-safe-back";
 import { useThemeColors } from "@/lib/use-theme-color";
 
@@ -37,6 +40,7 @@ export default function EditClientScreen() {
   const { session } = useAuthSession();
   const userId = session?.user?.id;
   const { data: user } = useUserRecord(userId);
+  const { data: userPrivate } = useUserPrivate(userId);
   const update = useUpdateMyProfile(userId);
   const tc = useThemeColors(["ink", "mute", "muted-soft", "accent"]);
   // safeBack — fallback /(tabs)/profile, потому что edit-client открывается
@@ -46,6 +50,7 @@ export default function EditClientScreen() {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [didInit, setDidInit] = useState(false);
+  const [changePhoneOpen, setChangePhoneOpen] = useState(false);
 
   // Один раз префиллим форму актуальными значениями после загрузки user.
   useEffect(() => {
@@ -169,10 +174,56 @@ export default function EditClientScreen() {
           </AppText>
         ) : null}
 
+        {/* ============================================================
+            Секция «КОНТАКТ» — номер телефона (read-only display + change-flow).
+            Архитектура phone — в `src/features/profile/use-user-private.ts`:
+            сейчас он живёт в `users_private.phone`, потому что Phone Provider
+            в Supabase Auth ещё не подключён (Sprint 1). Когда подключим —
+            переедет на `auth.users.phone`. UI остаётся прежним.
+        ============================================================ */}
+        <SectionCaption>Контакт</SectionCaption>
+        <View className="mx-4 overflow-hidden rounded-lg border border-hairline bg-canvas">
+          <View className="flex-row items-center gap-3 px-4 py-3">
+            <AppText weight="medium" className="w-20 text-body-md text-mute">
+              Телефон
+            </AppText>
+            <AppText
+              weight="medium"
+              className="flex-1 text-body-md text-ink"
+              numberOfLines={1}
+            >
+              {userPrivate?.phone
+                ? formatPhoneMask(userPrivate.phone)
+                : "Не указан"}
+            </AppText>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Сменить номер"
+              onPress={() => setChangePhoneOpen(true)}
+              hitSlop={8}
+              className="active:opacity-60"
+            >
+              <AppText weight="semibold" className="text-body-sm text-accent">
+                {userPrivate?.phone ? "Изменить" : "Указать"}
+              </AppText>
+            </Pressable>
+          </View>
+        </View>
+        <AppText className="mt-2 px-4 text-caption text-mute">
+          Мастера не видят ваш номер до того, как вы сами это разрешите.
+        </AppText>
+
         {/* Секция «Где вы живёте» удалена 2026-05-16: личный город/район
             клиента не используется в продукте. Мастера прикрепляются к
             районам через master_service_areas. */}
       </ScrollView>
+
+      <ChangePhoneSheet
+        open={changePhoneOpen}
+        onClose={() => setChangePhoneOpen(false)}
+        userId={userId}
+        currentPhone={userPrivate?.phone ?? null}
+      />
     </KeyboardAvoidingView>
   );
 }

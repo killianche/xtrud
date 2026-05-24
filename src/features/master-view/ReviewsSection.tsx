@@ -92,7 +92,7 @@ function ReviewRow({ review }: { review: ReviewWithAuthor }) {
             <AppText weight="semibold" className="text-body-md text-ink">
               {authorName}
             </AppText>
-            <AppText className="text-caption-xs text-muted">
+            <AppText className="text-caption text-muted">
               {formatDate(review.created_at)}
             </AppText>
           </View>
@@ -108,7 +108,7 @@ function ReviewRow({ review }: { review: ReviewWithAuthor }) {
               ))}
             </View>
             {review.l2?.name_ru && (
-              <AppText className="text-caption-xs text-muted">· {review.l2.name_ru}</AppText>
+              <AppText className="text-caption text-muted">· {review.l2.name_ru}</AppText>
             )}
           </View>
           {review.text && <AppText className="mt-2 text-body-sm text-body">{review.text}</AppText>}

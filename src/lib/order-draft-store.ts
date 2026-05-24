@@ -31,15 +31,21 @@
  */
 
 import { create } from "zustand";
+import { createJSONStorage, persist } from "zustand/middleware";
+import { storage } from "@/lib/storage";
 import type { CreateOrderFormValues } from "@/features/orders/order-schema";
 
-export type OrderDraft = Partial<CreateOrderFormValues>;
+export type OrderDraft = Partial<CreateOrderFormValues> & {
+  /** Когда draft был последний раз изменён — для отображения в табе «Черновики» и
+   *  будущего auto-expire (TTL 14d). Заполняется автоматически в setDraft. */
+  updatedAt?: number;
+};
 
 interface OrderDraftState {
   /** Полный snapshot формы. Применяется как defaultValues при mount /orders/new. */
   draft: OrderDraft;
-  /** Merge: текущий draft + patch. */
-  setDraft: (patch: OrderDraft) => void;
+  /** Merge: текущий draft + patch + updatedAt. */
+  setDraft: (patch: Partial<CreateOrderFormValues>) => void;
   /** Сбросить всё. Вызывается после успешной публикации. */
   clearDraft: () => void;
 
@@ -48,13 +54,49 @@ interface OrderDraftState {
    *  с CategoryPicker. */
   selectedL2: string | null;
   setSelectedL2: (id: string | null) => void;
+
+  /** Выбранная локация — устанавливается с экрана /orders/location-select
+   *  (тап «Готово»), обнуляется после применения в форме. Тот же эфемерный
+   *  handshake-паттерн, что и selectedL2: LocationPicker слушает это поле
+   *  через useEffect и применяет cityId+district в react-hook-form. cityId
+   *  может быть "all" (Вся Ингушетия), id города или "" (когда выбран район). */
+  selectedLocation: { cityId: string; district: string } | null;
+  setSelectedLocation: (loc: { cityId: string; district: string } | null) => void;
 }
 
-export const useOrderDraftStore = create<OrderDraftState>((set) => ({
-  draft: {},
-  setDraft: (patch) => set((s) => ({ draft: { ...s.draft, ...patch } })),
-  clearDraft: () => set({ draft: {}, selectedL2: null }),
+/**
+ * Helper: есть ли в draft контент стоящий показа в табе «Черновики».
+ * Пустые объекты со только updatedAt не считаются — это «прикоснулся к форме,
+ * ничего не ввёл». Минимум: title или description или l2_id.
+ */
+export function hasDraftContent(d: OrderDraft | null | undefined): boolean {
+  if (!d) return false;
+  const title = typeof d.title === "string" ? d.title.trim() : "";
+  const description = typeof d.description === "string" ? d.description.trim() : "";
+  const l2 = typeof d.l2Id === "string" ? d.l2Id.trim() : "";
+  return !!(title || description || l2);
+}
 
-  selectedL2: null,
-  setSelectedL2: (id) => set({ selectedL2: id }),
-}));
+export const useOrderDraftStore = create<OrderDraftState>()(
+  persist(
+    (set) => ({
+      draft: {},
+      setDraft: (patch) =>
+        set((s) => ({ draft: { ...s.draft, ...patch, updatedAt: Date.now() } })),
+      clearDraft: () => set({ draft: {}, selectedL2: null, selectedLocation: null }),
+
+      selectedL2: null,
+      setSelectedL2: (id) => set({ selectedL2: id }),
+
+      selectedLocation: null,
+      setSelectedLocation: (loc) => set({ selectedLocation: loc }),
+    }),
+    {
+      name: "xtrud:order-draft",
+      storage: createJSONStorage(() => storage),
+      // selectedL2 / selectedLocation — эфемерные handshake-поля между экраном
+      // выбора и формой, в storage не пишем. Только draft.
+      partialize: (s) => ({ draft: s.draft }),
+    },
+  ),
+);

@@ -26,15 +26,41 @@ import { fileURLToPath } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dirname, "..");
-const INDEX = resolve(ROOT, "dist/index.html");
 
-console.log("→ Cleaning dist/...");
-execSync("rm -rf dist", { cwd: ROOT, stdio: "inherit" });
+// Папка вывода. По умолчанию `dist` (prod-сборка + initial build watcher'а).
+// Watcher в dev-режиме передаёт WEB_OUTPUT_DIR=dist_next, чтобы собирать в
+// staging-папку, пока живой `serve` продолжает отдавать старый `dist` (без
+// простоя). Затем dev-web-local.mjs делает атомарный своп dist_next → dist и
+// рестартит serve. Это устраняет баг «Index of dist/»: раньше rm -rf dist
+// сносил папку, в которую `serve` сделал chdir, и он отдавал листинг каталога.
+const OUT = process.env.WEB_OUTPUT_DIR || "dist";
+const INDEX = resolve(ROOT, OUT, "index.html");
 
-console.log("→ Running expo export...");
-execSync("npx expo export --platform web", { cwd: ROOT, stdio: "inherit" });
+console.log(`→ Cleaning ${OUT}/...`);
+execSync(`rm -rf ${OUT}`, { cwd: ROOT, stdio: "inherit" });
 
-console.log("→ Patching dist/index.html (script + safe-area meta-tags)...");
+// --clear сбрасывает Metro transform-кэш. Он НУЖЕН только на первой сборке
+// сессии (иначе EXPO_PUBLIC_ENABLE_DEMO может заинлайниться из чужого кэша как
+// false и demo-вход не заработает). Но --clear НА КАЖДУЮ пересборку = каждый
+// раз cold-build всех ~6500 модулей (~33с). Поэтому watcher на пересборках
+// передаёт WEB_SKIP_CLEAR=1 → кэш переиспользуется, пересборка идёт за секунды.
+// Initial build watcher'а и prod-сборка флаг НЕ передают → --clear сохраняется.
+const clearFlag = process.env.WEB_SKIP_CLEAR === "1" ? "" : "--clear ";
+
+console.log(
+  `→ Running expo export → ${OUT}${clearFlag ? " (--clear, cold)" : " (тёплый кэш)"}...`,
+);
+// Демо-вход (телефоны +79000… → email/пароль 'xtrud') нужен для локального
+// preview: тестовые аккаунты + админ (+7 900 000-00-99). Форсим флаг явно. Это
+// ТОЛЬКО локальная web-сборка; production-деплой собирается отдельным пайплайном
+// и demo там остаётся OFF.
+execSync(`npx expo export --platform web ${clearFlag}--output-dir ${OUT}`, {
+  cwd: ROOT,
+  stdio: "inherit",
+  env: { ...process.env, EXPO_PUBLIC_ENABLE_DEMO: "true" },
+});
+
+console.log(`→ Patching ${OUT}/index.html (script + safe-area meta-tags)...`);
 let html = readFileSync(INDEX, "utf-8");
 const before = html;
 

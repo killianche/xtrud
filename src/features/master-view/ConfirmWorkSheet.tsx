@@ -41,6 +41,9 @@ export function ConfirmWorkSheet({ open, onClose, masterId, masterName }: Confir
   const router = useRouter();
   const queryClient = useQueryClient();
   const mutedSoftColor = useThemeColor("muted-soft");
+  // P1 fix 2026-05-20: было inline color="#f5a623" на star icon — заменили на
+  // token warning. Звёзды в xtrud-палитре жёлто-янтарные (warning).
+  const starColor = useThemeColor("warning");
 
   const [l2Id, setL2Id] = useState("");
   const [title, setTitle] = useState("");
@@ -103,12 +106,7 @@ export function ConfirmWorkSheet({ open, onClose, masterId, masterName }: Confir
         reset();
         onClose();
       }}
-      title={isAnon ? "Войдите чтобы подтвердить" : `Этот мастер выполнил работу?`}
-      subtitle={
-        isAnon
-          ? "Подтверждение работы доступно только зарегистрированным клиентам."
-          : `Опишите что сделал ${masterName}. Это поможет другим клиентам.`
-      }
+      title={isAnon ? "Войдите чтобы подтвердить" : "Этот мастер выполнил работу?"}
     >
       {isAnon ? (
         <View style={{ gap: 12, marginTop: 8 }}>
@@ -158,7 +156,7 @@ export function ConfirmWorkSheet({ open, onClose, masterId, masterName }: Confir
                   <Star
                     size={32}
                     weight={n <= rating ? "fill" : "bold"}
-                    color="#f5a623"
+                    color={starColor}
                   />
                 </Pressable>
               ))}

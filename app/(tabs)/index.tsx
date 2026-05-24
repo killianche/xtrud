@@ -18,32 +18,40 @@
  * Master-режим (если active_role === "master") — отдельный экран MasterHomeContent.
  */
 
+import { Image as ExpoImage } from "expo-image";
 import { useRouter } from "expo-router";
-import { CaretDown, CaretRight, Drop, MapPin, SignIn, MagnifyingGlass, Sparkle, Lightning } from "phosphor-react-native";
+import { CaretDown, CaretRight, Drop, MapPin, Sparkle, Lightning } from "phosphor-react-native";
 import { useEffect, useRef, useState } from "react";
-import { Animated, FlatList, Image, Platform, Pressable, ScrollView, View, useWindowDimensions } from "react-native";
+import { Animated, FlatList, Image, Platform, Pressable, ScrollView, View } from "react-native";
+import { useAppWidth } from "@/lib/use-app-width";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { getCategoryColorIconUrl } from "@/lib/category-color-icons";
 import { getCategoryIcon } from "@/lib/category-icons";
 import { AppText } from "@/components/AppText";
-import { CITIES, useCityStore, getCityName } from "@/components/CitySelector";
+import { CITIES } from "@/components/CitySelector";
 import { Avatar, Button, Card, PickerSheet, Skeleton, type PickerOption } from "@/components/ui";
-import { XtrudLogo } from "@/components/XtrudLogo";
+import { XtrudWordmark } from "@/components/XtrudWordmark";
 import { useUserCity } from "@/lib/use-user-city";
 import { useThemeColors } from "@/lib/use-theme-color";
 import { HelpCallout } from "@/components/HelpCallout";
 import { useAuthSession } from "@/features/auth/use-auth-session";
 import { useUserRecord } from "@/features/auth/use-user-record";
+import { ResponseLimitBadge } from "@/features/master-view/ResponseLimitBadge";
 import { useVisibleCategories } from "@/features/categories/use-visible-categories";
-import { HowItWorks } from "@/features/home/HowItWorks";
+import { DescribeTaskCallout } from "@/features/home/DescribeTaskCallout";
+import { CinematicHero } from "@/features/home/CinematicHero";
+import { QuickServices } from "@/features/home/QuickServices";
+import { PromoBannerCarousel } from "@/features/home/PromoBannerCarousel";
+// HowItWorks скрыт 2026-05-18 — компонент остался в src/features/home/.
+// import { HowItWorks } from "@/features/home/HowItWorks";
 import { MasterHomeContent } from "@/features/master-view/MasterHomeContent";
 import {
   AVAILABILITY_DOT,
   effectiveStatus,
   isAvailabilityVisible,
 } from "@/features/master-view/availability";
+import { useRecordMasterView } from "@/features/master-view/use-record-view";
 import { useTopMasters } from "@/features/master-view/use-top-masters";
-import { useColorScheme } from "@/hooks/use-color-scheme";
 import { usePullToRefresh } from "@/hooks/use-pull-to-refresh";
 import { scrollViewToTop, useTabScrollResetCounter } from "@/lib/tab-scroll-reset";
 
@@ -56,7 +64,7 @@ export default function HomeTab() {
 
   const activeRole = user?.active_role ?? "client";
   const refresh = usePullToRefresh();
-  const { width: viewportWidth } = useWindowDimensions();
+  const viewportWidth = useAppWidth();
   // На desktop WebShell уже рендерит logo + nav + CitySelector + auth-кнопку
   // в top-nav. Внутренний TopBar (логотип + xtrud-текст + город + Войти)
   // дублирует эту функциональность → прячем на desktop.
@@ -70,19 +78,32 @@ export default function HomeTab() {
     if (resetCounter > 0) scrollViewToTop(scrollRef);
   }, [resetCounter]);
 
+  const isClientView = activeRole !== "master";
+
   return (
     <ScrollView
       ref={scrollRef}
       className="flex-1 bg-canvas"
       contentContainerStyle={{
-        paddingTop: insets.top,
+        // Client: фото-hero идёт от самого верха экрана (под статус-бар),
+        // поэтому НЕ добавляем paddingTop — CinematicHero сам учитывает inset.
+        // Master: обычный paddingTop под отдельный TopBar.
+        paddingTop: isClientView ? 0 : insets.top,
         paddingBottom: insets.bottom + 24,
       }}
       showsVerticalScrollIndicator={false}
       refreshControl={refresh.control}
     >
-      {!isDesktopWeb ? (
-        <TopBar userId={userId} userName={user?.first_name ?? null} avatarUrl={user?.avatar_url ?? null} />
+      {/* TopBar (логотип + город на canvas) — только для master. У client/анон
+          шапка (логотип + город) лежит ПОВЕРХ фото внутри CinematicHero. */}
+      {!isDesktopWeb && !isClientView ? (
+        <TopBar
+          userId={userId}
+          userName={user?.first_name ?? null}
+          avatarUrl={user?.avatar_url ?? null}
+          userPhone={user?.contact_phone ?? null}
+          isMaster={activeRole === "master"}
+        />
       ) : null}
 
       {activeRole === "master" && userId ? (
@@ -91,6 +112,7 @@ export default function HomeTab() {
         </View>
       ) : (
         <ClientHome
+          scrollRef={scrollRef}
           onCategoryPress={(id) => router.push(`/category/${id}` as never)}
           onMasterPress={(id) => router.push(`/master/${id}` as never)}
           onDescribeTask={(draft) => {
@@ -112,78 +134,59 @@ export default function HomeTab() {
 // ============================================================================
 
 /**
- * TopBar — брендинг главной + город + auth-кнопка.
+ * TopBar — стандартный mobile-app pattern: hamburger (left) + logo (center) +
+ * action slot (right).
  *
- * **Two-row layout** (паттерн Yandex Eats / Avito Доставка / Wolt):
- *   - Row 1 (h-11): лого + wordmark «xtrud» слева, «Войти» pill справа.
- *   - Row 2 (h-7):  компактный city-trigger «📍 Назрань · Магас ▾» муtenta,
+ * Структура (фидбэк user 2026-05-20 — заменил предыдущий two-row layout):
+ *   - Row 1 (h-12): 3 равных слота через flex-1.
+ *       Left:  кнопка-бургер открывает AppDrawer (slide-out side menu).
+ *       Center: XtrudLogo 28px (брендинг).
+ *       Right: для master-роли — ResponseLimitBadge. Для client — пусто
+ *              (визуальное равновесие сохраняется flex-1).
+ *   - Row 2 (h-7):  компактный city-trigger «📍 Назрань · Магас ▾» в mute,
  *                   без бордера — выглядит как метаданные «где я живу».
  *
- * Почему two-row (фидбэк user 2026-05-16). Раньше всё было в одну строку
- * (лого+wordmark + CitySelector pill + Войти pill), но после миграции 0051
- * city-pill стал «Назрань · Магас» (~187px), wordmark «xtrud» с
- * `numberOfLines={1}` сжимался до «x...». Two-row решает overflow без
- * скрытия brand'а или сокращения city-метки.
+ * AppDrawer содержит навигацию: Профиль / Создать заказ / Мои заказы /
+ * Смотреть заказы. Открывается тапом на бургер или свайпом с левого края.
  *
- * Compact city-trigger inline'ом (Pressable + PickerSheet) — не используем
- * <CitySelector> компонент, потому что он жёстко возвращает h-11 pill
- * (паттерн ScreenHeader.rightAction, актуален для других экранов и WebShell
- * desktop). Здесь нужен тонкий text-link стиль.
- *
- * Container height: ~76 (row 1: 44 + gap 4 + row 2: 28). Hero ниже стоит
- * на mt-12 — отступ остаётся визуально читаемым.
+ * Lazyweb-референсы (2026-05-20): Waze, Bluesky, LinkedIn — паттерн
+ * «hamburger left + centered logo + minimal right slot».
  */
 function TopBar({
   userId,
   userName,
   avatarUrl,
+  userPhone,
+  isMaster,
 }: {
   userId: string | undefined;
   userName: string | null;
   avatarUrl: string | null;
+  userPhone: string | null;
+  isMaster: boolean;
 }) {
-  const router = useRouter();
   const tc = useThemeColors(["ink", "muted"]);
   const { cityId, cityName, setCity } = useUserCity();
   const [cityOpen, setCityOpen] = useState(false);
-  // userName / avatarUrl сейчас не используются в шапке (брендинг важнее
-  // приветствия). Оставлены в props на случай возврата приветственной строки.
-  void userName;
-  void avatarUrl;
 
   return (
     <>
-      <View className="px-3 pt-2 pb-1">
-        {/* Row 1: brand (left) + auth (right). */}
-        <View className="flex-row items-center justify-between" style={{ height: 44 }}>
-          <Pressable
-            accessibilityRole="link"
-            accessibilityLabel="xtrud"
-            onPress={() => router.push("/(tabs)" as never)}
-            className="flex-row items-center gap-2 active:opacity-70"
-          >
-            <XtrudLogo size={28} color={tc.ink} />
-            <AppText
-              weight="bold"
-              className="text-display-md tracking-tight text-ink"
-            >
-              xtrud
-            </AppText>
-          </Pressable>
+      <View className="px-4 pt-2 pb-1">
+        {/* Row 1: wordmark «xtrud» (лого + слово) в левом углу + опц. badge
+            справа для мастера. Sprint 2026-05-20 (вечер) — юзер вернул
+            wordmark в левый угол после короткого эксперимента с центром:
+            «верни как было написано экструд рядом, всё с левой стороны
+            хедера». */}
+        <View
+          className="flex-row items-center justify-between"
+          style={{ height: 48 }}
+        >
+          {/* LEFT: wordmark. Sprint 2026-05-21 — юзер просил «сделай немножко
+              больше» → 26 → 32. */}
+          <XtrudWordmark size={32} />
 
-          {!userId ? (
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Войти"
-              onPress={() => router.push("/(auth)/phone" as never)}
-              className="h-10 flex-row items-center gap-1.5 rounded-pill border px-4 active:opacity-70 border-hairline bg-canvas"
-            >
-              <SignIn size={16} weight="bold" color={tc.ink} />
-              <AppText weight="semibold" className="text-button text-ink">
-                Войти
-              </AppText>
-            </Pressable>
-          ) : null}
+          {/* RIGHT: master badge or empty. */}
+          {userId && isMaster ? <ResponseLimitBadge variant="pill" /> : null}
         </View>
 
         {/* Row 2: compact city-trigger — text-link стиль, без бордера. */}
@@ -226,27 +229,51 @@ function TopBar({
 // ============================================================================
 
 interface ClientHomeProps {
+  /** Ref внешнего ScrollView — для скролла к блоку «Все категории». */
+  scrollRef: React.RefObject<ScrollView | null>;
   onCategoryPress: (id: string) => void;
   onMasterPress: (id: string) => void;
   /** Принимает черновик описания задачи (если пользователь начал писать в hero-input). */
   onDescribeTask: (draft?: string) => void;
 }
 
-function ClientHome({ onCategoryPress, onMasterPress, onDescribeTask }: ClientHomeProps) {
-  const cityId = useCityStore((s) => s.cityId);
-  const cityName = getCityName(cityId);
+function ClientHome({ scrollRef, onCategoryPress, onMasterPress, onDescribeTask }: ClientHomeProps) {
+  // Y-позиция блока AllCategories — для кнопки «Все категории» в QuickServices
+  // (плавный скролл вниз к полному списку). Запоминается через onLayout.
+  const allCategoriesY = useRef(0);
+  const scrollToAllCategories = () => {
+    scrollRef.current?.scrollTo({ y: Math.max(0, allCategoriesY.current - 12), animated: true });
+  };
 
   return (
     <View>
-      <Hero cityName={cityName} />
-      <FeaturedRequests onCategoryPress={onCategoryPress} />
-      <TopMasters onMasterPress={onMasterPress} />
+      {/* Cinematic full-bleed фото-hero (Farce-style, 2026-05-21). */}
+      <CinematicHero />
+      {/* Категории — 4 круга (Уборка/Сантехника/Доставка воды/Все категории).
+          Возвращены под hero по фидбэку юзера 2026-05-21. */}
+      <QuickServices onShowAll={scrollToAllCategories} />
+      {/* Блок «Часто ищут» (FeaturedRequests) скрыт по фидбэку юзера 2026-05-21.
+          Компонент сохранён ниже — вернуть можно раскомментировав строку:
+          <FeaturedRequests onCategoryPress={onCategoryPress} /> */}
+      {/* Promo-баннеры партнёров (рекламные фото-баннеры 16:9). */}
+      <PromoBannerCarousel />
+      {/* Второй кинематографичный фото-hero «Создайте заказ» (edge-to-edge).
+          Divider убран 2026-05-21: у фото-блока своя визуальная граница
+          (скруглённые углы + тёмное фото на canvas), hairline-линия с боковыми
+          отступами прямо перед full-bleed баннером смотрелась обрезанной. */}
       <DescribeTaskCallout onPress={() => onDescribeTask()} />
-      <AllCategories onCategoryPress={onCategoryPress} />
-      {/* «Как это работает» — Profi-style 5-card explainer-блок. БЕЗ красной
-          CTA-кнопки (фидбэк user 2026-05-18). Иллюстрации сейчас — Phosphor
-          duotone placeholder, hand-drawn doodles планируются отдельно. */}
-      <HowItWorks />
+      <TopMasters onMasterPress={onMasterPress} />
+      <View
+        onLayout={(e) => {
+          allCategoriesY.current = e.nativeEvent.layout.y;
+        }}
+      >
+        <AllCategories onCategoryPress={onCategoryPress} />
+      </View>
+      {/* HowItWorks скрыт по фидбэку user 2026-05-18 («не нужен»).
+          Компонент остался в `src/features/home/HowItWorks.tsx` если
+          вернёшь — можно раскомментировать.
+          <HowItWorks /> */}
       {/* Help-плашка под полным списком категорий — «не нашли мастера?» */}
       <View className="mt-8 mx-5">
         <HelpCallout
@@ -303,7 +330,7 @@ function FeaturedRequests({ onCategoryPress }: { onCategoryPress: (id: string) =
     <View className="mt-10">
       <View className="px-5">
         <AppText weight="semibold" className="text-title-lg text-ink">
-          Часто заказывают
+          Часто ищут
         </AppText>
       </View>
 
@@ -361,135 +388,16 @@ function FeaturedRequests({ onCategoryPress }: { onCategoryPress: (id: string) =
 }
 
 // ----------------------------------------------------------------------------
-// DescribeTaskCallout — секция «Опишите задачу». Vercel-card с AI-style hero
-// сверху (tinted фон + декоративные круги, как в FeaturedRequests). Текст
-// продаёт privacy-фичу: «мастера не видят твой номер». Альтернативный путь
-// к мастерам: «не знаю кого искать → опишите → получите отклики».
+// DescribeTaskCallout вынесен в `src/features/home/DescribeTaskCallout.tsx`
+// (редизайн 2026-05-21, версия 3): тёмная брендовая spotlight-карточка «Не
+// нашли мастера? Создайте заказ» вместо иллюстрации на canvas. Предыдущие
+// версии (серая карточка с 3 шагами / иллюстрация чек-лист) — в git history.
 // ----------------------------------------------------------------------------
 
-function DescribeTaskCallout({ onPress }: { onPress: () => void }) {
-  return (
-    <View className="mt-10 mx-5 rounded-xl border border-hairline bg-canvas-soft overflow-hidden">
-      {/* AI-фон в стиле Vercel docs covers: violet tint + декоративные круги */}
-      <View className="h-24 bg-badge-violet relative overflow-hidden">
-        <View
-          className="absolute rounded-full bg-canvas"
-          style={{ top: -30, left: -20, width: 90, height: 90, opacity: 0.3 }}
-        />
-        <View
-          className="absolute rounded-full bg-canvas"
-          style={{ bottom: -20, right: 30, width: 70, height: 70, opacity: 0.4 }}
-        />
-        <View
-          className="absolute rounded-md bg-canvas"
-          style={{ top: 14, right: 24, width: 22, height: 22, opacity: 0.55, transform: [{ rotate: "18deg" }] }}
-        />
-        <View
-          className="absolute rounded-full bg-canvas"
-          style={{ top: 38, right: 90, width: 14, height: 14, opacity: 0.5 }}
-        />
-      </View>
-      {/* Body */}
-      <View className="p-5">
-        <AppText weight="semibold" className="text-title-lg tracking-tight text-ink">
-          Опишите задачу — узнаете цены
-        </AppText>
-        <AppText className="mt-2 text-body-md text-body">
-          Мастера ответят, за сколько готовы взяться. Ваш номер скрыт 📵
-        </AppText>
-        <View className="mt-4 self-start">
-          <Button onPress={onPress} size="md" variant="primary">
-            Создать заказ
-          </Button>
-        </View>
-      </View>
-    </View>
-  );
-}
-
 // ----------------------------------------------------------------------------
-// Hero — заголовок + inline task input + CTA + trust-чипы
+// Hero вынесен в `src/features/home/CinematicHero.tsx` (2026-05-21):
+// full-bleed фото-герой (Farce-style) вместо «H1 + поиск + квадратная картинка».
 // ----------------------------------------------------------------------------
-
-function Hero({
-  cityName,
-}: {
-  cityName: string;
-}) {
-  const router = useRouter();
-  const { colorScheme } = useColorScheme();
-  const isDark = colorScheme === "dark";
-  // Город не используется в заголовке, но оставляем для будущего «… в Магасе».
-  void cityName;
-
-  // Theme-aware подсветка SearchBar.
-  // - light: soft tinted shadow + hairline border (приподнимает над фоном)
-  // - dark: чёрная тень исчезает на чёрном canvas → переключаем на белое
-  //   мягкое свечение (glow) + видимый бордер из hairline-strong, чтобы
-  //   primary action оставался выраженным анкором (фидбэк user 2026-05-14
-  //   «в тёмной теме поиск незаметный»).
-  // На dark — приглушённая белая обводка + мягкое свечение. Кольцо 1px и два
-  // glow-слоя (близкий + дальний эфирный) очень слабые, drop-shadow тоже
-  // аккуратный (фидбэк user 2026-05-15: «тень была жирная, заметная»).
-  // На light — лёгкий drop-shadow.
-  const searchShadow = isDark
-    ? // 2026-05-15 user: «сделай тень слабее, чтобы меньше чёрного». Чёрный
-      // drop-layer 0.25 → 0.10 (более чем в 2 раза), белый glow остаётся —
-      // он и есть основной визуальный приём.
-      "0 0 0 1px rgba(255,255,255,0.1), 0 0 18px rgba(255,255,255,0.06), 0 0 40px rgba(255,255,255,0.03), 0 2px 10px rgba(0,0,0,0.1)"
-    : // 2026-05-15 user: «в светлой тень тёмная, сделай в 2 раза слабее».
-      // Делим opacity пополам: 0.06→0.03, 0.03→0.015.
-      "0 2px 10px rgba(0,0,0,0.03), 0 1px 2px rgba(0,0,0,0.015)";
-
-  return (
-    // Hero-блок «занимает большую часть above-the-fold» — фидбэк user
-    // 2026-05-16, референс Profi.ru/TaskRabbit/Yelp (Lazyweb scan):
-    //   - крупный H1 на 2 строки (одна — не достаточно «крупно»),
-    //   - тонкий subtitle сразу под H1 (продаёт ценность одним предложением),
-    //   - очень большой search-bar (h-16, иконка 24, body-lg),
-    //   - pb-14 на контейнере → «Часто заказывают» уезжает за фолд, фокус
-    //     остаётся на главном действии.
-    // Никаких дополнительных контролов в hero — один primary action.
-    <View className="px-5 mt-12 pb-14">
-      <AppText
-        weight="display"
-        className="text-display-xl tracking-tight text-ink"
-        style={{ lineHeight: 52 }}
-      >
-        Найдутся{"\n"}мастера
-      </AppText>
-
-      {/* PRIMARY: гигантский SearchBar — главное действие.
-          Theme-aware визуал:
-            - light: hairline-border + мягкий drop-shadow
-            - dark:  белая обводка (border-ink) + мягкое glow,
-                     иконка и placeholder белые — как primary action. */}
-      <View className="mt-8">
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Поиск мастеров"
-          onPress={() => router.push("/search" as never)}
-          className={`flex-row items-center gap-3 h-16 rounded-xl bg-canvas border px-5 active:opacity-70 ${
-            isDark ? "border-ink/30" : "border-hairline"
-          }`}
-          style={{ boxShadow: searchShadow }}
-        >
-          <MagnifyingGlass
-            size={24}
-            weight="bold"
-            color="currentColor"
-            className={isDark ? "text-ink" : "text-mute"}
-          />
-          <AppText
-            className={`flex-1 text-body-lg ${isDark ? "text-ink" : "text-mute"}`}
-          >
-            Специалист или услуга…
-          </AppText>
-        </Pressable>
-      </View>
-    </View>
-  );
-}
 
 // ----------------------------------------------------------------------------
 // Top masters — горизонтальная карусель, рендерится только если ≥ 3 карточки
@@ -512,6 +420,24 @@ function TopMasters({ onMasterPress }: { onMasterPress: (id: string) => void }) 
       }).start();
     }
   }, [isLoading, masters, opacity]);
+
+  // Prefetch первых 4-6 аватаров — это критичные above-the-fold картинки
+  // в карусели Top Masters. Native: expo-image.prefetch ставит их в memory-
+  // кэш ДО viewport visibility, ощущается «мгновенно» при свайпе. На web
+  // это безопасный nop (expo-image на web игнорирует prefetch). Defer'им
+  // через useEffect, чтобы не блокировать первый paint.
+  useEffect(() => {
+    if (!masters || masters.length === 0) return;
+    const urls = masters
+      .slice(0, 6)
+      .map((m) => m.user.avatar_url)
+      .filter((u): u is string => !!u);
+    if (urls.length > 0) {
+      // expo-image.prefetch принимает массив URLs; sync API на web,
+      // async на native. Без await — fire-and-forget.
+      ExpoImage.prefetch(urls);
+    }
+  }, [masters]);
 
   // Не показываем секцию если данных нет или их слишком мало (по правилу
   // "пустую витрину не показываем" из аудита).
@@ -589,6 +515,7 @@ interface MasterMiniCardProps {
 }
 
 function MasterMiniCard({
+  id,
   avatarUrl,
   firstName,
   lastName,
@@ -602,6 +529,13 @@ function MasterMiniCard({
   const fullName = [firstName, lastName].filter(Boolean).join(" ") || "Мастер";
   // 1-2 категории через · разделитель — больше не помещается в w-180
   const categoriesText = categories.slice(0, 2).join(" · ");
+
+  // Telemetry: impression при появлении карточки в Top Masters карусели.
+  // Server-side dedup в RPC (24h по session_id) защищает от накрутки.
+  const recordView = useRecordMasterView();
+  useEffect(() => {
+    if (id) recordView(id, "impression");
+  }, [id, recordView]);
 
   return (
     <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={fullName}>
@@ -671,7 +605,7 @@ function MasterMiniCard({
 
 function AllCategories({ onCategoryPress }: { onCategoryPress: (id: string) => void }) {
   const { data: categories, isLoading, error } = useVisibleCategories();
-  const { width } = useWindowDimensions();
+  const width = useAppWidth();
   // На desktop колонок 2-3 (Lazyweb-паттерн: afterpay/people/zara — категории
   // в marketplace на широком вьюпорте подаются grid'ом, не длинной колонкой
   // ~30+ строк). Mobile остаётся 1 столбец — там grid 2x проигрывает list-view

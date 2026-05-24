@@ -13,7 +13,10 @@
       "bundleIdentifier": "com.xtrud.app",
       "infoPlist": {
         "UIViewControllerBasedStatusBarAppearance": true,
-        "UIStatusBarStyle": "UIStatusBarStyleDefault"
+        "UIStatusBarStyle": "UIStatusBarStyleDefault",
+        "NSLocationWhenInUseUsageDescription": "Приложение использует местоположение, чтобы предложить ваш город при создании заявки и поиске мастеров рядом. Можно выбрать город вручную, доступ опционален.",
+        "NSPhotoLibraryAddUsageDescription": "Приложение сохраняет фото, которые вы получаете в чате с мастером.",
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {

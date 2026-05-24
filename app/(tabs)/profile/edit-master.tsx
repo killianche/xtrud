@@ -76,16 +76,28 @@ export default function EditMasterScreen() {
       district: "",
       bio: "",
       experienceYears: 0,
-      hasTools: false,
-      hasTransport: false,
       whatsappSameAsPhone: true,
       whatsappPhone: "",
+      // Sprint 2026-05-20 (миграция 0097): contact_phone.
+      contactSameAsPhone: true,
+      contactPhone: "",
     },
     mode: "onChange",
   });
 
   useEffect(() => {
     if (!user || !masterProfile) return;
+    // Sprint 2026-05-20 (миграция 0097): contact_phone prefill.
+    //   contact_phone IS NULL → ставим contactSameAsPhone=true (значит «использовать
+    //     регистрационный»); поле contactPhone оставляем пустым.
+    //   contact_phone != NULL → контактный задан явно: contactSameAsPhone=false,
+    //     contactPhone = значение из БД.
+    //   Каст through unknown because типы регенерятся следующим типгеном.
+    const contactPhoneFromDb = (user as unknown as { contact_phone: string | null })
+      .contact_phone;
+    const hasExplicitContact =
+      typeof contactPhoneFromDb === "string" && contactPhoneFromDb.trim() !== "";
+
     reset({
       firstName: user.first_name ?? "",
       lastName: user.last_name ?? "",
@@ -93,11 +105,12 @@ export default function EditMasterScreen() {
       district: user.district ?? "",
       bio: masterProfile.bio ?? "",
       experienceYears: masterProfile.experience_years ?? 0,
-      hasTools: masterProfile.has_tools,
-      hasTransport: masterProfile.has_transport,
       // Sprint 0079: WhatsApp prefill из master_profiles.
       whatsappSameAsPhone: masterProfile.whatsapp_same_as_phone ?? false,
       whatsappPhone: masterProfile.whatsapp_phone ?? "",
+      // Sprint 2026-05-20: contact_phone prefill.
+      contactSameAsPhone: !hasExplicitContact,
+      contactPhone: hasExplicitContact ? contactPhoneFromDb : "",
     });
   }, [user, masterProfile, reset]);
 
@@ -126,7 +139,6 @@ export default function EditMasterScreen() {
     >
       <ScreenHeader
         title="Профиль мастера"
-        subtitle="Изменения видны клиентам сразу."
         onBack={() => {
           if (isDirty && !isBusy) {
             Alert.alert("Есть несохранённые изменения", "Выйти без сохранения?", [
@@ -202,10 +214,10 @@ export default function EditMasterScreen() {
           <View className="mt-8 px-6">
             <Pressable
               accessibilityRole="button"
-              disabled={!isValid || !isDirty || isBusy || !cities}
+              disabled={!isValid || !isDirty || isBusy || citiesLoading}
               onPress={onSubmit}
               className={`h-12 items-center justify-center rounded-md ${
-                isValid && isDirty && !isBusy && cities
+                isValid && isDirty && !isBusy && !citiesLoading
                   ? "bg-primary active:opacity-80"
                   : "bg-surface-3"
               }`}

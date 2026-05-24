@@ -50,6 +50,44 @@ export function effectiveStatus(
   return status;
 }
 
+/**
+ * Бонус доступности к ranking_score при сортировке выдачи (рейтинг мастеров,
+ * Этап 1). «Быстрый» фактор гибрида (MASTER_RANKING_PLAN.md §3.6): нажал
+ * «Готов сегодня» — поднялся мгновенно, не дожидаясь ночного пересчёта балла.
+ * Соответствует под-баллу C (вес 20) §3.2: today→20, this_week→16,
+ * next_week→10, недоступен/истёк→2 (не ноль — чтобы доступность не «убивала»
+ * сильного мастера в отпуске).
+ */
+export function availabilityBonus(
+  status: AvailabilityStatus | null | undefined,
+  until: string | null | undefined,
+): number {
+  switch (effectiveStatus(status, until)) {
+    case "today":
+      return 20;
+    case "this_week":
+      return 16;
+    case "next_week":
+      return 10;
+    default:
+      return 2;
+  }
+}
+
+/**
+ * Итоговое значение для сортировки мастеров в выдаче (категория / поиск /
+ * лучшие мастера): материализованный `ranking_score` (медленные факторы —
+ * отзывы, заполненность, отклики, активность, cold-start; считается ночным
+ * cron) + бонус доступности (быстрый фактор). Больше — выше.
+ */
+export function rankingSortValue(
+  rankingScore: number | null | undefined,
+  status: AvailabilityStatus | null | undefined,
+  until: string | null | undefined,
+): number {
+  return (rankingScore ?? 0) + availabilityBonus(status, until);
+}
+
 /** Mutation: мастер ставит свой статус. */
 export function useSetAvailability() {
   const queryClient = useQueryClient();

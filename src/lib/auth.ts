@@ -20,7 +20,20 @@ import { supabase } from "./supabase";
 const DEMO_PHONE_PREFIX = "+79000";
 const DEMO_PASSWORD = "xtrud";
 
+/**
+ * P0-02 (LAUNCH_READINESS): demo-flow закрыт за env flag. По умолчанию
+ * disabled. Чтобы включить локально для preview/dev — в `.env.local`:
+ *   `EXPO_PUBLIC_ENABLE_DEMO=true`
+ * В production submit-сборке (eas.json → build.production.env) demo НЕ
+ * включается, что предотвращает попадание пароля «xtrud» в публичный bundle
+ * с возможностью входа под чужим demo-аккаунтом.
+ */
+function isDemoEnabled(): boolean {
+  return process.env.EXPO_PUBLIC_ENABLE_DEMO === "true";
+}
+
 function isDemoPhone(phone: string): boolean {
+  if (!isDemoEnabled()) return false;
   // Сравниваем по нормализованной форме без пробелов/тире — на этом этапе
   // phone уже прошёл normalizePhone (см. features/auth/validation).
   return phone.startsWith(DEMO_PHONE_PREFIX);

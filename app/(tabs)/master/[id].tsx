@@ -16,20 +16,29 @@
 
 import { LinearGradient } from "expo-linear-gradient";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { Buildings, CaretLeft, DotsThreeVertical, Flag, MapPin, Star, Users, Wrench } from "phosphor-react-native";
-import { useState } from "react";
+import {
+  BookmarkSimple,
+  Buildings,
+  CaretLeft,
+  DotsThreeVertical,
+  Flag,
+  Star,
+  Users,
+} from "phosphor-react-native";
+import { useEffect, useState } from "react";
 import {
   FlatList,
   Image,
-  Linking,
   type NativeScrollEvent,
   type NativeSyntheticEvent,
   Pressable,
   ScrollView,
   View,
-  useWindowDimensions,
 } from "react-native";
+import { Image as ExpoImage } from "expo-image";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { openExternalUrl } from "@/lib/open-link";
+import { useAppWidth } from "@/lib/use-app-width";
 import { AppText } from "@/components/AppText";
 import { Avatar, BottomSheet, Button, Card, Skeleton, normalizeAvatarUrl } from "@/components/ui";
 
@@ -39,10 +48,13 @@ import { Avatar, BottomSheet, Button, Card, Skeleton, normalizeAvatarUrl } from 
 // DEPRECATED в миграции 0055.
 
 import { useAuthSession } from "@/features/auth/use-auth-session";
+import { useIsFavorite, useToggleFavorite } from "@/features/favorites/use-favorites";
 import { getCategoryColorIconUrl } from "@/lib/category-color-icons";
 import { useSafeBack } from "@/lib/use-safe-back";
+import { useThemeColors } from "@/lib/use-theme-color";
 import { resolveWhatsappDigits } from "@/lib/whatsapp";
 import { MasterServicesList } from "@/features/master-services/MasterServicesList";
+import { useMasterServices } from "@/features/master-services/use-master-services";
 import { ReviewsSection } from "@/features/master-view/ReviewsSection";
 import {
   useMasterCategoriesPublic,
@@ -50,16 +62,18 @@ import {
   useMasterPublicProfile,
   useReviewsForTarget,
 } from "@/features/master-view/use-master-public";
+import { useRecordMasterView } from "@/features/master-view/use-record-view";
+import { cdnBlur, cdnImage } from "@/lib/image-cdn";
 import { PortfolioGrid } from "@/features/profile/PortfolioGrid";
 import { PortfolioLightbox } from "@/features/profile/PortfolioLightbox";
 import { type PortfolioItem, useMasterPortfolio } from "@/features/profile/use-my-portfolio";
+import { type CaseWithPreview, useMasterCases } from "@/features/profile/use-portfolio-cases";
 import {
   AVAILABILITY_DOT,
   AVAILABILITY_LABELS,
   effectiveStatus,
   isAvailabilityVisible,
 } from "@/features/master-view/availability";
-import { ConfirmWorkSheet } from "@/features/master-view/ConfirmWorkSheet";
 import { ReportModal } from "@/features/reports/ReportModal";
 import { usePullToRefresh } from "@/hooks/use-pull-to-refresh";
 import {
@@ -76,7 +90,7 @@ export default function MasterPublicScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ id: string }>();
   const masterId = typeof params.id === "string" ? params.id : null;
-  const { width: viewportWidth } = useWindowDimensions();
+  const viewportWidth = useAppWidth();
   // Desktop hero не должен растягиваться до 1400px — на широком экране это
   // вытесняет всё ниже фолда. Lazyweb-паттерн (Airbnb/Booking listing detail)
   // — landscape 16:9 с потолком 520px. Mobile сохраняет портретные 4:5.
@@ -92,20 +106,50 @@ export default function MasterPublicScreen() {
   // а не в браузерную историю до приложения.
   const goBack = useSafeBack("/" as const);
 
+  // Telemetry: profile_open при заходе на /master/[id]. RPC сам игнорирует
+  // self-views (auth.uid()==master_id) и дедупит за 24h по session_id.
+  const recordView = useRecordMasterView();
+  useEffect(() => {
+    if (masterId) recordView(masterId, "profile_open");
+  }, [masterId, recordView]);
+
   const profile = useMasterPublicProfile(masterId);
   const categories = useMasterCategoriesPublic(masterId);
   const portfolio = useMasterPortfolio(masterId);
   const reviews = useReviewsForTarget(masterId, "client_to_master");
   const masterPhone = useMasterPhone(masterId);
+  // Подтягиваем services здесь, чтобы решать видимость секции «Услуги»
+  // на верхнем уровне: если у мастера нет ни одной услуги И ни одной
+  // категории с bio — заголовок «Услуги» не должен висеть пустым.
+  const masterServices = useMasterServices(masterId);
   const refresh = usePullToRefresh();
 
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const [reportOpen, setReportOpen] = useState(false);
   const [actionMenuOpen, setActionMenuOpen] = useState(false);
-  const [confirmWorkOpen, setConfirmWorkOpen] = useState(false);
+  // Safari-fallback: если avatar_url hero не загрузился (CORS / 404) —
+  // переключаемся на инициалы через Avatar xl. Иначе пользователь
+  // видит пустой серый блок 16:9. State объявлен здесь, reset-effect — ниже,
+  // после получения `u?.avatar_url` из profile.data.
+  const [heroFailed, setHeroFailed] = useState(false);
+
+  const tc = useThemeColors(["ink", "error"]);
+
+  // Избранное. Для гостя/own-profile кнопка скрыта (rendering ниже).
+  const isFavorite = useIsFavorite(!isAnon && !isOwnProfile ? masterId ?? undefined : undefined);
+  const toggleFavorite = useToggleFavorite();
+  const handleToggleFavorite = () => {
+    if (!masterId || isAnon || isOwnProfile) return;
+    toggleFavorite.mutate({ masterId, nextValue: !isFavorite.data });
+  };
 
   const u = profile.data?.user;
   const m = profile.data?.master;
+  // Reset hero-fallback при смене avatar_url, чтобы новая попытка
+  // загрузки не была заблокирована предыдущей ошибкой.
+  useEffect(() => {
+    setHeroFailed(false);
+  }, [u?.avatar_url]);
   const fullName =
     [u?.first_name, u?.last_name].filter(Boolean).join(" ") || "Мастер";
   const cityName = profile.data?.city?.name ?? null;
@@ -129,26 +173,19 @@ export default function MasterPublicScreen() {
     masterPhone: phoneRaw,
   });
 
+  // 2026-05-20 «classifieds»: убран fallback на in-app форму («Написать в xtrud»).
+  // Если у мастера нет phone — кнопка просто неактивна, чтобы не сбивать с
+  // прямого контакта на /orders/new.
   const handleCall = () => {
     if (phoneTel) {
-      Linking.openURL(`tel:${phoneTel}`);
-    } else {
-      handleContact();
+      openExternalUrl(`tel:${phoneTel}`);
     }
   };
 
   const handleWhatsApp = () => {
     if (phoneWa) {
-      Linking.openURL(`https://wa.me/${phoneWa}`);
+      openExternalUrl(`https://wa.me/${phoneWa}`);
     }
-  };
-
-  const handleContact = () => {
-    if (isAnon) {
-      router.push("/(auth)/phone" as never);
-      return;
-    }
-    if (masterId) router.push(`/orders/new?master_id=${masterId}` as never);
   };
 
   // Полностью пустой error-state показываем только если запрос завершился ошибкой
@@ -242,14 +279,31 @@ export default function MasterPublicScreen() {
                 <CaretLeft size={20} weight="bold" color="#fff" />
               </Pressable>
               {!isOwnProfile && (
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel="Действия"
-                  onPress={() => setActionMenuOpen(true)}
-                  className="h-9 w-9 items-center justify-center rounded-full bg-black/50 active:opacity-70"
-                >
-                  <DotsThreeVertical size={20} weight="bold" color="#fff" />
-                </Pressable>
+                <View className="flex-row items-center gap-2">
+                  {!isAnon ? (
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel={isFavorite.data ? "Убрать из закладок" : "В закладки"}
+                      onPress={handleToggleFavorite}
+                      disabled={toggleFavorite.isPending}
+                      className="h-9 w-9 items-center justify-center rounded-full bg-black/50 active:opacity-70"
+                    >
+                      <BookmarkSimple
+                        size={20}
+                        weight={isFavorite.data ? "fill" : "bold"}
+                        color="#fff"
+                      />
+                    </Pressable>
+                  ) : null}
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="Действия"
+                    onPress={() => setActionMenuOpen(true)}
+                    className="h-9 w-9 items-center justify-center rounded-full bg-black/50 active:opacity-70"
+                  >
+                    <DotsThreeVertical size={20} weight="bold" color="#fff" />
+                  </Pressable>
+                </View>
               )}
             </View>
           </View>
@@ -258,15 +312,16 @@ export default function MasterPublicScreen() {
             style={{
               width: "100%",
               aspectRatio: HERO_RATIO,
-              backgroundColor: "#1a1a1a",
               position: "relative",
             }}
+            className="bg-canvas-soft-2"
           >
-            {u?.avatar_url ? (
+            {normalizeAvatarUrl(u?.avatar_url) && !heroFailed ? (
               <Image
-                source={{ uri: normalizeAvatarUrl(u.avatar_url) ?? u.avatar_url }}
+                source={{ uri: normalizeAvatarUrl(u?.avatar_url) as string }}
                 style={{ width: "100%", height: "100%" }}
                 resizeMode="cover"
+                onError={() => setHeroFailed(true)}
               />
             ) : (
               <View className="flex-1 items-center justify-center bg-canvas-soft-2">
@@ -291,14 +346,31 @@ export default function MasterPublicScreen() {
                 <CaretLeft size={20} weight="bold" color="#fff" />
               </Pressable>
               {!isOwnProfile && (
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel="Действия"
-                  onPress={() => setActionMenuOpen(true)}
-                  className="h-9 w-9 items-center justify-center rounded-full bg-black/50 active:opacity-70"
-                >
-                  <DotsThreeVertical size={20} weight="bold" color="#fff" />
-                </Pressable>
+                <View className="flex-row items-center gap-2">
+                  {!isAnon ? (
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel={isFavorite.data ? "Убрать из закладок" : "В закладки"}
+                      onPress={handleToggleFavorite}
+                      disabled={toggleFavorite.isPending}
+                      className="h-9 w-9 items-center justify-center rounded-full bg-black/50 active:opacity-70"
+                    >
+                      <BookmarkSimple
+                        size={20}
+                        weight={isFavorite.data ? "fill" : "bold"}
+                        color="#fff"
+                      />
+                    </Pressable>
+                  ) : null}
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="Действия"
+                    onPress={() => setActionMenuOpen(true)}
+                    className="h-9 w-9 items-center justify-center rounded-full bg-black/50 active:opacity-70"
+                  >
+                    <DotsThreeVertical size={20} weight="bold" color="#fff" />
+                  </Pressable>
+                </View>
               )}
             </View>
           </View>
@@ -499,57 +571,66 @@ export default function MasterPublicScreen() {
                  показываем, чтобы не было «пустых» карточек разного стиля
                  (фидбэк user 2026-05-14).
               2. Прайс (master_services) — карточки с ценами в том же
-                 Card-soft стиле через MasterServicesList. */}
+                 Card-soft стиле через MasterServicesList.
+              Скрываем целиком, если у мастера нет ни одной категории с bio
+              И нет ни одной услуги (фидбэк user 2026-05-20: «то, что не
+              нужно — убрать»). Заголовок без контента — анти-паттерн. */}
         {(() => {
           const cats = (categories.data ?? []).filter((c) => !!c.category_bio);
           const hasCats = cats.length > 0;
-          if (!hasCats && !masterId) return null;
+          const hasServices = (masterServices.data?.length ?? 0) > 0;
+          // Пока хоть один из источников грузится — рисуем секцию-skeleton
+          // через MasterServicesList (он сам рисует Skeleton-ряды). Иначе
+          // при «холодном старте» секция мигнёт пропаданием.
+          const isLoading = categories.isLoading || masterServices.isLoading;
+          if (!hasCats && !hasServices && !isLoading) return null;
+          if (!masterId) return null;
           return (
             <View className="px-5 mt-8">
               <AppText weight="semibold" className="text-ink text-title-md mb-4">
                 Услуги
               </AppText>
 
+              {/* Направления — inline-rows без card-обёрток. icon + name + bio
+                  на одной строке + 2-line description под ним. Меньше воздуха,
+                  читаемо. (Lazyweb / TaskRabbit pattern — direct rows). */}
               {hasCats ? (
-                <View className="gap-3">
-                  {cats.map((c) => {
+                <View className="mb-3">
+                  {cats.map((c, idx) => {
                     const name = c.l2?.name_ru ?? c.l2_id;
-                    // Цветная иконка категории через единый mapping
-                    // `getCategoryColorIconUrl` (см. docs/ICONS.md). Если нет
-                    // в маппинге — fallback на круг с canvas-soft фоном без
-                    // иконки (не показываем абстрактный glass-pattern).
                     const colorUrl = getCategoryColorIconUrl(c.l2_id);
                     return (
-                      <Card key={c.l2_id} variant="soft" padding="md">
-                        <View className="flex-row items-center gap-2">
-                          {colorUrl ? (
-                            <View className="h-8 w-8 items-center justify-center rounded-full bg-canvas">
-                              <Image
-                                source={{ uri: colorUrl }}
-                                style={{ width: 20, height: 20 }}
-                              />
-                            </View>
-                          ) : null}
-                          <AppText
-                            weight="semibold"
-                            className="text-ink text-body-md"
-                          >
+                      <View
+                        key={c.l2_id}
+                        className={`flex-row gap-3 ${idx > 0 ? "mt-3" : ""}`}
+                      >
+                        {colorUrl ? (
+                          <View className="h-6 w-6 items-center justify-center mt-0.5">
+                            <Image
+                              source={{ uri: colorUrl }}
+                              style={{ width: 20, height: 20 }}
+                            />
+                          </View>
+                        ) : null}
+                        <View className="flex-1">
+                          <AppText weight="semibold" className="text-ink text-body-md">
                             {name}
                           </AppText>
+                          <AppText
+                            className="mt-0.5 text-body text-body-sm leading-5"
+                            numberOfLines={2}
+                          >
+                            {c.category_bio}
+                          </AppText>
                         </View>
-                        <AppText className="text-body text-body-sm mt-2 leading-5">
-                          {c.category_bio}
-                        </AppText>
-                      </Card>
+                      </View>
                     );
                   })}
                 </View>
               ) : null}
 
               {masterId ? (
-                <View className={hasCats ? "mt-3" : ""}>
-                  <MasterServicesList masterId={masterId} hideTitle />
-                </View>
+                <MasterServicesList masterId={masterId} hideTitle compact />
               ) : null}
             </View>
           );
@@ -558,42 +639,38 @@ export default function MasterPublicScreen() {
         {/* Портфолио grid вынесен в hero-pager выше (Wildberries-style 4:5).
             Lightbox по тапу всё ещё открывается через onOpen(index). */}
 
-        {/* Отзывы — ReviewsSection сам рисует свой заголовок и empty-state */}
-        {masterId ? (
-          <ReviewsSection
-            title="Отзывы клиентов"
-            emptyText="Пока нет отзывов"
-            query={reviews}
-          />
-        ) : null}
+        {/* «Работы мастера» — список кейсов (portfolio_cases, миграция 0085).
+            Preview 2 шт + ghost-link «Смотреть все» (паттерн TaskRabbit/LinkedIn
+            view-all). Каждый кейс = cover-фото + title + description + дата. */}
+        {masterId ? <MasterCasesPreview masterId={masterId} /> : null}
 
-        {/* «Этот мастер выполнил работу» — ghost-text-link в самом низу.
-            Это edge-case (ad-hoc подтверждение оффлайн-работы вне платформы),
-            не должен конкурировать с primary actions сверху. Поэтому
-            inline-ссылка mute-цвета без бордера, под reviews. */}
-        {!isOwnProfile ? (
-          <View className="items-center mt-8 px-6">
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Этот мастер выполнил мне работу"
-              onPress={() => setConfirmWorkOpen(true)}
-              hitSlop={8}
-              className="active:opacity-60"
-            >
-              <AppText
-                weight="medium"
-                className="text-caption text-mute underline"
-              >
-                Этот мастер выполнил мне работу
-              </AppText>
-            </Pressable>
-          </View>
-        ) : null}
+        {/* Отзывы — скрываем секцию целиком если у мастера 0 отзывов.
+            Раньше ReviewsSection рисовал собственный empty-state с серым
+            box'ом «Пока нет отзывов» — это противоречит правилу «empty =
+            invisible» (фидбэк user 2026-05-20). Когда первая страница ещё
+            грузится — рисуем секцию с loading-индикатором ReviewsSection.
+            Когда данные пришли и rows.length===0 — секции нет. */}
+        {(() => {
+          if (!masterId) return null;
+          const total =
+            reviews.data?.pages.reduce((sum, p) => sum + p.rows.length, 0) ?? 0;
+          if (!reviews.isLoading && total === 0) return null;
+          return (
+            <ReviewsSection
+              title="Отзывы клиентов"
+              emptyText="Пока нет отзывов"
+              query={reviews}
+            />
+          );
+        })()}
 
-        {/* Wrench-иконка как разделитель — Vercel character */}
-        <View className="items-center mt-12 mb-2">
-          <Wrench size={20} weight="bold" color="currentColor" className="text-mute" />
-        </View>
+        {/* «Этот мастер выполнил работу» — перенесён в action menu (⋮ → sheet).
+            Это edge-case (ad-hoc подтверждение оффлайн-работы), не должен
+            светиться внизу карточки. Wrench-divider убран — Vercel-стиль
+            обходится без декоративных разделителей.
+
+            Источник: ⋮ DotsThreeVertical в hero header → BottomSheet «Действия»
+            → пункт «Этот мастер выполнил работу» (см. ниже actionMenu). */}
       </ScrollView>
 
       {/* Sticky CTA убран — кнопки call/WhatsApp перенесены inline после bio. */}
@@ -608,9 +685,10 @@ export default function MasterPublicScreen() {
         />
       ) : null}
 
-      {/* Action menu — overflow ⋮ из header. Один пункт «Пожаловаться»
-          (паттерн как на orders/[id]). Открывается из header'а, само
-          действие — открыть ReportModal. */}
+      {/* Action menu — overflow ⋮ из header. 2026-05-20 «classifieds»:
+          из меню убран пункт «Этот мастер выполнил мне работу» (ad-hoc
+          подтверждение оффлайн-работы) — он завязан на lifecycle, которого
+          в текущей модели больше нет. Остался только «Пожаловаться». */}
       {!isOwnProfile ? (
         <BottomSheet
           open={actionMenuOpen}
@@ -636,7 +714,7 @@ export default function MasterPublicScreen() {
               <View
                 className="h-9 w-9 items-center justify-center rounded-md bg-error-soft"
               >
-                <Flag size={18} weight="bold" color="#ef4444" />
+                <Flag size={18} weight="bold" color={tc.error} />
               </View>
               <AppText weight="semibold" className="text-body-md text-error">
                 Пожаловаться
@@ -653,16 +731,6 @@ export default function MasterPublicScreen() {
           onClose={() => setReportOpen(false)}
           targetType="user"
           targetId={masterId}
-        />
-      ) : null}
-
-      {/* Confirm work — sheet с формой ad-hoc подтверждения работы */}
-      {!isOwnProfile && masterId ? (
-        <ConfirmWorkSheet
-          open={confirmWorkOpen}
-          onClose={() => setConfirmWorkOpen(false)}
-          masterId={masterId}
-          masterName={fullName}
         />
       ) : null}
     </View>
@@ -682,7 +750,7 @@ function PortfolioPager({
   items: PortfolioItem[];
   onOpen: (index: number) => void;
 }) {
-  const { width: screenWidth } = useWindowDimensions();
+  const screenWidth = useAppWidth();
   // Ширина контейнера — на web с max-width:480 контейнер уже screenWidth,
   // поэтому индекс по screenWidth был неверным (фидбэк user 2026-05-14:
   // dot не обновлялся при свайпе на web). Меряем фактическую ширину через
@@ -710,7 +778,8 @@ function PortfolioPager({
 
   return (
     <View
-      style={{ width: "100%", height: heroHeight, backgroundColor: "#1a1a1a" }}
+      style={{ width: "100%", height: heroHeight }}
+      className="bg-canvas-soft-2"
       onLayout={(e) => setContainerWidth(e.nativeEvent.layout.width)}
     >
       <FlatList
@@ -723,6 +792,12 @@ function PortfolioPager({
         onScroll={onScroll}
         scrollEventThrottle={16}
         keyExtractor={(item) => item.id}
+        // Ленивый рендер: первое фото рендерится сразу (priority high), остальные
+        // — по мере свайпа. Так первый кадр появляется быстро, не конкурируя за
+        // канал с 5 другими фото (фидбэк юзера «первая быстрее»).
+        initialNumToRender={1}
+        maxToRenderPerBatch={2}
+        windowSize={3}
         renderItem={({ item, index: i }) => (
           <Pressable
             accessibilityRole="button"
@@ -730,10 +805,10 @@ function PortfolioPager({
             onPress={() => onOpen(i)}
             style={{ width: containerWidth, height: heroHeight }}
           >
-            <Image
-              source={{ uri: item.url }}
-              style={{ width: "100%", height: "100%" }}
-              resizeMode="cover"
+            <PortfolioPagerImage
+              url={item.url}
+              width={Math.round(containerWidth) || Math.round(screenWidth)}
+              priority={i === 0 ? "high" : "low"}
             />
           </Pressable>
         )}
@@ -766,5 +841,240 @@ function PortfolioPager({
         </View>
       ) : null}
     </View>
+  );
+}
+
+// PortfolioPagerImage — отдельный компонент с локальным fail-state, чтобы
+// ошибка одной картинки не сваливала весь pager. При onError рендерим
+// нейтральный canvas-soft-2 фон (стандартный «фото-плейсхолдер» Vercel-style).
+// Без этого Safari на CORS-fail оставлял пустоту вместо первого слайда.
+function PortfolioPagerImage({
+  url,
+  width,
+  priority = "normal",
+}: {
+  url: string;
+  /** Ширина показа в логических px — для подгонки размера через image-CDN. */
+  width: number;
+  /** Первое фото карусели — "high" (грузится первым), остальные — "low". */
+  priority?: "low" | "normal" | "high";
+}) {
+  const [failed, setFailed] = useState(false);
+  if (failed) {
+    return <View className="flex-1 bg-canvas-soft-2" />;
+  }
+  const blur = cdnBlur(url);
+  return (
+    <ExpoImage
+      // Подгоняем под ширину показа + webp + blur-up плейсхолдер (image-cdn).
+      source={{ uri: cdnImage(url, { width, quality: 74 }) }}
+      placeholder={blur ? { uri: blur } : undefined}
+      placeholderContentFit="cover"
+      style={{ width: "100%", height: "100%" }}
+      contentFit="cover"
+      transition={200}
+      priority={priority}
+      // Кэш память+диск — повторный заход на мастера показывает фото мгновенно.
+      cachePolicy="memory-disk"
+      onError={() => setFailed(true)}
+    />
+  );
+}
+
+// ============================================================================
+// MasterCasesPreview — секция «Работы мастера» на публичной карточке.
+//
+// Редизайн 2026-05-20 (фидбэк user: «как делают большие компании. Сделать
+// офигенно крутой блок»).
+//
+// Layout: Instagram-style 3-column square grid (на mobile), 4-col на planshet,
+// 5-col на desktop. Нулевой gap (1px разделитель через background) — fotos-first
+// без шума. До 9 плиток на странице мастера (3×3), всё остальное — за «Все N».
+//
+// Lazyweb-референсы:
+//   - Instagram profile grid (3-col square, нулевые подписи) — главный паттерн.
+//   - Behance/Dribbble (fotos-first showcase).
+//
+// Ключевые правила:
+//   1. Кейс БЕЗ обложки в гриде НЕ показывается — никаких placeholder'ов с
+//      гаечным ключом. Если у мастера 0 кейсов с фото → секция целиком
+//      скрыта (фидбэк user 2026-05-20: «пустые блоки убрать»).
+//   2. Подпись (название) рендерится поверх фото снизу полупрозрачным
+//      gradient'ом, в одну строку — Airbnb host card pattern.
+//   3. Бейдж «+N» в правом верхнем углу если в кейсе больше 1 фото.
+//   4. Тап по плитке → /case/[caseId] (публичный read-only viewer).
+// ============================================================================
+
+const CASES_PREVIEW_LIMIT = 9; // 3×3 на mobile
+
+function MasterCasesPreview({ masterId }: { masterId: string }) {
+  const router = useRouter();
+  const cases = useMasterCases(masterId);
+  // Берём только кейсы с обложкой (preview_items[0] есть). Если фото не
+  // загружено — кейс пока «невидимый» для публичной карточки.
+  const visibleCases = (cases.data ?? []).filter(
+    (c) => !!c.preview_items[0]?.url,
+  );
+
+  // Loading + пустой list → секция скрыта (публичная карточка, никаких
+  // «pending» состояний).
+  if (cases.isLoading || visibleCases.length === 0) return null;
+
+  const visible = visibleCases.slice(0, CASES_PREVIEW_LIMIT);
+  const showSeeAll = visibleCases.length > CASES_PREVIEW_LIMIT;
+  const total = visibleCases.length;
+
+  return (
+    <View className="mt-8">
+      <View className="px-5 flex-row items-center justify-between mb-3">
+        <AppText weight="semibold" className="text-ink text-title-md">
+          Работы мастера
+        </AppText>
+        {showSeeAll ? (
+          <Pressable
+            accessibilityRole="link"
+            onPress={() => router.push(`/(tabs)/master-cases/${masterId}` as never)}
+            hitSlop={8}
+            className="active:opacity-70"
+          >
+            <AppText weight="medium" className="text-body-sm text-ink underline">
+              Все {total}
+            </AppText>
+          </Pressable>
+        ) : null}
+      </View>
+
+      <CasesGrid
+        cases={visible}
+        onPress={(caseId) =>
+          router.push(`/(tabs)/case/${caseId}` as never)
+        }
+      />
+    </View>
+  );
+}
+
+// ----------------------------------------------------------------------------
+// CasesGrid — адаптивная сетка плиток (Instagram-style).
+// 3-col на mobile (< 640), 4-col на planshet (640-768), 5-col на desktop.
+// Считаем плитку через flex-basis: `100%/cols - gap`. Gap 2px (минимальный
+// разделитель между fotos, как в IG).
+// ----------------------------------------------------------------------------
+
+const GRID_GAP = 2;
+
+function CasesGrid({
+  cases,
+  onPress,
+}: {
+  cases: CaseWithPreview[];
+  onPress: (caseId: string) => void;
+}) {
+  const viewportWidth = useAppWidth();
+  // На web карточка мастера ограничена телефонной колонкой PhoneFrame,
+  // но мы рендерим без horizontal padding. Используем viewportWidth как
+  // приближение — на mobile это и есть ширина грида.
+  const cols = viewportWidth >= 768 ? 5 : viewportWidth >= 640 ? 4 : 3;
+  // Доступная ширина грида: viewportWidth - 0 (без horizontal padding,
+  // плитки идут до краёв как в Instagram). gap*(cols-1) уходит на
+  // зазоры между плитками.
+  const tileSize = (viewportWidth - GRID_GAP * (cols - 1)) / cols;
+
+  return (
+    <View
+      style={{
+        flexDirection: "row",
+        flexWrap: "wrap",
+        gap: GRID_GAP,
+      }}
+    >
+      {cases.map((c) => (
+        <CaseTile
+          key={c.id}
+          data={c}
+          size={tileSize}
+          onPress={() => onPress(c.id)}
+        />
+      ))}
+    </View>
+  );
+}
+
+// ----------------------------------------------------------------------------
+// CaseTile — квадратная плитка с фото-обложкой, бейджем «+N» и подписью-
+// гра­ди­ен­том снизу. Используется только в CasesGrid; preview_items[0]
+// гарантирован вышестоящим фильтром.
+// ----------------------------------------------------------------------------
+
+function CaseTile({
+  data,
+  size,
+  onPress,
+}: {
+  data: CaseWithPreview;
+  size: number;
+  onPress: () => void;
+}) {
+  const cover = data.preview_items[0];
+  const remainingPhotos = data.items_count > 1 ? data.items_count - 1 : 0;
+  // Safari-fallback: ошибка одной обложки не должна ломать всю Instagram-grid.
+  // При onError остаётся bg-canvas-soft-2 фон (нейтральный плейсхолдер).
+  const [failed, setFailed] = useState(false);
+
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`Работа: ${data.title}`}
+      onPress={onPress}
+      style={{ width: size, height: size, position: "relative" }}
+      className="bg-canvas-soft-2 overflow-hidden active:opacity-80"
+    >
+      {failed ? null : (
+        <Image
+          source={{ uri: cdnImage(cover!.url, { width: size }) }}
+          style={{ width: "100%", height: "100%" }}
+          resizeMode="cover"
+          onError={() => setFailed(true)}
+        />
+      )}
+      {/* Бейдж «+N фото» — правый верхний угол, как у IG carousel-indicator.
+          rgba(0,0,0,0.55) — технический цвет overlay'я, не токен (это alpha
+          на фото, не текст на фоне; работает одинаково в обеих темах). */}
+      {remainingPhotos > 0 ? (
+        <View
+          className="absolute top-1.5 right-1.5 rounded-full px-2 py-0.5"
+          style={{ backgroundColor: "rgba(0,0,0,0.55)" }}
+        >
+          <AppText weight="mono" className="text-mono-caption text-white">
+            +{remainingPhotos}
+          </AppText>
+        </View>
+      ) : null}
+      {/* Подпись поверх фото — gradient снизу для читаемости title.
+          Airbnb host-card pattern: photo-first, текст subtle поверх. */}
+      <LinearGradient
+        colors={["transparent", "rgba(0,0,0,0.65)"]}
+        style={{
+          position: "absolute",
+          left: 0,
+          right: 0,
+          bottom: 0,
+          height: "55%",
+        }}
+        pointerEvents="none"
+      />
+      <View
+        className="absolute left-0 right-0 bottom-0 px-2 pb-2"
+        pointerEvents="none"
+      >
+        <AppText
+          weight="semibold"
+          className="text-caption text-white"
+          numberOfLines={1}
+        >
+          {data.title}
+        </AppText>
+      </View>
+    </Pressable>
   );
 }

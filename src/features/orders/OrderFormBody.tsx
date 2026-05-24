@@ -8,6 +8,7 @@
  * Owner-каждый screen решает что показывать выше и ниже формы + сам submit-логика.
  */
 
+import type { ReactNode } from "react";
 import type { Control, FieldErrors, FieldPath } from "react-hook-form";
 import { Controller } from "react-hook-form";
 import { Pressable, TextInput, View } from "react-native";
@@ -53,6 +54,13 @@ interface OrderFormBodyProps {
   /** Если задана — категорию нельзя сменить (после создания заказа). */
   lockCategory?: boolean;
   /**
+   * Слот «Фото» — рендерится после описания, перед категорией (дизайн-спека
+   * ORDER_PHOTOS_DESIGN.md §3.1). Передаётся только из формы создания заказа
+   * (new.tsx) с компонентом <OrderPhotosPicker/>. Edit-экран фото не передаёт →
+   * слот не рендерится, поведение edit не меняется.
+   */
+  photosSlot?: ReactNode;
+  /**
    * Wizard-режим (2 шага):
    *   1 = описание (название + детали) + выбор категории на ОДНОМ экране
    *   2 = бюджет + город + район + срочность
@@ -70,6 +78,7 @@ export function OrderFormBody({
   cities,
   lockCategory,
   step,
+  photosSlot,
 }: OrderFormBodyProps) {
   const mutedSoftColor = useThemeColor("muted-soft");
   // Wizard 2 шага: step 1 = описание + категория на одном экране, step 2 = бюджет/город.
@@ -114,7 +123,7 @@ export function OrderFormBody({
                   maxLength={2000}
                   textAlignVertical="top"
                   maxFontSizeMultiplier={1.3}
-                  className={`mt-2 min-h-32 rounded-md border bg-canvas px-3 py-3 text-body-md text-ink ${
+                  className={`mt-2 min-h-36 rounded-lg border bg-canvas px-4 py-3.5 text-body-md text-ink ${
                     errors.description ? "border-error" : "border-hairline"
                   }`}
                   editable={!isBusy}
@@ -124,11 +133,27 @@ export function OrderFormBody({
                     {errors.description.message}
                   </AppText>
                 )}
+                {value && value.length > 0 ? (
+                  <View className="mt-1.5 flex-row justify-end">
+                    <AppText weight="mono" className="text-mono-caption text-mute">
+                      {value.length} / 2000
+                    </AppText>
+                  </View>
+                ) : null}
               </View>
             )}
           />
         </View>
       )}
+
+      {/* Фото заказа — после описания (визуальное продолжение «что нужно»).
+          Слот передаётся только из new.tsx (см. photosSlot). */}
+      {showContent && photosSlot ? photosSlot : null}
+
+      {/* Группа-разделитель: «о задаче» ↑ | «категория и место» ↓.
+          Full-bleed hairline (Airbnb/depop section grouping). Только в полной
+          форме (new/edit), в wizard-режиме секции и так на разных шагах. */}
+      {step === undefined ? <View className="mt-8 h-px bg-hairline" /> : null}
 
       {/* Категория — Шаг 1 (CategoryPicker — compact selector + bottom-sheet
           с typeahead). 2-col grid плиток выглядел перегружено для 32 категорий.
@@ -151,7 +176,7 @@ export function OrderFormBody({
             )}
           />
           {lockCategory && (
-            <AppText className="mt-2 text-caption-xs text-muted">
+            <AppText className="mt-2 text-caption text-muted">
               Категорию нельзя сменить после публикации.
             </AppText>
           )}
@@ -192,9 +217,12 @@ export function OrderFormBody({
         </View>
       )}
 
+      {/* Группа-разделитель: «категория и место» ↑ | «сроки и бюджет» ↓. */}
+      {step === undefined ? <View className="mt-8 h-px bg-hairline" /> : null}
+
       {/* Сроки — Шаг 2. Короткий заголовок «Сроки» по фидбэку user 2026-05-14
           (длинное «Готовность мастера взяться за работу» избыточно: chips
-          «Срочно / На неделе / В этом месяце / Неважно» сами достаточно
+          «Срочно / На неделе / В этом месяце / Не срочно» сами достаточно
           самообъясняющие). */}
       {showBudgetCity && (
         <View className="mt-6 px-6">
@@ -215,7 +243,7 @@ export function OrderFormBody({
                       accessibilityState={{ selected }}
                       disabled={isBusy}
                       onPress={() => onChange(u)}
-                      className={`h-10 items-center justify-center rounded-pill border px-4 ${
+                      className={`h-11 items-center justify-center rounded-pill border px-4 ${
                         selected
                           ? "border-accent bg-accent-soft"
                           : "border-hairline bg-canvas active:opacity-70"
@@ -223,7 +251,7 @@ export function OrderFormBody({
                     >
                       <AppText
                         weight="medium"
-                        className={`text-body-sm ${selected ? "text-accent" : "text-ink"}`}
+                        className={`text-body-md ${selected ? "text-accent" : "text-ink"}`}
                       >
                         {urgencyLabel(u)}
                       </AppText>
@@ -258,7 +286,7 @@ export function OrderFormBody({
                       accessibilityState={{ selected }}
                       disabled={isBusy}
                       onPress={() => onChange(k)}
-                      className={`h-10 items-center justify-center rounded-pill border px-4 ${
+                      className={`h-11 items-center justify-center rounded-pill border px-4 ${
                         selected
                           ? "border-accent bg-accent-soft"
                           : "border-hairline bg-canvas active:opacity-70"
@@ -266,7 +294,7 @@ export function OrderFormBody({
                     >
                       <AppText
                         weight="medium"
-                        className={`text-body-sm ${selected ? "text-accent" : "text-ink"}`}
+                        className={`text-body-md ${selected ? "text-accent" : "text-ink"}`}
                       >
                         {priceKindLabel(k)}
                       </AppText>
@@ -290,6 +318,24 @@ export function OrderFormBody({
           )}
         </View>
       )}
+
+      {/* Ваше имя — необязательное. Так вас увидит мастер в заказе (вместо
+          профиля заказчика). По умолчанию подставлено имя из регистрации;
+          можно изменить или стереть. Телефон НЕ собираем — модель «номер
+          скрыт» не меняется (решение владельца 2026-05-24). */}
+      {showBudgetCity && (
+        <View className="mt-6 px-6">
+          <TextField
+            label="Ваше имя (необязательно)"
+            placeholder="Как вас называть"
+            control={control}
+            name="contactName"
+            error={errors.contactName?.message}
+            disabled={isBusy}
+            autoCapitalize="words"
+          />
+        </View>
+      )}
     </>
   );
 }
@@ -298,7 +344,7 @@ export function OrderFormBody({
 
 type StringFieldName = Extract<
   FieldPath<CreateOrderFormValues>,
-  "title" | "description" | "district"
+  "title" | "description" | "district" | "contactName"
 >;
 type NumberFieldName = Extract<FieldPath<CreateOrderFormValues>, "budgetValue">;
 
@@ -331,7 +377,7 @@ function TextField(props: TextFieldProps) {
             placeholderTextColor={mutedSoftColor}
             autoCapitalize={props.autoCapitalize ?? "none"}
             maxFontSizeMultiplier={1.3}
-            className={`mt-2 h-12 rounded-md border bg-canvas px-3 text-body-md text-ink ${
+            className={`mt-2 h-14 rounded-lg border bg-canvas px-4 text-body-md text-ink ${
               props.error ? "border-error" : "border-hairline"
             }`}
             editable={!props.disabled}
@@ -379,7 +425,7 @@ function NumberField(props: NumberFieldProps) {
             keyboardType="number-pad"
             inputMode="numeric"
             maxFontSizeMultiplier={1.3}
-            className={`mt-2 h-12 rounded-md border bg-canvas px-3 text-body-md text-ink ${
+            className={`mt-2 h-14 rounded-lg border bg-canvas px-4 text-body-md text-ink ${
               props.error ? "border-error" : "border-hairline"
             }`}
             editable={!props.disabled}

@@ -1,58 +1,39 @@
 /**
- * LocationPicker — иерархический выбор локации заказа.
+ * LocationPicker — компактный триггер выбора локации заказа.
  *
- * Структура (скопирована из Ingush-Business `LocationSheet`, адаптирована
- * под нашу Vercel-эстетику и DESIGN.md):
+ *   ┌────────────────────────────────────────┐
+ *   │ 📍 Магас · Назрановский …            ›  │   ← compact trigger
+ *   └────────────────────────────────────────┘
  *
- *   ┌───────────────────────────────────────┐
- *   │ Trigger: 📍 [Магас · Назрановский …] ▾│
- *   └───────────────────────────────────────┘
- *               ↓ тап → открыть sheet
- *   ┌───────────────────────────────────────┐
- *   │ ← Где находится задача                │
- *   │   Выберите город. Район — по желанию. │
- *   │                                        │
- *   │   ▢ Вся Ингушетия — заказ увидят      │
- *   │     мастера со всей республики        │
- *   │                                        │
- *   │   Или выберите город                  │
- *   │   ● Магас ○ Назрань ○ Сунжа …         │
- *   │                                        │
- *   │   Район (необязательно)               │
- *   │   ● Назрановский ○ Сунженский …       │
- *   │                                        │
- *   │   Уточнить село                       │
- *   │   ● Экажево ○ Яндаре ○ Плиево …       │
- *   │                                        │
- *   │   [        Готово        ]            │
- *   └───────────────────────────────────────┘
+ * При тапе открывается ПОЛНОЦЕННАЯ страница `/orders/location-select`
+ * (ScreenHeader + чипы город/район/село + «Готово»). После «Готово»
+ * выбор возвращается через Zustand-store `useOrderDraftStore.selectedLocation`,
+ * который этот компонент слушает через useEffect и применяет в react-hook-form
+ * (cityId + district).
  *
- * Управление form-state: draft-state локально внутри sheet'а, commit
- * через `onChange({cityId, district})` только при тапе «Готово». Тап
- * вне sheet или back-button = отмена изменений (state восстанавливается
- * из props при следующем open).
+ * ── Редизайн 2026-05-24 ──────────────────────────────────────────────────
+ * Раньше выбор локации жил в bottom-sheet (`BottomSheet`), а выбор категории —
+ * в отдельном route. Два разных механизма = разный стиль окна. По фидбэку
+ * владельца оба унифицированы как отдельные route-экраны (см.
+ * `app/(tabs)/orders/location-select.tsx`). Bottom-sheet на web давал
+ * визуальные артефакты — поэтому «оба как страницы». Сам триггер приведён
+ * к единому виду с `CategoryPicker` (h-14, rounded-lg, leading-иконка +
+ * label + CaretRight «открыть страницу»).
  *
- * Используется в:
- *   - `app/(tabs)/orders/new.tsx` через `OrderFormBody`
- *   - `app/(tabs)/orders/edit/[id].tsx` через тот же `OrderFormBody`
+ * Public-props не менялись (cityId, district, cities, onChange, disabled,
+ * error) — `OrderFormBody` и edit-экран используют компонент как прежде.
  *
- * Pre-fill: если приходит cityId="all" → toggle «Вся Ингушетия» on.
- * Если district = имя села → активный район восстанавливается через
- * `findDistrictByVillage`, оба chip'а подсвечиваются.
+ * Pre-fill: cityId="all" → «Вся Ингушетия». district = имя села → активный
+ * район восстанавливается на странице через findDistrictByVillage.
  */
 
-import { Check, CaretDown, MapPin } from "phosphor-react-native";
-import { useEffect, useState } from "react";
-import { Pressable, ScrollView, View } from "react-native";
+import { useRouter } from "expo-router";
+import { CaretRight, MapPin } from "phosphor-react-native";
+import { useEffect } from "react";
+import { Pressable, View } from "react-native";
 import { AppText } from "@/components/AppText";
-import { BottomSheet, Button } from "@/components/ui";
-import {
-  ALL_INGUSHETIA_CITY,
-  districtOptions,
-  findDistrictByVillage,
-  isDistrict,
-  villagesByDistrict,
-} from "@/features/orders/order-schema";
+import { ALL_INGUSHETIA_CITY } from "@/features/orders/order-schema";
+import { useOrderDraftStore } from "@/lib/order-draft-store";
 import { useThemeColors } from "@/lib/use-theme-color";
 import type { Tables } from "@/types/database";
 
@@ -65,7 +46,7 @@ export interface LocationPickerProps {
   district: string;
   /** Список городов из БД. Может быть undefined пока грузится. */
   cities: readonly City[] | undefined;
-  /** Commit изменений (тап «Готово»). */
+  /** Commit изменений (после «Готово» на странице выбора). */
   onChange: (next: { cityId: string; district: string }) => void;
   disabled?: boolean;
   error?: string;
@@ -79,25 +60,24 @@ export function LocationPicker({
   disabled,
   error,
 }: LocationPickerProps) {
-  const [open, setOpen] = useState(false);
-  const tc = useThemeColors(["ink", "mute", "accent"]);
+  const router = useRouter();
+  const tc = useThemeColors(["ink", "mute"]);
 
-  // Draft-state локально внутри sheet'а — commit только на тап «Готово».
-  const [draftCity, setDraftCity] = useState(cityId);
-  const [draftDistrict, setDraftDistrict] = useState(district);
+  // Слушаем store — когда пользователь нажал «Готово» на /orders/location-select,
+  // store.selectedLocation устанавливается → применяем в react-hook-form и
+  // обнуляем флаг, чтобы следующий цикл не сработал повторно.
+  const selectedLocation = useOrderDraftStore((s) => s.selectedLocation);
+  const setSelectedLocation = useOrderDraftStore((s) => s.setSelectedLocation);
 
-  // При каждом открытии sheet'а — синхронизируем draft с актуальными props.
   useEffect(() => {
-    if (open) {
-      setDraftCity(cityId);
-      setDraftDistrict(district);
+    if (!selectedLocation) return;
+    const changed =
+      selectedLocation.cityId !== cityId || selectedLocation.district !== district;
+    if (changed) {
+      onChange({ cityId: selectedLocation.cityId, district: selectedLocation.district });
     }
-  }, [open, cityId, district]);
-
-  function handleApply() {
-    onChange({ cityId: draftCity, district: draftDistrict });
-    setOpen(false);
-  }
+    setSelectedLocation(null);
+  }, [selectedLocation, cityId, district, onChange, setSelectedLocation]);
 
   // Trigger-label: composed из cityId + district.
   const cityName =
@@ -109,36 +89,33 @@ export function LocationPicker({
     triggerParts.length === 0 ? "Выберите локацию" : triggerParts.join(" · ");
   const isPlaceholder = triggerParts.length === 0;
 
-  // Активный район для draft (для подсветки sub-row).
-  const activeDistrict = isDistrict(draftDistrict)
-    ? draftDistrict
-    : findDistrictByVillage(draftDistrict);
-  const villages = activeDistrict ? villagesByDistrict[activeDistrict] : null;
-  const isAllIngush = draftCity === ALL_INGUSHETIA_CITY;
-
   return (
     <View>
-      {/* Trigger — выглядит идентично CategoryPicker'у (тот же form-input стандарт:
-          h-12, rounded-md, bg-canvas, px-3, gap-2). Справа — CaretDown как
-          visual-signal что это trigger, открывающий sheet (единый паттерн
-          с CategoryPicker). */}
+      {/* Trigger — единый form-input стандарт с CategoryPicker (h-14, rounded-lg,
+          bg-canvas, leading-иконка + label + CaretRight). CaretRight (а не
+          CaretDown) — visual-signal, что тап открывает отдельную страницу. */}
       <Pressable
         accessibilityRole="button"
         accessibilityLabel="Выбрать локацию"
-        onPress={() => setOpen(true)}
         disabled={disabled}
-        className={`mt-2 h-12 flex-row items-center gap-2 rounded-md border bg-canvas px-3 active:opacity-70 ${
+        onPress={() =>
+          router.push({
+            pathname: "/(tabs)/orders/location-select",
+            params: { cityId, district },
+          } as never)
+        }
+        className={`mt-2 h-14 flex-row items-center gap-3 rounded-lg border bg-canvas px-4 active:opacity-70 ${
           error ? "border-error" : "border-hairline"
-        }`}
+        } ${disabled ? "opacity-50" : ""}`}
       >
-        <MapPin size={18} weight="bold" color={tc.mute} />
+        <MapPin size={20} weight="bold" color={isPlaceholder ? tc.mute : tc.ink} />
         <AppText
           className={`flex-1 text-body-md ${isPlaceholder ? "text-mute" : "text-ink"}`}
           numberOfLines={1}
         >
           {triggerLabel}
         </AppText>
-        <CaretDown size={18} weight="bold" color={tc.mute} />
+        <CaretRight size={18} weight="bold" color={tc.mute} />
       </Pressable>
 
       {error ? (
@@ -146,175 +123,6 @@ export function LocationPicker({
           {error}
         </AppText>
       ) : null}
-
-      <BottomSheet
-        open={open}
-        onClose={() => setOpen(false)}
-        title="Где находится задача"
-        subtitle="Выберите город. Район и село — по желанию."
-        fullScreen
-      >
-        <ScrollView
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
-          contentContainerStyle={{ paddingBottom: 24 }}
-        >
-          {/* «Вся Ингушетия» — выделенная toggle-карточка. Когда on —
-              район/село недоступны (территориальный фильтр снят). */}
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Вся Ингушетия"
-            accessibilityState={{ selected: isAllIngush }}
-            onPress={() => {
-              setDraftCity(ALL_INGUSHETIA_CITY);
-              setDraftDistrict("");
-            }}
-            className={`flex-row items-center gap-3 rounded-lg border p-4 ${
-              isAllIngush
-                ? "border-accent bg-accent-soft"
-                : "border-hairline bg-canvas-soft active:opacity-70"
-            }`}
-          >
-            <View
-              className="h-10 w-10 items-center justify-center rounded-full bg-canvas"
-            >
-              <MapPin size={18} weight="bold" color={tc.ink} />
-            </View>
-            <View className="flex-1">
-              <AppText
-                weight="semibold"
-                className={`text-body-md ${isAllIngush ? "text-accent" : "text-ink"}`}
-              >
-                Вся Ингушетия
-              </AppText>
-              <AppText
-                className="mt-0.5 text-caption text-mute"
-              >
-                Заказ увидят мастера со всей республики
-              </AppText>
-            </View>
-            {isAllIngush ? (
-              <Check size={20} weight="fill" color={tc.accent} />
-            ) : null}
-          </Pressable>
-
-          {/* Города */}
-          <AppText weight="semibold" className="mt-6 text-body-sm text-ink">
-            {isAllIngush ? "Или выберите город" : "Город"}
-          </AppText>
-          <View className="mt-2 flex-row flex-wrap gap-2">
-            {cities?.map((c) => {
-              const selected = draftCity === c.id;
-              return (
-                <Pressable
-                  key={c.id}
-                  accessibilityRole="button"
-                  accessibilityState={{ selected }}
-                  onPress={() => setDraftCity(c.id)}
-                  className={`h-10 items-center justify-center rounded-pill border px-4 ${
-                    selected
-                      ? "border-accent bg-accent-soft"
-                      : "border-hairline bg-canvas active:opacity-70"
-                  }`}
-                >
-                  <AppText
-                    weight="medium"
-                    className={`text-body-sm ${selected ? "text-accent" : "text-ink"}`}
-                  >
-                    {c.name}
-                  </AppText>
-                </Pressable>
-              );
-            })}
-          </View>
-
-          {/* Район — недоступен когда выбрана «Вся Ингушетия» (территориальная
-              фильтрация снята). Это явный UX-сигнал — нельзя одновременно
-              «вся республика» и «конкретный район». */}
-          {!isAllIngush ? (
-            <>
-              <AppText weight="semibold" className="mt-6 text-body-sm text-ink">
-                Район{" "}
-                <AppText className="text-body-sm text-mute">(необязательно)</AppText>
-              </AppText>
-              <View className="mt-2 flex-row flex-wrap gap-2">
-                {districtOptions.map((d) => {
-                  const selected = activeDistrict === d;
-                  return (
-                    <Pressable
-                      key={d}
-                      accessibilityRole="button"
-                      accessibilityState={{ selected }}
-                      onPress={() => setDraftDistrict(selected ? "" : d)}
-                      className={`h-10 items-center justify-center rounded-pill border px-4 ${
-                        selected
-                          ? "border-accent bg-accent-soft"
-                          : "border-hairline bg-canvas active:opacity-70"
-                      }`}
-                    >
-                      <AppText
-                        weight="medium"
-                        className={`text-body-sm ${selected ? "text-accent" : "text-ink"}`}
-                      >
-                        {d}
-                      </AppText>
-                    </Pressable>
-                  );
-                })}
-              </View>
-
-              {/* Sub-row сёл выбранного района — гранулярный уровень. */}
-              {villages && activeDistrict ? (
-                <View className="mt-4">
-                  <AppText className="text-caption text-mute">Уточнить село</AppText>
-                  <View className="mt-2 flex-row flex-wrap gap-2">
-                    {villages.map((v) => {
-                      const selected = draftDistrict === v;
-                      return (
-                        <Pressable
-                          key={v}
-                          accessibilityRole="button"
-                          accessibilityState={{ selected }}
-                          onPress={() =>
-                            setDraftDistrict(selected ? activeDistrict : v)
-                          }
-                          className={`h-8 items-center justify-center rounded-pill border px-3 ${
-                            selected
-                              ? "border-accent bg-accent-soft"
-                              : "border-hairline bg-canvas active:opacity-70"
-                          }`}
-                        >
-                          <AppText
-                            weight="medium"
-                            className={`text-caption ${
-                              selected ? "text-accent" : "text-ink"
-                            }`}
-                          >
-                            {v}
-                          </AppText>
-                        </Pressable>
-                      );
-                    })}
-                  </View>
-                </View>
-              ) : null}
-            </>
-          ) : null}
-        </ScrollView>
-
-        {/* Sticky bottom CTA */}
-        <View className="mt-4 border-t border-hairline pt-4">
-          <Button
-            variant="primary"
-            size="lg"
-            fullWidth
-            disabled={!draftCity}
-            onPress={handleApply}
-          >
-            Готово
-          </Button>
-        </View>
-      </BottomSheet>
     </View>
   );
 }

@@ -141,7 +141,7 @@ function ClientOrdersView({ userId }: ClientOrdersViewProps) {
               <EmptyState
                 icon={ClipboardText}
                 title="Активных заказов нет"
-                hint="Опишите задачу — мастера откликнутся в течение часа."
+                hint="Опишите задачу — и мастера пришлют отклики с ценой и сроком."
                 ctaLabel="Разместить заказ"
                 onCta={() => router.push("/(tabs)/orders/new" as never)}
               />

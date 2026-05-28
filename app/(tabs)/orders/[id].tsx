@@ -998,6 +998,11 @@ function ClientResponsesSection({ orderId, order }: ClientResponsesSectionProps)
   const activeResponses = (responses ?? []).filter((r) => r.status !== "rejected");
   const rejectedResponses = (responses ?? []).filter((r) => r.status === "rejected");
 
+  // Заказ «висит» больше суток без откликов → не обещаем «в течение часа»
+  // (это была бы ложь), а даём честную подсказку как привлечь мастеров.
+  const orderAgeMs = Date.now() - new Date(order.created_at).getTime();
+  const isStaleNoResponses = orderAgeMs > 24 * 60 * 60 * 1000;
+
   return (
     <View className="mt-8 px-5">
       {/* Heading: «Отклики · N» */}
@@ -1027,16 +1032,31 @@ function ClientResponsesSection({ orderId, order }: ClientResponsesSectionProps)
         </AppText>
       )}
 
-      {/* Empty state. */}
+      {/* Empty state. Текст зависит от возраста заказа: свежий — оптимистично,
+          старше суток без откликов — честно + совет как привлечь мастеров. */}
       {!isLoading && !error && !hasResponses && (
         <View className="mt-3 rounded-xl border border-hairline bg-canvas-soft p-4">
-          <AppText weight="medium" className="text-body-sm text-ink">
-            Откликов пока нет
-          </AppText>
-          <AppText className="mt-1 text-body-sm text-mute">
-            Обычно первые приходят в течение часа. Уведомим, как только мастер
-            отзовётся.
-          </AppText>
+          {isStaleNoResponses ? (
+            <>
+              <AppText weight="medium" className="text-body-sm text-ink">
+                Пока никто не откликнулся
+              </AppText>
+              <AppText className="mt-1 text-body-sm text-mute">
+                Так бывает — спрос на разные услуги разный. Чтобы заявкой
+                заинтересовались, попробуйте дополнить описание, добавить фото
+                или указать бюджет. Можно также найти мастера самому в каталоге.
+              </AppText>
+            </>
+          ) : (
+            <>
+              <AppText weight="medium" className="text-body-sm text-ink">
+                Откликов пока нет
+              </AppText>
+              <AppText className="mt-1 text-body-sm text-mute">
+                Уведомим, как только мастер отзовётся.
+              </AppText>
+            </>
+          )}
         </View>
       )}
 

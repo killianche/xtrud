@@ -1,6 +1,6 @@
 // useMarkOrderDone — picked master помечает «работа выполнена» (T8 в docs/lifecycle.md).
 // Через RPC mark_order_done. in_progress → awaiting_confirmation.
-// Клиенту приходит push, у него 72h на подтвердить / оспорить, иначе cron T11
+// Клиенту приходит push, у него 72h на подтвердить, иначе cron T11
 // закроет автоматом.
 //
 // Используется в /orders/[id] (master view) — кнопка «Работа выполнена»

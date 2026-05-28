@@ -207,23 +207,23 @@ export default function PhoneScreen() {
               {acceptedTerms ? <Check size={14} weight="bold" color={tc["on-primary"]} /> : null}
             </View>
             <View className="flex-1 flex-row flex-wrap">
-              <AppText className="text-caption-xs text-body">Я согласен с </AppText>
+              <AppText className="text-caption text-body">Я согласен с </AppText>
               <AppText
                 weight="medium"
-                className="text-caption-xs text-ink underline"
+                className="text-caption text-ink underline"
                 onPress={() => router.push("/legal/terms" as never)}
               >
                 Условиями использования
               </AppText>
-              <AppText className="text-caption-xs text-body"> и </AppText>
+              <AppText className="text-caption text-body"> и </AppText>
               <AppText
                 weight="medium"
-                className="text-caption-xs text-ink underline"
+                className="text-caption text-ink underline"
                 onPress={() => router.push("/legal/privacy" as never)}
               >
                 Политикой конфиденциальности
               </AppText>
-              <AppText className="text-caption-xs text-body">.</AppText>
+              <AppText className="text-caption text-body">.</AppText>
             </View>
           </Pressable>
 

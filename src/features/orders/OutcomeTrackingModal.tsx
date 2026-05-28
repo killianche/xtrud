@@ -37,6 +37,8 @@ export function OutcomeTrackingModal({
   onSnooze,
 }: OutcomeTrackingModalProps) {
   const mutedSoftColor = useThemeColor("muted-soft");
+  const successColor = useThemeColor("success");
+  const errorColor = useThemeColor("error");
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onSnooze}>
       <View className="flex-1 items-center justify-center bg-black/50 px-6">
@@ -67,7 +69,7 @@ export function OutcomeTrackingModal({
               onPress={onCompletedOffline}
               className="flex-row items-center gap-3 rounded-md border border-success/40 bg-success-soft px-4 py-3 active:opacity-80"
             >
-              <CheckCircle size={20} weight="bold" color="#10b981" />
+              <CheckCircle size={20} weight="bold" color={successColor} />
               <View className="flex-1">
                 <AppText weight="semibold" className="text-body-md text-ink">
                   Всё сделано
@@ -84,7 +86,7 @@ export function OutcomeTrackingModal({
               onPress={onNoDeal}
               className="flex-row items-center gap-3 rounded-md border border-error/30 bg-error-soft px-4 py-3 active:opacity-80"
             >
-              <XCircle size={20} weight="bold" color="#ef4444" />
+              <XCircle size={20} weight="bold" color={errorColor} />
               <View className="flex-1">
                 <AppText weight="semibold" className="text-body-md text-ink">
                   Не договорились

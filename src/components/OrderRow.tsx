@@ -74,6 +74,13 @@ export interface OrderRowProps {
   coverUrl?: string | null;
   /** Всего фото у заказа — для бейджа «+N» поверх миниатюры. */
   photosCount?: number;
+  /** Переопределить текст статус-плашки на нейтральный «мёртвый» вид. Нужно
+   *  экрану «История откликов»: там итог строки — статус отклика
+   *  (Отклонён/Отозван) или заказа (Завершён/Истёк/Спор/…), который родная
+   *  логика pillFor не покрывает (она знает только draft/completed/cancelled/
+   *  expired + срочность). Передан → плашка всегда нейтральная (bg-surface-2 /
+   *  text-mute) + строка приглушена. Обратносовместимо: не передан → как раньше. */
+  statusOverrideLabel?: string | null;
 }
 
 /**
@@ -156,8 +163,19 @@ export function OrderRow(props: OrderRowProps) {
     props.onPress?.();
   };
   const Icon = getCategoryIcon(props.categoryIcon);
-  const isDimmed = !!(props.status && DIMMED_STATUS[props.status]);
-  const pill = pillFor(props.status, props.urgency);
+  // statusOverrideLabel (экран Истории) → всегда нейтральная плашка с этим
+  // лейблом + приглушённая строка. Иначе — родная логика по статусу/срочности.
+  const hasStatusOverride =
+    !!props.statusOverrideLabel && props.statusOverrideLabel.trim().length > 0;
+  const isDimmed = hasStatusOverride || !!(props.status && DIMMED_STATUS[props.status]);
+  const pill: PillStyle = hasStatusOverride
+    ? {
+        label: props.statusOverrideLabel as string,
+        bgClass: "bg-surface-2",
+        textClass: "text-mute",
+        dotClass: "bg-muted-soft",
+      }
+    : pillFor(props.status, props.urgency);
   // Кнопка «Откликнуться» — только в ленте поиска и только если ещё не откликнулись.
   const showButton = !!props.showRespondButton && !props.alreadyResponded;
 

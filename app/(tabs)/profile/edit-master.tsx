@@ -20,8 +20,10 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { SignIn, User } from "phosphor-react-native";
 import { AppText } from "@/components/AppText";
 import { ScreenHeader } from "@/components/ui";
+import { useThemeColors } from "@/lib/use-theme-color";
 import {
   type MasterProfileFormValues,
   masterProfileSchema,
@@ -76,10 +78,7 @@ export default function EditMasterScreen() {
       district: "",
       bio: "",
       experienceYears: 0,
-      whatsappSameAsPhone: true,
       whatsappPhone: "",
-      // Sprint 2026-05-20 (миграция 0097): contact_phone.
-      contactSameAsPhone: true,
       contactPhone: "",
     },
     mode: "onChange",
@@ -87,16 +86,12 @@ export default function EditMasterScreen() {
 
   useEffect(() => {
     if (!user || !masterProfile) return;
-    // Sprint 2026-05-20 (миграция 0097): contact_phone prefill.
-    //   contact_phone IS NULL → ставим contactSameAsPhone=true (значит «использовать
-    //     регистрационный»); поле contactPhone оставляем пустым.
-    //   contact_phone != NULL → контактный задан явно: contactSameAsPhone=false,
-    //     contactPhone = значение из БД.
-    //   Каст through unknown because типы регенерятся следующим типгеном.
+    // contact_phone prefill: подставляем явно сохранённый номер. Если в БД пусто
+    // (старые мастера на «совпадает с регистрационным») — поле останется пустым,
+    // и мастер обязан ввести номер (поле теперь required). Регистрационный номер
+    // НЕ подставляем. Каст through unknown — типы регенерятся следующим типгеном.
     const contactPhoneFromDb = (user as unknown as { contact_phone: string | null })
       .contact_phone;
-    const hasExplicitContact =
-      typeof contactPhoneFromDb === "string" && contactPhoneFromDb.trim() !== "";
 
     reset({
       firstName: user.first_name ?? "",
@@ -105,12 +100,9 @@ export default function EditMasterScreen() {
       district: user.district ?? "",
       bio: masterProfile.bio ?? "",
       experienceYears: masterProfile.experience_years ?? 0,
-      // Sprint 0079: WhatsApp prefill из master_profiles.
-      whatsappSameAsPhone: masterProfile.whatsapp_same_as_phone ?? false,
       whatsappPhone: masterProfile.whatsapp_phone ?? "",
-      // Sprint 2026-05-20: contact_phone prefill.
-      contactSameAsPhone: !hasExplicitContact,
-      contactPhone: hasExplicitContact ? contactPhoneFromDb : "",
+      contactPhone:
+        typeof contactPhoneFromDb === "string" ? contactPhoneFromDb : "",
     });
   }, [user, masterProfile, reset]);
 
@@ -155,13 +147,20 @@ export default function EditMasterScreen() {
         }}
       />
 
-      {(profileLoading || !user) && (
+      {/* Анон → guest empty state с CTA. До 2026-05-27 здесь висел бесконечный
+          спиннер (useUserRecord без userId возвращает isLoading=false, data=undefined,
+          и условие `!user` бесконечно держало ActivityIndicator). Apple HIG:
+          никаких тупиков без понятного next-step. */}
+      {!userId && <EditMasterGuestState onLogin={() => router.push("/(auth)/phone" as never)} />}
+
+      {/* Реальный loading — только когда есть userId и данные ещё грузятся. */}
+      {userId && (profileLoading || !user) && (
         <View className="flex-1 items-center justify-center">
           <ActivityIndicator />
         </View>
       )}
 
-      {!profileLoading && user && !isMaster && (
+      {userId && !profileLoading && user && !isMaster && (
         <View className="flex-1 items-center justify-center px-6">
           <AppText className="text-center text-body-md text-error">
             Этот экран доступен только мастерам.
@@ -169,7 +168,7 @@ export default function EditMasterScreen() {
         </View>
       )}
 
-      {!profileLoading && user && isMaster && !masterProfile && (
+      {userId && !profileLoading && user && isMaster && !masterProfile && (
         <View className="flex-1 items-center justify-center px-6">
           <AppText className="text-center text-body-md text-muted">
             Профиль мастера ещё не создан. Завершите онбординг.
@@ -177,7 +176,7 @@ export default function EditMasterScreen() {
         </View>
       )}
 
-      {!profileLoading && user && isMaster && masterProfile && (
+      {userId && !profileLoading && user && isMaster && masterProfile && (
         <ScrollView
           contentContainerStyle={{ paddingBottom: insets.bottom + 24 }}
           keyboardShouldPersistTaps="handled"
@@ -230,6 +229,43 @@ export default function EditMasterScreen() {
         </ScrollView>
       )}
     </KeyboardAvoidingView>
+  );
+}
+
+// ----------------------------------------------------------------------------
+// EditMasterGuestState — что показываем анониму вместо бесконечного спиннера.
+// Раньше при заходе без auth висел синий ActivityIndicator без таймаута,
+// потому что useUserRecord без userId не грузит данные, но `!user` оставалось
+// true → loading-блок не схлопывался. Apple HIG требует понятный next-step.
+// ----------------------------------------------------------------------------
+
+function EditMasterGuestState({ onLogin }: { onLogin: () => void }) {
+  const tc = useThemeColors(["muted-soft", "on-primary"]);
+  return (
+    <View className="flex-1 items-center justify-center px-6">
+      <User size={48} weight="regular" color={tc["muted-soft"]} />
+      <AppText
+        weight="semibold"
+        className="mt-4 text-title-md text-ink text-center"
+      >
+        Войдите в аккаунт
+      </AppText>
+      <AppText className="mt-2 text-body-sm text-mute text-center">
+        Редактирование профиля мастера доступно только после входа по номеру
+        телефона.
+      </AppText>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Войти по телефону"
+        onPress={onLogin}
+        className="mt-6 flex-row items-center justify-center gap-2 h-12 px-6 rounded-md bg-primary active:opacity-80"
+      >
+        <SignIn size={18} weight="bold" color={tc["on-primary"]} />
+        <AppText weight="semibold" className="text-button-lg text-on-primary">
+          Войти по телефону
+        </AppText>
+      </Pressable>
+    </View>
   );
 }
 

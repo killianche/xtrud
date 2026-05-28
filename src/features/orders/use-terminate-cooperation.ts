@@ -5,10 +5,11 @@
 // cancelled c reason='cooperation_ended_by_<role>'. Push другой стороне.
 // Reopen возможен в 7-дневном окне (T9 RPC reopen_order).
 //
-// Заменяет тяжёлый dispute-flow для типичных случаев «не дошло до конца»
-// (по фидбэку user 2026-05-16). Спор как концепция остаётся в БД
-// (status `disputed`, RPC open_dispute), но в UI не дёргается — будет
-// использоваться будущей админкой через service_role.
+// Единственный путь «не дошло до конца» (по фидбэку user 2026-05-16).
+// Функционал «Оспорить» (RPC open_dispute) полностью удалён 2026-05-28 —
+// в доске объявлений спор не нужен, стороны решают вопросы сами/по закону РФ
+// (см. текст пользовательского соглашения). Неиспользуемое значение статуса
+// `disputed` осталось в БД как безвредный остаток (0 записей).
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { myOrdersKey } from "@/features/orders/use-my-orders";

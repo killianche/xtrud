@@ -96,8 +96,12 @@ export default function NewOrderScreen() {
       description: draft.description ?? initialDraft,
       cityId: draft.cityId ?? "",
       district: draft.district ?? "",
-      urgency: draft.urgency ?? "flexible",
-      budgetKind: draft.budgetKind ?? "negotiable",
+      // 2026-05-27: без предвыбора. До этого был «flexible» / «negotiable» —
+      // пользователь не выбирал и отправлял заказ как есть, 90% заказов
+      // становились «Не срочно / Договорная» и отбивали мастеров. Теперь
+      // null до явного тапа по chip'у, submit блокируется через superRefine.
+      urgency: draft.urgency ?? null,
+      budgetKind: draft.budgetKind ?? null,
       budgetValue: draft.budgetValue ?? null,
     },
     mode: "onChange",
@@ -157,6 +161,9 @@ export default function NewOrderScreen() {
       }
 
       // 2. Создаём заказ с готовыми URL фото.
+      // urgency / budgetKind nullable в schema, но zod-валидация (superRefine)
+      // гарантирует non-null до submit. Type guard для TS — формальность.
+      if (values.urgency === null || values.budgetKind === null) return;
       const created = await createOrder.mutateAsync({
         clientId: uid,
         l2Id: values.l2Id,
@@ -289,7 +296,7 @@ export default function NewOrderScreen() {
                   Ваш номер скрыт от мастеров
                 </AppText>
                 <AppText className="mt-1.5 text-body-sm text-body">
-                  Мастера присылают только цену и срок выполнения. Написать или позвонить вам они смогут лишь после того, как вы сами это разрешите.
+                  Только вы решаете, кто получит ваш номер.
                 </AppText>
               </View>
             </View>

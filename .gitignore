@@ -86,5 +86,17 @@ memory/
 # Скретч-референсы (HTML-дампы Linear и т.п.) — не проектные артефакты
 Linear *.html
 
-# Исходник-дроп фото (скопирован в assets/illustrations/order-bg.jpg)
+# Исходники-дропы фото в корне (скопированы в assets/illustrations/*).
+# sss.jpg → order-bg.jpg, fff.jpg → master-hero.jpg, hhh.png/0524.jpg → responses-banner
 sss.jpg
+fff.jpg
+hhh.png
+0524.jpg
+dsds.png
+1213.jpg
+222.jpg
+444.jpg
+555.jpg
+666.jpg
+33322.jpg
+nnnn.jpg

@@ -41,7 +41,7 @@ function ArticleCard({ item, onPress }: { item: Article; onPress: () => void }) 
           </AppText>
         )}
         {item.published_at && (
-          <AppText className="mt-2 text-caption-xs text-muted-soft">
+          <AppText className="mt-2 text-caption text-muted-soft">
             {new Date(item.published_at).toLocaleDateString("ru-RU", {
               day: "numeric",
               month: "long",

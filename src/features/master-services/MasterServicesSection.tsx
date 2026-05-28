@@ -616,7 +616,7 @@ function ServiceFormContent({ initial, masterId, onClose }: ServiceFormContentPr
               );
             })}
           </View>
-          <AppText className="mt-1 text-caption-xs text-muted">
+          <AppText className="mt-1 text-caption text-muted">
             {PRICING_KIND_HINT[pricingKind]}
           </AppText>
         </View>

@@ -1,33 +1,44 @@
 /**
  * Контент главной для active_role='master'.
  *
- * По фидбэку user 2026-05-15 — на главной мастера осталась ТОЛЬКО секция
- * «Готовы работать?» (AvailabilitySwitcher). Все остальные блоки (metrics
- * row, response-quota card, quick actions, tip-card) удалены: пользователь
- * предпочитает чистый экран — статус доступности — единственное действие,
- * остальное живёт в /profile и в нижних табах.
+ * По фидбэку владельца 2026-05-28: главная мастера — это **дискавери-витрина**
+ * для поиска новых заказов. Мастер в xtrud не ведёт переписку и не принимает
+ * заказы в-приложении — он только откликается, дальше клиент звонит / пишет в
+ * WhatsApp. После отклика мастеру делать в продукте нечего, поэтому JTBD главной
+ * = «найти новый заказ», а не «следить за уже отправленными откликами».
  *
- * История:
- *   - 2026-05-15 (perf-agent) — добавил metrics + quota + quick actions +
- *     tip-card. Сильно перегружено.
- *   - 2026-05-15 (поздно) — user: «остальное удали, только Готовы работать?».
- *   - 2026-05-15 (поздно ещё раз) — пробовали MasterHomeContentV2 (hero
- *     status banner + стэк секций без табов). User откатил, оставляем v1.
+ * История блоков на главной:
+ *   - 2026-05-15 (perf-agent) — много блоков (metrics + quota + quick actions +
+ *     tip-card). Перегружено, отменено.
+ *   - 2026-05-15 (поздно) — только «Готовы работать?» (AvailabilitySwitcher).
+ *   - 2026-05-24 — добавлены «Ваши отклики» (MasterDashboardOrders) + callout
+ *     «Добавьте категории». Аватар/приветствие/статистика — в фото-героe выше.
+ *   - 2026-05-27 — над «Ваши отклики» добавлена секция «Подобрали для вас»
+ *     (MasterRecommendationsSection): open-заказы по категориям мастера, на
+ *     которые он ещё не откликался. Цель: убрать лишний шаг «зайти в
+ *     /orders/search → отфильтровать по своим категориям».
+ *   - 2026-05-28 (утро) — «Ваши отклики» УБРАНЫ с главной. Уехали на отдельный
+ *     экран /orders/my-responses. Главная стала = три подборки заказов
+ *     («Подобрали для вас» + «Срочно сегодня» + «Недавно добавленные»).
+ *   - **2026-05-28 (текущая итерация, вечер)** — «Срочно сегодня» и «Недавно
+ *     добавленные» УБРАНЫ как отдельные секции. Их данные слиты в одну
+ *     «Подобрали для вас» (она и так использует filter:'all', т.е. все open-
+ *     заказы по моим категориям — это надмножество срочных и свежих). Лимит
+ *     поднят с 5 до 10 карточек. Фидбэк владельца: «оставим только Подобрали
+ *     для вас, туда внедрим и срочные, и недавно добавленные».
+ *     Компоненты MasterUrgentTodaySection / MasterFreshTodaySection оставлены
+ *     в репо (не удалены), но не импортируются — могут пригодиться позже.
  *
- * NB: единственный edge-case CTA остался: если у мастера нет категорий,
- *     показываем баннер «Добавьте категории» — без них он не виден в каталоге
- *     и нет смысла в самом статусе.
+ * Единственный conditional CTA: callout «Добавьте категории» если у мастера их
+ * нет — без них он не виден в каталоге и подборки тоже пустые.
  */
 
 import { useRouter } from "expo-router";
 import { Plus } from "phosphor-react-native";
 import { Pressable, View } from "react-native";
 import { AppText } from "@/components/AppText";
-import { Avatar } from "@/components/ui";
-import { useUserRecord } from "@/features/auth/use-user-record";
-import { AvailabilitySwitcher } from "@/features/master-view/AvailabilitySwitcher";
-import { MasterDashboardOrders } from "@/features/master-view/MasterDashboardOrders";
-import { MasterViewStatsCard } from "@/features/master-view/MasterViewStatsCard";
+import { MasterRecommendationsSection } from "@/features/master-view/MasterRecommendationsSection";
+import { MyResponsesEntry } from "@/features/master-view/MyResponsesEntry";
 import { useMyMasterCategories } from "@/features/master-categories/use-my-categories";
 import { useThemeColor } from "@/lib/use-theme-color";
 
@@ -38,69 +49,19 @@ interface MasterHomeContentProps {
 export function MasterHomeContent({ userId }: MasterHomeContentProps) {
   const router = useRouter();
   const { data: myCats } = useMyMasterCategories(userId);
-  const { data: user } = useUserRecord(userId);
   const onPrimary = useThemeColor("on-primary");
 
   const hasCategories = (myCats?.length ?? 0) > 0;
-  const firstName = user?.first_name?.trim() || "Мастер";
-  const fullName =
-    [user?.first_name, user?.last_name].filter(Boolean).join(" ") || "Мастер";
 
   return (
-    // Редизайн 2026-05-18 по фидбэку user:
-    //   - Greeting «Ассаламу алейкум» убрано (визуальный шум, имя/аватар
-    //     уже на /profile)
-    //   - ResponseLimitBadge перенесён в TopBar (right action) — освобождает
-    //     место под главный блок
-    //   - AvailabilitySwitcher остаётся (компактный, кнопки помещаются)
-    //   - MasterDashboardOrders — теперь HERO-блок (display-lg заголовок
-    //     «Заказы для вас», как client home «Найдутся мастера»)
-    <View className="gap-7">
-      {/* ── ВЕРХНЯЯ СВОДКА (вспомогательная) ──────────────────────────────
-          Редизайн 2026-05-24 «убрать лишнее, сделать красиво». Раньше — три
-          разнородных «голоса»: гигантское приветствие в две строки (24px×2),
-          мелкая строка статистики с иконкой-графиком и разделителями, и
-          отдельная секция «ГОТОВНОСТЬ К ЗАКАЗАМ» с uppercase-заголовком.
-          Теперь собрано в один спокойный статус-блок (Vercel/Linear-минимализм):
-            1) аватар + приветствие в ОДНУ строку (display-sm) + тихая строка
-               статистики под именем — greeting и метрики читаются как единое;
-            2) единственный контрол готовности (без заголовка-секции, countdown
-               внутри триггера). Один акцент (зелёная точка), чистые hairlines,
-               много воздуха. Сводка больше не перетягивает внимание с главного
-               блока «Ваши отклики» ниже. */}
-      <View className="gap-5 pt-1">
-        {/* Приветствие: аватар (инициалы, если нет фото) + «Ассаламу алейкум,
-            Имя» в одну строку, под ним тихая строка статистики за неделю. */}
-        <View className="flex-row items-center gap-3 px-4">
-          <Avatar url={user?.avatar_url} name={fullName} seed={userId} size="lg" />
-          <View className="min-w-0 flex-1 gap-1">
-            <AppText className="text-display-sm text-ink" numberOfLines={1}>
-              <AppText weight="medium" className="text-display-sm text-mute">
-                Ассаламу алейкум,{" "}
-              </AppText>
-              <AppText weight="bold" className="text-display-sm text-ink">
-                {firstName}
-              </AppText>
-            </AppText>
-            <MasterViewStatsCard userId={userId} />
-          </View>
-        </View>
-
-        {/* Единственный контрол сводки — готовность к заказам. */}
-        <View className="px-4">
-          <AvailabilitySwitcher userId={userId} />
-        </View>
-      </View>
-
-      {/* ── ОСНОВНОЙ БЛОК МАСТЕРА: «Ваши отклики» ─────────────────────
-          Сильно отделён от сводки: full-bleed hairline + крупный воздух
-          (mt-1 + pt-7), внутри — заголовок 32px. Это центр экрана, всё
-          выше — вспомогательная сводка. */}
-      {hasCategories ? (
-        <View className="mt-1 border-t border-hairline pt-7">
-          <MasterDashboardOrders userId={userId} />
-        </View>
-      ) : null}
+    // Главная мастера: pill-вход «Мои отклики (N)» + единая подборка
+    // «Подобрали для вас» (до 10 карточек) + callout если категории не выбраны.
+    // Кнопка откликов раньше жила в шапке /orders/search, перенесена сюда по
+    // фидбэку владельца 2026-05-28 (вечер): мастер на главной первым делом
+    // видит свой статус-оверview и сразу подборку новых заказов.
+    <View className="gap-6 pt-4">
+      <MyResponsesEntry userId={userId} />
+      <MasterRecommendationsSection userId={userId} />
 
       {/* Categories callout — единственный conditional блок. */}
       {!hasCategories ? (

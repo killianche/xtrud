@@ -21,7 +21,11 @@
 // Эталон UX: Avito Услуги «лента» / Profi.ru «биржа заявок».
 
 import { useRouter } from "expo-router";
-import { Tray, SlidersHorizontal, Sparkle } from "phosphor-react-native";
+import {
+  Tray,
+  SlidersHorizontal,
+  Sparkle,
+} from "phosphor-react-native";
 import { useEffect, useRef } from "react";
 import {
   ActivityIndicator,
@@ -52,11 +56,14 @@ export default function OrdersSearchScreen() {
   const userId = session?.user?.id;
   const accentColor = useThemeColor("accent");
 
+  // active_role нужен чтобы решить, показывать ли entry «Мои отклики».
+  // Кнопка имеет смысл только для мастера: у клиента откликов не бывает.
+
   // Фильтры — из Zustand-стора (общие с /orders/search/filters).
   // l1Id удалён 2026-05-15 (фидбэк user: убрать «Разделы» из фильтров,
   // оставить только L2 категории).
   const filters = useOrdersSearchFiltersStore();
-  const { l2Ids, sort, clearAll } = filters;
+  const { l2Ids, sort, cityId, district, clearAll } = filters;
   const activeCount = countActiveFilters(filters);
   const hasActiveFilters = activeCount > 0;
 
@@ -94,7 +101,7 @@ export default function OrdersSearchScreen() {
     hasNextPage,
     fetchNextPage,
     isFetchingNextPage,
-  } = useAllOpenOrders({ userId, l2Ids: effectiveL2Ids, sort });
+  } = useAllOpenOrders({ userId, l2Ids: effectiveL2Ids, sort, cityId, district });
 
   const allOrders = (feed?.pages ?? []).flatMap((p) => p.rows);
 
@@ -134,6 +141,10 @@ export default function OrdersSearchScreen() {
           active: hasActiveFilters,
         }}
       />
+
+      {/* Pill «Мои отклики» перенесена отсюда на главную мастера (над секцией
+          «Подобрали для вас»). Фидбэк владельца 2026-05-28 (вечер). См.
+          src/features/master-view/MyResponsesEntry.tsx. */}
 
       <ScrollView
         className="flex-1"

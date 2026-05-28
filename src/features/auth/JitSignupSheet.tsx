@@ -196,7 +196,7 @@ export function JitSignupSheet({ open, onClose, onSignedUp }: JitSignupSheetProp
               )}
             </Pressable>
 
-            <AppText className="text-caption-xs text-mute text-center mt-1">
+            <AppText className="text-caption text-mute text-center mt-1">
               Нажимая «Получить код», вы соглашаетесь с правилами сервиса.
             </AppText>
           </>

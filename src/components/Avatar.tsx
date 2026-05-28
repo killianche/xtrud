@@ -10,7 +10,13 @@
  * - Нет ни url ни name → нейтральный круг с иконкой `User` (без жёлтых точек и пастелей)
  *
  * Цвет seed-based, чтобы у одного и того же юзера всегда тот же фон даже
- * без аватара. Палитра — мягкие пастельные с тёмным текстом, AA-контрастные.
+ * без аватара. Палитра — приглушённые tailwind-100 (Notion / Linear / Google
+ * Workspace стиль), с тёмным текстом #1f2937 (slate-800) для AA-контраста 7+.
+ *
+ * 2026-05-27: палитра приведена с tailwind-200 (amber/pink/orange — кричало)
+ * на tailwind-100 (нейтрально-приглушённое). Раньше «жёлтый кричащий аватар»
+ * выпадал из Vercel-палитры; новая шкала ближе к десатурированным нейтральным
+ * с лёгким оттенком, как у Notion-членов команды.
  */
 
 import { Image, type ImageContentFit } from "expo-image";
@@ -42,16 +48,18 @@ const SIZE_MAP: Record<AvatarSize, { px: number; text: string }> = {
   xl: { px: 96, text: "text-[30px]" },
 };
 
-// Пастельные фоны + тёмный текст #1f2937 (slate-800) → AA-контраст 7+.
+// Приглушённые фоны (tailwind-100) + тёмный текст #1f2937 → AA-контраст 7+.
+// Стиль Notion / Linear / Google Workspace: нейтрально-десатурированные с
+// лёгким оттенком, никаких кричащих amber/pink/orange.
 const PLACEHOLDER_PALETTE = [
-  "#fde68a", // amber-200
-  "#bbf7d0", // green-200
-  "#bae6fd", // sky-200
-  "#ddd6fe", // violet-200
-  "#fbcfe8", // pink-200
-  "#fed7aa", // orange-200
-  "#a7f3d0", // emerald-200
-  "#e0e7ff", // indigo-200
+  "#f1f5f9", // slate-100 — холодно-нейтральный серый
+  "#e7e5e4", // stone-200 — тёпло-нейтральный серый
+  "#dbeafe", // blue-100 — очень светлый синий
+  "#d1fae5", // emerald-100 — мягкий зелёный
+  "#fce7f3", // pink-100 — приглушённый розовый
+  "#fef3c7", // amber-100 — мягкий бежевый (вместо кричащего amber-200)
+  "#e0e7ff", // indigo-100 — приглушённый лавандовый
+  "#ede9fe", // violet-100 — приглушённый сиреневый
 ];
 
 export function Avatar({ url, name, seed, size = "md", contentFit = "cover" }: AvatarProps) {

@@ -29,13 +29,10 @@ export interface SubmitMasterProfileInput {
   district: string;
   bio: string;
   experienceYears: number;
-  whatsappSameAsPhone: boolean;
-  /** Пустая строка = не указан. Игнорируется если whatsappSameAsPhone=true. */
+  /** WhatsApp — необязательный явный номер. Пусто = не указан (NULL). */
   whatsappPhone: string;
-  // Sprint 2026-05-20 (миграция 0097): contact_phone — публичный контактный
-  // номер для клиентов. Если same=true → пишем NULL; на чтении делаем COALESCE
-  // с users_private.phone (см. get_master_phone RPC).
-  contactSameAsPhone: boolean;
+  /** Контактный телефон — ОБЯЗАТЕЛЕН (публичный номер для клиентов).
+   *  Регистрационный номер автоматически не подставляется. */
   contactPhone: string;
 }
 
@@ -49,16 +46,10 @@ export function useSubmitMasterProfile() {
       //    мастер укажет зоны работы позже через master_service_areas в
       //    /profile/edit-master).
       //
-      //    contact_phone:
-      //      contactSameAsPhone=true → NULL → читается через
-      //        COALESCE(users.contact_phone, users_private.phone) в get_master_phone RPC.
-      //      contactSameAsPhone=false → trimmed value (или NULL если пусто).
-      const trimmedContact = input.contactPhone.trim();
-      const finalContactPhone = input.contactSameAsPhone
-        ? null
-        : trimmedContact === ""
-          ? null
-          : trimmedContact;
+      //    contact_phone — обязательный явный публичный номер (валидируется
+      //    схемой, минимум 10 цифр). Пишем как есть; регистрационный номер
+      //    автоматически не подставляем.
+      const finalContactPhone = input.contactPhone.trim();
 
       const { error: userErr } = await supabase
         .from("users")
@@ -74,10 +65,10 @@ export function useSubmitMasterProfile() {
       if (userErr) throw userErr;
 
       // 2. UPSERT master_profiles — bio / experience_years / whatsapp / status.
-      //    constraint master_profiles_whatsapp_xor: same=true ⟹ phone NULL.
+      //    WhatsApp без чекбокса → whatsapp_same_as_phone всегда false (ветка
+      //    NOT same в constraint master_profiles_whatsapp_xor). Пусто → NULL.
       const trimmedWa = input.whatsappPhone.trim();
-      const whatsappPhone =
-        input.whatsappSameAsPhone || trimmedWa === "" ? null : trimmedWa;
+      const whatsappPhone = trimmedWa === "" ? null : trimmedWa;
 
       const { error: profileErr } = await supabase
         .from("master_profiles")
@@ -89,7 +80,7 @@ export function useSubmitMasterProfile() {
             has_tools: false,
             has_transport: false,
             status: "pending",
-            whatsapp_same_as_phone: input.whatsappSameAsPhone,
+            whatsapp_same_as_phone: false,
             whatsapp_phone: whatsappPhone,
           },
           { onConflict: "user_id" },

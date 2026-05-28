@@ -8,8 +8,15 @@
  *
  * Поле phone в форме хранит только digits (без кода). Полный E.164-номер
  * собирается на submit: `country.dial + digits`.
+ *
+ * 2026-05-27: эмодзи-флаги (🇷🇺/🇰🇿/...) заменены на SVG-флаги через flagcdn.com.
+ * Эмодзи нарушали правило «никаких эмодзи в UI» из CLAUDE.md — на разных
+ * платформах рендерились по-разному (Apple emoji vs Twemoji vs Google Noto)
+ * и выпадали из Vercel-эстетики. CDN — тот же подход что Iconify для иконок
+ * категорий (см. docs/ICONS.md): простой URL, кеш, fallback пустой.
  */
 
+import { Image } from "expo-image";
 import { CaretDown, Check } from "phosphor-react-native";
 import { useState } from "react";
 import { Pressable, ScrollView, View } from "react-native";
@@ -17,30 +24,34 @@ import { AppText } from "@/components/AppText";
 import { BottomSheet } from "@/components/ui";
 import { useThemeColors } from "@/lib/use-theme-color";
 
+/** URL флага страны (PNG из flagcdn.com). w40 даёт ~40×27px — достаточно
+ *  для chip-display 20×14 и list-row 28×20. */
+function flagUrl(code: string): string {
+  return `https://flagcdn.com/w40/${code.toLowerCase()}.png`;
+}
+
 export interface Country {
-  /** ISO-3166 alpha-2 (для будущей i18n). */
+  /** ISO-3166 alpha-2 (для будущей i18n + флаг через flagcdn.com). */
   code: string;
   /** Дисплейное название. */
   name: string;
   /** Телефонный код страны без +, например "7" или "375". */
   dial: string;
-  /** Эмоджи-флаг. */
-  flag: string;
   /** Ожидаемая длина номера ПОСЛЕ кода страны (без знака +). */
   digitsLength: number;
 }
 
 export const COUNTRIES: Country[] = [
-  { code: "RU", name: "Россия", dial: "7", flag: "🇷🇺", digitsLength: 10 },
-  { code: "KZ", name: "Казахстан", dial: "7", flag: "🇰🇿", digitsLength: 10 },
-  { code: "BY", name: "Беларусь", dial: "375", flag: "🇧🇾", digitsLength: 9 },
-  { code: "UZ", name: "Узбекистан", dial: "998", flag: "🇺🇿", digitsLength: 9 },
-  { code: "AM", name: "Армения", dial: "374", flag: "🇦🇲", digitsLength: 8 },
-  { code: "GE", name: "Грузия", dial: "995", flag: "🇬🇪", digitsLength: 9 },
-  { code: "TR", name: "Турция", dial: "90", flag: "🇹🇷", digitsLength: 10 },
-  { code: "AE", name: "ОАЭ", dial: "971", flag: "🇦🇪", digitsLength: 9 },
-  { code: "DE", name: "Германия", dial: "49", flag: "🇩🇪", digitsLength: 11 },
-  { code: "US", name: "США", dial: "1", flag: "🇺🇸", digitsLength: 10 },
+  { code: "RU", name: "Россия", dial: "7", digitsLength: 10 },
+  { code: "KZ", name: "Казахстан", dial: "7", digitsLength: 10 },
+  { code: "BY", name: "Беларусь", dial: "375", digitsLength: 9 },
+  { code: "UZ", name: "Узбекистан", dial: "998", digitsLength: 9 },
+  { code: "AM", name: "Армения", dial: "374", digitsLength: 8 },
+  { code: "GE", name: "Грузия", dial: "995", digitsLength: 9 },
+  { code: "TR", name: "Турция", dial: "90", digitsLength: 10 },
+  { code: "AE", name: "ОАЭ", dial: "971", digitsLength: 9 },
+  { code: "DE", name: "Германия", dial: "49", digitsLength: 11 },
+  { code: "US", name: "США", dial: "1", digitsLength: 10 },
 ];
 
 /** Дефолтная страна — Россия. */
@@ -71,7 +82,11 @@ export function CountryCodeSelect({
           disabled ? "opacity-50" : "active:bg-canvas-soft"
         }`}
       >
-        <AppText className="text-body-md">{selected.flag}</AppText>
+        <Image
+          source={{ uri: flagUrl(selected.code) }}
+          style={{ width: 22, height: 16, borderRadius: 2 }}
+          contentFit="cover"
+        />
         <AppText weight="semibold" className="text-body-md text-ink">
           +{selected.dial}
         </AppText>
@@ -97,7 +112,11 @@ export function CountryCodeSelect({
                 }}
                 className="h-14 flex-row items-center gap-3 px-6 active:bg-canvas-soft"
               >
-                <AppText className="text-title-md">{country.flag}</AppText>
+                <Image
+                  source={{ uri: flagUrl(country.code) }}
+                  style={{ width: 28, height: 20, borderRadius: 2 }}
+                  contentFit="cover"
+                />
                 <View className="flex-1">
                   <AppText weight="semibold" className="text-body-md text-ink">
                     {country.name}

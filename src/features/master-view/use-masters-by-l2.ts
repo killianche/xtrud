@@ -64,6 +64,27 @@ type Row = {
   > | null;
 };
 
+/** Простой completeness-score (0–5) — сколько ключевых полей заполнено.
+ *  Используется как primary sort key чтобы пустые профили не оказывались
+ *  выше нормальных только за счёт большого `experience_years` или
+ *  «возрастной» позиции в БД. */
+function profileCompleteness(m: MasterInCategory): number {
+  let score = 0;
+  const p = m.profile;
+  const u = m.user;
+  // Содержательное описание (≥ 20 символов — фильтр от «...» и кратких заглушек).
+  if (p?.bio && p.bio.trim().length >= 20) score += 1;
+  // Есть хоть один отзыв.
+  if ((p?.rating_overall_count ?? 0) > 0) score += 1;
+  // Есть закрытые сделки (proof of real activity).
+  if ((p?.closed_deals ?? 0) > 0) score += 1;
+  // Фото профиля загружено.
+  if (u?.avatar_url) score += 1;
+  // Указан тип аккаунта (individual / sole_trader / company).
+  if (p?.account_type) score += 1;
+  return score;
+}
+
 export function useMastersByL2(l2Id: string | null | undefined) {
   return useQuery<MasterInCategory[]>({
     queryKey: ["masters-by-l2", l2Id],
@@ -162,11 +183,23 @@ export function useMastersByL2(l2Id: string | null | undefined) {
         });
       }
 
-      // Сортировка по внутреннему рейтингу (MASTER_RANKING_PLAN.md Этап 1):
-      // ranking_score (отзывы + заполненность + отклики + активность + cold-start,
-      // считается ночным cron) + бонус доступности (быстрый фактор, «готов
-      // сегодня» поднимает мгновенно). Тай-брейк — закрытые сделки, затем стаж.
+      // Сортировка:
+      //  1. Полнота профиля — мастера с пустыми профилями (нет bio / нет фото /
+      //     нет отзывов / нет account_type) ВСЕГДА в конце ленты. Это анти-spam
+      //     против фейковых аккаунтов с придуманным «66 лет опыта» и пустыми
+      //     остальными полями. Решение владельца 2026-05-27.
+      //  2. ranking_score (cron-вычисляемый) + availability boost.
+      //  3. Тай-брейк: closed_deals → experience_years.
       list.sort((a, b) => {
+        const ca = profileCompleteness(a);
+        const cb = profileCompleteness(b);
+        // Низкая полнота (≤ 1) → в самый конец, перед нормальными профилями.
+        const aLow = ca <= 1 ? 1 : 0;
+        const bLow = cb <= 1 ? 1 : 0;
+        if (aLow !== bLow) return aLow - bLow;
+        // Внутри одной группы — completeness DESC (5 баллов выше 2 баллов).
+        if (cb !== ca) return cb - ca;
+
         const sa = rankingSortValue(
           a.profile?.ranking_score,
           a.profile?.availability_status,

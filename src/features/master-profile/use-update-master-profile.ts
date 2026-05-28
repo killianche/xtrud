@@ -24,13 +24,10 @@ export interface UpdateMasterProfileInput {
   district: string;
   bio: string;
   experienceYears: number;
-  // Sprint 0079: WhatsApp.
-  whatsappSameAsPhone: boolean;
-  /** Пустая строка = не указан. Игнорируется если whatsappSameAsPhone=true. */
+  /** WhatsApp — необязательный явный номер. Пусто = не указан (NULL). */
   whatsappPhone: string;
-  // Sprint 2026-05-20 (миграция 0097): contact_phone.
-  contactSameAsPhone: boolean;
-  /** Пустая строка = не указан. Если contactSameAsPhone=true — пишем NULL. */
+  /** Контактный телефон — ОБЯЗАТЕЛЕН (публичный номер для клиентов).
+   *  Регистрационный номер автоматически не подставляется. */
   contactPhone: string;
 }
 
@@ -39,15 +36,9 @@ export function useUpdateMasterProfile() {
 
   return useMutation({
     mutationFn: async (input: UpdateMasterProfileInput) => {
-      // Sprint 2026-05-20 (миграция 0097): contact_phone.
-      //   contactSameAsPhone=true → NULL → читается через COALESCE на бэке.
-      //   contactSameAsPhone=false → trimmed value (или NULL если пусто).
-      const trimmedContact = input.contactPhone.trim();
-      const finalContactPhone = input.contactSameAsPhone
-        ? null
-        : trimmedContact === ""
-          ? null
-          : trimmedContact;
+      // contact_phone — обязательный явный публичный номер (валидируется схемой,
+      // минимум 10 цифр). Пишем как есть; регистрационный номер не подставляем.
+      const finalContactPhone = input.contactPhone.trim();
 
       const { error: usersErr } = await supabase
         .from("users")
@@ -63,11 +54,11 @@ export function useUpdateMasterProfile() {
         .eq("id", input.userId);
       if (usersErr) throw usersErr;
 
-      // Sprint 0079: WhatsApp. constraint master_profiles_whatsapp_xor:
-      // same=true ⟹ phone NULL. Trim + empty → NULL.
+      // WhatsApp — явный необязательный номер. Чекбокса «совпадает» больше нет,
+      // поэтому whatsapp_same_as_phone всегда false (удовлетворяет constraint
+      // master_profiles_whatsapp_xor: ветка NOT same). Пусто → NULL.
       const trimmed = input.whatsappPhone.trim();
-      const whatsappPhone =
-        input.whatsappSameAsPhone || trimmed === "" ? null : trimmed;
+      const whatsappPhone = trimmed === "" ? null : trimmed;
 
       // has_tools / has_transport — legacy поля (удалены из UI 2026-05-19),
       // не пишем — оставляем существующее значение в БД.
@@ -76,7 +67,7 @@ export function useUpdateMasterProfile() {
         .update({
           bio: input.bio || null,
           experience_years: input.experienceYears,
-          whatsapp_same_as_phone: input.whatsappSameAsPhone,
+          whatsapp_same_as_phone: false,
           whatsapp_phone: whatsappPhone,
         })
         .eq("user_id", input.userId);

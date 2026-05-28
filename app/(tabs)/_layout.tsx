@@ -125,6 +125,15 @@ export default function TabsLayout() {
             <ImageSquare color={color} size={26} weight={focused ? "fill" : "bold"} />
           ),
         }}
+        listeners={({ navigation }) => ({
+          tabPress: (e) => {
+            // Тап «Ваши работы» когда уже внутри /cases/[caseId] → сброс на
+            // список работ (стандартный mobile-pattern). Без этого тап по
+            // активной вкладке оставлял открытой детальную работу.
+            e.preventDefault();
+            navigation.navigate("cases", { screen: "index" } as never);
+          },
+        })}
       />
       <Tabs.Screen
         name="profile"
@@ -135,16 +144,26 @@ export default function TabsLayout() {
           ),
         }}
       />
-      {/* Detail-экраны — НЕ показываем в нижней панели табов. */}
+      {/* Detail-экраны (одиночные файлы, прямые дети Tabs) — НЕ показываем в
+          нижней панели. NB: только реальные прямые дети навигатора. Роуты
+          внутри вложенных стеков/папок (orders/search, orders/my-responses —
+          живут в стеке `orders/_layout`; admin/*, useful/* — в своих папках)
+          сюда НЕ объявляются: для Tabs они не существуют как прямые дети, и
+          объявление их через <Tabs.Screen> вызывало шторм предупреждений
+          «No route named … exists in nested children» (аудит 2026-05-28).
+          От нижней панели они и так скрыты — кастомный TabBar рендерит только
+          TAB_ORDER (index/orders/cases/profile). */}
       <Tabs.Screen name="category/[id]" options={{ href: null }} />
       <Tabs.Screen name="master/[id]" options={{ href: null }} />
       <Tabs.Screen name="client/[id]" options={{ href: null }} />
-      <Tabs.Screen name="admin" options={{ href: null }} />
       <Tabs.Screen name="admin/ratings" options={{ href: null }} />
       <Tabs.Screen name="admin/reports" options={{ href: null }} />
-      <Tabs.Screen name="useful" options={{ href: null }} />
       <Tabs.Screen name="search" options={{ href: null }} />
-      <Tabs.Screen name="orders/search" options={{ href: null }} />
+      {/* favorites — отдельный root-таб (не подпункт профиля). Скрыт из
+          автоматической нижней панели; кастомный TabBar рендерит для клиента
+          центральную кнопку «закладки», которая push'ит сюда. См. шапку
+          app/(tabs)/favorites/index.tsx о причине переноса. */}
+      <Tabs.Screen name="favorites" options={{ href: null }} />
     </Tabs>
     </NavThemeProvider>
   );

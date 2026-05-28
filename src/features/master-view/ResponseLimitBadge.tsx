@@ -18,8 +18,12 @@ import { useResponseLimit } from "@/features/orders/use-response-limit";
 import { useThemeColor } from "@/lib/use-theme-color";
 
 interface ResponseLimitBadgeProps {
-  /** Layout-вариант. По умолчанию pill (короткий chip). */
-  variant?: "pill" | "card";
+  /** Layout-вариант. По умолчанию pill (короткий chip).
+   *  - pill    — белый контурный chip (на светлом фоне).
+   *  - card    — широкая карточка с «жизнями-молниями».
+   *  - onPhoto — фростед-пилюля для фото-героя мастера (полупрозрачный тёмный
+   *              фон + белый текст, элегантно лежит поверх фото). */
+  variant?: "pill" | "card" | "onPhoto";
 }
 
 export function ResponseLimitBadge({ variant = "pill" }: ResponseLimitBadgeProps) {
@@ -43,6 +47,23 @@ export function ResponseLimitBadge({ variant = "pill" }: ResponseLimitBadgeProps
   } else if (remaining <= 2) {
     iconColor = warningColor;
     accentTextClass = "text-warning";
+  }
+
+  // ============== ON-PHOTO variant — фростед-пилюля поверх фото ==============
+  // Полупрозрачный тёмный pill + белый текст: элегантно лежит на фото-герое
+  // мастера (как city-trigger белым), не «тяжёлая» белая плашка. bg-black/40 +
+  // border-white/30 — легальный photo-overlay alpha (design-quality §B), не
+  // inline-hex. Цветная молния (success/warning/error) сохраняет сигнал лимита.
+  if (variant === "onPhoto") {
+    const text = `${used} из ${max} откликов`;
+    return (
+      <View className="flex-row items-center gap-1.5 rounded-pill border border-white/30 bg-black/40 px-3 py-1.5">
+        <Lightning size={12} weight="fill" color={iconColor} />
+        <AppText weight="semibold" className="text-caption text-white">
+          {text}
+        </AppText>
+      </View>
+    );
   }
 
   // ============== PILL variant ==============

@@ -3,7 +3,7 @@
  * См. миграцию 0043_availability_status.sql.
  */
 
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import type { Enums } from "@/types/database";
 
@@ -13,6 +13,9 @@ export const AVAILABILITY_LABELS: Record<AvailabilityStatus, string> = {
   today: "Готов сегодня",
   this_week: "На этой неделе",
   next_week: "На следующей неделе",
+  // 'unspecified' — нейтральный «готов, срок не указан». Значок клиенту не
+  // показывается, штрафа в выдаче нет (решение владельца 2026-05-24).
+  unspecified: "Не указан",
   unavailable: "Не доступен",
 };
 
@@ -20,6 +23,7 @@ export const AVAILABILITY_SHORT: Record<AvailabilityStatus, string> = {
   today: "сегодня",
   this_week: "на неделе",
   next_week: "след. неделе",
+  unspecified: "не указан",
   unavailable: "не доступен",
 };
 
@@ -27,26 +31,36 @@ export const AVAILABILITY_SHORT: Record<AvailabilityStatus, string> = {
  *  Палитра по решению user 2026-05-14:
  *    today + this_week  → зелёный (мастер «реально доступен»)
  *    next_week          → жёлто-оранжевый (придётся подождать)
- *    unavailable        → нейтральный серый (скрыт от клиента) */
+ *    unspecified        → нейтральный серый (готов, срок не указан; клиенту скрыт)
+ *    unavailable        → приглушённый серый (явно недоступен; клиенту скрыт) */
 export const AVAILABILITY_DOT: Record<AvailabilityStatus, string> = {
   today: "#10b981", // emerald-500 — bright green «онлайн»
   this_week: "#10b981", // emerald-500 — тот же зелёный, разные подписи
   next_week: "#f59e0b", // amber-500 — мягкое предупреждение
-  unavailable: "#94a3b8", // slate-400 (mute)
+  unspecified: "#94a3b8", // slate-400 — нейтральный (готов без срока)
+  unavailable: "#94a3b8", // slate-400 — приглушённый (недоступен)
 };
 
-/** Чекаем — должен ли клиент видеть эту инфу (unavailable скрываем чтобы не было «отрицательного» сигнала). */
+/** Должен ли клиент видеть значок статуса. Скрываем И 'unavailable' (негативный
+ *  сигнал), И 'unspecified' (срок не указан — нечего показывать). Значок виден
+ *  только для срочных статусов today / this_week / next_week. */
 export function isAvailabilityVisible(s: AvailabilityStatus | null | undefined): boolean {
-  return s != null && s !== "unavailable";
+  return s != null && s !== "unavailable" && s !== "unspecified";
 }
 
-/** Учитываем что статус мог истечь между cron-запусками — фильтруем на клиенте. */
+/** Учитываем что статус мог истечь между cron-запусками — приводим на клиенте.
+ *  Истёкший срочный статус → нейтральный 'unspecified' (НЕ 'unavailable'):
+ *  мастер не «наказывается» за непродление таймера. 'unavailable' остаётся
+ *  только если выбран явно. Нет статуса → нейтральный 'unspecified'. */
 export function effectiveStatus(
   status: AvailabilityStatus | null | undefined,
   until: string | null | undefined,
 ): AvailabilityStatus {
-  if (!status || status === "unavailable") return "unavailable";
-  if (until && new Date(until).getTime() < Date.now()) return "unavailable";
+  if (!status) return "unspecified";
+  if (status === "unavailable") return "unavailable";
+  if (status === "unspecified") return "unspecified";
+  // срочный статус (today / this_week / next_week)
+  if (until && new Date(until).getTime() < Date.now()) return "unspecified";
   return status;
 }
 
@@ -54,9 +68,15 @@ export function effectiveStatus(
  * Бонус доступности к ranking_score при сортировке выдачи (рейтинг мастеров,
  * Этап 1). «Быстрый» фактор гибрида (MASTER_RANKING_PLAN.md §3.6): нажал
  * «Готов сегодня» — поднялся мгновенно, не дожидаясь ночного пересчёта балла.
- * Соответствует под-баллу C (вес 20) §3.2: today→20, this_week→16,
- * next_week→10, недоступен/истёк→2 (не ноль — чтобы доступность не «убивала»
- * сильного мастера в отпуске).
+ *
+ * Шкала (решение владельца 2026-05-24):
+ *   today → 20, this_week → 16, next_week → 10 — срочно доступен, выше всех.
+ *   unspecified → 4 — НЕЙТРАЛЬНО: «готов, срок не указан» (в т.ч. истёкший
+ *     таймер). Без штрафа, обычное место в выдаче.
+ *   unavailable → −1000 — ЯВНО недоступен: тяжёлый штраф, уходит в самый низ
+ *     выдачи, после всех у кого есть статус или «не указан» (−1000 заведомо
+ *     перекрывает любой ranking_score, поэтому такие мастера всегда последние,
+ *     но из выдачи не исчезают).
  */
 export function availabilityBonus(
   status: AvailabilityStatus | null | undefined,
@@ -69,8 +89,11 @@ export function availabilityBonus(
       return 16;
     case "next_week":
       return 10;
+    case "unavailable":
+      return -1000;
     default:
-      return 2;
+      // 'unspecified' — нейтральный baseline.
+      return 4;
   }
 }
 
@@ -86,6 +109,35 @@ export function rankingSortValue(
   until: string | null | undefined,
 ): number {
   return (rankingScore ?? 0) + availabilityBonus(status, until);
+}
+
+export interface MyAvailability {
+  availability_status: AvailabilityStatus;
+  availability_until: string | null;
+}
+
+/**
+ * Текущий статус готовности мастера (для триггера-плашки). Тот же queryKey, что
+ * у приватного хука в AvailabilitySwitcher — кэш общий, а useSetAvailability
+ * инвалидирует префикс ["my-master-profile"], так что после смены плашка
+ * обновляется. Единый источник, чтобы не дублировать запрос (connect-the-dots).
+ */
+export function useMyAvailability(userId: string | undefined) {
+  return useQuery<MyAvailability | null>({
+    queryKey: ["my-master-profile", userId, "availability"],
+    queryFn: async () => {
+      if (!userId) return null;
+      const { data, error } = await supabase
+        .from("master_profiles")
+        .select("availability_status, availability_until")
+        .eq("user_id", userId)
+        .maybeSingle();
+      if (error) throw error;
+      return (data as MyAvailability | null) ?? null;
+    },
+    enabled: !!userId,
+    staleTime: 30_000,
+  });
 }
 
 /** Mutation: мастер ставит свой статус. */

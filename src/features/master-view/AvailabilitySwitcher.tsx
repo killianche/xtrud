@@ -36,7 +36,14 @@ import {
   useSetAvailability,
 } from "./availability";
 
-const OPTIONS: AvailabilityStatus[] = ["today", "this_week", "next_week", "unavailable"];
+// Порядок: срочные статусы → нейтральный «Не указан» → «Не доступен».
+const OPTIONS: AvailabilityStatus[] = [
+  "today",
+  "this_week",
+  "next_week",
+  "unspecified",
+  "unavailable",
+];
 
 interface MyAvailability {
   availability_status: AvailabilityStatus;

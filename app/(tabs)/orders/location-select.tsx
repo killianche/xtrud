@@ -55,11 +55,11 @@ import { useThemeColors } from "@/lib/use-theme-color";
 const chipClass = (selected: boolean) =>
   `h-10 items-center justify-center rounded-pill border px-4 ${
     selected
-      ? "border-accent bg-accent-soft"
+      ? "border-ink bg-ink"
       : "border-hairline bg-canvas active:opacity-70"
   }`;
 const chipTextClass = (selected: boolean) =>
-  `text-body-sm ${selected ? "text-accent" : "text-ink"}`;
+  `text-body-sm ${selected ? "text-on-primary" : "text-ink"}`;
 
 export default function LocationSelectScreen() {
   const insets = useSafeAreaInsets();

@@ -50,10 +50,9 @@ export default function MasterProfileScreen() {
       district: "",
       bio: "",
       experienceYears: 0,
-      whatsappSameAsPhone: true,
+      // Контактный телефон — обязателен; WhatsApp — опционально. Оба пустые по
+      // умолчанию (регистрационный номер не подставляется). Решение владельца 2026-05-24.
       whatsappPhone: "",
-      // Sprint 2026-05-20 (миграция 0097): contact_phone.
-      contactSameAsPhone: true,
       contactPhone: "",
     },
     mode: "onChange",

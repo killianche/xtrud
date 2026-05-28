@@ -102,7 +102,7 @@ export default function ClientPublicScreen() {
                 {profile.data.completedOrdersCount > 0 && (
                   <View className="flex-row items-center gap-1 rounded-pill bg-success-soft px-2.5 py-1">
                     <CheckCircle size={12} weight="bold" color={tc.success} />
-                    <AppText weight="medium" className="text-caption-xs text-success">
+                    <AppText weight="medium" className="text-caption text-success">
                       {pluralizeCompleted(profile.data.completedOrdersCount)}
                     </AppText>
                   </View>
@@ -131,7 +131,7 @@ export default function ClientPublicScreen() {
               {/* Город/район клиента НЕ показываем (2026-05-16) — личная
                   «домашняя» точка не нужна в публичном профиле. */}
 
-              <AppText className="mt-2 text-caption-xs text-muted-soft">
+              <AppText className="mt-2 text-caption text-muted-soft">
                 На xtrud с {formatJoinDate(profile.data.user.created_at)}
               </AppText>
             </View>

@@ -1,18 +1,26 @@
 /**
- * /(tabs)/profile/favorites — список избранных мастеров.
+ * /(tabs)/favorites — список сохранённых (избранных) мастеров клиента.
  *
- * Sprint 0089 + AUDIT_LAUNCH_FUNCTIONAL_2026-05-19 #5.
+ * История: ранее жил в `/profile/favorites` как подэкран стека «Профиль».
+ * Перенесён в собственный root 2026-05-27 (фидбэк владельца): когда экран
+ * был подпунктом профиля, TabBar считал профиль-таб активным на /favorites,
+ * а тап по «Профилю» с этого экрана не возвращал на /profile/index. Теперь
+ * favorites — независимый таб-роут уровня (tabs), скрыт из автоматической
+ * нижней панели через `href: null` в _layout.tsx; кнопка «закладки» в
+ * TabBar (центральная для клиента) push'ит сюда напрямую.
+ *
+ * Заголовок без кнопки «Назад» — это полноценная страница, не модал.
  *
  * Источник: useMyFavorites (join к public.users + master_profiles).
  * Empty state — иллюстрация + CTA в каталог.
  * Тап по карточке → /master/[id].
- * Сердечко на карточке убирает из избранного (без modal — двойной свайп паттерн
- * не делаем, hit-feedback через optimistic update).
+ * Сердечко на карточке убирает из избранного (optimistic update).
  */
 
 import { useRouter } from "expo-router";
 import { BookmarkSimple, MagnifyingGlass } from "phosphor-react-native";
-import { FlatList, Image, Pressable, View } from "react-native";
+import { Image } from "expo-image";
+import { FlatList, Pressable, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
 import { Avatar, ScreenHeader, Skeleton, normalizeAvatarUrl } from "@/components/ui";
@@ -21,19 +29,17 @@ import {
   useMyFavorites,
   useToggleFavorite,
 } from "@/features/favorites/use-favorites";
-import { useSafeBack } from "@/lib/use-safe-back";
 import { useThemeColors } from "@/lib/use-theme-color";
 
 export default function FavoritesScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const goBack = useSafeBack("/(tabs)/profile" as const);
   const favorites = useMyFavorites();
   const toggle = useToggleFavorite();
 
   return (
     <View className="flex-1 bg-canvas" style={{ paddingTop: insets.top }}>
-      <ScreenHeader title="Закладки" onBack={goBack} />
+      <ScreenHeader title="Сохранённые мастера" />
 
       {favorites.isLoading ? (
         <View className="px-5 pt-3 gap-3">
@@ -48,7 +54,7 @@ export default function FavoritesScreen() {
           </AppText>
         </View>
       ) : (favorites.data ?? []).length === 0 ? (
-        <EmptyState onSearch={() => router.push("/(tabs)/search" as never)} />
+        <EmptyState onSearch={() => router.push("/(tabs)/" as never)} />
       ) : (
         <FlatList
           data={favorites.data ?? []}
@@ -85,7 +91,6 @@ interface FavoriteRowProps {
 function FavoriteRow({ item, onPress, onUnfavorite, disabled }: FavoriteRowProps) {
   const tc = useThemeColors(["ink"]);
   const fullName = [item.firstName, item.lastName].filter(Boolean).join(" ") || "Мастер";
-  // Только настоящее фото; DiceBear-заглушка → null → ниже сработает <Avatar> с инициалами.
   const avatarUrl = normalizeAvatarUrl(item.avatarUrl);
 
   return (
@@ -98,7 +103,9 @@ function FavoriteRow({ item, onPress, onUnfavorite, disabled }: FavoriteRowProps
         <Image
           source={{ uri: avatarUrl }}
           style={{ width: 56, height: 56, borderRadius: 28 }}
-          resizeMode="cover"
+          contentFit="cover"
+          transition={200}
+          cachePolicy="memory-disk"
         />
       ) : (
         <Avatar name={fullName} seed={item.masterId} size="md" />
@@ -108,11 +115,6 @@ function FavoriteRow({ item, onPress, onUnfavorite, disabled }: FavoriteRowProps
         <AppText weight="semibold" className="text-body-md text-ink" numberOfLines={1}>
           {fullName}
         </AppText>
-        {/* Мета. Фидбэк user 2026-05-20: «если отзывов нет — ничего не
-            показывать». Раньше выводилось «Без отзывов» как fallback —
-            теперь блок просто отсутствует, как в Airbnb/TaskRabbit.
-            ratingAvg !== null && ratingCount > 0 — иначе показываем
-            только district (если он есть). */}
         <View className="mt-1 flex-row items-center gap-2">
           {item.ratingAvg !== null && item.ratingCount > 0 ? (
             <View className="flex-row items-center gap-1">
@@ -137,7 +139,6 @@ function FavoriteRow({ item, onPress, onUnfavorite, disabled }: FavoriteRowProps
         accessibilityRole="button"
         accessibilityLabel="Убрать из закладок"
         onPress={(e) => {
-          // Не пробрасываем тап на родительский Pressable.
           e.stopPropagation?.();
           onUnfavorite();
         }}

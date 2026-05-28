@@ -23,7 +23,8 @@
 import { useLocalSearchParams } from "expo-router";
 import { CaretLeft, Check, Plus, X } from "phosphor-react-native";
 import { useMemo, useState } from "react";
-import { Image, Pressable, ScrollView, TextInput, View } from "react-native";
+import { Image } from "expo-image";
+import { Pressable, ScrollView, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
 import { useAuthSession } from "@/features/auth/use-auth-session";
@@ -340,6 +341,8 @@ export default function ServicesSuggestScreen() {
                         <Image
                           source={{ uri: colorUrl }}
                           style={{ width: 22, height: 22 }}
+                          contentFit="contain"
+                          cachePolicy="memory-disk"
                         />
                       ) : null}
                     </View>
@@ -380,13 +383,13 @@ export default function ServicesSuggestScreen() {
                               onPress={() => updateKind(l3.id, k)}
                               className={`h-8 px-3 items-center justify-center rounded-full border ${
                                 active
-                                  ? "border-accent bg-accent-soft"
+                                  ? "border-ink bg-ink"
                                   : "border-hairline bg-canvas"
                               }`}
                             >
                               <AppText
                                 weight={active ? "semibold" : "medium"}
-                                className={`text-caption ${active ? "text-accent" : "text-ink"}`}
+                                className={`text-caption ${active ? "text-on-primary" : "text-ink"}`}
                               >
                                 {PRICING_KIND_LABELS[k]}
                               </AppText>
@@ -558,12 +561,12 @@ function CustomServicePanel({
               accessibilityState={{ selected: active }}
               onPress={() => onKindChange(k)}
               className={`h-8 px-3 items-center justify-center rounded-full border ${
-                active ? "border-accent bg-accent-soft" : "border-hairline bg-canvas"
+                active ? "border-ink bg-ink" : "border-hairline bg-canvas"
               }`}
             >
               <AppText
                 weight={active ? "semibold" : "medium"}
-                className={`text-caption ${active ? "text-accent" : "text-ink"}`}
+                className={`text-caption ${active ? "text-on-primary" : "text-ink"}`}
               >
                 {PRICING_KIND_LABELS[k]}
               </AppText>

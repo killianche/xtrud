@@ -28,11 +28,19 @@
 
 import { CaretLeft } from "phosphor-react-native";
 import { type ReactNode, useEffect, useRef, useState } from "react";
-import { Animated, Modal, Platform, Pressable, View } from "react-native";
+import {
+  Animated,
+  Modal,
+  Platform,
+  Pressable,
+  useWindowDimensions,
+  View,
+} from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
 import { useColorScheme, useDomColorScheme } from "@/hooks/use-color-scheme";
 import { darkColors, lightColors } from "@/lib/colors";
+import { PHONE_MAX_WIDTH } from "@/lib/use-app-width";
 import { useThemeColors } from "@/lib/use-theme-color";
 
 export interface BottomSheetProps {
@@ -84,6 +92,15 @@ export function BottomSheet({
   const sheetBgColor = isWeb ? palette.canvas : tc.canvas;
   const sheetInkColor = isWeb ? palette.ink : tc.ink;
   const sheetBodyColor = isWeb ? palette.body : tc.body;
+  // На web RN <Modal> рендерится в портал в КОРНЕ DOM — вне <PhoneFrame>, поэтому
+  // лист игнорировал телефонную колонку и растягивался на всю ширину браузера.
+  // Зажимаем контент в колонку ≤ PHONE_MAX_WIDTH по центру, по бокам нейтральный
+  // фон (как PhoneFrame). Только когда окно шире колонки. CSS-vars в портале не
+  // работают → цвета берём из палитры. (Фидбэк владельца 2026-05-24.)
+  const { width: winWidth } = useWindowDimensions();
+  const clampWeb = isWeb && winWidth > PHONE_MAX_WIDTH;
+  const sheetSideColor = palette["canvas-soft-2"];
+  const sheetBorderColor = palette.hairline;
 
   const [mounted, setMounted] = useState(open);
   const sheetTranslateY = useRef(new Animated.Value(SHEET_DROP_PX)).current;
@@ -117,22 +134,41 @@ export function BottomSheet({
       onRequestClose={onClose}
       statusBarTranslucent
     >
-      {/* Full-screen контейнер. Без backdrop'а — лист сам занимает viewport.
-          className="dark" / "" — на web Modal портал может оказаться вне корня
-          с .dark классом → CSS-vars (`rgb(var(--canvas-soft))`) у детей резолвятся
-          по светлой палитре, в то время как inline-цвета (sheetBgColor) — по
-          dark. Получается несогласованная смесь: тёмный bg + светлый accent-soft
-          (синеватый). Фикс — явно прокинуть `dark` класс на обёртку, чтобы
-          NativeWind резолвил все vars в этом поддереве через `.dark` селектор.
-          User feedback 2026-05-16: «в светлой теме неправильные цвета». */}
-      <Animated.View
-        className={colorScheme === "dark" ? "dark" : ""}
-        style={{
-          flex: 1,
-          backgroundColor: sheetBgColor,
-          transform: [{ translateY: sheetTranslateY }],
-        }}
+      {/* Внешний центрирующий контейнер: на широком web по бокам нейтральный
+          фон (как стол под телефоном), лист — колонка по центру ≤ PHONE_MAX_WIDTH.
+          На native / узком окне — прозрачный, лист занимает всю ширину. */}
+      <View
+        style={
+          clampWeb
+            ? { flex: 1, alignItems: "center", backgroundColor: sheetSideColor }
+            : { flex: 1 }
+        }
       >
+        {/* Full-screen лист (в телефонной колонке на web).
+            className="dark" / "" — на web Modal портал может оказаться вне корня
+            с .dark классом → CSS-vars (`rgb(var(--canvas-soft))`) у детей резолвятся
+            по светлой палитре, в то время как inline-цвета (sheetBgColor) — по
+            dark. Получается несогласованная смесь: тёмный bg + светлый accent-soft
+            (синеватый). Фикс — явно прокинуть `dark` класс на обёртку, чтобы
+            NativeWind резолвил все vars в этом поддереве через `.dark` селектор.
+            User feedback 2026-05-16: «в светлой теме неправильные цвета». */}
+        <Animated.View
+          className={colorScheme === "dark" ? "dark" : ""}
+          style={{
+            flex: 1,
+            width: "100%",
+            maxWidth: clampWeb ? PHONE_MAX_WIDTH : undefined,
+            backgroundColor: sheetBgColor,
+            ...(clampWeb
+              ? {
+                  borderLeftWidth: 1,
+                  borderRightWidth: 1,
+                  borderColor: sheetBorderColor,
+                }
+              : null),
+            transform: [{ translateY: sheetTranslateY }],
+          }}
+        >
         {/* Header — 1:1 ScreenHeader: height 64, gap-2, px-3, h-12 w-12 back
             (CaretLeft 28 strokeWidth 2.25), display-md title (24px, 700).
             Цвета inline-styled (резолвленные hex), а не CSS-vars — иначе
@@ -209,7 +245,8 @@ export function BottomSheet({
         >
           {children}
         </View>
-      </Animated.View>
+        </Animated.View>
+      </View>
     </Modal>
   );
 }

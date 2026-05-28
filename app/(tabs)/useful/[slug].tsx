@@ -124,7 +124,7 @@ export default function ArticleScreen() {
               {article.title}
             </AppText>
             {article.published_at && (
-              <AppText className="mt-2 text-caption-xs text-muted-soft">
+              <AppText className="mt-2 text-caption text-muted-soft">
                 {new Date(article.published_at).toLocaleDateString("ru-RU", {
                   day: "numeric",
                   month: "long",

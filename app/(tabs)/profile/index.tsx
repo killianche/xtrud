@@ -223,194 +223,95 @@ export default function ProfileScreen() {
         contentContainerStyle={{ paddingBottom: insets.bottom + 32 }}
         showsVerticalScrollIndicator={false}
       >
-        {/* HERO card — Vercel docs-cover вайб: tinted band сверху, avatar overlap,
-            имя+бейдж+rating+локация в плотном стеке. Один visual-anchor страницы. */}
-        {isClient ? (
-          <View className="mx-5 mt-3 overflow-hidden rounded-xl border border-hairline bg-canvas">
-            {/* Decorative tinted band — мини mesh-tint, единственное место в профиле */}
-            <View className="h-20 bg-badge-violet relative overflow-hidden">
-              <View
-                className="absolute rounded-full bg-canvas"
-                style={{ top: -28, left: -20, width: 80, height: 80, opacity: 0.35 }}
-              />
-              <View
-                className="absolute rounded-full bg-canvas"
-                style={{ bottom: -16, right: 24, width: 56, height: 56, opacity: 0.45 }}
-              />
-              <View
-                className="absolute rounded-md bg-canvas"
-                style={{ top: 16, right: 100, width: 16, height: 16, opacity: 0.55, transform: [{ rotate: "18deg" }] }}
-              />
-            </View>
-            {/* Body */}
-            <View className="px-5 pt-0 pb-5">
-              <View className="-mt-12 flex-row items-end justify-between">
-                {/* Avatar with edit-overlay */}
-                <View className="relative">
-                  <View className="rounded-full border-4 border-canvas">
-                    <Avatar url={user.avatar_url} name={fullName} seed={user.id} size="xl" />
-                  </View>
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel="Изменить фото"
-                    onPress={onChangeAvatar}
-                    disabled={updateAvatar.isPending}
-                    hitSlop={6}
-                    className="absolute bottom-0 right-0 h-9 w-9 items-center justify-center rounded-full border-2 border-canvas bg-ink active:opacity-80"
-                  >
-                    {updateAvatar.isPending ? (
-                      <ActivityIndicator size="small" color={themeColors["on-primary"]} />
-                    ) : (
-                      <Pencil size={14} weight="bold" color={themeColors["on-primary"]} />
-                    )}
-                  </Pressable>
-                </View>
-                {user.avatar_url ? (
-                  <Pressable
-                    accessibilityRole="button"
-                    onPress={onRemoveAvatar}
-                    hitSlop={8}
-                    className="mb-1 active:opacity-70"
-                  >
-                    <AppText weight="medium" className="text-caption text-mute">
-                      Убрать фото
-                    </AppText>
-                  </Pressable>
-                ) : null}
-              </View>
+        {/* HERO — единый layout для client/master/guest (2026-05-27).
+            Раньше было два разных hero: client с декоративным фиолетовым band'ом,
+            master без карточки и с другим стилем бейджа. При переключении роли
+            через RoleSwitcher визуал перепрыгивал. Сейчас один контейнер,
+            одинаковая позиция аватара/имени/бейджа/CTA. Меняется только
+            содержимое бейджа и кнопка под ним. См. CLAUDE.md история решений. */}
+        <View className="items-center px-6 pt-4">
+          <View className="relative">
+            <Avatar url={user.avatar_url} name={fullName} seed={user.id} size="xl" />
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Изменить фото"
+              onPress={onChangeAvatar}
+              disabled={updateAvatar.isPending}
+              hitSlop={6}
+              className="-bottom-1 -right-1 absolute h-9 w-9 items-center justify-center rounded-full border-2 border-canvas bg-ink active:opacity-80"
+            >
+              {updateAvatar.isPending ? (
+                <ActivityIndicator size="small" color={themeColors["on-primary"]} />
+              ) : (
+                <Pencil size={14} weight="bold" color={themeColors["on-primary"]} />
+              )}
+            </Pressable>
+          </View>
 
-              <AppText weight="display" className="mt-4 text-display-md tracking-tight text-ink">
-                {fullName}
+          {user.avatar_url ? (
+            <Pressable
+              accessibilityRole="button"
+              onPress={onRemoveAvatar}
+              hitSlop={8}
+              className="mt-3 active:opacity-70"
+            >
+              <AppText weight="medium" className="text-caption text-mute">
+                Убрать фото
               </AppText>
+            </Pressable>
+          ) : null}
 
-              <View className="mt-2 flex-row items-center gap-2">
-                <View className="rounded-full bg-canvas-soft-2 px-2.5 py-0.5">
-                  <AppText weight="medium" className="text-caption text-body">
-                    Клиент
-                  </AppText>
-                </View>
-                {ratingAvg != null && ratingCount > 0 ? (
-                  <View className="flex-row items-center gap-1">
-                    <Star
-                      size={13}
-                      weight="fill"
-                      color={themeColors.warning}
-                    />
-                    <AppText weight="mono" className="text-mono-caption text-ink">
-                      {ratingAvg.toFixed(1)}
-                    </AppText>
-                    <AppText weight="mono" className="text-mono-caption text-mute">
-                      ({ratingCount})
-                    </AppText>
-                  </View>
-                ) : null}
-              </View>
+          <AppText
+            weight="display"
+            className="mt-4 text-display-md tracking-tight text-ink text-center"
+          >
+            {fullName}
+          </AppText>
 
-              {/* Город/район личного юзера НЕ показываем (2026-05-16):
-                  это «домашняя» точка, не нужна на профиле. Для мастера
-                  важно где он РАБОТАЕТ — это в master_service_areas
-                  (отдельный блок «Где работаете» в edit-master). */}
-
-              {/* P1-8: переключатель ролей для dual-role users.
-                  Видим только если у пользователя is_master И is_client. */}
-              <View className="mt-4 w-full max-w-xs">
-                <RoleSwitcher
-                  userId={user.id}
-                  currentRole={user.active_role}
-                  isMaster={user.is_master}
-                  isClient={user.is_client}
-                />
-              </View>
-
-              {/* «Стать мастером» CTA (фидбэк user 2026-05-18). Только для
-                  client-only пользователей (is_master=false). Тап → RPC
-                  enable_master_mode (создаёт master_profiles {status:pending,
-                  is_hidden_from_search:true}) → push на master wizard для
-                  постепенного заполнения обязательных полей (категории →
-                  фото → bio/опыт). До завершения wizard'а мастер скрыт от
-                  каталога. */}
-              {!user.is_master ? (
-                <View className="mt-4 w-full max-w-xs">
-                  <BecomeMasterButton userId={user.id} />
-                </View>
-              ) : null}
+          <View className="mt-2 flex-row items-center gap-2">
+            <View className="rounded-full bg-canvas-soft-2 px-2.5 py-0.5">
+              <AppText weight="medium" className="text-caption text-body">
+                {isClient ? "Клиент" : "Мастер"}
+              </AppText>
             </View>
-          </View>
-        ) : (
-          // Master profile — оставляем старый компактный header (его секции редактируются ниже)
-          <View className="items-center px-6 pt-2">
-            <View className="relative">
-              <Avatar url={user.avatar_url} name={fullName} seed={user.id} size="xl" />
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Изменить фото"
-                onPress={onChangeAvatar}
-                disabled={updateAvatar.isPending}
-                hitSlop={6}
-                className="-bottom-1 -right-1 absolute h-9 w-9 items-center justify-center rounded-full border-2 border-canvas bg-primary active:opacity-80"
-              >
-                {updateAvatar.isPending ? (
-                  <ActivityIndicator size="small" color={themeColors["on-primary"]} />
-                ) : (
-                  <Pencil size={16} weight="bold" color={themeColors["on-primary"]} />
-                )}
-              </Pressable>
-            </View>
-
-            {user.avatar_url ? (
-              <Pressable
-                accessibilityRole="button"
-                onPress={onRemoveAvatar}
-                hitSlop={8}
-                className="mt-3 active:opacity-70"
-              >
-                <AppText weight="medium" className="text-caption text-muted">
-                  Убрать фото
+            {ratingAvg != null && ratingCount > 0 ? (
+              <View className="flex-row items-center gap-1">
+                <Star size={13} weight="fill" color={themeColors.warning} />
+                <AppText weight="mono" className="text-mono-caption text-ink">
+                  {ratingAvg.toFixed(1)}
                 </AppText>
-              </Pressable>
+                <AppText weight="mono" className="text-mono-caption text-mute">
+                  ({ratingCount})
+                </AppText>
+              </View>
             ) : null}
-
-            <AppText weight="bold" className="mt-4 text-display-sm text-ink">
-              {fullName}
-            </AppText>
-
-            <View className="mt-2 flex-row items-center gap-2">
-              <View className="rounded-pill bg-surface-2 px-3 py-1">
-                <AppText weight="medium" className="text-caption text-body">
-                  Мастер
-                </AppText>
-              </View>
-              {ratingAvg != null && ratingCount > 0 ? (
-                <View className="flex-row items-center gap-1">
-                  <Star
-                    size={14}
-                    weight="fill"
-                    color={themeColors.warning}
-                  />
-                  <AppText weight="semibold" className="text-caption text-ink">
-                    {ratingAvg.toFixed(1)}
-                  </AppText>
-                  <AppText className="text-caption text-muted">({ratingCount})</AppText>
-                </View>
-              ) : null}
-            </View>
-
-            {/* Город/район мастера НЕ показываем (2026-05-16): личный «дом»
-                нерелевантен в публичном/собственном профиле. Где мастер
-                работает — в master_service_areas, отдельный блок ниже. */}
-
-            {/* P1-8: переключатель ролей для dual-role users.
-                Видим только если у пользователя is_master И is_client. */}
-            <View className="mt-4 w-full max-w-xs">
-              <RoleSwitcher
-                userId={user.id}
-                currentRole={user.active_role}
-                isMaster={user.is_master}
-                isClient={user.is_client}
-              />
-            </View>
           </View>
-        )}
+
+          {/* Город/район личного юзера НЕ показываем (2026-05-16):
+              это «домашняя» точка, не нужна на профиле. Для мастера —
+              master_service_areas (отдельный блок «Где работаете»). */}
+
+          {/* P1-8: переключатель ролей для dual-role users.
+              Видим только если у пользователя is_master И is_client.
+              Позиция identична в обоих режимах — не прыгает при switch. */}
+          <View className="mt-5 w-full max-w-xs">
+            <RoleSwitcher
+              userId={user.id}
+              currentRole={user.active_role}
+              isMaster={user.is_master}
+              isClient={user.is_client}
+            />
+          </View>
+
+          {/* «Стать мастером» CTA (фидбэк user 2026-05-18). Только для
+              client-only пользователей. Та же позиция что RoleSwitcher
+              у dual-role — визуально кнопка стоит на одном и том же месте. */}
+          {!user.is_master ? (
+            <View className="mt-5 w-full max-w-xs">
+              <BecomeMasterButton userId={user.id} />
+            </View>
+          ) : null}
+        </View>
 
         {/* Client-only stats trio + edit-row */}
         {isClient ? (
@@ -453,12 +354,12 @@ export default function ProfileScreen() {
 
             <Pressable
               accessibilityRole="button"
-              onPress={() => router.push("/(tabs)/profile/favorites" as never)}
+              onPress={() => router.push("/(tabs)/favorites" as never)}
               className="mx-5 mt-2 flex-row items-center justify-between rounded-lg border border-hairline bg-canvas p-4 active:bg-canvas-soft"
             >
               <View className="flex-1">
                 <AppText weight="semibold" className="text-body-md text-ink">
-                  Закладки
+                  Сохранённые мастера
                 </AppText>
                 <AppText className="mt-0.5 text-body-sm text-mute">
                   Мастера, которых вы сохранили
@@ -751,54 +652,36 @@ function GuestProfileScreen({ insets, themeColors, onLogin }: GuestProfileScreen
         contentContainerStyle={{ paddingBottom: insets.bottom + 32 }}
         showsVerticalScrollIndicator={false}
       >
-        {/* Hero card — Vercel-style: tinted band → иконка-юзер → текст → CTA.
-            Воздух mt-6, paddings 6, чтобы выглядело как «приглашение», а не пусто. */}
-        <View className="mx-5 mt-6 overflow-hidden rounded-xl border border-hairline bg-canvas">
-          <View className="relative h-24 overflow-hidden bg-badge-violet">
-            <View
-              className="absolute rounded-full bg-canvas"
-              style={{ top: -28, left: -20, width: 80, height: 80, opacity: 0.35 }}
-            />
-            <View
-              className="absolute rounded-full bg-canvas"
-              style={{ bottom: -16, right: 24, width: 56, height: 56, opacity: 0.45 }}
-            />
-            <View
-              className="absolute rounded-md bg-canvas"
-              style={{
-                top: 16,
-                right: 100,
-                width: 16,
-                height: 16,
-                opacity: 0.55,
-                transform: [{ rotate: "18deg" }],
-              }}
-            />
+        {/* HERO — тот же layout что для client/master (см. ProfileScreen).
+            Аватар → имя → описание → CTA. Без декоративного band'а, без
+            фиолетовой подложки. Vercel/Linear-style: типографика + воздух. */}
+        <View className="items-center px-6 pt-4">
+          {/* «Аватар» гостя — нейтральный кружок с иконкой User.
+              Размер 80×80 = Avatar size="xl", держим то же место в layout'е. */}
+          <View className="h-20 w-20 items-center justify-center rounded-full bg-canvas-soft-2">
+            <User size={32} weight="bold" color={themeColors.ink} />
           </View>
-          <View className="-mt-10 items-center px-6 pb-6">
-            {/* Icon-cap — заменяет аватар. */}
-            <View className="h-20 w-20 items-center justify-center rounded-full border-4 border-canvas bg-canvas-soft">
-              <User size={32} weight="bold" color={themeColors.ink} />
-            </View>
 
-            <AppText
-              weight="display"
-              className="mt-4 text-display-sm tracking-tight text-ink text-center"
-            >
-              Войдите в аккаунт
-            </AppText>
-            <AppText
-              className="mt-2 text-body-sm text-mute text-center"
-              style={{ lineHeight: 20 }}
-            >
-              Создавайте заказы, общайтесь с мастерами и оставляйте отзывы.
-              Регистрация по номеру телефона — 30 секунд.
-            </AppText>
+          <AppText
+            weight="display"
+            className="mt-4 text-display-md tracking-tight text-ink text-center"
+          >
+            Войдите в аккаунт
+          </AppText>
 
+          <AppText
+            className="mt-2 max-w-xs text-body-sm text-mute text-center"
+            style={{ lineHeight: 20 }}
+          >
+            Создавайте заказы, общайтесь с мастерами и оставляйте отзывы.
+            Регистрация по номеру телефона — 30 секунд.
+          </AppText>
+
+          <View className="mt-5 w-full max-w-xs">
             <Pressable
               accessibilityRole="button"
               onPress={onLogin}
-              className="mt-5 h-12 w-full flex-row items-center justify-center gap-2 rounded-pill bg-ink active:opacity-80"
+              className="h-12 w-full flex-row items-center justify-center gap-2 rounded-pill bg-ink active:opacity-80"
             >
               <SignIn size={16} weight="bold" color={themeColors["on-primary"]} />
               <AppText weight="semibold" className="text-button text-on-primary">
@@ -809,7 +692,7 @@ function GuestProfileScreen({ insets, themeColors, onLogin }: GuestProfileScreen
         </View>
 
         {/* Тема — работает и для анона. */}
-        <View className="mt-8 px-5">
+        <View className="mt-10 px-6">
           <AppText
             weight="medium"
             className="mb-2 text-caption text-mute uppercase tracking-wider"

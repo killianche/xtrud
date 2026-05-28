@@ -17,40 +17,18 @@
  */
 
 import { useRouter } from "expo-router";
-import { ChatCenteredText } from "phosphor-react-native";
+import { CaretDown, ChatCenteredText, ClockCounterClockwise } from "phosphor-react-native";
 import { useEffect, useRef } from "react";
-import { Animated, View } from "react-native";
+import { Animated, Pressable, View } from "react-native";
 import { AppText } from "@/components/AppText";
 import { OrderRow } from "@/components/OrderRow";
 import { OrderRowsSkeleton } from "@/components/OrderRowsSkeleton";
 import {
-  type MyResponseWithOrder,
+  isActiveResponse,
+  isHistoryResponse,
   useMyResponses,
 } from "@/features/orders/use-my-responses";
 import { useThemeColor } from "@/lib/use-theme-color";
-
-/** Активные отклики = клиент ещё думает (отклик в статусе sent/viewed).
- *  Без accept-flow заказ не уходит в in_progress/awaiting_confirmation/completed
- *  через выбор мастера, но клиент может вручную отменить заказ — тогда мы
- *  тоже не показываем (cancelled/expired/disputed = терминал).
- *  Архив доступен на /orders/[id]. */
-function isActiveResponse(r: MyResponseWithOrder): boolean {
-  const orderStatus = r.order.status;
-  const respStatus = r.response.status;
-  if (
-    orderStatus === "completed" ||
-    orderStatus === "cancelled" ||
-    orderStatus === "expired" ||
-    orderStatus === "disputed" ||
-    orderStatus === "awaiting_confirmation"
-  ) {
-    return false;
-  }
-  if (respStatus === "rejected" || respStatus === "withdrawn") {
-    return false;
-  }
-  return true;
-}
 
 interface MasterDashboardOrdersProps {
   userId: string;
@@ -59,9 +37,14 @@ interface MasterDashboardOrdersProps {
 export function MasterDashboardOrders({ userId }: MasterDashboardOrdersProps) {
   const router = useRouter();
   const accentColor = useThemeColor("accent");
+  const muteColor = useThemeColor("mute");
 
   const { data: myResponses, isLoading } = useMyResponses(userId);
-  const activeResponses = (myResponses ?? []).filter(isActiveResponse);
+  const all = myResponses ?? [];
+  const activeResponses = all.filter(isActiveResponse);
+  // «Исторические» отклики (закрытые/завершённые) считаем из тех же данных —
+  // без второго запроса. Ссылка «История» показывается только если их ≥ 1.
+  const historyCount = all.filter(isHistoryResponse).length;
   const isEmpty = activeResponses.length === 0;
 
   // Animated fade-in списка после загрузки (UI_PATTERNS §3.7).
@@ -79,22 +62,40 @@ export function MasterDashboardOrders({ userId }: MasterDashboardOrdersProps) {
 
   return (
     <View>
-      {/* Hero-style section heading + счётчик активных откликов (mono-чип).
-          Крупный 32px — визуальный анкор экрана. */}
-      <View className="mx-4 mb-4 flex-row items-center gap-3">
-        <AppText
-          weight="bold"
-          className="tracking-tight text-ink"
-          style={{ fontSize: 32, lineHeight: 36 }}
-        >
-          Ваши отклики
-        </AppText>
-        {!isLoading && !isEmpty ? (
-          <View className="rounded-pill border border-hairline bg-canvas-soft px-2.5 py-0.5">
-            <AppText weight="mono" className="text-mono-caption text-mute">
-              {activeResponses.length}
+      {/* Шапка секции (фидбэк владельца 2026-05-24): заголовок «Ваши отклики»
+          32px + стрелка слева по левому краю, кнопка «История» справа напротив. */}
+      <View className="mx-4 mb-4 flex-row items-center justify-between gap-3">
+        <View className="flex-row items-center gap-2">
+          <AppText
+            weight="bold"
+            className="tracking-tight text-ink"
+            style={{ fontSize: 32, lineHeight: 36 }}
+          >
+            Ваши отклики
+          </AppText>
+          {/* Декоративная стрелка вниз — намёк, что ниже идёт список откликов
+              (не кнопка, просто индикатор). Запрошено владельцем 2026-05-24. */}
+          <CaretDown size={22} weight="bold" color={muteColor} />
+        </View>
+
+        {/* Кнопка «История» — справа напротив заголовка. Ведёт на
+            /orders/responses-history (закрытые/завершённые отклики). Secondary-
+            стиль: нейтральная pill-кнопка. Показываем только если история не пуста. */}
+        {!isLoading && historyCount > 0 ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={`История откликов, ${historyCount}`}
+            onPress={() =>
+              router.push("/(tabs)/orders/responses-history" as never)
+            }
+            hitSlop={8}
+            className="h-8 shrink-0 flex-row items-center gap-1.5 rounded-full border border-hairline bg-canvas px-3 active:opacity-70"
+          >
+            <ClockCounterClockwise size={14} weight="bold" color={muteColor} />
+            <AppText weight="medium" className="text-body-sm text-ink">
+              История
             </AppText>
-          </View>
+          </Pressable>
         ) : null}
       </View>
 
@@ -123,6 +124,10 @@ export function MasterDashboardOrders({ userId }: MasterDashboardOrdersProps) {
               status={r.order.status}
               variant="responded"
               showResponsesCount={false}
+              // Все заказы в «Ваши отклики» — те, на которые мастер уже
+              // откликнулся, поэтому показываем плашку «Вы откликнулись»
+              // (как в ленте «Поиск заказов»). Фидбэк владельца 2026-05-24.
+              alreadyResponded
               budgetKind={r.order.budget_kind}
               budgetValue={r.order.budget_value}
               onPress={() => router.push(`/(tabs)/orders/${r.order.id}` as never)}

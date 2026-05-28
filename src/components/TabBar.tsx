@@ -9,8 +9,10 @@
  * («Войти и написать»), и сама эстетика «жирного круга» противоречит Vercel-
  * минимализму. Сделали 5-й таб обычной иконкой Plus + подпись «Создать».
  *
- * Активный таб: accent (фирменный синий) + filled icon (Phosphor weight="fill")
- *                + pill-подложка bg-canvas-soft-2 под иконкой.
+ * Активный таб: accent (Vercel blue #0070f3) + filled icon (Phosphor weight="fill")
+ *                + pill-подложка bg-accent-soft (мягко-синий) под иконкой.
+ *                По прямой просьбе владельца 2026-05-27 (вечер) вернули синюю
+ *                подсветку — даёт явный визуальный фокус на активном табе.
  * Неактивный:    mute + bold outline (Phosphor weight="bold").
  *
  * Icon set: Phosphor (2026-05-15) — заменил Lucide для большего «modern app»
@@ -22,7 +24,7 @@
 
 import type { BottomTabBarProps } from "@react-navigation/bottom-tabs";
 import { usePathname, useRouter } from "expo-router";
-import { MagnifyingGlass } from "phosphor-react-native";
+import { BookmarkSimple, MagnifyingGlass } from "phosphor-react-native";
 import { Platform, Pressable, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
@@ -45,12 +47,13 @@ export function TabBar({ state, descriptors, navigation }: BottomTabBarProps) {
   const router = useRouter();
   const pathname = usePathname();
   const tc = useThemeColors([
+    "accent",
+    "accent-soft",
     "canvas",
     "canvas-soft-2",
     "hairline",
     "ink",
     "mute",
-    "accent",
   ]);
   const tabBarHidden = useTabBarVisibility((s) => s.hidden);
 
@@ -68,6 +71,10 @@ export function TabBar({ state, descriptors, navigation }: BottomTabBarProps) {
   // у настоящих табов. До этого фикса (2026-05-15) кнопка всегда была
   // mute → user не понимал, что это сейчас активный экран.
   const isSearchActive = pathname.startsWith("/orders/search");
+  // Аналогично для клиентского варианта центра — «Закладки» (избранные мастера).
+  // Активна на любой подстранице /favorites (сейчас просто index, но
+  // оставляю startsWith на будущее).
+  const isFavoritesActive = pathname.startsWith("/favorites");
 
   // Скрыт глобальным флагом (используется на full-screen wizard'ах вроде
   // orders/new — там TabBar отвлекает от формы).
@@ -155,9 +162,9 @@ export function TabBar({ state, descriptors, navigation }: BottomTabBarProps) {
             paddingHorizontal: 14,
             paddingVertical: 4,
             borderRadius: 999,
-            backgroundColor: isFocused ? tc["canvas-soft-2"] : "transparent",
+            backgroundColor: isFocused ? tc["accent-soft"] : "transparent",
           }}
-          className={isWeb ? (isFocused ? "bg-canvas-soft-2" : undefined) : undefined}
+          className={isWeb ? (isFocused ? "bg-accent-soft" : undefined) : undefined}
         >
           {options.tabBarIcon?.({ focused: isFocused, color: iconColor, size: 26 })}
 
@@ -217,43 +224,76 @@ export function TabBar({ state, descriptors, navigation }: BottomTabBarProps) {
       {/* Левая часть. */}
       {leftRoutes.map(renderTab)}
 
-      {/* Центральный таб: «🔍 Смотреть заказы» (лента всех открытых заказов
-          сайта, /orders/search). Sprint 2026-05-20 — раньше для клиента тут
-          была «+ Создать заказ», но фидбэк юзера: «и клиент могут смотреть
-          заказы». Кнопка «Создать заказ» переехала в шапку /orders как
-          rightAction.
-          Mutex с табом «Заказы»: когда активен /orders/search, expo-router
-          считает фокус на родителе `orders` — поэтому таб «Заказы» в этом
-          случае НЕ должен подсвечиваться, активна только средняя кнопка
-          (см. логику isSearchActive выше). */}
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel="Смотреть заказы"
-        accessibilityState={{ selected: isSearchActive }}
-        onPress={() => router.push("/orders/search" as never)}
-        className={isWeb ? (isSearchActive ? "text-accent" : "text-mute") : undefined}
-        style={{
-          flex: 1,
-          alignItems: "center",
-          justifyContent: "center",
-        }}
-      >
-        <View
+      {/* Центральный псевдо-таб — РАЗНЫЙ для мастера и клиента:
+            • МАСТЕР: «🔍 Смотреть заказы» → /orders/search (лента открытых
+              заказов сайта). Mutex с табом «Заказы»: когда активен
+              /orders/search, expo-router считает фокус на родителе `orders` —
+              «Заказы» в этом случае не подсвечивается (см. isSearchActive).
+            • КЛИЕНТ: «🔖 Закладки» → /favorites (сохранённые мастера).
+              Фидбэк владельца 2026-05-27: клиенту лента чужих заказов не
+              нужна на видном месте, а быстрый доступ к избранным мастерам —
+              нужен. */}
+      {isMasterRole ? (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Смотреть заказы"
+          accessibilityState={{ selected: isSearchActive }}
+          onPress={() => router.push("/orders/search" as never)}
+          className={isWeb ? (isSearchActive ? "text-accent" : "text-mute") : undefined}
           style={{
-            paddingHorizontal: 14,
-            paddingVertical: 4,
-            borderRadius: 999,
-            backgroundColor: isSearchActive ? tc["canvas-soft-2"] : "transparent",
+            flex: 1,
+            alignItems: "center",
+            justifyContent: "center",
           }}
-          className={isWeb ? (isSearchActive ? "bg-canvas-soft-2" : undefined) : undefined}
         >
-          <MagnifyingGlass
-            size={26}
-            weight={isSearchActive ? "fill" : "bold"}
-            color={isWeb ? "currentColor" : isSearchActive ? tc.accent : tc.mute}
-          />
-        </View>
-      </Pressable>
+          <View
+            style={{
+              paddingHorizontal: 14,
+              paddingVertical: 4,
+              borderRadius: 999,
+              backgroundColor: isSearchActive ? tc["accent-soft"] : "transparent",
+            }}
+            className={isWeb ? (isSearchActive ? "bg-accent-soft" : undefined) : undefined}
+          >
+            <MagnifyingGlass
+              size={26}
+              weight={isSearchActive ? "fill" : "bold"}
+              color={isWeb ? "currentColor" : isSearchActive ? tc.accent : tc.mute}
+            />
+          </View>
+        </Pressable>
+      ) : (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Закладки"
+          accessibilityState={{ selected: isFavoritesActive }}
+          onPress={() => router.push("/favorites" as never)}
+          className={isWeb ? (isFavoritesActive ? "text-accent" : "text-mute") : undefined}
+          style={{
+            flex: 1,
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <View
+            style={{
+              paddingHorizontal: 14,
+              paddingVertical: 4,
+              borderRadius: 999,
+              backgroundColor: isFavoritesActive ? tc["accent-soft"] : "transparent",
+            }}
+            className={
+              isWeb ? (isFavoritesActive ? "bg-accent-soft" : undefined) : undefined
+            }
+          >
+            <BookmarkSimple
+              size={26}
+              weight={isFavoritesActive ? "fill" : "bold"}
+              color={isWeb ? "currentColor" : isFavoritesActive ? tc.accent : tc.mute}
+            />
+          </View>
+        </Pressable>
+      )}
 
       {/* Правая часть. */}
       {rightRoutes.map(renderTab)}

@@ -1255,8 +1255,8 @@ export type Database = {
           created_at: string
           direction: Database["public"]["Enums"]["review_direction"]
           id: string
-          l2_id: string
-          order_id: string
+          l2_id: string | null
+          order_id: string | null
           rating: number
           status: Database["public"]["Enums"]["review_status"]
           target_id: string
@@ -1268,8 +1268,8 @@ export type Database = {
           created_at?: string
           direction: Database["public"]["Enums"]["review_direction"]
           id?: string
-          l2_id: string
-          order_id: string
+          l2_id?: string | null
+          order_id?: string | null
           rating: number
           status?: Database["public"]["Enums"]["review_status"]
           target_id: string
@@ -1281,8 +1281,8 @@ export type Database = {
           created_at?: string
           direction?: Database["public"]["Enums"]["review_direction"]
           id?: string
-          l2_id?: string
-          order_id?: string
+          l2_id?: string | null
+          order_id?: string | null
           rating?: number
           status?: Database["public"]["Enums"]["review_status"]
           target_id?: string
@@ -1494,8 +1494,8 @@ export type Database = {
           is_client: boolean
           is_demo: boolean
           is_master: boolean
-          last_name: string | null
           last_active_at: string | null
+          last_name: string | null
           last_seen_feed_at: string | null
           onboarding_completed_at: string | null
           rating_as_client_avg: number | null
@@ -1516,8 +1516,8 @@ export type Database = {
           is_client?: boolean
           is_demo?: boolean
           is_master?: boolean
-          last_name?: string | null
           last_active_at?: string | null
+          last_name?: string | null
           last_seen_feed_at?: string | null
           onboarding_completed_at?: string | null
           rating_as_client_avg?: number | null
@@ -1538,8 +1538,8 @@ export type Database = {
           is_client?: boolean
           is_demo?: boolean
           is_master?: boolean
-          last_name?: string | null
           last_active_at?: string | null
+          last_name?: string | null
           last_seen_feed_at?: string | null
           onboarding_completed_at?: string | null
           rating_as_client_avg?: number | null
@@ -1728,10 +1728,7 @@ export type Database = {
         }
         Returns: undefined
       }
-      open_dispute: {
-        Args: { p_order_id: string; p_reason: string }
-        Returns: undefined
-      }
+      recompute_master_ranking_scores: { Args: never; Returns: number }
       record_master_view: {
         Args: { p_master_id: string; p_session_id: string; p_view_type: string }
         Returns: undefined
@@ -1767,6 +1764,10 @@ export type Database = {
         Args: { p_master_id: string; p_order_id: string }
         Returns: string
       }
+      submit_master_review: {
+        Args: { p_rating: number; p_target_id: string; p_text?: string }
+        Returns: string
+      }
       terminate_cooperation: {
         Args: { p_order_id: string; p_reason?: string }
         Returns: undefined
@@ -1777,7 +1778,12 @@ export type Database = {
     }
     Enums: {
       article_status: "draft" | "published" | "archived"
-      availability_status: "today" | "this_week" | "next_week" | "unavailable"
+      availability_status:
+        | "today"
+        | "this_week"
+        | "next_week"
+        | "unspecified"
+        | "unavailable"
       category_seasonality:
         | "year_round"
         | "summer"
@@ -1971,7 +1977,13 @@ export const Constants = {
   public: {
     Enums: {
       article_status: ["draft", "published", "archived"],
-      availability_status: ["today", "this_week", "next_week", "unavailable"],
+      availability_status: [
+        "today",
+        "this_week",
+        "next_week",
+        "unspecified",
+        "unavailable",
+      ],
       category_seasonality: [
         "year_round",
         "summer",

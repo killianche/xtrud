@@ -16,7 +16,8 @@
 
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Wrench } from "phosphor-react-native";
-import { FlatList, Image, Pressable, View } from "react-native";
+import { Image } from "expo-image";
+import { FlatList, Pressable, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
 import { ScreenHeader, Skeleton } from "@/components/ui";
@@ -114,7 +115,9 @@ function CaseCard({ data, onPress }: CaseCardProps) {
           <Image
             source={{ uri: cover.url }}
             style={{ width: "100%", height: "100%" }}
-            resizeMode="cover"
+            contentFit="cover"
+            transition={200}
+            cachePolicy="memory-disk"
           />
           {remainingPhotos > 0 ? (
             <View className="absolute bottom-2 right-2 rounded-full bg-black/60 px-2 py-0.5">

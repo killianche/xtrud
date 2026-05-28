@@ -21,11 +21,31 @@ interface UseAllOpenOrdersInput {
   l2Ids?: string[] | null;
   /** Сортировка: 'newest' (по умолчанию) | 'urgent' (срочные сверху). */
   sort?: "newest" | "urgent";
+  /** Опц. фильтр по локации. Передавай "" / undefined чтобы не фильтровать
+   *  («Вся Ингушетия»). cityId и district взаимоисключающие (см. фильтр-стор). */
+  cityId?: string | null;
+  district?: string | null;
 }
 
-export function useAllOpenOrders({ userId, l2Ids, sort = "newest" }: UseAllOpenOrdersInput) {
+export function useAllOpenOrders({
+  userId,
+  l2Ids,
+  sort = "newest",
+  cityId,
+  district,
+}: UseAllOpenOrdersInput) {
+  // Нормализуем пустые строки в null — чтобы queryKey и условия были стабильны.
+  const cityFilter = cityId ? cityId : null;
+  const districtFilter = district ? district : null;
   return useInfiniteQuery<Page>({
-    queryKey: ["all-open-orders", userId ?? "anon", l2Ids ?? null, sort] as const,
+    queryKey: [
+      "all-open-orders",
+      userId ?? "anon",
+      l2Ids ?? null,
+      sort,
+      cityFilter,
+      districtFilter,
+    ] as const,
     initialPageParam: null as string | null,
     queryFn: async ({ pageParam }) => {
       // 2026-05-21: анон (нет userId) ТОЖЕ видит ленту. Раньше тут был
@@ -51,6 +71,14 @@ export function useAllOpenOrders({ userId, l2Ids, sort = "newest" }: UseAllOpenO
 
       if (l2Ids && l2Ids.length > 0) {
         q = q.in("l2_id", l2Ids);
+      }
+
+      // Локация-фильтр: город ИЛИ район (взаимоисключающие). Пусто = без фильтра
+      // («Вся Ингушетия» — мастер видит заявки из всех мест).
+      if (cityFilter) {
+        q = q.eq("city_id", cityFilter);
+      } else if (districtFilter) {
+        q = q.eq("district", districtFilter);
       }
 
       // Сортировка. Для urgent: сначала urgency='today' / 'asap',

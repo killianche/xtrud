@@ -108,11 +108,6 @@ export function useColorScheme() {
   const preference = useThemeStore((s) => s.preference);
   const setPreference = useThemeStore((s) => s.setPreference);
 
-  // Синхронизируем NativeWind с preference. Нужно для Tailwind `dark:` префиксов.
-  useEffect(() => {
-    setColorScheme(preference);
-  }, [preference, setColorScheme]);
-
   // На web: читаем localStorage синхронно — обходит async hydration Zustand persist.
   // На native: используем NativeWind colorScheme (RN Appearance даёт sync ответ).
   let colorScheme: "light" | "dark";
@@ -124,6 +119,35 @@ export function useColorScheme() {
     colorScheme =
       nwScheme === "dark" || nwScheme === "light" ? nwScheme : resolveScheme(preference);
   }
+
+  // Синхронизируем NativeWind с preference. На native передаём preference как
+  // есть (включая "system") — NativeWind использует RN Appearance автоматически.
+  // На web передаём РЕЗОЛВЛЕННОЕ light/dark, потому что NativeWind на web не
+  // подхватывает matchMedia при setColorScheme("system") (баг до 2026-05-27:
+  // на web preference="system" + система=dark → NativeWind ставил light).
+  useEffect(() => {
+    if (Platform.OS === "web") {
+      setColorScheme(colorScheme);
+    } else {
+      setColorScheme(preference);
+    }
+  }, [preference, colorScheme, setColorScheme]);
+
+  // На web — слушаем смену системной темы для preference="system". Без этого
+  // если пользователь сменит системную тёмную в OS пока приложение открыто,
+  // оно не отреагирует до перезагрузки.
+  useEffect(() => {
+    if (Platform.OS !== "web" || preference !== "system") return;
+    if (typeof window === "undefined" || !window.matchMedia) return;
+    const mql = window.matchMedia("(prefers-color-scheme: dark)");
+    const handler = () => {
+      // Triggerим re-render через no-op state update — colorScheme вычислится
+      // заново через resolveSystemSchemeWeb на следующем рендере.
+      setColorScheme(mql.matches ? "dark" : "light");
+    };
+    mql.addEventListener?.("change", handler);
+    return () => mql.removeEventListener?.("change", handler);
+  }, [preference, setColorScheme]);
 
   return {
     /** Резолвленная схема: 'light' | 'dark'. */

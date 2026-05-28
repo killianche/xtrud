@@ -19,7 +19,8 @@
 
 import { MagnifyingGlass, Sparkle, X } from "phosphor-react-native";
 import { useMemo, useRef, useState } from "react";
-import { Image, Pressable, ScrollView, TextInput, View } from "react-native";
+import { Image } from "expo-image";
+import { Pressable, ScrollView, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
 import { ScreenHeader } from "@/components/ui";
@@ -192,6 +193,8 @@ export default function CategorySelectScreen() {
                     <Image
                       source={{ uri: colorUrl }}
                       style={{ width: 24, height: 24 }}
+                      contentFit="contain"
+                      cachePolicy="memory-disk"
                     />
                   ) : (
                     <Icon size={20} weight="bold" color="currentColor" />

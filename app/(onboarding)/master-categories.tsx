@@ -54,7 +54,7 @@ export default function MasterCategoriesScreen() {
   const { data: l1List, isLoading: l1Loading } = useCategoriesL1();
   const { data: myCats, isLoading: myCatsLoading } = useMyMasterCategories(userId);
   const setCategories = useSetMasterCategories();
-  const tc = useThemeColors(["ink", "accent", "mute"]);
+  const tc = useThemeColors(["ink", "accent", "mute", "on-primary"]);
 
   // Локальный selected — инициализируется из myCats при первой загрузке
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -219,7 +219,7 @@ export default function MasterCategoriesScreen() {
                     isDisabled={!selected.has(cat.id) && reachedLimit}
                     isBusy={isBusy}
                     onPress={() => toggleCategory(cat.id)}
-                    accentColor={tc.accent}
+                    selectedIconColor={tc["on-primary"]}
                   />
                 ))}
               </View>
@@ -248,7 +248,7 @@ export default function MasterCategoriesScreen() {
                       isDisabled={!selected.has(cat.id) && reachedLimit}
                       isBusy={isBusy}
                       onPress={() => toggleCategory(cat.id)}
-                      accentColor={tc.accent}
+                      selectedIconColor={tc["on-primary"]}
                     />
                   ))}
                 </View>
@@ -298,7 +298,7 @@ interface CategoryChipProps {
   isDisabled: boolean;
   isBusy: boolean;
   onPress: () => void;
-  accentColor: string;
+  selectedIconColor: string;
 }
 
 function CategoryChip({
@@ -307,7 +307,7 @@ function CategoryChip({
   isDisabled,
   isBusy,
   onPress,
-  accentColor,
+  selectedIconColor,
 }: CategoryChipProps) {
   return (
     <Pressable
@@ -317,16 +317,16 @@ function CategoryChip({
       onPress={onPress}
       className={`flex-row items-center gap-1.5 rounded-pill border px-3 py-2 ${
         isSelected
-          ? "border-accent bg-accent-soft"
+          ? "border-ink bg-ink"
           : isDisabled
             ? "border-hairline bg-surface-2 opacity-50"
             : "border-hairline bg-canvas active:opacity-70"
       }`}
     >
-      {isSelected ? <Check size={14} weight="fill" color={accentColor} /> : null}
+      {isSelected ? <Check size={14} weight="fill" color={selectedIconColor} /> : null}
       <AppText
         weight={isSelected ? "semibold" : "medium"}
-        className={`text-body-sm ${isSelected ? "text-accent" : "text-ink"}`}
+        className={`text-body-sm ${isSelected ? "text-on-primary" : "text-ink"}`}
       >
         {cat.name_ru}
       </AppText>

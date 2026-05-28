@@ -136,7 +136,7 @@ export function WebShell({ children, ordersBadge }: WebShellProps) {
                       >
                         <AppText
                           weight="bold"
-                          className="text-caption-xs"
+                          className="text-caption"
                           style={{ color: tc["on-primary"] }}
                         >
                           {item.badge}

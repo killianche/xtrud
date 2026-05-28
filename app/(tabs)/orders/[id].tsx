@@ -103,6 +103,20 @@ export default function OrderDetailScreen() {
 
   const isOwner = !!userId && !!order && order.client_id === userId;
   const isMasterRole = user?.active_role === "master";
+
+  // Если dual-role-пользователь сейчас в client-режиме смотрит чужой заказ, на
+  // который уже откликался КАК МАСТЕР — показываем «Вы откликнулись» badge с
+  // переключением в master-режим, вместо CTA «откликнуться» (нельзя
+  // откликаться дважды на один и тот же заказ — фидбэк владельца 2026-05-27).
+  // Запрашиваем только когда есть смысл (is_master + chase в client-режиме на
+  // чужом заказе) — иначе тратили бы запрос на каждом просмотре.
+  const shouldCheckMyResponse =
+    !!user?.is_master && !isMasterRole && !isOwner && !!userId && !!id;
+  const myMasterResponseQ = useMyResponseForOrder(
+    shouldCheckMyResponse ? id : undefined,
+    shouldCheckMyResponse ? userId : undefined,
+  );
+  const hasMyMasterResponse = !!myMasterResponseQ.data;
   const tc = useThemeColors(["ink", "muted-soft", "body", "mute"]);
   const [reportOpen, setReportOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -253,7 +267,13 @@ export default function OrderDetailScreen() {
                 finalize_master_onboarding() возврат на этот же заказ. */}
           {!isOwner && !isMasterRole && id && order.status === "open" ? (
             user?.is_master && userId ? (
-              <SwitchToMasterCTA userId={userId} />
+              hasMyMasterResponse ? (
+                // Уже откликался как мастер — не CTA, а статус с переходом к
+                // своему отклику (через переключение роли).
+                <MyResponseBadgeCTA userId={userId} />
+              ) : (
+                <SwitchToMasterCTA userId={userId} />
+              )
             ) : (
               <BecomeMasterCTA orderId={id} />
             )
@@ -423,6 +443,63 @@ function ActionMenuItem({ icon: Icon, label, destructive, onPress }: ActionMenuI
         {label}
       </AppText>
     </Pressable>
+  );
+}
+
+// ============================================================================
+// MyResponseBadgeCTA — карточка-статус для dual-role юзера, который СМОТРИТ
+// чужой заказ в client-режиме, но КАК МАСТЕР уже откликался на этот заказ.
+// Вместо приглашения «Откликнуться» показываем «Вы откликнулись» + кнопку
+// перейти к существующему отклику (one-tap переключение в master-режим →
+// MasterResponseSection автоматически появится с уже отправленным откликом).
+// Фидбэк владельца 2026-05-27: «как мастер я уже откликнулся, не надо звать
+// откликаться снова».
+// ============================================================================
+
+function MyResponseBadgeCTA({ userId }: { userId: string }) {
+  const setActiveRole = useSetActiveRole();
+
+  const handlePress = () => {
+    if (setActiveRole.isPending) return;
+    setActiveRole.mutate(
+      { userId, role: "master" },
+      {
+        onError: (e) => {
+          Alert.alert(
+            "Не удалось переключить роль",
+            e instanceof Error ? e.message : "Попробуйте позже.",
+          );
+        },
+      },
+    );
+  };
+
+  return (
+    <View className="mt-8 mx-5 rounded-xl border border-hairline bg-canvas-soft p-5">
+      <View className="self-start rounded-pill bg-accent-soft px-3 py-1.5">
+        <AppText weight="semibold" className="text-caption text-accent">
+          Вы откликнулись
+        </AppText>
+      </View>
+      <AppText weight="semibold" className="mt-3 text-title-md text-ink">
+        Отклик уже отправлен
+      </AppText>
+      <AppText className="mt-2 text-body-sm text-mute">
+        Откройте свой отклик, чтобы посмотреть статус и продолжить общение с
+        клиентом.
+      </AppText>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Перейти к моему отклику (переключиться в режим мастера)"
+        onPress={handlePress}
+        disabled={setActiveRole.isPending}
+        className="mt-4 h-12 flex-row items-center justify-center rounded-md border border-hairline bg-canvas active:opacity-70"
+      >
+        <AppText weight="semibold" className="text-button text-ink">
+          {setActiveRole.isPending ? "Переключаем…" : "Перейти к отклику"}
+        </AppText>
+      </Pressable>
+    </View>
   );
 }
 
@@ -1537,13 +1614,13 @@ function MasterResponseSection({
                       onPress={() => onChange(k)}
                       className={`h-9 items-center justify-center rounded-md border px-3 ${
                         selected
-                          ? "border-accent bg-accent-soft"
+                          ? "border-ink bg-ink"
                           : "border-hairline bg-canvas active:opacity-70"
                       }`}
                     >
                       <AppText
                         weight="medium"
-                        className={`text-caption ${selected ? "text-accent" : "text-body"}`}
+                        className={`text-caption ${selected ? "text-on-primary" : "text-body"}`}
                       >
                         {priceKindLabel(k)}
                       </AppText>

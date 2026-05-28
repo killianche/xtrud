@@ -152,6 +152,8 @@ export default function EditOrderScreen() {
         isRemotePhoto(p.uri) ? p.uri : (uploadedByOrder[li++] ?? p.uri),
       );
 
+      // urgency / budgetKind nullable в schema, валидация гарантирует non-null.
+      if (values.urgency === null || values.budgetKind === null) return;
       await updateOrder.mutateAsync({
         orderId,
         clientId: userId,

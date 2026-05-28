@@ -17,6 +17,7 @@ import { Image } from "expo-image";
 import { CaretLeft, CaretRight, X } from "phosphor-react-native";
 import { useEffect } from "react";
 import { Modal, Pressable, useWindowDimensions, View } from "react-native";
+import { useAppWidth } from "@/lib/use-app-width";
 import { Gesture, GestureDetector, GestureHandlerRootView } from "react-native-gesture-handler";
 import Animated, {
   runOnJS,
@@ -59,7 +60,12 @@ export function PortfolioLightbox({
   onChangeIndex,
 }: PortfolioLightboxProps) {
   const insets = useSafeAreaInsets();
-  const { width, height } = useWindowDimensions();
+  // width зажат в телефонную колонку (≤PHONE_MAX_WIDTH на web) — иначе на web
+  // RN <Modal> рендерится в портал вне <PhoneFrame> и фото растягивалось на всю
+  // ширину браузера. height — реальная (фото на всю высоту). На native обе
+  // величины = реальный экран, поведение не меняется. (Фидбэк владельца 2026-05-24.)
+  const { height } = useWindowDimensions();
+  const width = useAppWidth();
 
   const visible = index !== null && index >= 0 && index < items.length;
   const item = visible ? items[index as number] : null;
@@ -195,7 +201,10 @@ export function PortfolioLightbox({
     >
       {item && (
         <GestureHandlerRootView style={{ flex: 1 }}>
-          <View className="flex-1 bg-black">
+          {/* Корень чёрный на всю ширину браузера; контент (фото + контролы)
+              зажат в телефонную колонку шириной `width` по центру. */}
+          <View className="flex-1 bg-black items-center">
+            <View style={{ flex: 1, width }}>
             {/* Image with gestures */}
             <GestureDetector gesture={composed}>
               <Animated.View
@@ -274,6 +283,7 @@ export function PortfolioLightbox({
                 <AppText className="text-body-sm text-on-dark">{item.caption}</AppText>
               </View>
             )}
+            </View>
           </View>
         </GestureHandlerRootView>
       )}

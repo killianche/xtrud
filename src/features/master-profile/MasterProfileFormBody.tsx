@@ -8,10 +8,10 @@
  * Caller предоставляет свой submit и кнопку.
  */
 
-import { Check, Phone, WhatsappLogo } from "phosphor-react-native";
+import { Phone, WhatsappLogo } from "phosphor-react-native";
 import type { Control, FieldErrors, FieldPath } from "react-hook-form";
-import { Controller, useWatch } from "react-hook-form";
-import { Pressable, TextInput, View } from "react-native";
+import { Controller } from "react-hook-form";
+import { TextInput, View } from "react-native";
 import { AppText } from "@/components/AppText";
 import type { MasterProfileFormValues } from "@/features/auth/master-profile-schema";
 import { useThemeColor } from "@/lib/use-theme-color";
@@ -77,7 +77,7 @@ export function MasterProfileFormBody({
                     О себе (опц.)
                   </AppText>
                   <AppText
-                    className={`text-caption-xs ${len > 450 ? "text-warning" : "text-muted-soft"}`}
+                    className={`text-caption ${len > 450 ? "text-warning" : "text-muted-soft"}`}
                   >
                     {len} / 500
                   </AppText>
@@ -126,24 +126,22 @@ export function MasterProfileFormBody({
           2026-05-19 по фидбэку user. Поля БД has_tools/has_transport legacy,
           остаются NULL/false; в hooks передаются false по умолчанию. */}
 
-      {/* Контактный телефон (sprint 2026-05-20, миграция 0097). Чекбокс
-          «совпадает с регистрационным» (по умолчанию true) ИЛИ явный публичный
-          номер. Это номер, который видят клиенты на странице мастера и в
-          карточке отклика для звонка. Регистрационный (users_private.phone)
-          не показывается никому. */}
+      {/* Контактный телефон — ОБЯЗАТЕЛЬНОЕ поле (решение владельца 2026-05-24).
+          Просто поле, без чекбокса «совпадает с регистрационным». Это номер,
+          который видят клиенты для звонка. Регистрационный номер нигде
+          автоматически не подставляется. */}
       <ContactPhoneSection control={control} errors={errors} isBusy={isBusy} />
 
-      {/* WhatsApp — sprint 0079. Чекбокс «совпадает с контактным» + опц. явный
-          номер. Если оба пусты, кнопка WhatsApp не показывается клиентам.
-          Теперь «основной» = contact_phone (контактный), а не регистрационный. */}
+      {/* WhatsApp — необязательное поле, без чекбокса. Пусто = кнопка WhatsApp
+          не показывается клиентам. */}
       <WhatsappSection control={control} errors={errors} isBusy={isBusy} />
     </>
   );
 }
 
 // ============================================================================
-// Contact phone section — чекбокс «совпадает с регистрационным» + conditional
-// TextInput. Сохраняется в public.users.contact_phone (см. миграцию 0097).
+// Contact phone section — ОБЯЗАТЕЛЬНОЕ поле (просто input, без чекбокса).
+// Сохраняется в public.users.contact_phone.
 // ============================================================================
 
 interface ContactPhoneSectionProps {
@@ -155,8 +153,6 @@ interface ContactPhoneSectionProps {
 function ContactPhoneSection({ control, errors, isBusy }: ContactPhoneSectionProps) {
   const mutedSoftColor = useThemeColor("muted-soft");
   const accentColor = useThemeColor("accent");
-  const onPrimaryColor = useThemeColor("on-primary");
-  const sameAsPhone = useWatch({ control, name: "contactSameAsPhone" });
 
   return (
     <View className="mt-6 px-6">
@@ -167,77 +163,44 @@ function ContactPhoneSection({ control, errors, isBusy }: ContactPhoneSectionPro
         </AppText>
       </View>
 
-      {/* Checkbox row — «совпадает с регистрационным номером». */}
       <Controller
         control={control}
-        name="contactSameAsPhone"
-        render={({ field: { value, onChange } }) => (
-          <Pressable
-            accessibilityRole="checkbox"
-            accessibilityState={{ checked: value, disabled: isBusy }}
-            disabled={isBusy}
-            onPress={() => onChange(!value)}
-            className="mt-2 flex-row items-center gap-3 rounded-md border border-hairline bg-canvas px-3 py-3 active:opacity-70"
-          >
-            <View
-              className={`h-5 w-5 items-center justify-center rounded border-2 ${
-                value ? "border-accent bg-accent" : "border-hairline bg-canvas"
+        name="contactPhone"
+        render={({ field: { value, onChange, onBlur } }) => (
+          <View className="mt-2">
+            <TextInput
+              value={value ?? ""}
+              onBlur={onBlur}
+              onChangeText={onChange}
+              placeholder="+7 999 123-45-67"
+              placeholderTextColor={mutedSoftColor}
+              keyboardType="phone-pad"
+              inputMode="tel"
+              maxLength={20}
+              maxFontSizeMultiplier={1.3}
+              className={`h-12 rounded-md border bg-canvas px-3 text-body-md text-ink ${
+                errors.contactPhone ? "border-error" : "border-hairline"
               }`}
-            >
-              {value ? <Check size={12} weight="bold" color={onPrimaryColor} /> : null}
-            </View>
-            <AppText weight="medium" className="flex-1 text-body-sm text-ink">
-              Совпадает с регистрационным номером
-            </AppText>
-          </Pressable>
+              editable={!isBusy}
+            />
+            {errors.contactPhone ? (
+              <AppText weight="medium" className="mt-2 text-caption text-error">
+                {errors.contactPhone.message}
+              </AppText>
+            ) : (
+              <AppText className="mt-2 text-caption text-mute">
+                Этот номер увидят клиенты, чтобы вам позвонить.
+              </AppText>
+            )}
+          </View>
         )}
       />
-
-      {/* Conditional: если чекбокс снят — обязательное поле ввода. */}
-      {!sameAsPhone ? (
-        <Controller
-          control={control}
-          name="contactPhone"
-          render={({ field: { value, onChange, onBlur } }) => (
-            <View className="mt-3">
-              <TextInput
-                value={value ?? ""}
-                onBlur={onBlur}
-                onChangeText={onChange}
-                placeholder="+7 999 123-45-67"
-                placeholderTextColor={mutedSoftColor}
-                keyboardType="phone-pad"
-                inputMode="tel"
-                maxLength={20}
-                maxFontSizeMultiplier={1.3}
-                className={`h-12 rounded-md border bg-canvas px-3 text-body-md text-ink ${
-                  errors.contactPhone ? "border-error" : "border-hairline"
-                }`}
-                editable={!isBusy}
-              />
-              {errors.contactPhone ? (
-                <AppText weight="medium" className="mt-2 text-caption text-error">
-                  {errors.contactPhone.message}
-                </AppText>
-              ) : (
-                <AppText className="mt-2 text-caption text-mute">
-                  Этот номер увидят клиенты, чтобы вам позвонить.
-                </AppText>
-              )}
-            </View>
-          )}
-        />
-      ) : (
-        <AppText className="mt-2 text-caption text-mute">
-          Этот номер увидят клиенты, чтобы вам позвонить.
-        </AppText>
-      )}
     </View>
   );
 }
 
 // ============================================================================
-// WhatsApp section — чекбокс «совпадает» + conditional TextInput.
+// WhatsApp section — необязательное поле (просто input, без чекбокса).
 // ============================================================================
 
 interface WhatsappSectionProps {
@@ -249,9 +212,6 @@ interface WhatsappSectionProps {
 function WhatsappSection({ control, errors, isBusy }: WhatsappSectionProps) {
   const mutedSoftColor = useThemeColor("muted-soft");
   const accentColor = useThemeColor("accent");
-  // on-primary токен для check-иконки на accent-фоне (раньше был inline #ffffff).
-  const onPrimaryColor = useThemeColor("on-primary");
-  const sameAsPhone = useWatch({ control, name: "whatsappSameAsPhone" });
 
   return (
     <View className="mt-6 px-6">
@@ -262,70 +222,38 @@ function WhatsappSection({ control, errors, isBusy }: WhatsappSectionProps) {
         </AppText>
       </View>
 
-      {/* Checkbox row — «совпадает с контактным номером».
-          Sprint 2026-05-20: «основной» переименован в «контактный»,
-          потому что появился contact_phone отдельно от регистрационного. */}
       <Controller
         control={control}
-        name="whatsappSameAsPhone"
-        render={({ field: { value, onChange } }) => (
-          <Pressable
-            accessibilityRole="checkbox"
-            accessibilityState={{ checked: value, disabled: isBusy }}
-            disabled={isBusy}
-            onPress={() => onChange(!value)}
-            className="mt-2 flex-row items-center gap-3 rounded-md border border-hairline bg-canvas px-3 py-3 active:opacity-70"
-          >
-            <View
-              className={`h-5 w-5 items-center justify-center rounded border-2 ${
-                value ? "border-accent bg-accent" : "border-hairline bg-canvas"
+        name="whatsappPhone"
+        render={({ field: { value, onChange, onBlur } }) => (
+          <View className="mt-2">
+            <TextInput
+              value={value ?? ""}
+              onBlur={onBlur}
+              onChangeText={onChange}
+              placeholder="+7 999 123-45-67 (опционально)"
+              placeholderTextColor={mutedSoftColor}
+              keyboardType="phone-pad"
+              inputMode="tel"
+              maxLength={20}
+              maxFontSizeMultiplier={1.3}
+              className={`h-12 rounded-md border bg-canvas px-3 text-body-md text-ink ${
+                errors.whatsappPhone ? "border-error" : "border-hairline"
               }`}
-            >
-              {value ? <Check size={12} weight="bold" color={onPrimaryColor} /> : null}
-            </View>
-            <AppText weight="medium" className="flex-1 text-body-sm text-ink">
-              Совпадает с контактным номером
-            </AppText>
-          </Pressable>
+              editable={!isBusy}
+            />
+            {errors.whatsappPhone ? (
+              <AppText weight="medium" className="mt-2 text-caption text-error">
+                {errors.whatsappPhone.message}
+              </AppText>
+            ) : (
+              <AppText className="mt-2 text-caption text-mute">
+                Оставьте пустым, если WhatsApp у вас нет — кнопка не отобразится клиентам.
+              </AppText>
+            )}
+          </View>
         )}
       />
-
-      {/* Conditional: если чекбокс снят — показываем поле ввода. Пустое значит
-          «WhatsApp не указан, кнопка не отображается клиентам». */}
-      {!sameAsPhone ? (
-        <Controller
-          control={control}
-          name="whatsappPhone"
-          render={({ field: { value, onChange, onBlur } }) => (
-            <View className="mt-3">
-              <TextInput
-                value={value ?? ""}
-                onBlur={onBlur}
-                onChangeText={onChange}
-                placeholder="+7 999 123-45-67 (опционально)"
-                placeholderTextColor={mutedSoftColor}
-                keyboardType="phone-pad"
-                inputMode="tel"
-                maxLength={20}
-                maxFontSizeMultiplier={1.3}
-                className={`h-12 rounded-md border bg-canvas px-3 text-body-md text-ink ${
-                  errors.whatsappPhone ? "border-error" : "border-hairline"
-                }`}
-                editable={!isBusy}
-              />
-              {errors.whatsappPhone ? (
-                <AppText weight="medium" className="mt-2 text-caption text-error">
-                  {errors.whatsappPhone.message}
-                </AppText>
-              ) : (
-                <AppText className="mt-2 text-caption text-mute">
-                  Оставьте пустым, если WhatsApp у вас нет — кнопка не отобразится клиентам.
-                </AppText>
-              )}
-            </View>
-          )}
-        />
-      ) : null}
     </View>
   );
 }

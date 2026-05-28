@@ -95,7 +95,7 @@ export function MasterPublishChecklist({ progress }: MasterPublishChecklistProps
           title="Добавьте 5 фото работ"
           hint={`Загружено ${progress.portfolioCount} из ${progress.portfolioRequired}`}
           Icon={ImageSquare}
-          onPress={() => router.push("/(tabs)/profile/portfolio" as never)}
+          onPress={() => router.push("/(tabs)/cases" as never)}
         />
         <ChecklistRow
           done={progress.categoryCount >= progress.categoryRequired}

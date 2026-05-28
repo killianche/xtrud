@@ -28,6 +28,14 @@ interface OrdersSearchFiltersState {
   l2Ids: string[]; // выбранные L2 категории
   sort: OrdersSearchSort;
   /**
+   * Фильтр по локации. cityId="" и district="" = «Вся Ингушетия» (без фильтра).
+   * Иначе выбран ЛИБО город (cityId), ЛИБО район (district) — взаимоисключающе
+   * (выбор одного сбрасывает другой через setLocation). Выбирается на экране
+   * /orders/search/location-select, применяется в ленте /orders/search.
+   */
+  cityId: string;
+  district: string;
+  /**
    * userId, для которого l2Ids уже были инициализированы из master_categories.
    * null = ни разу не подставляли defaults в этой сессии (или logout).
    */
@@ -35,6 +43,9 @@ interface OrdersSearchFiltersState {
   setL2Ids: (next: string[]) => void;
   toggleL2: (id: string) => void;
   setSort: (s: OrdersSearchSort) => void;
+  /** Выставить локацию-фильтр. cityId+district взаимоисключающие — передавай
+   *  один непустой, второй "". Оба "" = снять фильтр («Вся Ингушетия»). */
+  setLocation: (cityId: string, district: string) => void;
   clearAll: () => void;
   /**
    * Подставить defaults из master_categories при первом заходе пользователя
@@ -49,6 +60,8 @@ interface OrdersSearchFiltersState {
 export const useOrdersSearchFiltersStore = create<OrdersSearchFiltersState>((set, get) => ({
   l2Ids: [],
   sort: "newest",
+  cityId: "",
+  district: "",
   initializedForUserId: null,
   setL2Ids: (next) => set({ l2Ids: next }),
   toggleL2: (id) => {
@@ -58,7 +71,8 @@ export const useOrdersSearchFiltersStore = create<OrdersSearchFiltersState>((set
     set({ l2Ids: Array.from(cur) });
   },
   setSort: (s) => set({ sort: s }),
-  clearAll: () => set({ l2Ids: [], sort: "newest" }),
+  setLocation: (cityId, district) => set({ cityId, district }),
+  clearAll: () => set({ l2Ids: [], sort: "newest", cityId: "", district: "" }),
   initFromMasterCategories: (userId, masterL2Ids) => {
     if (get().initializedForUserId === userId) return;
     set({
@@ -73,5 +87,7 @@ export function countActiveFilters(state: OrdersSearchFiltersState): number {
   let n = 0;
   if (state.l2Ids.length > 0) n += state.l2Ids.length;
   if (state.sort !== "newest") n += 1;
+  // Локация (город ИЛИ район) — один активный фильтр.
+  if (state.cityId || state.district) n += 1;
   return n;
 }

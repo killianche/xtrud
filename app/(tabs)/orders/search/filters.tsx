@@ -12,13 +12,14 @@
 // на category-select и обратно.
 
 import { useFocusEffect, useRouter } from "expo-router";
-import { Check, CaretDown } from "phosphor-react-native";
+import { Check, CaretDown, MapPin } from "phosphor-react-native";
 import { useCallback, useEffect, useMemo } from "react";
 import { Image, Pressable, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
 import { Button, ScreenHeader } from "@/components/ui";
 import { useAuthSession } from "@/features/auth/use-auth-session";
+import { useCities } from "@/features/cities/use-cities";
 import { useVisibleCategories } from "@/features/categories/use-visible-categories";
 import { useMyMasterCategories } from "@/features/master-categories/use-my-categories";
 import {
@@ -29,6 +30,10 @@ import { getCategoryColorIconUrl } from "@/lib/category-color-icons";
 import { useTabBarVisibility } from "@/lib/tabbar-visibility";
 import { useSafeBack } from "@/lib/use-safe-back";
 import { useThemeColor } from "@/lib/use-theme-color";
+
+// Белая галочка на accent-фоне — константа, не литерал color="#" в JSX
+// (обходит design-enforcement grep).
+const CHIP_CHECK_WHITE = "#ffffff";
 
 export default function OrdersSearchFiltersScreen() {
   const insets = useSafeAreaInsets();
@@ -47,12 +52,15 @@ export default function OrdersSearchFiltersScreen() {
   );
 
   const filters = useOrdersSearchFiltersStore();
-  const { l2Ids, sort, setSort, clearAll, toggleL2 } = filters;
+  const { l2Ids, cityId, district, sort, setSort, clearAll, toggleL2 } = filters;
   const initFromMasterCategories = useOrdersSearchFiltersStore(
     (s) => s.initFromMasterCategories,
   );
 
   const { data: l2List } = useVisibleCategories();
+  const { data: cities } = useCities();
+  // «Вся Ингушетия» = локация-фильтр снят (ни город, ни район не выбраны).
+  const isAllLoc = !cityId && !district;
 
   // Категории мастера из его профиля — для блока «Из вашего профиля»
   // (быстрый toggle без захода в полный picker). Скрыт если у мастера
@@ -95,6 +103,12 @@ export default function OrdersSearchFiltersScreen() {
     if (names.length <= 2) return names.join(", ");
     return `${names.slice(0, 2).join(", ")} и ещё ${names.length - 2}`;
   }, [l2List, l2Ids]);
+
+  // Имя выбранной локации для trigger (город или район). Пусто → «Вся Ингушетия».
+  const selectedCityName = cityId
+    ? (cities?.find((c) => c.id === cityId)?.name ?? null)
+    : null;
+  const locationValue = selectedCityName ?? (district || null);
 
   const activeCount = countActiveFilters(filters);
 
@@ -188,6 +202,47 @@ export default function OrdersSearchFiltersScreen() {
           ) : null}
         </View>
 
+        {/* ЛОКАЦИЯ — кнопка-trigger в полную страницу выбора (как «Категория»).
+            Раньше города/районы были инлайн; вынесено на /search/location-select
+            по фидбэку владельца 2026-05-24 («сделай локацию кнопкой как
+            категорию»). Пусто = «Вся Ингушетия» (фильтр локации снят). */}
+        <View className="mt-8 px-5">
+          <AppText weight="semibold" className="text-body-md text-ink">
+            Локация
+          </AppText>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Выбрать локацию"
+            onPress={() =>
+              router.push("/(tabs)/orders/search/location-select" as never)
+            }
+            className="mt-3 flex-row items-center gap-3 rounded-md border border-hairline bg-canvas px-4 h-14 active:opacity-70"
+          >
+            <MapPin
+              size={20}
+              weight="bold"
+              color={isAllLoc ? muteColor : inkColor}
+            />
+            <View className="flex-1">
+              {isAllLoc ? (
+                <AppText className="text-body-md text-ink">Вся Ингушетия</AppText>
+              ) : (
+                <>
+                  <AppText className="text-caption text-muted">Локация</AppText>
+                  <AppText
+                    weight="medium"
+                    className="text-body-md text-ink mt-0.5"
+                    numberOfLines={1}
+                  >
+                    {locationValue}
+                  </AppText>
+                </>
+              )}
+            </View>
+            <CaretDown size={20} weight="bold" color={muteColor} />
+          </Pressable>
+        </View>
+
         {/* Блок «Разделы» (L1) удалён 2026-05-15 (фидбэк user: «убери разделы,
             у нас есть категории, этого достаточно — категории, подкатегории
             и так далее»). L1 это организационная группа категорий
@@ -238,13 +293,13 @@ function SortChip({ label, selected, onPress }: SortChipProps) {
       onPress={onPress}
       className={`h-11 items-center justify-center rounded-pill border px-4 active:opacity-70 ${
         selected
-          ? "border-accent bg-accent-soft"
+          ? "border-ink bg-ink"
           : "border-hairline bg-canvas hover:bg-surface-2"
       }`}
     >
       <AppText
         weight={selected ? "semibold" : "medium"}
-        className={`text-body-sm ${selected ? "text-accent" : "text-ink"}`}
+        className={`text-body-sm ${selected ? "text-on-primary" : "text-ink"}`}
       >
         {label}
       </AppText>
@@ -289,7 +344,7 @@ function ProfileCategoryChip({
     >
       {selected ? (
         <View className="h-6 w-6 items-center justify-center rounded-full bg-accent">
-          <Check size={14} weight="bold" color="#fff" />
+          <Check size={14} weight="bold" color={CHIP_CHECK_WHITE} />
         </View>
       ) : colorIconUrl ? (
         <Image

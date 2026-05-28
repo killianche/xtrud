@@ -77,12 +77,17 @@ html = html.replace(
   '<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />',
 );
 
-// 3) theme-color + apple status-bar + html/body фон.
+// 3) theme-color + apple status-bar + html/body фон + theme-guard.
 //    - theme-color: Safari iOS красит address-bar / notch-area в этот цвет.
 //      Без него на тёмной теме сверху белая полоса.
 //    - apple-mobile-web-app-status-bar-style: для standalone PWA.
 //    - html/body fill: заходит за safe-area при overscroll bounce (pull-down).
+//    - theme-guard script: читает localStorage('xtrud-theme') до первого рендера
+//      и ставит class="dark" на <html>, если preference=dark ИЛИ preference=system
+//      и system=dark. Без него режим «Авто» не подхватывает системную тему —
+//      на старте всегда видна светлая (баг до 2026-05-27).
 //    Expo Router output:"single" пропускает +html.tsx — поэтому правим тут.
+const themeGuardScript = `<script>(function(){try{var raw=localStorage.getItem('xtrud-theme');var pref='system';if(raw){var parsed=JSON.parse(raw);pref=(parsed&&parsed.state&&parsed.state.preference)||'system';}var sysDark=window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches;if(pref==='dark'||(pref==='system'&&sysDark))document.documentElement.classList.add('dark');}catch(_){}})();</script>`;
 const safeAreaMetas = [
   '<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />',
   '<meta name="theme-color" content="#0a0a0a" media="(prefers-color-scheme: dark)" />',
@@ -90,6 +95,7 @@ const safeAreaMetas = [
   '<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />',
   '<meta name="mobile-web-app-capable" content="yes" />',
   '<style id="xtrud-safe-area">html,body{background-color:#ffffff}@media (prefers-color-scheme:dark){html,body{background-color:#0a0a0a}}</style>',
+  themeGuardScript,
 ].join("\n    ");
 html = html.replace("</head>", `    ${safeAreaMetas}\n  </head>`);
 

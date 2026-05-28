@@ -56,6 +56,9 @@ import { resolveWhatsappDigits } from "@/lib/whatsapp";
 import { MasterServicesList } from "@/features/master-services/MasterServicesList";
 import { useMasterServices } from "@/features/master-services/use-master-services";
 import { ReviewsSection } from "@/features/master-view/ReviewsSection";
+import { MasterReviewSheet } from "@/features/reviews/MasterReviewSheet";
+import { useMyRecentReviewForMaster } from "@/features/reviews/use-reviews";
+import { useUserRecord } from "@/features/auth/use-user-record";
 import {
   useMasterCategoriesPublic,
   useMasterPhone,
@@ -127,6 +130,18 @@ export default function MasterPublicScreen() {
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const [reportOpen, setReportOpen] = useState(false);
   const [actionMenuOpen, setActionMenuOpen] = useState(false);
+  const [reviewSheetOpen, setReviewSheetOpen] = useState(false);
+
+  // Кто я: для CTA «Оставить отзыв». Любой авторизованный клиент (is_client)
+  // может оставить freeform-отзыв на мастера (без заказа). Лимит 1/30 дней
+  // проверяется на бэке + здесь мы скрываем CTA если recentReview уже есть.
+  const currentUser = useUserRecord(currentUserId);
+  const recentReview = useMyRecentReviewForMaster(masterId ?? undefined, currentUserId);
+  const canLeaveReview =
+    !!currentUserId &&
+    !isOwnProfile &&
+    currentUser.data?.is_client === true &&
+    !recentReview.data;
   // Safari-fallback: если avatar_url hero не загрузился (CORS / 404) —
   // переключаемся на инициалы через Avatar xl. Иначе пользователь
   // видит пустой серый блок 16:9. State объявлен здесь, reset-effect — ниже,
@@ -664,6 +679,43 @@ export default function MasterPublicScreen() {
           );
         })()}
 
+        {/* CTA «Оставить отзыв» для авторизованных клиентов (freeform-flow
+            2026-05-27). Анону показываем мягкий hint «Войдите чтобы оставить
+            отзыв»; владельцу профиля — ничего; если есть отзыв за 30 дней —
+            мягкая info-строка. RPC лимитом 1/30 дней страхует на бэке. */}
+        {masterId && !isOwnProfile ? (
+          <View className="mt-6 px-5">
+            {canLeaveReview ? (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Оставить отзыв"
+                onPress={() => setReviewSheetOpen(true)}
+                className="h-12 flex-row items-center justify-center rounded-md border border-hairline bg-canvas active:bg-canvas-soft"
+              >
+                <AppText weight="semibold" className="text-button text-ink">
+                  Оставить отзыв
+                </AppText>
+              </Pressable>
+            ) : recentReview.data ? (
+              <AppText className="text-center text-caption text-mute">
+                Вы уже оставили отзыв этому мастеру. Новый можно будет оставить
+                через 30 дней.
+              </AppText>
+            ) : isAnon ? (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Войти чтобы оставить отзыв"
+                onPress={() => router.push("/(auth)/phone" as never)}
+                className="h-12 flex-row items-center justify-center rounded-md border border-hairline bg-canvas active:bg-canvas-soft"
+              >
+                <AppText weight="semibold" className="text-button text-ink">
+                  Войти чтобы оставить отзыв
+                </AppText>
+              </Pressable>
+            ) : null}
+          </View>
+        ) : null}
+
         {/* «Этот мастер выполнил работу» — перенесён в action menu (⋮ → sheet).
             Это edge-case (ad-hoc подтверждение оффлайн-работы), не должен
             светиться внизу карточки. Wrench-divider убран — Vercel-стиль
@@ -682,6 +734,18 @@ export default function MasterPublicScreen() {
           index={lightboxIndex}
           onChangeIndex={setLightboxIndex}
           onClose={() => setLightboxIndex(null)}
+        />
+      ) : null}
+
+      {/* Freeform-отзыв на мастера. Открывается только для авторизованного
+          клиента у которого ещё нет отзыва за 30 дней (см. canLeaveReview). */}
+      {masterId && currentUserId ? (
+        <MasterReviewSheet
+          open={reviewSheetOpen}
+          onClose={() => setReviewSheetOpen(false)}
+          masterId={masterId}
+          authorId={currentUserId}
+          masterName={fullName ?? "Мастер"}
         />
       ) : null}
 
@@ -955,13 +1019,15 @@ function MasterCasesPreview({ masterId }: { masterId: string }) {
 }
 
 // ----------------------------------------------------------------------------
-// CasesGrid — адаптивная сетка плиток (Instagram-style).
-// 3-col на mobile (< 640), 4-col на planshet (640-768), 5-col на desktop.
+// CasesGrid — сетка плиток (Instagram-style). Всегда 3 колонки (решение
+// владельца 2026-05-27). Раньше была адаптивная (3/4/5 col по viewport)
+// — на широком превью получалось 2 неэстетично-крупных плитки на ряд.
 // Считаем плитку через flex-basis: `100%/cols - gap`. Gap 2px (минимальный
-// разделитель между fotos, как в IG).
+// разделитель между photo, как в IG).
 // ----------------------------------------------------------------------------
 
 const GRID_GAP = 2;
+const GRID_COLS = 3;
 
 function CasesGrid({
   cases,
@@ -971,10 +1037,7 @@ function CasesGrid({
   onPress: (caseId: string) => void;
 }) {
   const viewportWidth = useAppWidth();
-  // На web карточка мастера ограничена телефонной колонкой PhoneFrame,
-  // но мы рендерим без horizontal padding. Используем viewportWidth как
-  // приближение — на mobile это и есть ширина грида.
-  const cols = viewportWidth >= 768 ? 5 : viewportWidth >= 640 ? 4 : 3;
+  const cols = GRID_COLS;
   // Доступная ширина грида: viewportWidth - 0 (без horizontal padding,
   // плитки идут до краёв как в Instagram). gap*(cols-1) уходит на
   // зазоры между плитками.

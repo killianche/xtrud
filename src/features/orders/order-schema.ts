@@ -96,8 +96,14 @@ export const createOrderSchema = z
     // Валидация «либо город, либо район» — в superRefine ниже.
     cityId: z.string(),
     district: z.string().max(60, "Максимум 60 символов"),
-    urgency: z.enum(orderUrgencyOptions),
-    budgetKind: z.enum(orderPriceKindOptions),
+    // urgency / budgetKind — nullable, чтобы поля не были предвыбраны.
+    // До 2026-05-27 default был "flexible" / "negotiable" — пользователь видел
+    // их активными и отправлял заказ не выбирая, что давало 90% заказов с
+    // «Не срочно / Договорная» и отбивало мастеров. Теперь null → chip-row
+    // изначально пустой, submit заблокирован пока пользователь не выберет.
+    // Валидация «оба обязательны» — в superRefine ниже.
+    urgency: z.enum(orderUrgencyOptions).nullable(),
+    budgetKind: z.enum(orderPriceKindOptions).nullable(),
     /** Одно числовое значение цены. NULL для negotiable. */
     budgetValue: z.number().int().min(0).nullable(),
   })
@@ -109,6 +115,21 @@ export const createOrderSchema = z
         code: z.ZodIssueCode.custom,
         path: ["cityId"],
         message: "Выберите город или район",
+      });
+    }
+    // urgency / budgetKind обязательны — пользователь должен явно выбрать.
+    if (val.urgency === null) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["urgency"],
+        message: "Выберите срок",
+      });
+    }
+    if (val.budgetKind === null) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["budgetKind"],
+        message: "Выберите тип цены",
       });
     }
   });

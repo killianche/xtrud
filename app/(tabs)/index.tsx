@@ -20,23 +20,18 @@
 
 import { Image as ExpoImage } from "expo-image";
 import { useRouter } from "expo-router";
-import { CaretDown, CaretRight, Drop, MapPin, Sparkle, Lightning } from "phosphor-react-native";
-import { useEffect, useRef, useState } from "react";
-import { Animated, FlatList, Image, Platform, Pressable, ScrollView, View } from "react-native";
+import { CaretRight, Drop, Sparkle, Lightning } from "phosphor-react-native";
+import { useEffect, useRef } from "react";
+import { Animated, FlatList, Pressable, ScrollView, View } from "react-native";
 import { useAppWidth } from "@/lib/use-app-width";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { getCategoryColorIconUrl } from "@/lib/category-color-icons";
 import { getCategoryIcon } from "@/lib/category-icons";
 import { AppText } from "@/components/AppText";
-import { CITIES } from "@/components/CitySelector";
-import { Avatar, Button, Card, PickerSheet, Skeleton, type PickerOption } from "@/components/ui";
-import { XtrudWordmark } from "@/components/XtrudWordmark";
-import { useUserCity } from "@/lib/use-user-city";
-import { useThemeColors } from "@/lib/use-theme-color";
+import { Avatar, Card, Skeleton } from "@/components/ui";
 import { HelpCallout } from "@/components/HelpCallout";
 import { useAuthSession } from "@/features/auth/use-auth-session";
 import { useUserRecord } from "@/features/auth/use-user-record";
-import { ResponseLimitBadge } from "@/features/master-view/ResponseLimitBadge";
 import { useVisibleCategories } from "@/features/categories/use-visible-categories";
 import { DescribeTaskCallout } from "@/features/home/DescribeTaskCallout";
 import { CinematicHero } from "@/features/home/CinematicHero";
@@ -44,6 +39,7 @@ import { QuickServices } from "@/features/home/QuickServices";
 import { PromoBannerCarousel } from "@/features/home/PromoBannerCarousel";
 // HowItWorks скрыт 2026-05-18 — компонент остался в src/features/home/.
 // import { HowItWorks } from "@/features/home/HowItWorks";
+import { MasterCinematicHero } from "@/features/master-view/MasterCinematicHero";
 import { MasterHomeContent } from "@/features/master-view/MasterHomeContent";
 import {
   AVAILABILITY_DOT,
@@ -64,11 +60,6 @@ export default function HomeTab() {
 
   const activeRole = user?.active_role ?? "client";
   const refresh = usePullToRefresh();
-  const viewportWidth = useAppWidth();
-  // На desktop WebShell уже рендерит logo + nav + CitySelector + auth-кнопку
-  // в top-nav. Внутренний TopBar (логотип + xtrud-текст + город + Войти)
-  // дублирует эту функциональность → прячем на desktop.
-  const isDesktopWeb = Platform.OS === "web" && viewportWidth >= 768;
 
   // Tap-on-active-tab → scroll to top (стандартный mobile-pattern).
   // TabBar trigger'ит счётчик при тапе на focused-таб «Главная».
@@ -78,37 +69,28 @@ export default function HomeTab() {
     if (resetCounter > 0) scrollViewToTop(scrollRef);
   }, [resetCounter]);
 
-  const isClientView = activeRole !== "master";
-
   return (
     <ScrollView
       ref={scrollRef}
       className="flex-1 bg-canvas"
       contentContainerStyle={{
-        // Client: фото-hero идёт от самого верха экрана (под статус-бар),
-        // поэтому НЕ добавляем paddingTop — CinematicHero сам учитывает inset.
-        // Master: обычный paddingTop под отдельный TopBar.
-        paddingTop: isClientView ? 0 : insets.top,
+        // Обе роли: фото-hero идёт от самого верха экрана (под статус-бар),
+        // поэтому НЕ добавляем paddingTop — CinematicHero (клиент) и
+        // MasterCinematicHero (мастер) сами учитывают inset.
+        paddingTop: 0,
         paddingBottom: insets.bottom + 24,
       }}
       showsVerticalScrollIndicator={false}
       refreshControl={refresh.control}
     >
-      {/* TopBar (логотип + город на canvas) — только для master. У client/анон
-          шапка (логотип + город) лежит ПОВЕРХ фото внутри CinematicHero. */}
-      {!isDesktopWeb && !isClientView ? (
-        <TopBar
-          userId={userId}
-          userName={user?.first_name ?? null}
-          avatarUrl={user?.avatar_url ?? null}
-          userPhone={user?.contact_phone ?? null}
-          isMaster={activeRole === "master"}
-        />
-      ) : null}
-
       {activeRole === "master" && userId ? (
-        <View className="mt-6">
-          <MasterHomeContent userId={userId} />
+        // Мастер: фото-герой (логотип + лимит откликов + город + приветствие +
+        // статистика поверх фото) от самого верха, затем контент на canvas.
+        <View>
+          <MasterCinematicHero userId={userId} />
+          <View className="mt-3">
+            <MasterHomeContent userId={userId} />
+          </View>
         </View>
       ) : (
         <ClientHome
@@ -130,102 +112,12 @@ export default function HomeTab() {
 }
 
 // ============================================================================
-// Top-bar — logo + city + auth-кнопка
-// ============================================================================
-
-/**
- * TopBar — стандартный mobile-app pattern: hamburger (left) + logo (center) +
- * action slot (right).
- *
- * Структура (фидбэк user 2026-05-20 — заменил предыдущий two-row layout):
- *   - Row 1 (h-12): 3 равных слота через flex-1.
- *       Left:  кнопка-бургер открывает AppDrawer (slide-out side menu).
- *       Center: XtrudLogo 28px (брендинг).
- *       Right: для master-роли — ResponseLimitBadge. Для client — пусто
- *              (визуальное равновесие сохраняется flex-1).
- *   - Row 2 (h-7):  компактный city-trigger «📍 Назрань · Магас ▾» в mute,
- *                   без бордера — выглядит как метаданные «где я живу».
- *
- * AppDrawer содержит навигацию: Профиль / Создать заказ / Мои заказы /
- * Смотреть заказы. Открывается тапом на бургер или свайпом с левого края.
- *
- * Lazyweb-референсы (2026-05-20): Waze, Bluesky, LinkedIn — паттерн
- * «hamburger left + centered logo + minimal right slot».
- */
-function TopBar({
-  userId,
-  userName,
-  avatarUrl,
-  userPhone,
-  isMaster,
-}: {
-  userId: string | undefined;
-  userName: string | null;
-  avatarUrl: string | null;
-  userPhone: string | null;
-  isMaster: boolean;
-}) {
-  const tc = useThemeColors(["ink", "muted"]);
-  const { cityId, cityName, setCity } = useUserCity();
-  const [cityOpen, setCityOpen] = useState(false);
-
-  return (
-    <>
-      <View className="px-4 pt-2 pb-1">
-        {/* Row 1: wordmark «xtrud» (лого + слово) в левом углу + опц. badge
-            справа для мастера. Sprint 2026-05-20 (вечер) — юзер вернул
-            wordmark в левый угол после короткого эксперимента с центром:
-            «верни как было написано экструд рядом, всё с левой стороны
-            хедера». */}
-        <View
-          className="flex-row items-center justify-between"
-          style={{ height: 48 }}
-        >
-          {/* LEFT: wordmark. Sprint 2026-05-21 — юзер просил «сделай немножко
-              больше» → 26 → 32. */}
-          <XtrudWordmark size={32} />
-
-          {/* RIGHT: master badge or empty. */}
-          {userId && isMaster ? <ResponseLimitBadge variant="pill" /> : null}
-        </View>
-
-        {/* Row 2: compact city-trigger — text-link стиль, без бордера. */}
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={`Город: ${cityName}`}
-          onPress={() => setCityOpen(true)}
-          className="self-start flex-row items-center gap-1 -ml-0.5 mt-1 px-1 py-1 rounded-md active:opacity-60 active:bg-canvas-soft"
-        >
-          <MapPin size={14} weight="bold" color={tc.muted} />
-          <AppText weight="medium" className="text-body-sm text-muted">
-            {cityName}
-          </AppText>
-          <CaretDown size={12} weight="bold" color={tc.muted} />
-        </Pressable>
-      </View>
-
-      <PickerSheet
-        open={cityOpen}
-        onClose={() => setCityOpen(false)}
-        title="Город"
-        searchable={false}
-        options={CITIES.map<PickerOption>((c) => ({
-          id: c.id,
-          title: c.name,
-          icon: <MapPin size={18} weight="bold" color={tc.ink} />,
-        }))}
-        selectedId={cityId}
-        onSelect={(id) => {
-          setCity(id);
-          setCityOpen(false);
-        }}
-      />
-    </>
-  );
-}
-
-// ============================================================================
 // Client home — Hero + Featured + Categories + Top masters
+//
+// NB: TopBar (логотип + город + лимит откликов на canvas) удалён 2026-05-24.
+// Раньше рендерился только для мастера; теперь его роль выполняет фото-герой
+// MasterCinematicHero (логотип/лимит/город лежат поверх фото). У клиента
+// шапка давно живёт внутри CinematicHero.
 // ============================================================================
 
 interface ClientHomeProps {
@@ -692,7 +584,7 @@ function AllCategories({ onCategoryPress }: { onCategoryPress: (id: string) => v
                 >
                   <View className="h-10 w-10 items-center justify-center rounded-full bg-canvas-soft text-ink">
                     {colorUrl ? (
-                      <Image source={{ uri: colorUrl }} style={{ width: 24, height: 24 }} />
+                      <ExpoImage source={{ uri: colorUrl }} style={{ width: 24, height: 24 }} contentFit="contain" cachePolicy="memory-disk" />
                     ) : (
                       <Icon size={20} weight="bold" color="currentColor" />
                     )}
@@ -729,7 +621,7 @@ function AllCategories({ onCategoryPress }: { onCategoryPress: (id: string) => v
                     Иначе — Lucide моно (fallback). NB: эмодзи запрещены (см. CLAUDE.md). */}
                 <View className="h-10 w-10 items-center justify-center rounded-full bg-canvas-soft text-ink">
                   {colorUrl ? (
-                    <Image source={{ uri: colorUrl }} style={{ width: 24, height: 24 }} />
+                    <ExpoImage source={{ uri: colorUrl }} style={{ width: 24, height: 24 }} contentFit="contain" cachePolicy="memory-disk" />
                   ) : (
                     <Icon size={20} weight="bold" color="currentColor" />
                   )}

@@ -11,15 +11,19 @@
  * sticky «+ Добавить фото»). Здесь — только просмотр.
  *
  * Контент:
- *   - Header: «Кейс» + название мастера в subtitle
+ *   - Header: «Работа мастера» (нейтральный заголовок, без имени; имя мастера
+ *     избыточно — пользователь только что был на его профиле). До 2026-05-27
+ *     было «Кейс — Имя Мастера».
  *   - Hero-carousel со всеми фото (4:5 портретный, dot-индикаторы)
  *   - Title
  *   - Дата выполнения (mono caption)
  *   - Description
- *   - Bottom CTA «Открыть профиль мастера» (ghost-button)
+ *
+ * 2026-05-27: bottom CTA «Открыть профиль мастера» удалена (решение владельца) —
+ * пользователь приходит сюда с профиля мастера, обратный путь через системный back.
  */
 
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useLocalSearchParams } from "expo-router";
 import { useState } from "react";
 import { Image, Pressable, ScrollView, View } from "react-native";
 import { cdnImage } from "@/lib/image-cdn";
@@ -27,7 +31,6 @@ import { useAppWidth } from "@/lib/use-app-width";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
 import { ScreenHeader, Skeleton } from "@/components/ui";
-import { useMasterPublicProfile } from "@/features/master-view/use-master-public";
 import { useCaseDetail } from "@/features/profile/use-portfolio-cases";
 import { useSafeBack } from "@/lib/use-safe-back";
 
@@ -35,7 +38,6 @@ const HERO_RATIO = 4 / 5;
 
 export default function PublicCaseScreen() {
   const insets = useSafeAreaInsets();
-  const router = useRouter();
   const params = useLocalSearchParams<{ caseId: string }>();
   const caseId = typeof params.caseId === "string" ? params.caseId : null;
   const viewportWidth = useAppWidth();
@@ -45,21 +47,16 @@ export default function PublicCaseScreen() {
   const detail = useCaseDetail(caseId);
   const data = detail.data;
   const masterId = data?.master_id ?? null;
-  const profile = useMasterPublicProfile(masterId);
 
   const goBack = useSafeBack(`/(tabs)/master/${masterId ?? ""}` as never);
   const [photoIndex, setPhotoIndex] = useState(0);
 
-  const fullName =
-    [profile.data?.user?.first_name, profile.data?.user?.last_name]
-      .filter(Boolean)
-      .join(" ") || "Мастер";
   const dateLabel = formatCaseDate(data?.work_done_at);
 
   if (detail.isLoading) {
     return (
       <View className="flex-1 bg-canvas" style={{ paddingTop: insets.top }}>
-        <ScreenHeader title="Кейс" onBack={goBack} />
+        <ScreenHeader title="Работа мастера" onBack={goBack} />
         <View className="px-5 pt-3 gap-3">
           <Skeleton style={{ width: "100%", height: heroHeight, borderRadius: 12 }} />
           <Skeleton style={{ width: "60%", height: 24, borderRadius: 6 }} />
@@ -72,7 +69,7 @@ export default function PublicCaseScreen() {
   if (!data) {
     return (
       <View className="flex-1 bg-canvas" style={{ paddingTop: insets.top }}>
-        <ScreenHeader title="Кейс" onBack={goBack} />
+        <ScreenHeader title="Работа мастера" onBack={goBack} />
         <View className="flex-1 items-center justify-center px-8">
           <AppText weight="semibold" className="text-title-lg text-ink text-center">
             Кейс не найден
@@ -90,7 +87,7 @@ export default function PublicCaseScreen() {
 
   return (
     <View className="flex-1 bg-canvas" style={{ paddingTop: insets.top }}>
-      <ScreenHeader title={fullName ? `Кейс — ${fullName}` : "Кейс"} onBack={goBack} />
+      <ScreenHeader title="Работа мастера" onBack={goBack} />
       <ScrollView
         contentContainerStyle={{ paddingBottom: insets.bottom + 32 }}
         showsVerticalScrollIndicator={false}
@@ -101,9 +98,15 @@ export default function PublicCaseScreen() {
               horizontal
               pagingEnabled
               showsHorizontalScrollIndicator={false}
-              onMomentumScrollEnd={(e) => {
+              // onScroll вместо onMomentumScrollEnd: на web (RNW) momentum-end
+              // не срабатывает (там snap-based scroll), точки-индикаторы не
+              // переключались при свайпе. onScroll работает и на native,
+              // и на web; обновляем state только при смене индекса, чтобы
+              // не дёргать render каждый кадр.
+              scrollEventThrottle={16}
+              onScroll={(e) => {
                 const idx = Math.round(e.nativeEvent.contentOffset.x / heroWidth);
-                setPhotoIndex(idx);
+                if (idx !== photoIndex) setPhotoIndex(idx);
               }}
             >
               {items.map((it) => (
@@ -170,17 +173,9 @@ export default function PublicCaseScreen() {
             </AppText>
           ) : null}
 
-          {masterId ? (
-            <Pressable
-              accessibilityRole="button"
-              onPress={() => router.push(`/(tabs)/master/${masterId}` as never)}
-              className="mt-8 h-12 items-center justify-center rounded-md border border-hairline active:opacity-70"
-            >
-              <AppText weight="semibold" className="text-button text-ink">
-                Открыть профиль мастера
-              </AppText>
-            </Pressable>
-          ) : null}
+          {/* Кнопка «Открыть профиль мастера» удалена 2026-05-27 (решение
+              владельца). Пользователь попал сюда с профиля мастера — обратный
+              путь через системный back. */}
         </View>
       </ScrollView>
     </View>

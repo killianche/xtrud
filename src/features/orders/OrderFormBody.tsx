@@ -304,7 +304,7 @@ export function OrderFormBody({
               </View>
             )}
           />
-          {budgetKind !== "negotiable" && (
+          {budgetKind != null && budgetKind !== "negotiable" && (
             <View className="mt-3">
               <NumberField
                 label={priceFieldLabel(budgetKind)}

@@ -11,7 +11,7 @@
  */
 
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { Briefcase, Calendar, CaretLeft, ListChecks, MapPin, ChatCircle, Phone, Star, Users } from "phosphor-react-native";
+import { Briefcase, Calendar, CaretLeft, ListChecks, MapPin, Star, Users } from "phosphor-react-native";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Animated,
@@ -523,6 +523,13 @@ function MasterRow({
   onPress: () => void;
 }) {
   const u = master.user;
+  // Размер мини-thumb адаптируется под ширину экрана, чтобы 5 фото всегда
+  // помещались в карточке. Card padding px-5 (40 total), gap-1.5 между
+  // фотками (4 × 6 = 24). Доступная ширина / 5, cap сверху 80px (на больших
+  // экранах не растягиваем). До 2026-05-27 было фиксированно 80×80, на
+  // iPhone SE / mini 5-я фотка уходила за край экрана.
+  const screenW = useAppWidth();
+  const thumbSize = Math.min(80, Math.max(48, Math.floor((screenW - 40 - 24) / 5)));
   // Telemetry: impression при появлении row в списке категории. RPC сам
   // дедупит за 24h, in-memory дедуп защищает от повторов в одной сессии.
   const recordView = useRecordMasterView();
@@ -556,12 +563,7 @@ function MasterRow({
         ? "Компания"
         : null;
 
-  // Звонок/whatsapp — переход на профиль мастера (там есть CTA «Написать в чат»
-  // и контакты после логина через LoginWall).
-  const handleContact = (e: { stopPropagation?: () => void }) => {
-    e.stopPropagation?.();
-    onPress();
-  };
+  // Контактные кнопки удалены 2026-05-27. Карточка целиком ведёт на профиль.
 
   return (
     <Pressable
@@ -709,18 +711,21 @@ function MasterRow({
                   key={p.id}
                   accessibilityRole="button"
                   accessibilityLabel={`Фото ${i + 1}`}
-                  onPress={handleContact}
+                  onPress={onPress}
                   style={{
-                    width: 80,
-                    height: 80,
+                    width: thumbSize,
+                    height: thumbSize,
                     borderRadius: 8,
                     overflow: "hidden",
                     position: "relative",
                   }}
                   className="bg-canvas-soft active:opacity-70"
                 >
+                  {/* Mini-thumb — намеренно очень низкое качество (q=40, без
+                      2x retina) для fast first paint в ленте. Полноразмерные
+                      фото открываются в профиле мастера / лайтбоксе. */}
                   <Image
-                    source={{ uri: cdnImage(p.url, { width: 80 }) }}
+                    source={{ uri: cdnImage(p.url, { width: thumbSize, dpr: 1, quality: 40 }) }}
                     style={{ width: "100%", height: "100%" }}
                     resizeMode="cover"
                   />
@@ -738,39 +743,13 @@ function MasterRow({
             })}
           </View>
         ) : null}
-        {/* Контакты — ghost pill-кнопки одного веса, без иконок и без
-            контраста primary/secondary. Primary action в feed-карточке —
-            сама карточка (тап → переход на профиль), кнопки контакта —
-            secondary shortcut. Паттерн TaskRabbit / Booksy / Yelp.
-            (Фидбэк user 2026-05-14: «кнопки сделай не такими заметными,
-            убери иконки внутри них»). */}
-        <View className="flex-row gap-2 mt-3">
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Позвонить"
-            onPress={handleContact}
-            className="flex-1 items-center justify-center h-10 rounded-full bg-canvas-soft active:bg-canvas-soft-2"
-          >
-            <AppText weight="medium" className="text-body-sm text-ink">
-              Позвонить
-            </AppText>
-          </Pressable>
-          {/* Sprint 0079: кнопка WhatsApp только если у мастера указан
-              WhatsApp (явный whatsapp_phone ИЛИ same_as_phone=true). */}
-          {profile?.whatsapp_same_as_phone === true ||
-          (profile?.whatsapp_phone && profile.whatsapp_phone.length >= 5) ? (
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="WhatsApp"
-              onPress={handleContact}
-              className="flex-1 items-center justify-center h-10 rounded-full bg-canvas-soft active:bg-canvas-soft-2"
-            >
-              <AppText weight="medium" className="text-body-sm text-ink">
-                WhatsApp
-              </AppText>
-            </Pressable>
-          ) : null}
-        </View>
+        {/* Кнопки «Позвонить» / «WhatsApp» удалены 2026-05-27 (решение
+            владельца). handleContact и так вёл на профиль (а не на phone://),
+            то есть кнопки были визуально дублем — карточка целиком Pressable
+            и ведёт туда же. Кроме того кнопки нарушали privacy-модель «номер
+            скрыт» (Apple ревьюер мог подумать, что номер раздаётся в ленте без
+            отклика). Реальные контакты с мастером — после создания заказа
+            и отклика, либо со страницы мастера через LoginWall. */}
       </>
     </Pressable>
   );
@@ -813,10 +792,7 @@ function MasterRowGallery({
         ? "Компания"
         : null;
 
-  const handleContact = (e: { stopPropagation?: () => void }) => {
-    e.stopPropagation?.();
-    onPress();
-  };
+  // Контактные кнопки удалены 2026-05-27. Карточка целиком ведёт на профиль.
 
   return (
     <Pressable
@@ -963,35 +939,9 @@ function MasterRowGallery({
         </View>
       ) : null}
 
-      {/* Кнопки — full-width */}
-      <View className="flex-row gap-2 mt-3">
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Позвонить"
-          onPress={handleContact}
-          className="flex-1 flex-row items-center justify-center gap-2 h-10 rounded-full bg-canvas-soft border border-hairline active:opacity-70"
-        >
-          <Phone size={16} weight="bold" color="currentColor" className="text-ink" />
-          <AppText weight="medium" className="text-body-sm text-ink">
-            Позвонить
-          </AppText>
-        </Pressable>
-        {/* Sprint 0079: WhatsApp кнопка скрыта если у мастера не указан номер. */}
-        {profile?.whatsapp_same_as_phone === true ||
-        (profile?.whatsapp_phone && profile.whatsapp_phone.length >= 5) ? (
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="WhatsApp"
-            onPress={handleContact}
-            className="flex-1 flex-row items-center justify-center gap-2 h-10 rounded-full bg-canvas-soft border border-hairline active:opacity-70"
-          >
-            <ChatCircle size={16} weight="bold" color="currentColor" className="text-ink" />
-            <AppText weight="medium" className="text-body-sm text-ink">
-              WhatsApp
-            </AppText>
-          </Pressable>
-        ) : null}
-      </View>
+      {/* Кнопки «Позвонить» / «WhatsApp» удалены 2026-05-27 (см. MasterRow
+          выше — то же решение). Карточка целиком Pressable → /master/[id],
+          реальные контакты — через профиль после отклика на заказ. */}
     </Pressable>
   );
 }

@@ -1494,13 +1494,16 @@ function MasterResponseSection({
     );
   }
 
-  // Заказ закрыт (in_progress/completed/cancelled), мастер не откликался → CTA отключён
+  // Заказ закрыт (in_progress/completed/cancelled/expired), мастер не откликался
+  // → CTA отключён. В модели доски объявлений клиент НЕ «выбирает мастера» в
+  // приложении — он просто закрывает заказ, когда нашёл исполнителя. Поэтому
+  // текст нейтральный, без ложного «клиент выбрал мастера».
   if (orderClosed) {
     return (
       <View className="mt-10 px-6">
         <View className="rounded-lg bg-surface-2 p-4">
           <AppText weight="medium" className="text-body-sm text-muted">
-            Клиент уже выбрал мастера. Отклики больше не принимаются.
+            Заказ закрыт — отклики больше не принимаются.
           </AppText>
         </View>
       </View>
@@ -1752,7 +1755,10 @@ function responseStatusLabel(s: Tables<"order_responses">["status"]): string {
     case "viewed":
       return "Клиент прочитал";
     case "accepted":
-      return "Клиент выбрал вас";
+      // В модели доски объявлений клиент не «выбирает» мастера в приложении —
+      // он связывается напрямую. Поэтому нейтральный «Отклик активен», а не
+      // ложное «клиент выбрал вас».
+      return "Отклик активен";
     case "rejected":
       return "Клиент отклонил";
     case "withdrawn":

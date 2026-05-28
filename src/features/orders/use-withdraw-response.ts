@@ -8,6 +8,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { myResponsesKey } from "@/features/orders/use-my-responses";
 import { orderDetailKey } from "@/features/orders/use-order-detail";
+import { RESPONSE_LIMIT_QUERY_KEY } from "@/features/orders/use-response-limit";
 import { supabase } from "@/lib/supabase";
 
 export interface WithdrawResponseInput {
@@ -31,6 +32,9 @@ export function useWithdrawResponse() {
       qc.invalidateQueries({ queryKey: ["order-responses", vars.orderId] });
       qc.invalidateQueries({ queryKey: orderDetailKey(vars.orderId) });
       qc.invalidateQueries({ queryKey: myResponsesKey(vars.masterId) });
+      // Отозванный отклик возвращает слот дневного лимита (5/день) — обновляем
+      // счётчик, чтобы освободившийся слот сразу был виден мастеру.
+      qc.invalidateQueries({ queryKey: RESPONSE_LIMIT_QUERY_KEY });
     },
   });
 }

@@ -15,6 +15,10 @@ const envSchema = z.object({
   EXPO_PUBLIC_SUPABASE_ANON_KEY: z
     .string({ message: "EXPO_PUBLIC_SUPABASE_ANON_KEY не задан" })
     .min(20, { message: "EXPO_PUBLIC_SUPABASE_ANON_KEY слишком короткий" }),
+  // Ключ проекта Sentry (отслеживание сбоев). Необязателен: если не задан —
+  // Sentry просто выключен (см. src/lib/sentry.ts). Не валидируем как .url(),
+  // чтобы кривое значение не роняло старт — Sentry сам проверит DSN.
+  EXPO_PUBLIC_SENTRY_DSN: z.string().optional(),
 });
 
 // process.env замещается Metro/Expo на этапе сборки;
@@ -22,6 +26,7 @@ const envSchema = z.object({
 const parsed = envSchema.safeParse({
   EXPO_PUBLIC_SUPABASE_URL: process.env.EXPO_PUBLIC_SUPABASE_URL,
   EXPO_PUBLIC_SUPABASE_ANON_KEY: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY,
+  EXPO_PUBLIC_SENTRY_DSN: process.env.EXPO_PUBLIC_SENTRY_DSN,
 });
 
 if (!parsed.success) {

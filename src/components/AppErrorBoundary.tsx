@@ -5,9 +5,9 @@
  * приводит к **белому экрану** без объяснения. Apple/Google review это очень
  * не любит (stability questions, потенциальный reject).
  *
- * Сейчас без Sentry — просто показывает fallback с кнопкой «Перезагрузить».
- * Когда подключим Sentry — добавить sentry.captureException(error) в
- * componentDidCatch. DSN — в env EXPO_PUBLIC_SENTRY_DSN.
+ * Показывает fallback с кнопкой «Перезагрузить» И отправляет ошибку в Sentry
+ * (отслеживание сбоев) через reportError. Sentry включается только при наличии
+ * EXPO_PUBLIC_SENTRY_DSN — без ключа reportError тихий no-op (см. src/lib/sentry.ts).
  *
  * Не использует hooks (Error Boundary в React работает только через class).
  */
@@ -15,6 +15,7 @@
 import { Component, type ErrorInfo, type ReactNode } from "react";
 import { Platform, Pressable, View } from "react-native";
 import { AppText } from "@/components/AppText";
+import { reportError } from "@/lib/sentry";
 
 interface Props {
   children: ReactNode;
@@ -32,16 +33,12 @@ export class AppErrorBoundary extends Component<Props, State> {
   }
 
   override componentDidCatch(error: Error, info: ErrorInfo): void {
-    // Web — пишем в console.error чтобы Sentry browser SDK подхватил автоматически
-    // когда будет подключён. На native — console.error попадает в Metro logs.
-    // TODO P0-22 phase 2: sentry.captureException(error, { extra: info }).
-    if (Platform.OS === "web") {
-      // eslint-disable-next-line no-console
-      console.error("[AppErrorBoundary]", error, info?.componentStack);
-    } else {
-      // eslint-disable-next-line no-console
-      console.error("[AppErrorBoundary]", error, info?.componentStack);
-    }
+    // Отправляем ошибку в Sentry (no-op без DSN). Так мы узнаём о белых экранах
+    // у реальных пользователей, а не из жалоб.
+    reportError(error, { componentStack: info?.componentStack });
+    // Дублируем в консоль: на web — для браузерных devtools, на native — в Metro.
+    // eslint-disable-next-line no-console
+    console.error("[AppErrorBoundary]", error, info?.componentStack);
   }
 
   reset = (): void => {

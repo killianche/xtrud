@@ -15,7 +15,7 @@
         "UIViewControllerBasedStatusBarAppearance": true,
         "UIStatusBarStyle": "UIStatusBarStyleDefault",
         "NSLocationWhenInUseUsageDescription": "Приложение использует местоположение, чтобы предложить ваш город при создании заявки и поиске мастеров рядом. Можно выбрать город вручную, доступ опционален.",
-        "NSPhotoLibraryAddUsageDescription": "Приложение сохраняет фото, которые вы получаете в чате с мастером.",
+        "NSPhotoLibraryAddUsageDescription": "Приложение может сохранять фотографии (например, из портфолио мастера) в вашу галерею.",
         "ITSAppUsesNonExemptEncryption": false
       }
     },
@@ -64,7 +64,8 @@
         {
           "color": "#2563eb"
         }
-      ]
+      ],
+      "@sentry/react-native/expo"
     ],
     "experiments": {
       "typedRoutes": true

@@ -13,6 +13,7 @@ import { useAuthSession } from "@/features/auth/use-auth-session";
 import { useUserRecord } from "@/features/auth/use-user-record";
 import { useRegisterPushToken } from "@/features/notifications/use-register-push-token";
 import { NavHistoryTracker } from "@/lib/nav-history";
+import { initSentry } from "@/lib/sentry";
 
 /*
  * RootLayout — корень приложения.
@@ -37,6 +38,11 @@ import { NavHistoryTracker } from "@/lib/nav-history";
 // при первом маунте хука. Этот файл не должен импортировать expo-notifications
 // на верхнем уровне — Metro подтягивает модуль в bundle, что на web может ломать
 // гидрацию (нативные нативные модули, имеющие side-effects на import).
+
+// Отслеживание сбоев. Включается только при наличии EXPO_PUBLIC_SENTRY_DSN,
+// иначе безопасный no-op (см. src/lib/sentry.ts). Вызываем как можно раньше —
+// до рендера, чтобы ловить ошибки уже на старте.
+initSentry();
 
 // Splash hide отложен до загрузки шрифтов (только native).
 SplashScreen.preventAutoHideAsync().catch(() => {

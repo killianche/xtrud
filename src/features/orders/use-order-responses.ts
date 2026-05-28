@@ -16,7 +16,16 @@ import { supabase } from "@/lib/supabase";
 import type { Database, Tables } from "@/types/database";
 
 export interface OrderResponseWithMaster extends Tables<"order_responses"> {
-  master: Pick<Tables<"users">, "id" | "first_name" | "last_name" | "avatar_url"> | null;
+  master:
+    | (Pick<Tables<"users">, "id" | "first_name" | "last_name" | "avatar_url"> & {
+        // Рейтинг мастера (общий, по всем категориям) — чтобы клиент сравнивал
+        // мастеров в карточке отклика не только по цене. one-to-one → объект|null.
+        profile: Pick<
+          Tables<"master_profiles">,
+          "rating_overall_avg" | "rating_overall_count"
+        > | null;
+      })
+    | null;
 }
 
 export function orderResponsesKey(orderId: string | undefined) {
@@ -31,7 +40,7 @@ export function useOrderResponses(orderId: string | undefined) {
       const { data, error } = await supabase
         .from("order_responses")
         .select(
-          "*, master:users!order_responses_master_id_fkey(id, first_name, last_name, avatar_url)",
+          "*, master:users!order_responses_master_id_fkey(id, first_name, last_name, avatar_url, profile:master_profiles!master_profiles_user_id_fkey(rating_overall_avg, rating_overall_count))",
         )
         .eq("order_id", orderId)
         .order("created_at", { ascending: false });

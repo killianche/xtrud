@@ -11,6 +11,7 @@ import {
   DotsThree,
   Pencil,
   Phone,
+  Star,
   Trash,
   WhatsappLogo,
   X,
@@ -1151,7 +1152,14 @@ function ClientMasterResponseCard({
   rejected,
 }: ClientMasterResponseCardProps) {
   const router = useRouter();
-  const tc = useThemeColors(["ink", "mute"]);
+  const tc = useThemeColors(["ink", "mute", "warning"]);
+
+  // Рейтинг мастера (общий) — чтобы клиент сравнивал мастеров не только по цене.
+  // Показываем только когда есть хотя бы 1 отзыв (паттерн Airbnb/TaskRabbit:
+  // у новичка строки рейтинга нет вовсе, а не «Без отзывов»).
+  const ratingAvg = response.master?.profile?.rating_overall_avg ?? null;
+  const ratingCount = response.master?.profile?.rating_overall_count ?? 0;
+  const hasRating = ratingAvg != null && ratingCount > 0;
 
   // Phone (auth.users) — через RPC get_master_phone. Возвращает null если
   // мастер не активен или у него нет auth.phone.
@@ -1208,6 +1216,15 @@ function ClientMasterResponseCard({
           >
             {masterName}
           </AppText>
+          {hasRating ? (
+            <View className="mt-0.5 flex-row items-center gap-1">
+              <Star size={12} weight="fill" color={tc.warning} />
+              <AppText weight="semibold" className="text-caption text-ink">
+                {ratingAvg.toFixed(1)}
+              </AppText>
+              <AppText className="text-caption text-mute">({ratingCount})</AppText>
+            </View>
+          ) : null}
           {response.lead_time ? (
             <View className="mt-0.5 flex-row items-center gap-1">
               <Clock size={12} weight="bold" color={tc.mute} />

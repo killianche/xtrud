@@ -22,9 +22,11 @@ import { useState } from "react";
 import { Pressable, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
+import { UsernameField } from "@/features/auth/UsernameField";
 import { useAuthSession } from "@/features/auth/use-auth-session";
 import { useCompleteOnboarding } from "@/features/auth/use-complete-onboarding";
 import { useExitOnboarding } from "@/features/auth/use-exit-onboarding";
+import { setUsernameErrorMessage, useSetUsername } from "@/features/auth/use-username";
 
 export default function ClientNameScreen() {
   const insets = useSafeAreaInsets();
@@ -32,18 +34,28 @@ export default function ClientNameScreen() {
   const { session } = useAuthSession();
   const userId = session?.user?.id;
   const completeOnboarding = useCompleteOnboarding();
+  const setUsernameMut = useSetUsername();
   const { exit: exitOnboarding } = useExitOnboarding();
 
   const [firstName, setFirstName] = useState("");
+  const [usernameValue, setUsernameValue] = useState("");
+  const [usernameValid, setUsernameValid] = useState(false);
 
   const trimmed = firstName.trim();
-  const isValid = trimmed.length >= 2;
-  const isBusy = completeOnboarding.isPending;
-  const error = completeOnboarding.error?.message;
+  const nameValid = trimmed.length >= 2;
+  const canSubmit = nameValid && usernameValid && !!userId;
+  const isBusy = completeOnboarding.isPending || setUsernameMut.isPending;
+  const error = setUsernameMut.error
+    ? setUsernameErrorMessage(setUsernameMut.error.message)
+    : completeOnboarding.error?.message;
 
   const onSubmit = async () => {
-    if (!isValid || !userId || isBusy) return;
+    if (!canSubmit || !userId || isBusy) return;
     try {
+      // Сначала закрепляем юзернейм, потом завершаем онбординг. Если юзернейм
+      // успели занять между проверкой и сабмитом — RPC бросит ошибку, и онбординг
+      // не завершится (имя останется, можно поправить юзернейм).
+      await setUsernameMut.mutateAsync({ username: usernameValue, userId });
       await completeOnboarding.mutateAsync({
         userId,
         role: "client",
@@ -53,7 +65,7 @@ export default function ClientNameScreen() {
       // Подстраховка на случай если кэш не успел инвалидироваться — push явно.
       router.replace("/(tabs)" as never);
     } catch (_e) {
-      // Ошибка отображается через completeOnboarding.error в UI ниже.
+      // Ошибка отображается через error в UI ниже.
     }
   };
 
@@ -93,10 +105,20 @@ export default function ClientNameScreen() {
             autoCapitalize="words"
             autoCorrect={false}
             autoFocus
-            returnKeyType="done"
-            onSubmitEditing={onSubmit}
+            returnKeyType="next"
             editable={!isBusy}
             className="mt-2 h-12 rounded-md border border-hairline bg-canvas px-3 text-body-md text-ink"
+          />
+        </View>
+
+        {/* Юзернейм — уникальный публичный идентификатор, закрепляется за вами
+            один раз. Помогает узнавать вас независимо от номера телефона. */}
+        <View className="mt-6">
+          <UsernameField
+            value={usernameValue}
+            onChange={setUsernameValue}
+            onValidityChange={setUsernameValid}
+            editable={!isBusy}
           />
         </View>
 
@@ -111,10 +133,10 @@ export default function ClientNameScreen() {
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Продолжить"
-          disabled={!isValid || isBusy || !userId}
+          disabled={!canSubmit || isBusy}
           onPress={onSubmit}
           className={`h-12 items-center justify-center rounded-md ${
-            isValid && !isBusy && userId ? "bg-primary active:opacity-80" : "bg-surface-3"
+            canSubmit && !isBusy ? "bg-primary active:opacity-80" : "bg-surface-3"
           }`}
         >
           <AppText weight="semibold" className="text-button text-on-primary">

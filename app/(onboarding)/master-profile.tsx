@@ -1,6 +1,6 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "expo-router";
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import {
   Alert,
@@ -17,9 +17,11 @@ import {
   type MasterProfileFormValues,
   masterProfileSchema,
 } from "@/features/auth/master-profile-schema";
+import { UsernameField } from "@/features/auth/UsernameField";
 import { useAuthSession } from "@/features/auth/use-auth-session";
 import { useExitOnboarding } from "@/features/auth/use-exit-onboarding";
 import { useSubmitMasterProfile } from "@/features/auth/use-submit-master-profile";
+import { setUsernameErrorMessage, useSetUsername } from "@/features/auth/use-username";
 import { useCities } from "@/features/cities/use-cities";
 import { MasterProfileFormBody } from "@/features/master-profile/MasterProfileFormBody";
 
@@ -34,8 +36,13 @@ export default function MasterProfileScreen() {
   // фактически в полёте.
   const { isLoading: citiesLoading } = useCities();
   const submitMaster = useSubmitMasterProfile();
+  const setUsernameMut = useSetUsername();
   const scrollRef = useRef<ScrollView>(null);
   const { exit: exitOnboarding } = useExitOnboarding();
+
+  // Юзернейм — закрепляется один раз, перед сохранением профиля.
+  const [usernameValue, setUsernameValue] = useState("");
+  const [usernameValid, setUsernameValid] = useState(false);
 
   const {
     control,
@@ -65,6 +72,8 @@ export default function MasterProfileScreen() {
     async (values) => {
       if (!userId) return;
       try {
+        // Сначала закрепляем юзернейм (один раз), потом сохраняем профиль.
+        await setUsernameMut.mutateAsync({ username: usernameValue, userId });
         await submitMaster.mutateAsync({ userId, ...values });
         // Сохранили → идём на categories (2/3). Используем object-syntax
         // вместо querystring — это надёжнее в Expo Router 6+, querystring
@@ -74,8 +83,9 @@ export default function MasterProfileScreen() {
           params: { mode: "onboarding" },
         } as never);
       } catch (e) {
+        // setUsernameErrorMessage пропускает не-username ошибки как есть.
         const message =
-          e instanceof Error ? e.message : "Неизвестная ошибка сервера.";
+          e instanceof Error ? setUsernameErrorMessage(e.message) : "Неизвестная ошибка сервера.";
         console.error("[MasterProfile submit]", e);
         Alert.alert("Не удалось сохранить профиль", message);
       }
@@ -88,9 +98,9 @@ export default function MasterProfileScreen() {
     },
   );
 
-  const isBusy = submitMaster.isPending;
+  const isBusy = submitMaster.isPending || setUsernameMut.isPending;
   const submitError = submitMaster.error?.message;
-  const canSubmit = isValid && !isBusy && !!userId && !citiesLoading;
+  const canSubmit = isValid && usernameValid && !isBusy && !!userId && !citiesLoading;
 
   return (
     <KeyboardAvoidingView
@@ -119,6 +129,16 @@ export default function MasterProfileScreen() {
           errors={errors}
           isBusy={isBusy}
         />
+
+        {/* Юзернейм — уникальный публичный идентификатор, закрепляется один раз. */}
+        <View className="mt-6 px-6">
+          <UsernameField
+            value={usernameValue}
+            onChange={setUsernameValue}
+            onValidityChange={setUsernameValid}
+            editable={!isBusy}
+          />
+        </View>
 
         {submitError && (
           <View className="mt-6 px-6">

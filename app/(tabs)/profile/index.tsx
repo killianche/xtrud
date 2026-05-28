@@ -268,6 +268,12 @@ export default function ProfileScreen() {
             {fullName}
           </AppText>
 
+          {user.username ? (
+            <AppText weight="mono" className="mt-1 text-body-sm text-mute text-center">
+              @{user.username}
+            </AppText>
+          ) : null}
+
           <View className="mt-2 flex-row items-center gap-2">
             <View className="rounded-full bg-canvas-soft-2 px-2.5 py-0.5">
               <AppText weight="medium" className="text-caption text-body">

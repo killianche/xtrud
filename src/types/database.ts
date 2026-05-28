@@ -1399,6 +1399,7 @@ export type Database = {
           rating_as_client_count: number
           status: Database["public"]["Enums"]["user_status"]
           updated_at: string
+          username: string | null
         }
         Insert: {
           active_role?: Database["public"]["Enums"]["user_active_role"]
@@ -1421,6 +1422,7 @@ export type Database = {
           rating_as_client_count?: number
           status?: Database["public"]["Enums"]["user_status"]
           updated_at?: string
+          username?: string | null
         }
         Update: {
           active_role?: Database["public"]["Enums"]["user_active_role"]
@@ -1443,6 +1445,7 @@ export type Database = {
           rating_as_client_count?: number
           status?: Database["public"]["Enums"]["user_status"]
           updated_at?: string
+          username?: string | null
         }
         Relationships: [
           {
@@ -1604,6 +1607,7 @@ export type Database = {
       }
       get_response_limit_today: { Args: never; Returns: Json }
       is_current_user_admin: { Args: never; Returns: boolean }
+      is_username_available: { Args: { p_username: string }; Returns: boolean }
       log_search_query: {
         Args: { p_hits: number; p_query: string }
         Returns: undefined
@@ -1650,6 +1654,7 @@ export type Database = {
         Args: { p_l2_ids: string[] }
         Returns: undefined
       }
+      set_username: { Args: { p_username: string }; Returns: undefined }
       set_master_service_areas: {
         Args: { p_cities: string[]; p_districts: string[] }
         Returns: undefined

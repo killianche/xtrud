@@ -21,6 +21,7 @@ import { UsernameField } from "@/features/auth/UsernameField";
 import { useAuthSession } from "@/features/auth/use-auth-session";
 import { useExitOnboarding } from "@/features/auth/use-exit-onboarding";
 import { useSubmitMasterProfile } from "@/features/auth/use-submit-master-profile";
+import { useUserRecord } from "@/features/auth/use-user-record";
 import { setUsernameErrorMessage, useSetUsername } from "@/features/auth/use-username";
 import { useCities } from "@/features/cities/use-cities";
 import { MasterProfileFormBody } from "@/features/master-profile/MasterProfileFormBody";
@@ -40,9 +41,14 @@ export default function MasterProfileScreen() {
   const scrollRef = useRef<ScrollView>(null);
   const { exit: exitOnboarding } = useExitOnboarding();
 
-  // Юзернейм — закрепляется один раз, перед сохранением профиля.
+  // Юзернейм — закрепляется один раз, перед сохранением профиля. Если у юзера
+  // он УЖЕ есть (клиент стал мастером, чтобы откликнуться — путь из orders/[id]),
+  // поле не показываем и повторно не ставим (set_username бросил бы ошибку).
+  const { data: userRec } = useUserRecord(userId);
+  const hasUsername = !!userRec?.username;
   const [usernameValue, setUsernameValue] = useState("");
   const [usernameValid, setUsernameValid] = useState(false);
+  const usernameOk = hasUsername || usernameValid;
 
   const {
     control,
@@ -72,8 +78,10 @@ export default function MasterProfileScreen() {
     async (values) => {
       if (!userId) return;
       try {
-        // Сначала закрепляем юзернейм (один раз), потом сохраняем профиль.
-        await setUsernameMut.mutateAsync({ username: usernameValue, userId });
+        // Закрепляем юзернейм (один раз) — только если его ещё нет.
+        if (!hasUsername) {
+          await setUsernameMut.mutateAsync({ username: usernameValue, userId });
+        }
         await submitMaster.mutateAsync({ userId, ...values });
         // Сохранили → идём на categories (2/3). Используем object-syntax
         // вместо querystring — это надёжнее в Expo Router 6+, querystring
@@ -100,7 +108,7 @@ export default function MasterProfileScreen() {
 
   const isBusy = submitMaster.isPending || setUsernameMut.isPending;
   const submitError = submitMaster.error?.message;
-  const canSubmit = isValid && usernameValid && !isBusy && !!userId && !citiesLoading;
+  const canSubmit = isValid && usernameOk && !isBusy && !!userId && !citiesLoading;
 
   return (
     <KeyboardAvoidingView
@@ -130,15 +138,18 @@ export default function MasterProfileScreen() {
           isBusy={isBusy}
         />
 
-        {/* Юзернейм — уникальный публичный идентификатор, закрепляется один раз. */}
-        <View className="mt-6 px-6">
-          <UsernameField
-            value={usernameValue}
-            onChange={setUsernameValue}
-            onValidityChange={setUsernameValid}
-            editable={!isBusy}
-          />
-        </View>
+        {/* Юзернейм — уникальный публичный идентификатор, закрепляется один раз.
+            Не показываем, если у пользователя он уже есть. */}
+        {!hasUsername ? (
+          <View className="mt-6 px-6">
+            <UsernameField
+              value={usernameValue}
+              onChange={setUsernameValue}
+              onValidityChange={setUsernameValid}
+              editable={!isBusy}
+            />
+          </View>
+        ) : null}
 
         {submitError && (
           <View className="mt-6 px-6">

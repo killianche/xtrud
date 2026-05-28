@@ -21,6 +21,14 @@ const DEMO_PHONE_PREFIX = "+79000";
 const DEMO_PASSWORD = "xtrud";
 
 /**
+ * Отдельные «настоящие» номера, заведённые под demo-вход (email+пароль) до
+ * подключения SMS. Аккаунт владельца Руслан (@ingush) на личном номере —
+ * чтобы он мог войти в продукт сейчас. Email под капотом: 79289204029@xtrud-demo.local.
+ * После подключения SMS этот список можно убрать (номер пойдёт по обычному OTP).
+ */
+const DEMO_EXTRA_PHONES = ["+79289204029"];
+
+/**
  * P0-02 (LAUNCH_READINESS): demo-flow закрыт за env flag. По умолчанию
  * disabled. Чтобы включить локально для preview/dev — в `.env.local`:
  *   `EXPO_PUBLIC_ENABLE_DEMO=true`
@@ -36,7 +44,7 @@ function isDemoPhone(phone: string): boolean {
   if (!isDemoEnabled()) return false;
   // Сравниваем по нормализованной форме без пробелов/тире — на этом этапе
   // phone уже прошёл normalizePhone (см. features/auth/validation).
-  return phone.startsWith(DEMO_PHONE_PREFIX);
+  return phone.startsWith(DEMO_PHONE_PREFIX) || DEMO_EXTRA_PHONES.includes(phone);
 }
 
 /**

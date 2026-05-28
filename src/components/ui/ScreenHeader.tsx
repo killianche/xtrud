@@ -62,7 +62,7 @@ export interface ScreenHeaderIconAction {
 interface ScreenHeaderProps {
   title: string;
   /** Опц. подзаголовок под title — text-body-sm text-muted, mt-1.
-   *  Используется на табах вроде /chats («Общение с мастерами по…»). */
+   *  По дизайн-правилам (design-quality §G) почти не используется. */
   subtitle?: string;
   onBack?: () => void;
   /** Опц. pill-кнопка справа (Фильтры / Сохранить / Поделиться). */

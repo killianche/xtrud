@@ -9,9 +9,10 @@
  *   - Услуги + прайс (existing MasterServicesList)
  *   - Портфолио grid (existing PortfolioGrid + lightbox)
  *   - Отзывы (existing ReviewsSection)
- *   - Sticky bottom CTA «Написать в чат» (только если не свой профиль)
+ *   - Контакт-кнопки «Позвонить» + «WhatsApp» (только если не свой профиль).
+ *     In-app чата нет — модель доски объявлений, прямой контакт по телефону.
  *
- * Анон-friendly: CTA открывает LoginWall на тапе если userId == null.
+ * Анон-friendly: контакт-кнопки открывают LoginWall на тапе если userId == null.
  */
 
 import { LinearGradient } from "expo-linear-gradient";

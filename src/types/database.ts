@@ -249,64 +249,6 @@ export type Database = {
           },
         ]
       }
-      chats: {
-        Row: {
-          client_id: string
-          created_at: string
-          id: string
-          last_message_at: string | null
-          last_message_text: string | null
-          last_read_client_at: string | null
-          last_read_master_at: string | null
-          master_id: string
-          order_id: string
-        }
-        Insert: {
-          client_id: string
-          created_at?: string
-          id?: string
-          last_message_at?: string | null
-          last_message_text?: string | null
-          last_read_client_at?: string | null
-          last_read_master_at?: string | null
-          master_id: string
-          order_id: string
-        }
-        Update: {
-          client_id?: string
-          created_at?: string
-          id?: string
-          last_message_at?: string | null
-          last_message_text?: string | null
-          last_read_client_at?: string | null
-          last_read_master_at?: string | null
-          master_id?: string
-          order_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "chats_client_id_fkey"
-            columns: ["client_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "chats_master_id_fkey"
-            columns: ["master_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "chats_order_id_fkey"
-            columns: ["order_id"]
-            isOneToOne: false
-            referencedRelation: "orders"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       cities: {
         Row: {
           created_at: string
@@ -669,51 +611,6 @@ export type Database = {
           {
             foreignKeyName: "master_views_viewer_id_fkey"
             columns: ["viewer_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      messages: {
-        Row: {
-          chat_id: string
-          created_at: string
-          id: string
-          image_url: string | null
-          read_at: string | null
-          sender_id: string
-          text: string | null
-        }
-        Insert: {
-          chat_id: string
-          created_at?: string
-          id?: string
-          image_url?: string | null
-          read_at?: string | null
-          sender_id: string
-          text?: string | null
-        }
-        Update: {
-          chat_id?: string
-          created_at?: string
-          id?: string
-          image_url?: string | null
-          read_at?: string | null
-          sender_id?: string
-          text?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "messages_chat_id_fkey"
-            columns: ["chat_id"]
-            isOneToOne: false
-            referencedRelation: "chats"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "messages_sender_id_fkey"
-            columns: ["sender_id"]
             isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
@@ -1711,7 +1608,6 @@ export type Database = {
         Args: { p_hits: number; p_query: string }
         Returns: undefined
       }
-      mark_chat_read: { Args: { p_chat_id: string }; Returns: undefined }
       mark_feed_seen: { Args: never; Returns: undefined }
       mark_notifications_read: { Args: { p_ids?: string[] }; Returns: number }
       mark_order_done: { Args: { p_order_id: string }; Returns: undefined }
@@ -1760,10 +1656,6 @@ export type Database = {
       }
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }
-      start_chat_with_master: {
-        Args: { p_master_id: string; p_order_id: string }
-        Returns: string
-      }
       submit_master_review: {
         Args: { p_rating: number; p_target_id: string; p_text?: string }
         Returns: string

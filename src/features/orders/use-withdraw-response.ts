@@ -1,7 +1,7 @@
 // useWithdrawResponse — мастер отзывает свой отклик (T15 в docs/lifecycle.md).
 // Через RPC withdraw_response. Только из sent/viewed (до accept).
-// Используется в /orders/[id] (master view) и /chats/[id] — кнопка
-// «Отозвать отклик» рядом с собственным откликом.
+// Используется в /orders/[id] (master view) — кнопка «Отозвать отклик»
+// рядом с собственным откликом.
 //
 // Сторонние эффекты: push клиенту «мастер отозвал», status → withdrawn.
 

@@ -53,9 +53,13 @@ export default function PhoneScreen() {
   // в Sprint 2 — тогда восстановим useSendOtp + переход на /verify.
   const verifyOtp = useVerifyOtp();
   const [serverError, setServerError] = useState<string | null>(null);
-  // Apple/Google требуют active opt-in на согласие с PP/ToS (152-ФЗ + 5.1.1 review).
-  // Submit disabled пока не отмечено — это enforce of consent, не «disclaimer».
-  const [acceptedTerms, setAcceptedTerms] = useState(false);
+  // По умолчанию ОТМЕЧЕНО (фидбэк владельца 2026-05-29 — удобство входа).
+  // ⚠️ ВНИМАНИЕ перед публикацией в App Store / Google Play: проверка Apple
+  // (guideline 5.1.1) и 152-ФЗ требуют ACTIVE opt-in — пользователь должен сам
+  // поставить галочку, предотмеченное согласие могут отклонить. Перед сабмитом
+  // вернуть `useState(false)`. Сейчас true — осознанное решение владельца для
+  // тестового/демо-этапа.
+  const [acceptedTerms, setAcceptedTerms] = useState(true);
   // confirming = «sign-in succeeded, показываю короткий feedback и тут же
   // редиректну». Раньше после submit был мгновенный redirect, у user'а
   // создавалось впечатление «ничего не произошло» (фидбэк 2026-05-20).

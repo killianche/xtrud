@@ -2,15 +2,31 @@
  * PickerSheet — full-screen single-select picker.
  *
  * Заменяет «BottomSheet с list-ом» для выбора одной опции (город, услуга,
- * сортировка). Дизайн в духе Vercel/Linear/Poshmark/Fever:
- *   - Header: round back-button (44×44 bg-canvas-soft) + большой bold title +
- *     опциональная reset-ссылка справа (для фильтров)
+ * сортировка). Дизайн в духе Linear / StubHub / Apple settings:
+ *   - Header: большой bold title слева + (опц) reset-ссылка + close-X справа.
+ *     БЕЗ тяжёлой серой круглой кнопки-стрелки «назад» — у full-screen-выбора
+ *     естественный жест «закрыть», а не «вернуться на шаг». X — лёгкая иконка
+ *     в mute-цвете, как у Linear status-picker и StubHub venue-picker.
  *   - Hairline divider под header
  *   - (Optional) search-input в pill-form под divider'ом, если опций много
  *   - ScrollView с опциями
- *   - Каждая опция: square 32×32 для иконки (rounded-md, bg tinted) +
- *     title (semibold для selected) + subtitle (опц) + Check 20px в accent справа
- *   - Voздух 14-16 между опциями, без horizontal divider'ов
+ *   - Каждая опция: square 32×32 для иконки (rounded-md, bg tinted) + title +
+ *     subtitle (опц). Выбранная: мягкая подсветка строки (bg-canvas-soft) +
+ *     круглый filled-индикатор (bg-primary + Check в on-primary) справа.
+ *   - Воздух 14-16 между опциями, без horizontal divider'ов
+ *
+ * ── Редизайн 2026-05-29 (#160 «галочки/выделения/стрелка некрасивые») ────────
+ * Владелец: «галочки некрасивые, выделения некрасивые, стрелочка назад
+ * некрасивая». Что изменено:
+ *   1. Back-arrow в сером кружке → лёгкий close-X (mute) справа сверху.
+ *   2. Тонкий Check в accent-цвете → круглый filled-индикатор (bg-primary +
+ *      Check в on-primary) — читается дорого и однозначно, контраст 4.5:1 в
+ *      обеих темах (правило §A: bg-primary всегда с on-primary).
+ *   3. Подсветка выбранной строки: вместо перекраски label в text-accent —
+ *      мягкий bg-canvas-soft на всю строку + semibold-label в text-ink. Один
+ *      смысловой акцент (индикатор), а не два конкурирующих (цвет текста + check).
+ * Референсы: Linear status-picker (X + ink-check), StubHub venue-picker
+ * (row-tint + check), Apple Appearance-picker (grouped row-tint).
  *
  * **Dark theme fix 2026-05-15:** все inline `style={{ color: tc.ink }}` и
  * прочие color-styles переведены на NativeWind className (`text-ink`,
@@ -34,12 +50,25 @@
  *   />
  */
 
-import { Check, CaretLeft, MagnifyingGlass, X } from "phosphor-react-native";
+import { Check, MagnifyingGlass, X } from "phosphor-react-native";
 import { type ReactNode, useMemo, useState } from "react";
 import { Modal, Pressable, ScrollView, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
 import { useThemeColor } from "@/lib/use-theme-color";
+
+/**
+ * Круглый индикатор «выбрано»: bg-primary + Check в on-primary.
+ * Контраст гарантирован в обеих темах (light: тёмный круг + белая галка,
+ * dark: светлый круг + тёмная галка) — это и есть правило §A.
+ */
+function SelectedMark({ onPrimaryColor }: { onPrimaryColor: string }) {
+  return (
+    <View className="h-[22px] w-[22px] items-center justify-center rounded-full bg-primary">
+      <Check size={13} weight="bold" color={onPrimaryColor} />
+    </View>
+  );
+}
 
 export interface PickerOption {
   id: string;
@@ -84,11 +113,11 @@ export function PickerSheet({
   resetLabel = "Сбросить",
 }: PickerSheetProps) {
   const insets = useSafeAreaInsets();
-  // Только для иконок Lucide (которые требуют hex color prop) — оставляем
-  // useThemeColor. Текст / фоны / бордеры — через NativeWind className.
-  const inkColor = useThemeColor("ink");
+  // Phosphor-иконки требуют hex color prop — берём из токенов через хук
+  // (на web это CSS-var, на native — резолвленный hex). Текст / фоны / бордеры
+  // — через NativeWind className.
   const muteColor = useThemeColor("mute");
-  const accentColor = useThemeColor("accent");
+  const onPrimaryColor = useThemeColor("on-primary");
   const [query, setQuery] = useState("");
 
   const showSearch = searchable ?? options.length >= 8;
@@ -119,19 +148,10 @@ export function PickerSheet({
           maxWidth: 480,
         }}
       >
-        {/* Header: back-button + title + (optional reset) */}
-        <View className="flex-row items-center gap-2 px-3 py-2">
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Назад"
-            onPress={onClose}
-            hitSlop={8}
-            className="h-11 w-11 items-center justify-center rounded-full bg-canvas-soft active:opacity-60"
-          >
-            <CaretLeft size={24} weight="fill" color={inkColor} />
-          </Pressable>
-
-          <View className="flex-1 px-1 min-w-0">
+        {/* Header: большой title слева + (опц) reset + лёгкий close-X справа.
+            Без серой круглой кнопки-стрелки «назад» (фидбэк #160). */}
+        <View className="flex-row items-center gap-3 px-5 py-3">
+          <View className="flex-1 min-w-0">
             <AppText
               weight="bold"
               className="text-display-sm tracking-tight text-ink"
@@ -158,13 +178,23 @@ export function PickerSheet({
                 setQuery("");
               }}
               hitSlop={8}
-              className="h-9 px-3.5 rounded-pill bg-accent-soft items-center justify-center active:opacity-60"
+              className="h-9 px-3.5 rounded-pill bg-canvas-soft items-center justify-center active:opacity-60"
             >
-              <AppText weight="semibold" className="text-button text-accent">
+              <AppText weight="semibold" className="text-button text-ink">
                 {resetLabel}
               </AppText>
             </Pressable>
           ) : null}
+
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Закрыть"
+            onPress={onClose}
+            hitSlop={10}
+            className="h-9 w-9 items-center justify-center rounded-full active:bg-canvas-soft"
+          >
+            <X size={22} weight="bold" color={muteColor} />
+          </Pressable>
         </View>
 
         {/* Hairline divider под header */}
@@ -227,45 +257,45 @@ export function PickerSheet({
                   ? "bg-accent-soft"
                   : "bg-canvas-soft";
               return (
-                <Pressable
-                  key={opt.id || "__empty"}
-                  accessibilityRole="button"
-                  accessibilityLabel={opt.title}
-                  onPress={() => onSelect(opt.id)}
-                  className="flex-row items-center gap-3 px-5 py-2 active:bg-canvas-soft"
-                >
-                  {opt.icon ? (
-                    <View
-                      className={`h-8 w-8 items-center justify-center rounded-md ${
-                        isSel ? "bg-accent-soft" : tintBgClass
-                      }`}
-                    >
-                      {opt.icon}
-                    </View>
-                  ) : null}
+                <View key={opt.id || "__empty"} className="px-3">
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: isSel }}
+                    accessibilityLabel={opt.title}
+                    onPress={() => onSelect(opt.id)}
+                    className={`flex-row items-center gap-3 rounded-lg px-2 py-2.5 active:bg-canvas-soft ${
+                      isSel ? "bg-canvas-soft" : ""
+                    }`}
+                  >
+                    {opt.icon ? (
+                      <View
+                        className={`h-8 w-8 items-center justify-center rounded-md ${tintBgClass}`}
+                      >
+                        {opt.icon}
+                      </View>
+                    ) : null}
 
-                  <View className="flex-1 min-w-0">
-                    <AppText
-                      weight={isSel ? "semibold" : "medium"}
-                      className={`text-body-md ${isSel ? "text-accent" : "text-ink"}`}
-                      numberOfLines={1}
-                    >
-                      {opt.title}
-                    </AppText>
-                    {opt.subtitle ? (
+                    <View className="flex-1 min-w-0">
                       <AppText
-                        className="mt-0.5 text-caption text-mute"
+                        weight={isSel ? "semibold" : "medium"}
+                        className="text-body-md text-ink"
                         numberOfLines={1}
                       >
-                        {opt.subtitle}
+                        {opt.title}
                       </AppText>
-                    ) : null}
-                  </View>
+                      {opt.subtitle ? (
+                        <AppText
+                          className="mt-0.5 text-caption text-mute"
+                          numberOfLines={1}
+                        >
+                          {opt.subtitle}
+                        </AppText>
+                      ) : null}
+                    </View>
 
-                  {isSel ? (
-                    <Check size={20} weight="fill" color={accentColor} />
-                  ) : null}
-                </Pressable>
+                    {isSel ? <SelectedMark onPrimaryColor={onPrimaryColor} /> : null}
+                  </Pressable>
+                </View>
               );
             })
           )}

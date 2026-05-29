@@ -19,6 +19,14 @@
  * заголовков-секций над самоочевидным контролом). Countdown «до 06:00» теперь
  * тихой подписью внутри триггер-строки справа, перед caret — не отдельной
  * строкой-шапкой. Контрол стал единственным элементом блока.
+ *
+ * ── Редизайн 2026-05-29 (#160 «галочки/выделения некрасивые») ───────────────
+ * Тонкая bold-Check у выбранного варианта заменена на круглый filled-индикатор
+ * (bg-primary + Check в on-primary) — тот же визуальный язык, что у PickerSheet.
+ * Выбранная строка: мягкая подсветка bg-canvas-soft + semibold-label + круглый
+ * индикатор справа. Цветная точка статуса (AVAILABILITY_DOT) сохранена — это
+ * смысловой сигнал «зелёный = доступен / жёлтый = подождать / серый = нет».
+ * Контраст индикатора 4.5:1 в обеих темах (правило §A).
  */
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -94,11 +102,21 @@ function Dot({ color, dim }: { color: string; dim?: boolean }) {
   );
 }
 
+/** Круглый индикатор «выбрано»: bg-primary + Check в on-primary. Тот же
+ *  визуальный язык, что у PickerSheet. Контраст 4.5:1 в обеих темах (§A). */
+function SelectedMark({ onPrimaryColor }: { onPrimaryColor: string }) {
+  return (
+    <View className="h-[22px] w-[22px] items-center justify-center rounded-full bg-primary">
+      <Check size={13} weight="bold" color={onPrimaryColor} />
+    </View>
+  );
+}
+
 export function AvailabilitySwitcher({ userId }: { userId: string }) {
   const queryClient = useQueryClient();
   const { data: my } = useMyAvailability(userId);
   const setAvailability = useSetAvailability();
-  const tc = useThemeColors(["mute", "ink"]);
+  const tc = useThemeColors(["mute", "on-primary"]);
   const [open, setOpen] = useState(false);
 
   const current = effectiveStatus(my?.availability_status, my?.availability_until);
@@ -156,7 +174,7 @@ export function AvailabilitySwitcher({ userId }: { userId: string }) {
                 accessibilityState={{ selected: isActive }}
                 onPress={() => handlePick(status)}
                 disabled={setAvailability.isPending}
-                className={`h-11 flex-row items-center gap-2.5 px-3.5 active:opacity-70 ${
+                className={`h-12 flex-row items-center gap-3 px-3.5 active:bg-canvas-soft ${
                   i > 0 ? "border-t border-hairline" : ""
                 } ${isActive ? "bg-canvas-soft" : ""}`}
               >
@@ -168,7 +186,7 @@ export function AvailabilitySwitcher({ userId }: { userId: string }) {
                 >
                   {AVAILABILITY_LABELS[status]}
                 </AppText>
-                {isActive ? <Check size={18} weight="bold" color={tc.ink} /> : null}
+                {isActive ? <SelectedMark onPrimaryColor={tc["on-primary"]} /> : null}
               </Pressable>
             );
           })}

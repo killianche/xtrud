@@ -216,7 +216,7 @@ export default function EditClientScreen() {
           </View>
         </View>
         <AppText className="mt-2 px-4 text-caption text-mute">
-          Мастера не видят ваш номер до того, как вы сами это разрешите.
+          Ваш номер всегда скрыт от мастеров. Вы сами звоните тем, кто откликнулся.
         </AppText>
 
         {/* Секция «Где вы живёте» удалена 2026-05-16: личный город/район

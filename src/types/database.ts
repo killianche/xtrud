@@ -841,6 +841,7 @@ export type Database = {
           photo_urls: string[]
           picked_at: string | null
           picked_master_id: string | null
+          preferred_date: string | null
           resolution_kind: string | null
           resolved_at: string | null
           resolved_by: string | null
@@ -879,6 +880,7 @@ export type Database = {
           photo_urls?: string[]
           picked_at?: string | null
           picked_master_id?: string | null
+          preferred_date?: string | null
           resolution_kind?: string | null
           resolved_at?: string | null
           resolved_by?: string | null
@@ -917,6 +919,7 @@ export type Database = {
           photo_urls?: string[]
           picked_at?: string | null
           picked_master_id?: string | null
+          preferred_date?: string | null
           resolution_kind?: string | null
           resolved_at?: string | null
           resolved_by?: string | null
@@ -1654,11 +1657,11 @@ export type Database = {
         Args: { p_l2_ids: string[] }
         Returns: undefined
       }
-      set_username: { Args: { p_username: string }; Returns: undefined }
       set_master_service_areas: {
         Args: { p_cities: string[]; p_districts: string[] }
         Returns: undefined
       }
+      set_username: { Args: { p_username: string }; Returns: undefined }
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }
       submit_master_review: {
@@ -1713,7 +1716,12 @@ export type Database = {
         | "disputed"
         | "cancelled"
         | "expired"
-      order_urgency: "urgent" | "this_week" | "this_month" | "flexible"
+      order_urgency:
+        | "urgent"
+        | "this_week"
+        | "this_month"
+        | "flexible"
+        | "by_date"
       report_reason:
         | "spam"
         | "fraud"
@@ -1916,7 +1924,13 @@ export const Constants = {
         "cancelled",
         "expired",
       ],
-      order_urgency: ["urgent", "this_week", "this_month", "flexible"],
+      order_urgency: [
+        "urgent",
+        "this_week",
+        "this_month",
+        "flexible",
+        "by_date",
+      ],
       report_reason: [
         "spam",
         "fraud",

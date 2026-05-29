@@ -8,21 +8,24 @@
  * Owner-каждый screen решает что показывать выше и ниже формы + сам submit-логика.
  */
 
-import type { ReactNode } from "react";
+import { CalendarBlank } from "phosphor-react-native";
+import { type ReactNode, useState } from "react";
 import type { Control, FieldErrors, FieldPath } from "react-hook-form";
 import { Controller } from "react-hook-form";
 import { Pressable, TextInput, View } from "react-native";
 import { AppText } from "@/components/AppText";
 import { CategoryPicker } from "@/components/CategoryPicker";
 import { LocationPicker } from "@/features/orders/LocationPicker";
+import { OrderDateSheet } from "@/features/orders/OrderDateSheet";
 import type { CreateOrderFormValues, OrderPriceKind } from "@/features/orders/order-schema";
 import {
+  formatOrderTiming,
   orderPriceKindOptions,
   orderUrgencyOptions,
   priceKindLabel,
   urgencyLabel,
 } from "@/features/orders/order-schema";
-import { useThemeColor } from "@/lib/use-theme-color";
+import { useThemeColor, useThemeColors } from "@/lib/use-theme-color";
 import type { Tables } from "@/types/database";
 
 /**
@@ -48,6 +51,16 @@ interface OrderFormBodyProps {
   control: FormControl;
   errors: FieldErrors<CreateOrderFormValues>;
   budgetKind: CreateOrderFormValues["budgetKind"];
+  /**
+   * Точная дата (yyyy-mm-dd) когда выбран срок «К дате». Читается чипом «К дате»
+   * для отображения «К 12 июня». Источник — watch("preferredDate") в форме.
+   */
+  preferredDate: string | null;
+  /**
+   * Записать точную дату в форму (setValue("preferredDate", ...)). Пишется при
+   * выборе даты в календаре и обнуляется при выборе любого относительного срока.
+   */
+  setPreferredDate: (d: string | null) => void;
   isBusy: boolean;
   categories: Pick<Tables<"categories_l2">, "id" | "name_ru" | "icon">[] | undefined;
   cities: Pick<Tables<"cities">, "id" | "name">[] | undefined;
@@ -73,6 +86,8 @@ export function OrderFormBody({
   control,
   errors,
   budgetKind,
+  preferredDate,
+  setPreferredDate,
   isBusy,
   categories,
   cities,
@@ -81,6 +96,10 @@ export function OrderFormBody({
   photosSlot,
 }: OrderFormBodyProps) {
   const mutedSoftColor = useThemeColor("muted-soft");
+  // Цвета иконки chip «К дате» — резолвленные токены (SVG красится не className).
+  const { accent: accentColor, ink: inkColor } = useThemeColors(["accent", "ink"]);
+  // Видимость календаря «К дате».
+  const [dateSheetOpen, setDateSheetOpen] = useState(false);
   // Wizard 2 шага: step 1 = описание + категория на одном экране, step 2 = бюджет/город.
   const showContent = step === undefined || step === 1;
   const showCategory = step === undefined || step === 1;
@@ -232,34 +251,97 @@ export function OrderFormBody({
           <Controller
             control={control}
             name="urgency"
-            render={({ field: { value, onChange } }) => (
-              <View className="mt-2 flex-row flex-wrap gap-2">
-                {orderUrgencyOptions.map((u) => {
-                  const selected = value === u;
-                  return (
+            render={({ field: { value, onChange } }) => {
+              // «К дате» выбран, когда urgency === "by_date".
+              const byDateSelected = value === "by_date";
+              return (
+                <>
+                  <View className="mt-2 flex-row flex-wrap gap-2">
+                    {/* 4 относительных срока. Выбор любого — mutex: обнуляет точную
+                        дату (правило §E), иначе остался бы «и срочно, и 12 июня». */}
+                    {orderUrgencyOptions.map((u) => {
+                      const selected = value === u;
+                      return (
+                        <Pressable
+                          key={u}
+                          accessibilityRole="button"
+                          accessibilityState={{ selected }}
+                          disabled={isBusy}
+                          onPress={() => {
+                            onChange(u);
+                            setPreferredDate(null);
+                          }}
+                          className={`h-11 items-center justify-center rounded-pill border px-4 ${
+                            selected
+                              ? "border-accent bg-accent-soft"
+                              : "border-hairline bg-canvas active:opacity-70"
+                          }`}
+                        >
+                          <AppText
+                            weight="medium"
+                            className={`text-body-md ${selected ? "text-accent" : "text-ink"}`}
+                          >
+                            {urgencyLabel(u)}
+                          </AppText>
+                        </Pressable>
+                      );
+                    })}
+
+                    {/* 5-й вариант — «К дате»: открывает календарь. Если дата уже
+                        выбрана — показываем «К 12 июня» и активный стиль. */}
                     <Pressable
-                      key={u}
                       accessibilityRole="button"
-                      accessibilityState={{ selected }}
+                      accessibilityState={{ selected: byDateSelected }}
+                      accessibilityLabel="Выбрать дату"
                       disabled={isBusy}
-                      onPress={() => onChange(u)}
-                      className={`h-11 items-center justify-center rounded-pill border px-4 ${
-                        selected
+                      onPress={() => setDateSheetOpen(true)}
+                      className={`h-11 flex-row items-center gap-1.5 rounded-pill border px-4 ${
+                        byDateSelected
                           ? "border-accent bg-accent-soft"
                           : "border-hairline bg-canvas active:opacity-70"
                       }`}
                     >
+                      <CalendarBlank
+                        size={18}
+                        weight={byDateSelected ? "fill" : "bold"}
+                        color={byDateSelected ? accentColor : inkColor}
+                      />
                       <AppText
                         weight="medium"
-                        className={`text-body-md ${selected ? "text-accent" : "text-ink"}`}
+                        className={`text-body-md ${byDateSelected ? "text-accent" : "text-ink"}`}
                       >
-                        {urgencyLabel(u)}
+                        {byDateSelected
+                          ? formatOrderTiming("by_date", preferredDate)
+                          : "К дате"}
                       </AppText>
                     </Pressable>
-                  );
-                })}
-              </View>
-            )}
+                  </View>
+
+                  {/* Ошибки валидации сроков. Точная дата не выбрана при by_date,
+                      либо срок вообще не выбран. */}
+                  {errors.preferredDate ? (
+                    <AppText weight="medium" className="mt-2 text-caption text-error">
+                      {errors.preferredDate.message}
+                    </AppText>
+                  ) : errors.urgency ? (
+                    <AppText weight="medium" className="mt-2 text-caption text-error">
+                      {errors.urgency.message}
+                    </AppText>
+                  ) : null}
+
+                  {/* Календарь «К дате». Выбор даты: ставим срок by_date + дату. */}
+                  <OrderDateSheet
+                    visible={dateSheetOpen}
+                    value={preferredDate}
+                    onClose={() => setDateSheetOpen(false)}
+                    onSelect={(iso) => {
+                      onChange("by_date");
+                      setPreferredDate(iso);
+                    }}
+                  />
+                </>
+              );
+            }}
           />
         </View>
       )}

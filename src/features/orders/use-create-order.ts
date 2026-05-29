@@ -27,6 +27,8 @@ export interface CreateOrderInput {
   budgetKind: OrderPriceKind;
   /** Одно числовое значение в ₽. NULL для negotiable. */
   budgetValue: number | null;
+  /** Точная дата (yyyy-mm-dd) для urgency='by_date'. NULL для остальных. */
+  preferredDate?: string | null;
   /** Публичные URL фото заказа (до 5, обложка = [0]). Пусто = без фото. */
   photoUrls?: string[];
 }
@@ -58,6 +60,8 @@ export function useCreateOrder() {
             : input.cityId,
         district: input.district || null,
         urgency: input.urgency,
+        // Дата только для «к дате», иначе NULL (даже если что-то прилетело).
+        preferred_date: input.urgency === "by_date" ? (input.preferredDate ?? null) : null,
         budget_kind: input.budgetKind,
         budget_value: input.budgetKind === "negotiable" ? null : input.budgetValue,
         photo_urls: input.photoUrls && input.photoUrls.length > 0 ? input.photoUrls : [],

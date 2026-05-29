@@ -30,7 +30,7 @@ import { AppText } from "@/components/AppText";
 import type { OrderStatusValue } from "@/components/OrderStatusBadge";
 import { cdnBlur, cdnImage } from "@/lib/image-cdn";
 import { getCategoryIcon } from "@/lib/category-icons";
-import { formatPrice, urgencyLabel } from "@/features/orders/order-schema";
+import { formatOrderTiming, formatPrice, urgencyLabel } from "@/features/orders/order-schema";
 import type { OrderPriceKind, OrderUrgency } from "@/features/orders/use-create-order";
 import { useThemeColors } from "@/lib/use-theme-color";
 
@@ -49,6 +49,8 @@ export interface OrderRowProps {
   cityName: string;
   district?: string | null;
   urgency: OrderUrgency;
+  /** Точная дата (yyyy-mm-dd) для urgency='by_date' — плашка покажет «К 12 июня». */
+  preferredDate?: string | null;
   responsesCount: number;
   createdAt: string;
   status?: OrderStatusValue;
@@ -117,11 +119,24 @@ const DIMMED_STATUS: Partial<Record<OrderStatusValue, string>> = {
   expired: "Истекла",
 };
 
-function pillFor(status: OrderStatusValue | undefined, urgency: OrderUrgency): PillStyle {
+function pillFor(
+  status: OrderStatusValue | undefined,
+  urgency: OrderUrgency,
+  preferredDate?: string | null,
+): PillStyle {
   // 1) Закрытые/неактивные статусы → нейтральная плашка со статусом.
   if (status && DIMMED_STATUS[status]) {
     return {
       label: DIMMED_STATUS[status] as string,
+      bgClass: "bg-surface-2",
+      textClass: "text-mute",
+      dotClass: "bg-muted-soft",
+    };
+  }
+  // 2a) Точная дата → нейтральная плашка с датой («К 12 июня»).
+  if (urgency === "by_date") {
+    return {
+      label: formatOrderTiming("by_date", preferredDate),
       bgClass: "bg-surface-2",
       textClass: "text-mute",
       dotClass: "bg-muted-soft",
@@ -175,7 +190,7 @@ export function OrderRow(props: OrderRowProps) {
         textClass: "text-mute",
         dotClass: "bg-muted-soft",
       }
-    : pillFor(props.status, props.urgency);
+    : pillFor(props.status, props.urgency, props.preferredDate);
   // Кнопка «Откликнуться» — только в ленте поиска и только если ещё не откликнулись.
   const showButton = !!props.showRespondButton && !props.alreadyResponded;
 

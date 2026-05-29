@@ -137,6 +137,7 @@ export default function MyResponsesScreen() {
                     }
                     district={r.order.district}
                     urgency={r.order.urgency}
+                    preferredDate={r.order.preferred_date}
                     responsesCount={r.order.responses_count}
                     createdAt={r.response.created_at}
                     status={r.order.status}

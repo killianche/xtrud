@@ -21,7 +21,13 @@ export { villagesByDistrict };
 export const findDistrictByVillage = _findDistrictByVillage;
 export const isDistrict = (value: string): boolean => isDistrictName(value);
 
+// Базовые относительные сроки — рендерятся chip-кнопками в форме «Сроки».
 export const orderUrgencyOptions = ["urgent", "this_week", "this_month", "flexible"] as const;
+
+// Полный набор значений urgency в БД (enum order_urgency). `by_date` — это
+// «к конкретной дате»: рендерится отдельной chip-кнопкой, открывающей календарь
+// (точная дата хранится в orders.preferred_date). Добавлен 2026-05-29.
+export type OrderUrgencyValue = (typeof orderUrgencyOptions)[number] | "by_date";
 
 /**
  * Способ задания цены — соответствует enum `order_price_kind` в БД.
@@ -37,7 +43,7 @@ export const orderUrgencyOptions = ["urgent", "this_week", "this_month", "flexib
 export const orderPriceKindOptions = ["fixed", "from", "up_to", "negotiable"] as const;
 export type OrderPriceKind = (typeof orderPriceKindOptions)[number];
 
-export function urgencyLabel(u: (typeof orderUrgencyOptions)[number]): string {
+export function urgencyLabel(u: OrderUrgencyValue): string {
   switch (u) {
     case "urgent":
       return "Срочно";
@@ -47,7 +53,36 @@ export function urgencyLabel(u: (typeof orderUrgencyOptions)[number]): string {
       return "В этом месяце";
     case "flexible":
       return "Не срочно";
+    case "by_date":
+      return "К дате";
   }
+}
+
+/**
+ * Форматирует точную дату заказа «2026-06-12» → «12 июня». Принимает ISO-дату
+ * (yyyy-mm-dd) из колонки preferred_date. Добавляем T00:00:00, чтобы не уехать
+ * на день назад из-за таймзоны при парсинге голой даты.
+ */
+export function formatPreferredDate(iso: string): string {
+  const d = new Date(`${iso}T00:00:00`);
+  return new Intl.DateTimeFormat("ru-RU", {
+    day: "numeric",
+    month: "long",
+  }).format(d);
+}
+
+/**
+ * Единый показ срока заказа в карточках/детали. Для by_date с известной датой —
+ * «К 12 июня», иначе обычная относительная метка («Срочно», «На неделе»…).
+ */
+export function formatOrderTiming(
+  urgency: OrderUrgencyValue,
+  preferredDate: string | null | undefined,
+): string {
+  if (urgency === "by_date") {
+    return preferredDate ? `К ${formatPreferredDate(preferredDate)}` : "К дате";
+  }
+  return urgencyLabel(urgency);
 }
 
 /** Короткий лейбл для chip-кнопки в форме. */
@@ -102,10 +137,12 @@ export const createOrderSchema = z
     // «Не срочно / Договорная» и отбивало мастеров. Теперь null → chip-row
     // изначально пустой, submit заблокирован пока пользователь не выберет.
     // Валидация «оба обязательны» — в superRefine ниже.
-    urgency: z.enum(orderUrgencyOptions).nullable(),
+    urgency: z.enum([...orderUrgencyOptions, "by_date"]).nullable(),
     budgetKind: z.enum(orderPriceKindOptions).nullable(),
     /** Одно числовое значение цены. NULL для negotiable. */
     budgetValue: z.number().int().min(0).nullable(),
+    /** Точная дата (yyyy-mm-dd) когда urgency === "by_date". Иначе null. */
+    preferredDate: z.string().nullable(),
   })
   .superRefine((val, ctx) => {
     // Локация обязательна — должен быть либо город (включая "all"=Вся
@@ -130,6 +167,14 @@ export const createOrderSchema = z
         code: z.ZodIssueCode.custom,
         path: ["budgetKind"],
         message: "Выберите тип цены",
+      });
+    }
+    // Выбран срок «К дате», но дата не указана — блокируем submit.
+    if (val.urgency === "by_date" && !val.preferredDate) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["preferredDate"],
+        message: "Выберите дату",
       });
     }
   });

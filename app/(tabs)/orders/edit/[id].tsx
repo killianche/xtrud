@@ -76,6 +76,7 @@ export default function EditOrderScreen() {
     handleSubmit,
     watch,
     reset,
+    setValue,
     formState: { errors, isValid },
   } = useForm<CreateOrderFormValues>({
     resolver: zodResolver(createOrderSchema),
@@ -89,6 +90,7 @@ export default function EditOrderScreen() {
       urgency: "flexible",
       budgetKind: "negotiable",
       budgetValue: null,
+      preferredDate: null,
     },
     mode: "onChange",
   });
@@ -108,6 +110,7 @@ export default function EditOrderScreen() {
       urgency: order.urgency,
       budgetKind: order.budget_kind,
       budgetValue: order.budget_value,
+      preferredDate: order.preferred_date ?? null,
     });
     // Существующие фото → в picker как remote-элементы (width/height неизвестны,
     // не нужны: их не пересжимаем). Порядок сохраняем (обложка = индекс 0).
@@ -164,6 +167,7 @@ export default function EditOrderScreen() {
         cityId: values.cityId,
         district: values.district,
         urgency: values.urgency,
+        preferredDate: values.preferredDate,
         budgetKind: values.budgetKind,
         budgetValue: values.budgetKind === "negotiable" ? null : values.budgetValue,
         photoUrls,
@@ -240,6 +244,8 @@ export default function EditOrderScreen() {
             control={control}
             errors={errors}
             budgetKind={budgetKind}
+            preferredDate={watch("preferredDate")}
+            setPreferredDate={(d) => setValue("preferredDate", d, { shouldValidate: true })}
             isBusy={isBusy}
             categories={categories}
             cities={cities}

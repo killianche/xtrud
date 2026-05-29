@@ -103,6 +103,7 @@ export default function NewOrderScreen() {
       urgency: draft.urgency ?? null,
       budgetKind: draft.budgetKind ?? null,
       budgetValue: draft.budgetValue ?? null,
+      preferredDate: draft.preferredDate ?? null,
     },
     mode: "onChange",
   });
@@ -173,6 +174,7 @@ export default function NewOrderScreen() {
         cityId: values.cityId,
         district: values.district,
         urgency: values.urgency,
+        preferredDate: values.preferredDate,
         budgetKind: values.budgetKind,
         budgetValue: values.budgetKind === "negotiable" ? null : values.budgetValue,
         photoUrls,
@@ -308,6 +310,8 @@ export default function NewOrderScreen() {
           control={control}
           errors={errors}
           budgetKind={budgetKind}
+          preferredDate={watch("preferredDate")}
+          setPreferredDate={(d) => setValue("preferredDate", d, { shouldValidate: true })}
           isBusy={isBusy}
           categories={categories}
           cities={cities}

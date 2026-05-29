@@ -85,6 +85,7 @@ export function MasterUrgentTodaySection({
             cityName={o.city?.name ?? o.city_id ?? "Вся Ингушетия"}
             district={o.district}
             urgency={o.urgency}
+            preferredDate={o.preferred_date}
             responsesCount={o.responses_count}
             createdAt={o.created_at}
             status={o.status}

@@ -41,10 +41,10 @@ import { BottomSheet, ScreenHeader } from "@/components/ui";
 import { OrderPhotoCarousel } from "@/features/orders/OrderPhotoCarousel";
 import { useRejectResponse } from "@/features/orders/use-reject-response";
 import {
+  formatOrderTiming,
   formatPrice,
   orderPriceKindOptions,
   priceKindLabel,
-  urgencyLabel,
 } from "@/features/orders/order-schema";
 import { type CancelReason, useCancelOrder } from "@/features/orders/use-cancel-order";
 import { useDeleteOrder } from "@/features/orders/use-delete-order";
@@ -858,7 +858,7 @@ function OrderInfoBlock({ order, isOwner }: OrderInfoBlockProps) {
             weight={isUrgent ? "semibold" : "regular"}
             className={`text-body-sm ${isUrgent ? "text-error-deep" : "text-mute"}`}
           >
-            {urgencyLabel(order.urgency)}
+            {formatOrderTiming(order.urgency, order.preferred_date)}
           </AppText>
         </View>
         <AppText className="text-caption text-muted-soft">·</AppText>

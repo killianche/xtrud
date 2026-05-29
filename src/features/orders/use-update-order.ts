@@ -26,6 +26,8 @@ export interface UpdateOrderInput {
   budgetKind: Database["public"]["Enums"]["order_price_kind"];
   /** Одно числовое значение в ₽. NULL для negotiable. */
   budgetValue: number | null;
+  /** Точная дата (yyyy-mm-dd) для urgency='by_date'. NULL для остальных. */
+  preferredDate?: string | null;
   /**
    * Итоговый список URL фото (обложка = индекс 0). Уже включает и оставленные
    * старые фото, и публичные URL только что загруженных новых — экран edit
@@ -57,6 +59,7 @@ export function useUpdateOrder() {
             : input.cityId,
         district: input.district || null,
         urgency: input.urgency,
+        preferred_date: input.urgency === "by_date" ? (input.preferredDate ?? null) : null,
         budget_kind: input.budgetKind,
         budget_value: input.budgetKind === "negotiable" ? null : input.budgetValue,
       };

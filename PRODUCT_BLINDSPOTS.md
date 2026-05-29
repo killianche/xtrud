@@ -1,5 +1,12 @@
 # PRODUCT_BLINDSPOTS.md — продуктовые, UX/UI и инженерные пробелы xtrud
 
+> ⚠️ **Контекст устарел частично.** Документ написан под модель с чатом и
+> lifecycle сделки. Сейчас продукт — упрощённая **classifieds-модель** (без чата,
+> без выбора мастера/«в работе», без спора). Сценарии про чат/переписку/
+> outbox-очередь сообщений — не актуальны (фича удалена). Актуальная модель —
+> CLAUDE.md «🧭 Актуальная модель продукта» + `docs/SIMPLE_FLOW.md`. Остальные
+> слепые зоны (empty-states, offline, edge-cases форм) по-прежнему полезны.
+
 > **Жанр документа:** разбор слепых зон, которые не закрыты в `PROJECT_MAP.md`, `DESIGN_SYSTEM.md`, `CROSS_PLATFORM_RULES.md`, `CATEGORIES_AND_PROFILES.md`. Без дублирования `AUDIT.md` (риски/cold start) и `COMPETITOR_INSIGHTS.md` (бенчмарки). Только продукт + UX + код.
 > **Аудитория:** владелец-соло + будущие AI-сессии.
 > **Стек:** Expo SDK 52+, Expo Router v4, NativeWind 4, Zustand + TanStack Query v5, Supabase, Reanimated 3.

@@ -9,20 +9,23 @@
 - **Стили:** NativeWind v4 (Tailwind для RN+web), тёмная тема через class strategy
 - **State:** Zustand (клиент) + TanStack Query (сервер)
 - **Формы:** React Hook Form + Zod
-- **Шрифт:** Inter (через `@expo-google-fonts/inter`)
-- **Иконки:** lucide-react-native
+- **Шрифт:** системный (SF Pro / Segoe / Roboto) — Geist/Inter убраны 2026-05-23
+- **Иконки:** Phosphor (`phosphor-react-native`); Lucide — legacy, в новом коде не использовать
+- **Отслеживание сбоев:** Sentry (`src/lib/sentry.ts`, активен при `EXPO_PUBLIC_SENTRY_DSN`)
 - **Lint/format:** Biome 2.x
-- **Деплой:** EAS Build (mobile), Vercel/Cloudflare Pages (web)
+- **Деплой:** web → `bash deploy/web.sh` (сборка `scripts/build-web-local.mjs` → VPS, https://xtrud.alanbani.ru/). Mobile (EAS Build) — позже.
 
 ## Документация
 
-- [CLAUDE.md](CLAUDE.md) — точка входа для AI-агентов, контекст проекта, правила инфры
-- [STATUS.md](STATUS.md) — текущее состояние, очередь задач, история решений
-- [PROJECT_MAP.md](PROJECT_MAP.md) — функциональная карта продукта
-- [DESIGN_SYSTEM.md](DESIGN_SYSTEM.md) — токены, компоненты, темы
+- [CLAUDE.md](CLAUDE.md) — точка входа для AI-агентов: контекст, правила инфры и **«🧭 Актуальная модель продукта»** (что есть / чего нет)
+- [STATUS.md](STATUS.md) — текущее состояние (снимок вверху), история решений
+- [docs/SIMPLE_FLOW.md](docs/SIMPLE_FLOW.md) — текущая модель (classifieds: отклик + звонок/WhatsApp, без чата/lifecycle)
+- [PROJECT_MAP.md](PROJECT_MAP.md) — функциональная карта (⚠️ концепт-видение, часть удалена — см. CLAUDE.md)
+- [DESIGN.md](DESIGN.md) — дизайн-система: токены, цвета, типографика
+- [UI_PATTERNS.md](UI_PATTERNS.md) — кук-бук экранов (читать перед версткой)
 - [CROSS_PLATFORM_RULES.md](CROSS_PLATFORM_RULES.md) — правила одинакового UI на iOS/Android/web
 - [CATEGORIES_AND_PROFILES.md](CATEGORIES_AND_PROFILES.md) — таксономия, профили, схема БД
-- [AUDIT.md](AUDIT.md) и [PRODUCT_BLINDSPOTS.md](PRODUCT_BLINDSPOTS.md) — риски и грабли
+- [PRODUCT_BLINDSPOTS.md](PRODUCT_BLINDSPOTS.md) — риски и грабли (⚠️ частично под старую модель)
 - [.claude/rules/](.claude/rules/) — детальные правила работы AI-агентов
 
 ## Структура
@@ -65,10 +68,16 @@ cp .env.example .env.local
 # Открыть .env.local и вписать EXPO_PUBLIC_SUPABASE_URL и EXPO_PUBLIC_SUPABASE_ANON_KEY.
 
 # 3. Запустить dev:
-npm run start         # Expo dev server, выбрать платформу из терминала
+npm run start         # Expo dev server (mobile), выбрать платформу из терминала
 npm run ios           # iOS Simulator (нужен Xcode)
 npm run android       # Android Emulator (нужен Android Studio)
-npm run web           # http://localhost:8081
+
+# ⚠️ WEB: `npm run web` (expo start --web) СЛОМАН в SDK 54 (import.meta → белый
+# экран). Для web используй watch-сборку:
+npm run web:dev       # expo export + патч + serve dist → http://localhost:8082 (F5 для обновления)
+npm run web:build     # одноразовая prod-сборка в dist/
+# Примечание: AI-агенты запускают web ТОЛЬКО через Claude Preview MCP
+# (preview_start name "xtrud-web"), не через Bash — см. .claude/rules/preview-rules.md.
 
 # Проверки:
 npm run typecheck     # tsc --noEmit

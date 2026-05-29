@@ -25,9 +25,12 @@ import { useThemeColors } from "@/lib/use-theme-color";
 interface UsernameFieldProps {
   value: string;
   onChange: (next: string) => void;
-  /** Сообщает родителю: формат корректен И юзернейм свободен. */
+  /** Сообщает родителю: формат корректен И юзернейм свободен (или это свой текущий). */
   onValidityChange?: (valid: boolean) => void;
   editable?: boolean;
+  /** Текущий сохранённый юзернейм (режим редактирования) — если value равен ему,
+   *  считаем валидным без проверки и показываем нейтральную подсказку. */
+  currentUsername?: string | null;
 }
 
 export function UsernameField({
@@ -35,21 +38,29 @@ export function UsernameField({
   onChange,
   onValidityChange,
   editable = true,
+  currentUsername,
 }: UsernameFieldProps) {
   const tc = useThemeColors(["success", "error", "mute"]);
   const formatValid = isUsernameFormatValid(value);
+  // value не изменился относительно текущего сохранённого — это «ваш юзернейм».
+  const isUnchanged =
+    !!currentUsername && normalizeUsername(value) === normalizeUsername(currentUsername);
   const { available, isChecking } = useUsernameAvailability(value);
 
-  const isFree = formatValid && available === true;
-  const isTaken = formatValid && available === false && !isChecking;
+  const isFree = !isUnchanged && formatValid && available === true;
+  const isTaken = !isUnchanged && formatValid && available === false && !isChecking;
+  // Валидно для родителя: либо это свой текущий, либо новый свободный.
+  const isValidForParent = isUnchanged || isFree;
 
   useEffect(() => {
-    onValidityChange?.(isFree);
-  }, [isFree, onValidityChange]);
+    onValidityChange?.(isValidForParent);
+  }, [isValidForParent, onValidityChange]);
 
   // Состояние подсказки под полем.
   let hint: { text: string; tone: "mute" | "success" | "error" } | null = null;
-  if (value.length > 0 && !formatValid) {
+  if (isUnchanged) {
+    hint = { text: "Это ваш текущий юзернейм", tone: "mute" };
+  } else if (value.length > 0 && !formatValid) {
     hint = {
       text: `Минимум ${USERNAME_MIN} символа. Можно латиницу, цифры, точку и _`,
       tone: "mute",
@@ -57,7 +68,7 @@ export function UsernameField({
   } else if (formatValid && isChecking) {
     hint = { text: "Проверяем…", tone: "mute" };
   } else if (isFree) {
-    hint = { text: "Свободно — закрепим за вами", tone: "success" };
+    hint = { text: "Свободно", tone: "success" };
   } else if (isTaken) {
     hint = { text: "Уже занято — попробуйте другой", tone: "error" };
   }
@@ -102,7 +113,7 @@ export function UsernameField({
           className="ml-1 h-12 flex-1 text-body-md text-ink"
         />
         {/* Статус-иконка справа. */}
-        {formatValid && isChecking ? (
+        {!isUnchanged && formatValid && isChecking ? (
           <ActivityIndicator size="small" color={tc.mute} />
         ) : isFree ? (
           <Check size={18} weight="bold" color={tc.success} />

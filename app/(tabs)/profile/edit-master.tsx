@@ -8,7 +8,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQuery } from "@tanstack/react-query";
 import { useFocusEffect, useRouter } from "expo-router";
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import {
   ActivityIndicator,
@@ -32,6 +32,8 @@ import { useAuthSession } from "@/features/auth/use-auth-session";
 import { useUserRecord } from "@/features/auth/use-user-record";
 import { useCities } from "@/features/cities/use-cities";
 import { MasterProfileFormBody } from "@/features/master-profile/MasterProfileFormBody";
+import { UsernameField } from "@/features/auth/UsernameField";
+import { setUsernameErrorMessage, useSetUsername } from "@/features/auth/use-username";
 import { useUpdateMasterProfile } from "@/features/master-profile/use-update-master-profile";
 import { ServiceAreasSection } from "@/features/master-profile/ServiceAreasSection";
 import { supabase } from "@/lib/supabase";
@@ -49,6 +51,12 @@ export default function EditMasterScreen() {
   const { data: masterProfile, isLoading: profileLoading } = useMyMasterProfile(userId);
   const { data: cities, isLoading: citiesLoading } = useCities();
   const updateMaster = useUpdateMasterProfile();
+  const setUsernameMut = useSetUsername();
+
+  // Юзернейм — отдельное состояние (не часть react-hook-form). Префилл из user.
+  const [usernameValue, setUsernameValue] = useState("");
+  const [usernameValid, setUsernameValid] = useState(true);
+  const usernameChanged = (usernameValue ?? "") !== (user?.username ?? "");
 
   // Скрываем TabBar при редактировании профиля — full-screen форма с длинным
   // списком полей не должна перекрываться нижним меню (фидбэк user 2026-05-15
@@ -104,6 +112,7 @@ export default function EditMasterScreen() {
       contactPhone:
         typeof contactPhoneFromDb === "string" ? contactPhoneFromDb : "",
     });
+    setUsernameValue(user.username ?? "");
   }, [user, masterProfile, reset]);
 
   // safeBack — fallback /(tabs)/profile, потому что edit-master открывается
@@ -113,15 +122,25 @@ export default function EditMasterScreen() {
   const onSubmit = handleSubmit(async (values) => {
     if (!userId) return;
     try {
+      // Сначала юзернейм (если менялся), потом профиль.
+      if (usernameChanged && usernameValue.trim().length > 0) {
+        await setUsernameMut.mutateAsync({ username: usernameValue, userId });
+      }
       await updateMaster.mutateAsync({ userId, ...values });
       goBack();
-    } catch (_e) {
-      // updateMaster.error
+    } catch (e) {
+      Alert.alert(
+        "Не удалось сохранить",
+        e instanceof Error ? setUsernameErrorMessage(e.message) : "Ошибка сервера",
+      );
     }
   });
 
-  const isBusy = updateMaster.isPending;
+  const isBusy = updateMaster.isPending || setUsernameMut.isPending;
   const submitError = updateMaster.error?.message;
+  // Кнопка активна, если форма валидна И (поменялись данные формы ИЛИ юзернейм),
+  // и юзернейм валиден.
+  const canSave = isValid && usernameValid && (isDirty || usernameChanged) && !isBusy && !citiesLoading;
 
   return (
     <KeyboardAvoidingView
@@ -191,6 +210,17 @@ export default function EditMasterScreen() {
             isBusy={isBusy}
           />
 
+          {/* Юзернейм — уникальный публичный @идентификатор, можно менять. */}
+          <View className="mt-6 px-6">
+            <UsernameField
+              value={usernameValue}
+              onChange={setUsernameValue}
+              onValidityChange={setUsernameValid}
+              currentUsername={user.username ?? null}
+              editable={!isBusy}
+            />
+          </View>
+
           {/* «Прайс-лист» (MasterServicesSection) удалён из редактора профиля
               по фидбэку user 2026-05-15: «прайс-лист отсюда полностью убрать,
               у нас есть отдельный блок Услуги и цены, там всё это записывается».
@@ -213,12 +243,10 @@ export default function EditMasterScreen() {
           <View className="mt-8 px-6">
             <Pressable
               accessibilityRole="button"
-              disabled={!isValid || !isDirty || isBusy || citiesLoading}
+              disabled={!canSave}
               onPress={onSubmit}
               className={`h-12 items-center justify-center rounded-md ${
-                isValid && isDirty && !isBusy && !citiesLoading
-                  ? "bg-primary active:opacity-80"
-                  : "bg-surface-3"
+                canSave ? "bg-primary active:opacity-80" : "bg-surface-3"
               }`}
             >
               <AppText weight="semibold" className="text-button text-on-primary">

@@ -25,8 +25,10 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
+import { UsernameField } from "@/features/auth/UsernameField";
 import { useAuthSession } from "@/features/auth/use-auth-session";
 import { useUserRecord } from "@/features/auth/use-user-record";
+import { setUsernameErrorMessage, useSetUsername } from "@/features/auth/use-username";
 import { formatPhoneMask } from "@/features/auth/validation";
 import { ChangePhoneSheet } from "@/features/profile/ChangePhoneSheet";
 import { useUpdateMyProfile } from "@/features/profile/use-update-my-profile";
@@ -42,12 +44,15 @@ export default function EditClientScreen() {
   const { data: user } = useUserRecord(userId);
   const { data: userPrivate } = useUserPrivate(userId);
   const update = useUpdateMyProfile(userId);
+  const setUsernameMut = useSetUsername();
   const tc = useThemeColors(["ink", "mute", "muted-soft", "accent"]);
   // safeBack — fallback /(tabs)/profile, потому что edit-client открывается
   // из /profile, и при cross-stack push'е expo-router теряет history.
   const goBack = useSafeBack("/(tabs)/profile" as const);
 
   const [firstName, setFirstName] = useState("");
+  const [usernameValue, setUsernameValue] = useState("");
+  const [usernameValid, setUsernameValid] = useState(true);
   const [didInit, setDidInit] = useState(false);
   const [changePhoneOpen, setChangePhoneOpen] = useState(false);
 
@@ -55,26 +60,31 @@ export default function EditClientScreen() {
   useEffect(() => {
     if (!user || didInit) return;
     setFirstName(user.first_name ?? "");
+    setUsernameValue(user.username ?? "");
     setDidInit(true);
   }, [user, didInit]);
 
   // Фамилия убрана 2026-05-29 — везде только имя.
-  const isDirty = didInit && (firstName ?? "") !== (user?.first_name ?? "");
+  const nameChanged = didInit && (firstName ?? "") !== (user?.first_name ?? "");
+  const usernameChanged = didInit && (usernameValue ?? "") !== (user?.username ?? "");
+  const isDirty = nameChanged || usernameChanged;
 
-  const canSave = firstName.trim().length >= 2 && isDirty && !update.isPending;
+  const canSave =
+    firstName.trim().length >= 2 && usernameValid && isDirty && !update.isPending && !setUsernameMut.isPending;
 
-  const onSave = () => {
+  const onSave = async () => {
     if (!canSave) return;
-    update.mutate(
-      {
-        first_name: firstName,
-        // city_id / district 2026-05-16: не сохраняем — поле UI убрано.
-      },
-      {
-        onSuccess: () => goBack(),
-        onError: (e) => Alert.alert("Не удалось сохранить", e.message),
-      },
-    );
+    try {
+      // Сначала юзернейм (если менялся), потом имя.
+      if (usernameChanged && usernameValue.trim().length > 0) {
+        await setUsernameMut.mutateAsync({ username: usernameValue, userId: userId ?? "" });
+      }
+      await update.mutateAsync({ first_name: firstName });
+      goBack();
+    } catch (e) {
+      const msg = e instanceof Error ? setUsernameErrorMessage(e.message) : "Ошибка";
+      Alert.alert("Не удалось сохранить", msg);
+    }
   };
 
   const onCancel = () => {
@@ -158,6 +168,17 @@ export default function EditClientScreen() {
             Имя — минимум 2 символа.
           </AppText>
         ) : null}
+
+        {/* Юзернейм — уникальный публичный @идентификатор, можно менять. */}
+        <View className="mt-6 px-4">
+          <UsernameField
+            value={usernameValue}
+            onChange={setUsernameValue}
+            onValidityChange={setUsernameValid}
+            currentUsername={user?.username ?? null}
+            editable={!update.isPending && !setUsernameMut.isPending}
+          />
+        </View>
 
         {/* ============================================================
             Секция «КОНТАКТ» — номер телефона (read-only display + change-flow).

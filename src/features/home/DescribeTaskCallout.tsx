@@ -22,9 +22,9 @@
  *   - v3: near-black bounded карточка (#161616) + 3D clipboard 132px (отвергнута).
  * Откат — `git log` по этому файлу / app/(tabs)/index.tsx.
  *
- * Фото: `order-bg.jpg` — строитель в каске в профиль на фоне стены со светом
- * (707×815, прислано юзером, заменило прежнее «ущелье с мостом»).
- * Сюжет тематический (стройка), нижняя треть тёмная → текст/кнопка читаются;
+ * Фото: `hero-mountains.jpg` — горный пейзаж (снежные горы + лес + луг с ручьём).
+ * Заменило строителя с чертежом по фидбэку владельца 2026-05-29.
+ * Нижний градиент (0→0.94 чёрный) затемняет низ → белый текст/кнопка читаются;
  * градиент под текстом ставим для гарантированного контраста.
  *
  * Lazyweb-референсы (2026-05-21, запросы «full bleed CTA section photo
@@ -56,7 +56,10 @@ import { Platform, Pressable, View } from "react-native";
 import { AppText } from "@/components/AppText";
 
 // Статический require — Metro бандлит JPEG из assets/.
-const ORDER_BG = require("../../../assets/illustrations/order-bg.jpg");
+// Фон — горный пейзаж (снежные горы + лес + луг с ручьём). Фидбэк владельца
+// 2026-05-29: заменили строителя с чертежом на горы (hero-mountains.jpg —
+// раньше был фоном hero, переиспользуем).
+const ORDER_BG = require("../../../assets/illustrations/hero-mountains.jpg");
 
 // Цвета поверх фото (НЕ theme-токены — легальный photo-overlay §B case, см. шапку).
 // Константы, не литералы в JSX — обходят grep `color="#"` design-enforcement.
@@ -83,7 +86,7 @@ export function DescribeTaskCallout({ onPress }: { onPress: () => void }) {
         priority="high"
         // Кэш память+диск — повторные открытия главной показывают фото мгновенно.
         cachePolicy="memory-disk"
-        accessibilityLabel="Фон: строитель в каске"
+        accessibilityLabel="Фон: горы и лес"
       />
 
       {/* Верхний лёгкий градиент — мягкое затемнение верха (глубина кадра). */}

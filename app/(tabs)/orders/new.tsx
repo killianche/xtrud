@@ -296,7 +296,7 @@ export default function NewOrderScreen() {
                   Ваш номер скрыт от мастеров
                 </AppText>
                 <AppText className="mt-1.5 text-body-sm text-body">
-                  Только вы решаете, кто получит ваш номер.
+                  Они видят только заказ. Вы сами решаете, кому звонить.
                 </AppText>
               </View>
             </View>

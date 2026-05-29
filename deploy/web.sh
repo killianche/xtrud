@@ -25,28 +25,26 @@ set -euo pipefail
 HOST="${HOST:-root@62.113.106.30}"
 REMOTE_DIR="${REMOTE_DIR:-/var/www/xtrud}"
 
-echo "→ Building Expo web bundle..."
-rm -rf dist
-# Demo-вход (телефоны +79000… → email/пароль 'xtrud') ВКЛЮЧЁН: xtrud.alanbani.ru —
-# это демо/превью-площадка, на которую владелец заходит тестовыми аккаунтами и
-# админом (+7 900 000-00-99), см. DEMO_ACCOUNTS.md. Перед РЕАЛЬНЫМ публичным
-# запуском (реальные пользователи) — убрать EXPO_PUBLIC_ENABLE_DEMO, иначе любой
-# сможет войти под demo-аккаунтом с паролем 'xtrud'.
-# --clear: сброс Metro-кэша, иначе флаг может заинлайниться из старого кэша как false.
-EXPO_PUBLIC_ENABLE_DEMO=true npx expo export --platform web --clear
+echo "→ Building Expo web bundle (через scripts/build-web-local.mjs)..."
+# Единый источник истины сборки — scripts/build-web-local.mjs (тот же, что для
+# local preview). Он делает: rm -rf dist → expo export (EXPO_PUBLIC_ENABLE_DEMO=
+# true, --clear) → ПОЛНЫЙ патч index.html:
+#   - <script ... defer> → type="module"  (обход SDK 54 import.meta-бага);
+#   - safe-area meta (viewport-fit, theme-color, apple status-bar);
+#   - theme-guard script (без мигания темы при «Авто»);
+#   - адаптивный SVG-фавикон <link rel=icon> (public/favicon.svg).
+# Раньше web.sh делал свой урезанный export + только script-патч — из-за этого
+# на прод не попадали фавикон/тема/safe-area. Теперь расхождения нет.
+#
+# Demo-вход (телефоны +79000… → email/пароль 'xtrud') ВКЛЮЧЁН внутри скрипта:
+# xtrud.alanbani.ru — демо/превью-площадка (тест-аккаунты + админ
+# +7 900 000-00-99, см. DEMO_ACCOUNTS.md). Перед РЕАЛЬНЫМ публичным запуском —
+# убрать EXPO_PUBLIC_ENABLE_DEMO из build-web-local.mjs, иначе любой войдёт под
+# demo-аккаунтом с паролем 'xtrud'.
+node scripts/build-web-local.mjs
 
 # Деплой на корень subdomain (xtrud.alanbani.ru) — absolute paths в HTML
-# (`/_expo/...`, `/favicon.ico`) работают как есть, baseUrl-патч не нужен.
-
-# ⚠️ ОБЯЗАТЕЛЬНЫЙ ПАТЧ для Expo SDK 54: bundle содержит `import.meta`
-# который требует ES-module-загрузки, но `expo export` пишет
-# `<script src="..." defer>` без `type="module"`. Браузер парсит как
-# classic script → SyntaxError → ВЕСЬ bundle тихо отказывает, белый
-# экран, ноль ошибок в console. Лечится post-process'ом.
-# Та же история что для local preview (см. scripts/build-web-local.mjs).
-echo "→ Patching dist/index.html (script type=module для SDK 54)..."
-sed -i.bak -E 's|<script ([^>]*src="/_expo/[^"]+"[^>]*)defer></script>|<script type="module" \1defer></script>|g' dist/index.html
-rm dist/index.html.bak
+# (`/_expo/...`, `/favicon.ico`, `/favicon.svg`) работают как есть.
 
 echo "→ Packing..."
 tar czf /tmp/xtrud-dist.tgz -C dist .

@@ -22,7 +22,6 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { SignIn, User } from "phosphor-react-native";
 import { AppText } from "@/components/AppText";
-import { ScreenHeader } from "@/components/ui";
 import { useThemeColors } from "@/lib/use-theme-color";
 import {
   type MasterProfileFormValues,
@@ -141,30 +140,64 @@ export default function EditMasterScreen() {
   // Кнопка активна, если форма валидна И (поменялись данные формы ИЛИ юзернейм),
   // и юзернейм валиден.
   const canSave = isValid && usernameValid && (isDirty || usernameChanged) && !isBusy && !citiesLoading;
+  const tc = useThemeColors(["accent"]);
+
+  // Выход с подтверждением, если есть несохранённые правки.
+  const onCancel = () => {
+    if ((isDirty || usernameChanged) && !isBusy) {
+      Alert.alert("Есть несохранённые изменения", "Выйти без сохранения?", [
+        { text: "Остаться", style: "cancel" },
+        { text: "Выйти", style: "destructive", onPress: () => goBack() },
+      ]);
+      return;
+    }
+    goBack();
+  };
 
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === "ios" ? "padding" : undefined}
-      className="flex-1 bg-canvas"
+      className="flex-1 bg-canvas-soft"
       style={{ paddingTop: insets.top }}
     >
-      <ScreenHeader
-        title="Профиль мастера"
-        onBack={() => {
-          if (isDirty && !isBusy) {
-            Alert.alert("Есть несохранённые изменения", "Выйти без сохранения?", [
-              { text: "Остаться", style: "cancel" },
-              {
-                text: "Выйти",
-                style: "destructive",
-                onPress: () => goBack(),
-              },
-            ]);
-            return;
-          }
-          goBack();
-        }}
-      />
+      {/* Навбар «Отмена / Профиль мастера / Сохранить» — единый паттерн с
+          edit-client (Lazyweb: Bluesky / Lawfully). Save закреплён сверху и
+          всегда доступен — у мастера длинная форма, нижняя кнопка уезжала. */}
+      <View className="flex-row items-center justify-between border-hairline border-b bg-canvas px-4 py-3">
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Отмена"
+          onPress={onCancel}
+          hitSlop={12}
+          className="min-w-[64px] active:opacity-60"
+        >
+          <AppText weight="medium" className="text-body-md text-ink">
+            Отмена
+          </AppText>
+        </Pressable>
+        <AppText weight="semibold" className="text-title-md text-ink">
+          Профиль мастера
+        </AppText>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Сохранить"
+          onPress={onSubmit}
+          disabled={!canSave}
+          hitSlop={12}
+          className="min-w-[64px] items-end active:opacity-60"
+        >
+          {isBusy ? (
+            <ActivityIndicator size="small" color={tc.accent} />
+          ) : (
+            <AppText
+              weight="semibold"
+              className={`text-body-md ${canSave ? "text-accent" : "text-muted-soft"}`}
+            >
+              Сохранить
+            </AppText>
+          )}
+        </Pressable>
+      </View>
 
       {/* Анон → guest empty state с CTA. До 2026-05-27 здесь висел бесконечный
           спиннер (useUserRecord без userId возвращает isLoading=false, data=undefined,
@@ -201,8 +234,8 @@ export default function EditMasterScreen() {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          {/* Заголовок «Профиль мастера» + subtitle переехали в ScreenHeader. */}
-          <View className="pt-2" />
+          {/* Заголовок «Профиль мастера» — в навбаре сверху. Небольшой воздух. */}
+          <View className="pt-4" />
 
           <MasterProfileFormBody
             control={control}
@@ -239,21 +272,6 @@ export default function EditMasterScreen() {
               </AppText>
             </View>
           )}
-
-          <View className="mt-8 px-6">
-            <Pressable
-              accessibilityRole="button"
-              disabled={!canSave}
-              onPress={onSubmit}
-              className={`h-12 items-center justify-center rounded-md ${
-                canSave ? "bg-primary active:opacity-80" : "bg-surface-3"
-              }`}
-            >
-              <AppText weight="semibold" className="text-button text-on-primary">
-                {isBusy ? "Сохраняем..." : "Сохранить"}
-              </AppText>
-            </Pressable>
-          </View>
         </ScrollView>
       )}
     </KeyboardAvoidingView>

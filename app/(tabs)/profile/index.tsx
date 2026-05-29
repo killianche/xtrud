@@ -13,7 +13,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
-import { Camera, CaretRight, ClipboardText, Eye, Gear, SignIn, SignOut, ChatCircle, Moon, Plus, ShieldCheck, DeviceMobile, Star, Sun, User } from "phosphor-react-native";
+import { Camera, CaretRight, ClipboardText, Eye, Gear, SignIn, SignOut, ChatCircle, Moon, Plus, ShieldCheck, DeviceMobile, Star, Sun, User, Wrench } from "phosphor-react-native";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, Alert, Pressable, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -302,14 +302,10 @@ export default function ProfileScreen() {
             />
           </View>
 
-          {/* «Стать мастером» CTA (фидбэк user 2026-05-18). Только для
-              client-only пользователей. Та же позиция что RoleSwitcher
-              у dual-role — визуально кнопка стоит на одном и том же месте. */}
-          {!user.is_master ? (
-            <View className="mt-5 w-full max-w-xs">
-              <BecomeMasterButton userId={user.id} />
-            </View>
-          ) : null}
+          {/* «Стать мастером» перенесён ниже (под карточку «Редактировать
+              профиль») и сделан тихой ghost-ссылкой — фидбэк владельца
+              2026-05-29: большая тёмная кнопка под аватаром была слишком
+              заметной, на неё случайно нажимали. */}
         </View>
 
         {/* Client-only: только «Редактировать профиль». Стат-плитки (Заказы/
@@ -333,6 +329,14 @@ export default function ProfileScreen() {
               </View>
               <CaretRight size={20} weight="bold" color={themeColors["muted-soft"]} />
             </Pressable>
+
+            {/* Тихая ссылка «Хочу стать мастером» — низкий visual-weight,
+                под карточкой профиля. Только для не-мастеров. */}
+            {!user.is_master ? (
+              <View className="mt-3 items-center">
+                <BecomeMasterButton userId={user.id} />
+              </View>
+            ) : null}
           </View>
         ) : null}
 
@@ -653,6 +657,7 @@ function GuestProfileScreen({ insets, themeColors, onLogin }: GuestProfileScreen
 function BecomeMasterButton({ userId }: { userId: string }) {
   const router = useRouter();
   const enable = useEnableMasterMode(userId);
+  const mutedColor = useThemeColors(["mute"]).mute;
 
   const handlePress = async () => {
     if (enable.isPending) return;
@@ -668,22 +673,25 @@ function BecomeMasterButton({ userId }: { userId: string }) {
   };
 
   return (
-    <View className="items-stretch">
+    <View className="items-center">
+      {/* Тихая ghost-ссылка (фидбэк владельца 2026-05-29): низкий visual-weight,
+          компактная, по центру — не конкурирует с основными действиями и не
+          ловит случайные тапы. Раньше — крупная тёмная кнопка во всю ширину. */}
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel="Я хочу стать мастером"
+        accessibilityLabel="Хочу стать мастером"
         disabled={enable.isPending}
         onPress={handlePress}
-        className={`h-12 flex-row items-center justify-center gap-2 rounded-lg active:opacity-80 ${
-          enable.isPending ? "bg-canvas-soft" : "bg-ink"
-        }`}
+        hitSlop={8}
+        className="flex-row items-center gap-1.5 px-3 py-2 active:opacity-60"
       >
-        <AppText weight="semibold" className="text-body-md text-on-primary">
-          {enable.isPending ? "Активируем…" : "Я хочу стать мастером"}
+        <Wrench size={15} weight="bold" color={mutedColor} />
+        <AppText weight="medium" className="text-body-sm text-mute">
+          {enable.isPending ? "Активируем…" : "Хочу стать мастером"}
         </AppText>
       </Pressable>
       {enable.error ? (
-        <AppText weight="medium" className="mt-2 text-caption text-error">
+        <AppText weight="medium" className="mt-1 text-caption text-error">
           Не удалось активировать. {enable.error.message}
         </AppText>
       ) : null}

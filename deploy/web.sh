@@ -41,7 +41,11 @@ echo "→ Building Expo web bundle (через scripts/build-web-local.mjs)..."
 # +7 900 000-00-99, см. DEMO_ACCOUNTS.md). Перед РЕАЛЬНЫМ публичным запуском —
 # убрать EXPO_PUBLIC_ENABLE_DEMO из build-web-local.mjs, иначе любой войдёт под
 # demo-аккаунтом с паролем 'xtrud'.
-node scripts/build-web-local.mjs
+#
+# WEB_CLEAR=1 — прод собираем ВСЕГДА начисто (сброс Metro-кэша), чтобы
+# гарантировать корректный инлайн флагов. Локальное превью, наоборот, кэш не
+# чистит ради быстрого старта (см. needClear в build-web-local.mjs).
+WEB_CLEAR=1 node scripts/build-web-local.mjs
 
 # Деплой на корень subdomain (xtrud.alanbani.ru) — absolute paths в HTML
 # (`/_expo/...`, `/favicon.ico`, `/favicon.svg`) работают как есть.

@@ -159,10 +159,56 @@ function killServer() {
   }
 }
 
+/** Самый свежий mtime среди всех исходников (WATCH_PATHS, рекурсивно). */
+function newestSourceMtime() {
+  let newest = 0;
+  const walk = (p) => {
+    let st;
+    try {
+      st = statSync(p);
+    } catch {
+      return;
+    }
+    const base = p.split("/").pop() ?? "";
+    if (st.isDirectory()) {
+      if (IGNORE.test(base)) return;
+      let entries;
+      try {
+        entries = readdirSync(p);
+      } catch {
+        return;
+      }
+      for (const e of entries) walk(join(p, e));
+    } else if (st.mtimeMs > newest) {
+      newest = st.mtimeMs;
+    }
+  };
+  for (const p of WATCH_PATHS) walk(join(ROOT, p));
+  return newest;
+}
+
+/** dist актуален, если index.html существует и НЕ старше самого свежего исходника.
+ *  Тогда при старте превью можно НЕ пересобирать — сразу serve (~2-3с вместо ~11с).
+ *  Так повторное открытие превью без правок кода стартует почти мгновенно. */
+function distIsFresh() {
+  const idx = join(ROOT, "dist", "index.html");
+  if (!existsSync(idx)) return false;
+  try {
+    return newestSourceMtime() <= statSync(idx).mtimeMs;
+  } catch {
+    return false;
+  }
+}
+
 function main() {
-  // 1. Первичный build.
-  console.log("→ Initial build...");
-  execSync("node scripts/build-web-local.mjs", { cwd: ROOT, stdio: "inherit" });
+  // 1. Первичный build — но ТОЛЬКО если dist устарел. Если исходники не менялись
+  //    с прошлой сборки, пропускаем сборку и сразу поднимаем serve (быстрый старт).
+  if (distIsFresh()) {
+    console.log("→ dist актуален (исходники не менялись) — пропускаю сборку, сразу serve.");
+  } else {
+    console.log("→ Initial build...");
+    execSync("node scripts/build-web-local.mjs", { cwd: ROOT, stdio: "inherit" });
+  }
 
   // 2. Старт сервера.
   startServer();

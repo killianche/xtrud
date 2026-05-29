@@ -20,7 +20,7 @@
  */
 
 import { execSync } from "node:child_process";
-import { readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -41,24 +41,49 @@ execSync(`rm -rf ${OUT}`, { cwd: ROOT, stdio: "inherit" });
 
 // --clear сбрасывает Metro transform-кэш. Он НУЖЕН только на первой сборке
 // сессии (иначе EXPO_PUBLIC_ENABLE_DEMO может заинлайниться из чужого кэша как
-// false и demo-вход не заработает). Но --clear НА КАЖДУЮ пересборку = каждый
-// раз cold-build всех ~6500 модулей (~33с). Поэтому watcher на пересборках
-// передаёт WEB_SKIP_CLEAR=1 → кэш переиспользуется, пересборка идёт за секунды.
-// Initial build watcher'а и prod-сборка флаг НЕ передают → --clear сохраняется.
-const clearFlag = process.env.WEB_SKIP_CLEAR === "1" ? "" : "--clear ";
+// false и demo-вход не заработает). Но --clear НА КАЖДУЮ сборку = каждый раз
+// cold-build всех ~6500 модулей (~27-33с) — из-за этого превью «долго стартует».
+//
+// Оптимизация 2026-05-29: чистим кэш ТОЛЬКО когда demo-флаг реально изменился
+// с прошлой сборки (Metro не инвалидирует кэш при смене env, поэтому маркер
+// нужен для корректности инлайна). Иначе — тёплый кэш и старт за ~3-5с.
+//   WEB_SKIP_CLEAR=1 — пересборки watcher'а: никогда не чистим.
+//   WEB_CLEAR=1      — принудительный сброс (escape hatch; deploy/web.sh его
+//                      ставит, чтобы прод всегда собирался «начисто»).
+//   иначе (старт превью) — чистим только если маркер ≠ текущий флаг (первый
+//                          запуск / сменился флаг).
+const DEMO_FLAG = "true"; // build-web-local всегда собирает demo-площадку
+const MARKER = resolve(ROOT, ".expo", "web-build-demo-flag");
+let needClear;
+if (process.env.WEB_SKIP_CLEAR === "1") {
+  needClear = false;
+} else if (process.env.WEB_CLEAR === "1") {
+  needClear = true;
+} else {
+  const prev = existsSync(MARKER) ? readFileSync(MARKER, "utf-8").trim() : null;
+  needClear = prev !== DEMO_FLAG;
+}
+const clearFlag = needClear ? "--clear " : "";
 
 console.log(
-  `→ Running expo export → ${OUT}${clearFlag ? " (--clear, cold)" : " (тёплый кэш)"}...`,
+  `→ Running expo export → ${OUT}${needClear ? " (--clear, cold ~27с)" : " (тёплый кэш ~3-5с)"}...`,
 );
 // Демо-вход (телефоны +79000… → email/пароль 'xtrud') нужен для локального
-// preview: тестовые аккаунты + админ (+7 900 000-00-99). Форсим флаг явно. Это
-// ТОЛЬКО локальная web-сборка; production-деплой собирается отдельным пайплайном
-// и demo там остаётся OFF.
+// preview: тестовые аккаунты + админ (+7 900 000-00-99). Форсим флаг явно.
 execSync(`npx expo export --platform web ${clearFlag}--output-dir ${OUT}`, {
   cwd: ROOT,
   stdio: "inherit",
-  env: { ...process.env, EXPO_PUBLIC_ENABLE_DEMO: "true" },
+  env: { ...process.env, EXPO_PUBLIC_ENABLE_DEMO: DEMO_FLAG },
 });
+
+// Запоминаем, с каким demo-флагом собрали — чтобы следующий старт превью НЕ
+// чистил кэш зря (см. needClear выше). Маркер в .expo/ (gitignored, per-machine).
+try {
+  mkdirSync(resolve(ROOT, ".expo"), { recursive: true });
+  writeFileSync(MARKER, DEMO_FLAG, "utf-8");
+} catch {
+  // .expo недоступен — не критично, в худшем случае следующий старт чистит кэш.
+}
 
 console.log(`→ Patching ${OUT}/index.html (script + safe-area meta-tags)...`);
 let html = readFileSync(INDEX, "utf-8");

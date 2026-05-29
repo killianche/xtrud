@@ -352,7 +352,7 @@ export default function ProfileScreen() {
                   Редактировать профиль
                 </AppText>
                 <AppText className="mt-0.5 text-body-sm text-mute">
-                  Имя и фамилия
+                  Ваше имя
                 </AppText>
               </View>
               <CaretRight size={20} weight="bold" color={themeColors["muted-soft"]} />

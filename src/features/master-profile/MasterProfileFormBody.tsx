@@ -35,7 +35,7 @@ export function MasterProfileFormBody({
   const mutedSoftColor = useThemeColor("muted-soft");
   return (
     <>
-      {/* Имя / Фамилия */}
+      {/* Имя (фамилию убрали 2026-05-29 — везде показываем только имя). */}
       <View className="gap-4 px-6">
         <FormField
           label="Имя"
@@ -43,15 +43,6 @@ export function MasterProfileFormBody({
           control={control}
           name="firstName"
           placeholder="Магомед"
-          autoCapitalize="words"
-          disabled={isBusy}
-        />
-        <FormField
-          label="Фамилия"
-          error={errors.lastName?.message}
-          control={control}
-          name="lastName"
-          placeholder="Албогачиев"
           autoCapitalize="words"
           disabled={isBusy}
         />

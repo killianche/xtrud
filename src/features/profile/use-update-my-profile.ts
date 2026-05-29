@@ -12,7 +12,9 @@ import { supabase } from "@/lib/supabase";
 
 export interface UpdateMyProfileInput {
   first_name: string;
-  last_name: string | null;
+  // last_name убран из UI 2026-05-29 (везде только имя) — поле опционально для
+  // обратной совместимости; если не передан, фамилию не трогаем/обнуляем.
+  last_name?: string | null;
   // city_id / district 2026-05-16: убраны из UI. Поля legacy в БД остаются
   // для совместимости с seed-данными, но клиент не пишет их через этот хук.
 }

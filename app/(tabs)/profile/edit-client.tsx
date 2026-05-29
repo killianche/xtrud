@@ -48,7 +48,6 @@ export default function EditClientScreen() {
   const goBack = useSafeBack("/(tabs)/profile" as const);
 
   const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
   const [didInit, setDidInit] = useState(false);
   const [changePhoneOpen, setChangePhoneOpen] = useState(false);
 
@@ -56,14 +55,11 @@ export default function EditClientScreen() {
   useEffect(() => {
     if (!user || didInit) return;
     setFirstName(user.first_name ?? "");
-    setLastName(user.last_name ?? "");
     setDidInit(true);
   }, [user, didInit]);
 
-  const isDirty =
-    didInit &&
-    ((firstName ?? "") !== (user?.first_name ?? "") ||
-      (lastName ?? "") !== (user?.last_name ?? ""));
+  // Фамилия убрана 2026-05-29 — везде только имя.
+  const isDirty = didInit && (firstName ?? "") !== (user?.first_name ?? "");
 
   const canSave = firstName.trim().length >= 2 && isDirty && !update.isPending;
 
@@ -72,7 +68,6 @@ export default function EditClientScreen() {
     update.mutate(
       {
         first_name: firstName,
-        last_name: lastName,
         // city_id / district 2026-05-16: не сохраняем — поле UI убрано.
       },
       {
@@ -153,16 +148,6 @@ export default function EditClientScreen() {
               value={firstName}
               onChangeText={setFirstName}
               placeholder="Алина"
-              autoCapitalize="words"
-              maxLength={50}
-            />
-          </FieldRow>
-          <View className="h-px bg-hairline mx-4" />
-          <FieldRow label="Фамилия">
-            <NakedInput
-              value={lastName}
-              onChangeText={setLastName}
-              placeholder="Тестова"
               autoCapitalize="words"
               maxLength={50}
             />

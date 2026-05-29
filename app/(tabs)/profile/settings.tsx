@@ -335,36 +335,60 @@ function ConsequenceRow({ text }: { text: string }) {
 function PrivacyToggleRow({ userId }: { userId: string }) {
   const { data, isLoading } = useMasterPrivacy(userId);
   const updatePrivacy = useUpdateMasterPrivacy();
-  const tc = useThemeColors(["accent", "muted-soft"]);
+  const tc = useThemeColors(["accent", "muted-soft", "surface-3", "on-primary"]);
 
-  const value = data?.isHiddenFromSearch ?? false;
+  const hidden = data?.isHiddenFromSearch ?? false;
   const onToggle = (next: boolean) => {
     updatePrivacy.mutate({ userId, isHiddenFromSearch: next });
   };
 
   return (
-    <View className="px-5 py-4 flex-row items-center gap-3">
-      <View className="mt-0.5">
-        <EyeSlash size={20} weight="bold" color={tc["muted-soft"]} />
+    <View className="px-5 py-4">
+      <View className="flex-row items-center gap-3">
+        <View className="mt-0.5">
+          <EyeSlash size={20} weight="bold" color={tc["muted-soft"]} />
+        </View>
+        <View className="flex-1">
+          <AppText weight="semibold" className="text-body-md text-ink">
+            Скрыть профиль от клиентов
+          </AppText>
+          <AppText className="mt-0.5 text-body-sm text-mute">
+            Скрытого мастера не видно в каталоге и поиске. Текущие заказы
+            продолжают работать.
+          </AppText>
+        </View>
+        {isLoading ? (
+          <ActivityIndicator size="small" />
+        ) : (
+          <Switch
+            value={hidden}
+            onValueChange={onToggle}
+            disabled={updatePrivacy.isPending}
+            trackColor={{ false: tc["surface-3"], true: tc.accent }}
+            thumbColor={tc["on-primary"]}
+            ios_backgroundColor={tc["surface-3"]}
+          />
+        )}
       </View>
-      <View className="flex-1">
-        <AppText weight="semibold" className="text-body-md text-ink">
-          Скрыть профиль от клиентов
-        </AppText>
-        <AppText className="mt-0.5 text-body-sm text-mute">
-          Вы не появитесь в каталоге мастеров. Текущие чаты и заказы продолжат работать.
-        </AppText>
-      </View>
-      {isLoading ? (
-        <ActivityIndicator size="small" />
-      ) : (
-        <Switch
-          value={value}
-          onValueChange={onToggle}
-          disabled={updatePrivacy.isPending}
-          trackColor={{ true: tc.accent }}
-        />
-      )}
+
+      {/* Явный текущий статус — чтобы сразу было видно, скрыты вы или нет. */}
+      {!isLoading ? (
+        <View
+          className={`mt-3 flex-row items-center gap-1.5 self-start rounded-full px-2.5 py-1 ${
+            hidden ? "bg-warning-soft" : "bg-success-soft"
+          }`}
+        >
+          <View
+            className={`h-1.5 w-1.5 rounded-full ${hidden ? "bg-warning" : "bg-success"}`}
+          />
+          <AppText
+            weight="medium"
+            className={`text-caption ${hidden ? "text-warning-deep" : "text-success"}`}
+          >
+            {hidden ? "Сейчас скрыты — клиенты вас не видят" : "Сейчас видны в каталоге"}
+          </AppText>
+        </View>
+      ) : null}
     </View>
   );
 }
@@ -423,19 +447,22 @@ interface ActionRowProps {
 }
 
 function ActionRow({ label, icon: Icon, destructive, onPress }: ActionRowProps) {
+  // Цвет текста — через className-токен (text-ink/text-error), НЕ inline style:
+  // inline style={{color}} из useThemeColors не переключался корректно на тёмной
+  // теме → текст был чёрным на тёмном фоне (фидбэк владельца 2026-05-29).
   const tc = useThemeColors(["ink", "error"]);
-  const color = destructive ? tc.error : tc.ink;
   return (
     <Pressable
       accessibilityRole="button"
       onPress={onPress}
       className="px-5 py-4 border-b border-hairline-soft flex-row items-center gap-3 active:bg-canvas-soft"
     >
-      {Icon ? <Icon size={18} weight="bold" color={color} /> : null}
+      {Icon ? (
+        <Icon size={18} weight="bold" color={destructive ? tc.error : tc.ink} />
+      ) : null}
       <AppText
         weight="medium"
-        className="flex-1 text-body-md"
-        style={{ color }}
+        className={`flex-1 text-body-md ${destructive ? "text-error" : "text-ink"}`}
       >
         {label}
       </AppText>

@@ -370,6 +370,19 @@ export default function ProfileScreen() {
 
             {/* «Как меня видят клиенты» CTA удалён 2026-05-16 (фидбэк user). */}
 
+            {/* Мои отзывы (#163): ведёт на собственную публичную страницу, где
+                мастер видит оставленные ему отзывы и может их обжаловать. */}
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => router.push(`/(tabs)/master/${user.id}` as never)}
+              className="mx-6 mt-3 flex-row items-center justify-between rounded-lg border border-hairline bg-canvas p-4 active:opacity-70"
+            >
+              <AppText weight="semibold" className="flex-1 text-body-md text-ink">
+                Мои отзывы
+              </AppText>
+              <CaretRight size={20} weight="bold" color={themeColors["muted-soft"]} />
+            </Pressable>
+
             {/* Categories shortcut */}
             <Pressable
               accessibilityRole="button"

@@ -58,9 +58,11 @@ import { MasterServicesList } from "@/features/master-services/MasterServicesLis
 import { useMasterServices } from "@/features/master-services/use-master-services";
 import { ReviewsSection } from "@/features/master-view/ReviewsSection";
 import { MasterReviewSheet } from "@/features/reviews/MasterReviewSheet";
+import { ReportReviewSheet } from "@/features/reviews/ReportReviewSheet";
 import { useMyRecentReviewForMaster } from "@/features/reviews/use-reviews";
 import { useUserRecord } from "@/features/auth/use-user-record";
 import {
+  type ReviewWithAuthor,
   useMasterCategoriesPublic,
   useMasterPhone,
   useMasterPublicProfile,
@@ -132,6 +134,8 @@ export default function MasterPublicScreen() {
   const [reportOpen, setReportOpen] = useState(false);
   const [actionMenuOpen, setActionMenuOpen] = useState(false);
   const [reviewSheetOpen, setReviewSheetOpen] = useState(false);
+  // Отзыв, который мастер обжалует (#163). null → шит закрыт.
+  const [reportReview, setReportReview] = useState<ReviewWithAuthor | null>(null);
 
   // Кто я: для CTA «Оставить отзыв». Любой авторизованный клиент (is_client)
   // может оставить freeform-отзыв на мастера (без заказа). Лимит 1/30 дней
@@ -676,6 +680,9 @@ export default function MasterPublicScreen() {
               title="Отзывы клиентов"
               emptyText="Пока нет отзывов"
               query={reviews}
+              // Мастер на СВОЕЙ странице может обжаловать накрученный/
+              // оскорбительный отзыв → жалоба уходит модератору (#163).
+              onReport={isOwnProfile ? (r) => setReportReview(r) : undefined}
             />
           );
         })()}
@@ -749,6 +756,15 @@ export default function MasterPublicScreen() {
           masterName={fullName ?? "Мастер"}
         />
       ) : null}
+
+      {/* Обжалование отзыва мастером (#163). Открывается из ReviewsSection
+          только на своей странице (onReport передаётся при isOwnProfile). */}
+      <ReportReviewSheet
+        open={reportReview !== null}
+        onClose={() => setReportReview(null)}
+        review={reportReview}
+        reporterId={currentUserId}
+      />
 
       {/* Action menu — overflow ⋮ из header. 2026-05-20 «classifieds»:
           из меню убран пункт «Этот мастер выполнил мне работу» (ad-hoc

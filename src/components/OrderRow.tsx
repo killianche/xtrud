@@ -303,25 +303,25 @@ export function OrderRow(props: OrderRowProps) {
           ) : null}
         </View>
 
-        {/* Миниатюра-обложка справа — только если у заказа есть фото.
-            Размеры заданы ИНЛАЙН (а не h-16/w-16) + alignSelf:flex-start —
-            иначе в flex-строке бокс растягивался по высоте строки и landscape-
-            фото обрезалось в высокую полоску (баг 2026-05-24). Фиксированный
-            квадрат 64×64 даёт аккуратную обложку как в Avito/Profi. */}
+        {/* Фото-значок справа — маленький круглый thumbnail (фидбэк владельца
+            2026-05-29: «фото просто значком, как в поиске»). Раньше был квадрат
+            64×64 — слишком крупный для строки заказа. Теперь компактный кружок
+            36px в правом верхнем углу + мини-метка «+N» если фото несколько.
+            alignSelf:flex-start — прижат к верху строки, не растягивается. */}
         {props.coverUrl ? (
           <View
-            className="overflow-hidden rounded-lg bg-canvas-soft-2"
-            style={{ width: 64, height: 64, alignSelf: "flex-start" }}
+            className="overflow-hidden rounded-full bg-canvas-soft-2"
+            style={{ width: 36, height: 36, alignSelf: "flex-start" }}
           >
             <ExpoImage
-              source={{ uri: cdnImage(props.coverUrl, { width: 64 }) }}
+              source={{ uri: cdnImage(props.coverUrl, { width: 72 }) }}
               placeholder={{ uri: cdnBlur(props.coverUrl) }}
-              style={{ width: 64, height: 64 }}
+              style={{ width: 36, height: 36 }}
               contentFit="cover"
               cachePolicy="memory-disk"
             />
             {props.photosCount && props.photosCount > 1 ? (
-              <View className="absolute bottom-1 right-1 rounded-pill bg-black/50 px-1.5 py-0.5">
+              <View className="absolute bottom-0 right-0 rounded-full bg-black/60 px-1">
                 <AppText weight="mono" className="text-caption text-on-dark">
                   +{props.photosCount - 1}
                 </AppText>

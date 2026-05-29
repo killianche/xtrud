@@ -45,6 +45,12 @@ export default function Root({ children }: PropsWithChildren) {
         <meta charSet="utf-8" />
         {/* Заголовок вкладки браузера. Статичный — это название сайта. */}
         <title>xtrud</title>
+        {/* NB: адаптивный SVG-фавикон (<link rel=icon type=image/svg+xml>)
+            нельзя добавить здесь — Expo static-render выкидывает кастомный
+            rel="icon" и подставляет свой /favicon.ico. Поэтому SVG-ссылка
+            инжектится в HTML на этапе сборки (см. scripts/inject-html-fixes,
+            используется build-web-local.mjs и dev-web-local.mjs). Сам файл —
+            public/favicon.svg (прозрачный фон, цвет по prefers-color-scheme). */}
         <meta httpEquiv="X-UA-Compatible" content="IE=edge" />
         <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
         {/* theme-color — Safari iOS красит address-bar и notch-area в этот цвет.

@@ -89,6 +89,12 @@ html = html.replace(
 //    Expo Router output:"single" пропускает +html.tsx — поэтому правим тут.
 const themeGuardScript = `<script>(function(){try{var raw=localStorage.getItem('xtrud-theme');var pref='system';if(raw){var parsed=JSON.parse(raw);pref=(parsed&&parsed.state&&parsed.state.preference)||'system';}var sysDark=window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches;if(pref==='dark'||(pref==='system'&&sysDark))document.documentElement.classList.add('dark');}catch(_){}})();</script>`;
 const safeAreaMetas = [
+  // Адаптивный SVG-фавикон: только логотип на прозрачном фоне, цвет меняется
+  // по теме (тёмный в светлой, белый в тёмной — prefers-color-scheme внутри
+  // самого SVG, файл public/favicon.svg). Инжектим здесь, потому что Expo
+  // static-render выкидывает кастомный rel="icon" из +html.tsx и подставляет
+  // свой /favicon.ico. Браузеры предпочитают SVG-иконку поверх .ico-фолбэка.
+  '<link rel="icon" type="image/svg+xml" href="/favicon.svg" />',
   '<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />',
   '<meta name="theme-color" content="#0a0a0a" media="(prefers-color-scheme: dark)" />',
   '<meta name="apple-mobile-web-app-capable" content="yes" />',

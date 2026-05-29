@@ -186,6 +186,13 @@ function pickImageWeb(): Promise<PickedImage | null> {
     // 'cancel' event (новый стандарт, Chrome 113+) либо просто фокус
     // возвращается. Используем оба пути с timeout fallback.
     let settled = false;
+    // 2026-05-29 фикс «фото не сохранилось»: как только пользователь выбрал
+    // файл — выставляем changeStarted=true СИНХРОННО в начале change-handler'а
+    // (до чтения размеров). Тогда focus-fallback ниже не «съест» выбор, даже
+    // если большое фото читается дольше 500мс. Раньше: большое фото с телефона
+    // декодировалось >500мс, focus-таймер успевал settle(null) первым — выбор
+    // терялся, заказ/аватар сохранялся без фото. Подтверждено в браузере.
+    let changeStarted = false;
     const cleanup = () => {
       if (input.parentNode) input.parentNode.removeChild(input);
     };
@@ -197,6 +204,7 @@ function pickImageWeb(): Promise<PickedImage | null> {
     };
 
     input.addEventListener("change", () => {
+      changeStarted = true;
       const file = input.files?.[0];
       if (!file) {
         settle(null);
@@ -221,11 +229,15 @@ function pickImageWeb(): Promise<PickedImage | null> {
     input.addEventListener("cancel", () => settle(null));
 
     // Fallback: если пользователь закрыл диалог без выбора и change/cancel
-    // не сработали, ловим возврат фокуса на window — даём 300мс на change
-    // event (он может прийти позже focus'а), затем считаем отменой.
+    // не сработали, ловим возврат фокуса на window. Считаем отменой ТОЛЬКО
+    // если change так и не начался (changeStarted=false). Если выбор начался —
+    // не вмешиваемся, даже если фото читается долго: settle() сделает
+    // change-handler. Окно 1200мс — на случай, если change приходит позже focus.
     const onFocus = () => {
       window.removeEventListener("focus", onFocus);
-      setTimeout(() => settle(null), 500);
+      setTimeout(() => {
+        if (!changeStarted) settle(null);
+      }, 1200);
     };
     // Регистрируем focus-handler ПОСЛЕ клика — иначе он сработает на open.
     setTimeout(() => {
@@ -524,6 +536,13 @@ function pickMultipleImagesWeb(maxCount: number): Promise<PickedImage[]> {
     input.style.opacity = "0";
 
     let settled = false;
+    // 2026-05-29 фикс «фото заказа не сохраняются»: changeStarted=true
+    // выставляем СИНХРОННО при выборе файлов, до измерения размеров. Иначе
+    // focus-fallback (ниже) через 500мс делал settle([]) РАНЬШЕ, чем
+    // успевало декодироваться большое фото — выбор пропадал, заказ
+    // сохранялся с пустым списком фото. Воспроизведено в браузере: при
+    // чтении >500мс возвращался "focus-empty" вместо файла.
+    let changeStarted = false;
     const cleanup = () => {
       if (input.parentNode) input.parentNode.removeChild(input);
     };
@@ -535,6 +554,7 @@ function pickMultipleImagesWeb(maxCount: number): Promise<PickedImage[]> {
     };
 
     input.addEventListener("change", async () => {
+      changeStarted = true;
       const files = Array.from(input.files ?? []).slice(0, maxCount);
       if (files.length === 0) {
         settle([]);
@@ -562,7 +582,11 @@ function pickMultipleImagesWeb(maxCount: number): Promise<PickedImage[]> {
     input.addEventListener("cancel", () => settle([]));
     const onFocus = () => {
       window.removeEventListener("focus", onFocus);
-      setTimeout(() => settle([]), 500);
+      // Отмена — только если выбор так и не начался. Долгое чтение большого
+      // фото больше не теряется (см. комментарий к changeStarted выше).
+      setTimeout(() => {
+        if (!changeStarted) settle([]);
+      }, 1200);
     };
     setTimeout(() => {
       window.addEventListener("focus", onFocus);

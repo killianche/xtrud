@@ -24,14 +24,14 @@
  */
 
 import { useRouter } from "expo-router";
-import { ChatCenteredText } from "phosphor-react-native";
+import { CaretRight, ChatCenteredText } from "phosphor-react-native";
 import { Pressable, View } from "react-native";
 import { AppText } from "@/components/AppText";
 import {
   isActiveResponse,
   useMyResponses,
 } from "@/features/orders/use-my-responses";
-import { useThemeColor } from "@/lib/use-theme-color";
+import { useThemeColors } from "@/lib/use-theme-color";
 
 interface MyResponsesEntryProps {
   userId: string;
@@ -39,35 +39,48 @@ interface MyResponsesEntryProps {
 
 export function MyResponsesEntry({ userId }: MyResponsesEntryProps) {
   const router = useRouter();
-  const inkColor = useThemeColor("ink");
+  const tc = useThemeColors(["accent", "mute"]);
 
   const myResponsesQ = useMyResponses(userId);
   const activeResponsesCount = (myResponsesQ.data ?? []).filter(
     isActiveResponse,
   ).length;
+  const hasActive = activeResponsesCount > 0;
 
   return (
     <View className="px-4">
+      {/* Full-width карточка-навигация (фидбэк владельца 2026-05-29): иконка в
+          мягком кружке + заголовок + статус-строка + счётчик-бейдж + стрелка.
+          Единый стиль с карточками профиля. */}
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={
-          activeResponsesCount > 0
-            ? `Мои отклики, активных ${activeResponsesCount}`
-            : "Мои отклики"
+          hasActive ? `Мои отклики, активных ${activeResponsesCount}` : "Мои отклики"
         }
         onPress={() => router.push("/(tabs)/orders/my-responses" as never)}
-        hitSlop={8}
-        className="h-10 flex-row items-center gap-2 self-start rounded-full border border-hairline bg-canvas px-4 active:opacity-70"
+        className="flex-row items-center gap-3 rounded-2xl border border-hairline bg-canvas px-4 py-3.5 active:bg-canvas-soft"
       >
-        <ChatCenteredText size={16} weight="bold" color={inkColor} />
-        <AppText weight="semibold" className="text-button text-ink">
-          Мои отклики
-        </AppText>
-        {activeResponsesCount > 0 ? (
-          <AppText weight="medium" className="text-button text-mute">
-            {activeResponsesCount}
+        <View className="h-10 w-10 items-center justify-center rounded-full bg-canvas-soft-2">
+          <ChatCenteredText size={20} weight="fill" color={tc.accent} />
+        </View>
+        <View className="min-w-0 flex-1">
+          <AppText weight="semibold" className="text-body-md text-ink">
+            Мои отклики
           </AppText>
+          <AppText className="mt-0.5 text-caption text-mute" numberOfLines={1}>
+            {hasActive
+              ? `${activeResponsesCount} в ожидании ответа`
+              : "Активных нет — открыть историю"}
+          </AppText>
+        </View>
+        {hasActive ? (
+          <View className="min-w-6 items-center justify-center rounded-full bg-accent-soft px-2 py-0.5">
+            <AppText weight="bold" className="text-caption text-accent">
+              {activeResponsesCount}
+            </AppText>
+          </View>
         ) : null}
+        <CaretRight size={18} weight="bold" color={tc.mute} />
       </Pressable>
     </View>
   );

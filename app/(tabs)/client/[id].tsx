@@ -11,7 +11,7 @@
  */
 
 import { useLocalSearchParams } from "expo-router";
-import { CheckCircle, WarningCircle, MapPin, Star } from "phosphor-react-native";
+import { CheckCircle, WarningCircle, MapPin } from "phosphor-react-native";
 import { useMemo } from "react";
 import { ActivityIndicator, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -22,7 +22,7 @@ import { useClientPublicProfile } from "@/features/client-view/use-client-public
 import { ReviewsSection } from "@/features/master-view/ReviewsSection";
 import { useReviewsForTarget } from "@/features/master-view/use-master-public";
 import { usePullToRefresh } from "@/hooks/use-pull-to-refresh";
-import { pluralizeClosedOrders as pluralizeCompleted, pluralizeReviews } from "@/lib/pluralize";
+import { pluralizeClosedOrders as pluralizeCompleted } from "@/lib/pluralize";
 import { useSafeBack } from "@/lib/use-safe-back";
 import { useThemeColors } from "@/lib/use-theme-color";
 
@@ -109,27 +109,8 @@ export default function ClientPublicScreen() {
                 )}
               </View>
 
-              <View className="mt-3 flex-row items-center gap-1">
-                {profile.data.user.rating_as_client_avg != null &&
-                profile.data.user.rating_as_client_count > 0 ? (
-                  <>
-                    <Star size={16} weight="fill" color={tc.warning} />
-                    <AppText weight="semibold" className="text-body-md text-ink">
-                      {profile.data.user.rating_as_client_avg.toFixed(1)}
-                    </AppText>
-                    <AppText className="text-body-sm text-muted">
-                      ({pluralizeReviews(profile.data.user.rating_as_client_count)})
-                    </AppText>
-                  </>
-                ) : (
-                  <AppText className="text-body-sm text-muted">
-                    Пока нет отзывов от мастеров
-                  </AppText>
-                )}
-              </View>
-
-              {/* Город/район клиента НЕ показываем (2026-05-16) — личная
-                  «домашняя» точка не нужна в публичном профиле. */}
+              {/* Рейтинг клиента убран 2026-05-29 — у клиента нет рейтинга
+                  (жалобы остаются, оценок нет). Город/район тоже не показываем. */}
 
               <AppText className="mt-2 text-caption text-muted-soft">
                 На xtrud с {formatJoinDate(profile.data.user.created_at)}

@@ -28,7 +28,6 @@ import { useEnableMasterMode } from "@/features/auth/use-enable-master-mode";
 import { useUserRecord } from "@/features/auth/use-user-record";
 import { MasterPublishChecklist } from "@/features/master-view/MasterPublishChecklist";
 import { useMasterPublishProgress } from "@/features/master-view/use-master-publish-progress";
-import { useMyOrders } from "@/features/orders/use-my-orders";
 import type { ThemePreference } from "@/lib/theme";
 import { PortfolioGrid } from "@/features/profile/PortfolioGrid";
 import { PortfolioLightbox } from "@/features/profile/PortfolioLightbox";
@@ -68,13 +67,6 @@ export default function ProfileScreen() {
     userId,
     user?.is_master === true,
   );
-  // Quick stats для клиента (для master есть отдельные экраны со своими счётчиками).
-  const { data: myOrders } = useMyOrders(user?.is_master ? undefined : userId);
-  const ordersTotal = myOrders?.length ?? 0;
-  const activeOrders = (myOrders ?? []).filter(
-    (o) => o.status === "open" || o.status === "in_progress",
-  ).length;
-
   const updateAvatar = useUpdateMyAvatar(userId);
   const removeAvatar = useRemoveMyAvatar(userId);
   const portfolio = useMasterPortfolio(user?.is_master ? (userId ?? null) : null);
@@ -280,7 +272,9 @@ export default function ProfileScreen() {
                 {isClient ? "Клиент" : "Мастер"}
               </AppText>
             </View>
-            {ratingAvg != null && ratingCount > 0 ? (
+            {/* Рейтинг показываем ТОЛЬКО мастеру. У клиента рейтинга нет
+                (решение владельца 2026-05-29) — жалобы остаются, оценки нет. */}
+            {!isClient && ratingAvg != null && ratingCount > 0 ? (
               <View className="flex-row items-center gap-1">
                 <Star size={13} weight="fill" color={themeColors.warning} />
                 <AppText weight="mono" className="text-mono-caption text-ink">
@@ -319,63 +313,28 @@ export default function ProfileScreen() {
           ) : null}
         </View>
 
-        {/* Client-only stats trio + edit-row */}
+        {/* Client-only: только «Редактировать профиль». Стат-плитки (Заказы/
+            Отзывы) и «Сохранённые мастера» убраны по фидбэку владельца
+            2026-05-29 — профиль клиента простой. Заказы доступны во вкладке
+            «Заказы», сохранённые мастера — во вкладке «Закладки». */}
         {isClient ? (
-          <>
-            <View className="mx-5 mt-4 flex-row gap-2">
-              <ClientStatTile
-                label="Заказы"
-                value={ordersTotal}
-                hint={activeOrders > 0 ? `${activeOrders} активных` : "Все закрыты"}
-                accent={activeOrders > 0}
-                onPress={() => router.push("/(tabs)/orders" as never)}
-              />
-              <ClientStatTile
-                label="Отзывы"
-                value={ratingCount ?? 0}
-                hint={
-                  ratingAvg != null && (ratingCount ?? 0) > 0
-                    ? `★ ${ratingAvg.toFixed(1)}`
-                    : "Нет"
-                }
-                onPress={() => router.push("/(tabs)/orders" as never)}
-              />
-            </View>
-
+          <View className="mt-4">
             <Pressable
               accessibilityRole="button"
               onPress={() => router.push("/(tabs)/profile/edit-client" as never)}
-              className="mx-5 mt-2 flex-row items-center justify-between rounded-lg border border-hairline bg-canvas p-4 active:bg-canvas-soft"
+              className="mx-5 flex-row items-center justify-between rounded-lg border border-hairline bg-canvas p-4 active:bg-canvas-soft"
             >
               <View className="flex-1">
                 <AppText weight="semibold" className="text-body-md text-ink">
                   Редактировать профиль
                 </AppText>
                 <AppText className="mt-0.5 text-body-sm text-mute">
-                  Ваше имя
+                  Имя и юзернейм
                 </AppText>
               </View>
               <CaretRight size={20} weight="bold" color={themeColors["muted-soft"]} />
             </Pressable>
-
-            <Pressable
-              accessibilityRole="button"
-              onPress={() => router.push("/(tabs)/favorites" as never)}
-              className="mx-5 mt-2 flex-row items-center justify-between rounded-lg border border-hairline bg-canvas p-4 active:bg-canvas-soft"
-            >
-              <View className="flex-1">
-                <AppText weight="semibold" className="text-body-md text-ink">
-                  Сохранённые мастера
-                </AppText>
-                <AppText className="mt-0.5 text-body-sm text-mute">
-                  Мастера, которых вы сохранили
-                </AppText>
-              </View>
-              <CaretRight size={20} weight="bold" color={themeColors["muted-soft"]} />
-            </Pressable>
-
-            {/* «Как меня видят мастера» CTA удалён 2026-05-16 (фидбэк user). */}
-          </>
+          </View>
         ) : null}
 
         {/* Чек-лист «сделайте профиль ярче» (фидбэк user 2026-05-20). С отказа
@@ -548,42 +507,7 @@ export default function ProfileScreen() {
 // ----------------------------------------------------------------------------
 // Client-only UI sub-components
 // ----------------------------------------------------------------------------
-
-interface ClientStatTileProps {
-  label: string;
-  value: number;
-  hint: string;
-  accent?: boolean;
-  onPress: () => void;
-}
-
-function ClientStatTile({ label, value, hint, accent, onPress }: ClientStatTileProps) {
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={`${label}: ${value}, ${hint}`}
-      onPress={onPress}
-      className="flex-1 rounded-lg border border-hairline bg-canvas px-3 py-3 active:bg-canvas-soft"
-    >
-      <AppText weight="medium" className="text-caption text-mute">
-        {label}
-      </AppText>
-      <AppText weight="mono" className="mt-2 text-display-md text-ink">
-        {value}
-      </AppText>
-      <View className="mt-1.5 flex-row items-center gap-1.5">
-        {accent ? <View className="h-1.5 w-1.5 rounded-full bg-warning" /> : null}
-        <AppText
-          weight={accent ? "semibold" : "regular"}
-          className={`text-caption ${accent ? "text-ink" : "text-mute"}`}
-          numberOfLines={1}
-        >
-          {hint}
-        </AppText>
-      </View>
-    </Pressable>
-  );
-}
+// ClientStatTile удалён 2026-05-29 — стат-плитки убраны с профиля клиента.
 
 // Сегментированный 3-button-row для темы (Linear/Vercel-стиль).
 // В одном «pill»-контейнере 3 равных секции, активная — bg-canvas + shadow, остальные ghost.

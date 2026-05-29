@@ -13,7 +13,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
-import { CaretRight, ClipboardText, Eye, Gear, SignIn, SignOut, ChatCircle, Moon, Pencil, Plus, ShieldCheck, DeviceMobile, Star, Sun, User } from "phosphor-react-native";
+import { Camera, CaretRight, ClipboardText, Eye, Gear, SignIn, SignOut, ChatCircle, Moon, Plus, ShieldCheck, DeviceMobile, Star, Sun, User } from "phosphor-react-native";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, Alert, Pressable, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -96,16 +96,26 @@ export default function ProfileScreen() {
     });
   };
 
-  const onRemoveAvatar = () => {
-    if (!user?.avatar_url) return;
-    Alert.alert("Убрать аватар?", "Останутся инициалы.", [
-      { text: "Отмена", style: "cancel" },
-      {
-        text: "Убрать",
-        style: "destructive",
-        onPress: () => removeAvatar.mutate(),
-      },
-    ]);
+  // Меню по тапу на саму аватарку (как у больших приложений): сменить /
+  // добавить фото, удалить (если есть). Текст «Убрать фото» под аватаркой убран.
+  const openAvatarMenu = () => {
+    if (updateAvatar.isPending || removeAvatar.isPending) return;
+    if (user?.avatar_url) {
+      Alert.alert("Фото профиля", undefined, [
+        { text: "Сменить фото", onPress: onChangeAvatar },
+        {
+          text: "Удалить фото",
+          style: "destructive",
+          onPress: () => removeAvatar.mutate(),
+        },
+        { text: "Отмена", style: "cancel" },
+      ]);
+    } else {
+      Alert.alert("Фото профиля", undefined, [
+        { text: "Добавить фото", onPress: onChangeAvatar },
+        { text: "Отмена", style: "cancel" },
+      ]);
+    }
   };
 
   const onAddPortfolio = async () => {
@@ -222,36 +232,25 @@ export default function ProfileScreen() {
             одинаковая позиция аватара/имени/бейджа/CTA. Меняется только
             содержимое бейджа и кнопка под ним. См. CLAUDE.md история решений. */}
         <View className="items-center px-6 pt-4">
-          <View className="relative">
+          {/* Тап по самой аватарке открывает меню (сменить/добавить/удалить) —
+              паттерн больших приложений. Значок камеры — подсказка, что фото
+              редактируемо. Текст «Убрать фото» убран (фидбэк владельца 2026-05-29). */}
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Фото профиля — изменить"
+            onPress={openAvatarMenu}
+            disabled={updateAvatar.isPending || removeAvatar.isPending}
+            className="relative active:opacity-90"
+          >
             <Avatar url={user.avatar_url} name={fullName} seed={user.id} size="xl" />
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Изменить фото"
-              onPress={onChangeAvatar}
-              disabled={updateAvatar.isPending}
-              hitSlop={6}
-              className="-bottom-1 -right-1 absolute h-9 w-9 items-center justify-center rounded-full border-2 border-canvas bg-ink active:opacity-80"
-            >
-              {updateAvatar.isPending ? (
+            <View className="-bottom-0.5 -right-0.5 absolute h-8 w-8 items-center justify-center rounded-full border-2 border-canvas bg-ink">
+              {updateAvatar.isPending || removeAvatar.isPending ? (
                 <ActivityIndicator size="small" color={themeColors["on-primary"]} />
               ) : (
-                <Pencil size={14} weight="bold" color={themeColors["on-primary"]} />
+                <Camera size={15} weight="fill" color={themeColors["on-primary"]} />
               )}
-            </Pressable>
-          </View>
-
-          {user.avatar_url ? (
-            <Pressable
-              accessibilityRole="button"
-              onPress={onRemoveAvatar}
-              hitSlop={8}
-              className="mt-3 active:opacity-70"
-            >
-              <AppText weight="medium" className="text-caption text-mute">
-                Убрать фото
-              </AppText>
-            </Pressable>
-          ) : null}
+            </View>
+          </Pressable>
 
           <AppText
             weight="display"

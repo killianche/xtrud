@@ -14,6 +14,7 @@
 //   Authentication → Providers / Sign-In Settings → "Allow anonymous sign-ins" = ON
 
 import { unregisterCurrentPushToken } from "@/features/notifications/use-register-push-token";
+import { looksLikeEmail, normalizePhone } from "@/features/auth/validation";
 import { supabase } from "./supabase";
 
 /** Префиксы телефонов, у которых на сервере уже заведены auth.users + пароль. */
@@ -192,6 +193,154 @@ export async function verifyOtpCode(
     .update({ active_role: "master" })
     .eq("id", data.user.id)
     .eq("is_master", true);
+  return { ok: true };
+}
+
+// ============================================================================
+// Вход по номеру/почте + пароль (2026-06-05).
+//
+// SMS-OTP заменён на пароль (не платим операторам за branded-SMS). Почта —
+// для восстановления пароля и как альтернативный логин. Auth-идентичность —
+// РЕАЛЬНАЯ почта (нужно для Supabase resetPasswordForEmail). Телефон хранится
+// в users_private.phone. Вход по номеру → почта через RPC resolve_login_email.
+//
+// Demo-номера (+79000…, флаг ON) по-прежнему входят по email/паролю (demo).
+// SMS-функции (sendOtpToPhone/verifyOtpCode) и экран verify оставлены дормантом
+// для будущего возврата SMS.
+// ============================================================================
+
+/** URL экрана сброса пароля (ссылка из письма открывает его). */
+const RESET_REDIRECT_URL = "https://xtrud.pro/reset-password";
+
+/**
+ * Регистрация: почта + пароль + телефон.
+ *
+ * Идёт через серверную функцию `register-user` (admin createUser с
+ * email_confirm:true), потому что в Supabase включено «Confirm email» — при
+ * обычном signUp сессия не создалась бы до подтверждения письма, а письма мы
+ * не шлём (продукт телефоно-ориентированный). Функция создаёт сразу
+ * подтверждённого пользователя + сохраняет телефон в профиль; затем здесь
+ * сразу входим по паролю → появляется сессия, и корневой AuthGate уводит в
+ * онбординг/табы. Логика функции — supabase/functions/register-user/index.ts.
+ */
+export async function registerWithCredentials(input: {
+  phone: string;
+  email: string;
+  password: string;
+}): Promise<{ ok: true } | { ok: false; error: string }> {
+  const email = input.email.trim().toLowerCase();
+  const phone = normalizePhone(input.phone);
+
+  // 1. Создаём подтверждённый аккаунт на сервере.
+  const { data, error } = await supabase.functions.invoke("register-user", {
+    body: { email, password: input.password, phone },
+  });
+  if (error) {
+    console.warn("[auth] register-user invoke failed:", error.message);
+    return {
+      ok: false,
+      error: "Не удалось создать аккаунт. Проверьте соединение и попробуйте ещё раз.",
+    };
+  }
+  const result = data as { ok?: boolean; error?: string } | null;
+  if (!result?.ok) {
+    return { ok: false, error: result?.error ?? "Не удалось создать аккаунт" };
+  }
+
+  // 2. Входим по паролю — сессия появляется сразу (аккаунт уже подтверждён).
+  const { data: signInData, error: signInErr } = await supabase.auth.signInWithPassword({
+    email,
+    password: input.password,
+  });
+  if (signInErr || !signInData.session) {
+    return {
+      ok: false,
+      error: "Аккаунт создан, но войти не удалось. Попробуйте войти вручную.",
+    };
+  }
+  return { ok: true };
+}
+
+/**
+ * Вход: «почта ИЛИ телефон» + пароль.
+ * - demo-телефон (флаг ON) → старый demo email/пароль.
+ * - почта → signInWithPassword напрямую.
+ * - телефон → resolve_login_email (RPC) → signInWithPassword.
+ */
+export async function loginWithCredentials(input: {
+  login: string;
+  password: string;
+}): Promise<{ ok: true } | { ok: false; error: string }> {
+  const trimmed = input.login.trim();
+
+  // Demo-телефон — старый путь (dev/preview).
+  if (!looksLikeEmail(trimmed)) {
+    const phone = normalizePhone(trimmed);
+    if (isDemoPhone(phone)) {
+      return signInAnonymouslyWithPhone(phone);
+    }
+  }
+
+  // Сопоставляем логин → auth-email (почта as-is; телефон → email по users_private).
+  const { data: resolved, error: rpcErr } = await supabase.rpc("resolve_login_email", {
+    p_login: trimmed,
+  });
+  if (rpcErr) {
+    return { ok: false, error: rpcErr.message };
+  }
+  const email = resolved as string | null;
+  if (!email) {
+    return {
+      ok: false,
+      error: "Аккаунт не найден. Проверьте номер или почту, либо зарегистрируйтесь.",
+    };
+  }
+
+  const { data, error } = await supabase.auth.signInWithPassword({
+    email,
+    password: input.password,
+  });
+  if (error) {
+    return { ok: false, error: "Неверный номер/почта или пароль" };
+  }
+  if (!data.session || !data.user) {
+    return { ok: false, error: "Сессия не создана" };
+  }
+  // Мастер → сразу master-режим (как в других ветках).
+  await supabase
+    .from("users")
+    .update({ active_role: "master" })
+    .eq("id", data.user.id)
+    .eq("is_master", true);
+  return { ok: true };
+}
+
+/**
+ * Запрос сброса пароля — Supabase шлёт письмо со ссылкой на /reset-password.
+ */
+export async function requestPasswordReset(
+  email: string,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const { error } = await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase(), {
+    redirectTo: RESET_REDIRECT_URL,
+  });
+  if (error) {
+    return { ok: false, error: error.message };
+  }
+  return { ok: true };
+}
+
+/**
+ * Установить новый пароль. Вызывается на экране /reset-password, когда Supabase
+ * уже подхватил recovery-сессию из ссылки письма (PASSWORD_RECOVERY).
+ */
+export async function updatePassword(
+  newPassword: string,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const { error } = await supabase.auth.updateUser({ password: newPassword });
+  if (error) {
+    return { ok: false, error: error.message };
+  }
   return { ok: true };
 }
 

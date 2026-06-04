@@ -1638,6 +1638,7 @@ export type Database = {
       }
       reject_response: { Args: { p_response_id: string }; Returns: undefined }
       reopen_order: { Args: { p_order_id: string }; Returns: undefined }
+      resolve_login_email: { Args: { p_login: string }; Returns: string }
       search_categories: {
         Args: { p_limit?: number; p_query: string }
         Returns: {

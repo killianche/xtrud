@@ -88,12 +88,17 @@ function AuthGate({ children }: { children: React.ReactNode }) {
     // (Apple/Google review проверяет ссылку из App Store description, должна
     // открываться без логина). Пропускаем во всех ветках allowlist'ом.
     const inLegal = group === "legal";
+    // /reset-password — top-level экран установки нового пароля по ссылке из
+    // письма. Открывается с recovery-сессией (залогинен) ИЛИ ещё анонимно (пока
+    // Supabase подхватывает токен из URL). Пропускаем во всех ветках, иначе
+    // AuthGate выбросит пользователя со страницы до смены пароля.
+    const inReset = group === "reset-password";
 
     // ============ АНОН ============
     if (status === "unauthenticated") {
-      // Анон в (tabs) / (auth) / legal — пропускаем.
+      // Анон в (tabs) / (auth) / legal / reset-password — пропускаем.
       // Анон в (onboarding) — невозможно без сессии, отправляем в (tabs).
-      if (inTabs || inAuth || inLegal) return;
+      if (inTabs || inAuth || inLegal || inReset) return;
       if (inOnboarding) {
         router.replace("/(tabs)");
         return;
@@ -125,9 +130,9 @@ function AuthGate({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    // Не онбордил — отправляем в (onboarding), кроме (tabs) и legal (Privacy/Terms
-    // должны открываться на любом этапе).
-    if (!onboardingDone && !inOnboarding && !inTabs && !inLegal) {
+    // Не онбордил — отправляем в (onboarding), кроме (tabs), legal и reset-password
+    // (Privacy/Terms и смена пароля должны открываться на любом этапе).
+    if (!onboardingDone && !inOnboarding && !inTabs && !inLegal && !inReset) {
       router.replace("/(onboarding)/role");
     }
     // Иначе — оставляем где есть.

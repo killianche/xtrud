@@ -78,9 +78,57 @@ export type PhoneFormValues = z.infer<typeof phoneFormSchema>;
 
 /**
  * Zod-схема экрана verify.tsx — 6-значный OTP-код.
+ * (Оставлена для будущего SMS-входа; сейчас основной вход — номер/почта+пароль.)
  */
 export const otpFormSchema = z.object({
   code: z.string().regex(/^\d{6}$/, "Введите 6 цифр"),
 });
 
 export type OtpFormValues = z.infer<typeof otpFormSchema>;
+
+// ============================================================================
+// Вход по номеру/почте + пароль (2026-06-05). SMS-OTP заменён на пароль, чтобы
+// не платить операторам за branded-SMS. Почта добавлена для восстановления
+// пароля и как альтернативный логин (решение владельца — разворот прежнего
+// «без email», см. CLAUDE.md правило №6).
+// ============================================================================
+
+/** Простая проверка «это похоже на email». */
+export function looksLikeEmail(input: string): boolean {
+  return /\S+@\S+\.\S+/.test(input.trim());
+}
+
+/**
+ * Схема входа: одно поле «почта или телефон» + пароль.
+ * Поле login принимаем как есть; различение email/phone — в логике входа.
+ */
+export const loginFormSchema = z.object({
+  login: z.string().min(1, "Введите номер телефона или почту"),
+  password: z.string().min(1, "Введите пароль"),
+});
+
+export type LoginFormValues = z.infer<typeof loginFormSchema>;
+
+/**
+ * Схема регистрации: номер (digits, ≥6) + почта + пароль (≥6).
+ * Почта — для восстановления пароля и альтернативного входа.
+ */
+export const registerFormSchema = z.object({
+  phone: z
+    .string()
+    .min(1, "Введите номер телефона")
+    .refine((v) => digitsOnly(v).length >= 6, {
+      message: "Введите корректный номер телефона",
+    }),
+  email: z.string().min(1, "Введите почту").email("Некорректная почта"),
+  password: z.string().min(6, "Минимум 6 символов"),
+});
+
+export type RegisterFormValues = z.infer<typeof registerFormSchema>;
+
+/** Схема экрана «Забыли пароль» — только почта. */
+export const forgotPasswordSchema = z.object({
+  email: z.string().min(1, "Введите почту").email("Некорректная почта"),
+});
+
+export type ForgotPasswordValues = z.infer<typeof forgotPasswordSchema>;

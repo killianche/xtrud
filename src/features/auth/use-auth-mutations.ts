@@ -1,15 +1,93 @@
 // useMutation хуки для UI auth flow.
 //
-// Реальный вход по SMS (с 2026-06-04):
-// - useSendOtp   → sendOtpToPhone: supabase.auth.signInWithOtp({phone}) для
-//   реальных номеров (Supabase → Send SMS Hook → SMS.ru). Demo-номера (флаг
-//   включён) код не шлют — вход по email/паролю на шаге verify.
-// - useVerifyOtp → verifyOtpCode: supabase.auth.verifyOtp({phone,token,type:'sms'})
-//   для реальных номеров. Demo — email/пароль, код игнорируется.
-// Реализация в src/lib/auth.ts.
+// Основной вход (с 2026-06-05): номер/почта + пароль (без SMS).
+// - useRegister      → registerWithCredentials: создаёт аккаунт (почта+пароль),
+//   сохраняет телефон в профиль.
+// - useLogin         → loginWithCredentials: вход по «почта ИЛИ телефон» + пароль.
+// - useRequestReset  → requestPasswordReset: письмо со ссылкой на сброс пароля.
+// - useUpdatePassword→ updatePassword: установить новый пароль (экран /reset-password).
+//
+// Дормант (для будущего возврата SMS):
+// - useSendOtp / useVerifyOtp → sendOtpToPhone / verifyOtpCode (signInWithOtp).
+// Реализация всех функций — src/lib/auth.ts.
 
 import { useMutation } from "@tanstack/react-query";
-import { sendOtpToPhone, verifyOtpCode } from "@/lib/auth";
+import {
+  loginWithCredentials,
+  registerWithCredentials,
+  requestPasswordReset,
+  sendOtpToPhone,
+  updatePassword,
+  verifyOtpCode,
+} from "@/lib/auth";
+
+// ── Основной вход: номер/почта + пароль ────────────────────────────────────
+
+export interface RegisterInput {
+  phone: string;
+  email: string;
+  password: string;
+}
+
+/** Регистрация: почта + пароль (auth) + телефон (профиль). */
+export function useRegister() {
+  return useMutation({
+    mutationFn: async (input: RegisterInput): Promise<{ ok: true }> => {
+      const result = await registerWithCredentials(input);
+      if (!result.ok) {
+        throw new Error(result.error);
+      }
+      return { ok: true };
+    },
+  });
+}
+
+export interface LoginInput {
+  /** Почта или телефон. */
+  login: string;
+  password: string;
+}
+
+/** Вход по «почта ИЛИ телефон» + пароль. */
+export function useLogin() {
+  return useMutation({
+    mutationFn: async (input: LoginInput): Promise<{ ok: true }> => {
+      const result = await loginWithCredentials(input);
+      if (!result.ok) {
+        throw new Error(result.error);
+      }
+      return { ok: true };
+    },
+  });
+}
+
+/** Запрос письма для сброса пароля. */
+export function useRequestReset() {
+  return useMutation({
+    mutationFn: async (email: string): Promise<{ ok: true }> => {
+      const result = await requestPasswordReset(email);
+      if (!result.ok) {
+        throw new Error(result.error);
+      }
+      return { ok: true };
+    },
+  });
+}
+
+/** Установить новый пароль (на экране /reset-password). */
+export function useUpdatePassword() {
+  return useMutation({
+    mutationFn: async (password: string): Promise<{ ok: true }> => {
+      const result = await updatePassword(password);
+      if (!result.ok) {
+        throw new Error(result.error);
+      }
+      return { ok: true };
+    },
+  });
+}
+
+// ── Дормант: SMS-OTP (для будущего возврата) ───────────────────────────────
 
 export interface SendOtpInput {
   phone: string;

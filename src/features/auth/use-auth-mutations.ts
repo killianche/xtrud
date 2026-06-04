@@ -1,26 +1,28 @@
 // useMutation хуки для UI auth flow.
 //
-// Sprint 1 решение:
-// - sendOtp — симуляция (resolve через 800ms). В sprint 2 заменим на supabase.auth.signInWithOtp({phone}).
-// - verifyAndSignIn — anonymous sign-in + UPDATE phone в users_private.
-//   OTP-код ввода не проверяется (в sprint 1). В sprint 2 — supabase.auth.verifyOtp.
+// Реальный вход по SMS (с 2026-06-04):
+// - useSendOtp   → sendOtpToPhone: supabase.auth.signInWithOtp({phone}) для
+//   реальных номеров (Supabase → Send SMS Hook → SMS.ru). Demo-номера (флаг
+//   включён) код не шлют — вход по email/паролю на шаге verify.
+// - useVerifyOtp → verifyOtpCode: supabase.auth.verifyOtp({phone,token,type:'sms'})
+//   для реальных номеров. Demo — email/пароль, код игнорируется.
+// Реализация в src/lib/auth.ts.
 
 import { useMutation } from "@tanstack/react-query";
-import { signInAnonymouslyWithPhone } from "@/lib/auth";
+import { sendOtpToPhone, verifyOtpCode } from "@/lib/auth";
 
 export interface SendOtpInput {
   phone: string;
 }
 
-/**
- * Sprint 1: симулирует отправку OTP. Просто задержка для UX.
- * Sprint 2: заменим на supabase.auth.signInWithOtp({phone}).
- */
+/** Отправить код на номер (реальный SMS или demo-no-op). */
 export function useSendOtp() {
   return useMutation({
-    mutationFn: async (_input: SendOtpInput): Promise<{ ok: true }> => {
-      // Симуляция сетевого вызова
-      await new Promise((resolve) => setTimeout(resolve, 800));
+    mutationFn: async (input: SendOtpInput): Promise<{ ok: true }> => {
+      const result = await sendOtpToPhone(input.phone);
+      if (!result.ok) {
+        throw new Error(result.error);
+      }
       return { ok: true };
     },
   });
@@ -28,18 +30,15 @@ export function useSendOtp() {
 
 export interface VerifyOtpInput {
   phone: string;
-  /** Sprint 1: код игнорируется. Любые 6 цифр проходят. */
+  /** 6-значный код из SMS. Для demo-номеров игнорируется. */
   code: string;
 }
 
-/**
- * Sprint 1: создаёт anonymous-сессию и сохраняет phone.
- * Sprint 2: верифицирует OTP через supabase.auth.verifyOtp.
- */
+/** Проверить код и войти. */
 export function useVerifyOtp() {
   return useMutation({
     mutationFn: async (input: VerifyOtpInput): Promise<{ ok: true }> => {
-      const result = await signInAnonymouslyWithPhone(input.phone);
+      const result = await verifyOtpCode(input.phone, input.code);
       if (!result.ok) {
         throw new Error(result.error);
       }

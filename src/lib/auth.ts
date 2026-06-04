@@ -135,6 +135,68 @@ export async function signInAnonymouslyWithPhone(
 }
 
 /**
+ * Отправка OTP-кода (реальный SMS через Supabase phone auth → Send SMS Hook →
+ * SMS.ru). См. supabase/functions/send-sms + дашборд Auth Hooks.
+ *
+ * - Demo-телефон (+79000…, флаг включён): код НЕ шлём — на verify-экране вход
+ *   произойдёт через email/пароль (signInAnonymouslyWithPhone). Это dev/preview.
+ * - Реальный номер: supabase.auth.signInWithOtp({ phone }) — Supabase сгенерит
+ *   код, вызовет наш hook, hook отправит SMS.
+ * - Test-номера ревью Apple (настроены в дашборде Supabase как Test OTP) идут
+ *   тем же путём signInWithOtp, но Supabase возвращает фикс-код БЕЗ вызова hook.
+ */
+export async function sendOtpToPhone(
+  phone: string,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  if (isDemoPhone(phone)) {
+    // Demo: SMS не нужен, вход по email/паролю на шаге verify.
+    return { ok: true };
+  }
+  const { error } = await supabase.auth.signInWithOtp({ phone });
+  if (error) {
+    return { ok: false, error: error.message };
+  }
+  return { ok: true };
+}
+
+/**
+ * Проверка OTP-кода и вход.
+ *
+ * - Demo-телефон (флаг включён): код игнорируется, вход по email/паролю в
+ *   существующий demo-аккаунт (signInAnonymouslyWithPhone).
+ * - Реальный номер: supabase.auth.verifyOtp({ phone, token, type:'sms' }).
+ *   Для новых пользователей триггер handle_new_auth_user создаёт users/
+ *   users_private. Для мастеров ставим active_role='master' (как в demo-ветке).
+ */
+export async function verifyOtpCode(
+  phone: string,
+  code: string,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  if (isDemoPhone(phone)) {
+    return signInAnonymouslyWithPhone(phone);
+  }
+  const { data, error } = await supabase.auth.verifyOtp({
+    phone,
+    token: code,
+    type: "sms",
+  });
+  if (error) {
+    return { ok: false, error: error.message };
+  }
+  if (!data.session || !data.user) {
+    return { ok: false, error: "Сессия не создана" };
+  }
+  // Мастер с is_master=true → сразу в master-режим (как в demo-ветке выше).
+  // Для клиентов UPDATE затронет 0 строк (guard .eq is_master true).
+  await supabase
+    .from("users")
+    .update({ active_role: "master" })
+    .eq("id", data.user.id)
+    .eq("is_master", true);
+  return { ok: true };
+}
+
+/**
  * Logout — снимает push-токен этого устройства, затем обнуляет сессию.
  *
  * Порядок важен: токен удаляется ДО auth.signOut, пока ещё есть auth.uid()

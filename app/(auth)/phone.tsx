@@ -4,7 +4,6 @@ import { CaretLeft, Check } from "phosphor-react-native";
 import { useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import {
-  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -18,7 +17,7 @@ import {
   CountryCodeSelect,
   DEFAULT_COUNTRY,
 } from "@/features/auth/CountryCodeSelect";
-import { useVerifyOtp } from "@/features/auth/use-auth-mutations";
+import { useSendOtp } from "@/features/auth/use-auth-mutations";
 import {
   digitsOnly,
   type PhoneFormValues,
@@ -48,10 +47,10 @@ function formatPhoneByCountry(digits: string, country: Country): string {
 export default function PhoneScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  // Sprint 1 dev-mode (фидбэк user 2026-05-16): экран /verify обходится
-  // полностью, sign-in вызывается напрямую из этого экрана. Real OTP вернём
-  // в Sprint 2 — тогда восстановим useSendOtp + переход на /verify.
-  const verifyOtp = useVerifyOtp();
+  // Реальный SMS-вход (2026-06-04): отправляем код (supabase signInWithOtp →
+  // Send SMS Hook → SMS.ru) и переходим на /verify для ввода. Demo-номера —
+  // sendOtp no-op, вход по email/паролю на verify.
+  const sendOtp = useSendOtp();
   const [serverError, setServerError] = useState<string | null>(null);
   // По умолчанию ОТМЕЧЕНО (фидбэк владельца 2026-05-29 — удобство входа).
   // ⚠️ ВНИМАНИЕ перед публикацией в App Store / Google Play: проверка Apple
@@ -60,11 +59,6 @@ export default function PhoneScreen() {
   // вернуть `useState(false)`. Сейчас true — осознанное решение владельца для
   // тестового/демо-этапа.
   const [acceptedTerms, setAcceptedTerms] = useState(true);
-  // confirming = «sign-in succeeded, показываю короткий feedback и тут же
-  // редиректну». Раньше после submit был мгновенный redirect, у user'а
-  // создавалось впечатление «ничего не произошло» (фидбэк 2026-05-20).
-  const [confirming, setConfirming] = useState(false);
-  const [confirmingPhone, setConfirmingPhone] = useState("");
   // Sprint 2026-05-20: селектор страны (дефолт +7 Россия). Полный номер
   // собирается на submit: country.dial + digits.
   const [country, setCountry] = useState<Country>(DEFAULT_COUNTRY);
@@ -86,34 +80,21 @@ export default function PhoneScreen() {
   });
 
   const onSubmit = handleSubmit(async (values) => {
-    // Sprint 2026-05-20: собираем полный E.164 номер с кодом выбранной страны.
-    // Поле values.phone теперь содержит только digits (без +N префикса).
+    // Собираем полный E.164 номер с кодом выбранной страны.
     const digits = digitsOnly(values.phone);
     const phone = `+${country.dial}${digits}`;
     setServerError(null);
     try {
-      await verifyOtp.mutateAsync({ phone, code: "" });
-      // Sprint 1: OTP-экран обойдён, чтобы юзер ВИДЕЛ что вход реально произошёл —
-      // показываем 700мс overlay «Подтверждаю ваш номер …». Без этого был effect
-      // «нажал — ничего не случилось» (фидбэк user 2026-05-20).
-      setConfirmingPhone(phone);
-      setConfirming(true);
-      await new Promise((r) => setTimeout(r, 700));
-      // Не делаем явный router.replace — AuthGate (_layout.tsx:121-128) сам
-      // решит куда отправить: если onboarding_completed_at IS NULL → на
-      // /(onboarding)/role; иначе на /(tabs). Раньше тут была своя ветка
-      // через returnUrl-store, она вызывала flash role-экрана у existing
-      // users (returnUrl от прошлой сессии оставался в store + AuthGate
-      // двойной редирект). Возврат на target страницу для CTA «Стать
-      // мастером» делается на финальном шаге master-photo.tsx через
-      // consumeReturnUrl() — уже без участия phone.tsx.
-      router.replace("/(tabs)" as never);
+      // Отправляем код (реальный SMS или demo no-op) и переходим на экран
+      // ввода кода. Сам вход произойдёт там, после verifyOtp.
+      await sendOtp.mutateAsync({ phone });
+      router.push(`/(auth)/verify?phone=${encodeURIComponent(phone)}` as never);
     } catch (e) {
-      setServerError(e instanceof Error ? e.message : "Не удалось войти");
+      setServerError(e instanceof Error ? e.message : "Не удалось отправить код");
     }
   });
 
-  const isBusy = verifyOtp.isPending || confirming;
+  const isBusy = sendOtp.isPending;
 
   return (
     <KeyboardAvoidingView
@@ -242,31 +223,11 @@ export default function PhoneScreen() {
             }`}
           >
             <AppText weight="semibold" className="text-button text-on-primary">
-              {isBusy ? "Входим..." : "Войти"}
+              {isBusy ? "Отправляем код..." : "Получить код"}
             </AppText>
           </Pressable>
         </View>
       </View>
-
-      {/* Feedback overlay — показывается 700мс после успешного sign-in.
-          Без этого юзер не видел что вход реально произошёл (фидбэк
-          2026-05-20: «нажал войти — меня тут же закидывает на главную,
-          даже не попросили ввести номер»). Sprint 2: заменим на реальный
-          /verify с 6-значным OTP. */}
-      {confirming ? (
-        <View
-          accessibilityRole="alert"
-          className="absolute inset-0 items-center justify-center bg-canvas/95"
-        >
-          <ActivityIndicator size="large" />
-          <AppText weight="semibold" className="mt-4 text-title-md text-ink">
-            Подтверждаю ваш номер
-          </AppText>
-          <AppText weight="medium" className="mt-1 text-body-md text-muted">
-            {confirmingPhone}
-          </AppText>
-        </View>
-      ) : null}
     </KeyboardAvoidingView>
   );
 }

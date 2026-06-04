@@ -6,7 +6,12 @@
  * unicode-эмодзи.
  *
  * Если категория не в маппинге — fallback на Lucide моно (см. caller).
+ *
+ * Локальные кастомные иконки (нарисованные вручную, когда в Iconify нет
+ * подходящей) имеют приоритет — см. LOCAL_CATEGORY_ICON_URI.
  */
+
+import { LOCAL_CATEGORY_ICON_URI } from "@/lib/local-category-icons";
 
 const ICON_MAP: Record<string, string> = {
   // L2 id → iconify identifier (collection/name)
@@ -25,7 +30,12 @@ const ICON_MAP: Record<string, string> = {
   floors: "twemoji/black-square-button",  // пол-плитка/паркет = квадрат
   ceilings: "twemoji/light-bulb",         // потолок = лампа
   "tension-ceilings": "twemoji/film-frames", // натяжной = натянутая плёнка
-  climate: "fluent-color/weather-snowflake-24",
+  // climate переименован в «Отопление» 2026-05-27 — снежинка заменена на
+  // термометр (тепло/температура). Кондиционеры переехали в appliance-repair.
+  climate: "twemoji/thermometer",
+  // water-sewer («Водоснабжение и канализация») — кастомная локальная иконка
+  // (смеситель+капля, fluent-стиль), см. LOCAL_CATEGORY_ICON_URI. В ICON_MAP
+  // не добавляем — local имеет приоритет в getCategoryColorIconUrl.
   insulation: "twemoji/scarf",            // утепление = тепло-изоляция
   roofing: "twemoji/house",
   facade: "fluent-color/building-24",
@@ -74,6 +84,9 @@ const BASE = "https://api.iconify.design";
 
 export function getCategoryColorIconUrl(l2Id: string | null | undefined): string | null {
   if (!l2Id) return null;
+  // Локальная кастомная иконка (data-URI) имеет приоритет над Iconify CDN.
+  const local = LOCAL_CATEGORY_ICON_URI[l2Id];
+  if (local) return local;
   const mapped = ICON_MAP[l2Id];
   if (!mapped) return null;
   return `${BASE}/${mapped}.svg`;

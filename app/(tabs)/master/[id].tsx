@@ -60,7 +60,6 @@ import { ReviewsSection } from "@/features/master-view/ReviewsSection";
 import { MasterReviewSheet } from "@/features/reviews/MasterReviewSheet";
 import { ReportReviewSheet } from "@/features/reviews/ReportReviewSheet";
 import { useMyRecentReviewForMaster } from "@/features/reviews/use-reviews";
-import { useUserRecord } from "@/features/auth/use-user-record";
 import {
   type ReviewWithAuthor,
   useMasterCategoriesPublic,
@@ -137,23 +136,29 @@ export default function MasterPublicScreen() {
   // Отзыв, который мастер обжалует (#163). null → шит закрыт.
   const [reportReview, setReportReview] = useState<ReviewWithAuthor | null>(null);
 
-  // Кто я: для CTA «Оставить отзыв». Любой авторизованный клиент (is_client)
-  // может оставить freeform-отзыв на мастера (без заказа). Лимит 1/30 дней
-  // проверяется на бэке + здесь мы скрываем CTA если recentReview уже есть.
-  const currentUser = useUserRecord(currentUserId);
+  // CTA «Оставить отзыв». Кнопка видна всем (кроме владельца профиля и тех,
+  // кто уже оставил отзыв за последние 30 дней). Аноним по тапу сначала идёт
+  // на вход — после авторизации вернётся на профиль и сможет оставить отзыв
+  // (правильная логика входа, решение владельца 2026-05-27). Лимит 1/30 дней
+  // проверяется на бэке через RPC submit_master_review.
   const recentReview = useMyRecentReviewForMaster(masterId ?? undefined, currentUserId);
-  const canLeaveReview =
-    !!currentUserId &&
-    !isOwnProfile &&
-    currentUser.data?.is_client === true &&
-    !recentReview.data;
+  const showReviewCta = !!masterId && !isOwnProfile && !recentReview.data;
+
+  // Тап «Оставить отзыв»: аноним → на вход; авторизованный → форма отзыва.
+  const handleReviewPress = () => {
+    if (!currentUserId) {
+      router.push("/(auth)/phone" as never);
+      return;
+    }
+    setReviewSheetOpen(true);
+  };
   // Safari-fallback: если avatar_url hero не загрузился (CORS / 404) —
   // переключаемся на инициалы через Avatar xl. Иначе пользователь
   // видит пустой серый блок 16:9. State объявлен здесь, reset-effect — ниже,
   // после получения `u?.avatar_url` из profile.data.
   const [heroFailed, setHeroFailed] = useState(false);
 
-  const tc = useThemeColors(["ink", "error"]);
+  const tc = useThemeColors(["ink", "error", "accent"]);
 
   // Избранное. Для гостя/own-profile кнопка скрыта (rendering ниже).
   const isFavorite = useIsFavorite(!isAnon && !isOwnProfile ? masterId ?? undefined : undefined);
@@ -208,11 +213,28 @@ export default function MasterPublicScreen() {
     }
   };
 
+  // Цельный skeleton всей страницы пока грузятся основные данные (профиль +
+  // портфолио). Раньше был «progressive cascade»: layout рендерился сразу,
+  // кнопка «Позвонить» и TabBar появлялись раньше hero/имени/bio — выглядело
+  // рвано (фидбэк владельца 2026-05-27: «что-то прогружено, что-то белое»).
+  // Теперь: открыл → видишь скелет всей структуры → потом весь контент разом.
+  if (profile.isLoading || portfolio.isLoading) {
+    return (
+      <MasterProfileSkeleton
+        insets={insets}
+        goBack={goBack}
+        heroStyle={
+          isDesktopHero
+            ? { height: Math.min((viewportWidth * 9) / 16, 520) }
+            : { aspectRatio: heroAspect }
+        }
+      />
+    );
+  }
+
   // Полностью пустой error-state показываем только если запрос завершился ошибкой
-  // или дал null. Пока profile.isLoading — рендерим обычный layout, но с
-  // skeleton-формами в hero/имени/чипсах (progressive cascade): пользователь
-  // сразу видит структуру, а не белый экран с лоадером.
-  if (!profile.isLoading && (profile.error || !profile.data)) {
+  // или дал null.
+  if (profile.error || !profile.data) {
     return (
       <View
         className="flex-1 bg-canvas items-center justify-center px-6"
@@ -550,13 +572,17 @@ export default function MasterPublicScreen() {
               + без иконок (text-only) — minimal-shadcn-pattern. */}
           {!isOwnProfile && (
             <View className="flex-row gap-2 mt-5">
+              {/* «Позвонить» — primary-действие, фирменный акцент (bg-accent-soft
+                  + text-accent), как активный таб в нижнем меню (решение
+                  владельца 2026-05-27). WhatsApp ниже остаётся secondary-серым,
+                  чтобы был один акцентный primary. */}
               <Pressable
                 accessibilityRole="button"
                 accessibilityLabel="Позвонить"
                 onPress={handleCall}
-                className="flex-1 items-center justify-center h-10 rounded-full bg-canvas-soft active:bg-canvas-soft-2"
+                className="flex-1 items-center justify-center h-10 rounded-full bg-accent-soft active:opacity-80"
               >
-                <AppText weight="medium" className="text-body-sm text-ink">
+                <AppText weight="semibold" className="text-body-sm text-accent">
                   Позвонить
                 </AppText>
               </Pressable>
@@ -573,6 +599,25 @@ export default function MasterPublicScreen() {
                   <AppText weight="medium" className="text-body-sm text-ink">
                     WhatsApp
                   </AppText>
+                </Pressable>
+              ) : null}
+              {/* Закладка — компактная квадратная кнопка рядом с контактами.
+                  Только для авторизованных (закладка требует аккаунта). В
+                  избранном — акцентная заливка. Дублирует кнопку из hero-overlay,
+                  но здесь она нагляднее в потоке (фидбэк владельца 2026-05-27). */}
+              {!isAnon ? (
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={isFavorite.data ? "Убрать из закладок" : "В закладки"}
+                  onPress={handleToggleFavorite}
+                  disabled={toggleFavorite.isPending}
+                  className="items-center justify-center h-10 w-12 rounded-full bg-canvas-soft active:bg-canvas-soft-2"
+                >
+                  <BookmarkSimple
+                    size={18}
+                    weight={isFavorite.data ? "fill" : "bold"}
+                    color={isFavorite.data ? tc.accent : tc.ink}
+                  />
                 </Pressable>
               ) : null}
             </View>
@@ -687,40 +732,30 @@ export default function MasterPublicScreen() {
           );
         })()}
 
-        {/* CTA «Оставить отзыв» для авторизованных клиентов (freeform-flow
-            2026-05-27). Анону показываем мягкий hint «Войдите чтобы оставить
-            отзыв»; владельцу профиля — ничего; если есть отзыв за 30 дней —
-            мягкая info-строка. RPC лимитом 1/30 дней страхует на бэке. */}
-        {masterId && !isOwnProfile ? (
+        {/* CTA «Оставить отзыв» (freeform-flow 2026-05-27). Кнопка одна и та же
+            для всех: аноним по тапу сначала идёт на вход (handleReviewPress),
+            авторизованный — открывает форму. Владельцу профиля кнопки нет.
+            Если отзыв за 30 дней уже есть — вместо кнопки мягкая info-строка.
+            RPC лимитом 1/30 дней страхует на бэке. */}
+        {showReviewCta ? (
           <View className="mt-6 px-5">
-            {canLeaveReview ? (
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Оставить отзыв"
-                onPress={() => setReviewSheetOpen(true)}
-                className="h-12 flex-row items-center justify-center rounded-md border border-hairline bg-canvas active:bg-canvas-soft"
-              >
-                <AppText weight="semibold" className="text-button text-ink">
-                  Оставить отзыв
-                </AppText>
-              </Pressable>
-            ) : recentReview.data ? (
-              <AppText className="text-center text-caption text-mute">
-                Вы уже оставили отзыв этому мастеру. Новый можно будет оставить
-                через 30 дней.
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Оставить отзыв"
+              onPress={handleReviewPress}
+              className="h-12 flex-row items-center justify-center rounded-md border border-hairline bg-canvas active:bg-canvas-soft"
+            >
+              <AppText weight="semibold" className="text-button text-ink">
+                Оставить отзыв
               </AppText>
-            ) : isAnon ? (
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Войти чтобы оставить отзыв"
-                onPress={() => router.push("/(auth)/phone" as never)}
-                className="h-12 flex-row items-center justify-center rounded-md border border-hairline bg-canvas active:bg-canvas-soft"
-              >
-                <AppText weight="semibold" className="text-button text-ink">
-                  Войти чтобы оставить отзыв
-                </AppText>
-              </Pressable>
-            ) : null}
+            </Pressable>
+          </View>
+        ) : masterId && !isOwnProfile && recentReview.data ? (
+          <View className="mt-6 px-5">
+            <AppText className="text-center text-caption text-mute">
+              Вы уже оставили отзыв этому мастеру. Новый можно будет оставить
+              через 30 дней.
+            </AppText>
           </View>
         ) : null}
 
@@ -814,6 +849,90 @@ export default function MasterPublicScreen() {
           targetId={masterId}
         />
       ) : null}
+    </View>
+  );
+}
+
+// ----------------------------------------------------------------------------
+// MasterProfileSkeleton — цельный скелет страницы мастера на время загрузки.
+// Повторяет структуру: hero (фото) → аватар+имя+опыт → bio → кнопки контакта
+// → секция услуг. Показывается пока грузятся profile+portfolio, потом весь
+// контент появляется разом (не рвано). См. фидбэк владельца 2026-05-27.
+// ----------------------------------------------------------------------------
+
+function MasterProfileSkeleton({
+  insets,
+  goBack,
+  heroStyle,
+}: {
+  insets: { top: number; bottom: number };
+  goBack: () => void;
+  heroStyle: { height: number } | { aspectRatio: number };
+}) {
+  return (
+    <View className="flex-1 bg-canvas">
+      {/* Hero-плейсхолдер + активная back-кнопка (уйти можно сразу). */}
+      <View style={{ position: "relative" }}>
+        <Skeleton width="100%" style={heroStyle} />
+        <View
+          className="absolute left-0 right-0 flex-row items-center px-4"
+          style={{ top: insets.top + 8 }}
+        >
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Назад"
+            onPress={goBack}
+            className="h-9 w-9 items-center justify-center rounded-full bg-black/50 active:opacity-70"
+          >
+            <CaretLeft size={20} weight="bold" color="#fff" />
+          </Pressable>
+        </View>
+      </View>
+
+      <View className="px-5 pt-5">
+        {/* Аватар + имя + опыт */}
+        <View className="flex-row items-center gap-3">
+          <Skeleton width={56} height={56} style={{ borderRadius: 28 }} />
+          <View className="flex-1">
+            <Skeleton width="55%" height={22} style={{ borderRadius: 6 }} />
+            <View className="mt-2">
+              <Skeleton width="40%" height={14} style={{ borderRadius: 4 }} />
+            </View>
+          </View>
+        </View>
+
+        {/* Bio — 3 строки */}
+        <View className="mt-5">
+          <Skeleton width="100%" height={14} style={{ borderRadius: 4 }} />
+          <View className="mt-2">
+            <Skeleton width="94%" height={14} style={{ borderRadius: 4 }} />
+          </View>
+          <View className="mt-2">
+            <Skeleton width="68%" height={14} style={{ borderRadius: 4 }} />
+          </View>
+        </View>
+
+        {/* Кнопки контакта */}
+        <View className="mt-6 flex-row gap-2">
+          <View className="flex-1">
+            <Skeleton width="100%" height={40} style={{ borderRadius: 999 }} />
+          </View>
+          <View className="flex-1">
+            <Skeleton width="100%" height={40} style={{ borderRadius: 999 }} />
+          </View>
+        </View>
+
+        {/* Секция «Услуги» */}
+        <View className="mt-8">
+          <Skeleton width="35%" height={18} style={{ borderRadius: 6 }} />
+          <View className="mt-4">
+            <Skeleton width="100%" height={52} style={{ borderRadius: 12 }} />
+          </View>
+          <View className="mt-3">
+            <Skeleton width="100%" height={52} style={{ borderRadius: 12 }} />
+          </View>
+        </View>
+      </View>
     </View>
   );
 }

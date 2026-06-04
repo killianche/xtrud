@@ -153,7 +153,7 @@ function FavoriteRow({ item, onPress, onUnfavorite, disabled }: FavoriteRowProps
 }
 
 function EmptyState({ onSearch }: { onSearch: () => void }) {
-  const tc = useThemeColors(["muted-soft"]);
+  const tc = useThemeColors(["muted-soft", "on-primary"]);
   return (
     <View className="flex-1 items-center justify-center px-8">
       <View className="h-16 w-16 items-center justify-center rounded-full bg-canvas-soft">
@@ -171,7 +171,7 @@ function EmptyState({ onSearch }: { onSearch: () => void }) {
         onPress={onSearch}
         className="mt-6 h-12 flex-row items-center justify-center gap-2 rounded-md bg-primary px-5 active:opacity-80"
       >
-        <MagnifyingGlass size={18} weight="bold" color="#fff" />
+        <MagnifyingGlass size={18} weight="bold" color={tc["on-primary"]} />
         <AppText weight="semibold" className="text-button text-on-primary">
           Найти мастеров
         </AppText>

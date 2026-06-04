@@ -37,7 +37,7 @@ import { OrderStatusBadge } from "@/components/OrderStatusBadge";
 import { useAuthSession } from "@/features/auth/use-auth-session";
 import { useSetActiveRole } from "@/features/auth/use-set-active-role";
 import { useUserRecord } from "@/features/auth/use-user-record";
-import { BottomSheet, ScreenHeader } from "@/components/ui";
+import { BottomSheet, ScreenHeader, Skeleton } from "@/components/ui";
 import { OrderPhotoCarousel } from "@/features/orders/OrderPhotoCarousel";
 import { useRejectResponse } from "@/features/orders/use-reject-response";
 import {
@@ -216,9 +216,37 @@ export default function OrderDetailScreen() {
         }
       />
 
+      {/* Цельный скелет заказа вместо голого спиннера (равномерная загрузка,
+          фидбэк владельца 2026-05-27): статус + заголовок + мета + описание +
+          блок откликов. */}
       {isLoading && (
-        <View className="mt-8 items-center px-6">
-          <ActivityIndicator />
+        <View className="px-5 pt-4">
+          <Skeleton width={110} height={24} style={{ borderRadius: 999 }} />
+          <View className="mt-4">
+            <Skeleton width="80%" height={26} style={{ borderRadius: 6 }} />
+          </View>
+          <View className="mt-4 flex-row gap-2">
+            <Skeleton width={120} height={16} style={{ borderRadius: 4 }} />
+            <Skeleton width={90} height={16} style={{ borderRadius: 4 }} />
+          </View>
+          <View className="mt-5">
+            <Skeleton width="100%" height={14} style={{ borderRadius: 4 }} />
+            <View className="mt-2">
+              <Skeleton width="92%" height={14} style={{ borderRadius: 4 }} />
+            </View>
+            <View className="mt-2">
+              <Skeleton width="60%" height={14} style={{ borderRadius: 4 }} />
+            </View>
+          </View>
+          <View className="mt-8">
+            <Skeleton width="35%" height={18} style={{ borderRadius: 6 }} />
+            <View className="mt-4">
+              <Skeleton width="100%" height={72} style={{ borderRadius: 12 }} />
+            </View>
+            <View className="mt-3">
+              <Skeleton width="100%" height={72} style={{ borderRadius: 12 }} />
+            </View>
+          </View>
         </View>
       )}
 

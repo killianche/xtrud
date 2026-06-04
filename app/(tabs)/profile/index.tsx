@@ -20,7 +20,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { scrollViewToTop, useTabScrollResetCounter } from "@/lib/tab-scroll-reset";
 import { AppText } from "@/components/AppText";
 import { Avatar } from "@/components/Avatar";
-import { ScreenHeader } from "@/components/ui";
+import { ScreenHeader, Skeleton } from "@/components/ui";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { RoleSwitcher } from "@/features/auth/RoleSwitcher";
 import { useAuthSession } from "@/features/auth/use-auth-session";
@@ -162,14 +162,7 @@ export default function ProfileScreen() {
   // короткий flash гостевого экрана с CTA «Войти» перед тем как залогиненный
   // user увидит свой профиль. См. диагностику task #5 (2026-05-20).
   if (authStatus === "loading") {
-    return (
-      <View
-        className="flex-1 items-center justify-center bg-canvas"
-        style={{ paddingTop: insets.top }}
-      >
-        <ActivityIndicator />
-      </View>
-    );
+    return <ProfileSkeleton insets={insets} />;
   }
 
   // Анон (status=unauthenticated, нет userId) → guest-state с CTA «Войти».
@@ -184,14 +177,7 @@ export default function ProfileScreen() {
   }
 
   if (userLoading || !user) {
-    return (
-      <View
-        className="flex-1 items-center justify-center bg-canvas"
-        style={{ paddingTop: insets.top }}
-      >
-        <ActivityIndicator />
-      </View>
-    );
+    return <ProfileSkeleton insets={insets} />;
   }
 
   const ratingAvg = user.is_master ? masterProfile?.rating_overall_avg : user.rating_as_client_avg;
@@ -583,6 +569,48 @@ function ClientThemeSegmented() {
 // - primary CTA «Войти по телефону» → /(auth)/phone;
 // - тема (auto / light / dark) — работает и для анона через useColorScheme.
 // ----------------------------------------------------------------------------
+
+// ----------------------------------------------------------------------------
+// ProfileSkeleton — цельный скелет профиля на время загрузки auth/userRecord.
+// Раньше показывался голый <ActivityIndicator> по центру белого экрана — это
+// и есть «рваная загрузка» (фидбэк владельца 2026-05-27). Теперь — структура
+// профиля заглушками (аватар + имя + бейдж + переключатель + строки), потом
+// контент появляется на тех же местах.
+// ----------------------------------------------------------------------------
+
+function ProfileSkeleton({ insets }: { insets: { top: number; bottom: number } }) {
+  return (
+    <View className="flex-1 bg-canvas" style={{ paddingTop: insets.top }}>
+      <ScreenHeader title="Профиль" />
+      <View className="items-center px-6 pt-2">
+        {/* Аватар */}
+        <Skeleton circle size={96} />
+        {/* Имя */}
+        <View className="mt-4">
+          <Skeleton width={160} height={24} style={{ borderRadius: 6 }} />
+        </View>
+        {/* Бейдж + рейтинг */}
+        <View className="mt-3">
+          <Skeleton width={90} height={20} style={{ borderRadius: 999 }} />
+        </View>
+        {/* Переключатель ролей */}
+        <View className="mt-4">
+          <Skeleton width={220} height={40} style={{ borderRadius: 999 }} />
+        </View>
+      </View>
+      {/* Контент-строки */}
+      <View className="px-5 mt-6">
+        <Skeleton width="100%" height={56} style={{ borderRadius: 12 }} />
+        <View className="mt-3">
+          <Skeleton width="100%" height={56} style={{ borderRadius: 12 }} />
+        </View>
+        <View className="mt-3">
+          <Skeleton width="100%" height={56} style={{ borderRadius: 12 }} />
+        </View>
+      </View>
+    </View>
+  );
+}
 
 interface GuestProfileScreenProps {
   insets: { top: number; bottom: number };

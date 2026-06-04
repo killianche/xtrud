@@ -74,7 +74,7 @@ export default function CategoryDetailScreen() {
   const tc = useThemeColors(["accent", "canvas", "ink", "mute"]);
   const { id } = useLocalSearchParams<{ id: string }>();
   const categoryId = typeof id === "string" ? id : undefined;
-  const { data, error } = useCategoryDetail(categoryId);
+  const { data, error, isLoading: isCategoryLoading } = useCategoryDetail(categoryId);
   const masters = useMastersByL2(categoryId ?? null);
   const refresh = usePullToRefresh();
   // safeBack: при заходе по deeplink/refresh уходим на home, не в браузерную
@@ -165,6 +165,14 @@ export default function CategoryDetailScreen() {
   const l3Label = l3Filter ? services.find((s) => s.id === l3Filter)?.name_ru ?? "Услуга" : "Услуга";
   const sortLabel = sortBy === "rating" ? "По рейтингу" : sortBy === "experience" ? "По опыту" : "Свободные";
 
+  // Цельный скелет всего экрана пока грузятся данные категории И мастера.
+  // Раньше заголовок/чипы/список появлялись по отдельности — рвано (фидбэк
+  // владельца 2026-05-27: «открывается без заголовка, но пилюли загружены»).
+  // Теперь: открыл → скелет всей структуры → потом весь контент разом.
+  if (isCategoryLoading || masters.isLoading) {
+    return <CategorySkeleton insets={insets} goBack={goBack} />;
+  }
+
   return (
     <View className="flex-1 bg-canvas">
       {/* Animated скрываемая шапка: position:absolute поверх ScrollView,
@@ -208,13 +216,21 @@ export default function CategoryDetailScreen() {
           >
             <CaretLeft size={28} weight="fill" color="currentColor" />
           </Pressable>
-          <AppText
-            weight="bold"
-            className="flex-1 text-display-md tracking-tight text-ink"
-            numberOfLines={1}
-          >
-            {categoryName}
-          </AppText>
+          {/* Пока грузится — skeleton-полоска вместо текста, чтобы заголовок
+              не мигал «Категория» → «Сантехника» (фидбэк владельца 2026-05-27). */}
+          {isCategoryLoading || !data ? (
+            <View className="flex-1">
+              <Skeleton width={180} height={26} style={{ borderRadius: 6 }} />
+            </View>
+          ) : (
+            <AppText
+              weight="bold"
+              className="flex-1 text-display-md tracking-tight text-ink"
+              numberOfLines={1}
+            >
+              {categoryName}
+            </AppText>
+          )}
           {isDesktopWeb ? (
             <View className="flex-row items-center" style={{ gap: 6 }}>
               <FilterChip
@@ -461,6 +477,70 @@ export default function CategoryDetailScreen() {
           setOpenSheet(null);
         }}
       />
+    </View>
+  );
+}
+
+// ----------------------------------------------------------------------------
+// CategorySkeleton — цельный скелет экрана категории на время загрузки.
+// Повторяет структуру: header (back + заголовок) → чипы → список мастеров.
+// Показывается пока грузятся данные категории И мастера, потом весь контент
+// появляется разом. Фидбэк владельца 2026-05-27 «всё должно загружаться
+// равномерно, а не по кускам».
+// ----------------------------------------------------------------------------
+
+function CategorySkeleton({
+  insets,
+  goBack,
+}: {
+  insets: { top: number; bottom: number };
+  goBack: () => void;
+}) {
+  return (
+    <View className="flex-1 bg-canvas" style={{ paddingTop: insets.top }}>
+      <View className="flex-row items-center gap-2 px-3" style={{ height: HEADER_BAR_HEIGHT }}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Назад"
+          onPress={goBack}
+          className="h-12 w-12 items-center justify-center rounded-full active:bg-canvas-soft text-ink"
+        >
+          <CaretLeft size={28} weight="fill" color="currentColor" />
+        </Pressable>
+        <View className="flex-1">
+          <Skeleton width={190} height={26} style={{ borderRadius: 6 }} />
+        </View>
+      </View>
+
+      <View className="flex-row gap-2 px-4 pt-1">
+        <Skeleton width={132} height={40} style={{ borderRadius: 999 }} />
+        <Skeleton width={120} height={40} style={{ borderRadius: 999 }} />
+      </View>
+
+      <View className="px-5" style={{ marginTop: 28 }}>
+        {[0, 1, 2].map((i) => (
+          <View
+            // biome-ignore lint/suspicious/noArrayIndexKey: статичный скелет
+            key={i}
+            className="flex-row gap-3"
+            style={{ marginTop: i === 0 ? 0 : 28 }}
+          >
+            <Skeleton circle size={64} />
+            <View className="flex-1">
+              <Skeleton height={18} width="55%" style={{ borderRadius: 6 }} />
+              <View className="mt-2">
+                <Skeleton height={13} width="40%" style={{ borderRadius: 4 }} />
+              </View>
+              <View className="mt-3">
+                <Skeleton height={13} width="92%" style={{ borderRadius: 4 }} />
+              </View>
+              <View className="mt-1.5">
+                <Skeleton height={13} width="68%" style={{ borderRadius: 4 }} />
+              </View>
+            </View>
+          </View>
+        ))}
+      </View>
     </View>
   );
 }

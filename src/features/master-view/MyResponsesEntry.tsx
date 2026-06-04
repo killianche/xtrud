@@ -64,13 +64,12 @@ export function MyResponsesEntry({ userId }: MyResponsesEntryProps) {
           <ChatCenteredText size={20} weight="fill" color={tc.accent} />
         </View>
         <View className="min-w-0 flex-1">
+          {/* Подзаголовок «N в ожидании ответа» убран 2026-05-27: в xtrud нет
+              статуса «ожидания» — клиент сам звонит/пишет в WhatsApp. Это
+              просто история откликов, заголовок самоочевиден. Счётчик активных
+              показывается бейджем справа. */}
           <AppText weight="semibold" className="text-body-md text-ink">
             Мои отклики
-          </AppText>
-          <AppText className="mt-0.5 text-caption text-mute" numberOfLines={1}>
-            {hasActive
-              ? `${activeResponsesCount} в ожидании ответа`
-              : "Активных нет — открыть историю"}
           </AppText>
         </View>
         {hasActive ? (

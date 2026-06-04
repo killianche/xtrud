@@ -70,8 +70,8 @@
     --hairline-soft: 245 245 245;
     --muted: 136 136 136;
     --muted-soft: 161 161 161;
-    --accent: 0 112 243;
-    --accent-soft: 211 229 255;
+    --accent: 254 85 116;
+    --accent-soft: 255 228 234;
   }
 
   .dark:root,
@@ -121,8 +121,8 @@
     --hairline-soft: 31 31 31;
     --muted: 153 153 153;
     --muted-soft: 82 82 82;
-    --accent: 50 145 255;
-    --accent-soft: 26 58 92;
+    --accent: 255 107 135;
+    --accent-soft: 74 31 41;
   }
 }
 /* @generated:tokens-end */

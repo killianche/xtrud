@@ -13,11 +13,11 @@
 import { useLocalSearchParams } from "expo-router";
 import { CheckCircle, WarningCircle, MapPin } from "phosphor-react-native";
 import { useMemo } from "react";
-import { ActivityIndicator, ScrollView, View } from "react-native";
+import { ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
 import { Avatar } from "@/components/Avatar";
-import { ScreenHeader } from "@/components/ui";
+import { ScreenHeader, Skeleton } from "@/components/ui";
 import { useClientPublicProfile } from "@/features/client-view/use-client-public";
 import { ReviewsSection } from "@/features/master-view/ReviewsSection";
 import { useReviewsForTarget } from "@/features/master-view/use-master-public";
@@ -58,9 +58,28 @@ export default function ClientPublicScreen() {
         showsVerticalScrollIndicator={false}
         refreshControl={refresh.control}
       >
+        {/* Цельный скелет вместо голого спиннера (равномерная загрузка,
+            фидбэк владельца 2026-05-27): аватар + имя + бейдж + строки. */}
         {profile.isLoading && (
-          <View className="mt-20 items-center">
-            <ActivityIndicator />
+          <View className="px-5 pt-2">
+            <View className="flex-row items-center gap-3">
+              <Skeleton circle size={64} />
+              <View className="flex-1">
+                <Skeleton width="50%" height={20} style={{ borderRadius: 6 }} />
+                <View className="mt-2">
+                  <Skeleton width="35%" height={14} style={{ borderRadius: 4 }} />
+                </View>
+              </View>
+            </View>
+            <View className="mt-6">
+              <Skeleton width="30%" height={16} style={{ borderRadius: 4 }} />
+              <View className="mt-3">
+                <Skeleton width="100%" height={72} style={{ borderRadius: 12 }} />
+              </View>
+              <View className="mt-3">
+                <Skeleton width="100%" height={72} style={{ borderRadius: 12 }} />
+              </View>
+            </View>
           </View>
         )}
 

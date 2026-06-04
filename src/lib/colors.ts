@@ -72,8 +72,11 @@ export const lightColors = {
   "hairline-soft": "#f5f5f5", // = canvas-soft-2
   muted: "#888888", // = mute
   "muted-soft": "#a1a1a1", // = hairline-strong
-  accent: "#0070f3", // = link
-  "accent-soft": "#d3e5ff", // = link-bg-soft
+  // Фирменный accent xtrud — розово-красный (решение владельца 2026-05-27).
+  // Раньше был синий #0070f3 (= link). Теперь акцент = бренд-цвет логотипа.
+  // link остаётся отдельным синим токеном для текстовых гиперссылок.
+  accent: "#fe5574", // бренд розово-красный
+  "accent-soft": "#ffe4ea", // бледно-розовый фон для chip/badge
 } as const;
 
 export const darkColors = {
@@ -140,8 +143,9 @@ export const darkColors = {
   "hairline-soft": "#1f1f1f",
   muted: "#999999",              // = mute
   "muted-soft": "#525252",       // = hairline-strong
-  accent: "#3291ff",
-  "accent-soft": "#1a3a5c",
+  // Фирменный accent на тёмном — чуть светлее для AA-контраста на canvas #0a.
+  accent: "#ff6b87",
+  "accent-soft": "#4a1f29",      // тёмно-розовый приглушённый фон
 } as const;
 
 export type ColorToken = keyof typeof lightColors;

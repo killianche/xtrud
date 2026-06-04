@@ -2,7 +2,7 @@
   "applinks": {
     "details": [
       {
-        "appIDs": ["TEAMID.com.xtrud.app"],
+        "appIDs": ["ZNK264PD9Y.com.xtrud.app"],
         "components": [
           { "/": "*" }
         ]

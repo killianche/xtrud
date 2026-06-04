@@ -57,6 +57,11 @@
     }
   },
   "submit": {
-    "production": {}
+    "production": {
+      "ios": {
+        "appleId": "blakeisrael509495@aol.com",
+        "appleTeamId": "ZNK264PD9Y"
+      }
+    }
   }
 }

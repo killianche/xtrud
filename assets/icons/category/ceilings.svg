@@ -1,0 +1,11 @@
+<svg width='48' height='48' viewBox='0 0 48 48' xmlns='http://www.w3.org/2000/svg'>
+<ellipse cx='24' cy='41.6' rx='12' ry='2.3' fill='#000000' opacity='0.10'/>
+<path d='M7 9 h34 v6 l-6 4 H13 l-6 -4 z' fill='#dfe3ea'/>
+<rect x='7' y='9' width='34' height='6' rx='1' fill='#eef1f6'/>
+<rect x='22.5' y='15' width='3' height='7' rx='1.5' fill='#9aa3b2'/>
+<circle cx='24' cy='28' r='7' fill='#ffd66b'/>
+<circle cx='24' cy='28' r='7' fill='url(#clG)'/>
+<circle cx='24' cy='28' r='3.4' fill='#fff4cf'/>
+<ellipse cx='21.6' cy='25.6' rx='2.2' ry='1.5' fill='#ffffff' opacity='0.6'/>
+<defs><radialGradient id='clG' cx='0.4' cy='0.35' r='0.7'><stop offset='0' stop-color='#ffe79a'/><stop offset='1' stop-color='#f4b740'/></radialGradient></defs>
+</svg>

@@ -1,0 +1,13 @@
+<svg width='48' height='48' viewBox='0 0 48 48' xmlns='http://www.w3.org/2000/svg'>
+<ellipse cx='24' cy='41.6' rx='13' ry='2.3' fill='#000000' opacity='0.10'/>
+<rect x='13' y='8' width='17' height='32' rx='2.5' fill='#e9dec6'/>
+<rect x='30' y='8' width='5' height='32' fill='#f6f1e6'/>
+<rect x='30' y='8' width='5' height='32' fill='#cbbd9c' opacity='0.45'/>
+<rect x='13' y='8' width='17' height='32' rx='2.5' fill='url(#dwG)'/>
+<rect x='16.5' y='15' width='10' height='2' rx='1' fill='#cdbf9d' opacity='0.8'/>
+<rect x='16.5' y='22' width='10' height='2' rx='1' fill='#cdbf9d' opacity='0.8'/>
+<rect x='16.5' y='29' width='6.5' height='2' rx='1' fill='#cdbf9d' opacity='0.8'/>
+<path d='M30 8 h5 v5 z' fill='#fbf8f0'/>
+<path d='M30 8 l5 5 v-5 z' fill='#b7a87f' opacity='0.55'/>
+<defs><linearGradient id='dwG' x1='13' y1='8' x2='30' y2='40' gradientUnits='userSpaceOnUse'><stop offset='0' stop-color='#ffffff' stop-opacity='0.35'/><stop offset='1' stop-color='#ffffff' stop-opacity='0'/></linearGradient></defs>
+</svg>

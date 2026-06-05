@@ -1,0 +1,15 @@
+<svg width='48' height='48' viewBox='0 0 48 48' xmlns='http://www.w3.org/2000/svg'>
+<ellipse cx='24' cy='41.6' rx='13' ry='2.3' fill='#000000' opacity='0.10'/>
+<path d='M10 30 q4 -3 9 -3 q5 0 9 3 v6 q-4 3 -9 3 q-5 0 -9 -3 z' fill='#f4c14e'/>
+<path d='M10 30 q4 -3 9 -3 q5 0 9 3 v6 q-4 3 -9 3 q-5 0 -9 -3 z' fill='url(#inG)'/>
+<rect x='27' y='15' width='12' height='21' rx='5.5' fill='#f6cf6a'/>
+<rect x='27' y='15' width='12' height='21' rx='5.5' fill='url(#inG2)'/>
+<ellipse cx='33' cy='15.5' rx='6' ry='2.4' fill='#fff0c0'/>
+<g stroke='#e2a73a' stroke-width='1.4' fill='none' opacity='0.8'>
+<path d='M29 18 q4 2 8 0'/><path d='M29 22 q4 2 8 0'/><path d='M29 26 q4 2 8 0'/><path d='M29 30 q4 2 8 0'/>
+</g>
+<defs>
+<linearGradient id='inG' x1='10' y1='27' x2='28' y2='39' gradientUnits='userSpaceOnUse'><stop offset='0' stop-color='#ffe39a'/><stop offset='1' stop-color='#eaad36'/></linearGradient>
+<linearGradient id='inG2' x1='27' y1='15' x2='39' y2='36' gradientUnits='userSpaceOnUse'><stop offset='0' stop-color='#ffe6a0'/><stop offset='1' stop-color='#edb13d'/></linearGradient>
+</defs>
+</svg>

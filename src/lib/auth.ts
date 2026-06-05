@@ -209,8 +209,6 @@ export async function verifyOtpCode(
 // для будущего возврата SMS.
 // ============================================================================
 
-/** URL экрана сброса пароля (ссылка из письма открывает его). */
-const RESET_REDIRECT_URL = "https://xtrud.pro/reset-password";
 
 /**
  * Регистрация: почта + пароль + телефон.
@@ -316,16 +314,27 @@ export async function loginWithCredentials(input: {
 }
 
 /**
- * Запрос сброса пароля — Supabase шлёт письмо со ссылкой на /reset-password.
+ * Запрос сброса пароля.
+ *
+ * Идёт через серверную функцию `send-reset-email` (она формирует recovery-ссылку
+ * и шлёт письмо через интернет-API Unisender), а НЕ через
+ * supabase.auth.resetPasswordForEmail: SMTP между зарубежным Supabase и
+ * российским Unisender не работает (таймаут), а HTTPS-API Unisender — работает.
+ * Логика — supabase/functions/send-reset-email/index.ts.
  */
 export async function requestPasswordReset(
   email: string,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
-  const { error } = await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase(), {
-    redirectTo: RESET_REDIRECT_URL,
+  const { data, error } = await supabase.functions.invoke("send-reset-email", {
+    body: { email: email.trim().toLowerCase() },
   });
   if (error) {
-    return { ok: false, error: error.message };
+    console.warn("[auth] send-reset-email invoke failed:", error.message);
+    return { ok: false, error: "Не удалось отправить письмо. Попробуйте позже." };
+  }
+  const result = data as { ok?: boolean; error?: string } | null;
+  if (!result?.ok) {
+    return { ok: false, error: result?.error ?? "Не удалось отправить письмо" };
   }
   return { ok: true };
 }

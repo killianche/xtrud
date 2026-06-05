@@ -25,8 +25,21 @@
 - **Серверная функция** `supabase/functions/register-user` (verify_jwt=false): admin `createUser` с `email_confirm:true` (создаёт сразу подтверждённого, минуя «Confirm email» в дашборде) + сохраняет телефон в `users_private`. Без неё регистрация требовала бы ручного выключения подтверждения почты.
 - **RPC** `resolve_login_email(p_login)`: почта → как есть; телефон → ищет email по `users_private.phone`. Типы БД перегенерированы.
 - **Экраны** (через роль дизайнера, обе темы, 8 grep-чеков чистые): `app/(auth)/phone.tsx` переделан в экран входа (поле «почта или телефон» + пароль + «Забыли пароль?» + «Зарегистрироваться»), новые `register.tsx` (телефон+почта+пароль+согласие), `forgot-password.tsx` (почта → success-state), `app/reset-password.tsx` (новый пароль по ссылке из письма; top-level route, добавлен в allowlist `app/_layout.tsx`).
-- **Проверено в браузере:** регистрация → аккаунт создан подтверждённым → авто-вход → онбординг (подтверждено в БД: phone сохранён, email_confirmed). Вход по телефону и по почте — оба заходят. «Забыли пароль» — вызывает отправку (упёрлось в лимит встроенной почты Supabase ~2/час → нужен внешний SMTP для прода). tsc чистый.
-- ⚠️ **Для прода:** подключить внешний SMTP (Resend/SendGrid/SES) в Supabase → Auth → SMTP, иначе письма сброса пароля массово не дойдут.
+- **Проверено в браузере:** регистрация → аккаунт создан подтверждённым → авто-вход → онбординг (подтверждено в БД: phone сохранён, email_confirmed). Вход по телефону и по почте — оба заходят. tsc чистый.
+- **Письма сброса пароля — через API Unisender (НЕ SMTP), решено 2026-06-05:**
+  SMTP между зарубежным Supabase и российским Unisender не проходит (504 upstream
+  timeout, проверено многократно). Поэтому письмо шлёт edge-функция
+  `send-reset-email`: `admin.generateLink(recovery)` → отправка через HTTPS-API
+  Unisender Go (`goapi.unisender.ru`). Ключ Unisender — в таблице `app_secrets`
+  (RLS deny-all, читает только service_role; в git ключа нет, миграция 0118).
+  `requestPasswordReset` зовёт эту функцию вместо `resetPasswordForEmail`.
+  Подтверждено вживую: тестовые письма дошли во «Входящие» (не спам), от имени xtrud.
+  Tracking-домен `email.xtrud.pro` настроен в Unisender (3 NS-записи в Reg.ru) —
+  без него Unisender не шлёт (ошибка 229).
+- ⚠️ **Осталось:** (1) проверить переход по ссылке из письма на /reset-password
+  (возможно, добавить `xtrud.pro/*` в Supabase → Auth → URL Configuration →
+  Redirect URLs); (2) после проверки — пересоздать API-ключ Unisender (светился) и
+  обновить `app_secrets.unisender_api_key`.
 
 ---
 

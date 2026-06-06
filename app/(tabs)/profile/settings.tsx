@@ -116,7 +116,7 @@ export default function SettingsScreen() {
             onPress={async () => {
               const confirmed = await confirmAsync({
                 title: "Выйти из аккаунта?",
-                message: "Чтобы вернуться, придётся войти заново через SMS.",
+                message: "Чтобы вернуться, войдите заново по номеру или почте и паролю.",
                 confirmText: "Выйти",
                 cancelText: "Отмена",
               });

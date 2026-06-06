@@ -15,7 +15,6 @@ import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -33,6 +32,7 @@ import { formatPhoneMask } from "@/features/auth/validation";
 import { ChangePhoneSheet } from "@/features/profile/ChangePhoneSheet";
 import { useUpdateMyProfile } from "@/features/profile/use-update-my-profile";
 import { useUserPrivate } from "@/features/profile/use-user-private";
+import { confirmAsync } from "@/lib/confirm";
 import { useSafeBack } from "@/lib/use-safe-back";
 import { useThemeColors } from "@/lib/use-theme-color";
 
@@ -55,6 +55,7 @@ export default function EditClientScreen() {
   const [usernameValid, setUsernameValid] = useState(true);
   const [didInit, setDidInit] = useState(false);
   const [changePhoneOpen, setChangePhoneOpen] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   // Один раз префиллим форму актуальными значениями после загрузки user.
   useEffect(() => {
@@ -69,11 +70,23 @@ export default function EditClientScreen() {
   const usernameChanged = didInit && (usernameValue ?? "") !== (user?.username ?? "");
   const isDirty = nameChanged || usernameChanged;
 
+  // Валидность юзернейма блокирует сохранение ТОЛЬКО если юзернейм реально
+  // меняли. Раньше canSave требовал usernameValid всегда, поэтому пустое или
+  // недопечатанное поле юзернейма не давало сохранить даже изменённое имя
+  // (баг владельца: «Сохранить не активируется»). Если юзернейм не трогали —
+  // его состояние неважно для сохранения имени.
+  const usernameOkForSave = !usernameChanged || usernameValid;
+
   const canSave =
-    firstName.trim().length >= 2 && usernameValid && isDirty && !update.isPending && !setUsernameMut.isPending;
+    firstName.trim().length >= 2 &&
+    usernameOkForSave &&
+    isDirty &&
+    !update.isPending &&
+    !setUsernameMut.isPending;
 
   const onSave = async () => {
     if (!canSave) return;
+    setSaveError(null);
     try {
       // Сначала юзернейм (если менялся), потом имя.
       if (usernameChanged && usernameValue.trim().length > 0) {
@@ -82,17 +95,25 @@ export default function EditClientScreen() {
       await update.mutateAsync({ first_name: firstName });
       goBack();
     } catch (e) {
-      const msg = e instanceof Error ? setUsernameErrorMessage(e.message) : "Ошибка";
-      Alert.alert("Не удалось сохранить", msg);
+      // Ошибку показываем строкой на экране (Alert.alert — no-op на вебе,
+      // сообщение бы потерялось).
+      const msg = e instanceof Error ? setUsernameErrorMessage(e.message) : "Не удалось сохранить";
+      setSaveError(msg);
     }
   };
 
-  const onCancel = () => {
+  const onCancel = async () => {
     if (isDirty) {
-      Alert.alert("Отменить изменения?", "Несохранённые правки будут потеряны.", [
-        { text: "Продолжить редактирование", style: "cancel" },
-        { text: "Отменить", style: "destructive", onPress: () => goBack() },
-      ]);
+      // confirmAsync — web-safe (на вебе Alert.alert не показывается, кнопка
+      // «Отмена» молчала). На вебе → window.confirm, на native → Alert.
+      const ok = await confirmAsync({
+        title: "Отменить изменения?",
+        message: "Несохранённые правки будут потеряны.",
+        confirmText: "Отменить",
+        cancelText: "Продолжить редактирование",
+        destructive: true,
+      });
+      if (ok) goBack();
       return;
     }
     goBack();
@@ -156,7 +177,10 @@ export default function EditClientScreen() {
           <FieldRow label="Имя">
             <NakedInput
               value={firstName}
-              onChangeText={setFirstName}
+              onChangeText={(v) => {
+                setSaveError(null);
+                setFirstName(v);
+              }}
               placeholder="Алина"
               autoCapitalize="words"
               maxLength={50}
@@ -173,12 +197,22 @@ export default function EditClientScreen() {
         <View className="mt-6 px-4">
           <UsernameField
             value={usernameValue}
-            onChange={setUsernameValue}
+            onChange={(next) => {
+              setSaveError(null);
+              setUsernameValue(next);
+            }}
             onValidityChange={setUsernameValid}
             currentUsername={user?.username ?? null}
             editable={!update.isPending && !setUsernameMut.isPending}
           />
         </View>
+
+        {/* Ошибка сохранения — показываем строкой (Alert.alert немой на вебе). */}
+        {saveError ? (
+          <AppText weight="medium" className="mt-3 px-4 text-caption text-error">
+            {saveError}
+          </AppText>
+        ) : null}
 
         {/* ============================================================
             Секция «КОНТАКТ» — номер телефона (read-only display + change-flow).

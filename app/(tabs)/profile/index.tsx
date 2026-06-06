@@ -15,7 +15,7 @@ import { Image } from "expo-image";
 import { useRouter } from "expo-router";
 import { Camera, CaretRight, ClipboardText, Eye, Gear, SignIn, SignOut, ChatCircle, Moon, Plus, ShieldCheck, DeviceMobile, Star, Sun, User, Wrench } from "phosphor-react-native";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ActivityIndicator, Alert, Pressable, ScrollView, View } from "react-native";
+import { ActivityIndicator, Alert, Platform, Pressable, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { scrollViewToTop, useTabScrollResetCounter } from "@/lib/tab-scroll-reset";
 import { AppText } from "@/components/AppText";
@@ -98,8 +98,35 @@ export default function ProfileScreen() {
 
   // Меню по тапу на саму аватарку (как у больших приложений): сменить /
   // добавить фото, удалить (если есть). Текст «Убрать фото» под аватаркой убран.
-  const openAvatarMenu = () => {
+  //
+  // Web-safe: на вебе Alert.alert с кнопками — no-op (react-native-web), поэтому
+  // меню смены фото на сайте вообще не открывалось. На вебе разводим через
+  // window.confirm: нет фото → сразу открываем выбор файла; есть фото → confirm
+  // «удалить текущее?» (ОК — удалить, Отмена — выбрать новое). На native —
+  // прежний action-sheet.
+  const openAvatarMenu = async () => {
     if (updateAvatar.isPending || removeAvatar.isPending) return;
+
+    if (Platform.OS === "web") {
+      if (!user?.avatar_url) {
+        onChangeAvatar();
+        return;
+      }
+      const remove = await confirmAsync({
+        title: "Фото профиля",
+        message: "Удалить текущее фото? Нажмите «Отмена», чтобы выбрать другое.",
+        confirmText: "Удалить",
+        cancelText: "Выбрать другое",
+        destructive: true,
+      });
+      if (remove) {
+        removeAvatar.mutate();
+      } else {
+        onChangeAvatar();
+      }
+      return;
+    }
+
     if (user?.avatar_url) {
       Alert.alert("Фото профиля", undefined, [
         { text: "Сменить фото", onPress: onChangeAvatar },

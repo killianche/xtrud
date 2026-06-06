@@ -43,15 +43,16 @@ export function useUserPrivate(userId: string | undefined) {
 }
 
 /**
- * Меняет phone в users_private. В Sprint 1 — без SMS-OTP (просто UPDATE,
- * соответствует тому, как JIT-signup сохраняет phone при первом входе).
+ * Меняет phone в users_private простым UPDATE (без SMS-OTP).
  *
- * В Sprint 2, когда подключим Phone Provider, заменим на:
- *   supabase.auth.updateUser({ phone })  // шлёт SMS на новый номер
- *   supabase.auth.verifyOtp({ phone, token, type: 'phone_change' })
+ * SMS-вход убран 2026-06-05 (был платным), поэтому смена номера больше не
+ * требует кода из SMS — это прямой UPDATE под текущей сессией (RLS:
+ * users_private_update_own). Телефон хранится в users_private.phone и
+ * помечен UNIQUE — один номер не может принадлежать двум аккаунтам.
  *
- * Сейчас UI просит OTP-код для UX-симметрии с регистрацией, но код
- * не валидируется (как и при signInAnonymouslyWithPhone).
+ * Обработка занятого номера: при нарушении UNIQUE Postgres возвращает код
+ * 23505. Ловим его и бросаем человекочитаемое сообщение, чтобы экран показал
+ * «Этот номер уже зарегистрирован на другом аккаунте» вместо сырого SQL-текста.
  */
 export interface UpdatePhoneInput {
   phone: string;
@@ -66,7 +67,17 @@ export function useUpdateMyPhone(userId: string | undefined) {
         .from("users_private")
         .update({ phone: input.phone, updated_at: new Date().toISOString() })
         .eq("user_id", userId);
-      if (error) throw error;
+      if (error) {
+        // 23505 = unique_violation. Также подстраховываемся по тексту, т.к.
+        // PostgREST может прислать сообщение без кода в некоторых конфигурациях.
+        const isUnique =
+          error.code === "23505" ||
+          /duplicate key|unique|already exists/i.test(error.message ?? "");
+        if (isUnique) {
+          throw new Error("Этот номер уже зарегистрирован на другом аккаунте.");
+        }
+        throw error;
+      }
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: userPrivateKey(userId) });

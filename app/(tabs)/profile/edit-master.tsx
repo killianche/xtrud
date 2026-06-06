@@ -12,7 +12,6 @@ import { useCallback, useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import {
   ActivityIndicator,
-  Alert,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -22,6 +21,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { SignIn, User } from "phosphor-react-native";
 import { AppText } from "@/components/AppText";
+import { confirmAsync } from "@/lib/confirm";
 import { useThemeColors } from "@/lib/use-theme-color";
 import {
   type MasterProfileFormValues,
@@ -118,8 +118,11 @@ export default function EditMasterScreen() {
   // из /profile, и при cross-stack push'е expo-router теряет history.
   const goBack = useSafeBack("/(tabs)/profile" as const);
 
+  const [saveError, setSaveError] = useState<string | null>(null);
+
   const onSubmit = handleSubmit(async (values) => {
     if (!userId) return;
+    setSaveError(null);
     try {
       // Сначала юзернейм (если менялся), потом профиль.
       if (usernameChanged && usernameValue.trim().length > 0) {
@@ -128,27 +131,37 @@ export default function EditMasterScreen() {
       await updateMaster.mutateAsync({ userId, ...values });
       goBack();
     } catch (e) {
-      Alert.alert(
-        "Не удалось сохранить",
+      // Ошибку показываем строкой на экране (Alert.alert — no-op на вебе).
+      setSaveError(
         e instanceof Error ? setUsernameErrorMessage(e.message) : "Ошибка сервера",
       );
     }
   });
 
   const isBusy = updateMaster.isPending || setUsernameMut.isPending;
-  const submitError = updateMaster.error?.message;
+  const submitError = saveError ?? updateMaster.error?.message;
+  // Валидность юзернейма блокирует сохранение ТОЛЬКО если юзернейм реально
+  // меняли (тот же фикс, что в edit-client): пустое/недопечатанное поле
+  // юзернейма не должно мешать сохранить остальные поля профиля.
+  const usernameOkForSave = !usernameChanged || usernameValid;
   // Кнопка активна, если форма валидна И (поменялись данные формы ИЛИ юзернейм),
-  // и юзернейм валиден.
-  const canSave = isValid && usernameValid && (isDirty || usernameChanged) && !isBusy && !citiesLoading;
+  // и юзернейм (если менялся) валиден.
+  const canSave =
+    isValid && usernameOkForSave && (isDirty || usernameChanged) && !isBusy && !citiesLoading;
   const tc = useThemeColors(["accent"]);
 
-  // Выход с подтверждением, если есть несохранённые правки.
-  const onCancel = () => {
+  // Выход с подтверждением, если есть несохранённые правки. confirmAsync —
+  // web-safe (Alert.alert немой на вебе → «Отмена» молчала).
+  const onCancel = async () => {
     if ((isDirty || usernameChanged) && !isBusy) {
-      Alert.alert("Есть несохранённые изменения", "Выйти без сохранения?", [
-        { text: "Остаться", style: "cancel" },
-        { text: "Выйти", style: "destructive", onPress: () => goBack() },
-      ]);
+      const ok = await confirmAsync({
+        title: "Есть несохранённые изменения",
+        message: "Выйти без сохранения?",
+        confirmText: "Выйти",
+        cancelText: "Остаться",
+        destructive: true,
+      });
+      if (ok) goBack();
       return;
     }
     goBack();
@@ -247,7 +260,10 @@ export default function EditMasterScreen() {
           <View className="mt-6 px-6">
             <UsernameField
               value={usernameValue}
-              onChange={setUsernameValue}
+              onChange={(next) => {
+                setSaveError(null);
+                setUsernameValue(next);
+              }}
               onValidityChange={setUsernameValid}
               currentUsername={user.username ?? null}
               editable={!isBusy}

@@ -121,19 +121,22 @@ function AuthGate({ children }: { children: React.ReactNode }) {
     const onboardingDone = userRecord.onboarding_completed_at !== null;
 
     // Залогинен в (auth) — отправляем туда куда положено.
+    // Экран выбора роли /role удалён (2026-06-06): новый пользователь по
+    // умолчанию клиент, сразу на ввод имени → в приложение. Мастером становятся
+    // позже через «Хочу стать мастером» в профиле (→ master-categories).
     if (inAuth) {
       if (!onboardingDone) {
-        router.replace("/(onboarding)/role");
+        router.replace("/(onboarding)/client-name");
       } else {
         router.replace("/(tabs)");
       }
       return;
     }
 
-    // Не онбордил — отправляем в (onboarding), кроме (tabs), legal и reset-password
+    // Не онбордил — отправляем на ввод имени, кроме (tabs), legal и reset-password
     // (Privacy/Terms и смена пароля должны открываться на любом этапе).
     if (!onboardingDone && !inOnboarding && !inTabs && !inLegal && !inReset) {
-      router.replace("/(onboarding)/role");
+      router.replace("/(onboarding)/client-name");
     }
     // Иначе — оставляем где есть.
   }, [status, userLoading, userRecord, segments, router]);

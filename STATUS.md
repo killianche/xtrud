@@ -14,7 +14,8 @@
 - **Auth (НОВОЕ 2026-06-05):** SMS-вход заменён на **телефон/почта + пароль** (SMS оказался платным). Регистрация = телефон + почта + пароль; вход = почта **или** телефон + пароль; сброс пароля — по почте. Прежнее правило «email никогда» владелец осознанно отменил. Детали — CLAUDE.md инфра-правило №6 + ниже «Авторизация по паролю».
 - **Сайт:** https://xtrud.pro/ (и xtrud.alanbani.ru). Demo-вход включён (превью-площадка).
 - **Стек:** Expo SDK 54 + Expo Router + Supabase + NativeWind + TanStack Query + Phosphor.
-- **Следующее:** для рабочего сброса пароля на проде подключить внешний SMTP в Supabase (встроенный — ~2 письма/час, только для тестов). Перед публичным запуском — выключить demo-вход (`EXPO_PUBLIC_ENABLE_DEMO`).
+- **Почта/сброс пароля — РАБОТАЕТ ПОЛНОСТЬЮ (проверено end-to-end 2026-06-05):** письма уходят через API Unisender Go (HTTPS, не SMTP), приходят во «Входящие», ссылка открывает /reset-password, новый пароль сохраняется. Детали ниже.
+- **Следующее:** перед публичным запуском — (1) пересоздать API-ключ Unisender (светился в переписке) и обновить `app_secrets.unisender_api_key`; (2) выключить demo-вход (`EXPO_PUBLIC_ENABLE_DEMO`).
 
 ---
 
@@ -33,13 +34,18 @@
   Unisender Go (`goapi.unisender.ru`). Ключ Unisender — в таблице `app_secrets`
   (RLS deny-all, читает только service_role; в git ключа нет, миграция 0118).
   `requestPasswordReset` зовёт эту функцию вместо `resetPasswordForEmail`.
-  Подтверждено вживую: тестовые письма дошли во «Входящие» (не спам), от имени xtrud.
+  Подтверждено вживую END-TO-END: письмо дошло во «Входящие» (не спам), ссылка
+  открыла /reset-password, новый пароль сохранён («Пароль изменён»).
   Tracking-домен `email.xtrud.pro` настроен в Unisender (3 NS-записи в Reg.ru) —
   без него Unisender не шлёт (ошибка 229).
-- ⚠️ **Осталось:** (1) проверить переход по ссылке из письма на /reset-password
-  (возможно, добавить `xtrud.pro/*` в Supabase → Auth → URL Configuration →
-  Redirect URLs); (2) после проверки — пересоздать API-ключ Unisender (светился) и
-  обновить `app_secrets.unisender_api_key`.
+- **Решённые по пути проблемы:** (а) Supabase Site URL был `localhost:3000` →
+  поставлен `https://xtrud.pro` + добавлен `https://xtrud.pro/*` в Redirect URLs
+  (иначе ссылка вела на localhost); (б) клиент на `flowType:pkce` не подхватывал
+  implicit-hash токены из ссылки → `app/reset-password.tsx` теперь сам парсит
+  `#access_token`/`#refresh_token` из URL и зовёт `setSession` (иначе была
+  «ссылка недействительна»); (в) Unisender требует tracking-домен (ошибка 229).
+- ⚠️ **Осталось до публичного запуска:** пересоздать API-ключ Unisender (светился в
+  переписке) и обновить `app_secrets.unisender_api_key` (одним `execute_sql`).
 
 ### Аудит входа/регистрации/сброса (2026-06-06) — найдены и починены 3 бага
 

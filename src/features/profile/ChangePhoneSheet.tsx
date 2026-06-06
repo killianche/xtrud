@@ -100,7 +100,10 @@ export function ChangePhoneSheet({
           </AppText>
           <TextInput
             value={phone}
-            onChangeText={(v) => setPhone(formatPhoneMask(v))}
+            onChangeText={(v) => {
+              setError(null);
+              setPhone(formatPhoneMask(v));
+            }}
             placeholder="+7 ___ ___-__-__"
             placeholderTextColor={tc["muted-soft"]}
             keyboardType="phone-pad"
@@ -115,7 +118,11 @@ export function ChangePhoneSheet({
           <AppText weight="medium" className="text-caption text-error">
             {error}
           </AppText>
-        ) : null}
+        ) : (
+          <AppText className="text-caption text-mute">
+            По этому номеру вы входите в приложение.
+          </AppText>
+        )}
 
         <Pressable
           accessibilityRole="button"

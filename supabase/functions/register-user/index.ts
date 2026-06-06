@@ -34,6 +34,28 @@ function reply(obj: Record<string, unknown>) {
   });
 }
 
+/**
+ * Каноническая форма телефона для хранения (зеркало normalizePhone на клиенте,
+ * src/features/auth/validation.ts). Уже собранный международный номер с кодом
+ * ≠ 7 (+49…, +375…, +1…) НЕ переписываем в +7 — иначе foreign-номер искажался
+ * бы и вход по нему был бы невозможен. РФ/КЗ приводим к +7XXXXXXXXXX.
+ */
+function canonicalPhone(input: string): string {
+  const trimmed = input.trim();
+  if (!trimmed) return "";
+  const digits = (s: string) => s.replace(/\D/g, "");
+  // Международный номер с кодом страны ≠ 7 — чистим до `+` + цифры, не трогаем.
+  if (/^\+[1-9]\d{6,}$/.test(trimmed)) {
+    const all = digits(trimmed);
+    if (all.length > 0 && all[0] !== "7") return `+${all}`;
+  }
+  // РФ/КЗ: снимаем literal `+7`, отбрасываем ведущую 7/8 у 11-значного.
+  const stripped = trimmed.replace(/^\+7/, "");
+  let d = digits(stripped);
+  if (d.length === 11 && (d[0] === "7" || d[0] === "8")) d = d.slice(1);
+  return `+7${d.slice(0, 10)}`;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: cors });
@@ -51,7 +73,10 @@ Deno.serve(async (req) => {
 
   const email = String(body.email ?? "").trim().toLowerCase();
   const password = String(body.password ?? "");
-  const phone = String(body.phone ?? "").trim();
+  // Нормализуем телефон на сервере (защита: не полагаемся только на клиент).
+  // РФ/КЗ-ввод приводим к +7XXXXXXXXXX; уже собранный международный номер
+  // (+49…, +375…, +1…) сохраняем как есть — симметрично normalizePhone на клиенте.
+  const phone = canonicalPhone(String(body.phone ?? "").trim());
 
   if (!email || !password) {
     return reply({ ok: false, error: "Почта и пароль обязательны" });
@@ -70,6 +95,28 @@ Deno.serve(async (req) => {
   const admin = createClient(url, serviceKey, {
     auth: { autoRefreshToken: false, persistSession: false },
   });
+
+  // Телефон уникален (users_private.phone UNIQUE). Проверяем ДО создания
+  // аккаунта: иначе при занятом номере UPDATE-телефона падал бы по уникальному
+  // ключу, а пользователь оставался бы «осиротевшим» (почта есть, телефона нет,
+  // войти по номеру нельзя). Лучше сразу сказать «номер занят».
+  if (phone) {
+    const { data: existing, error: existErr } = await admin
+      .from("users_private")
+      .select("user_id")
+      .eq("phone", phone)
+      .maybeSingle();
+    if (existErr) {
+      console.error("[register-user] phone check failed:", existErr.message);
+      return reply({ ok: false, error: "Сервер недоступен. Попробуйте позже." });
+    }
+    if (existing) {
+      return reply({
+        ok: false,
+        error: "Этот номер уже зарегистрирован. Войдите или восстановите пароль.",
+      });
+    }
+  }
 
   // Создаём пользователя сразу подтверждённым → вход по паролю заработает мгновенно.
   const { data, error } = await admin.auth.admin.createUser({
@@ -100,8 +147,15 @@ Deno.serve(async (req) => {
       .update({ phone })
       .eq("user_id", userId);
     if (phoneErr) {
-      console.warn("[register-user] phone save failed:", phoneErr.message);
-      // Не валим регистрацию из-за телефона — аккаунт уже создан.
+      // Гонка: номер заняли между проверкой выше и этим UPDATE (нарушение
+      // UNIQUE). Не оставляем осиротевший аккаунт без телефона — удаляем
+      // только что созданного пользователя и сообщаем об ошибке.
+      console.error("[register-user] phone save failed, rolling back user:", phoneErr.message);
+      await admin.auth.admin.deleteUser(userId);
+      return reply({
+        ok: false,
+        error: "Этот номер уже зарегистрирован. Войдите или восстановите пароль.",
+      });
     }
   }
 

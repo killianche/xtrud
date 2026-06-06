@@ -104,7 +104,9 @@ export default function LoginScreen() {
                   autoCapitalize="none"
                   autoCorrect={false}
                   autoComplete="username"
-                  inputMode="email"
+                  // Поле принимает И почту, И телефон — даём обычную клавиатуру
+                  // (inputMode="email" прятал цифры и затруднял ввод номера).
+                  inputMode="text"
                   maxFontSizeMultiplier={1.3}
                   className={`mt-2 h-12 rounded-md border bg-canvas px-3 text-body-md text-ink ${
                     errors.login ? "border-error" : "border-hairline focus:border-ink"

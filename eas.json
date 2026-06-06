@@ -47,7 +47,6 @@
     },
     "production": {
       "extends": "base",
-      "channel": "production",
       "autoIncrement": true,
       "ios": {
         "resourceClass": "m-medium"

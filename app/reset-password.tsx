@@ -63,9 +63,17 @@ export default function ResetPasswordScreen() {
     mode: "onChange",
   });
 
-  // Определяем есть ли recovery-сессия. Supabase подхватывает токен из URL
-  // асинхронно (detectSessionInUrl) — поэтому слушаем onAuthStateChange и
-  // одновременно сразу читаем getSession. Если за ~1.5с сессии нет — invalid.
+  // Определяем есть ли recovery-сессия.
+  //
+  // Важно: клиент сконфигурирован под PKCE (flowType:'pkce'), а ссылка
+  // восстановления из письма (admin.generateLink → verify) редиректит на эту
+  // страницу с токенами в HASH по implicit-схеме:
+  //   /reset-password#access_token=...&refresh_token=...&type=recovery
+  // PKCE-клиент такой implicit-hash сам НЕ подхватывает (detectSessionInUrl ждёт
+  // ?code=...), поэтому страница думала, что сессии нет → «ссылка недействительна».
+  // Решение: на web разбираем hash вручную и ставим сессию через setSession.
+  // Если в hash ошибка (#error=… — ссылка устарела/прокликана антивирусом почты) —
+  // показываем invalid. Плюс fallback на getSession/onAuthStateChange (native).
   useEffect(() => {
     let mounted = true;
     let settled = false;
@@ -76,9 +84,40 @@ export default function ResetPasswordScreen() {
       setPhase(hasSession ? "form" : "invalid");
     };
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    const tryHashTokens = async (): Promise<boolean | null> => {
+      if (Platform.OS !== "web" || typeof window === "undefined") return null;
+      const raw = window.location.hash?.startsWith("#")
+        ? window.location.hash.slice(1)
+        : "";
+      if (!raw) return null;
+      const params = new URLSearchParams(raw);
+      if (params.get("error") || params.get("error_code")) {
+        return false; // ссылка устарела / уже использована
+      }
+      const accessToken = params.get("access_token");
+      const refreshToken = params.get("refresh_token");
+      if (accessToken && refreshToken) {
+        const { error } = await supabase.auth.setSession({
+          access_token: accessToken,
+          refresh_token: refreshToken,
+        });
+        // Убираем токены из адреса, чтобы не висели в URL.
+        window.history.replaceState(null, "", window.location.pathname);
+        return !error;
+      }
+      return null;
+    };
+
+    (async () => {
+      const fromHash = await tryHashTokens();
+      if (fromHash === true) return resolve(true);
+      if (fromHash === false) return resolve(false);
+      // Hash пуст / без токенов — вдруг сессия уже есть (native или уже подхвачено).
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
       if (session) resolve(true);
-    });
+    })();
 
     const {
       data: { subscription },
@@ -86,8 +125,8 @@ export default function ResetPasswordScreen() {
       if (event === "PASSWORD_RECOVERY" || session) resolve(true);
     });
 
-    // Окно ожидания на подхват токена из URL. Если ничего не пришло — invalid.
-    const timer = setTimeout(() => resolve(false), 1500);
+    // Окно ожидания. Если за это время ни токенов, ни сессии — invalid.
+    const timer = setTimeout(() => resolve(false), 3000);
 
     return () => {
       mounted = false;

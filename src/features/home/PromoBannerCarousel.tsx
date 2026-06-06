@@ -66,11 +66,11 @@ import { AppText } from "@/components/AppText";
 import { openExternalUrl } from "@/lib/open-link";
 import { useAppWidth } from "@/lib/use-app-width";
 
-// Демо-баннер партнёра (готовое рекламное фото). В реальной партнёрской системе
-// каждый рекламодатель загружает СВОЁ фото 16:9 — здесь оно придёт из
-// promo_banners.image_url (Supabase Storage). Для демо используем одно
-// присланное фото во всех слотах.
-const PROMO_DEMO = require("../../../assets/illustrations/promo-demo.jpg");
+// Баннер партнёра (готовое рекламное фото 16:9). В реальной партнёрской системе
+// каждый рекламодатель загрузит СВОЁ фото из promo_banners.image_url (Supabase
+// Storage). Сейчас один реальный баннер (ТЕПЛЫЙ ДОМ — отопление под ключ);
+// остальные слоты скрыты до подключения партнёрки (решение владельца 2026-06-06).
+const PROMO_TEPLODOM = require("../../../assets/illustrations/teplodom-banner.png");
 
 interface Promo {
   id: string;
@@ -82,14 +82,16 @@ interface Promo {
   url: string;
 }
 
-// Демо-баннеры (хардкод). В реальной партнёрской системе придут из таблицы
-// promo_banners (Supabase): image_url (фото 16:9) + url + valid_until.
-// Сейчас все слоты используют одно присланное демо-фото — рекламодатели
-// заменят на свои баннеры.
+// Баннеры. Пока один реальный (ТЕПЛЫЙ ДОМ). Остальные слоты добавим, когда
+// подключим партнёрку (из таблицы promo_banners: image_url + url + valid_until).
+// Тап по баннеру — звонок на номер с него (tel:), это реальное действие (§F).
 const PROMOS: Promo[] = [
-  { id: "ad-1", store: "СтройДом", image: PROMO_DEMO, url: "https://xtrud.ru" },
-  { id: "ad-2", store: "Мир Плитки", image: PROMO_DEMO, url: "https://xtrud.ru" },
-  { id: "ad-3", store: "ЭлектроМир", image: PROMO_DEMO, url: "https://xtrud.ru" },
+  {
+    id: "ad-teplodom",
+    store: "Тёплый дом — отопление под ключ",
+    image: PROMO_TEPLODOM,
+    url: "tel:+79380079806",
+  },
 ];
 
 export function PromoBannerCarousel() {

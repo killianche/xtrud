@@ -7,7 +7,9 @@
     "base": {
       "node": "20.18.0",
       "env": {
-        "EXPO_PUBLIC_SUPABASE_URL": "https://wgeimsajvjkzrrnfrnkb.supabase.co"
+        "EXPO_PUBLIC_SUPABASE_URL": "https://wgeimsajvjkzrrnfrnkb.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "sb_publishable_C1FjIf3-lgzTAPr2B2Yjjg_wrOMje-O",
+        "EXPO_PUBLIC_ENABLE_DEMO": "false"
       }
     },
     "development": {

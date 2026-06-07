@@ -204,6 +204,38 @@ Apple-логин).
 7. **Встроенная почта Supabase лимитирована** (если приложение шлёт письма) —
    для прода нужен внешний SMTP/ESP. (Актуально только если у Корана есть auth с
    письмами; для оффлайн-приложения — не нужно.)
+8. **ASC API-ключ: первый сертификат `--non-interactive` создать НЕ даёт.** При
+   первой сборке `eas build --non-interactive` отказывается создавать
+   distribution-сертификат («Run this command again in interactive mode»). Решение:
+   один раз запустить через **`expect`** (PTY) — `expect`-скрипт стартует
+   `eas build` и авто-подтверждает (`y`) создание сертификата/профиля. Env для
+   входа без 2FA: `EXPO_ASC_API_KEY_PATH`, `EXPO_ASC_KEY_ID`, `EXPO_ASC_ISSUER_ID`,
+   `EXPO_APPLE_TEAM_ID`. После первого раза `--non-interactive` уже работает.
+   ⚠️ На вопрос «Set up Push Notifications? → Generate APNs key?» отвечать НЕ надо
+   («yes» ведёт к APNs-ключу, который требует входа по паролю → ломается).
+9. **`eas submit --non-interactive` НЕ берёт ключ из env.** Прописать в `eas.json`
+   → `submit.production.ios`: `ascApiKeyPath` (путь к .p8, НЕ сам ключ),
+   `ascApiKeyId`, `ascApiKeyIssuerId`, `appleTeamId`, `ascAppId`. Поле `appleId`
+   убрать (оно включает интерактивный вход с 2FA).
+10. **Push / `expo-notifications` ломает сборку без APNs-ключа.** Пакет
+    автоматически добавляет iOS-разрешение `aps-environment`, а provisioning
+    profile его не содержит (push требует **APNs-ключ Apple**, а он недоступен
+    через ASC API-ключ — только интерактивный вход по паролю). Если push НЕ нужен
+    для первого релиза — убрать пакет `expo-notifications` и сделать его хук
+    no-op. Если нужен — владелец создаёт APNs-ключ на developer.apple.com → Keys
+    (галка APNs) и добавляет в EAS (`eas credentials`). У оффлайн-Корана push
+    скорее всего не нужен — проще не ставить expo-notifications вообще.
+11. **Sentry ломает сборку на выгрузке символов.** Если есть
+    `@sentry/react-native` без настроенных SENTRY_ORG/PROJECT/AUTH_TOKEN — сборка
+    компилируется, но падает на шаге выгрузки source maps. Фикс: в `eas.json` env
+    `SENTRY_DISABLE_AUTO_UPLOAD=true` (runtime-Sentry по DSN продолжит работать).
+12. **`npm ci` в облаке строгий.** (а) Конфликт peer-deps → `.npmrc` с
+    `legacy-peer-deps=true` (коммитить в репо). (б) Рассинхрон package.json ↔
+    package-lock.json → сборка падает «Missing X from lock file»; чинится локально
+    `npm install` + коммит обновлённого `package-lock.json`.
+13. **Читать лог упавшей EAS-сборки:** `eas build:view <id> --json` → `logFiles[0]`
+    (подписанная ссылка, живёт 15 мин) → `curl … | brotli -dc` → JSON-строки с
+    `phase`/`msg`. Так видно ТОЧНУЮ причину падения, а не «UNKNOWN_ERROR».
 
 ---
 

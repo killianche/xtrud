@@ -8,14 +8,85 @@
 
 ---
 
-## 📍 Снимок: где мы сейчас (2026-06-05)
+## 📍 Снимок: где мы сейчас (2026-06-07)
 
+- **iOS — СОБРАНО И ОТПРАВЛЕНО В APP STORE (2026-06-07):** сборка `d1872bd6` (v1.0.0,
+  build 8) собрана в облаке EAS и загружена в App Store Connect полностью
+  автоматически по App Store Connect API-ключу (без 2FA). Осталось: дождаться
+  обработки Apple (~10 мин) → в кабинете выбрать сборку, заполнить витрину, дать
+  ревьюеру тест-аккаунт → Submit for Review. Детали и уроки — раздел «iOS-сборка»
+  ниже. ⚠️ Push отключён в v1 (см. там же), вернуть в обновлении с APNs-ключом.
 - **Модель:** доска объявлений (classifieds) — клиент создаёт заказ → мастера откликаются → клиент сам звонит/пишет в WhatsApp. Без чата, без lifecycle сделки, без спора, без рейтинга клиента, без фамилии. Полное описание — CLAUDE.md «🧭 Актуальная модель продукта».
 - **Auth (НОВОЕ 2026-06-05):** SMS-вход заменён на **телефон/почта + пароль** (SMS оказался платным). Регистрация = телефон + почта + пароль; вход = почта **или** телефон + пароль; сброс пароля — по почте. Прежнее правило «email никогда» владелец осознанно отменил. Детали — CLAUDE.md инфра-правило №6 + ниже «Авторизация по паролю».
 - **Сайт:** https://xtrud.pro/ (и xtrud.alanbani.ru). Demo-вход включён (превью-площадка).
 - **Стек:** Expo SDK 54 + Expo Router + Supabase + NativeWind + TanStack Query + Phosphor.
 - **Почта/сброс пароля — РАБОТАЕТ ПОЛНОСТЬЮ (проверено end-to-end 2026-06-05):** письма уходят через API Unisender Go (HTTPS, не SMTP), приходят во «Входящие», ссылка открывает /reset-password, новый пароль сохраняется. Детали ниже.
 - **Следующее:** перед публичным запуском — (1) пересоздать API-ключ Unisender (светился в переписке) и обновить `app_secrets.unisender_api_key`; (2) выключить demo-вход (`EXPO_PUBLIC_ENABLE_DEMO`).
+
+---
+
+## iOS-сборка и отправка в App Store (2026-06-07) — ✅ загружено в App Store Connect
+
+Приложение собрано в облаке EAS и загружено в App Store Connect **полностью
+автоматически**, без интерактивного входа Apple и без 2FA — через **App Store
+Connect API-ключ** (`.p8`). Заняло 8 попыток сборки: каждая ошибка чинилась.
+
+### Как сделана автоматическая сборка по ключу Apple (без 2FA)
+
+- Ключ ASC API (`.p8` + Key ID `MFXS9GDD4X` + Issuer ID
+  `6fc51340-af9d-4698-99ff-0c2b56adab1d`) лежит **вне репозитория**:
+  `~/.expo-asc-keys/AuthKey_MFXS9GDD4X.p8` (в git НЕ коммитим — `.gitignore` `*.p8`).
+- **Сборка:** env-переменные `EXPO_ASC_API_KEY_PATH` / `EXPO_ASC_KEY_ID` /
+  `EXPO_ASC_ISSUER_ID` + `EXPO_APPLE_TEAM_ID=ZNK264PD9Y`. По ним EAS логинится в
+  Apple без пароля.
+- ⚠️ **Грабли:** при ПЕРВОМ создании сертификата `eas build --non-interactive`
+  ОТКАЗЫВАЕТСЯ создавать distribution-сертификат («Run this command again in
+  interactive mode»). Обошли через **`expect`** (PTY): `expect`-скрипт запускает
+  `eas build` в псевдо-интерактивном режиме и авто-подтверждает создание
+  сертификата/профиля. После того как сертификат+профиль СОЗДАНЫ один раз —
+  дальше работает обычный `--non-interactive`.
+- **Отправка (submit):** `eas submit` в `--non-interactive` НЕ берёт ключ из
+  env. Прописали в `eas.json` → `submit.production.ios`: `ascApiKeyPath` (путь к
+  .p8, не сам ключ) + `ascApiKeyId` + `ascApiKeyIssuerId` + `appleTeamId` +
+  `ascAppId`. Поле `appleId` убрали (оно включало интерактивный вход).
+
+### Что починили по пути (8 попыток сборки — каждая ошибка → фикс)
+
+1. **`.npmrc legacy-peer-deps=true`** — облачный `npm ci` падал на строгой
+   проверке peer-deps (конфликт lottie). Локальная установка тоже так чинилась.
+2. **Рассинхрон `package-lock.json`** — при первой сборке авто-ответ «yes» на
+   «установить expo-updates?» добавил `expo-updates` в package.json, но install
+   упал → в lock не хватало `expo-json-utils`. Починили `npm install` (lock
+   досинхронизирован). `expo-updates` оставлен (OTA на будущее).
+3. **Push / `aps-environment` ⇒ убрали `expo-notifications` для v1.** Пакет
+   автоматически добавлял iOS-разрешение `aps-environment`, а provisioning
+   profile его не содержит (для push нужен **APNs-ключ Apple**, а он требует
+   интерактивного входа по паролю — через ASC API-ключ нельзя). Пакет удалён,
+   хук `src/features/notifications/use-register-push-token.ts` → **no-op** (API
+   сохранён, потребители `app/_layout.tsx` и `src/lib/auth.ts` не тронуты).
+   App ID push НЕ имеет (проверено через ASC API). **Вернуть push в обновлении:**
+   `npm i expo-notifications` + плагин в app.json + APNs-ключ в EAS + восстановить
+   хук из git (коммит до 2026-06-07).
+4. **`SENTRY_DISABLE_AUTO_UPLOAD=true`** (в `eas.json` env) — приложение успешно
+   компилировалось, но падало на последнем шаге: `sentry-cli` не мог выгрузить
+   source maps (нет SENTRY_ORG/PROJECT/AUTH_TOKEN). Runtime-Sentry (ловля сбоев по
+   DSN) работает; выгрузка символов отключена. Настроить позже (org/project/token).
+
+### Чтение лог-файлов EAS (полезный трюк)
+
+Логи EAS-сборки отдаются по подписанной ссылке (`eas build:view <id> --json` →
+`logFiles[0]`), сжаты **brotli** (`brotli -dc файл`), внутри — JSON-строки с
+полями `phase` / `msg`. Ссылка живёт 15 мин. Так находили точную причину каждого
+падения вместо гадания.
+
+### Что осталось (в App Store Connect, частично — владелец)
+
+- Дождаться обработки сборки Apple (~10 мин) → она появится в разделе версии.
+- Заполнить витрину (описание/скриншоты/приватность — материалы в
+  `APP_STORE_LISTING.md`), выбрать сборку `1.0.0 (8)`, дать ревьюеру рабочий
+  тест-аккаунт (есть вход) → **Submit for Review**.
+- ⚠️ Demo-вход на сайте/в сборке: для прода `EXPO_PUBLIC_ENABLE_DEMO=false` (в
+  `eas.json` для production уже `false`).
 
 ---
 

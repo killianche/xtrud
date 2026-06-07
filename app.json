@@ -18,7 +18,8 @@
         "NSLocationWhenInUseUsageDescription": "Приложение использует местоположение, чтобы предложить ваш город при создании заявки и поиске мастеров рядом. Можно выбрать город вручную, доступ опционален.",
         "NSPhotoLibraryAddUsageDescription": "Приложение может сохранять фотографии (например, из портфолио мастера) в вашу галерею.",
         "ITSAppUsesNonExemptEncryption": false
-      }
+      },
+      "buildNumber": "2"
     },
     "android": {
       "package": "com.xtrud.app",

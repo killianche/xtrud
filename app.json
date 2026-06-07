@@ -19,7 +19,7 @@
         "NSPhotoLibraryAddUsageDescription": "Приложение может сохранять фотографии (например, из портфолио мастера) в вашу галерею.",
         "ITSAppUsesNonExemptEncryption": false
       },
-      "buildNumber": "2"
+      "buildNumber": "3"
     },
     "android": {
       "package": "com.xtrud.app",

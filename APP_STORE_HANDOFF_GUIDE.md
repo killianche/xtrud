@@ -1,113 +1,120 @@
-# Инструкция по выкладке Expo-приложения в App Store (передача другому агенту)
+# Как выложить Expo-приложение в App Store — полная инструкция для агента
 
-> **Кому:** AI-агенту, который будет выкладывать в App Store другое приложение
-> владельца (Коран с переводом на ингушский). Этот документ — выжимка опыта,
-> полученного при выкладке приложения **xtrud**. Здесь: какие аккаунты есть, как
-> устроен процесс, и на какие грабли НЕ наступать.
+> **Кому:** AI-агенту, который собрал **другое** приложение владельца (Коран с
+> переводом на ингушский) и должен выложить его в App Store. Ты «знаешь только своё
+> приложение» — этот документ объясняет ВСЁ остальное: какие есть доступы, как
+> собрать и отправить приложение **полностью автоматически (без кодов 2FA)**, на
+> какие грабли мы наступили на первом приложении (xtrud) и как их обойти, и как
+> по шагам заполнить кабинет App Store Connect.
 >
-> **Кому НЕ показывать секреты:** в этом файле НЕТ паролей и секретных ключей —
-> только что нужно и где взять. Сами пароли/ключи владелец передаёт агенту
-> отдельно (в рабочей сессии), и они НИКОГДА не коммитятся в git.
+> Документ составлен по реальному опыту выкладки **xtrud** (Expo SDK 54 + EAS),
+> доведённой до загрузки в App Store. Команды могли обновиться — сверяйся с
+> `eas --help` и docs.expo.dev, если что-то не сходится.
 
 ---
 
-## 0. Краткая суть
+## 0. Суть за 30 секунд
 
-Приложение на **Expo (React Native)**. Выкладка через **EAS Build + EAS Submit**
-(облачная сборка Expo) → в **App Store Connect**. Локально Mac не собирает iOS —
-всё собирается в облаке EAS, поэтому Xcode и даже Mac для сборки не обязательны
-(нужен только для запуска команд).
+Приложение на **Expo (React Native)**. iOS собирается **в облаке EAS** (Mac/Xcode
+для сборки НЕ нужны), потом загружается в **App Store Connect**. Весь процесс —
+автоматический по **App Store Connect API-ключу** (`.p8`), без ручного ввода кода
+2FA. Поток (один раз на приложение):
 
-Поток (один раз на приложение):
-1. Настроить `app.json` (имя, bundle id, иконка, версия).
-2. Создать запись приложения в App Store Connect (или это делает владелец).
-3. Настроить `eas.json` (профили сборки + env + submit).
-4. `eas login` → `eas init` (привязать проект к Expo-аккаунту).
-5. `eas build --platform ios --profile production` (собрать в облаке).
-6. `eas submit --platform ios --profile production` (отправить сборку в App Store Connect).
-7. В App Store Connect заполнить метаданные (описание, скриншоты, приватность,
-   тест-аккаунт ревьюеру) → Submit for Review.
+1. Настроить `app.json` (имя, bundle id, иконка, версия, только iPhone).
+2. Создать запись приложения в App Store Connect → получить числовой `ascAppId`.
+3. Настроить `eas.json` (профили + переменные окружения + submit с ключом).
+4. `eas login` → `eas init --force` (привязать к Expo-аккаунту).
+5. Собрать: первый раз — через `expect` (создать сертификат), дальше `--non-interactive`.
+6. Отправить: `eas submit --latest`.
+7. В App Store Connect заполнить витрину + анкеты → **Submit for Review**.
 
 ---
 
-## 1. Общие аккаунты владельца (переиспользуются между приложениями)
+## 1. Что владелец передаёт тебе ОТДЕЛЬНО (секреты, НЕ в git)
 
-> Имена/ID ниже не секретны. Пароли/ключи — у владельца, он даст отдельно.
+Эти вещи нельзя коммитить и нельзя писать в публичные переменные. Владелец даёт их
+тебе в рабочей сессии:
 
-### Apple
-- **Apple Developer Program** — активен. **Team ID: `ZNK264PD9Y`**.
-- **Apple ID разработчика (логин в App Store Connect):** `blakeisrael509495@aol.com`
-  (пароль и 2FA — у владельца). Через него создаются приложения и сертификаты.
-- Одна membership = можно выкладывать НЕСКОЛЬКО приложений (нужен только новый
-  bundle identifier на каждое).
+1. **App Store Connect API-ключ** — файл `AuthKey_XXXXXXXXXX.p8`. ⚠️ Главный секрет.
+   Тот же ключ, что использовался для xtrud, **подходит и для Корана** (один ключ на
+   всю команду Apple). Положи его **вне репозитория**: `~/.expo-asc-keys/` + `chmod 600`.
+2. **Пароль от Expo-аккаунта** (или Expo access token) — для `eas login`.
+3. **Секреты бэкенда Корана**, если он есть (свой Supabase / API-ключи). Если Коран
+   — оффлайн-контент без сервера, бэкенд-секреты не нужны.
 
-### Expo (EAS)
-- **Expo-аккаунт: `pmrhhm`** (почта `pmrhhm@gmail.com`; пароль у владельца).
-  Тот же аккаунт в приложении Expo Go на телефоне.
-- В аккаунте есть личный профиль `pmrhhm` и команда `pmrhhms-team`. Для проекта
-  использовать личный (`owner: "pmrhhm"` в app.json), если не нужна команда.
-- Вход: `npx eas login` (интерактивно вводится почта+пароль) ИЛИ через токен
-  (`EXPO_TOKEN`, создаётся на expo.dev → Settings → Access tokens).
-
-### GitHub
-- Аккаунт **`killianche`**. Под новое приложение — отдельный репозиторий.
-
-### App Store Connect API key (КЛЮЧ для автоматической выкладки) — РЕКОМЕНДУЕТСЯ
-- Чтобы агент мог собрать и отправить приложение **сам, без интерактивного ввода
-  кода 2FA**, нужен **App Store Connect API Key** (файл `.p8` + Key ID + Issuer ID).
-- Создаётся один раз на сайте: appstoreconnect.apple.com → **Users and Access** →
-  вкладка **Integrations** → **App Store Connect API** → «+» → имя, доступ **Admin**
-  → Generate → **скачать `.p8` (только один раз!)** + скопировать **Key ID** и
-  **Issuer ID** (Issuer ID — общий вверху страницы).
-- Один такой ключ под Team `ZNK264PD9Y` **работает для всех приложений** этой
-  команды (и для xtrud, и для Корана). Если владелец уже сделал ключ для xtrud —
-  он же подойдёт.
-- ⚠️ `.p8` — секрет. Хранить вне git. Агенту передавать как файл + 2 ID отдельно.
+Если владелец прислал `.p8` внутри папки проекта — **сразу перенеси его наружу** и
+добавь в `.gitignore` (см. §4), чтобы случайно не закоммитить.
 
 ---
 
-## 2. Что у каждого приложения СВОЁ (НЕ переиспручать от xtrud)
+## 2. Общие идентификаторы (НЕ секреты — можно использовать как есть)
 
-- **bundle identifier** — уникальный, напр. `com.xtrud.app` у xtrud; у Корана будет
-  свой, напр. `com.<имя>.quran`. Менять в `app.json` → `ios.bundleIdentifier`.
-- **slug / name** в `app.json` и Expo-проект (`eas init` создаст новый).
-- **Запись приложения** в App Store Connect (своя, с новым bundle id).
-- **Бэкенд (Supabase)** — если у Корана свой бэкенд, это ОТДЕЛЬНЫЙ Supabase-проект
-  со своими ключами. НЕ использовать ключи xtrud. Если бэкенд не нужен (Коран —
-  оффлайн-контент) — Supabase вообще не нужен.
-- **Иконка, скриншоты, описание, ключевые слова** — свои.
+Это не пароли, без `.p8` они бесполезны, поэтому привожу для удобства:
+
+| Что | Значение |
+|---|---|
+| **Apple Team ID** | `ZNK264PD9Y` |
+| **Apple ID (логин в App Store Connect)** | `blakeisrael509495@aol.com` (пароль/2FA — у владельца) |
+| **ASC API Key ID** | `MFXS9GDD4X` (если владелец даёт новый ключ — будет свой) |
+| **ASC API Issuer ID** | `6fc51340-af9d-4698-99ff-0c2b56adab1d` |
+| **Expo-аккаунт** | `pmrhhm` (почта `pmrhhm@gmail.com`) |
+
+Одна Apple-membership (Team `ZNK264PD9Y`) = можно выкладывать сколько угодно
+приложений, нужен только **новый bundle id** на каждое.
 
 ---
 
-## 3. Пошаговый процесс (проверено на xtrud)
+## 3. Что у Корана СВОЁ (не переиспользовать от xtrud)
 
-### Шаг 1. `app.json` — основное
+- **bundle identifier** — уникальный, напр. `com.<имя>.quran` (у xtrud `com.xtrud.app`).
+- **slug / name** в `app.json`; Expo-проект создаётся заново через `eas init`.
+- **Запись приложения** в App Store Connect (своя, с новым bundle id) → свой `ascAppId`.
+- **Бэкенд** — если есть, ОТДЕЛЬНЫЙ Supabase/сервер со своими ключами. Если Коран
+  оффлайн — бэкенда нет.
+- **Иконка 1024×1024, скриншоты, описание, ключевые слова** — свои.
+
+---
+
+## 4. Подготовка проекта
+
+### 4.1 `app.json`
 ```jsonc
 {
   "expo": {
-    "name": "Название приложения",      // как на устройстве
-    "slug": "quran-ingush",             // латиницей, без пробелов
-    "owner": "pmrhhm",                  // Expo-аккаунт-владелец
-    "version": "1.0.0",                 // версия для пользователей
+    "name": "Коран",                       // как на устройстве
+    "slug": "quran-ingush",                // латиницей, без пробелов
+    "owner": "pmrhhm",                      // Expo-аккаунт владельца
+    "version": "1.0.0",
     "ios": {
+      "supportsTablet": false,              // ВАЖНО: только iPhone (см. грабли §6.5)
       "bundleIdentifier": "com.xxx.quran",  // УНИКАЛЬНЫЙ
-      "supportsTablet": true
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+        // + описания доступов (NS...UsageDescription), если используешь камеру/гео/фото
+      }
     },
-    "icon": "./assets/icon.png"         // 1024×1024, без прозрачности
+    "icon": "./assets/icon.png"             // 1024×1024, БЕЗ прозрачности (см. §6.6)
     // extra.eas.projectId допишет `eas init`
   }
 }
 ```
 
-### Шаг 2. Создать приложение в App Store Connect
-- appstoreconnect.apple.com → **My Apps** → «+» → **New App**.
-- Platform: iOS. Name. Primary language. Bundle ID (тот же, что в app.json).
-  SKU (любой уникальный). → Create.
-- Запомнить **Apple ID приложения** (числовой `ascAppId`, виден в App Information)
-  — он нужен для `eas submit`.
+### 4.2 `.gitignore` (защита ключа)
+Добавь, чтобы `.p8` никогда не попал в git:
+```
+*.p8
+AuthKey_*.p8
+.env
+.env.local
+```
 
-### Шаг 3. `eas.json`
-Ключевые моменты (на них мы спотыкались — см. §4):
+### 4.3 `.npmrc` (иначе облачная сборка падает на установке зависимостей)
+Создай файл `.npmrc` в корне проекта:
+```
+legacy-peer-deps=true
+```
+
+### 4.4 `eas.json`
 ```jsonc
 {
   "cli": { "version": ">= 16.0.0", "appVersionSource": "local" },
@@ -115,147 +122,254 @@
     "base": {
       "node": "20.18.0",
       "env": {
-        // ⚠️ ВСЕ EXPO_PUBLIC_* переменные сюда! Облако НЕ видит .env.local.
-        // Публичные ключи (anon/publishable) класть можно. Секретные — НЕЛЬЗЯ.
+        // ⚠️ Облако НЕ видит .env.local! Все EXPO_PUBLIC_* переменные — СЮДА.
+        // Публичные ключи (Supabase anon/publishable) класть можно. Секретные — НЕЛЬЗЯ.
+        "SENTRY_DISABLE_AUTO_UPLOAD": "true"  // если используешь @sentry/react-native (см. §6.4)
       }
     },
     "production": {
       "extends": "base",
-      "autoIncrement": true,            // авто-увеличение build number
+      "autoIncrement": true,                 // авто-увеличение build number
       "ios": { "resourceClass": "m-medium" }
-      // НЕ добавлять "channel", если не установлен expo-updates (см. §4)
+      // НЕ добавляй "channel" без установленного expo-updates
     }
   },
   "submit": {
     "production": {
       "ios": {
-        "appleId": "blakeisrael509495@aol.com",
+        // Ключ для НЕинтерактивной отправки. ascApiKeyPath — ПУТЬ к .p8 (не сам ключ).
+        "ascApiKeyPath": "/Users/<USER>/.expo-asc-keys/AuthKey_XXXXXXXXXX.p8",
+        "ascApiKeyId": "MFXS9GDD4X",
+        "ascApiKeyIssuerId": "6fc51340-af9d-4698-99ff-0c2b56adab1d",
         "appleTeamId": "ZNK264PD9Y",
         "ascAppId": "<числовой ID приложения из App Store Connect>"
-        // ИЛИ через ASC API key (ascApiKeyPath/ascApiKeyId/ascApiKeyIssuerId)
+        // НЕ указывай appleId — он включает интерактивный вход с 2FA
       }
     }
   }
 }
 ```
 
-### Шаг 4. Привязать проект к Expo
+### 4.5 Создать запись приложения в App Store Connect
+- appstoreconnect.apple.com → **My Apps** → «+» → **New App**.
+- Platform iOS, Name, Primary language (Русский), Bundle ID (тот же, что в app.json),
+  SKU (любой уникальный) → Create.
+- Открой **App Information** → запомни числовой **Apple ID приложения** (`ascAppId`) →
+  впиши его в `eas.json` (submit).
+
+### 4.6 Привязать проект к Expo
 ```bash
 cd <папка проекта>
-npx eas login            # почта pmrhhm + пароль (у владельца)
+npx eas login            # почта pmrhhm + пароль владельца
 npx eas init --force     # создаст @pmrhhm/<slug>, впишет projectId в app.json
 ```
 
-### Шаг 5. Собрать
-**Вариант с ASC API key (агент делает сам, без 2FA) — рекомендуется:**
-- Положить `.p8`, экспортировать переменные (имена сверить с актуальной докой EAS,
-  см. `eas build --help` / docs.expo.dev — на момент xtrud это связка
-  appleId/teamId + ASC API key через `eas credentials` или env). Затем:
-```bash
-npx eas build --platform ios --profile production --non-interactive
-```
-**Вариант интерактивный (владелец вводит 2FA один раз):**
-```bash
-npx eas build --platform ios --profile production
-# на вопрос Apple login → y → Apple ID → пароль → код 2FA
-# на вопросы про сертификат/provisioning profile → y (EAS сделает сам)
-```
-Сборка идёт в облаке ~20–40 мин, даёт ссылку вида
-`https://expo.dev/accounts/pmrhhm/projects/<slug>/builds/...`.
+---
 
-### Шаг 6. Отправить в App Store Connect
-```bash
-npx eas submit --platform ios --profile production --latest
-```
-(берёт последнюю сборку и заливает в App Store Connect; нужен ASC API key или
-Apple-логин).
+## 5. Автоматическая сборка по ключу (без 2FA) — главное
 
-### Шаг 7. Метаданные и Submit for Review (в App Store Connect)
-- Описание, подзаголовок, ключевые слова, категория, возрастной рейтинг.
-- **Privacy Policy URL** — ОБЯЗАТЕЛЬНО, и должен открываться БЕЗ логина.
-- **App Privacy** — анкета (какие данные собираете).
-- **Скриншоты** — минимум под 6.9" или 6.7" iPhone (3–10 шт).
-- **App Review Information → Sign-In Required** — если в приложении есть вход, дать
-  ревьюеру РАБОЧИЙ тест-аккаунт (логин+пароль) + заметку, как войти.
-- Иконка 1024×1024 (без прозрачности/скруглений).
-- → **Add for Review / Submit for Review**.
+Положи ключ вне репозитория и задай переменные:
+```bash
+mkdir -p ~/.expo-asc-keys
+mv AuthKey_XXXXXXXXXX.p8 ~/.expo-asc-keys/ && chmod 600 ~/.expo-asc-keys/AuthKey_XXXXXXXXXX.p8
+
+export EXPO_ASC_API_KEY_PATH="$HOME/.expo-asc-keys/AuthKey_XXXXXXXXXX.p8"
+export EXPO_ASC_KEY_ID="MFXS9GDD4X"
+export EXPO_ASC_ISSUER_ID="6fc51340-af9d-4698-99ff-0c2b56adab1d"
+export EXPO_APPLE_TEAM_ID="ZNK264PD9Y"
+export EXPO_APPLE_TEAM_TYPE="INDIVIDUAL"
+```
+
+### 5.1 ⚠️ ПЕРВАЯ сборка — через `expect` (создать сертификат)
+`eas build --non-interactive` **отказывается** создавать distribution-сертификат в
+первый раз («Run this command again in interactive mode»). Обходим псевдо-интерактивом
+через `expect` (он есть в macOS). Создай `/tmp/eas_build.exp`:
+```tcl
+#!/usr/bin/expect -f
+log_user 1
+set timeout 600
+spawn npx eas build --platform ios --profile production --no-wait
+expect {
+  -re {\(Y/n\)} { send -- "y\r"; exp_continue }
+  -re {\(y/N\)} { send -- "y\r"; exp_continue }
+  -re {Generate a new[^\r\n]*\?} { send -- "y\r"; exp_continue }
+  -re {Reuse[^\r\n]*\?} { send -- "y\r"; exp_continue }
+  eof
+}
+```
+Запусти (переменные из 5 должны быть экспортированы): `expect /tmp/eas_build.exp`.
+
+⚠️ **Важно:** когда дойдёт до «Set up Push Notifications for your project?» —
+это ведёт к APNs-ключу, который требует входа по паролю Apple (ключом нельзя).
+Либо push тебе не нужен (Коран — оффлайн), тогда expo-notifications вообще не ставь
+(см. §6.3). Если `expect` случайно ответил «y» и попал в запрос Apple ID/пароля —
+прерви (Ctrl+C), сертификат к этому моменту уже создан.
+
+### 5.2 Дальше — обычная неинтерактивная сборка
+После того как сертификат+профиль созданы один раз:
+```bash
+npx eas build --platform ios --profile production --non-interactive --no-wait
+```
+`--no-wait` ставит сборку в очередь и сразу возвращает ссылку
+`https://expo.dev/accounts/pmrhhm/projects/<slug>/builds/<id>`. Сборка идёт в
+облаке ~15–25 мин. Следить за статусом:
+```bash
+npx eas build:view <build-id> --json   # поле "status": IN_QUEUE / IN_PROGRESS / FINISHED / ERRORED
+```
 
 ---
 
-## 4. ГРАБЛИ, на которые мы наступили (НЕ повторять)
+## 6. Грабли сборки (мы на каждой споткнулись — НЕ повторяй)
 
-1. **Облачная сборка не видит `.env.local`.** Если приложение читает
-   `EXPO_PUBLIC_*` переменные (URL/ключи бэкенда) — их ОБЯЗАТЕЛЬНО продублировать
-   в `eas.json` → `build.base.env`. Иначе собранное приложение не подключится к
-   бэкенду. Публичные ключи (Supabase anon/publishable) класть туда безопасно.
-2. **`channel` в production-профиле требует пакет `expo-updates`.** Если его нет —
-   сборка падает на «expo-updates package is missing», а доустановка может упасть
-   из-за конфликтов зависимостей. Решение для первого релиза: НЕ указывать
-   `channel` (OTA-обновления добавить потом). Либо поставить `expo-updates` через
-   `npx expo install expo-updates` (при конфликте — `npm install --legacy-peer-deps`).
-3. **Demo/тестовые режимы выключать в проде.** Если есть флаг типа
-   `EXPO_PUBLIC_ENABLE_DEMO` — в `eas.json` для production ставить `"false"`.
-4. **Apple ОТКЛОНЯЕТ приложения с заглушками** (lorem ipsum, англ. placeholder,
-   «тестовые» баннеры/данные). Перед сабмитом убрать весь placeholder-контент.
-5. **2FA Apple нельзя автоматизировать.** Либо владелец вводит код один раз
-   интерактивно, либо использовать ASC API key (см. §1). Других путей нет.
-6. **`expo-doctor` перед сборкой.** `npx expo-doctor` — ловит несовместимые версии
-   до того, как упадёт облачная сборка.
-7. **Встроенная почта Supabase лимитирована** (если приложение шлёт письма) —
-   для прода нужен внешний SMTP/ESP. (Актуально только если у Корана есть auth с
-   письмами; для оффлайн-приложения — не нужно.)
-8. **ASC API-ключ: первый сертификат `--non-interactive` создать НЕ даёт.** При
-   первой сборке `eas build --non-interactive` отказывается создавать
-   distribution-сертификат («Run this command again in interactive mode»). Решение:
-   один раз запустить через **`expect`** (PTY) — `expect`-скрипт стартует
-   `eas build` и авто-подтверждает (`y`) создание сертификата/профиля. Env для
-   входа без 2FA: `EXPO_ASC_API_KEY_PATH`, `EXPO_ASC_KEY_ID`, `EXPO_ASC_ISSUER_ID`,
-   `EXPO_APPLE_TEAM_ID`. После первого раза `--non-interactive` уже работает.
-   ⚠️ На вопрос «Set up Push Notifications? → Generate APNs key?» отвечать НЕ надо
-   («yes» ведёт к APNs-ключу, который требует входа по паролю → ломается).
-9. **`eas submit --non-interactive` НЕ берёт ключ из env.** Прописать в `eas.json`
-   → `submit.production.ios`: `ascApiKeyPath` (путь к .p8, НЕ сам ключ),
-   `ascApiKeyId`, `ascApiKeyIssuerId`, `appleTeamId`, `ascAppId`. Поле `appleId`
-   убрать (оно включает интерактивный вход с 2FA).
-10. **Push / `expo-notifications` ломает сборку без APNs-ключа.** Пакет
-    автоматически добавляет iOS-разрешение `aps-environment`, а provisioning
-    profile его не содержит (push требует **APNs-ключ Apple**, а он недоступен
-    через ASC API-ключ — только интерактивный вход по паролю). Если push НЕ нужен
-    для первого релиза — убрать пакет `expo-notifications` и сделать его хук
-    no-op. Если нужен — владелец создаёт APNs-ключ на developer.apple.com → Keys
-    (галка APNs) и добавляет в EAS (`eas credentials`). У оффлайн-Корана push
-    скорее всего не нужен — проще не ставить expo-notifications вообще.
-11. **Sentry ломает сборку на выгрузке символов.** Если есть
-    `@sentry/react-native` без настроенных SENTRY_ORG/PROJECT/AUTH_TOKEN — сборка
-    компилируется, но падает на шаге выгрузки source maps. Фикс: в `eas.json` env
-    `SENTRY_DISABLE_AUTO_UPLOAD=true` (runtime-Sentry по DSN продолжит работать).
-12. **`npm ci` в облаке строгий.** (а) Конфликт peer-deps → `.npmrc` с
-    `legacy-peer-deps=true` (коммитить в репо). (б) Рассинхрон package.json ↔
-    package-lock.json → сборка падает «Missing X from lock file»; чинится локально
-    `npm install` + коммит обновлённого `package-lock.json`.
-13. **Читать лог упавшей EAS-сборки:** `eas build:view <id> --json` → `logFiles[0]`
-    (подписанная ссылка, живёт 15 мин) → `curl … | brotli -dc` → JSON-строки с
-    `phase`/`msg`. Так видно ТОЧНУЮ причину падения, а не «UNKNOWN_ERROR».
+### 6.1 `npm ci` в облаке падает на установке зависимостей
+- **Конфликт peer-deps** → `.npmrc` с `legacy-peer-deps=true` (см. §4.3).
+- **Рассинхрон package.json ↔ package-lock.json** → ошибка «Missing X from lock file».
+  Чинится локально: `npm install` → закоммить обновлённый `package-lock.json`.
+
+### 6.2 Версии пакетов
+Перед сборкой прогони `npx expo-doctor` — ловит несовместимые версии заранее.
+
+### 6.3 Push-уведомления ломают сборку без APNs-ключа
+Если в проекте есть **`expo-notifications`**, он автоматически добавляет iOS-разрешение
+`aps-environment`, а provisioning profile его не содержит (push требует **APNs-ключ
+Apple**, недоступный через API-ключ). Симптом: сборка падает «Provisioning profile …
+doesn't include the aps-environment entitlement».
+- **Коран скорее всего push не нужен** → просто **не ставь** `expo-notifications`.
+- Если он уже стоит, но push не нужен в первой версии → удали пакет
+  (`npm uninstall expo-notifications`) и сделай хук-обёртку no-op.
+- Если push реально нужен → владелец создаёт APNs-ключ на developer.apple.com → Keys
+  (галка «Apple Push Notifications service») и добавляет в EAS (`eas credentials`).
+
+### 6.4 Sentry ломает сборку на выгрузке символов
+Если есть `@sentry/react-native` без настроенных `SENTRY_ORG/PROJECT/AUTH_TOKEN` —
+приложение компилируется, но падает на шаге выгрузки source maps. Фикс: в `eas.json`
+env поставь `SENTRY_DISABLE_AUTO_UPLOAD=true` (см. §4.4). Если Sentry не используешь —
+ничего не нужно.
+
+### 6.5 iPad → требование iPad-скриншотов
+Если в `app.json` `ios.supportsTablet: true`, Apple требует загрузить отдельные
+скриншоты для iPad Pro 13". Чтобы приложение было **только для iPhone** (и iPad-скрины
+не требовались) — поставь `ios.supportsTablet: false` и пересобери. После — в кабинете
+ОБЯЗАТЕЛЬНО выбери именно эту (iPhone-only) сборку, иначе старая всё ещё «тянет» iPad.
+
+### 6.6 Значок приложения не должен иметь альфа-канал (прозрачность)
+Иначе Apple отклоняет («App icon can't contain alpha channel»). Сделать чистый
+1024×1024 без прозрачности (Python+Pillow):
+```python
+from PIL import Image
+img = Image.open('source_logo.png').convert('RGB')      # convert('RGB') убирает альфу
+img.resize((1024,1024), Image.LANCZOS).save('assets/icon.png', 'PNG')
+```
+Иконка должна быть **квадратной, без скруглений** — Apple скруглит сама.
+
+### 6.7 Как прочитать лог упавшей сборки (вместо «UNKNOWN_ERROR»)
+```bash
+URL=$(npx eas build:view <id> --json | python3 -c "import sys,json;print(json.load(sys.stdin)['logFiles'][0])")
+curl -s "$URL" | brotli -dc | python3 -c "import sys,json;[print(json.loads(l).get('phase',''),json.loads(l).get('msg','')) for l in sys.stdin if l.strip()]"
+```
+Лог сжат **brotli**, внутри JSON-строки с `phase`/`msg`. Подписанная ссылка живёт
+~15 мин (если протухла — запроси `build:view` заново).
 
 ---
 
-## 5. Что передать агенту ОТДЕЛЬНО (секреты, не в этом файле)
+## 7. Отправка в App Store Connect (submit)
 
-Владелец передаёт агенту в рабочей сессии (не в git):
-- Пароль от **Expo** (аккаунт `pmrhhm`) — для `eas login`. Или Expo access token.
-- Доступ к **Apple ID** `blakeisrael509495@aol.com` (пароль + куда приходит 2FA),
-  ЛИБО **App Store Connect API key** (`.p8` + Key ID + Issuer ID) — предпочтительно.
-- Если у Корана есть бэкенд — ключи ЕГО Supabase (отдельный проект).
+С ключом в submit-профиле (см. §4.4) — одной командой, без 2FA:
+```bash
+npx eas submit --platform ios --profile production --latest --non-interactive
+```
+(`--latest` берёт последнюю успешную сборку). Через ~5–10 мин Apple её обработает —
+сборка появится в кабинете и станет выбираемой в разделе «Сборка/Build».
+
+Проверить состояние сборок через ASC API (если надо точно): сборка в состоянии
+`VALID` = обработана и готова к выбору.
 
 ---
 
-## 6. Полезные ссылки
+## 8. App Store Connect — заполнение кабинета (по шагам)
+
+Когда жмёшь «Добавить для проверки», Apple показывает список красных ошибок — каждую
+закрываешь так:
+
+### 8.1 «Информация о приложении» (общее для всех версий)
+- **Название**, **Подзаголовок** (до 30 симв.).
+- **Категория**: Основная (для Корана подойдёт «Образование» или «Образ жизни»),
+  Дополнительная — по желанию. *(Ошибка «указать основную категорию».)*
+- **Права на контент** (Content Rights): если в приложении нет лицензионного стороннего
+  контента — выбери «**не содержит сторонний контент**». *(Ошибка «сведения о правах
+  на публикуемые материалы».)*
+- **Возрастной рейтинг** → «Изменить» → на все вопросы «Нет» → выйдет 4+
+  (для Корана можно уточнить «Религиозные/культурные темы», если спросят, но обычно 4+).
+- **URL политики конфиденциальности** — ОБЯЗАТЕЛЬНО, и ссылка должна открываться БЕЗ
+  логина. Если у Корана нет своего сайта — сделать простую HTML-страницу политики и
+  выложить (можно на том же сервере, что xtrud, отдельным путём).
+
+### 8.2 Страница версии 1.0.0
+- **Описание**, **Ключевые слова** (до 100 символов, через запятую без пробелов),
+  **Support URL**, **Copyright** (`2026 <название>`).
+- **Скриншоты** — минимум под один размер iPhone (6.9" или 6.7"), 3–10 шт. С iOS 17+
+  достаточно одного набора 6.9" (1320×2868) — Apple растянет на меньшие модели.
+- **Сборка/Build** — выбери нужную (iPhone-only!) сборку `1.0.0 (N)`.
+
+### 8.3 «Конфиденциальность приложения» (анкета о данных)
+- Вверху впиши **URL политики**.
+- В «Сбор данных» отметь **только то, что реально собираешь**. Для оффлайн-Корана,
+  возможно, **ничего** (тогда выбери «Данные не собираются»). Если есть закладки/
+  настройки локально на устройстве и они не уходят на сервер — это НЕ сбор данных.
+- Для каждого собираемого типа: цель → «Функциональные возможности приложения»;
+  «Связано с личностью?» → обычно Да; «Используется для отслеживания?» → **Нет**
+  (рекламы/трекинга нет).
+- Не отмечай типы, которые не собираешь (физический адрес, поддержку и т.п.) — иначе
+  карточка приложения покажет ложь.
+
+### 8.4 «Цены и доступность» (Pricing)
+- Поставь цену **0,00 / Бесплатно**. ⚠️ Без выбранной цены отправить НЕЛЬЗЯ (частая
+  забытая ошибка). Базовую страну менять не нужно — бесплатное приложение бесплатно везде.
+
+### 8.5 Аккаунт для проверки (если в приложении ЕСТЬ вход)
+Если у Корана нет логина (оффлайн) — этот раздел не нужен, галку «Sign-in required»
+не ставь. Если вход есть — Apple ОБЯЗАТЕЛЬНО его тестирует:
+- Включи «Sign-In Required», дай **рабочий** тест-логин+пароль и короткую заметку, как войти.
+- ⚠️ Тест-аккаунт должен реально работать в **production-сборке** (не demo-режим). Если
+  пароль не уверен — задай его заново через бэкенд напрямую, чтобы 100% работал.
+  (Неработающий тест-вход — причина №1 отказа на первом релизе.)
+
+### 8.6 Отправка
+«Добавить для проверки» → если красных ошибок не осталось → **«Отправить на проверку»
+(Submit for Review)**. При отправке Apple спросит про:
+- **Шифрование (Export Compliance)** → «не используем нестандартное шифрование»
+  (мы заранее ставим `ITSAppUsesNonExemptEncryption: false` в app.json → вопроса может
+  не быть).
+- **Рекламный идентификатор (IDFA)** → «Нет».
+
+Статус станет **Waiting for Review** → обычно проверка 1–3 дня, придёт письмо.
+
+---
+
+## 9. Чек-лист перед «Submit for Review»
+- [ ] `app.json`: name, slug, owner=pmrhhm, version 1.0.0, новый bundleId, supportsTablet=false, icon 1024 без альфы
+- [ ] App record создан → `ascAppId` вписан в `eas.json`
+- [ ] `.npmrc` (legacy-peer-deps), `.gitignore` (*.p8), env в `eas.json`
+- [ ] Сборка собрана и в состоянии VALID, отправлена через `eas submit`
+- [ ] В кабинете выбрана iPhone-only сборка
+- [ ] Описание, ключевые слова, скриншоты, категория, возраст (4+), copyright
+- [ ] Privacy Policy URL открывается без логина
+- [ ] Анкета «Конфиденциальность» заполнена/опубликована
+- [ ] Цена = Бесплатно
+- [ ] Тест-аккаунт ревьюеру (если есть вход) — проверен, что работает
+- [ ] Никаких заглушек/lorem ipsum/англ. placeholder — Apple за это отклоняет
+
+---
+
+## 10. Полезные ссылки
 - EAS Build: https://docs.expo.dev/build/introduction/
 - EAS Submit: https://docs.expo.dev/submit/ios/
-- App Store Connect API key: https://docs.expo.dev/app-signing/app-credentials/#app-store-connect-api-key
+- Сборка в CI / ASC API-ключ: https://docs.expo.dev/build/building-on-ci/
 - App Store review guidelines: https://developer.apple.com/app-store/review/guidelines/
 
 ---
 
-*Составлено по опыту выкладки xtrud (Expo SDK 54 + EAS). Team ID `ZNK264PD9Y`,
-Expo `pmrhhm`. Версии команд могли обновиться — сверяться с `eas --help` и доками.*
+*Составлено по реальному опыту выкладки **xtrud** (Expo SDK 54 + EAS, доведено до
+загрузки в App Store, 2026-06-07). Team ID `ZNK264PD9Y`, Expo `pmrhhm`. Главный
+секрет — файл `.p8` (ASC API-ключ), его владелец передаёт отдельно и в git он не
+коммитится.*

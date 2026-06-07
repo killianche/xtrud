@@ -61,7 +61,9 @@
   "submit": {
     "production": {
       "ios": {
-        "appleId": "blakeisrael509495@aol.com",
+        "ascApiKeyPath": "/Users/ruslancherbizhev/.expo-asc-keys/AuthKey_MFXS9GDD4X.p8",
+        "ascApiKeyId": "MFXS9GDD4X",
+        "ascApiKeyIssuerId": "6fc51340-af9d-4698-99ff-0c2b56adab1d",
         "appleTeamId": "ZNK264PD9Y",
         "ascAppId": "6776783761"
       }

@@ -100,3 +100,7 @@ dsds.png
 666.jpg
 33322.jpg
 nnnn.jpg
+
+# App Store Connect API keys — НИКОГДА в git
+*.p8
+AuthKey_*.p8

@@ -19,7 +19,7 @@
         "NSPhotoLibraryAddUsageDescription": "Приложение может сохранять фотографии (например, из портфолио мастера) в вашу галерею.",
         "ITSAppUsesNonExemptEncryption": false
       },
-      "buildNumber": "3"
+      "buildNumber": "4"
     },
     "android": {
       "package": "com.xtrud.app",
@@ -62,12 +62,6 @@
         {
           "photosPermission": "Приложению нужен доступ к фото, чтобы вы могли загрузить аватар и работы в портфолио.",
           "cameraPermission": "Приложению нужен доступ к камере, чтобы сделать снимок для аватара или портфолио."
-        }
-      ],
-      [
-        "expo-notifications",
-        {
-          "color": "#2563eb"
         }
       ],
       "@sentry/react-native/expo"

@@ -104,3 +104,7 @@ nnnn.jpg
 # App Store Connect API keys — НИКОГДА в git
 *.p8
 AuthKey_*.p8
+
+# Нативные папки — генерируются expo prebuild, в git не живут (CNG)
+/ios
+/android

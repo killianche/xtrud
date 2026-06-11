@@ -30,6 +30,42 @@
 
 ---
 
+## Жалоба «нажал кнопку — вылетает» + журнал ошибок (2026-06-11)
+
+**Жалоба:** друг владельца скачал приложение из App Store, «нажатие первой
+кнопки слева (таб Главная) закрывает приложение».
+
+**Расследование (не воспроизводится):**
+- Собрана Release-копия build 10 локально (xcodebuild, iphonesimulator) и
+  прогнана headless на симуляторе iPhone 17 Pro (boot через simctl без GUI,
+  тапы через idb: `brew install facebook/fb/idb-companion` + `pip3 install fb-idb`,
+  скриншоты `simctl io screenshot`, живость процесса `launchctl list`).
+- Нажато: таб «Главная» ×7 из всех состояний, все табы, селектор города
+  (открыть/выбрать/вернуть), категория, баннер, экран входа. **Ноль вылетов,
+  ноль отчётов в DiagnosticReports.**
+- 3 агента-аудитора прочесали код: обработчики нажатий защищены (openExternalUrl
+  c .catch, useSafeBack с fallback), env-переменные в eas.json все,
+  babel-preset-expo сам подключает worklets-плагин, PickerSheet на RN Modal.
+- Вывод: вылет зависит от устройства/iOS-версии/состояния друга — нужна
+  телеметрия, а не гадание.
+
+**Сделано (важно для всех будущих версий):**
+- **Таблица `client_errors`** (миграция 0119) — собственный журнал ошибок.
+  RLS: клиенты только INSERT; читаем через service_role:
+  `select created_at, platform, is_fatal, message, stack, context from client_errors order by created_at desc;`
+- **`src/lib/error-reporting.ts`** — `installGlobalErrorHandlers()` (вызывается
+  в app/_layout.tsx): перехват необработанных JS-исключений
+  (ErrorUtils.setGlobalHandler) — **в release ошибка в onPress больше НЕ
+  закрывает приложение**, а уходит в журнал; + tracking необработанных
+  promise-rejections. `reportClientError()` — fire-and-forget вставка с
+  дедупликацией 30 сек.
+- AppErrorBoundary дублирует render-ошибки в этот журнал (fatal=true).
+- Защитный guard `m.user?.avatar_url` в prefetch топ-мастеров (index.tsx).
+- ⚠️ Sentry по-прежнему без DSN (ждём решение владельца про аккаунт sentry.io);
+  собственный журнал работает независимо.
+
+---
+
 ## iOS-сборка и отправка в App Store (2026-06-07) — ✅ загружено в App Store Connect
 
 Приложение собрано в облаке EAS и загружено в App Store Connect **полностью

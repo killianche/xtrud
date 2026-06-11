@@ -3,7 +3,7 @@
     "name": "xtrud",
     "slug": "xtrud",
     "owner": "pmrhhm",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "xtrud",
@@ -19,7 +19,7 @@
         "NSPhotoLibraryAddUsageDescription": "Приложение может сохранять фотографии (например, из портфолио мастера) в вашу галерею.",
         "ITSAppUsesNonExemptEncryption": false
       },
-      "buildNumber": "9"
+      "buildNumber": "10"
     },
     "android": {
       "package": "com.xtrud.app",

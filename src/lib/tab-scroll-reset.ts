@@ -68,9 +68,16 @@ export function scrollViewToTop(
   // (RN перехватывает scroll-events). Только прямое присваивание `scrollTop = 0`
   // гарантированно работает. Анимации не делаем — стандарт mobile-pattern
   // «tap on active tab» — instant scroll-to-top.
+  //
+  // ⚠️ КРИТИЧНО (фикс краша 2026-06-11): на NATIVE `getScrollableNode()` возвращает
+  // ЧИСЛО (node-tag), а не DOM-объект. Оператор `"scrollTop" in <число>` бросает
+  // "right operand of 'in' is not an object" → AppErrorBoundary → пользователю
+  // «приложение вылетело» при тапе на активный таб «Главная». Поэтому проверяем
+  // `typeof dom === "object"` — это и есть web-only ветка (на native scroll уже
+  // сделан выше через scrollTo/scrollToOffset).
   if (typeof node.getScrollableNode === "function") {
     const dom = node.getScrollableNode() as { scrollTop?: number } | null;
-    if (dom && "scrollTop" in dom) {
+    if (dom && typeof dom === "object" && "scrollTop" in dom) {
       dom.scrollTop = 0;
     }
   }

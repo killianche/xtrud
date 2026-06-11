@@ -91,7 +91,10 @@ export function useScrollRestoration(key?: string) {
           let isNative = false;
           if (node) {
             const dom = node.getScrollableNode?.();
-            if (dom && "scrollTop" in dom) {
+            // ⚠️ На native getScrollableNode() возвращает ЧИСЛО → `"scrollTop" in
+            // <число>` бросает "right operand of 'in' is not an object" (краш-фикс
+            // 2026-06-11). typeof-проверка делает блок web-only, как и задумано.
+            if (dom && typeof dom === "object" && "scrollTop" in dom) {
               const d = dom as { scrollTop?: number };
               // «Прилипла» = браузер не сбросил позицию с прошлого кадра
               // (читаем ДО того, как выставим снова).

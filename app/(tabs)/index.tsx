@@ -322,7 +322,7 @@ function TopMasters({ onMasterPress }: { onMasterPress: (id: string) => void }) 
     if (!masters || masters.length === 0) return;
     const urls = masters
       .slice(0, 6)
-      .map((m) => m.user.avatar_url)
+      .map((m) => m.user?.avatar_url)
       .filter((u): u is string => !!u);
     if (urls.length > 0) {
       // expo-image.prefetch принимает массив URLs; sync API на web,

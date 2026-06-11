@@ -15,6 +15,7 @@
 import { Component, type ErrorInfo, type ReactNode } from "react";
 import { Platform, Pressable, View } from "react-native";
 import { AppText } from "@/components/AppText";
+import { reportClientError } from "@/lib/error-reporting";
 import { reportError } from "@/lib/sentry";
 
 interface Props {
@@ -36,6 +37,9 @@ export class AppErrorBoundary extends Component<Props, State> {
     // Отправляем ошибку в Sentry (no-op без DSN). Так мы узнаём о белых экранах
     // у реальных пользователей, а не из жалоб.
     reportError(error, { componentStack: info?.componentStack });
+    // Дублируем в собственный журнал client_errors (Supabase) — он работает
+    // ВСЕГДА, независимо от Sentry DSN. fatal=true: render-ошибка валит экран.
+    reportClientError(error, { fatal: true, context: "error-boundary" });
     // Дублируем в консоль: на web — для браузерных devtools, на native — в Metro.
     // eslint-disable-next-line no-console
     console.error("[AppErrorBoundary]", error, info?.componentStack);

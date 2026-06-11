@@ -12,6 +12,7 @@ import { PhoneFrame } from "@/components/PhoneFrame";
 import { useAuthSession } from "@/features/auth/use-auth-session";
 import { useUserRecord } from "@/features/auth/use-user-record";
 import { useRegisterPushToken } from "@/features/notifications/use-register-push-token";
+import { installGlobalErrorHandlers } from "@/lib/error-reporting";
 import { NavHistoryTracker } from "@/lib/nav-history";
 import { initSentry } from "@/lib/sentry";
 
@@ -43,6 +44,12 @@ import { initSentry } from "@/lib/sentry";
 // иначе безопасный no-op (см. src/lib/sentry.ts). Вызываем как можно раньше —
 // до рендера, чтобы ловить ошибки уже на старте.
 initSentry();
+
+// Собственный журнал ошибок (client_errors в Supabase) + перехват необработанных
+// исключений: в release без перехвата ошибка в onPress закрывала приложение
+// (жалоба пользователя 2026-06-11 «нажал кнопку — выкинуло»). Теперь ошибка
+// уходит в журнал, приложение продолжает работать. См. src/lib/error-reporting.ts.
+installGlobalErrorHandlers();
 
 // Splash hide отложен до загрузки шрифтов (только native).
 SplashScreen.preventAutoHideAsync().catch(() => {

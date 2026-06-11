@@ -14,6 +14,24 @@ export type Database = {
   }
   public: {
     Tables: {
+      app_secrets: {
+        Row: {
+          key: string
+          updated_at: string
+          value: string
+        }
+        Insert: {
+          key: string
+          updated_at?: string
+          value: string
+        }
+        Update: {
+          key?: string
+          updated_at?: string
+          value?: string
+        }
+        Relationships: []
+      }
       articles: {
         Row: {
           author_id: string | null
@@ -273,6 +291,42 @@ export type Database = {
           name?: string
           region?: string
           sort_order?: number
+        }
+        Relationships: []
+      }
+      client_errors: {
+        Row: {
+          app_version: string | null
+          context: string | null
+          created_at: string
+          id: string
+          is_fatal: boolean
+          message: string
+          platform: string
+          stack: string | null
+          user_id: string | null
+        }
+        Insert: {
+          app_version?: string | null
+          context?: string | null
+          created_at?: string
+          id?: string
+          is_fatal?: boolean
+          message: string
+          platform: string
+          stack?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          app_version?: string | null
+          context?: string | null
+          created_at?: string
+          id?: string
+          is_fatal?: boolean
+          message?: string
+          platform?: string
+          stack?: string | null
+          user_id?: string | null
         }
         Relationships: []
       }

@@ -64,6 +64,20 @@
 - ⚠️ Sentry по-прежнему без DSN (ждём решение владельца про аккаунт sentry.io);
   собственный журнал работает независимо.
 
+**Системный аудит «web→native» багов (2026-06-11, весь класс):** прочёсан весь код
+на паттерны «работает в браузере, падает/ломается на телефоне». Проверено и
+признано безопасным (везде platform-gate `Platform.OS==="web"` / `typeof X`):
+`document.*` (use-color-scheme, image-upload, open-link — все под guard),
+`window.*`/`localStorage` (use-recent-searches, device-session-id — под web-gate),
+`navigator.geolocation` (web-only ветка), `window.confirm` (confirm.ts — на native
+Alert.alert), `matchMedia`/MutationObserver (под typeof). Разбор дат — ISO-формат
+(`new Date(\`${iso}T00:00:00\`)`, Hermes ок). `flatMap`/`URLSearchParams` —
+поддержаны. **Единственная «протечка» — найденный `getScrollableNode().scrollTop`+`in`
+(2 файла) — исправлена.** Цветные SVG-иконки категорий с iconify CDN через
+expo-image на iOS **рендерятся корректно** (подтверждено скриншотами симулятора).
+Вывод: кодовая база дисциплинирована в разделении web/native; v1.0.1 закрывает
+единственный реальный краш этого класса.
+
 ---
 
 ## iOS-сборка и отправка в App Store (2026-06-07) — ✅ загружено в App Store Connect

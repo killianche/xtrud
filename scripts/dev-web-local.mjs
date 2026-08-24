@@ -30,8 +30,7 @@
  */
 
 import { execSync, spawn } from "node:child_process";
-import { existsSync, statSync, watch } from "node:fs";
-import { readdirSync } from "node:fs";
+import { existsSync, readdirSync, statSync, watch } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -50,7 +49,8 @@ const WATCH_PATHS = [
 ];
 
 // Игнор: node_modules, dist, .expo, скрытые папки.
-const IGNORE = /^(node_modules|dist(_next)?|\.expo|\.git|\.claude|legacy|vercel|tests-e2e|\.maestro)$/;
+const IGNORE =
+  /^(node_modules|dist(_next)?|\.expo|\.git|\.claude|legacy|vercel|tests-e2e|\.maestro)$/;
 
 let isBuilding = false;
 let buildQueued = false;
@@ -109,7 +109,7 @@ function watchRecursive(path) {
     return;
   }
   // node:fs `watch` поддерживает recursive только на macOS/Windows. Используем.
-  watch(path, { recursive: true }, (eventType, filename) => {
+  watch(path, { recursive: true }, (_eventType, filename) => {
     if (!filename) return;
     if (filename.includes("node_modules") || filename.startsWith(".")) return;
     triggerBuild(`${path}/${filename}`);

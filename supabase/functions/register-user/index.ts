@@ -71,7 +71,9 @@ Deno.serve(async (req) => {
     return reply({ ok: false, error: "Некорректный запрос" });
   }
 
-  const email = String(body.email ?? "").trim().toLowerCase();
+  const email = String(body.email ?? "")
+    .trim()
+    .toLowerCase();
   const password = String(body.password ?? "");
   // Нормализуем телефон на сервере (защита: не полагаемся только на клиент).
   // РФ/КЗ-ввод приводим к +7XXXXXXXXXX; уже собранный международный номер

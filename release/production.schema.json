@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://xtrud.pro/schemas/production-release-contract.json",
+  "title": "xtrud production release contract",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "backend", "web", "stores"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "backend": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["phase", "url", "clientKeySha256"],
+      "properties": {
+        "phase": { "enum": ["supabase-cloud", "beget-transition", "beget-primary"] },
+        "url": { "type": "string", "format": "uri" },
+        "clientKeySha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+      }
+    },
+    "web": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sshHost", "remoteDir", "domains"],
+      "properties": {
+        "sshHost": { "type": "string", "minLength": 3 },
+        "remoteDir": { "type": "string", "pattern": "^/" },
+        "domains": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "type": "string", "format": "uri" }
+        }
+      }
+    },
+    "stores": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ios", "android"],
+      "properties": {
+        "ios": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["latestPublishedVersion", "latestPublishedBuildNumber"],
+          "properties": {
+            "latestPublishedVersion": { "type": "string" },
+            "latestPublishedBuildNumber": { "type": "integer", "minimum": 1 }
+          }
+        },
+        "android": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["latestPublishedVersionCode"],
+          "properties": {
+            "latestPublishedVersionCode": { "type": ["integer", "null"], "minimum": 1 }
+          }
+        }
+      }
+    }
+  }
+}

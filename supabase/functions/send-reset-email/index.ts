@@ -28,8 +28,7 @@ const cors = {
 };
 
 const RESET_REDIRECT = "https://xtrud.pro/reset-password";
-const UNISENDER_SEND_URL =
-  "https://goapi.unisender.ru/ru/transactional/api/v1/email/send.json";
+const UNISENDER_SEND_URL = "https://goapi.unisender.ru/ru/transactional/api/v1/email/send.json";
 
 function reply(obj: Record<string, unknown>) {
   return new Response(JSON.stringify(obj), {
@@ -62,7 +61,9 @@ Deno.serve(async (req) => {
   } catch {
     return reply({ ok: false, error: "Некорректный запрос" });
   }
-  const email = String(body.email ?? "").trim().toLowerCase();
+  const email = String(body.email ?? "")
+    .trim()
+    .toLowerCase();
   if (!email) {
     return reply({ ok: false, error: "Укажите почту" });
   }

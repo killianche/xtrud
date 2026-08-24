@@ -1,70 +1,186 @@
 #!/usr/bin/env bash
-# Web deploy на VPS alanskie-bani (62.113.106.30) → https://xtrud.alanbani.ru/
+# Production web deploy: clean main -> production export -> staged VPS swap.
 #
-# Что делает:
-#   1. expo export --platform web  → dist/
-#   2. tar + scp в /tmp на сервере
-#   3. распаковка в /var/www/xtrud + chown www-data
-#   4. удаление tmp
-#
-# Caddy: блок `xtrud.alanbani.ru { root * /var/www/xtrud ... }` в /etc/caddy/Caddyfile.
-# Старый /xtrud/* subpath на alanbani.ru → 301-redirect на subdomain (для legacy ссылок).
-# Если изменишь Caddy — не забудь `ssh root@HOST 'systemctl reload caddy'`.
-#
-# Cache headers (важно!): xtrud-блок Caddy ставит `Cache-Control: no-cache,
-# must-revalidate` на index.html (и SPA-fallback) и `immutable` на хешированные
-# ассеты. Эффект: пользователи получают обновления СРАЗУ после deploy, без
-# очистки кэша. Источник истины — `deploy/Caddyfile.xtrud.example` (snippet
-# для копирования). Если случайно сломаешь cache headers — рестарт деплоев
-# перестанет доходить до клиентов.
-#
-# Когда мигрируем на Vercel/CF Pages (план из CLAUDE.md) — этот скрипт удалить.
+# Источник истины сайта — Git main. Скрипт намеренно отказывается выкатывать
+# dirty-worktree, другую ветку, SHA не из origin/main или demo-bundle. На VPS
+# хранится только производный export; предыдущий релиз сохраняется как
+# /var/www/xtrud.previous для быстрого ручного отката.
 
 set -euo pipefail
 
-HOST="${HOST:-root@62.113.106.30}"
-REMOTE_DIR="${REMOTE_DIR:-/var/www/xtrud}"
+PRODUCTION_HOST="$(node -p "require('./release/production.json').web.sshHost")"
+EXPECTED_REMOTE_DIR="$(node -p "require('./release/production.json').web.remoteDir")"
+EXPECTED_BACKEND_URL="$(node -p "require('./release/production.json').backend.url")"
+PRODUCTION_DOMAINS=()
+while IFS= read -r domain; do
+  [[ -n "${domain}" ]] && PRODUCTION_DOMAINS+=("${domain}")
+done < <(node -e 'for (const domain of require("./release/production.json").web.domains ?? []) console.log(domain)')
+if [[ "${#PRODUCTION_DOMAINS[@]}" -eq 0 ]]; then
+  echo "Остановлено: release/production.json не содержит production domains."
+  exit 1
+fi
+PRODUCTION_PRIMARY_DOMAIN="${PRODUCTION_DOMAINS[0]}"
+if [[ -n "${HOST+x}" && "${HOST}" != "${PRODUCTION_HOST}" ]]; then
+  echo "Остановлено: разрешён только HOST=${PRODUCTION_HOST}."
+  exit 1
+fi
+HOST="${PRODUCTION_HOST}"
+REMOTE_DIR="${REMOTE_DIR:-${EXPECTED_REMOTE_DIR}}"
+CONFIRM_VALUE="xtrud-production"
 
-echo "→ Building Expo web bundle (через scripts/build-web-local.mjs)..."
-# Единый источник истины сборки — scripts/build-web-local.mjs (тот же, что для
-# local preview). Он делает: rm -rf dist → expo export (EXPO_PUBLIC_ENABLE_DEMO=
-# true, --clear) → ПОЛНЫЙ патч index.html:
-#   - <script ... defer> → type="module"  (обход SDK 54 import.meta-бага);
-#   - safe-area meta (viewport-fit, theme-color, apple status-bar);
-#   - theme-guard script (без мигания темы при «Авто»);
-#   - адаптивный SVG-фавикон <link rel=icon> (public/favicon.svg).
-# Раньше web.sh делал свой урезанный export + только script-патч — из-за этого
-# на прод не попадали фавикон/тема/safe-area. Теперь расхождения нет.
-#
-# Demo-вход (телефоны +79000… → email/пароль 'xtrud') ВКЛЮЧЁН внутри скрипта:
-# xtrud.alanbani.ru — демо/превью-площадка (тест-аккаунты + админ
-# +7 900 000-00-99, см. DEMO_ACCOUNTS.md). Перед РЕАЛЬНЫМ публичным запуском —
-# убрать EXPO_PUBLIC_ENABLE_DEMO из build-web-local.mjs, иначе любой войдёт под
-# demo-аккаунтом с паролем 'xtrud'.
-#
-# WEB_CLEAR=1 — прод собираем ВСЕГДА начисто (сброс Metro-кэша), чтобы
-# гарантировать корректный инлайн флагов. Локальное превью, наоборот, кэш не
-# чистит ради быстрого старта (см. needClear в build-web-local.mjs).
-WEB_CLEAR=1 node scripts/build-web-local.mjs
+if [[ "${CONFIRM_DEPLOY:-}" != "${CONFIRM_VALUE}" ]]; then
+  echo "Остановлено: production deploy требует CONFIRM_DEPLOY=${CONFIRM_VALUE}."
+  exit 1
+fi
 
-# Деплой на корень subdomain (xtrud.alanbani.ru) — absolute paths в HTML
-# (`/_expo/...`, `/favicon.ico`, `/favicon.svg`) работают как есть.
+if [[ "${REMOTE_DIR}" != "${EXPECTED_REMOTE_DIR}" ]]; then
+  echo "Остановлено: разрешён только REMOTE_DIR=${EXPECTED_REMOTE_DIR}."
+  exit 1
+fi
 
-echo "→ Packing..."
-tar czf /tmp/xtrud-dist.tgz -C dist .
+if [[ "$(git branch --show-current)" != "main" ]]; then
+  echo "Остановлено: deploy разрешён только из ветки main."
+  exit 1
+fi
 
-echo "→ Uploading to ${HOST}..."
-scp /tmp/xtrud-dist.tgz "${HOST}":/tmp/
+if [[ -n "$(git status --porcelain)" ]]; then
+  echo "Остановлено: рабочая копия содержит незакоммиченные изменения."
+  git status --short
+  exit 1
+fi
 
-echo "→ Extracting on remote..."
-ssh "${HOST}" "
-  rm -rf ${REMOTE_DIR}/* ${REMOTE_DIR}/.[!.]*
-  tar xzf /tmp/xtrud-dist.tgz -C ${REMOTE_DIR}
-  chown -R www-data:www-data ${REMOTE_DIR}
-  rm /tmp/xtrud-dist.tgz
-"
+LOCAL_SHA="$(git rev-parse HEAD)"
+REMOTE_SHA="$(git ls-remote origin refs/heads/main | awk '{print $1}')"
+if [[ -z "${REMOTE_SHA}" || "${LOCAL_SHA}" != "${REMOTE_SHA}" ]]; then
+  echo "Остановлено: локальный HEAD не совпадает с origin/main."
+  echo "local=${LOCAL_SHA}"
+  echo "origin=${REMOTE_SHA:-unavailable}"
+  exit 1
+fi
 
-rm /tmp/xtrud-dist.tgz
+ARCHIVE="$(mktemp /tmp/xtrud-dist.XXXXXX.tgz)"
+REMOTE_ARCHIVE="/tmp/xtrud-${LOCAL_SHA}.tgz"
+trap 'rm -f "${ARCHIVE}"' EXIT
 
-echo ""
-echo "✓ Deployed: https://xtrud.alanbani.ru/"
+echo "-> Full release gate + production web build (no deploy side effects)..."
+npm run release:check
+
+LOCAL_SHA="${LOCAL_SHA}" EXPECTED_BACKEND_URL="${EXPECTED_BACKEND_URL}" node -e '
+  const release = require("./dist/release.json");
+  if (
+    release.buildMode !== "production" ||
+    release.demoEnabled !== false ||
+    release.demoDataVisible !== false ||
+    release.gitDirty !== false ||
+    release.gitSha !== process.env.LOCAL_SHA ||
+    release.backendUrl !== process.env.EXPECTED_BACKEND_URL
+  ) {
+    throw new Error(`Unsafe release manifest: ${JSON.stringify(release)}`);
+  }
+'
+
+echo "-> Packing ${LOCAL_SHA:0:12} without macOS AppleDouble metadata..."
+COPYFILE_DISABLE=1 tar -czf "${ARCHIVE}" -C dist .
+
+echo "-> Uploading staged release to ${HOST}..."
+scp "${ARCHIVE}" "${HOST}:${REMOTE_ARCHIVE}"
+
+echo "-> Swapping release on VPS..."
+ssh "${HOST}" "bash -s -- '${REMOTE_DIR}' '${REMOTE_ARCHIVE}' '${LOCAL_SHA}' '${EXPECTED_BACKEND_URL}'" <<'REMOTE_SCRIPT'
+set -euo pipefail
+
+remote_dir="$1"
+archive="$2"
+sha="$3"
+backend_url="$4"
+
+if [[ "${remote_dir}" != "/var/www/xtrud" ]]; then
+  echo "Unsafe remote_dir: ${remote_dir}" >&2
+  exit 1
+fi
+if [[ "${archive}" != /tmp/xtrud-*.tgz ]]; then
+  echo "Unsafe archive path: ${archive}" >&2
+  exit 1
+fi
+
+stage="${remote_dir}.next-${sha:0:12}"
+previous="${remote_dir}.previous"
+
+cleanup_remote_temp() {
+  rm -f "${archive}"
+  [[ -d "${stage}" ]] && rm -rf "${stage}"
+}
+trap cleanup_remote_temp EXIT
+
+rm -rf "${stage}"
+mkdir -p "${stage}"
+tar -xzf "${archive}" -C "${stage}"
+test -s "${stage}/index.html"
+test -s "${stage}/release.json"
+
+release_demo="$(sed -n 's/.*"demoEnabled": \(true\|false\).*/\1/p' "${stage}/release.json")"
+release_demo_data="$(sed -n 's/.*"demoDataVisible": \(true\|false\).*/\1/p' "${stage}/release.json")"
+release_mode="$(sed -n 's/.*"buildMode": "\([^"]*\)".*/\1/p' "${stage}/release.json")"
+release_sha="$(sed -n 's/.*"gitSha": "\([^"]*\)".*/\1/p' "${stage}/release.json")"
+release_backend="$(sed -n 's/.*"backendUrl": "\([^"]*\)".*/\1/p' "${stage}/release.json")"
+if [[ "${release_demo}" != "false" || "${release_demo_data}" != "false" || "${release_mode}" != "production" || "${release_sha}" != "${sha}" || "${release_backend}" != "${backend_url}" ]]; then
+  echo "Refusing non-production or demo release" >&2
+  rm -rf "${stage}"
+  exit 1
+fi
+
+chown -R www-data:www-data "${stage}"
+rm -rf "${previous}"
+if [[ -d "${remote_dir}" ]]; then
+  mv "${remote_dir}" "${previous}"
+fi
+
+if ! mv "${stage}" "${remote_dir}"; then
+  [[ -d "${previous}" ]] && mv "${previous}" "${remote_dir}"
+  exit 1
+fi
+
+REMOTE_SCRIPT
+
+LIVE_VALID=true
+for domain in "${PRODUCTION_DOMAINS[@]}"; do
+  if ! curl --fail --silent --show-error --max-time 20 "${domain}/release.json?sha=${LOCAL_SHA}" |
+    EXPECTED_SHA="${LOCAL_SHA}" EXPECTED_BACKEND_URL="${EXPECTED_BACKEND_URL}" node -e '
+      const fs = require("node:fs");
+      const release = JSON.parse(fs.readFileSync(0, "utf8"));
+      if (
+        release.gitSha !== process.env.EXPECTED_SHA ||
+        release.backendUrl !== process.env.EXPECTED_BACKEND_URL ||
+        release.buildMode !== "production" ||
+        release.demoEnabled !== false ||
+        release.demoDataVisible !== false
+      ) throw new Error(`Live release mismatch: ${JSON.stringify(release)}`);
+    '; then
+    LIVE_VALID=false
+    break
+  fi
+done
+
+if [[ "${LIVE_VALID}" != "true" ]]; then
+  echo "Live smoke-check failed; restoring previous release..." >&2
+  ssh "${HOST}" "bash -s -- '${REMOTE_DIR}' '${LOCAL_SHA}'" <<'ROLLBACK_SCRIPT'
+set -euo pipefail
+remote_dir="$1"
+sha="$2"
+if [[ "${remote_dir}" != "/var/www/xtrud" ]]; then
+  echo "Unsafe rollback remote_dir: ${remote_dir}" >&2
+  exit 1
+fi
+previous="${remote_dir}.previous"
+failed="${remote_dir}.failed-${sha:0:12}"
+test -d "${previous}"
+rm -rf "${failed}"
+mv "${remote_dir}" "${failed}"
+mv "${previous}" "${remote_dir}"
+rm -rf "${failed}"
+ROLLBACK_SCRIPT
+  echo "Previous release restored after smoke-check failure." >&2
+  exit 1
+fi
+
+echo "Deployed ${LOCAL_SHA:0:12}: ${PRODUCTION_PRIMARY_DOMAIN}/"

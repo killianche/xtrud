@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "backend": {
+    "phase": "supabase-cloud",
+    "url": "https://wgeimsajvjkzrrnfrnkb.supabase.co",
+    "clientKeySha256": "f27985c9df6713d01c50289d1431329a2ac17c4db7348eacdc733d34aa7c29bd"
+  },
+  "web": {
+    "sshHost": "root@62.113.106.30",
+    "remoteDir": "/var/www/xtrud",
+    "domains": ["https://xtrud.pro", "https://xtrud.alanbani.ru"]
+  },
+  "stores": {
+    "ios": {
+      "latestPublishedVersion": "1.0.1",
+      "latestPublishedBuildNumber": 11
+    },
+    "android": {
+      "latestPublishedVersionCode": null
+    }
+  }
+}

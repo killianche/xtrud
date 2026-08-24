@@ -9,7 +9,7 @@
 #      application/json, без расширения файла. Без этого Universal Links не
 #      работают (тап на ссылку https://xtrud.pro/master/123 в WhatsApp не
 #      откроет приложение).
-#   2. /privacy — публичная Privacy Policy для App Store Connect.
+#   2. /privacy, /terms, /support, /account-deletion — публичные store/legal pages.
 #   3. www.xtrud.pro → редирект на apex.
 
 xtrud.pro {
@@ -29,8 +29,9 @@ xtrud.pro {
         file_server
     }
 
-    # Privacy Policy для App Store (отдельная HTML, не SPA).
-    handle /privacy* {
+    # Публичные legal/support HTML, не SPA.
+    @legal path /privacy* /terms* /support* /account-deletion*
+    handle @legal {
         header Cache-Control "public, max-age=3600"
         file_server
     }
@@ -40,7 +41,7 @@ xtrud.pro {
     header @immutable Cache-Control "public, max-age=31536000, immutable"
 
     # SPA-fallback: index.html и любые /route → no-cache.
-    @htmlLike not path /_expo/* /assets/* /.well-known/* /privacy*
+    @htmlLike not path /_expo/* /assets/* /.well-known/* /privacy* /terms* /support* /account-deletion*
     header @htmlLike Cache-Control "no-cache, must-revalidate"
 
     try_files {path} {path}.html {path}/index.html /index.html

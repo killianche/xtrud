@@ -1,0 +1,4 @@
+appId: com.xtrud.app
+name: xtrud password-auth read-only smoke
+---
+- runFlow: flows/password-login-readonly.yaml

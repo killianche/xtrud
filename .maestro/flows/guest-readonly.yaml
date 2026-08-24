@@ -1,0 +1,16 @@
+appId: com.xtrud.app
+name: Guest navigation and password form
+---
+- launchApp:
+    clearState: true
+    clearKeychain: true
+- assertVisible:
+    text: "Найдутся мастера"
+    timeout: 20000
+- tapOn: "Профиль"
+- assertVisible: "Войти по телефону"
+- tapOn: "Войти по телефону"
+- assertVisible: "Вход в xtrud"
+- assertVisible: "Почта или телефон"
+- assertVisible: "Пароль"
+- assertVisible: "Войти"

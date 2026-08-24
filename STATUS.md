@@ -105,9 +105,16 @@
   диск (около 78% занято), активный swap, Caddy и пять Docker-контейнеров с
   другими production-сервисами. На этот VPS безопасно выкладывать только web
   static `/var/www/xtrud`; self-hosted Supabase требует отдельного Beget VPS.
-- Web production export готов на Node 20.19.4 и продолжает использовать
-  Supabase Cloud до отдельного backend cutover. Перед выкладкой нужны push,
-  зелёный CI, clean `main == origin/main`, серверный backup и manifest smoke.
+- Web production export на Node 20.19.4 продолжает использовать Supabase Cloud
+  до отдельного backend cutover. Перед выкладкой подтверждены push, clean
+  `main == origin/main`, полный локальный release gate и серверный backup;
+  GitHub Actions API не читался из-за устаревшего `gh` token, поэтому live
+  manifest и HTTP smoke проверены отдельно после атомарного swap.
+- GitHub `main` и live web обновлены до проверенного release. Перед swap создан
+  отдельный проверенный backup web-root/Caddy. Оба домена, legal/support/account
+  deletion/AASA routes и production manifest возвращают HTTP 200; demo login и
+  demo data выключены. Первый запуск выявил ложный exit=1 в cleanup trap уже
+  после успешного swap; trap и упаковка macOS xattrs исправлены forward-only.
 
 ## Аудит и настройка 2026-08-23 — фактическая карта проекта
 

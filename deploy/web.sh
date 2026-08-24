@@ -79,8 +79,8 @@ LOCAL_SHA="${LOCAL_SHA}" EXPECTED_BACKEND_URL="${EXPECTED_BACKEND_URL}" node -e 
   }
 '
 
-echo "-> Packing ${LOCAL_SHA:0:12} without macOS AppleDouble metadata..."
-COPYFILE_DISABLE=1 tar -czf "${ARCHIVE}" -C dist .
+echo "-> Packing ${LOCAL_SHA:0:12} without macOS metadata/xattrs..."
+COPYFILE_DISABLE=1 tar --no-xattrs -czf "${ARCHIVE}" -C dist .
 
 echo "-> Uploading staged release to ${HOST}..."
 scp "${ARCHIVE}" "${HOST}:${REMOTE_ARCHIVE}"
@@ -108,7 +108,11 @@ previous="${remote_dir}.previous"
 
 cleanup_remote_temp() {
   rm -f "${archive}"
-  [[ -d "${stage}" ]] && rm -rf "${stage}"
+  # После успешного swap stage уже перемещён в remote_dir. Условие не должно
+  # становиться последней командой trap с exit=1 и маскировать успешный deploy.
+  if [[ -d "${stage}" ]]; then
+    rm -rf "${stage}"
+  fi
 }
 trap cleanup_remote_temp EXIT
 

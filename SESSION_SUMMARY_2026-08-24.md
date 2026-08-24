@@ -65,6 +65,11 @@ rollout остаются NO-GO до live backend, integration и platform gates.
 17. **Beget inventory** — live VPS подтверждён как web-only: 2 CPU/2.9 GiB RAM,
     38 GiB диск, активный swap и пять чужих production Docker-контейнеров.
     Backend на этом хосте получил hard NO-GO; нужен отдельный Beget VPS + S3.
+18. **GitHub + web release** — шесть проверенных commits fast-forward отправлены
+    в `main`. На Beget создан timestamped web/Caddy backup, production export
+    атомарно выложен; оба домена, legal/support/account-deletion/AASA и manifest
+    прошли HTTP smoke, demo выключено. Исправлен ложный exit=1 cleanup trap после
+    успешного swap и исключены macOS xattrs из deploy-архива.
 
 ## Новые правила и решения
 
@@ -123,5 +128,5 @@ rollout остаются NO-GO до live backend, integration и platform gates.
   self-hosted Supabase.
 - Подтвердить юридические данные оператора, сроки хранения и правила для
   регулируемых категорий до публичного включения.
-- Локальные commits созданы. Push, web deploy, Supabase migration, VPS cutover и
-  store submission пока не выполнялись.
+- GitHub push и web deploy выполнены. Supabase migration, backend VPS cutover и
+  store submission не выполнялись.

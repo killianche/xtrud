@@ -110,11 +110,11 @@ const colorUrl = getCategoryColorIconUrl(cat.id);
 ## Не делать
 
 - ❌ Inline-эмодзи `🔧 💧` в UI вместо Iconify
-- ❌ DiceBear `glass`/`shapes` как иконки категорий — это для аватаров и абстрактных декоров, не для семантики
+- ❌ DiceBear `glass`/`shapes` как иконки категорий или avatar fallback — генератор не используется в актуальном UI; аватары без фото показывают инициалы через `src/lib/avatar.ts`
 - ❌ Lucide-only (без цветной альтернативы) на витринах — выглядит слишком монохромно для marketplace
 - ❌ Картинки в репо (`assets/icons/*.svg`) — Iconify CDN покрывает 200k+ иконок, локальные SVG нужны только для бренд-марок (логотип, watermark)
 
 ## История решений
 
 - **2026-05-14** — введено `getCategoryColorIconUrl` (Iconify-вариант) как замена сплошной Lucide-моно витрины. Каталог категорий стал визуально живой без переусложнения.
-- **2026-05-15** — распространено на master detail (категории «Услуги»), category-select wizard. Запрет на DiceBear-glass как category-icon (это для шапок-аватаров, не для семантики L2).
+- **2026-05-15** — распространено на master detail (категории «Услуги»), category-select wizard. Исторический DiceBear-glass удалён; актуальный avatar fallback — инициалы, L2 icon — Phosphor/Iconify по правилам выше.

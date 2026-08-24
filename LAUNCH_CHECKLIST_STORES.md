@@ -1,193 +1,156 @@
-# Launch Checklist — App Store + Google Play
+# Store launch checklist — web/iOS и future Android
 
-Готовые ответы для анкет, спецификации скриншотов, чек-лист submit. Скопировать в Console при первой подаче.
+> Актуально на 2026-08-23. Checklist не содержит заранее выбранных privacy,
+> content-rating или export-compliance ответов. Их необходимо заново получить из
+> фактического бинарника, SDK inventory и текущих формулировок store console.
 
-Связанные файлы:
-- [`STORE_METADATA.md`](STORE_METADATA.md) — тексты (name / description / keywords).
-- [`LAUNCH_READINESS_2026-05-18.md`](LAUNCH_READINESS_2026-05-18.md) — инфра-готовность (auth, push, EAS).
-- [`AUDIT_LAUNCH_FUNCTIONAL_2026-05-19.md`](AUDIT_LAUNCH_FUNCTIONAL_2026-05-19.md) — функциональный аудит.
+## 0. Release boundary
 
----
+- Текущая эксплуатация: web + iOS.
+- Android: future; его проверки и публикация выполняются отдельным release
+  ticket и не считаются готовыми по результатам iOS/web проверки.
+- Production-домен: `https://xtrud.pro`.
+- Product flow: объявление → отклики → клиент звонит или пишет мастеру в
+  WhatsApp.
+- Auth: email или телефон + пароль; recovery по email; SMS/OTP нет.
+- Scope: строительство, ремонт и услуги для дома.
 
-## 1. Apple Privacy Nutrition Labels (App Store Connect → App Privacy)
+## 1. Локальный release gate
 
-Apple группирует данные по категориям. Ответы для xtrud:
+- [ ] Рабочая ветка и commit явно зафиксированы в release ticket.
+- [ ] `npm ci` выполнен на чистом checkout.
+- [ ] `npm run release:check` проходит без исключений.
+- [ ] `npx expo-doctor` проходит.
+- [ ] Версия, iOS build number и EAS version source проверены release gate.
+- [ ] Production configuration не включает demo bypass.
+- [ ] Guest device smoke проходит: `maestro test .maestro/smoke.yaml`.
+- [ ] Authenticated read-only smoke проходит с credentials из password manager.
 
-### Data Linked to User
-| Type | Collected? | Used for | Linked to identity |
-|---|---|---|---|
-| **Phone Number** | Yes | App Functionality (auth, OTP) | Yes |
-| **Name** | Yes (optional) | App Functionality (отображение в профиле, чатах) | Yes |
-| **Photos** | Yes (optional) | App Functionality (аватар, портфолио мастера) | Yes |
-| **Coarse Location** | Yes (optional) | App Functionality (предзаполнение города) | Yes |
-| **User Content (text)** | Yes | App Functionality (заявки, чаты, отзывы) | Yes |
-| **Other User Content (passport scan)** | Yes (мастера, optional) | App Functionality (верификация для trust-badge) | Yes |
-| **Device ID** | Yes | App Functionality (push token FCM/APNs) | Yes |
-| **Crash data** | No | n/a | n/a |
-| **Diagnostic data** | No | n/a | n/a |
+## 2. Фактический data/SDK inventory
 
-### Data NOT Collected
-- Health & Fitness, Financial Info, Sensitive Info, Contacts, Browsing/Search History, Audio Data, Gameplay Content, Other Diagnostic Data.
+Для релизного commit составить датированный inventory. Источники: production
+конфигурация, dependency lockfile, native manifests/entitlements, сетевые
+запросы на реальном устройстве, Supabase schema/storage, Sentry configuration и
+пользовательские формы.
 
-### Tracking (App Tracking Transparency)
-- **«Does your app use data for tracking?»** → **No**. У нас нет аналитики с user-tracking. Если добавится PostHog/Sentry с user-id — пересмотреть и добавить `NSUserTrackingUsageDescription` + ATT-prompt.
+Для каждого поля или события записать:
 
-### Privacy Policy URL (обязателен)
-- `https://xtrud.ru/privacy` (после deploy landing).
+- что именно собирается или передаётся;
+- обязательное оно или опциональное;
+- к какому аккаунту/устройству привязано;
+- цель обработки;
+- получатель/процессор и страна обработки;
+- хранение, удаление и доступ пользователя;
+- используется ли для tracking по актуальному определению платформы.
 
----
+Минимально перепроверить, но не считать этот список готовым ответом для console:
 
-## 2. Google Play Data Safety (Play Console → App content → Data safety)
+- email, телефон, имя, username и парольную авторизацию;
+- тексты заказов/откликов, бюджет, сроки и категории;
+- фотографии заказа, аватар и портфолио;
+- рейтинги/отзывы мастера и жалобы;
+- документы верификации мастера, если путь доступен в релизной сборке;
+- client error telemetry и Sentry при реально заданном DSN;
+- внешние переходы в телефон и WhatsApp;
+- device identifiers, diagnostics и данные, добавляемые SDK автоматически.
 
-### Data Collection
-| Category | Collected | Shared | Required for app | Why |
-|---|---|---|---|---|
-| **Personal info → Name** | Yes | No | No (optional) | App functionality |
-| **Personal info → Phone number** | Yes | No | Yes | Account management + Auth |
-| **Personal info → User IDs** | Yes | No | Yes | App functionality |
-| **Photos and videos → Photos** | Yes | No | No (optional) | App functionality (аватар, портфолио, чат) |
-| **Photos and videos → Videos** | No | — | — | — |
-| **Location → Approximate** | Yes | No | No (optional) | App functionality (предзаполнение города) |
-| **Location → Precise** | No | — | — | — |
-| **Messages → Other in-app messages** | Yes | No | No (optional) | App functionality (чат) |
-| **Files → Other files** | Yes (passport scan) | No | No (optional) | App functionality (верификация) |
-| **Device or other IDs** | Yes | No | Yes | App functionality (push token) |
+- [ ] Inventory проверен инженером.
+- [ ] Privacy/legal owner подтвердил цели и сроки хранения.
+- [ ] Датированный артефакт сохранён в закрытом release ticket.
 
-### Encryption in transit
-- **Yes** — все запросы через HTTPS (Supabase REST + Storage + Realtime).
+## 3. Store privacy questionnaires
 
-### Data deletion
-- **Yes, users can request deletion in app** → ссылка на `/profile/settings` → «Удалить аккаунт».
-- **URL для off-app deletion request:** `https://xtrud.ru/support` (после deploy).
+- [ ] Открыта текущая, а не сохранённая старая версия questionnaire.
+- [ ] Каждый ответ сопоставлен со строкой фактического inventory.
+- [ ] Проверены определения linked data, tracking, collection и processing on
+  device в текущей документации Apple/Google.
+- [ ] Ответы сторонних SDK сверены с их актуальной privacy-документацией и
+  фактической конфигурацией xtrud.
+- [ ] Privacy manifest/labels проверены по итоговому архиву, а не только по JS.
+- [ ] Политика на `xtrud.pro/privacy` соответствует фактическим ответам.
+- [ ] Экспорт или скриншоты финальных ответов сохранены в закрытом release
+  ticket.
 
----
+Запрещено переносить старые ответы «данные не собираются», конкретные категории
+данных или tracking-флаги без нового inventory.
 
-## 3. IARC Age Rating Questionnaire
+## 4. Content rating и compliance
 
-Обе платформы используют общую IARC-анкету. Ответы для xtrud:
+- [ ] Пройти актуальную rating questionnaire в консоли по реально доступному
+  пользовательскому контенту и функциям.
+- [ ] Проверить UGC: публикация заказов, отклики, портфолио, отзывы и жалобы.
+- [ ] Проверить, что описанные в console механизмы moderation/report/block/filter
+  действительно доступны в submitted build; отсутствие оформить blocker, а не
+  отмечать как готовое.
+- [ ] Ответить на encryption/export-compliance вопросы по итоговому iOS archive и
+  фактическим криптографическим зависимостям.
+- [ ] Подтвердить права на иконки, тексты, скриншоты и фотографии.
 
-| Категория | Ответ | Объяснение |
-|---|---|---|
-| Violence | None | Нет насилия в контенте. UGC проходит через ReportModal. |
-| Sexuality / Nudity | None | Нет. |
-| Profanity / Crude Humor | None | UGC — но модерируется. Если reviewer спросит — указать ReportModal. |
-| Controlled Substance | None | Нет. |
-| Gambling / Contests | None | Нет. |
-| Horror / Fear | None | Нет. |
-| Mature / Suggestive | None | Нет. |
-| User Generated Content | **Yes — moderated** | Заявки, отзывы, чаты, портфолио. Модерация: `ReportModal` (8 типов жалоб), backend очередь `reports`, RLS на reviews. |
-| User Interaction (chat) | **Yes** | Чат между клиентом и мастером. Передача фото и геолокации. |
-| Personal Info Sharing | **Yes — optional** | Имя, фото, контакт WhatsApp (мастера-сторона opt-in). |
-| Location Sharing | **Yes — optional** | Геолокация в чате (мастер шлёт «приеду сюда»). |
-| Digital Purchases | None | На текущей редакции — нет встроенных платежей. |
-| Mini-games / Mini-apps | None | Нет. |
+Никакой возрастной рейтинг, privacy answer или compliance answer не считается
+истиной только потому, что он записан в старом документе.
 
-**Ожидаемый рейтинг:**
-- App Store: **17+** (User-generated content + Unrestricted Web Access если будет linking) или **12+** если no chat. Для xtrud → **17+** конформно.
-- Google Play / IARC: **PEGI 12 / ESRB Teen** — присутствие чата и UGC.
+## 5. Metadata и публичные URL
 
-Можно попробовать **13+ / Teen** при первом submit (мы умоляем content moderation). Если Apple возразит — перейдём на **17+**.
+- [ ] Store copy полностью совпадает с `STORE_METADATA.md`.
+- [ ] Нет чата, SMS/OTP, lifecycle сделки, платежей и категорий вне scope.
+- [ ] Нет обещаний, которых нельзя подтвердить в submitted build.
+- [ ] `https://xtrud.pro` открывается из целевой страны.
+- [ ] `/support`, `/privacy` и `/terms` возвращают корректное production-содержимое
+  без входа.
+- [ ] Support contacts реально обслуживаются.
+- [ ] Скриншоты сняты с того же UI и той же платформы, что отправляются на review.
+- [ ] Скриншоты не содержат реальных персональных данных.
 
----
+## 6. Review account
 
-## 4. Screenshots — спецификация
+- [ ] Login и password взяты из password manager по ссылкам из
+  `DEMO_ACCOUNTS.md`.
+- [ ] Ранее раскрытые credentials ротированы во внешней системе и старый пароль
+  не работает.
+- [ ] Аккаунт существует в production, подтверждён и не требует SMS/OTP.
+- [ ] Это отдельный клиентский review account с синтетическими данными.
+- [ ] Вход проверен на чистом физическом устройстве через production build.
+- [ ] Review Notes объясняют объявление → отклики → внешний контакт.
+- [ ] Credentials внесены непосредственно в store console, не в Git/CI/log.
 
-### App Store (iOS)
-**Обязательно:** 6.5" iPhone (1284 × 2778) ×3-10. **Желательно:** 5.5" iPhone (1242 × 2208), 12.9" iPad Pro (2048 × 2732).
+## 7. iOS submission
 
-**Какие экраны снимать (рекомендуется 6 штук):**
-1. **Hero главной** (`/`) — «Найдутся мастера» + поиск + примеры категорий.
-2. **Поиск по категории** (`/category/[id]`) — карточки мастеров с рейтингом и ценой.
-3. **Профиль мастера** (`/master/[id]`) — hero-фото + услуги + портфолио + отзывы.
-4. **Создание заявки** (`/orders/new`) — форма с категорией / городом / описанием.
-5. **Чат с мастером** (`/chats/[id]`) — несколько сообщений + кнопка фото.
-6. **Профиль клиента** (`/profile`) — карточка + «Избранное» row + статистика.
+- [ ] App ID, bundle ID, signing team и capabilities проверены в Apple portals.
+- [ ] Version/build number свободны и совпадают с отправляемым архивом.
+- [ ] Production EAS build создан из зафиксированного чистого commit.
+- [ ] Архив проверен на фактически включённые permissions, entitlements,
+  URL schemes и privacy manifests.
+- [ ] TestFlight install на чистом физическом устройстве проходит.
+- [ ] Проверены: первый запуск, регистрация, вход email/phone+password, recovery,
+  создание заказа, отклик мастера, внешний phone/WhatsApp, logout и удаление
+  аккаунта.
+- [ ] Отдельно запущен read-only Maestro smoke; мутационные сценарии проверены
+  вручную на предназначенных тестовых данных.
+- [ ] Crash/ANR и сетевые ошибки проверены после device smoke.
+- [ ] Только после всех checks выполнен submit в App Store Connect.
 
-**Технические требования Apple:**
-- Формат: PNG или JPG, RGB.
-- Без прозрачности.
-- Без device frames (Apple добавит их сам), либо использовать device-frame mockup-ы из Apple Design Resources.
-- Текст-overlay (опц.) — короткие headlines (≤6 слов) поверх скриншота.
+## 8. Android — future, отдельный gate
 
-**Как сделать:**
-1. `npm run web` с DevTools resize до 414 × 896 (iPhone 11/12 viewport). Screenshot → upsample до 1284 × 2778.
-2. Либо запуск на iOS Simulator (iPhone 14 Pro Max), `Cmd+S` сохраняет в требуемом разрешении.
-3. Дизайн-overlay (текст + рамка телефона) — в Figma, шаблон из Apple Design Resources.
+Не считать Android готовым из-за общего Expo-кода или успешного web/iOS релиза.
 
-### Google Play (Android)
-**Обязательно:** Phone (1080 × 1920 минимум, до 4320 × 1920 max) ×2-8.
-**Желательно:** 7" tablet (1080 × 1920), 10" tablet (1080 × 1920).
+- [ ] Создан отдельный Android release ticket и назначен владелец Play Console.
+- [ ] Итоговый merged manifest проверен на permissions; каждый permission имеет
+  работающий пользовательский сценарий и store disclosure, иначе удалён до
+  сборки.
+- [ ] Отдельно проверить отсутствие неиспользуемых microphone/`RECORD_AUDIO`
+  permissions: в текущей модели продукта записи аудио нет.
+- [ ] Deep links/app links проверены на production-домене `xtrud.pro`.
+- [ ] Signing, package name, service account и Play App Signing проверены.
+- [ ] Play Data Safety заполнен из отдельного Android inventory и текущей формы.
+- [ ] Content rating пройден в текущей Play Console.
+- [ ] Phone/tablet screenshots и feature graphic сняты с Android build.
+- [ ] Internal testing install и physical-device smoke пройдены.
+- [ ] Staged rollout и rollback owner согласованы до production.
 
-Тот же набор 6 экранов, что и для Apple.
+## 9. Release record
 
-### Feature Graphic (Play)
-- **1024 × 500 px**, PNG/JPG, без прозрачности.
-- Композиция: логотип xtrud + один tagline («Найдутся мастера») + лёгкий visual (например, абстрактный colorscape из дизайн-системы).
-- Текст должен быть читаем при mini-version 96 × 47px (preview на телефоне).
-- Делается в Figma. **TODO для дизайнера.**
-
-### App Preview Video (опционально, Apple)
-- 15-30 сек, .mov / .mp4, H.264.
-- Демонстрация happy path: открыл → создал заявку → получил отклики → выбрал → чат → отзыв.
-- **Не P0**, добавить позже.
-
----
-
-## 5. Submit — финальный чек-лист
-
-### Перед App Store submit
-- [ ] Apple Developer account активирован (KYC прошёл).
-- [ ] EAS `extra.eas.projectId` в `app.json` (`eas init`).
-- [ ] App Store Connect → App создано (xtrud, com.xtrud.app).
-- [ ] ASC API key создан, добавлен в `eas.json → submit.production.ios`.
-- [ ] [`STORE_METADATA.md`](STORE_METADATA.md) → ввод name / subtitle / promo / keywords / description.
-- [ ] Privacy Policy URL = `https://xtrud.ru/privacy` (после deploy landing).
-- [ ] Support URL = `https://xtrud.ru/support`.
-- [ ] Marketing URL = `https://xtrud.ru`.
-- [ ] App Privacy Labels — заполнено по §1 этого файла.
-- [ ] Age Rating — анкета по §3.
-- [ ] Screenshots × ≥3 для 6.5" iPhone (§4).
-- [ ] Test account (Demo Account): `+7 900 000-00-99` с инструкцией в Build Notes (для review team).
-- [ ] Build Notes (что нужно сказать reviewer):
-  ```
-  Demo account: +7 900 000-00-99, any 6-digit OTP code.
-  
-  Key flows to test:
-  1. Browse masters catalog (no login).
-  2. Tap "Создать заявку", complete form, login via OTP (any 6 digits).
-  3. As a master account: login with +7 900 000-00-21, see incoming order, send response.
-  
-  Notes: app is Russian-only at launch (target market: Republic of Ingushetia, Russia).
-  Marketplace business model — no in-app purchases yet.
-  ```
-- [ ] `eas build --platform ios --profile production` → upload to ASC.
-
-### Перед Google Play submit
-- [ ] Google Play Developer account активирован.
-- [ ] Play Console → App создано, package `com.xtrud.app`.
-- [ ] Service account JSON для EAS submit (в `eas.json → submit.production.android`).
-- [ ] Title / Short / Full description (§§ `STORE_METADATA.md`).
-- [ ] Privacy Policy URL.
-- [ ] Data Safety form — по §2 этого файла.
-- [ ] Content Rating (IARC) — по §3.
-- [ ] Phone screenshots × ≥2 (§4).
-- [ ] Tablet screenshots × ≥1 (§4).
-- [ ] Feature Graphic 1024 × 500 (§4).
-- [ ] App icon 512 × 512 (PNG, без прозрачности) — из `assets/images/icon.png`.
-- [ ] Target audience: 18+ (matches IARC).
-- [ ] `eas build --platform android --profile production` → upload AAB.
-
-### После submit
-- [ ] Apple review: 1-3 дня обычно. Если reject — читать причину, фиксить в коде, re-submit.
-- [ ] Google Play: 1-7 дней для первой submit, потом обычно <24ч.
-- [ ] При published — обновить `landing/index.html` (заменить `href="#"` на реальные store-URL).
-
----
-
-## 6. Что НЕ блокирует первый submit (можно делать после)
-
-- **Russian-only локализация** — Apple/Google допускают.
-- **Sign in with Apple** — нужен только если есть сторонний логин (Google / VK). У нас phone-only.
-- **In-app purchases** — нет на текущей редакции, не нужны.
-- **iPad-specific layout** — `supportsTablet: true` уже стоит, layout responsive.
-- **English version** — отдельным релизом после первого review.
+Закрытый release ticket должен содержать commit SHA, номера сборок, ссылки на
+EAS/store records, результаты gates, фактический inventory, exports текущих
+questionnaires, дату credential rotation, device matrix, решение submit и
+ответственного. Секреты и реальные персональные данные в ticket не копировать;
+хранить только ссылки на password manager.

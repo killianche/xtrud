@@ -3,10 +3,166 @@
 Точка входа «где мы сейчас». Обновляется в каждом коммите, где была осмысленная единица работы.
 
 > ℹ️ Этот файл разросся (история длинная). **Где мы сейчас — снимок ниже.**
-> Как устроен продукт сейчас (модель, что есть / чего нет) — CLAUDE.md
-> «🧭 Актуальная модель продукта». Историю ниже листать только за контекстом.
+> Как устроен продукт сейчас (модель, что есть / чего нет) — `AGENTS.md` →
+> `docs/SIMPLE_FLOW.md` и `PRODUCT_CONTEXT.md`. Историю ниже листать только за контекстом.
 
 ---
+
+## Универсальная доска и совет качества — 2026-08-24
+
+- По прямому решению владельца закреплён совет из шести независимых ролей:
+  бизнес-директор, директор по разработке, дизайнер, разработчик, QA и
+  code-reviewer. Порядок волн и двусторонний go/no-go описаны в
+  [`.claude/rules/agent-delegation.md`](.claude/rules/agent-delegation.md),
+  добавлены отдельные adapters `qa-engineer`, governance gate проходит для 10
+  adapters.
+- Утверждён единый продуктовый контракт универсальных заданий без второй
+  сущности: источниками остаются `orders` и `order_responses`. Полная граница
+  CURRENT/TARGET, UX, matching, безопасность и rollout —
+  [`docs/UNIVERSAL_TASK_BOARD.md`](docs/UNIVERSAL_TASK_BOARD.md).
+- Подготовлены **только локальные feature-off drafts** `0120`–`0122`: 10
+  пользовательских L1, скрытый fallback `xtrud-internal / other-services /
+  other-service`, расширенный order contract и взаимная блокировка. Они лежат в
+  `supabase/migration-drafts/`, не входят в runnable migration chain и не
+  применялись к production. Static fixture проверяет 10 контрактов, а отдельный
+  promotion gate намеренно остаётся закрыт на 6 live-блокерах.
+- Гостевой anonymous JIT-signup удалён. Публикация ведёт в обычный
+  login/register; черновик изолирован по owner/session, имеет TTL 14 дней,
+  восстанавливается без auto-publish, а временные URI фотографий не пишутся в
+  persistent storage. Claim/revoke journey одноразовый и fail-closed; Back,
+  logout/account switch и ошибки storage не оставляют чужой draft или stale
+  return intent.
+- Universal payload mapper, location scope и стабильный tuple cursor
+  реализованы и протестированы, но намеренно не подключены к live hooks до
+  проверки production schema и генерации типов. Это фундамент, не включённая
+  пользовательская функция.
+- Финальный локальный gate на Node `20.19.4`: `npm ci`,
+  `npm run quality:check`, online security audit и cold production export PASS;
+  13 test files / 107 tests, TypeScript/Biome/assets/release/legal/migration
+  gates PASS, demo-login/demo-data выключены. Независимые QA и code-review дали
+  **Local foundation: GO**, P0/P1 не осталось.
+- Старый runtime-контракт Node `20.18.x` оказался несовместим с текущими
+  React Native/Metro/Vite/Rolldown: `npm ci` пропускает platform binding и
+  Vitest не стартует. Канон local/CI/EAS исправлен на Node `20.19.4`; полный
+  quality/release gate на нём успешно повторён.
+- **Production/function rollout: NO-GO.** Сначала нужны live read-only Supabase
+  inventory, encrypted backup, rehearsal restore, forward-only security
+  migration, прохождение promotion gate, generated types, подключение UI/hooks,
+  E2E и device/legacy-iOS проверка. Supabase production, VPS, GitHub remote и
+  опубликованные версии в этой работе пока не менялись; локальные изменения
+  разложены на логические commits в release-ветке.
+- После успешного cold export удалены только воспроизводимые ignored-артефакты:
+  `ios/Pods` (410 МБ), `dist` (14 МБ) и `.expo` (32 КБ). Проект занимает около
+  756 МБ; `node_modules` (685 МБ) сохранён, чтобы JS-разработка и проверки
+  оставались готовы. Pods восстанавливаются `cd ios && pod install`, web export
+  — `npm run web:build:production`/`web:build:preview`.
+- Полный отчёт: [`SESSION_SUMMARY_2026-08-24.md`](SESSION_SUMMARY_2026-08-24.md).
+
+### Gate A Supabase Cloud — live read-only inventory 2026-08-24
+
+- Через открытую владельцем Dashboard-сессию выполнен новый
+  [`scripts/supabase/db-inventory-dashboard.sql`](scripts/supabase/db-inventory-dashboard.sql):
+  один read-only JSON result без PII, row payloads, object paths, function
+  bodies, policy expressions и secret values. Результат сразу зашифрован `age`,
+  проверен decrypt→JSON roundtrip и хранится вне Git в mode-0600 каталоге
+  `~/.config/xtrud/inventory/`; plaintext-файл не создавался.
+- Live: PostgreSQL 17.6, 31 public tables, 95 public functions (42
+  `SECURITY DEFINER`), 104 RLS policies, 724 API table grants, 138 migration
+  ledger rows и 54 Auth users. Это первая подтверждённая live-карта, а не вывод
+  из локальных миграций.
+- Storage live содержит 6 buckets и всего 7 объектов: public `avatars` (1),
+  `portfolio` (5), `category-covers` (0), `order-photos` (0); private
+  `chat-images` (1), `master-verifications` (0). Пути/имена объектов не читались.
+- Realtime publication live содержит только `notifications`; ожидаемые в старом
+  runbook `orders`/`order_responses` не включены. Пять cron jobs активны, включая
+  legacy lifecycle `nightly_auto_confirm` и `nightly_cancel_stale`, хотя текущая
+  продуктовая модель lifecycle не использует. Ничего не отключалось.
+- Dashboard подтверждает 4 deployed Edge Functions: `notify`, `register-user`,
+  `send-reset-email`, dormant `send-sms`. Фактический deployed source `notify`
+  восстановлен без изменений в
+  [`supabase/functions/notify/index.ts`](supabase/functions/notify/index.ts);
+  локальный SHA-256 совпал с source из Dashboard. Baseline migration debt
+  уменьшен с 22 до 21.
+- Установлен `age 1.3.1`; локальный private backup key создан вне Git с правами
+  0600. До первого полноценного backup обязательна отдельная офлайн-копия этого
+  ключа: потеря ключа означает потерю всех зашифрованных архивов.
+- Runbook усилен после независимого security-review: привилегированный DB URL
+  считается break-glass credential, запрещён вывод полного `docker compose
+  config`, расширен список secrets и least-privilege/rotation contract.
+- Новый DB password передан владельцем и сохранён только в macOS Keychain;
+  session pooler пока отклоняет его, потому что открытая Dashboard-форма reset
+  ещё не была применена. До её финального подтверждения официальный
+  roles/schema/data dump и restore rehearsal не запускаются. После backup пароль
+  нужно ещё раз ротировать, потому что первоначально он был передан через chat.
+
+### GitHub и Beget release gate — 2026-08-24
+
+- Read-only `git ls-remote` подтвердил реальный GitHub `main` на `f5cff28`;
+  локальный base не расходился с remote. Dirty worktree не был перетёрт:
+  изменения разложены на governance, toolchain, release/backend, application и
+  E2E commits в `codex/project-hardening-20260823`.
+- Live read-only audit `62.113.106.30` подтвердил 2 CPU, 2.9 GiB RAM, 38 GiB
+  диск (около 78% занято), активный swap, Caddy и пять Docker-контейнеров с
+  другими production-сервисами. На этот VPS безопасно выкладывать только web
+  static `/var/www/xtrud`; self-hosted Supabase требует отдельного Beget VPS.
+- Web production export готов на Node 20.19.4 и продолжает использовать
+  Supabase Cloud до отдельного backend cutover. Перед выкладкой нужны push,
+  зелёный CI, clean `main == origin/main`, серверный backup и manifest smoke.
+
+## Аудит и настройка 2026-08-23 — фактическая карта проекта
+
+- Принято направление переноса backend: официальный self-hosted Supabase на
+  **новом отдельном Beget VPS** + Beget S3, API через `api.xtrud.pro`. Текущий
+  Beget web VPS (2 CPU / 2.9 GiB / 38 GiB, 78% занято) для этого не подходит.
+- Добавлен полный migration runbook
+  [`docs/SUPABASE_BEGET_MIGRATION.md`](docs/SUPABASE_BEGET_MIGRATION.md) и
+  secret-free deployment contract `infra/supabase/`: inventory, encrypted dump,
+  rehearsal restore, Storage, Auth/Functions/Realtime, iOS transition, cutover и
+  rollback. Production и Supabase Cloud не менялись.
+- `CROSS_PLATFORM_RULES.md` полностью актуализирован под SDK 54 и реальные
+  активные платформы web+iOS: единые adapters, PhoneFrame, auth/storage,
+  deep links, независимые build/release gates; Android вынесен в future appendix.
+- GitHub проверен: local `main`, `origin/main` и GitHub `main` совпадают на
+  `f5cff28`; опубликованная iOS 1.0.1 собрана из более старого commit, поэтому
+  GitHub не отстаёт от App Store. Не опубликованы только текущие dirty-изменения.
+
+- Создан единый эксплуатационный runbook [`PROJECT_OPERATIONS.md`](PROJECT_OPERATIONS.md): локальный источник, GitHub, Supabase, VPS, web/iOS/Android, пересоздаваемые каталоги, безопасный deploy и запрет работы с чужим VPS `85.198.86.41`.
+- Подтверждено production: оба домена отдают `/var/www/xtrud` на `62.113.106.30`; iOS 1.0.1 build 11 опубликована; Android-сборок и Google Play listing нет; Supabase project — `wgeimsajvjkzrrnfrnkb`.
+- Зависимости пересозданы через `npm ci`, Expo SDK 54 patch-пакеты выровнены; Expo Doctor 18/18, typecheck, 56 тестов и tokens-check проходят. Node зафиксирован на 20.18.0 для local/CI/EAS.
+- Web build разделён: preview всегда `demo=true`, production всегда `demo=false`;
+  export пишет `release.json` с Git SHA/dirty/demo/backend URL. Канонические VPS,
+  домены, backend URL и store ledger закреплены в `release/production.json`.
+  `deploy/web.sh` требует clean `main == origin/main`, полный `release:check`,
+  жёсткие host/path/backend/SHA, staging и live manifest smoke-check всех
+  canonical domains с rollback при сбое любого из них.
+  На сервер ничего не выкладывалось.
+- Восстановлен tracked `assets/illustrations/teplodom-banner.png`; добавлен gate
+  статических ассетов, поэтому missing/case-mismatch теперь останавливает CI до
+  Metro. Холодный production export проходит и включает все 25 ассетов.
+- Biome обновлён и закреплён на 2.5.10; проверка теперь включает `.mjs`, весь
+  проект очищен до **0 ошибок / 0 предупреждений**. `quality:check` объединяет governance, миграции, типы,
+  tokens, Biome, 56 тестов, версии и ассеты в один обязательный локальный gate.
+- `npm audit fix` применён без `--force`: critical устранён, осталось 20 известных
+  advisory Expo SDK 54/Metro. Baseline фиксирует точные package range и каждую
+  advisory; даже новая advisory в уже известном пакете ломает CI. Review — до
+  2026-10-01.
+- Добавлен migration-integrity gate: 22 исторические проблемы перечислены точным
+  baseline, SHA-256 всех 128 migration-файлов запрещает незарегистрированный
+  новый файл и тихое изменение/удаление истории; любая новая
+  duplicate/comment-only/secret/URL/missing-function
+  проблема блокирует CI. Live production пока не менялся.
+- Backend-аудит выявил P0-кандидаты в migration-chain (self-admin, demo-admin,
+  trust-поля мастера, anon RPC раскрытия) и неполную восстановимость схемы.
+  Подготовлен PII-safe read-only inventory, но production не тестировался и не
+  менялся: сначала live read-only export + backup, затем forward-only security
+  migration.
+- Полный отчёт сессии: [`SESSION_SUMMARY_2026-08-23.md`](SESSION_SUMMARY_2026-08-23.md).
+
+## Техобслуживание 2026-08-15 — очистка локальных артефактов
+
+- Папка проекта уменьшена с ~6,1 ГБ до ~1,1 ГБ: удалены только пересоздаваемые `ios/build`, `dist`, `.expo` и 42 временных QA-скриншота `.tmp_*.png`.
+- `node_modules`, `ios/Pods`, исходники, `.env.local` и незакоммиченные изменения сохранены; проект остаётся готов к локальной разработке.
+- В `.gitignore` добавлен `.tmp_*.png`, чтобы локальные QA-скриншоты больше не засоряли корень и `git status`.
 
 ## 📍 Снимок: где мы сейчас (2026-07-28)
 

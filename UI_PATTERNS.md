@@ -1,9 +1,9 @@
 # UI_PATTERNS.md — Кук-бук экранов и компонентов xtrud
 
-> ⚠️ **Чат удалён (classifieds-модель).** Примеры ниже с `/chats`, табом «Чаты» и
-> CTA «написать в чат» — **legacy**, такого экрана/таба в продукте нет (TabBar без
-> «Чатов»). Контакт — звонок/WhatsApp. См. CLAUDE.md «🧭 Актуальная модель
-> продукта». Паттерны вёрстки (header / list / chip / hero / empty-state) актуальны.
+> ⚠️ **Чат удалён (classifieds-модель).** Не использовать `/chats`, таб «Чаты»
+> или CTA «написать в чат»: контакт — звонок/WhatsApp. См.
+> [`docs/SIMPLE_FLOW.md`](docs/SIMPLE_FLOW.md). Паттерны вёрстки
+> (header / list / chip / hero / empty-state) актуальны.
 
 > **Для AI-агента:** перед проектированием ИЛИ существенным редизайном **любого** экрана сначала прочитай этот файл. Здесь зафиксированы все стандартные архетипы страниц, building blocks и anti-patterns. Если нужно отойти от стандарта — обоснуй в отчёте.
 >
@@ -15,6 +15,7 @@
 > - [`CROSS_PLATFORM_RULES.md`](CROSS_PLATFORM_RULES.md) — кросс-платформенные правила (Expo + RN + Web).
 > - [`.claude/rules/design-quality.md`](.claude/rules/design-quality.md) — чек-лист закрытия UI-задачи.
 > - [`CATEGORIES_AND_PROFILES.md`](CATEGORIES_AND_PROFILES.md) — таксономия + product scope.
+> - [`docs/UNIVERSAL_TASK_BOARD.md`](docs/UNIVERSAL_TASK_BOARD.md) — CURRENT/TARGET и полный flow универсального задания.
 
 ---
 
@@ -32,11 +33,11 @@
 
 **Зафиксировано 2026-05-15** (фидбэк user после редизайна master home — «отступы не такие большие, материал карточки, линии до краёв, давай это основа дизайна»).
 
-**Главный принцип:** списки заявок / мастеров / категорий / сообщений — **full-bleed rows** с `border-b border-hairline` divider'ом, идущим **от края до края экрана**. **Никаких** «карточек с большими side-margin'ами и rounded-lg bg-canvas-soft» вокруг каждого row — это утяжеляет визуал и сбивает hierarchy.
+**Главный принцип:** списки заявок / мастеров / категорий / откликов — **full-bleed rows** с `border-b border-hairline` divider'ом, идущим **от края до края экрана**. **Никаких** «карточек с большими side-margin'ами и rounded-lg bg-canvas-soft» вокруг каждого row — это утяжеляет визуал и сбивает hierarchy.
 
 **Стандартные значения:**
 - **Wrapping container** на tab home / list view: `px-4` (НЕ `px-5`). 16px горизонтально — достаточно «дыхания», но без визуального вырезания контента.
-- **Row internal padding:** `px-5 py-4` (внутри `<OrderRow>`, `<ChatRow>` и т.д.). Внутри row своё дыхание; row сам по себе full-bleed относительно экрана.
+- **Row internal padding:** `px-5 py-4` (внутри `<OrderRow>` и аналогичных row). Внутри row своё дыхание; row сам по себе full-bleed относительно экрана.
 - **Когда row рендерится внутри padded-секции:** оборачиваем в `-mx-4` чтобы вырваться в края: `<View className="-mx-4">{rows}</View>`. Это компенсирует родительский `px-4`.
 - **Section gap:** между секциями (статус → orders → completed-pill) — `gap-8` (32px). Раньше было gap-6 — узковато.
 - **Section heading:** `text-body-md semibold ink` (не uppercase eyebrow). Опц. mono-caption справа («до завтра», «3 заявки»).
@@ -70,7 +71,6 @@
 | `/orders/search/filters` | `app/(tabs)/orders/search/filters.tsx` | Filter screen с back+sticky-CTA «Применить · N», SortChip, button-trigger «Выберите категории» |
 | `/orders/search/category-select` | `app/(tabs)/orders/search/category-select.tsx` | Multi-select picker, search-input, accent checkbox-индикатор, sticky CTA |
 | `/orders` (master) | `app/(tabs)/orders/index.tsx` (`MasterOrdersView`) | Tab-screen с TabPills, скрытый «Новые» (= /orders/search), responded/assigned секции |
-| `/chats` | `src/features/chat/ChatsListContent.tsx` | Tab-screen ScreenHeader с **subtitle** |
 | `/profile` (master) | `app/(tabs)/profile/index.tsx` | Tab-screen без back, опц. rightAction Pencil, навигационные карточки секций, ghost-link «Посмотреть глазами клиента», compact theme-segmented |
 | `/master/[id]` | `app/(tabs)/master/[id].tsx` | Detail-screen ScreenHeader с back, hero-photo карусель 4:5, sticky bottom CTA |
 | `ServiceAreasSection` | `src/features/master-profile/ServiceAreasSection.tsx` | Toggle-карточка «Вся Ингушетия» сверху + accent chips город/район ниже |
@@ -110,14 +110,14 @@
 
 ### 2.2. Tab list
 
-Таб-страница со списком (заказы, чаты, заявки). **Например:** `/orders` (master+client), `/chats`.
+Таб-страница со списком (заказы, отклики, кейсы). **Например:** `/orders`.
 
 **Структура:**
 
 ```
 [ScreenHeader title + опц. subtitle]       ← height 64 (88 с subtitle)
 [Опц. TabPills (compact segmented)]        ← px-6 mt-4
-[List of OrderRow / ChatRow / etc]         ← FULL-BLEED, без gap между, с border-b разделителями
+[List of OrderRow / row-component]         ← FULL-BLEED, без gap между, с border-b разделителями
 [Опц. «Показать ещё» ИЛИ infinite scroll]
 [Опц. EmptyState с иллюстрацией если 0]
 ```
@@ -130,7 +130,7 @@
 
 ### 2.3. Detail page (sub-page открытая из tab)
 
-Открывается через push, имеет back. **Например:** `/master/[id]`, `/orders/[id]`, `/category/[id]`, `/chats/[id]`, `/notifications/...`.
+Открывается через push, имеет back. **Например:** `/master/[id]`, `/orders/[id]`, `/category/[id]`.
 
 **Структура:**
 
@@ -144,7 +144,7 @@
 **Правила:**
 - ВСЕГДА передавать `onBack` (это detail!).
 - TabBar — для большинства detail-страниц **скрыт** через `useTabBarVisibility().setHidden(true)` в `useFocusEffect`. Исключение: middle pseudo-tab типа `/orders/search` остаётся видимым (пользователь воспринимает как tab).
-- Sticky bottom CTA — для primary action (написать в чат, откликнуться, опубликовать). Pill-кнопка `bg-primary` (всё ещё `ink` для CTA), полноширинный `<Button variant="primary" size="lg" fullWidth />`.
+- Sticky bottom CTA — для primary action (откликнуться, открыть контакт, опубликовать). Pill-кнопка `bg-primary` (всё ещё `ink` для CTA), полноширинный `<Button variant="primary" size="lg" fullWidth />`.
 - Hero — обычно фото 4:5 / 16:9 + meta-row под ним.
 
 ### 2.4. Filter / picker screen
@@ -182,7 +182,7 @@
 [KeyboardAvoidingView + ScrollView:]
   [Heading: text-display-sm (опц. на странице верхушки)]
   [Form sections с heading + поля]
-    - Section: «Об авторе» (имя, фамилия, аватар)
+    - Section: «Об авторе» (имя, аватар)
     - Section: «Контакты»
     - Section: «О себе» (textarea с char-counter)
 [Submit error text если есть]
@@ -190,12 +190,34 @@
 ```
 
 **Правила:**
-- `KeyboardAvoidingView` с `behavior="padding"` на iOS, `undefined` на Android.
+- `KeyboardAvoidingView` с `behavior="padding"` на iOS, `undefined` на web.
 - Поля группируются в секции с заголовком (text-body-sm-strong) — НЕ flat-список из 20 полей.
 - Counter символов для textarea: `<AppText className="text-caption text-mute">12 / 500</AppText>`.
 - Confirm на back если форма dirty: `confirmAsync` (`src/lib/confirm.ts`) — кросс-платформенный.
 - Auto-save где возможно (см. эталон `ServiceAreasSection` — каждый chip-toggle мгновенно persist'ит, без save-кнопки).
 - Submit-кнопка — `<Button variant="primary" size="lg" fullWidth disabled={!isValid || !isDirty || isBusy}>{isBusy ? "Сохраняем..." : "Сохранить"}</Button>`.
+
+### 2.6. Универсальное задание: форма, category picker и auth-return
+
+**Когда применять:** TARGET универсальной доски из
+[`docs/UNIVERSAL_TASK_BOARD.md`](docs/UNIVERSAL_TASK_BOARD.md). Пока feature
+выключен, текущий экран сохраняет scope двух L1.
+
+- Создание — один scrollable edit-form screen, не многошаговый wizard. Секции:
+  задача → категория → фото → формат/место → срок → бюджет → имя.
+- Category picker для 10 L1 — отдельный полноэкранный search-first экран:
+  результаты L2/L3/terms группируются под L1, выбранное показывается
+  breadcrumb. Горизонтальная chip-row не масштабируется на universal scope.
+- «Не знаю категорию» — отдельное текстовое действие, а не видимая категория
+  «Прочее». No-results сохраняет запрос и предлагает этот путь.
+- `remote` скрывает и очищает обязательность локации; `onsite` требует
+  город/район. Переключение не должно оставлять невидимую validation error.
+- Guest submit ведёт в обычный login/register, затем возвращает в сохранённый
+  draft. Auto-publish запрещён: пользователь повторно нажимает «Опубликовать».
+- Фото переживают auth-return либо UI до перехода явно предупреждает о
+  необходимости reattach и показывает это состояние после возврата.
+- Обязательны initial/search/no-results/loading/error/offline/disabled states,
+  обе темы и keyboard/accessibility checks web+iOS.
 
 ---
 
@@ -228,7 +250,7 @@
 - back: 48×48 touch-target, ChevronLeft 28px stroke 2.25
 - rightAction: h-11 px-4 rounded-pill border + опц. icon 16px
 
-**Когда без onBack:** на tab-screens (`/orders`, `/chats`, `/profile`, `/orders/search`).
+**Когда без onBack:** на tab-screens (`/orders`, `/profile`, `/orders/search`).
 **Когда с onBack:** на detail-screens (`/master/[id]`, `/orders/[id]`, `/profile/edit-master`).
 
 ### 3.2. TabBar — нижняя панель навигации
@@ -237,12 +259,12 @@
 
 **Состав слотов зависит от роли:**
 
-- **Клиент:** `[Главная] [Заказы] [+ Создать] [Чаты] [Профиль]` — 5 слотов.
-- **Мастер:** `[Главная] [🔍 Поиск] [Чаты] [Профиль]` — 4 слота (таб «Заказы» **скрыт**, заявки переехали на главную, дублировать незачем).
+- **Клиент:** `[Главная] [Заказы] [Закладки] [Профиль]` — 4 icon-only слота.
+- **Мастер:** `[Главная] [Поиск заказов] [Ваши работы] [Профиль]` — 4 icon-only слота.
 
 Middle slot — **псевдо-таб** (Pressable, НЕ настоящий Tabs.Screen):
-- Для **клиента** — «Создать» (`CirclePlus` icon) → `/orders/new`.
-- Для **мастера** — «Поиск» (`Search` icon) → `/orders/search`.
+- Для **клиента** — «Закладки» → `/favorites`.
+- Для **мастера** — «Поиск заказов» → `/orders/search`.
 
 Подсветка middle (для master): `pathname.startsWith('/orders/search')` → `text-ink stroke 2.25`. Иначе `text-mute stroke 1.75`.
 
@@ -250,7 +272,7 @@ Middle slot — **псевдо-таб** (Pressable, НЕ настоящий Tabs
 
 **Скрыть TabBar:** `useTabBarVisibility().setHidden(true)` в `useFocusEffect` — для full-screen форм / wizards / pickers.
 
-### 3.3. OrderRow / ChatRow / список-row
+### 3.3. OrderRow / список-row
 
 **Файл:** [`src/components/OrderRow.tsx`](src/components/OrderRow.tsx) (эталон).
 
@@ -294,14 +316,14 @@ Middle slot — **псевдо-таб** (Pressable, НЕ настоящий Tabs
 - Default — **показывается**. Клиент-владелец заказа должен знать сколько откликов.
 - Для **мастера** — **скрывать** через `showResponsesCount={false}`. Чужие отклики на чужой заказ — конкурентная инфа, мастеру не нужна (фидбэк user 2026-05-15: «мастер не должен видеть сколько откликов у заказа»). Применяется в:
   - `/orders/search` — лента всех open-заказов
-  - `/orders` master tabs (Я откликнулся / Меня выбрали)
+  - `/orders` master list «Я откликнулся»
   - `MasterDashboardOrders` — дашборд на главной мастера
 
-**Видимость status-точки и лейбла («● Открыта», «● В работе», «● Завершён»):**
-- Default — **показывается** (передай `status={o.status}`). Используется в `/orders` (Мои заказы клиента / архив), в master-табах (Я откликнулся / Меня выбрали), в `MasterDashboardOrders` — там в одном списке могут быть разные статусы и status-метка несёт инфу.
+**Видимость status-точки и лейбла:**
+- Default — **показывается** для пользовательских classifieds-состояний (`open`, `cancelled`, `expired`). Используется в `/orders` (Мои заказы клиента / архив), в master-list «Я откликнулся» и в `MasterDashboardOrders`.
 - На `/orders/search` — **скрыта** (`status` prop не передаётся). Феед фильтруется по `.eq("status","open")` на запросе, поэтому показывать «● Открыта» на каждой карточке — шумный noise: пользователь и так знает, что в поиске только открытые заявки. Закрытые / in_progress сюда никогда не попадают (фидбэк user 2026-05-15). Это часть canonical-дизайна `/orders/search`: meta-row начинается сразу с urgency.
 
-Если делаешь новый row-компонент (например, ChatRow) — копируй эту структуру.
+Если делаешь новый row-компонент — копируй эту структуру.
 
 ### 3.4. Selected chip / pill — accent, не ink
 
@@ -433,13 +455,13 @@ className={`h-10 items-center justify-center rounded-pill border px-4 ${
 
 **Усиленный вариант (для главных экранов):** заменить серый круг с иконкой на полноценную **hero-иллюстрацию** (раздел 3.5) — sky-tint + 3 декоративные фигуры + центр-иконка в canvas-circle.
 
-### 3.9. Иконки — Lucide моно ИЛИ Iconify color, NEVER emojis
+### 3.9. Иконки — Phosphor mono ИЛИ Iconify color, NEVER emojis
 
 **Иерархия выбора:**
 
 1. **Категории услуг** (электрика, сантехника, плитка): `getCategoryColorIconUrl(l2_id)` → Iconify `fluent-color` SVG. См. [`docs/ICONS.md`](docs/ICONS.md).
-2. **Действия / мета** (back, share, edit, location pin, чат): Lucide React Native, размер 14-28, strokeWidth 1.5-2.25.
-3. **Аватары** (плейсхолдеры): DiceBear `shapes` ([`https://api.dicebear.com/9.x/shapes/png?seed=...`](https://api.dicebear.com/9.x/shapes/png)). Только shapes — НЕ avataaars/personas/micah (запрет в CLAUDE.md).
+2. **Действия / мета** (back, share, edit, location pin, contact): Phosphor React Native. Новый mono UI не добавляет Lucide; точные веса и mapping — [`docs/UI_ICONS.md`](docs/UI_ICONS.md).
+3. **Аватары** (плейсхолдеры): цветной круг с инициалами имени. `src/lib/avatar.ts` пропускает только настоящее загруженное фото; любая DiceBear-ссылка считается legacy и отбрасывается.
 
 **Запрещено в UI как замена иконкам:** эмодзи (💧 ⚡ 🔨 🛠️ 🚪 и т.п.). Можно только в текстовом контенте кнопок/заголовков (например «Ваш номер скрыт 📵»).
 
@@ -559,17 +581,17 @@ className={`h-10 items-center justify-center rounded-pill border px-4 ${
 |---|---|---|
 | `<ActivityIndicator />` посередине пустого экрана при загрузке | Выглядит как сломанный экран; не даёт понять что грузится | Skeleton повторяющий форму карточки (раздел 3.7) |
 | Selected chip с `border-ink bg-ink text-on-primary` | Чёрные пиллы доминируют, выглядят тяжело | `border-accent bg-accent-soft text-accent` (раздел 3.4) |
-| Эмодзи как иконка (💧 ⚡ и т.п.) | Выглядит «детским placeholder»; разное на платформах | Lucide или Iconify color (раздел 3.9) |
+| Эмодзи как иконка (💧 ⚡ и т.п.) | Выглядит «детским placeholder»; разное на платформах | Phosphor или Iconify color (раздел 3.9) |
 | `<View className="rounded-xl border border-hairline">` вокруг строки в feed-списке | List должен быть full-bleed; обводка делает feed «карточным», тяжёлым | `border-b border-hairline px-5 py-4` (раздел 3.3) |
 | Custom header с `text-title-md` + back + dummy `<View w-10/>` справа | Каждый экран свой размер → визуальная рассогласованность | `<ScreenHeader title onBack rightAction />` (раздел 3.1) |
 | Inline expandable filter block с chip-row внутри tab-screen | На mobile занимает половину экрана, тесно | Полноэкранная страница `/filters` (архетип 2.4) |
 | Большая ink-card как кнопка вторичного действия (например «Посмотреть как клиент») | Доминирует над основным контентом | Compact ghost-link с Eye/иконкой 14px + `text-caption text-muted` |
 | Stacked 3-row theme-switcher занимающий пол-экрана | Огромное пространство для редко-используемой настройки | `<ClientThemeSegmented />` (1 строка, 3 button) |
-| Avataaars / personas / micah / любые human-style DiceBear наборы | Выглядит «детским placeholder», ломает Vercel-эстетику | `shapes` only |
+| Любой DiceBear-набор как avatar fallback | Выглядит «детским placeholder» и расходится с текущим продуктовым решением | Инициалы через общий `<Avatar>` и `src/lib/avatar.ts` |
 | 4 фото портфолио inline-превью на профиле | Дублирует hero на /master/[id] + растит scroll | Карточка-trigger «Портфолио · N из 50 фото» → отдельный экран |
 | `setTabBarHidden(true)` на tab-screen | Скрывает нижнее меню там где нужно навигировать между табами | `setTabBarHidden` ТОЛЬКО на detail / wizard / picker (архетипы 2.3-2.5) |
 | Back-кнопка на tab-screen header | Tab-screens переключаются через нижнюю панель, не через back | Tab-screen → ScreenHeader без `onBack` |
-| L1-разделы Бьюти / Авто / Образование / События в каталоге | Out of MVP scope (только construction) | Фильтрация через `filterL1ByScope` (см. `src/lib/product-scope.ts`) |
+| L1 вне `construction` + `home-services` в CURRENT | Universal TARGET ещё не включён | До rollout фильтровать через `src/lib/product-scope.ts`; порядок включения — `docs/UNIVERSAL_TASK_BOARD.md` |
 | Показ «N откликов» на OrderRow в master-листингах (search / responded / assigned / dashboard) | Чужая конкурентная инфа, мастеру не нужно знать сколько у конкурентов | Передавать `showResponsesCount={false}` в OrderRow для всех master-side списков. Default `true` остаётся для клиента-владельца. |
 | 0 padding между ScrollView header и контентом | Выглядит сжато | `pt-6` минимум для tab-pages |
 
@@ -630,8 +652,8 @@ className={`h-10 items-center justify-center rounded-pill border px-4 ${
 | План миграции мастер-экранов | [`MASTER_REDESIGN_SPEC.md`](MASTER_REDESIGN_SPEC.md) |
 | Таксономия + product scope | [`CATEGORIES_AND_PROFILES.md`](CATEGORIES_AND_PROFILES.md) |
 | Карта локаций (8 городов + 4 района + 32 села) | [`docs/location-system.md`](docs/location-system.md) |
-| State machine заказа | [`docs/order-states.md`](docs/order-states.md) |
-| State machine чата | [`docs/chat-states.md`](docs/chat-states.md) |
+| Текущая classifieds-модель | [`docs/SIMPLE_FLOW.md`](docs/SIMPLE_FLOW.md) |
+| Universal CURRENT/TARGET и rollout | [`docs/UNIVERSAL_TASK_BOARD.md`](docs/UNIVERSAL_TASK_BOARD.md) |
 
 ---
 
@@ -698,7 +720,7 @@ className={`h-10 items-center justify-center rounded-pill border px-4 ${
 
 | Дата | Паттерн | Решение | Why |
 |------|---------|---------|-----|
-| 2026-05-15 | ScreenHeader как стандарт | Применён на `/orders/search`, `/orders` (M+C), `/chats`, `/profile` | Раньше каждый экран имел свой custom header — рассогласованность размеров и поведения. Унификация через единый компонент. |
+| 2026-05-15 | ScreenHeader как стандарт | Применён на `/orders/search`, `/orders` (M+C), `/profile`; исторический `/chats` позднее удалён | Раньше каждый экран имел свой custom header — рассогласованность размеров и поведения. Унификация через единый компонент. |
 | 2026-05-15 | Selected chip = accent, не ink | Замена `border-ink bg-ink` на `border-accent bg-accent-soft` в 12 файлах (20 occurrences) | User-фидбек: «черные кнопки не делай». Vercel-link blue (`#0070f3`) согласуется с status-цветом «Открыта». |
 | 2026-05-15 | OrderRow = list-style full-bleed | Убрана обводка + rounded, добавлен `border-b` разделитель + встроенный `px-5 py-4`, иконка 32px | User-фидбек: «карточку от левого до правого края, серая линия между, иконку маленькую». |
 | 2026-05-15 | Filter screen = отдельный full-screen, не inline | Создан `/orders/search/filters.tsx` с Zustand-store | Inline expandable block занимал пол-экрана, mobile UX страдал. Отдельная страница даёт место для всех фильтров + sticky CTA. |
@@ -706,6 +728,7 @@ className={`h-10 items-center justify-center rounded-pill border px-4 ${
 | 2026-05-15 | Profile master без back, с Pencil rightAction | `<ScreenHeader title="Профиль" rightAction={Pencil → edit-client}>` | Tab-screen не должен иметь back. Edit вынесен в right action чтобы не делать большой ink-button «Редактировать». |
 | 2026-05-15 | Theme = compact segmented для всех ролей | Master тоже использует `<ClientThemeSegmented>` (3-button row) вместо 3-stacked | User-фидбек: «тему не такую огромную». Stacked занимал пол-экрана. |
 | 2026-05-15 | «Вся Ингушетия» toggle-карточка сверху | Эквивалент пустого выбора `cities=[], districts=[]` = «нет территориального фильтра» | User-фидбек: «добавь один который покрывает всё — Ингушетия». Унифицирован с клиентскими `LocationPicker` / `LocationSheet`. |
-| 2026-05-15 | Product scope = только `construction` L1 | `IN_SCOPE_L1_IDS = ['construction']` в `src/lib/product-scope.ts` | User-фидбек: «у нас только ремонт и стройка». 9 других L1 (Бьюти, Авто, Образование…) скрыты в каталоге, но не удалены из БД. |
+| 2026-05-15 | Product scope был сужен | Историческое решение; позднее CURRENT стал `construction` + `home-services` | Актуальный список всегда читать из `src/lib/product-scope.ts`, а не из этой строки истории. |
+| 2026-08-23 | Universal TARGET | Search-first L1→L2→L3 picker, unknown path и auth-return | Полный контракт — `docs/UNIVERSAL_TASK_BOARD.md`; CURRENT не расширять преждевременно. |
 
 **Расширение этого decision log = новые правки этого файла.** Если меняешь паттерн — обнови соответствующий раздел и добавь строку в этот лог.

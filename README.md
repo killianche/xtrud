@@ -13,17 +13,21 @@
 - **Иконки:** Phosphor (`phosphor-react-native`); Lucide — legacy, в новом коде не использовать
 - **Отслеживание сбоев:** Sentry (`src/lib/sentry.ts`, активен при `EXPO_PUBLIC_SENTRY_DSN`)
 - **Lint/format:** Biome 2.x
-- **Деплой:** web → `bash deploy/web.sh` (сборка `scripts/build-web-local.mjs` → VPS, https://xtrud.alanbani.ru/). Mobile (EAS Build) — позже.
+- **Деплой:** web → защищённый `deploy/web.sh` (VPS, `xtrud.pro` + `xtrud.alanbani.ru`); iOS 1.0.1 опубликована через EAS/App Store; Android пока не собирался.
 
 ## Документация
 
-- [CLAUDE.md](CLAUDE.md) — точка входа для AI-агентов: контекст, правила инфры и **«🧭 Актуальная модель продукта»** (что есть / чего нет)
+- [AGENTS.md](AGENTS.md) — единая короткая точка входа для любого AI-агента
+- [docs/AGENT_WORKFLOW.md](docs/AGENT_WORKFLOW.md) — приоритет источников, Git,
+  версии и release-контракт
 - [STATUS.md](STATUS.md) — текущее состояние (снимок вверху), история решений
+- [PROJECT_OPERATIONS.md](PROJECT_OPERATIONS.md) — источники истины, серверы, сборки, безопасное удаление и deploy-runbook
+- [docs/SUPABASE_BEGET_MIGRATION.md](docs/SUPABASE_BEGET_MIGRATION.md) — полный перенос Cloud backend на отдельный Beget VPS + S3
 - [docs/SIMPLE_FLOW.md](docs/SIMPLE_FLOW.md) — текущая модель (classifieds: отклик + звонок/WhatsApp, без чата/lifecycle)
-- [PROJECT_MAP.md](PROJECT_MAP.md) — функциональная карта (⚠️ концепт-видение, часть удалена — см. CLAUDE.md)
+- [PROJECT_MAP.md](PROJECT_MAP.md) — legacy-концепт, не источник текущего поведения
 - [DESIGN.md](DESIGN.md) — дизайн-система: токены, цвета, типографика
 - [UI_PATTERNS.md](UI_PATTERNS.md) — кук-бук экранов (читать перед версткой)
-- [CROSS_PLATFORM_RULES.md](CROSS_PLATFORM_RULES.md) — правила одинакового UI на iOS/Android/web
+- [CROSS_PLATFORM_RULES.md](CROSS_PLATFORM_RULES.md) — актуальный контракт общей кодовой базы web+iOS; Android пока future
 - [CATEGORIES_AND_PROFILES.md](CATEGORIES_AND_PROFILES.md) — таксономия, профили, схема БД
 - [PRODUCT_BLINDSPOTS.md](PRODUCT_BLINDSPOTS.md) — риски и грабли (⚠️ частично под старую модель)
 - [.claude/rules/](.claude/rules/) — детальные правила работы AI-агентов
@@ -48,6 +52,7 @@ xtrud/
 │   ├── migrations/          # SQL миграции БД
 │   ├── seed/                # сидинг данных (категории и т.д.)
 │   └── functions/           # Edge Functions
+├── infra/supabase/          # Beget self-host contract без secrets/runtime data
 ├── assets/images/           # иконки, splash
 ├── app.json                 # Expo конфиг
 ├── babel.config.js          # NativeWind preset
@@ -60,8 +65,9 @@ xtrud/
 ## Setup
 
 ```bash
-# 1. Установить зависимости (если ещё не):
-npm install
+# 1. Node 20.19.4 (см. .nvmrc), затем точная установка из lock-файла:
+nvm use
+npm ci
 
 # 2. Создать .env.local из шаблона и заполнить Supabase ключи:
 cp .env.example .env.local
@@ -75,7 +81,8 @@ npm run android       # Android Emulator (нужен Android Studio)
 # ⚠️ WEB: `npm run web` (expo start --web) СЛОМАН в SDK 54 (import.meta → белый
 # экран). Для web используй watch-сборку:
 npm run web:dev       # expo export + патч + serve dist → http://localhost:8082 (F5 для обновления)
-npm run web:build     # одноразовая prod-сборка в dist/
+npm run web:build:preview     # локальный export с demo=true
+npm run web:build:production  # production export с demo=false, без deploy
 # Примечание: AI-агенты запускают web ТОЛЬКО через Claude Preview MCP
 # (preview_start name "xtrud-web"), не через Bash — см. .claude/rules/preview-rules.md.
 
@@ -83,12 +90,19 @@ npm run web:build     # одноразовая prod-сборка в dist/
 npm run typecheck     # tsc --noEmit
 npm run check         # biome check (lint + format)
 npm run format        # biome format --write
+npm run tokens:check  # global.css синхронизирован с design tokens
+npm run quality:check # полный локальный gate без сети и deploy
+npm run release:check # quality + npm advisory gate + production export
 ```
 
 ## Конфигурация Supabase
 
-Проект Supabase: `wgeimsajvjkzrrnfrnkb` (eu-central-1, Free tier).
+Текущий Cloud-проект: `wgeimsajvjkzrrnfrnkb`. Целевой backend — официальный
+self-hosted Supabase на отдельном Beget VPS с собственным hostname
+`https://api.xtrud.pro`. До production cutover Cloud остаётся source of truth.
 
 URL и публикуемый ключ — в `.env.local` (gitignored), шаблон — `.env.example`.
 
-Миграции: `supabase/migrations/`. Применять через Supabase MCP или `supabase db push` (если установлен CLI).
+Миграции: `supabase/migrations/`. Текущая цепочка не является полным снимком
+production, поэтому `supabase db push` нельзя использовать для переноса. Порядок
+backup/rehearsal/cutover — только по `docs/SUPABASE_BEGET_MIGRATION.md`.

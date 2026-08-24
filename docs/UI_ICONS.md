@@ -29,7 +29,7 @@ Phosphor даёт **мгновенно читаемую** active/inactive раз
 
 - **Категории услуг (L2)** — там цветные SVG через Iconify CDN ([`docs/ICONS.md`](ICONS.md)). Phosphor — моно, не подходит для tile-категорий.
 - **Декоративные/hero-блоки** — там либо иллюстрация (Open Doodles, [`docs/ILLUSTRATIONS.md`](ILLUSTRATIONS.md) если есть), либо tinted-Lucide-fallback в `FeaturedRequests` (исторически).
-- **Аватары** — DiceBear `shapes`, см. `CLAUDE.md` § «АВАТАРЫ — ТОЛЬКО DiceBear shapes».
+- **Аватары** — не иконки: настоящее фото или круг с инициалами через общий `<Avatar>` и `src/lib/avatar.ts`; DiceBear — legacy.
 - **Эмодзи как иконки** — запрещено в UI, см. `CLAUDE.md`.
 
 ## Установка

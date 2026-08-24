@@ -1,5 +1,5 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useLocalSearchParams } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { KeyboardAvoidingView, Platform, Pressable, View } from "react-native";
@@ -14,7 +14,6 @@ const COOLDOWN_SEC = 60;
 
 export default function VerifyScreen() {
   const insets = useSafeAreaInsets();
-  const router = useRouter();
   const { phone } = useLocalSearchParams<{ phone: string }>();
 
   const inputRef = useRef<OtpInputHandle>(null);

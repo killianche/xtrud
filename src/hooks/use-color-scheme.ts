@@ -96,11 +96,7 @@ function getServerHtmlColorScheme(): "light" | "dark" {
  * Не использовать на native — там Appearance API через NativeWind.
  */
 export function useDomColorScheme(): "light" | "dark" {
-  return useSyncExternalStore(
-    subscribeToHtmlClass,
-    getHtmlColorScheme,
-    getServerHtmlColorScheme,
-  );
+  return useSyncExternalStore(subscribeToHtmlClass, getHtmlColorScheme, getServerHtmlColorScheme);
 }
 
 export function useColorScheme() {

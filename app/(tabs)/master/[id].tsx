@@ -15,6 +15,7 @@
  * Анон-friendly: контакт-кнопки открывают LoginWall на тапе если userId == null.
  */
 
+import { Image as ExpoImage } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import {
@@ -36,12 +37,11 @@ import {
   ScrollView,
   View,
 } from "react-native";
-import { Image as ExpoImage } from "expo-image";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { AppText } from "@/components/AppText";
+import { Avatar, BottomSheet, Button, normalizeAvatarUrl, Skeleton } from "@/components/ui";
 import { openExternalUrl } from "@/lib/open-link";
 import { useAppWidth } from "@/lib/use-app-width";
-import { AppText } from "@/components/AppText";
-import { Avatar, BottomSheet, Button, Card, Skeleton, normalizeAvatarUrl } from "@/components/ui";
 
 // PRICING_MODE_LABELS убран 2026-05-15 (P0-1 в research/MASTER_ACCOUNT_PLAN.md).
 // Цены — единственным источником master_services, отображаются через
@@ -50,16 +50,15 @@ import { Avatar, BottomSheet, Button, Card, Skeleton, normalizeAvatarUrl } from 
 
 import { useAuthSession } from "@/features/auth/use-auth-session";
 import { useIsFavorite, useToggleFavorite } from "@/features/favorites/use-favorites";
-import { getCategoryColorIconUrl } from "@/lib/category-color-icons";
-import { useSafeBack } from "@/lib/use-safe-back";
-import { useThemeColors } from "@/lib/use-theme-color";
-import { resolveWhatsappDigits } from "@/lib/whatsapp";
 import { MasterServicesList } from "@/features/master-services/MasterServicesList";
 import { useMasterServices } from "@/features/master-services/use-master-services";
+import {
+  AVAILABILITY_DOT,
+  AVAILABILITY_LABELS,
+  effectiveStatus,
+  isAvailabilityVisible,
+} from "@/features/master-view/availability";
 import { ReviewsSection } from "@/features/master-view/ReviewsSection";
-import { MasterReviewSheet } from "@/features/reviews/MasterReviewSheet";
-import { ReportReviewSheet } from "@/features/reviews/ReportReviewSheet";
-import { useMyRecentReviewForMaster } from "@/features/reviews/use-reviews";
 import {
   type ReviewWithAuthor,
   useMasterCategoriesPublic,
@@ -68,24 +67,20 @@ import {
   useReviewsForTarget,
 } from "@/features/master-view/use-master-public";
 import { useRecordMasterView } from "@/features/master-view/use-record-view";
-import { cdnBlur, cdnImage } from "@/lib/image-cdn";
-import { PortfolioGrid } from "@/features/profile/PortfolioGrid";
 import { PortfolioLightbox } from "@/features/profile/PortfolioLightbox";
 import { type PortfolioItem, useMasterPortfolio } from "@/features/profile/use-my-portfolio";
 import { type CaseWithPreview, useMasterCases } from "@/features/profile/use-portfolio-cases";
-import {
-  AVAILABILITY_DOT,
-  AVAILABILITY_LABELS,
-  effectiveStatus,
-  isAvailabilityVisible,
-} from "@/features/master-view/availability";
 import { ReportModal } from "@/features/reports/ReportModal";
+import { MasterReviewSheet } from "@/features/reviews/MasterReviewSheet";
+import { ReportReviewSheet } from "@/features/reviews/ReportReviewSheet";
+import { useMyRecentReviewForMaster } from "@/features/reviews/use-reviews";
 import { usePullToRefresh } from "@/hooks/use-pull-to-refresh";
-import {
-  pluralizeClosedDeals,
-  pluralizeReviews,
-  pluralizeYears,
-} from "@/lib/pluralize";
+import { getCategoryColorIconUrl } from "@/lib/category-color-icons";
+import { cdnBlur, cdnImage } from "@/lib/image-cdn";
+import { pluralizeClosedDeals, pluralizeReviews, pluralizeYears } from "@/lib/pluralize";
+import { useSafeBack } from "@/lib/use-safe-back";
+import { useThemeColor, useThemeColors } from "@/lib/use-theme-color";
+import { resolveWhatsappDigits } from "@/lib/whatsapp";
 
 const HERO_RATIO = 16 / 9;
 const PORTFOLIO_RATIO = 4 / 5; // Wildberries-style: вертикальный товар, height = width * 5/4
@@ -158,10 +153,10 @@ export default function MasterPublicScreen() {
   // после получения `u?.avatar_url` из profile.data.
   const [heroFailed, setHeroFailed] = useState(false);
 
-  const tc = useThemeColors(["ink", "error", "accent"]);
+  const tc = useThemeColors(["ink", "error", "accent", "on-dark"]);
 
   // Избранное. Для гостя/own-profile кнопка скрыта (rendering ниже).
-  const isFavorite = useIsFavorite(!isAnon && !isOwnProfile ? masterId ?? undefined : undefined);
+  const isFavorite = useIsFavorite(!isAnon && !isOwnProfile ? (masterId ?? undefined) : undefined);
   const toggleFavorite = useToggleFavorite();
   const handleToggleFavorite = () => {
     if (!masterId || isAnon || isOwnProfile) return;
@@ -172,12 +167,11 @@ export default function MasterPublicScreen() {
   const m = profile.data?.master;
   // Reset hero-fallback при смене avatar_url, чтобы новая попытка
   // загрузки не была заблокирована предыдущей ошибкой.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: dependency is an intentional reset trigger; the value is not read inside the effect
   useEffect(() => {
     setHeroFailed(false);
   }, [u?.avatar_url]);
-  const fullName =
-    [u?.first_name, u?.last_name].filter(Boolean).join(" ") || "Мастер";
-  const cityName = profile.data?.city?.name ?? null;
+  const fullName = [u?.first_name, u?.last_name].filter(Boolean).join(" ") || "Мастер";
   const ratingAvg = m?.rating_overall_avg ?? null;
   const ratingCount = m?.rating_overall_count ?? 0;
   const closedDeals = m?.closed_deals ?? 0;
@@ -291,16 +285,13 @@ export default function MasterPublicScreen() {
                 onPress={goBack}
                 className="h-9 w-9 items-center justify-center rounded-full bg-black/50 active:opacity-70"
               >
-                <CaretLeft size={20} weight="bold" color="#fff" />
+                <CaretLeft size={20} weight="bold" color={tc["on-dark"]} />
               </Pressable>
             </View>
           </View>
         ) : portfolio.data && portfolio.data.length > 0 ? (
           <View style={{ position: "relative" }}>
-            <PortfolioPager
-              items={portfolio.data}
-              onOpen={(idx) => setLightboxIndex(idx)}
-            />
+            <PortfolioPager items={portfolio.data} onOpen={(idx) => setLightboxIndex(idx)} />
             {/* Gradient overlay для читаемости иконок */}
             <LinearGradient
               colors={["rgba(0,0,0,0.4)", "transparent"]}
@@ -318,7 +309,7 @@ export default function MasterPublicScreen() {
                 onPress={goBack}
                 className="h-9 w-9 items-center justify-center rounded-full bg-black/50 active:opacity-70"
               >
-                <CaretLeft size={20} weight="bold" color="#fff" />
+                <CaretLeft size={20} weight="bold" color={tc["on-dark"]} />
               </Pressable>
               {!isOwnProfile && (
                 <View className="flex-row items-center gap-2">
@@ -333,7 +324,7 @@ export default function MasterPublicScreen() {
                       <BookmarkSimple
                         size={20}
                         weight={isFavorite.data ? "fill" : "bold"}
-                        color="#fff"
+                        color={tc["on-dark"]}
                       />
                     </Pressable>
                   ) : null}
@@ -343,7 +334,7 @@ export default function MasterPublicScreen() {
                     onPress={() => setActionMenuOpen(true)}
                     className="h-9 w-9 items-center justify-center rounded-full bg-black/50 active:opacity-70"
                   >
-                    <DotsThreeVertical size={20} weight="bold" color="#fff" />
+                    <DotsThreeVertical size={20} weight="bold" color={tc["on-dark"]} />
                   </Pressable>
                 </View>
               )}
@@ -385,7 +376,7 @@ export default function MasterPublicScreen() {
                 onPress={goBack}
                 className="h-9 w-9 items-center justify-center rounded-full bg-black/50 active:opacity-70"
               >
-                <CaretLeft size={20} weight="bold" color="#fff" />
+                <CaretLeft size={20} weight="bold" color={tc["on-dark"]} />
               </Pressable>
               {!isOwnProfile && (
                 <View className="flex-row items-center gap-2">
@@ -400,7 +391,7 @@ export default function MasterPublicScreen() {
                       <BookmarkSimple
                         size={20}
                         weight={isFavorite.data ? "fill" : "bold"}
-                        color="#fff"
+                        color={tc["on-dark"]}
                       />
                     </Pressable>
                   ) : null}
@@ -410,7 +401,7 @@ export default function MasterPublicScreen() {
                     onPress={() => setActionMenuOpen(true)}
                     className="h-9 w-9 items-center justify-center rounded-full bg-black/50 active:opacity-70"
                   >
-                    <DotsThreeVertical size={20} weight="bold" color="#fff" />
+                    <DotsThreeVertical size={20} weight="bold" color={tc["on-dark"]} />
                   </Pressable>
                 </View>
               )}
@@ -551,7 +542,12 @@ export default function MasterPublicScreen() {
                     <>
                       <View className="h-1 w-1 rounded-full bg-mute opacity-40" />
                       <View className="flex-row items-center gap-1">
-                        <Buildings size={13} weight="bold" color="currentColor" className="text-mute" />
+                        <Buildings
+                          size={13}
+                          weight="bold"
+                          color="currentColor"
+                          className="text-mute"
+                        />
                         <AppText className="text-body text-body-sm">Компания</AppText>
                       </View>
                     </>
@@ -665,16 +661,10 @@ export default function MasterPublicScreen() {
                     const name = c.l2?.name_ru ?? c.l2_id;
                     const colorUrl = getCategoryColorIconUrl(c.l2_id);
                     return (
-                      <View
-                        key={c.l2_id}
-                        className={`flex-row gap-3 ${idx > 0 ? "mt-3" : ""}`}
-                      >
+                      <View key={c.l2_id} className={`flex-row gap-3 ${idx > 0 ? "mt-3" : ""}`}>
                         {colorUrl ? (
                           <View className="h-6 w-6 items-center justify-center mt-0.5">
-                            <Image
-                              source={{ uri: colorUrl }}
-                              style={{ width: 20, height: 20 }}
-                            />
+                            <Image source={{ uri: colorUrl }} style={{ width: 20, height: 20 }} />
                           </View>
                         ) : null}
                         <View className="flex-1">
@@ -694,9 +684,7 @@ export default function MasterPublicScreen() {
                 </View>
               ) : null}
 
-              {masterId ? (
-                <MasterServicesList masterId={masterId} hideTitle compact />
-              ) : null}
+              {masterId ? <MasterServicesList masterId={masterId} hideTitle compact /> : null}
             </View>
           );
         })()}
@@ -717,8 +705,7 @@ export default function MasterPublicScreen() {
             Когда данные пришли и rows.length===0 — секции нет. */}
         {(() => {
           if (!masterId) return null;
-          const total =
-            reviews.data?.pages.reduce((sum, p) => sum + p.rows.length, 0) ?? 0;
+          const total = reviews.data?.pages.reduce((sum, p) => sum + p.rows.length, 0) ?? 0;
           if (!reviews.isLoading && total === 0) return null;
           return (
             <ReviewsSection
@@ -753,8 +740,7 @@ export default function MasterPublicScreen() {
         ) : masterId && !isOwnProfile && recentReview.data ? (
           <View className="mt-6 px-5">
             <AppText className="text-center text-caption text-mute">
-              Вы уже оставили отзыв этому мастеру. Новый можно будет оставить
-              через 30 дней.
+              Вы уже оставили отзыв этому мастеру. Новый можно будет оставить через 30 дней.
             </AppText>
           </View>
         ) : null}
@@ -827,9 +813,7 @@ export default function MasterPublicScreen() {
                 paddingVertical: 14,
               })}
             >
-              <View
-                className="h-9 w-9 items-center justify-center rounded-md bg-error-soft"
-              >
+              <View className="h-9 w-9 items-center justify-center rounded-md bg-error-soft">
                 <Flag size={18} weight="bold" color={tc.error} />
               </View>
               <AppText weight="semibold" className="text-body-md text-error">
@@ -869,6 +853,8 @@ function MasterProfileSkeleton({
   goBack: () => void;
   heroStyle: { height: number } | { aspectRatio: number };
 }) {
+  const onDarkColor = useThemeColor("on-dark");
+
   return (
     <View className="flex-1 bg-canvas">
       {/* Hero-плейсхолдер + активная back-кнопка (уйти можно сразу). */}
@@ -884,7 +870,7 @@ function MasterProfileSkeleton({
             onPress={goBack}
             className="h-9 w-9 items-center justify-center rounded-full bg-black/50 active:opacity-70"
           >
-            <CaretLeft size={20} weight="bold" color="#fff" />
+            <CaretLeft size={20} weight="bold" color={onDarkColor} />
           </Pressable>
         </View>
       </View>
@@ -1112,9 +1098,7 @@ function MasterCasesPreview({ masterId }: { masterId: string }) {
   const cases = useMasterCases(masterId);
   // Берём только кейсы с обложкой (preview_items[0] есть). Если фото не
   // загружено — кейс пока «невидимый» для публичной карточки.
-  const visibleCases = (cases.data ?? []).filter(
-    (c) => !!c.preview_items[0]?.url,
-  );
+  const visibleCases = (cases.data ?? []).filter((c) => !!c.preview_items[0]?.url);
 
   // Loading + пустой list → секция скрыта (публичная карточка, никаких
   // «pending» состояний).
@@ -1146,9 +1130,7 @@ function MasterCasesPreview({ masterId }: { masterId: string }) {
 
       <CasesGrid
         cases={visible}
-        onPress={(caseId) =>
-          router.push(`/(tabs)/case/${caseId}` as never)
-        }
+        onPress={(caseId) => router.push(`/(tabs)/case/${caseId}` as never)}
       />
     </View>
   );
@@ -1188,12 +1170,7 @@ function CasesGrid({
       }}
     >
       {cases.map((c) => (
-        <CaseTile
-          key={c.id}
-          data={c}
-          size={tileSize}
-          onPress={() => onPress(c.id)}
-        />
+        <CaseTile key={c.id} data={c} size={tileSize} onPress={() => onPress(c.id)} />
       ))}
     </View>
   );
@@ -1228,9 +1205,9 @@ function CaseTile({
       style={{ width: size, height: size, position: "relative" }}
       className="bg-canvas-soft-2 overflow-hidden active:opacity-80"
     >
-      {failed ? null : (
+      {failed || !cover ? null : (
         <Image
-          source={{ uri: cdnImage(cover!.url, { width: size }) }}
+          source={{ uri: cdnImage(cover.url, { width: size }) }}
           style={{ width: "100%", height: "100%" }}
           resizeMode="cover"
           onError={() => setFailed(true)}
@@ -1262,15 +1239,8 @@ function CaseTile({
         }}
         pointerEvents="none"
       />
-      <View
-        className="absolute left-0 right-0 bottom-0 px-2 pb-2"
-        pointerEvents="none"
-      >
-        <AppText
-          weight="semibold"
-          className="text-caption text-white"
-          numberOfLines={1}
-        >
+      <View className="absolute left-0 right-0 bottom-0 px-2 pb-2" pointerEvents="none">
+        <AppText weight="semibold" className="text-caption text-white" numberOfLines={1}>
           {data.title}
         </AppText>
       </View>

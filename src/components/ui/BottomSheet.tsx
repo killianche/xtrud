@@ -28,14 +28,7 @@
 
 import { CaretLeft } from "phosphor-react-native";
 import { type ReactNode, useEffect, useRef, useState } from "react";
-import {
-  Animated,
-  Modal,
-  Platform,
-  Pressable,
-  useWindowDimensions,
-  View,
-} from "react-native";
+import { Animated, Modal, Platform, Pressable, useWindowDimensions, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
 import { useColorScheme, useDomColorScheme } from "@/hooks/use-color-scheme";
@@ -62,13 +55,7 @@ const SHEET_DROP_PX = 600;
 const OPEN_DURATION = 240;
 const CLOSE_DURATION = 200;
 
-export function BottomSheet({
-  open,
-  onClose,
-  title,
-  subtitle,
-  children,
-}: BottomSheetProps) {
+export function BottomSheet({ open, onClose, title, subtitle, children }: BottomSheetProps) {
   const insets = useSafeAreaInsets();
   const tc = useThemeColors(["canvas", "ink", "body"]);
   // CSS-vars `rgb(var(--X))` теряются в portal'е react-native-web Modal
@@ -169,82 +156,82 @@ export function BottomSheet({
             transform: [{ translateY: sheetTranslateY }],
           }}
         >
-        {/* Header — 1:1 ScreenHeader: height 64, gap-2, px-3, h-12 w-12 back
+          {/* Header — 1:1 ScreenHeader: height 64, gap-2, px-3, h-12 w-12 back
             (CaretLeft 28 strokeWidth 2.25), display-md title (24px, 700).
             Цвета inline-styled (резолвленные hex), а не CSS-vars — иначе
             теряются в portal Modal. */}
-        <View
-          style={{
-            paddingTop: insets.top,
-          }}
-        >
           <View
             style={{
-              height: 64,
-              paddingHorizontal: 12,
-              flexDirection: "row",
-              alignItems: "center",
-              gap: 8,
+              paddingTop: insets.top,
             }}
           >
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Назад"
-              onPress={onClose}
-              hitSlop={8}
-              style={({ pressed }) => ({
-                opacity: pressed ? 0.5 : 1,
-                width: 48,
-                height: 48,
+            <View
+              style={{
+                height: 64,
+                paddingHorizontal: 12,
+                flexDirection: "row",
                 alignItems: "center",
-                justifyContent: "center",
-                borderRadius: 24,
-              })}
+                gap: 8,
+              }}
             >
-              <CaretLeft size={26} weight="bold" color={sheetInkColor} />
-            </Pressable>
-            <View style={{ flex: 1, minWidth: 0 }}>
-              {title ? (
-                <AppText
-                  weight="display"
-                  numberOfLines={1}
-                  style={{
-                    color: sheetInkColor,
-                    fontSize: 24,
-                    lineHeight: 30,
-                    letterSpacing: -0.5,
-                  }}
-                >
-                  {title}
-                </AppText>
-              ) : null}
-              {subtitle ? (
-                <AppText
-                  numberOfLines={1}
-                  style={{
-                    color: sheetBodyColor,
-                    fontSize: 13,
-                    lineHeight: 18,
-                    marginTop: 2,
-                  }}
-                >
-                  {subtitle}
-                </AppText>
-              ) : null}
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Назад"
+                onPress={onClose}
+                hitSlop={8}
+                style={({ pressed }) => ({
+                  opacity: pressed ? 0.5 : 1,
+                  width: 48,
+                  height: 48,
+                  alignItems: "center",
+                  justifyContent: "center",
+                  borderRadius: 24,
+                })}
+              >
+                <CaretLeft size={26} weight="bold" color={sheetInkColor} />
+              </Pressable>
+              <View style={{ flex: 1, minWidth: 0 }}>
+                {title ? (
+                  <AppText
+                    weight="display"
+                    numberOfLines={1}
+                    style={{
+                      color: sheetInkColor,
+                      fontSize: 24,
+                      lineHeight: 30,
+                      letterSpacing: -0.5,
+                    }}
+                  >
+                    {title}
+                  </AppText>
+                ) : null}
+                {subtitle ? (
+                  <AppText
+                    numberOfLines={1}
+                    style={{
+                      color: sheetBodyColor,
+                      fontSize: 13,
+                      lineHeight: 18,
+                      marginTop: 2,
+                    }}
+                  >
+                    {subtitle}
+                  </AppText>
+                ) : null}
+              </View>
             </View>
           </View>
-        </View>
 
-        {/* Контент: без default-padding, чтобы row-items могли быть full-bleed
+          {/* Контент: без default-padding, чтобы row-items могли быть full-bleed
             (как PickerSheet). Если consumer хочет padding — обернёт сам. */}
-        <View
-          style={{
-            flex: 1,
-            paddingBottom: insets.bottom + 20,
-          }}
-        >
-          {children}
-        </View>
+          <View
+            style={{
+              flex: 1,
+              paddingBottom: insets.bottom + 20,
+            }}
+          >
+            {children}
+          </View>
         </Animated.View>
       </View>
     </Modal>

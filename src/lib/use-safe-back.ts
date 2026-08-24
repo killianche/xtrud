@@ -47,7 +47,10 @@ function tabSegment(path: string): string | null {
 /** Сегментов в пути (без /(tabs)/ и без query). Detail-страницы имеют ≥2
  *  (например, /chats/abc, /orders/xyz). Tab-корни — 1 (/profile, /chats). */
 function segmentsCount(path: string): number {
-  const cleaned = path.replace(/^\/\(tabs\)\//, "/").replace(/^\//, "").split("?")[0];
+  const cleaned = path
+    .replace(/^\/\(tabs\)\//, "/")
+    .replace(/^\//, "")
+    .split("?")[0];
   if (!cleaned) return 0;
   return cleaned.split("/").filter(Boolean).length;
 }

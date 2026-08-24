@@ -53,7 +53,16 @@ export function OrderPhotoCarousel({ urls }: { urls: string[] }) {
     if (i !== index && i >= 0 && i < urls.length) setIndex(i);
   };
 
-  const lightboxItems = urls.map((url, i) => ({ id: `${i}`, url }));
+  // Один и тот же Storage URL может встретиться дважды из legacy-данных. URL
+  // сам по себе тогда не уникальный key, а array index ломает reconciliation
+  // при вставке. Номер вхождения даёт deterministic key для каждого дубля.
+  const occurrences = new Map<string, number>();
+  const photos = urls.map((url) => {
+    const occurrence = (occurrences.get(url) ?? 0) + 1;
+    occurrences.set(url, occurrence);
+    return { id: `${url}#${occurrence}`, url };
+  });
+  const lightboxItems = photos;
 
   return (
     <>
@@ -63,7 +72,7 @@ export function OrderPhotoCarousel({ urls }: { urls: string[] }) {
         onLayout={(e) => setContainerWidth(e.nativeEvent.layout.width)}
       >
         <FlatList
-          data={urls}
+          data={photos}
           horizontal
           pagingEnabled
           snapToInterval={containerWidth}
@@ -71,7 +80,7 @@ export function OrderPhotoCarousel({ urls }: { urls: string[] }) {
           showsHorizontalScrollIndicator={false}
           onScroll={onScroll}
           scrollEventThrottle={16}
-          keyExtractor={(_, i) => `${i}`}
+          keyExtractor={(item) => item.id}
           initialNumToRender={1}
           maxToRenderPerBatch={2}
           windowSize={3}
@@ -83,7 +92,7 @@ export function OrderPhotoCarousel({ urls }: { urls: string[] }) {
               style={{ width: containerWidth, height: heroHeight }}
             >
               <OrderPhotoSlide
-                url={item}
+                url={item.url}
                 width={Math.round(containerWidth) || Math.round(screenWidth)}
                 priority={i === 0 ? "high" : "low"}
               />
@@ -114,9 +123,9 @@ export function OrderPhotoCarousel({ urls }: { urls: string[] }) {
             }}
             pointerEvents="none"
           >
-            {urls.map((_, i) => (
+            {photos.map((photo, i) => (
               <View
-                key={i}
+                key={photo.id}
                 style={{
                   width: i === index ? 24 : 6,
                   height: 6,

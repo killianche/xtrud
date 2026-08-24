@@ -12,15 +12,15 @@
 // на category-select и обратно.
 
 import { useFocusEffect, useRouter } from "expo-router";
-import { Check, CaretDown, MapPin } from "phosphor-react-native";
+import { CaretDown, Check, MapPin } from "phosphor-react-native";
 import { useCallback, useEffect, useMemo } from "react";
 import { Image, Pressable, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
 import { Button, ScreenHeader } from "@/components/ui";
 import { useAuthSession } from "@/features/auth/use-auth-session";
-import { useCities } from "@/features/cities/use-cities";
 import { useVisibleCategories } from "@/features/categories/use-visible-categories";
+import { useCities } from "@/features/cities/use-cities";
 import { useMyMasterCategories } from "@/features/master-categories/use-my-categories";
 import {
   countActiveFilters,
@@ -53,9 +53,7 @@ export default function OrdersSearchFiltersScreen() {
 
   const filters = useOrdersSearchFiltersStore();
   const { l2Ids, cityId, district, sort, setSort, clearAll, toggleL2 } = filters;
-  const initFromMasterCategories = useOrdersSearchFiltersStore(
-    (s) => s.initFromMasterCategories,
-  );
+  const initFromMasterCategories = useOrdersSearchFiltersStore((s) => s.initFromMasterCategories);
 
   const { data: l2List } = useVisibleCategories();
   const { data: cities } = useCities();
@@ -76,9 +74,7 @@ export default function OrdersSearchFiltersScreen() {
     if (!userId || !myCategories) return;
     initFromMasterCategories(
       userId,
-      myCategories
-        .map((mc) => mc.l2_id)
-        .filter((id): id is string => !!id),
+      myCategories.map((mc) => mc.l2_id).filter((id): id is string => !!id),
     );
   }, [userId, myCategories, initFromMasterCategories]);
 
@@ -105,9 +101,7 @@ export default function OrdersSearchFiltersScreen() {
   }, [l2List, l2Ids]);
 
   // Имя выбранной локации для trigger (город или район). Пусто → «Вся Ингушетия».
-  const selectedCityName = cityId
-    ? (cities?.find((c) => c.id === cityId)?.name ?? null)
-    : null;
+  const selectedCityName = cityId ? (cities?.find((c) => c.id === cityId)?.name ?? null) : null;
   const locationValue = selectedCityName ?? (district || null);
 
   const activeCount = countActiveFilters(filters);
@@ -148,17 +142,13 @@ export default function OrdersSearchFiltersScreen() {
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Выбрать категории"
-            onPress={() =>
-              router.push("/(tabs)/orders/search/category-select" as never)
-            }
+            onPress={() => router.push("/(tabs)/orders/search/category-select" as never)}
             className="mt-3 flex-row items-center gap-3 rounded-md border border-hairline bg-canvas px-4 h-14 active:opacity-70"
           >
             <View className="flex-1">
               {selectedL2Names ? (
                 <>
-                  <AppText className="text-caption text-muted">
-                    Выбрано {l2Ids.length}
-                  </AppText>
+                  <AppText className="text-caption text-muted">Выбрано {l2Ids.length}</AppText>
                   <AppText
                     weight="medium"
                     className="text-body-md text-ink mt-0.5"
@@ -168,9 +158,7 @@ export default function OrdersSearchFiltersScreen() {
                   </AppText>
                 </>
               ) : (
-                <AppText className="text-body-md text-mute">
-                  Выберите категории
-                </AppText>
+                <AppText className="text-body-md text-mute">Выберите категории</AppText>
               )}
             </View>
             <CaretDown size={20} weight="bold" color={muteColor} />
@@ -181,9 +169,7 @@ export default function OrdersSearchFiltersScreen() {
               профиле — блок скрыт. */}
           {profileCategoryRows.length > 0 ? (
             <View className="mt-4">
-              <AppText className="text-caption text-mute">
-                Из вашего профиля
-              </AppText>
+              <AppText className="text-caption text-mute">Из вашего профиля</AppText>
               <View className="mt-2 flex-row flex-wrap gap-2">
                 {profileCategoryRows.map((cat) => {
                   const selected = l2Ids.includes(cat.id);
@@ -213,16 +199,10 @@ export default function OrdersSearchFiltersScreen() {
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Выбрать локацию"
-            onPress={() =>
-              router.push("/(tabs)/orders/search/location-select" as never)
-            }
+            onPress={() => router.push("/(tabs)/orders/search/location-select" as never)}
             className="mt-3 flex-row items-center gap-3 rounded-md border border-hairline bg-canvas px-4 h-14 active:opacity-70"
           >
-            <MapPin
-              size={20}
-              weight="bold"
-              color={isAllLoc ? muteColor : inkColor}
-            />
+            <MapPin size={20} weight="bold" color={isAllLoc ? muteColor : inkColor} />
             <View className="flex-1">
               {isAllLoc ? (
                 <AppText className="text-body-md text-ink">Вся Ингушетия</AppText>
@@ -292,9 +272,7 @@ function SortChip({ label, selected, onPress }: SortChipProps) {
       accessibilityState={{ selected }}
       onPress={onPress}
       className={`h-11 items-center justify-center rounded-pill border px-4 active:opacity-70 ${
-        selected
-          ? "border-ink bg-ink"
-          : "border-hairline bg-canvas hover:bg-surface-2"
+        selected ? "border-ink bg-ink" : "border-hairline bg-canvas hover:bg-surface-2"
       }`}
     >
       <AppText
@@ -323,12 +301,7 @@ interface ProfileCategoryChipProps {
  * getCategoryColorIconUrl) — это user-friendly «узнаваемые шорткаты»,
  * не нейтральный фильтр. См. docs/ICONS.md.
  */
-function ProfileCategoryChip({
-  l2Id,
-  name,
-  selected,
-  onPress,
-}: ProfileCategoryChipProps) {
+function ProfileCategoryChip({ l2Id, name, selected, onPress }: ProfileCategoryChipProps) {
   const colorIconUrl = getCategoryColorIconUrl(l2Id);
   return (
     <Pressable
@@ -337,9 +310,7 @@ function ProfileCategoryChip({
       accessibilityLabel={name}
       onPress={onPress}
       className={`h-10 flex-row items-center gap-2 rounded-pill border pl-2 pr-3 active:opacity-70 ${
-        selected
-          ? "border-accent bg-accent-soft"
-          : "border-hairline bg-canvas hover:bg-surface-2"
+        selected ? "border-accent bg-accent-soft" : "border-hairline bg-canvas hover:bg-surface-2"
       }`}
     >
       {selected ? (
@@ -347,10 +318,7 @@ function ProfileCategoryChip({
           <Check size={14} weight="bold" color={CHIP_CHECK_WHITE} />
         </View>
       ) : colorIconUrl ? (
-        <Image
-          source={{ uri: colorIconUrl }}
-          style={{ width: 20, height: 20 }}
-        />
+        <Image source={{ uri: colorIconUrl }} style={{ width: 20, height: 20 }} />
       ) : (
         <View className="h-5 w-5" />
       )}

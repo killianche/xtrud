@@ -92,9 +92,10 @@ export function reportClientError(
       try {
         await supabase.from("client_errors").insert({
           user_id: userId,
-          platform: (Platform.OS === "ios" || Platform.OS === "android"
-            ? Platform.OS
-            : "web") as "ios" | "android" | "web",
+          platform: (Platform.OS === "ios" || Platform.OS === "android" ? Platform.OS : "web") as
+            | "ios"
+            | "android"
+            | "web",
           app_version: appVersion,
           is_fatal: options?.fatal ?? false,
           message,

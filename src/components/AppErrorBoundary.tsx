@@ -60,8 +60,7 @@ export class AppErrorBoundary extends Component<Props, State> {
             Что-то пошло не так
           </AppText>
           <AppText className="mt-3 text-body-md text-mute text-center">
-            Приложение столкнулось с ошибкой и не может продолжить. Попробуйте
-            перезагрузить.
+            Приложение столкнулось с ошибкой и не может продолжить. Попробуйте перезагрузить.
           </AppText>
           <AppText
             weight="mono"

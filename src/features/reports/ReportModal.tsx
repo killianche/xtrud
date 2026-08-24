@@ -84,12 +84,7 @@ export function ReportModal({ visible, targetType, targetId, onClose }: ReportMo
   };
 
   return (
-    <Modal
-      visible={visible}
-      transparent
-      animationType="fade"
-      onRequestClose={handleClose}
-    >
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={handleClose}>
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : undefined}
         className="flex-1 items-center justify-center bg-black/50 px-6"
@@ -134,9 +129,7 @@ export function ReportModal({ visible, targetType, targetId, onClose }: ReportMo
                         accessibilityState={{ selected }}
                         onPress={() => setReason(r)}
                         className={`rounded-md border p-3 active:opacity-70 ${
-                          selected
-                            ? "border-accent bg-accent-soft"
-                            : "border-hairline bg-canvas"
+                          selected ? "border-accent bg-accent-soft" : "border-hairline bg-canvas"
                         }`}
                       >
                         <AppText

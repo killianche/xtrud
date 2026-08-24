@@ -119,7 +119,7 @@ export function LocationFilterSheet({
           contentContainerStyle={{ paddingBottom: 24 }}
         >
           {/* Сводка выбранного — компактные счётчики */}
-          {(cityCount > 0 || villageCount > 0) ? (
+          {cityCount > 0 || villageCount > 0 ? (
             <View className="mb-4 flex-row items-center gap-3 rounded-lg border border-hairline bg-canvas-soft px-4 py-3">
               <View className="flex-1">
                 <AppText className="text-caption text-mute">Выбрано</AppText>
@@ -205,12 +205,7 @@ export function LocationFilterSheet({
 
   // --- режим "villages" ---
   return (
-    <BottomSheet
-      open={open}
-      onClose={onClose}
-      title="Выбор сёл"
-      fullScreen
-    >
+    <BottomSheet open={open} onClose={onClose} title="Выбор сёл" fullScreen>
       {/* MagnifyingGlass input */}
       <View className="mb-3 flex-row items-center gap-2 rounded-md border border-hairline bg-canvas px-3 h-11">
         <MagnifyingGlass size={16} weight="bold" color={tc.mute} />

@@ -14,7 +14,7 @@
 
 import { Image, type ImageContentFit } from "expo-image";
 import { User } from "phosphor-react-native";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { View } from "react-native";
 import { AppText } from "@/components/AppText";
 import { realAvatarUrl } from "@/lib/avatar";
@@ -56,7 +56,8 @@ export function Avatar({ url, name, seed, size = "md", contentFit = "cover" }: A
   // — переключаемся на инициалы/иконку. Сбрасываем state при смене URL,
   // чтобы новая попытка не была заблокирована предыдущей ошибкой.
   const [imageFailed, setImageFailed] = useState(false);
-  useMemo(() => {
+  // biome-ignore lint/correctness/useExhaustiveDependencies: URL change intentionally resets the failed-image fallback
+  useEffect(() => {
     setImageFailed(false);
   }, [resolvedUrl]);
 

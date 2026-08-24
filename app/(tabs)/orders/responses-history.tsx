@@ -72,10 +72,7 @@ export default function ResponsesHistoryScreen() {
     <View className="flex-1 bg-canvas" style={{ paddingTop: insets.top }}>
       <ScreenHeader title="История откликов" onBack={goBack} />
 
-      <ScrollView
-        className="flex-1"
-        contentContainerStyle={{ paddingBottom: insets.bottom + 24 }}
-      >
+      <ScrollView className="flex-1" contentContainerStyle={{ paddingBottom: insets.bottom + 24 }}>
         {isLoading ? (
           <OrderRowsSkeleton count={4} />
         ) : isEmpty ? (
@@ -90,9 +87,7 @@ export default function ResponsesHistoryScreen() {
                 categoryName={r.order.l2?.name_ru ?? r.order.l2_id}
                 categoryIcon={r.order.l2?.icon ?? null}
                 categoryL2Id={r.order.l2_id}
-                cityName={
-                  r.order.city?.name ?? r.order.city_id ?? "Вся Ингушетия"
-                }
+                cityName={r.order.city?.name ?? r.order.city_id ?? "Вся Ингушетия"}
                 district={r.order.district}
                 urgency={r.order.urgency}
                 preferredDate={r.order.preferred_date}
@@ -104,9 +99,7 @@ export default function ResponsesHistoryScreen() {
                 budgetKind={r.order.budget_kind}
                 budgetValue={r.order.budget_value}
                 statusOverrideLabel={historyResponseStatusLabel(r)}
-                onPress={() =>
-                  router.push(`/(tabs)/orders/${r.order.id}` as never)
-                }
+                onPress={() => router.push(`/(tabs)/orders/${r.order.id}` as never)}
               />
             ))}
           </Animated.View>

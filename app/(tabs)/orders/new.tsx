@@ -1,34 +1,35 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { CheckCircle, Lock } from "phosphor-react-native";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
-import { ScreenHeader } from "@/components/ui";
+import { ScreenHeader, Skeleton } from "@/components/ui";
+import { ORDER_CREATE_RETURN_TO } from "@/features/auth/auth-return";
+import { PublishAuthSheet } from "@/features/auth/PublishAuthSheet";
 import { useAuthSession } from "@/features/auth/use-auth-session";
 import { useUserRecord } from "@/features/auth/use-user-record";
 import { useVisibleCategories } from "@/features/categories/use-visible-categories";
 import { useCities } from "@/features/cities/use-cities";
 import { OrderFormBody } from "@/features/orders/OrderFormBody";
-import {
-  type LocalOrderPhoto,
-  OrderPhotosPicker,
-} from "@/features/orders/OrderPhotosPicker";
+import { OrderPhotosPicker } from "@/features/orders/OrderPhotosPicker";
 import { type CreateOrderFormValues, createOrderSchema } from "@/features/orders/order-schema";
 import { useCreateOrder } from "@/features/orders/use-create-order";
+import { useAuthReturnUrlStore } from "@/lib/auth-return-url-store";
 import { uploadOrderPhotosBatch } from "@/lib/image-upload";
-import { JitSignupSheet } from "@/features/auth/JitSignupSheet";
+import { consumeInitialRouteDraft, isOrderDraftUiReady } from "@/lib/order-draft-policy";
 import { type OrderDraft, useOrderDraftStore } from "@/lib/order-draft-store";
 import { useTabBarVisibility } from "@/lib/tabbar-visibility";
 import { useSafeBack } from "@/lib/use-safe-back";
 import { useScrollRestoration } from "@/lib/use-scroll-restoration";
 import { useThemeColors } from "@/lib/use-theme-color";
 
-// Order create — single-screen форма (раньше был 2-шаговый wizard, объединили
+// Task create — single-screen форма (раньше был 2-шаговый wizard, объединили
 // в один экран по фидбэку: пользователь видит весь объём сразу, нет «спрятанных
-// полей» на следующем шаге). После публикации — success-экран.
+// полей» на следующем шаге). Auth не публикует автоматически: после возврата
+// пользователь повторно подтверждает действие. После публикации — success.
 
 export default function NewOrderScreen() {
   const insets = useSafeAreaInsets();
@@ -36,7 +37,7 @@ export default function NewOrderScreen() {
   const { session } = useAuthSession();
   const setTabBarHidden = useTabBarVisibility((s) => s.setHidden);
 
-  // Скрываем нижний TabBar на экране создания заказа — фокус на форме,
+  // Скрываем нижний TabBar на экране создания задания — фокус на форме,
   // tabBar отвлекает (это full-screen wizard). Через Zustand-флаг, потому
   // что наш custom TabBar не читает navigation.setOptions({tabBarStyle}).
   useFocusEffect(
@@ -58,7 +59,7 @@ export default function NewOrderScreen() {
   const { data: categories } = useVisibleCategories();
   const { data: cities } = useCities();
   const createOrder = useCreateOrder();
-  const tc = useThemeColors(["ink", "on-primary", "success", "mute"]);
+  const tc = useThemeColors(["on-primary", "success"]);
   // safeBack: при deeplink/refresh уходим на /orders, а не в пустоту.
   const goBack = useSafeBack("/(tabs)/orders" as const);
   // Сохраняем позицию прокрутки формы при уходе на выбор категории
@@ -66,19 +67,41 @@ export default function NewOrderScreen() {
   // форма прыгает в самый верх (см. use-scroll-restoration.ts).
   const { ref: scrollRef, onScroll: onFormScroll } = useScrollRestoration();
 
+  const [published, setPublished] = useState(false);
   const [createdOrderId, setCreatedOrderId] = useState<string | null>(null);
-  const [signupSheetOpen, setSignupSheetOpen] = useState(false);
-  // Локально выбранные фото заказа (до 5). Грузятся в Storage при публикации,
-  // не сразу при выборе — см. publishWithUser + uploadOrderPhotosBatch.
-  const [photos, setPhotos] = useState<LocalOrderPhoto[]>([]);
+  const [authSheetOpen, setAuthSheetOpen] = useState(false);
   const [uploadingPhotos, setUploadingPhotos] = useState(false);
   const [photoError, setPhotoError] = useState<string | null>(null);
 
-  // Persisted draft из Zustand — выживает любую навигацию (выбор категории,
-  // случайное переключение табов, JIT-signup flow).
+  // Persisted draft выживает auth roundtrip и cold reload в пределах 14 дней.
   const draft = useOrderDraftStore((s) => s.draft);
   const setDraft = useOrderDraftStore((s) => s.setDraft);
   const clearDraft = useOrderDraftStore((s) => s.clearDraft);
+  const photos = useOrderDraftStore((s) => s.photos);
+  const photoSlots = useOrderDraftStore((s) => s.photoSlots);
+  const setPhotos = useOrderDraftStore((s) => s.setPhotos);
+  const discardPhotoSlots = useOrderDraftStore((s) => s.discardPhotoSlots);
+  const hasHydrated = useOrderDraftStore((s) => s.hasHydrated);
+  const activeDraftOwnerId = useOrderDraftStore((s) => s.activeOwnerId);
+  const appliedDraftOwnerRef = useRef<string | null | undefined>(undefined);
+  const [appliedDraftOwnerId, setAppliedDraftOwnerId] = useState<string | null | undefined>(
+    undefined,
+  );
+  const routeDraftAppliedRef = useRef(false);
+
+  // Возврат после login нельзя использовать для обхода onboarding. Целевой
+  // экран ждёт профиль: незавершённый flow отправляет на обязательный шаг,
+  // завершённый — consume intent и оставляет пользователя у черновика.
+  useEffect(() => {
+    if (!userId || !user) return;
+    const returnUrl = useAuthReturnUrlStore.getState().peekReturnUrl();
+    if (returnUrl !== ORDER_CREATE_RETURN_TO) return;
+    if (!user.onboarding_completed_at) {
+      router.replace("/(onboarding)/client-name" as never);
+      return;
+    }
+    useAuthReturnUrlStore.getState().consumeReturnUrl();
+  }, [router, user, userId]);
 
   const {
     control,
@@ -86,18 +109,19 @@ export default function NewOrderScreen() {
     watch,
     setValue,
     getValues,
+    reset,
     formState: { errors, isValid },
   } = useForm<CreateOrderFormValues>({
     resolver: zodResolver(createOrderSchema),
     defaultValues: {
       l2Id: draft.l2Id ?? "",
-      title: draft.title ?? initialDraft.slice(0, 80),
+      title: draft.title ?? "",
       contactName: draft.contactName ?? "",
-      description: draft.description ?? initialDraft,
+      description: draft.description ?? "",
       cityId: draft.cityId ?? "",
       district: draft.district ?? "",
       // 2026-05-27: без предвыбора. До этого был «flexible» / «negotiable» —
-      // пользователь не выбирал и отправлял заказ как есть, 90% заказов
+      // пользователь не выбирал и отправлял задание как есть, 90% заданий
       // становились «Не срочно / Договорная» и отбивали мастеров. Теперь
       // null до явного тапа по chip'у, submit блокируется через superRefine.
       urgency: draft.urgency ?? null,
@@ -108,44 +132,81 @@ export default function NewOrderScreen() {
     mode: "onChange",
   });
 
-  // Pre-fill категории из ?l2= (приходит с master-card CTA "Создать заказ").
+  // Auth owner может смениться, пока экран уже смонтирован. Reset выполняется
+  // до новой watch-подписки, чтобы значения аккаунта A не записались в snapshot B.
   useEffect(() => {
-    if (typeof params.l2 === "string" && params.l2.length > 0) {
+    if (
+      !hasHydrated ||
+      activeDraftOwnerId === undefined ||
+      appliedDraftOwnerRef.current === activeDraftOwnerId
+    ) {
+      return;
+    }
+    const restored = useOrderDraftStore.getState().draft;
+    const routeDraft = consumeInitialRouteDraft(initialDraft, routeDraftAppliedRef.current);
+    routeDraftAppliedRef.current = routeDraft.nextApplied;
+    reset({
+      l2Id:
+        typeof params.l2 === "string" && params.l2.length > 0 ? params.l2 : (restored.l2Id ?? ""),
+      title: restored.title ?? routeDraft.value.slice(0, 80),
+      contactName: restored.contactName ?? "",
+      description: restored.description ?? routeDraft.value,
+      cityId: restored.cityId ?? "",
+      district: restored.district ?? "",
+      urgency: restored.urgency ?? null,
+      budgetKind: restored.budgetKind ?? null,
+      budgetValue: restored.budgetValue ?? null,
+      preferredDate: restored.preferredDate ?? null,
+    });
+    appliedDraftOwnerRef.current = activeDraftOwnerId;
+    setAppliedDraftOwnerId(activeDraftOwnerId);
+  }, [activeDraftOwnerId, hasHydrated, initialDraft, params.l2, reset]);
+
+  const draftUiReady = isOrderDraftUiReady(hasHydrated, activeDraftOwnerId, appliedDraftOwnerId);
+
+  // Pre-fill категории из ?l2= (приходит с master-card CTA «Создать задание»).
+  useEffect(() => {
+    if (draftUiReady && typeof params.l2 === "string" && params.l2.length > 0) {
       setValue("l2Id", params.l2, { shouldValidate: true });
     }
-  }, [params.l2, setValue]);
+  }, [draftUiReady, params.l2, setValue]);
 
   // Подставляем имя из регистрации в «Ваше имя» — только если пользователь
   // ещё не вводил/не стирал его (draft.contactName === undefined). Эффект
   // самозавершается: после setValue watch запишет draft.contactName. Если
-  // оставить пусто — при просмотре заказа всё равно покажется рег-имя.
+  // оставить пусто — при просмотре задания всё равно покажется рег-имя.
   useEffect(() => {
-    if (draft.contactName !== undefined || !user) return;
+    if (!draftUiReady || draft.contactName !== undefined || !user) return;
     const regName = [user.first_name, user.last_name].filter(Boolean).join(" ").trim();
     if (regName) setValue("contactName", regName);
-  }, [user, draft.contactName, setValue]);
+  }, [draftUiReady, user, draft.contactName, setValue]);
 
   // Каждое изменение формы → в Zustand. Не теряем при mount/unmount.
   useEffect(() => {
+    if (
+      !hasHydrated ||
+      activeDraftOwnerId === undefined ||
+      appliedDraftOwnerRef.current !== activeDraftOwnerId
+    ) {
+      return;
+    }
     const sub = watch((values) => {
       setDraft(values as OrderDraft);
     });
     return () => sub.unsubscribe();
-  }, [watch, setDraft]);
+  }, [activeDraftOwnerId, hasHydrated, watch, setDraft]);
 
   const budgetKind = watch("budgetKind");
 
-  // Реальная публикация (предполагает залогиненного пользователя).
-  // Отдельная функция от handleSubmit, чтобы её можно было вызвать
-  // ИЗ JitSignupSheet после успешного signup (там uid появляется
-  // позже, чем handleSubmit замкнётся над текущим userId).
+  // Реальная публикация вызывается только из явного submit авторизованного
+  // пользователя. Auth sheet никогда не вызывает эту функцию автоматически.
   const publishWithUser = async (uid: string) => {
     const values = getValues();
     setPhotoError(null);
     try {
-      // 1. Фото грузим первыми — нужны их публичные URL для записи в заказ.
-      //    Если хоть одно не загрузилось — не создаём заказ, просим повторить
-      //    (лучше явная ошибка, чем заказ с «дырявой» галереей).
+      // 1. Фото грузим первыми — нужны их публичные URL для записи в задание.
+      //    Если хоть одно не загрузилось — не создаём задание, просим повторить
+      //    (лучше явная ошибка, чем задание с «дырявой» галереей).
       let photoUrls: string[] = [];
       if (photos.length > 0) {
         setUploadingPhotos(true);
@@ -161,7 +222,7 @@ export default function NewOrderScreen() {
         photoUrls = results.flatMap((r) => (r.ok ? [r.publicUrl] : []));
       }
 
-      // 2. Создаём заказ с готовыми URL фото.
+      // 2. Создаём задание с готовыми URL фото.
       // urgency / budgetKind nullable в schema, но zod-валидация (superRefine)
       // гарантирует non-null до submit. Type guard для TS — формальность.
       if (values.urgency === null || values.budgetKind === null) return;
@@ -184,7 +245,8 @@ export default function NewOrderScreen() {
           ? (created as { id: string }).id
           : null;
       clearDraft();
-      setCreatedOrderId(newId ?? "submitted");
+      setCreatedOrderId(newId);
+      setPublished(true);
     } catch (_e) {
       setUploadingPhotos(false);
       // отображается через createOrder.error
@@ -193,9 +255,7 @@ export default function NewOrderScreen() {
 
   const onSubmit = handleSubmit(async (_values) => {
     if (!userId) {
-      // Анон: открываем JIT-signup sheet. По завершении он сам
-      // вызовет onSignedUp(newUserId) → publishWithUser.
-      setSignupSheetOpen(true);
+      setAuthSheetOpen(true);
       return;
     }
     await publishWithUser(userId);
@@ -206,10 +266,24 @@ export default function NewOrderScreen() {
   const isBusy = createOrder.isPending || uploadingPhotos;
   const submitError = photoError ?? createOrder.error?.message;
 
+  if (!draftUiReady) {
+    return (
+      <View className="flex-1 bg-canvas" style={{ paddingTop: insets.top }}>
+        <ScreenHeader title="Новое задание" onBack={goBack} />
+        <View className="gap-6 px-6 pt-6">
+          <Skeleton className="h-24 w-full rounded-2xl" />
+          <Skeleton className="h-12 w-full rounded-md" />
+          <Skeleton className="h-28 w-full rounded-md" />
+          <Skeleton className="h-14 w-full rounded-full" />
+        </View>
+      </View>
+    );
+  }
+
   // ============================================================================
   // Success screen после публикации.
   // ============================================================================
-  if (createdOrderId) {
+  if (published) {
     return (
       <View
         className="flex-1 items-center justify-center bg-canvas px-6"
@@ -220,32 +294,37 @@ export default function NewOrderScreen() {
             <CheckCircle size={36} weight="bold" color={tc.success} />
           </View>
           <AppText weight="bold" className="mt-6 text-center text-display-sm text-ink">
-            Заявка опубликована
+            Задание опубликовано
           </AppText>
           <AppText className="mt-3 text-center text-body-md text-muted">
-            Мастера получат уведомление и пришлют отклики с ценой и сроком. Мы
-            сообщим, как только кто-то откликнется.
+            Отклики появятся в разделе «Мои задания».
           </AppText>
         </View>
 
         <View className="mt-10 w-full gap-3">
+          {createdOrderId ? (
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => router.replace(`/(tabs)/orders/${createdOrderId}` as never)}
+              className="h-14 items-center justify-center rounded-full bg-primary active:opacity-80"
+            >
+              <AppText weight="semibold" className="text-button-lg text-on-primary">
+                Открыть задание
+              </AppText>
+            </Pressable>
+          ) : null}
           <Pressable
             accessibilityRole="button"
             onPress={() => router.replace("/(tabs)/orders" as never)}
-            className="h-14 items-center justify-center rounded-full bg-primary active:opacity-80"
+            className={`h-14 items-center justify-center rounded-full ${
+              createdOrderId ? "border border-hairline bg-canvas" : "bg-primary"
+            }`}
           >
-            <AppText weight="semibold" className="text-button-lg text-on-primary">
-              К моим заказам
-            </AppText>
-          </Pressable>
-          <Pressable
-            accessibilityRole="button"
-            onPress={goBack}
-            hitSlop={8}
-            className="h-10 items-center justify-center"
-          >
-            <AppText weight="medium" className="text-body-md text-muted">
-              Закрыть
+            <AppText
+              weight="semibold"
+              className={`text-button-lg ${createdOrderId ? "text-ink" : "text-on-primary"}`}
+            >
+              К моим заданиям
             </AppText>
           </Pressable>
         </View>
@@ -265,11 +344,11 @@ export default function NewOrderScreen() {
       className="flex-1 bg-canvas"
       style={{ paddingTop: insets.top }}
     >
-      {/* Стандартный <ScreenHeader title="Новый заказ" /> — единый header
+      {/* Стандартный <ScreenHeader title="Новое задание" /> — единый header
           для всех full-screen экранов (см. DESIGN.md §UI patterns 1).
           Раньше был ad-hoc header (h-9 back-кнопка + дублирующий mono-eyebrow
           в hero) — фидбек user 2026-05-16 «у нас есть стандарт, применить». */}
-      <ScreenHeader title="Новый заказ" onBack={goBack} />
+      <ScreenHeader title="Новое задание" onBack={goBack} />
 
       <ScrollView
         ref={scrollRef}
@@ -282,7 +361,7 @@ export default function NewOrderScreen() {
       >
         {/* Hero — единственный privacy-trust блок (Lock + объяснение что
             номер скрыт). Eyebrow + H1 + 3-step row удалены — контекст экрана
-            самоочевиден из ScreenHeader title «Новый заказ». */}
+            самоочевиден из ScreenHeader title «Новое задание». */}
         <View className="px-6 pt-3 pb-7">
           {/* Privacy-trust card — единственный info-блок в hero. Airbnb-стиль:
               мягкая rounded-2xl плашка, ink-кружок с замком, заголовок body-md +
@@ -295,10 +374,10 @@ export default function NewOrderScreen() {
               </View>
               <View className="flex-1">
                 <AppText weight="semibold" className="text-body-md text-ink">
-                  Ваш номер скрыт от мастеров
+                  Ваш номер скрыт
                 </AppText>
                 <AppText className="mt-1.5 text-body-sm text-body">
-                  Они видят только заказ. Вы сами решаете, кому звонить.
+                  Мастера видят только задание. Связываетесь только вы.
                 </AppText>
               </View>
             </View>
@@ -316,18 +395,46 @@ export default function NewOrderScreen() {
           categories={categories}
           cities={cities}
           photosSlot={
-            <OrderPhotosPicker photos={photos} onChange={setPhotos} disabled={isBusy} />
+            <>
+              {photos.length === 0 && photoSlots.length > 0 ? (
+                <View
+                  accessibilityLiveRegion="polite"
+                  className="mx-6 mt-6 rounded-lg border border-warning bg-warning-soft px-4 py-4"
+                >
+                  <AppText weight="semibold" className="text-body-sm text-ink">
+                    Фото нужно добавить снова
+                  </AppText>
+                  <AppText className="mt-1 text-caption text-body">
+                    После перезапуска приложения локальные фото не хранятся. Поля задания сохранены.
+                  </AppText>
+                  <Pressable
+                    accessibilityRole="button"
+                    onPress={discardPhotoSlots}
+                    className="mt-2 min-h-11 self-start justify-center"
+                  >
+                    <AppText weight="semibold" className="text-body-sm text-ink underline">
+                      Продолжить без фото
+                    </AppText>
+                  </Pressable>
+                </View>
+              ) : null}
+              <OrderPhotosPicker photos={photos} onChange={setPhotos} disabled={isBusy} />
+            </>
           }
         />
 
         {submitError && (
           <View className="mt-6 px-6">
-            <AppText weight="medium" className="text-caption text-error">
-              Не удалось создать заказ. {submitError}
+            <AppText
+              accessibilityRole="alert"
+              accessibilityLiveRegion="polite"
+              weight="medium"
+              className="text-caption text-error"
+            >
+              Не удалось опубликовать задание. {submitError}
             </AppText>
           </View>
         )}
-
       </ScrollView>
 
       {/* Sticky bottom CTA bar (Airbnb / depop / google-maps паттерн): главная
@@ -339,14 +446,12 @@ export default function NewOrderScreen() {
       >
         <Pressable
           accessibilityRole="button"
-          // Анону кнопка тоже доступна — на нажатие открывается JIT-signup sheet.
+          // Гостю кнопка тоже доступна — на нажатие открывается auth sheet.
           // Disabled остаётся только когда форма невалидна или категории ещё грузятся.
           disabled={!canSubmit || isBusy || !categories}
           onPress={handlePublish}
           className={`h-14 items-center justify-center rounded-full ${
-            canSubmit && !isBusy && categories
-              ? "bg-primary active:opacity-80"
-              : "bg-canvas-soft-2"
+            canSubmit && !isBusy && categories ? "bg-primary active:opacity-80" : "bg-canvas-soft-2"
           }`}
         >
           <AppText
@@ -359,22 +464,12 @@ export default function NewOrderScreen() {
               ? "Загружаем фото…"
               : createOrder.isPending
                 ? "Публикуем…"
-                : "Опубликовать заказ"}
+                : "Опубликовать задание"}
           </AppText>
         </Pressable>
       </View>
 
-      {/* JIT-signup sheet — открывается, если анон нажал «Опубликовать».
-          После успешного login → автоматически публикует заказ. */}
-      <JitSignupSheet
-        open={signupSheetOpen}
-        onClose={() => setSignupSheetOpen(false)}
-        onSignedUp={async (uid) => {
-          setSignupSheetOpen(false);
-          await publishWithUser(uid);
-        }}
-      />
+      <PublishAuthSheet open={authSheetOpen} onClose={() => setAuthSheetOpen(false)} />
     </KeyboardAvoidingView>
   );
 }
-

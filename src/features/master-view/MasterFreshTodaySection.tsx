@@ -31,13 +31,14 @@ interface MasterFreshTodaySectionProps {
 
 const MAX_ITEMS = 4;
 
-export function MasterFreshTodaySection({
-  userId,
-}: MasterFreshTodaySectionProps) {
+export function MasterFreshTodaySection({ userId }: MasterFreshTodaySectionProps) {
   const router = useRouter();
 
-  const { recommendations, isLoading, hasCategories } =
-    useMasterRecommendations({ userId, filter: "fresh_24h", max: MAX_ITEMS });
+  const { recommendations, isLoading, hasCategories } = useMasterRecommendations({
+    userId,
+    filter: "fresh_24h",
+    max: MAX_ITEMS,
+  });
 
   const opacity = useRef(new Animated.Value(0)).current;
   useEffect(() => {

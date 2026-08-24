@@ -58,10 +58,7 @@ export function CategoryPicker({ value, onChange, disabled, error }: CategoryPic
     }
   }, [selectedFromStore, value, onChange, setSelectedL2]);
 
-  const selected = useMemo(
-    () => categories.find((c) => c.id === value),
-    [categories, value],
-  );
+  const selected = useMemo(() => categories.find((c) => c.id === value), [categories, value]);
 
   return (
     <View>

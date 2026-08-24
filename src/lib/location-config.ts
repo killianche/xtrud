@@ -59,9 +59,7 @@ export const MAJOR_CITIES: readonly CityRecord[] = [
 /** Города для отображения в picker'ах (city-selector, location-sheet,
  *  filter-sheet). Исключаем `hiddenInPicker`. Используй везде, где
  *  пользователь выбирает город из списка. */
-export const PICKER_CITIES: readonly CityRecord[] = MAJOR_CITIES.filter(
-  (c) => !c.hiddenInPicker,
-);
+export const PICKER_CITIES: readonly CityRecord[] = MAJOR_CITIES.filter((c) => !c.hiddenInPicker);
 
 /**
  * 🚨 ПРАВИЛО (владелец 2026-05-24): Назрань и Магас — единая агломерация,
@@ -125,11 +123,7 @@ export const CITY_COORDINATES: Record<string, { lat: number; lng: number }> = {
 
 /** Поиск ближайшего города по координатам. Haversine distance.
  *  Если до ближайшего города > thresholdKm — fallback на DEFAULT_CITY_ID. */
-export function getNearestCity(
-  lat: number,
-  lng: number,
-  thresholdKm = 30,
-): string {
+export function getNearestCity(lat: number, lng: number, thresholdKm = 30): string {
   const R = 6371; // радиус Земли, км
   const toRad = (d: number) => (d * Math.PI) / 180;
 
@@ -185,14 +179,7 @@ export const DISTRICTS: readonly DistrictRecord[] = [
   {
     id: "sunzhensky",
     name: "Сунженский район",
-    villages: [
-      "Алхасты",
-      "Аршты",
-      "Берд-Юрт",
-      "Галашки",
-      "Даттых",
-      "Чемульга",
-    ],
+    villages: ["Алхасты", "Аршты", "Берд-Юрт", "Галашки", "Даттых", "Чемульга"],
   },
   {
     id: "malgobeksky",
@@ -211,23 +198,15 @@ export const DISTRICTS: readonly DistrictRecord[] = [
   {
     id: "dzheirakhsky",
     name: "Джейрахский район",
-    villages: [
-      "Джейрах",
-      "Ляжги",
-      "Армхи",
-      "Ольгети",
-      "Гули",
-      "Бейни",
-      "Эгикал",
-      "Тарш",
-    ],
+    villages: ["Джейрах", "Ляжги", "Армхи", "Ольгети", "Гули", "Бейни", "Эгикал", "Тарш"],
   },
 ] as const;
 
 /** Удобный lookup-словарь: districtName → villages. Сохраняем русское имя
  *  как ключ потому что в orders.district хранится русское имя ("Назрановский район"). */
-export const villagesByDistrict: Record<string, readonly string[]> =
-  Object.fromEntries(DISTRICTS.map((d) => [d.name, d.villages]));
+export const villagesByDistrict: Record<string, readonly string[]> = Object.fromEntries(
+  DISTRICTS.map((d) => [d.name, d.villages]),
+);
 
 /** Список имён районов (для chip-row районов). */
 export const districtNames: readonly string[] = DISTRICTS.map((d) => d.name);
@@ -237,9 +216,9 @@ export const districtNames: readonly string[] = DISTRICTS.map((d) => d.name);
 // в LocationFilterSheet, аналог Ingush-Business `FILTER_VILLAGES`).
 // ============================================================================
 
-export const FILTER_VILLAGES: readonly string[] = DISTRICTS.flatMap(
-  (d) => d.villages,
-).sort((a, b) => a.localeCompare(b, "ru"));
+export const FILTER_VILLAGES: readonly string[] = DISTRICTS.flatMap((d) => d.villages).sort(
+  (a, b) => a.localeCompare(b, "ru"),
+);
 
 // ============================================================================
 // HELPERS
@@ -311,11 +290,10 @@ export function getLocationLabel(filter: LocationFilter): string {
     .filter((s): s is string => !!s);
   const districtShort = filter.districts.map((d) => d.replace(" район", " р-н"));
 
-  if (cityNames.length === 1 && districtShort.length === 0) return cityNames[0]!;
-  if (cityNames.length === 0 && districtShort.length === 1) return districtShort[0]!;
+  if (cityNames.length === 1 && districtShort.length === 0) return cityNames[0] ?? "Ингушетия";
+  if (cityNames.length === 0 && districtShort.length === 1) return districtShort[0] ?? "Ингушетия";
   if (cityNames.length <= 2 && districtShort.length === 0) return cityNames.join(", ");
-  if (cityNames.length === 0 && districtShort.length <= 2)
-    return districtShort.join(", ");
+  if (cityNames.length === 0 && districtShort.length <= 2) return districtShort.join(", ");
 
   // Длинная комбинация — компактный формат
   const parts: string[] = [];

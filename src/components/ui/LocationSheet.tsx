@@ -112,7 +112,9 @@ export function LocationSheet({
           accessibilityState={{ selected: isAll }}
           onPress={toggleAll}
           className={`flex-row items-center gap-3 rounded-lg border p-4 ${
-            isAll ? "border-accent bg-accent-soft" : "border-hairline bg-canvas-soft active:opacity-70"
+            isAll
+              ? "border-accent bg-accent-soft"
+              : "border-hairline bg-canvas-soft active:opacity-70"
           }`}
         >
           <View className="h-10 w-10 items-center justify-center rounded-full bg-canvas">

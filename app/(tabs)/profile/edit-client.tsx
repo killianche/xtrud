@@ -16,7 +16,7 @@
  *     почему кнопка неактивна («юзернейм не меняется»).
  */
 
-import { useRouter } from "expo-router";
+import { Camera } from "phosphor-react-native";
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -31,15 +31,14 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
 import { Avatar } from "@/components/Avatar";
 import { Skeleton } from "@/components/ui";
-import { Camera } from "phosphor-react-native";
 import { UsernameField } from "@/features/auth/UsernameField";
 import { useAuthSession } from "@/features/auth/use-auth-session";
 import { useUserRecord } from "@/features/auth/use-user-record";
 import { setUsernameErrorMessage, useSetUsername } from "@/features/auth/use-username";
 import { formatPhoneMask } from "@/features/auth/validation";
 import { ChangePhoneSheet } from "@/features/profile/ChangePhoneSheet";
-import { useUpdateMyProfile } from "@/features/profile/use-update-my-profile";
 import { useRemoveMyAvatar, useUpdateMyAvatar } from "@/features/profile/use-update-my-avatar";
+import { useUpdateMyProfile } from "@/features/profile/use-update-my-profile";
 import { useUserPrivate } from "@/features/profile/use-user-private";
 import { confirmAsync } from "@/lib/confirm";
 import { useSafeBack } from "@/lib/use-safe-back";
@@ -47,7 +46,6 @@ import { useThemeColors } from "@/lib/use-theme-color";
 
 export default function EditClientScreen() {
   const insets = useSafeAreaInsets();
-  const router = useRouter();
   const { session } = useAuthSession();
   const userId = session?.user?.id;
   const { data: user } = useUserRecord(userId);

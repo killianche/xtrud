@@ -4,7 +4,7 @@
 // На mobile / narrow web компонент не используется (см. (tabs)/_layout.tsx).
 
 import { Link, usePathname, useRouter } from "expo-router";
-import { ClipboardText, House, MagnifyingGlass, Moon, Sun, SignIn } from "phosphor-react-native";
+import { ClipboardText, House, MagnifyingGlass, Moon, SignIn, Sun } from "phosphor-react-native";
 import { Pressable, View } from "react-native";
 import { AppText } from "@/components/AppText";
 import { Avatar } from "@/components/Avatar";

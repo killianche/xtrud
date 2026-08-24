@@ -1,20 +1,11 @@
 // Auth API уровня lib.
 //
-// Sprint 1 решение:
-// - Если номер совпадает с demo-паттерном `+79000…` (предзаведённые тестовые
-//   аккаунты Алина/Магомед и др.) — логинимся через signInWithPassword
-//   с фиксированным паролем 'xtrud' (см. миграцию 0045_demo_users_password).
-//   Тогда сессия попадает в существующего пользователя со всеми его заказами,
-//   чатами и сообщениями.
-// - Иначе — анонимная сессия + UPDATE users_private.phone. Это «новый клиент».
-//
-// Sprint 2 заменит обе ветки на реальный supabase.auth.signInWithOtp + verifyOtp.
-//
-// Требование к Supabase: Anonymous Sign-Ins должно быть включено в Dashboard:
-//   Authentication → Providers / Sign-In Settings → "Allow anonymous sign-ins" = ON
+// Основной production auth — email/телефон + пароль. Preview demo-номера
+// используют только заранее созданные email/password аккаунты под env-флагом.
+// Клиент не создаёт временные auth.users и не содержит anonymous sign-in path.
 
-import { unregisterCurrentPushToken } from "@/features/notifications/use-register-push-token";
 import { looksLikeEmail, normalizePhone } from "@/features/auth/validation";
+import { unregisterCurrentPushToken } from "@/features/notifications/use-register-push-token";
 import { supabase } from "./supabase";
 
 /** Префиксы телефонов, у которых на сервере уже заведены auth.users + пароль. */
@@ -58,80 +49,40 @@ function demoPhoneToEmail(phone: string): string {
 }
 
 /**
- * Sprint 1 sign-in:
- * - demo phone → e-mail/password sign-in в существующий аккаунт.
- *   (Phone-provider в Supabase Auth отключён, поэтому fronend логинится
- *   через email, который синтетически назначен каждому demo-телефону.)
- * - иначе → анонимная сессия + UPDATE users_private.phone.
+ * Preview-only demo phone sign-in through a pre-created email/password user.
+ * The env flag and phone allowlist are checked by the caller and again here.
  */
-export async function signInAnonymouslyWithPhone(
+async function signInWithDemoPhone(
   phone: string,
-): Promise<{ ok: true } | { ok: false; error: string }> {
-  if (isDemoPhone(phone)) {
-    const email = demoPhoneToEmail(phone);
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password: DEMO_PASSWORD,
-    });
-    if (error) {
-      return {
-        ok: false,
-        error:
-          `Не удалось войти как тестовый аккаунт (${phone}).\n` +
-          `${error.message}\n` +
-          "Проверь миграции 0045-0047 (пароль 'xtrud' + email mapping).",
-      };
-    }
-    if (!data.session) {
-      return { ok: false, error: "Сессия не создана" };
-    }
-    // Фидбэк user 2026-05-16: «если у аккаунта есть режим мастера — пускай
-    // сразу открывается мастер, а не вид клиента». Для всех is_master=true
-    // ставим active_role='master' на каждом логине. .eq("is_master", true)
-    // работает как guard: для чистых клиентов UPDATE затронет 0 строк (no-op).
-    // CHECK-constraint user_active_role_consistent (active_role='master' ⇒
-    // is_master=true) выполняется автоматически.
-    await supabase
-      .from("users")
-      .update({ active_role: "master" })
-      .eq("id", data.user.id)
-      .eq("is_master", true);
-    return { ok: true };
+): Promise<{ ok: true; userId: string } | { ok: false; error: string }> {
+  if (!isDemoPhone(phone)) {
+    return { ok: false, error: "Тестовый вход выключен" };
   }
-
-  // 1. Анонимный sign-in
-  const { data: authData, error: authError } = await supabase.auth.signInAnonymously();
-
-  if (authError) {
-    // Самая частая ошибка — Anonymous Sign-Ins выключено в Dashboard
-    if (authError.message?.toLowerCase().includes("anonymous")) {
-      return {
-        ok: false,
-        error:
-          "Анонимный вход выключен в Supabase Dashboard.\n" +
-          "Зайди: Authentication → Sign In / Up → Allow anonymous sign-ins.",
-      };
-    }
-    return { ok: false, error: authError.message };
+  const email = demoPhoneToEmail(phone);
+  const { data, error } = await supabase.auth.signInWithPassword({
+    email,
+    password: DEMO_PASSWORD,
+  });
+  if (error) {
+    return {
+      ok: false,
+      error:
+        `Не удалось войти как тестовый аккаунт (${phone}).\n` +
+        `${error.message}\n` +
+        "Проверь миграции 0045-0047 (пароль 'xtrud' + email mapping).",
+    };
   }
-
-  if (!authData.user) {
-    return { ok: false, error: "Не удалось создать сессию" };
+  if (!data.session) {
+    return { ok: false, error: "Сессия не создана" };
   }
-
-  // 2. Триггер handle_new_auth_user уже создал записи. Просто UPDATE phone.
-  // RLS users_private.update_own разрешает auth.uid() = user_id.
-  const { error: updateError } = await supabase
-    .from("users_private")
-    .update({ phone })
-    .eq("user_id", authData.user.id);
-
-  if (updateError) {
-    // Не фатально — сессия создана, phone не сохранился. Логируем и продолжаем.
-    console.warn("[auth] phone update failed:", updateError.message);
-  }
-
-  return { ok: true };
+  // Masters should open in their master role; the is_master guard makes this a
+  // no-op for client-only demo accounts.
+  await supabase
+    .from("users")
+    .update({ active_role: "master" })
+    .eq("id", data.user.id)
+    .eq("is_master", true);
+  return { ok: true, userId: data.user.id };
 }
 
 /**
@@ -139,7 +90,7 @@ export async function signInAnonymouslyWithPhone(
  * SMS.ru). См. supabase/functions/send-sms + дашборд Auth Hooks.
  *
  * - Demo-телефон (+79000…, флаг включён): код НЕ шлём — на verify-экране вход
- *   произойдёт через email/пароль (signInAnonymouslyWithPhone). Это dev/preview.
+ *   произойдёт через email/пароль (signInWithDemoPhone). Это dev/preview.
  * - Реальный номер: supabase.auth.signInWithOtp({ phone }) — Supabase сгенерит
  *   код, вызовет наш hook, hook отправит SMS.
  * - Test-номера ревью Apple (настроены в дашборде Supabase как Test OTP) идут
@@ -163,7 +114,7 @@ export async function sendOtpToPhone(
  * Проверка OTP-кода и вход.
  *
  * - Demo-телефон (флаг включён): код игнорируется, вход по email/паролю в
- *   существующий demo-аккаунт (signInAnonymouslyWithPhone).
+ *   существующий demo-аккаунт (signInWithDemoPhone).
  * - Реальный номер: supabase.auth.verifyOtp({ phone, token, type:'sms' }).
  *   Для новых пользователей триггер handle_new_auth_user создаёт users/
  *   users_private. Для мастеров ставим active_role='master' (как в demo-ветке).
@@ -173,7 +124,7 @@ export async function verifyOtpCode(
   code: string,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   if (isDemoPhone(phone)) {
-    return signInAnonymouslyWithPhone(phone);
+    return signInWithDemoPhone(phone);
   }
   const { data, error } = await supabase.auth.verifyOtp({
     phone,
@@ -209,7 +160,6 @@ export async function verifyOtpCode(
 // для будущего возврата SMS.
 // ============================================================================
 
-
 /**
  * Регистрация: почта + пароль + телефон.
  *
@@ -225,7 +175,7 @@ export async function registerWithCredentials(input: {
   phone: string;
   email: string;
   password: string;
-}): Promise<{ ok: true } | { ok: false; error: string }> {
+}): Promise<{ ok: true; userId: string } | { ok: false; error: string }> {
   const email = input.email.trim().toLowerCase();
   const phone = normalizePhone(input.phone);
 
@@ -250,13 +200,13 @@ export async function registerWithCredentials(input: {
     email,
     password: input.password,
   });
-  if (signInErr || !signInData.session) {
+  if (signInErr || !signInData.session || !signInData.user) {
     return {
       ok: false,
       error: "Аккаунт создан, но войти не удалось. Попробуйте войти вручную.",
     };
   }
-  return { ok: true };
+  return { ok: true, userId: signInData.user.id };
 }
 
 /**
@@ -268,14 +218,14 @@ export async function registerWithCredentials(input: {
 export async function loginWithCredentials(input: {
   login: string;
   password: string;
-}): Promise<{ ok: true } | { ok: false; error: string }> {
+}): Promise<{ ok: true; userId: string } | { ok: false; error: string }> {
   const trimmed = input.login.trim();
 
   // Demo-телефон — старый путь (dev/preview).
   if (!looksLikeEmail(trimmed)) {
     const phone = normalizePhone(trimmed);
     if (isDemoPhone(phone)) {
-      return signInAnonymouslyWithPhone(phone);
+      return signInWithDemoPhone(phone);
     }
   }
 
@@ -310,7 +260,7 @@ export async function loginWithCredentials(input: {
     .update({ active_role: "master" })
     .eq("id", data.user.id)
     .eq("is_master", true);
-  return { ok: true };
+  return { ok: true, userId: data.user.id };
 }
 
 /**

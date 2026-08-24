@@ -3,12 +3,14 @@
 // пароль. Согласие с условиями обязательно (active opt-in) — гейтит кнопку.
 //
 // Полный E.164-номер собирается на submit: `+${country.dial}${digits}`.
-// После успеха НЕ навигируем вручную — AuthGate уводит в онбординг при сессии.
+// После обычной регистрации AuthGate уводит в onboarding. Если регистрация
+// начата из формы задания, return-intent остаётся до завершения обязательного
+// onboarding и потребляется там ровно один раз.
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useNavigation, useRouter } from "expo-router";
 import { CaretLeft, Check, Eye, EyeSlash } from "phosphor-react-native";
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import {
   KeyboardAvoidingView,
@@ -20,6 +22,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
+import { ORDER_CREATE_RETURN_TO, parseAuthReturnTo } from "@/features/auth/auth-return";
 import {
   type Country,
   CountryCodeSelect,
@@ -31,6 +34,14 @@ import {
   type RegisterFormValues,
   registerFormSchema,
 } from "@/features/auth/validation";
+import { useAuthReturnUrlStore } from "@/lib/auth-return-url-store";
+import {
+  applyGuestDraftAuthAbandonment,
+  completeGuestDraftAuthJourney,
+  type GuestDraftAuthOrigin,
+  revokeGuestDraftAuthJourney,
+  shouldAbandonGuestDraftAuthJourney,
+} from "@/lib/order-draft-store";
 import { useSafeBack } from "@/lib/use-safe-back";
 import { useThemeColors } from "@/lib/use-theme-color";
 
@@ -52,13 +63,76 @@ function formatPhoneByCountry(digits: string, country: Country): string {
 export default function RegisterScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const navigation = useNavigation();
+  const params = useLocalSearchParams<{
+    returnTo?: string | string[];
+    draftJourney?: string | string[];
+    authOrigin?: string | string[];
+  }>();
+  const requestedReturnTo = parseAuthReturnTo(params.returnTo);
+  const draftJourney = Array.isArray(params.draftJourney)
+    ? params.draftJourney[0]
+    : params.draftJourney;
+  const rawAuthOrigin = Array.isArray(params.authOrigin) ? params.authOrigin[0] : params.authOrigin;
+  const authOrigin: GuestDraftAuthOrigin =
+    rawAuthOrigin === "phone" || rawAuthOrigin === "sheet" ? rawAuthOrigin : null;
   const register = useRegister();
   const [serverError, setServerError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [country, setCountry] = useState<Country>(DEFAULT_COUNTRY);
   const tc = useThemeColors(["muted-soft", "ink", "mute", "on-primary"]);
-  const goBack = useSafeBack("/(auth)/phone" as const);
+  const safeGoBack = useSafeBack("/(auth)/phone" as const);
+
+  const abandonDraftJourney = useCallback((shouldAbandon: boolean) => {
+    applyGuestDraftAuthAbandonment(shouldAbandon, {
+      clearReturnIntent: () => {
+        const returnUrl = useAuthReturnUrlStore.getState().peekReturnUrl();
+        if (returnUrl === ORDER_CREATE_RETURN_TO) {
+          useAuthReturnUrlStore.getState().clearReturnUrl();
+        }
+      },
+      revokeJourney: revokeGuestDraftAuthJourney,
+    });
+  }, []);
+
+  useEffect(
+    () =>
+      navigation.addListener("beforeRemove", (event) => {
+        const action = event.data.action as { type: string; payload?: { name?: string } };
+        abandonDraftJourney(
+          shouldAbandonGuestDraftAuthJourney(
+            "register",
+            { type: action.type, targetRoute: action.payload?.name },
+            authOrigin,
+          ),
+        );
+      }),
+    [abandonDraftJourney, authOrigin, navigation],
+  );
+
+  useEffect(() => {
+    if (requestedReturnTo) {
+      useAuthReturnUrlStore.getState().setReturnUrl(requestedReturnTo);
+    }
+  }, [requestedReturnTo]);
+
+  const goBack = () => {
+    if (requestedReturnTo) {
+      if (authOrigin === "phone") {
+        router.replace({
+          pathname: "/(auth)/phone",
+          params: {
+            returnTo: requestedReturnTo,
+            ...(draftJourney ? { draftJourney } : {}),
+          },
+        } as never);
+        return;
+      }
+      abandonDraftJourney(true);
+    }
+    safeGoBack();
+  };
 
   const {
     control,
@@ -74,12 +148,15 @@ export default function RegisterScreen() {
     const phone = `+${country.dial}${digitsOnly(values.phone)}`;
     setServerError(null);
     try {
-      await register.mutateAsync({
+      const result = await register.mutateAsync({
         phone,
         email: values.email.trim(),
         password: values.password,
       });
-      // Навигацию делает AuthGate при появлении сессии.
+      await completeGuestDraftAuthJourney(draftJourney, result.userId);
+      if (useAuthReturnUrlStore.getState().peekReturnUrl()) {
+        router.replace("/(onboarding)/client-name" as never);
+      }
     } catch (e) {
       setServerError(e instanceof Error ? e.message : "Не удалось создать аккаунт");
     }
@@ -121,11 +198,7 @@ export default function RegisterScreen() {
               Номер телефона
             </AppText>
             <View className="mt-2 flex-row gap-2">
-              <CountryCodeSelect
-                selected={country}
-                onSelect={setCountry}
-                disabled={isBusy}
-              />
+              <CountryCodeSelect selected={country} onSelect={setCountry} disabled={isBusy} />
               <Controller
                 control={control}
                 name="phone"
@@ -279,7 +352,12 @@ export default function RegisterScreen() {
           </Pressable>
 
           {serverError && (
-            <AppText weight="medium" className="mt-4 text-caption text-error">
+            <AppText
+              accessibilityRole="alert"
+              accessibilityLiveRegion="polite"
+              weight="medium"
+              className="mt-4 text-caption text-error"
+            >
               {serverError}
             </AppText>
           )}
@@ -303,7 +381,19 @@ export default function RegisterScreen() {
             <AppText className="text-body-sm text-body">Уже есть аккаунт? </AppText>
             <Pressable
               accessibilityRole="button"
-              onPress={() => router.push("/(auth)/phone" as never)}
+              onPress={() => {
+                router.push(
+                  requestedReturnTo
+                    ? ({
+                        pathname: "/(auth)/phone",
+                        params: {
+                          returnTo: requestedReturnTo,
+                          ...(draftJourney ? { draftJourney } : {}),
+                        },
+                      } as never)
+                    : ("/(auth)/phone" as never),
+                );
+              }}
               hitSlop={6}
               className="active:opacity-70"
             >

@@ -16,8 +16,8 @@ import { useEffect, useState } from "react";
 import { Pressable, View } from "react-native";
 import { AppText } from "@/components/AppText";
 import { Avatar } from "@/components/Avatar";
-import { realAvatarUrl } from "@/lib/avatar";
 import { useRecordMasterView } from "@/features/master-view/use-record-view";
+import { realAvatarUrl } from "@/lib/avatar";
 import { useThemeColor } from "@/lib/use-theme-color";
 
 export interface MasterPreviewCardProps {
@@ -57,6 +57,7 @@ export function MasterPreviewCard({
   // Сбрасывается при смене фото, чтобы новая попытка не была
   // заблокирована предыдущей ошибкой.
   const [imageFailed, setImageFailed] = useState(false);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: photo change intentionally resets the failed-image fallback
   useEffect(() => {
     setImageFailed(false);
   }, [photo]);

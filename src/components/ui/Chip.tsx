@@ -7,7 +7,7 @@
  * Размеры: sm (22px) / md (28px)
  */
 
-import { type ReactNode } from "react";
+import type { ReactNode } from "react";
 import { Pressable, View } from "react-native";
 import { AppText } from "@/components/AppText";
 
@@ -24,7 +24,10 @@ export interface ChipProps {
   mono?: boolean;
 }
 
-const SIZE_MAP: Record<ChipSize, { height: number; paddingX: number; fontSize: 12 | 13; gap: number }> = {
+const SIZE_MAP: Record<
+  ChipSize,
+  { height: number; paddingX: number; fontSize: 12 | 13; gap: number }
+> = {
   sm: { height: 22, paddingX: 8, fontSize: 12, gap: 4 },
   md: { height: 28, paddingX: 10, fontSize: 13, gap: 6 },
 };
@@ -53,13 +56,7 @@ export function Chip({
   const dims = SIZE_MAP[size];
   const vc = VARIANT_CLASS[variant];
 
-  const className = [
-    "flex-row items-center self-start",
-    "rounded-full",
-    vc.bg,
-    vc.text,
-    vc.border,
-  ]
+  const className = ["flex-row items-center self-start", "rounded-full", vc.bg, vc.text, vc.border]
     .filter(Boolean)
     .join(" ");
 

@@ -4,14 +4,9 @@ import {
   ThemeProvider as NavThemeProvider,
 } from "@react-navigation/native";
 import { Tabs } from "expo-router";
-import {
-  ClipboardText,
-  ImageSquare,
-  UserCircle,
-} from "phosphor-react-native";
-import { XtrudLogo } from "@/components/XtrudLogo";
+import { ClipboardText, ImageSquare, UserCircle } from "phosphor-react-native";
 import { TabBar } from "@/components/TabBar";
-import { useColorScheme } from "@/hooks/use-color-scheme";
+import { XtrudLogo } from "@/components/XtrudLogo";
 import { useAuthSession } from "@/features/auth/use-auth-session";
 import { useTouchLastActive } from "@/features/auth/use-touch-last-active";
 import { useUserRecord } from "@/features/auth/use-user-record";
@@ -21,6 +16,7 @@ import {
   useRealtimeMyResponses,
   useUnreadResponsesCount,
 } from "@/features/orders/use-unread-responses";
+import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useThemeColors } from "@/lib/use-theme-color";
 
 function badgeLabel(n: number): string | undefined {
@@ -81,70 +77,65 @@ export default function TabsLayout() {
   // виде (PhoneFrame + useAppWidth), даже на широком окне → всегда нижние табы.
   return (
     <NavThemeProvider value={navTheme}>
-    <Tabs
-      tabBar={(props) => <TabBar {...props} />}
-      screenOptions={{ headerShown: false }}
-    >
-      <Tabs.Screen
-        name="index"
-        options={{
-          title: "Главная",
-          tabBarIcon: ({ color }) => (
-            <XtrudLogo size={24} color={color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="orders"
-        options={{
-          title: "Заказы",
-          tabBarIcon: ({ color, focused }) => (
-            <ClipboardText color={color} size={26} weight={focused ? "fill" : "bold"} />
-          ),
-          tabBarBadge: ordersBadge,
-          tabBarBadgeStyle: badgeStyle,
-        }}
-        listeners={({ navigation }) => ({
-          tabPress: (e) => {
-            // Сбрасываем стек orders/ на корень. Без этого тап «Заказы»
-            // на orders/category-select или orders/new оставлял текущий
-            // экран открытым.
-            e.preventDefault();
-            navigation.navigate("orders", { screen: "index" } as never);
-          },
-        })}
-      />
-      <Tabs.Screen
-        name="cases"
-        options={{
-          title: "Ваши работы",
-          // Только для мастера. У клиента — href: null = вкладка скрыта.
-          href: isMasterRole ? undefined : null,
-          // Иконка картинки — вкладка показывает фото работ (фидбэк user 2026-05-20).
-          tabBarIcon: ({ color, focused }) => (
-            <ImageSquare color={color} size={26} weight={focused ? "fill" : "bold"} />
-          ),
-        }}
-        listeners={({ navigation }) => ({
-          tabPress: (e) => {
-            // Тап «Ваши работы» когда уже внутри /cases/[caseId] → сброс на
-            // список работ (стандартный mobile-pattern). Без этого тап по
-            // активной вкладке оставлял открытой детальную работу.
-            e.preventDefault();
-            navigation.navigate("cases", { screen: "index" } as never);
-          },
-        })}
-      />
-      <Tabs.Screen
-        name="profile"
-        options={{
-          title: "Профиль",
-          tabBarIcon: ({ color, focused }) => (
-            <UserCircle color={color} size={26} weight={focused ? "fill" : "bold"} />
-          ),
-        }}
-      />
-      {/* Detail-экраны (одиночные файлы, прямые дети Tabs) — НЕ показываем в
+      <Tabs tabBar={(props) => <TabBar {...props} />} screenOptions={{ headerShown: false }}>
+        <Tabs.Screen
+          name="index"
+          options={{
+            title: "Главная",
+            tabBarIcon: ({ color }) => <XtrudLogo size={24} color={color} />,
+          }}
+        />
+        <Tabs.Screen
+          name="orders"
+          options={{
+            title: "Заказы",
+            tabBarIcon: ({ color, focused }) => (
+              <ClipboardText color={color} size={26} weight={focused ? "fill" : "bold"} />
+            ),
+            tabBarBadge: ordersBadge,
+            tabBarBadgeStyle: badgeStyle,
+          }}
+          listeners={({ navigation }) => ({
+            tabPress: (e) => {
+              // Сбрасываем стек orders/ на корень. Без этого тап «Заказы»
+              // на orders/category-select или orders/new оставлял текущий
+              // экран открытым.
+              e.preventDefault();
+              navigation.navigate("orders", { screen: "index" } as never);
+            },
+          })}
+        />
+        <Tabs.Screen
+          name="cases"
+          options={{
+            title: "Ваши работы",
+            // Только для мастера. У клиента — href: null = вкладка скрыта.
+            href: isMasterRole ? undefined : null,
+            // Иконка картинки — вкладка показывает фото работ (фидбэк user 2026-05-20).
+            tabBarIcon: ({ color, focused }) => (
+              <ImageSquare color={color} size={26} weight={focused ? "fill" : "bold"} />
+            ),
+          }}
+          listeners={({ navigation }) => ({
+            tabPress: (e) => {
+              // Тап «Ваши работы» когда уже внутри /cases/[caseId] → сброс на
+              // список работ (стандартный mobile-pattern). Без этого тап по
+              // активной вкладке оставлял открытой детальную работу.
+              e.preventDefault();
+              navigation.navigate("cases", { screen: "index" } as never);
+            },
+          })}
+        />
+        <Tabs.Screen
+          name="profile"
+          options={{
+            title: "Профиль",
+            tabBarIcon: ({ color, focused }) => (
+              <UserCircle color={color} size={26} weight={focused ? "fill" : "bold"} />
+            ),
+          }}
+        />
+        {/* Detail-экраны (одиночные файлы, прямые дети Tabs) — НЕ показываем в
           нижней панели. NB: только реальные прямые дети навигатора. Роуты
           внутри вложенных стеков/папок (orders/search, orders/my-responses —
           живут в стеке `orders/_layout`; admin/*, useful/* — в своих папках)
@@ -153,18 +144,18 @@ export default function TabsLayout() {
           «No route named … exists in nested children» (аудит 2026-05-28).
           От нижней панели они и так скрыты — кастомный TabBar рендерит только
           TAB_ORDER (index/orders/cases/profile). */}
-      <Tabs.Screen name="category/[id]" options={{ href: null }} />
-      <Tabs.Screen name="master/[id]" options={{ href: null }} />
-      <Tabs.Screen name="client/[id]" options={{ href: null }} />
-      <Tabs.Screen name="admin/ratings" options={{ href: null }} />
-      <Tabs.Screen name="admin/reports" options={{ href: null }} />
-      <Tabs.Screen name="search" options={{ href: null }} />
-      {/* favorites — отдельный root-таб (не подпункт профиля). Скрыт из
+        <Tabs.Screen name="category/[id]" options={{ href: null }} />
+        <Tabs.Screen name="master/[id]" options={{ href: null }} />
+        <Tabs.Screen name="client/[id]" options={{ href: null }} />
+        <Tabs.Screen name="admin/ratings" options={{ href: null }} />
+        <Tabs.Screen name="admin/reports" options={{ href: null }} />
+        <Tabs.Screen name="search" options={{ href: null }} />
+        {/* favorites — отдельный root-таб (не подпункт профиля). Скрыт из
           автоматической нижней панели; кастомный TabBar рендерит для клиента
           центральную кнопку «закладки», которая push'ит сюда. См. шапку
           app/(tabs)/favorites/index.tsx о причине переноса. */}
-      <Tabs.Screen name="favorites" options={{ href: null }} />
-    </Tabs>
+        <Tabs.Screen name="favorites" options={{ href: null }} />
+      </Tabs>
     </NavThemeProvider>
   );
 }

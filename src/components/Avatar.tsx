@@ -73,6 +73,7 @@ export function Avatar({ url, name, seed, size = "md", contentFit = "cover" }: A
   // Safari-fallback: см. шапку файла. При смене url сбрасываем флаг,
   // чтобы новая попытка загрузки не была заблокирована предыдущей ошибкой.
   const [imageFailed, setImageFailed] = useState(false);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: URL change intentionally resets the failed-image fallback
   useEffect(() => {
     setImageFailed(false);
   }, [resolvedUrl]);

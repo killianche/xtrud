@@ -74,10 +74,7 @@ export default function MyResponsesScreen() {
       const aActive = isActiveResponse(a);
       const bActive = isActiveResponse(b);
       if (aActive !== bActive) return aActive ? -1 : 1;
-      return (
-        new Date(b.response.created_at).getTime() -
-        new Date(a.response.created_at).getTime()
-      );
+      return new Date(b.response.created_at).getTime() - new Date(a.response.created_at).getTime();
     });
   }, [myResponses]);
 
@@ -98,10 +95,7 @@ export default function MyResponsesScreen() {
     <View className="flex-1 bg-canvas" style={{ paddingTop: insets.top }}>
       <ScreenHeader title="Мои отклики" onBack={goBack} />
 
-      <ScrollView
-        className="flex-1"
-        contentContainerStyle={{ paddingBottom: insets.bottom + 24 }}
-      >
+      <ScrollView className="flex-1" contentContainerStyle={{ paddingBottom: insets.bottom + 24 }}>
         {isLoading ? (
           <OrderRowsSkeleton count={5} />
         ) : (
@@ -110,9 +104,7 @@ export default function MyResponsesScreen() {
               <EmptyActiveState
                 accentColor={accentColor}
                 onPrimary={onPrimary}
-                onFindOrders={() =>
-                  router.push("/(tabs)/orders/search" as never)
-                }
+                onFindOrders={() => router.push("/(tabs)/orders/search" as never)}
               />
             ) : (
               // Единый сплошной список откликов: сверху активные (newest first),
@@ -130,11 +122,7 @@ export default function MyResponsesScreen() {
                     categoryName={r.order.l2?.name_ru ?? r.order.l2_id}
                     categoryIcon={r.order.l2?.icon ?? null}
                     categoryL2Id={r.order.l2_id}
-                    cityName={
-                      r.order.city?.name ??
-                      r.order.city_id ??
-                      "Вся Ингушетия"
-                    }
+                    cityName={r.order.city?.name ?? r.order.city_id ?? "Вся Ингушетия"}
                     district={r.order.district}
                     urgency={r.order.urgency}
                     preferredDate={r.order.preferred_date}
@@ -146,12 +134,8 @@ export default function MyResponsesScreen() {
                     alreadyResponded={!isHistory}
                     budgetKind={r.order.budget_kind}
                     budgetValue={r.order.budget_value}
-                    statusOverrideLabel={
-                      isHistory ? historyResponseStatusLabel(r) : undefined
-                    }
-                    onPress={() =>
-                      router.push(`/(tabs)/orders/${r.order.id}` as never)
-                    }
+                    statusOverrideLabel={isHistory ? historyResponseStatusLabel(r) : undefined}
+                    onPress={() => router.push(`/(tabs)/orders/${r.order.id}` as never)}
                   />
                 );
               })
@@ -174,11 +158,7 @@ interface EmptyActiveStateProps {
   onFindOrders: () => void;
 }
 
-function EmptyActiveState({
-  accentColor,
-  onPrimary,
-  onFindOrders,
-}: EmptyActiveStateProps) {
+function EmptyActiveState({ accentColor, onPrimary, onFindOrders }: EmptyActiveStateProps) {
   return (
     <View className="mt-4 items-center px-6">
       <View className="h-28 w-28 items-center justify-center rounded-2xl relative overflow-hidden bg-badge-amber">
@@ -212,10 +192,7 @@ function EmptyActiveState({
         </View>
       </View>
 
-      <AppText
-        weight="bold"
-        className="mt-5 text-center text-title-md text-ink"
-      >
+      <AppText weight="bold" className="mt-5 text-center text-title-md text-ink">
         Откликов пока нет
       </AppText>
       <AppText className="mt-2 text-center text-body-sm text-mute">
@@ -227,10 +204,7 @@ function EmptyActiveState({
         onPress={onFindOrders}
         className="mt-5 h-11 flex-row items-center gap-2 rounded-pill bg-primary px-5 active:opacity-80"
       >
-        <AppText
-          weight="semibold"
-          className="text-button text-on-primary"
-        >
+        <AppText weight="semibold" className="text-button text-on-primary">
           Найти заказ
         </AppText>
         <ArrowRight size={16} weight="bold" color={onPrimary} />

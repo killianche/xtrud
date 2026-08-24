@@ -2,14 +2,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "expo-router";
 import { useRef, useState } from "react";
 import { useForm } from "react-hook-form";
-import {
-  Alert,
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  View,
-} from "react-native";
+import { Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
 import { OnboardingProgress } from "@/components/OnboardingProgress";
@@ -132,11 +125,7 @@ export default function MasterProfileScreen() {
           </AppText>
         </View>
 
-        <MasterProfileFormBody
-          control={control}
-          errors={errors}
-          isBusy={isBusy}
-        />
+        <MasterProfileFormBody control={control} errors={errors} isBusy={isBusy} />
 
         {/* Юзернейм — уникальный публичный идентификатор, закрепляется один раз.
             Не показываем, если у пользователя он уже есть. */}

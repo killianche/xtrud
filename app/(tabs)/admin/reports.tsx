@@ -12,7 +12,7 @@
  * а /admin стал хабом (рейтинг мастеров + модерация).
  */
 
-import { Warning, CaretLeft, ShieldCheck, X } from "phosphor-react-native";
+import { CaretLeft, ShieldCheck, Warning, X } from "phosphor-react-native";
 import { useState } from "react";
 import { ActivityIndicator, Alert, Pressable, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -111,9 +111,8 @@ export default function AdminReportsScreen() {
   const { data: user } = useUserRecord(userId);
   const isAdmin = (user as { is_admin?: boolean } | null)?.is_admin === true;
 
-  const [statusFilter, setStatusFilter] = useState<(typeof STATUS_FILTERS)[number]["key"]>(
-    "pending",
-  );
+  const [statusFilter, setStatusFilter] =
+    useState<(typeof STATUS_FILTERS)[number]["key"]>("pending");
   const reports = useReportsQueue(statusFilter);
   const updateReport = useUpdateReport();
   const updateUser = useUpdateUserStatus();
@@ -127,7 +126,11 @@ export default function AdminReportsScreen() {
         className="flex-1 items-center justify-center bg-canvas px-6"
         style={{ paddingTop: insets.top }}
       >
-        <EmptyState icon={Warning} title="Доступ запрещён" hint="Эта страница только для админов." />
+        <EmptyState
+          icon={Warning}
+          title="Доступ запрещён"
+          hint="Эта страница только для админов."
+        />
         <Pressable
           accessibilityRole="button"
           onPress={goBack}

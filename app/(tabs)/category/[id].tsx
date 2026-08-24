@@ -11,7 +11,15 @@
  */
 
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { Briefcase, Calendar, CaretLeft, ListChecks, MapPin, Star, Users } from "phosphor-react-native";
+import {
+  Briefcase,
+  Calendar,
+  CaretLeft,
+  ListChecks,
+  MapPin,
+  Star,
+  Users,
+} from "phosphor-react-native";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Animated,
@@ -26,14 +34,13 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
-import { cdnImage } from "@/lib/image-cdn";
-import { useAppWidth } from "@/lib/use-app-width";
 import { CITIES, type CityId } from "@/components/CitySelector";
-import { Avatar, PickerSheet, type PickerOption, Skeleton } from "@/components/ui";
-import { getCategoryColorIconUrl } from "@/lib/category-color-icons";
-import { useSafeBack } from "@/lib/use-safe-back";
-import { useThemeColors } from "@/lib/use-theme-color";
+import { Avatar, type PickerOption, PickerSheet, Skeleton } from "@/components/ui";
 import { useCategoryDetail } from "@/features/categories/use-category-detail";
+import {
+  formatServicePrice,
+  useMasterServices,
+} from "@/features/master-services/use-master-services";
 import {
   AVAILABILITY_DOT,
   AVAILABILITY_SHORT,
@@ -42,16 +49,14 @@ import {
 } from "@/features/master-view/availability";
 import { type MasterInCategory, useMastersByL2 } from "@/features/master-view/use-masters-by-l2";
 import { useRecordMasterView } from "@/features/master-view/use-record-view";
-import {
-  formatServicePrice,
-  useMasterServices,
-} from "@/features/master-services/use-master-services";
-import {
-  type PortfolioItem,
-  useMasterPortfolio,
-} from "@/features/profile/use-my-portfolio";
+import { type PortfolioItem, useMasterPortfolio } from "@/features/profile/use-my-portfolio";
 import { usePullToRefresh } from "@/hooks/use-pull-to-refresh";
+import { getCategoryColorIconUrl } from "@/lib/category-color-icons";
+import { cdnImage } from "@/lib/image-cdn";
 import { pluralizeYears } from "@/lib/pluralize";
+import { useAppWidth } from "@/lib/use-app-width";
+import { useSafeBack } from "@/lib/use-safe-back";
+import { useThemeColors } from "@/lib/use-theme-color";
 
 /** Высота скрываемой шапки = back-row (64) + chip-row (52).
  *  Back-row высокий, чтобы display-md заголовок (24px) и крупная back-кнопка
@@ -154,16 +159,28 @@ export default function CategoryDetailScreen() {
     if (sortBy === "experience") {
       list.sort((a, b) => (b.profile?.experience_years ?? 0) - (a.profile?.experience_years ?? 0));
     } else if (sortBy === "availability") {
-      const order: Record<string, number> = { today: 3, this_week: 2, next_week: 1, unavailable: 0 };
-      list.sort((a, b) => (order[b.profile?.availability_status ?? "unavailable"] ?? 0) - (order[a.profile?.availability_status ?? "unavailable"] ?? 0));
+      const order: Record<string, number> = {
+        today: 3,
+        this_week: 2,
+        next_week: 1,
+        unavailable: 0,
+      };
+      list.sort(
+        (a, b) =>
+          (order[b.profile?.availability_status ?? "unavailable"] ?? 0) -
+          (order[a.profile?.availability_status ?? "unavailable"] ?? 0),
+      );
     }
     // 'rating' — default уже отсортирован hook'ом
     return list;
-  }, [allMasters, cityFilter, l3Filter, sortBy]);
+  }, [allMasters, cityFilter, sortBy]);
 
   const cityLabel = CITIES.find((c) => c.id === cityFilter)?.name ?? "Город";
-  const l3Label = l3Filter ? services.find((s) => s.id === l3Filter)?.name_ru ?? "Услуга" : "Услуга";
-  const sortLabel = sortBy === "rating" ? "По рейтингу" : sortBy === "experience" ? "По опыту" : "Свободные";
+  const l3Label = l3Filter
+    ? (services.find((s) => s.id === l3Filter)?.name_ru ?? "Услуга")
+    : "Услуга";
+  const sortLabel =
+    sortBy === "rating" ? "По рейтингу" : sortBy === "experience" ? "По опыту" : "Свободные";
 
   // Цельный скелет всего экрана пока грузятся данные категории И мастера.
   // Раньше заголовок/чипы/список появлялись по отдельности — рвано (фидбэк
@@ -249,7 +266,9 @@ export default function CategoryDetailScreen() {
               ) : null}
               <FilterChip
                 label={sortLabel}
-                icon={sortBy === "experience" ? Briefcase : sortBy === "availability" ? Calendar : Star}
+                icon={
+                  sortBy === "experience" ? Briefcase : sortBy === "availability" ? Calendar : Star
+                }
                 active={sortBy !== "rating"}
                 onPress={() => setOpenSheet("sort")}
               />
@@ -293,7 +312,9 @@ export default function CategoryDetailScreen() {
               label={sortLabel}
               // Иконка меняется с выбором сортировки — пользователь видит
               // что именно активно (рейтинг ★ / опыт 💼 / готовность 📅).
-              icon={sortBy === "experience" ? Briefcase : sortBy === "availability" ? Calendar : Star}
+              icon={
+                sortBy === "experience" ? Briefcase : sortBy === "availability" ? Calendar : Star
+              }
               active={sortBy !== "rating"}
               onPress={() => setOpenSheet("sort")}
             />
@@ -314,7 +335,6 @@ export default function CategoryDetailScreen() {
         onScroll={handleScroll}
         scrollEventThrottle={16}
       >
-
         {/* Список мастеров. Заголовок «Мастера» убран — header страницы
             (имя категории «Сантехника») уже даёт контекст.
             Карточки full-width (без mx, без border), между ними hairline-
@@ -426,10 +446,7 @@ export default function CategoryDetailScreen() {
               id: s.id,
               title: s.name_ru,
               icon: colorUrl ? (
-                <Image
-                  source={{ uri: colorUrl }}
-                  style={{ width: 22, height: 22 }}
-                />
+                <Image source={{ uri: colorUrl }} style={{ width: 22, height: 22 }} />
               ) : (
                 <ListChecks size={18} weight="bold" color={tc.mute} />
               ),
@@ -519,12 +536,7 @@ function CategorySkeleton({
 
       <View className="px-5" style={{ marginTop: 28 }}>
         {[0, 1, 2].map((i) => (
-          <View
-            // biome-ignore lint/suspicious/noArrayIndexKey: статичный скелет
-            key={i}
-            className="flex-row gap-3"
-            style={{ marginTop: i === 0 ? 0 : 28 }}
-          >
+          <View key={i} className="flex-row gap-3" style={{ marginTop: i === 0 ? 0 : 28 }}>
             <Skeleton circle size={64} />
             <View className="flex-1">
               <Skeleton height={18} width="55%" style={{ borderRadius: 6 }} />
@@ -595,13 +607,7 @@ function FilterChip({
   );
 }
 
-function MasterRow({
-  master,
-  onPress,
-}: {
-  master: MasterInCategory;
-  onPress: () => void;
-}) {
+function MasterRow({ master, onPress }: { master: MasterInCategory; onPress: () => void }) {
   const u = master.user;
   // Размер мини-thumb адаптируется под ширину экрана, чтобы 5 фото всегда
   // помещались в карточке. Card padding px-5 (40 total), gap-1.5 между
@@ -652,185 +658,185 @@ function MasterRow({
       accessibilityLabel={fullName}
       className="px-5 py-5 active:bg-canvas-soft-2"
     >
-      <>
-        {/* Header row: компактный avatar 64px + имя + meta. Паттерн TaskRabbit
+      {/* Header row: компактный avatar 64px + имя + meta. Паттерн TaskRabbit
             «Select-a-Tasker»: маленькая аватарка слева, дальше плотная мета.
             Фото-портфолио показываем ниже как proof-of-skill, не как hero.
             Фидбэк user 2026-05-20: «слишком большое место для фото, аватар
             96px — слишком крупно для карточки списка». */}
-        <View className="flex-row gap-3">
-          <Avatar url={u.avatar_url} name={fullName} seed={u.id} size="lg" />
-          <View className="flex-1">
-            {/* Имя + chip готовности (h-6, text-caption=12px) */}
-            <View className="flex-row items-center gap-2">
-              <AppText weight="semibold" className="text-ink text-body-lg flex-shrink" numberOfLines={1}>
-                {fullName}
-              </AppText>
-              {(() => {
-                const status = effectiveStatus(
-                  profile?.availability_status ?? null,
-                  profile?.availability_until ?? null,
-                );
-                if (!isAvailabilityVisible(status)) return null;
-                return (
+      <View className="flex-row gap-3">
+        <Avatar url={u.avatar_url} name={fullName} seed={u.id} size="lg" />
+        <View className="flex-1">
+          {/* Имя + chip готовности (h-6, text-caption=12px) */}
+          <View className="flex-row items-center gap-2">
+            <AppText
+              weight="semibold"
+              className="text-ink text-body-lg flex-shrink"
+              numberOfLines={1}
+            >
+              {fullName}
+            </AppText>
+            {(() => {
+              const status = effectiveStatus(
+                profile?.availability_status ?? null,
+                profile?.availability_until ?? null,
+              );
+              if (!isAvailabilityVisible(status)) return null;
+              return (
+                <View
+                  className="flex-row items-center gap-1.5 h-6 px-2 rounded-full"
+                  style={{ backgroundColor: `${AVAILABILITY_DOT[status]}22` }}
+                >
                   <View
-                    className="flex-row items-center gap-1.5 h-6 px-2 rounded-full"
-                    style={{ backgroundColor: `${AVAILABILITY_DOT[status]}22` }}
+                    style={{
+                      width: 6,
+                      height: 6,
+                      borderRadius: 3,
+                      backgroundColor: AVAILABILITY_DOT[status],
+                    }}
+                  />
+                  <AppText
+                    weight="medium"
+                    className="text-caption"
+                    style={{ color: AVAILABILITY_DOT[status] }}
                   >
-                    <View
-                      style={{
-                        width: 6,
-                        height: 6,
-                        borderRadius: 3,
-                        backgroundColor: AVAILABILITY_DOT[status],
-                      }}
-                    />
-                    <AppText
-                      weight="medium"
-                      className="text-caption"
-                      style={{ color: AVAILABILITY_DOT[status] }}
-                    >
-                      {AVAILABILITY_SHORT[status]}
-                    </AppText>
-                  </View>
-                );
-              })()}
-            </View>
+                    {AVAILABILITY_SHORT[status]}
+                  </AppText>
+                </View>
+              );
+            })()}
+          </View>
 
-            {/* Мета-строка. Фидбэк user 2026-05-20: «если отзывов нет —
+          {/* Мета-строка. Фидбэк user 2026-05-20: «если отзывов нет —
                 ничего не показывать». Раньше выводилось «★ Без отзывов»
                 (паттерн Avito), что создавало визуальный шум и негативный
                 сигнал у новичков. Теперь rating-блок просто отсутствует
                 при ratingCount === 0 (паттерн Airbnb/Booking/TaskRabbit).
                 Опыт и город всегда видны если есть данные. */}
-            <View className="flex-row flex-wrap items-center gap-x-3 gap-y-1 mt-1.5">
-              {accountBadge ? (
-                <View className="flex-row items-center gap-1">
-                  <Users size={13} weight="bold" color="currentColor" className="text-mute" />
-                  <AppText className="text-mute text-caption">{accountBadge}</AppText>
-                </View>
-              ) : null}
+          <View className="flex-row flex-wrap items-center gap-x-3 gap-y-1 mt-1.5">
+            {accountBadge ? (
+              <View className="flex-row items-center gap-1">
+                <Users size={13} weight="bold" color="currentColor" className="text-mute" />
+                <AppText className="text-mute text-caption">{accountBadge}</AppText>
+              </View>
+            ) : null}
 
-              {rating !== null && ratingCount > 0 ? (
-                <View className="flex-row items-center gap-1">
-                  <Star size={13} weight="fill" color="currentColor" className="text-ink" />
-                  <AppText weight="mono" className="text-ink text-mono-caption">
-                    {rating.toFixed(1)}
-                  </AppText>
-                  <AppText weight="mono" className="text-mute text-mono-caption">
-                    ({ratingCount})
-                  </AppText>
-                </View>
-              ) : null}
+            {rating !== null && ratingCount > 0 ? (
+              <View className="flex-row items-center gap-1">
+                <Star size={13} weight="fill" color="currentColor" className="text-ink" />
+                <AppText weight="mono" className="text-ink text-mono-caption">
+                  {rating.toFixed(1)}
+                </AppText>
+                <AppText weight="mono" className="text-mute text-mono-caption">
+                  ({ratingCount})
+                </AppText>
+              </View>
+            ) : null}
 
-              {experience !== null && experience > 0 ? (
-                <View className="flex-row items-center gap-1">
-                  <Briefcase size={13} weight="bold" color="currentColor" className="text-mute" />
-                  <AppText className="text-mute text-caption">
-                    {pluralizeYears(experience)} опыта
-                  </AppText>
-                </View>
-              ) : null}
+            {experience !== null && experience > 0 ? (
+              <View className="flex-row items-center gap-1">
+                <Briefcase size={13} weight="bold" color="currentColor" className="text-mute" />
+                <AppText className="text-mute text-caption">
+                  {pluralizeYears(experience)} опыта
+                </AppText>
+              </View>
+            ) : null}
 
-              {cityName ? (
-                <View className="flex-row items-center gap-1">
-                  <MapPin size={13} weight="bold" color="currentColor" className="text-mute" />
-                  <AppText className="text-mute text-caption">{cityName}</AppText>
-                </View>
-              ) : null}
-            </View>
+            {cityName ? (
+              <View className="flex-row items-center gap-1">
+                <MapPin size={13} weight="bold" color="currentColor" className="text-mute" />
+                <AppText className="text-mute text-caption">{cityName}</AppText>
+              </View>
+            ) : null}
           </View>
         </View>
-        {/* Bio — full-width, от левого края (не из правой колонки).
+      </View>
+      {/* Bio — full-width, от левого края (не из правой колонки).
             16px (body-md) — фидбэк user 2026-05-14 «14px мелко не читается». */}
-        {profile?.bio ? (
-          <AppText className="text-body text-body-md mt-3" numberOfLines={3}>
-            {profile.bio}
-          </AppText>
-        ) : null}
-        {/* Услуги мастера с ценами — топ-3. Формат «от X до Y ₽» / «X ₽».
+      {profile?.bio ? (
+        <AppText className="text-body text-body-md mt-3" numberOfLines={3}>
+          {profile.bio}
+        </AppText>
+      ) : null}
+      {/* Услуги мастера с ценами — топ-3. Формат «от X до Y ₽» / «X ₽».
             Unit показываем только если значимый (м² / час / день) — для
             per_task «за работу» опускаем (понятно по контексту).
             Текст услуги body-sm (14px), цена mono-sm (~13px) — фидбэк user
             2026-05-15 «сделай шрифт этого блока на три пикселя меньше».
             Раньше body-md/mono-md (16px) был визуально равен bio и забирал
             внимание. */}
-        {topServices.length > 0 ? (
-          <View className="mt-3 gap-1">
-            {topServices.map((s) => {
-              // formatServicePrice (helper из use-master-services) сам обрабатывает
-              // pricing_kind: 'quote' → «Договорная»; 'hourly' → «X ₽ / час»;
-              // 'fixed' → «X ₽ · за работу»; 'range' → «X–Y ₽ · за работу».
-              const priceText = formatServicePrice(s);
-              return (
-                <View key={s.id} className="flex-row items-center justify-between gap-2">
-                  <AppText className="text-body text-body-sm flex-1" numberOfLines={1}>
-                    {s.title}
-                  </AppText>
-                  <AppText weight="mono" className="text-ink text-mono-sm">
-                    {priceText}
-                  </AppText>
-                </View>
-              );
-            })}
-          </View>
-        ) : null}
-        {/* Превью портфолио — фиксированные 80×80 миниатюры в ряд.
+      {topServices.length > 0 ? (
+        <View className="mt-3 gap-1">
+          {topServices.map((s) => {
+            // formatServicePrice (helper из use-master-services) сам обрабатывает
+            // pricing_kind: 'quote' → «Договорная»; 'hourly' → «X ₽ / час»;
+            // 'fixed' → «X ₽ · за работу»; 'range' → «X–Y ₽ · за работу».
+            const priceText = formatServicePrice(s);
+            return (
+              <View key={s.id} className="flex-row items-center justify-between gap-2">
+                <AppText className="text-body text-body-sm flex-1" numberOfLines={1}>
+                  {s.title}
+                </AppText>
+                <AppText weight="mono" className="text-ink text-mono-sm">
+                  {priceText}
+                </AppText>
+              </View>
+            );
+          })}
+        </View>
+      ) : null}
+      {/* Превью портфолио — фиксированные 80×80 миниатюры в ряд.
             Фидбэк user 2026-05-20: «слишком большое место для фото, пусть
             будут нормальные миниатюры». Раньше было flex:1 + aspectRatio:1
             — при 1-2 фото плашка растягивалась почти на полэкрана.
             Теперь чёткий thumbnail-ряд (паттерн Profi.ru/YouDo: proof-of-skill
             без претензии на hero). Если фото меньше 5 — пустые слоты не
             показываются. */}
-        {previewPhotos.length > 0 ? (
-          <View className="mt-3 flex-row gap-1.5">
-            {previewPhotos.map((p, i) => {
-              const isLastSlot = i === 4 && portfolioOverflow > 0;
-              return (
-                <Pressable
-                  key={p.id}
-                  accessibilityRole="button"
-                  accessibilityLabel={`Фото ${i + 1}`}
-                  onPress={onPress}
-                  style={{
-                    width: thumbSize,
-                    height: thumbSize,
-                    borderRadius: 8,
-                    overflow: "hidden",
-                    position: "relative",
-                  }}
-                  className="bg-canvas-soft active:opacity-70"
-                >
-                  {/* Mini-thumb — намеренно очень низкое качество (q=40, без
+      {previewPhotos.length > 0 ? (
+        <View className="mt-3 flex-row gap-1.5">
+          {previewPhotos.map((p, i) => {
+            const isLastSlot = i === 4 && portfolioOverflow > 0;
+            return (
+              <Pressable
+                key={p.id}
+                accessibilityRole="button"
+                accessibilityLabel={`Фото ${i + 1}`}
+                onPress={onPress}
+                style={{
+                  width: thumbSize,
+                  height: thumbSize,
+                  borderRadius: 8,
+                  overflow: "hidden",
+                  position: "relative",
+                }}
+                className="bg-canvas-soft active:opacity-70"
+              >
+                {/* Mini-thumb — намеренно очень низкое качество (q=40, без
                       2x retina) для fast first paint в ленте. Полноразмерные
                       фото открываются в профиле мастера / лайтбоксе. */}
-                  <Image
-                    source={{ uri: cdnImage(p.url, { width: thumbSize, dpr: 1, quality: 40 }) }}
-                    style={{ width: "100%", height: "100%" }}
-                    resizeMode="cover"
-                  />
-                  {isLastSlot ? (
-                    <View
-                      className="absolute inset-0 items-center justify-center bg-black/55"
-                    >
-                      <AppText weight="semibold" className="text-on-primary text-body-sm">
-                        +{portfolioOverflow}
-                      </AppText>
-                    </View>
-                  ) : null}
-                </Pressable>
-              );
-            })}
-          </View>
-        ) : null}
-        {/* Кнопки «Позвонить» / «WhatsApp» удалены 2026-05-27 (решение
+                <Image
+                  source={{ uri: cdnImage(p.url, { width: thumbSize, dpr: 1, quality: 40 }) }}
+                  style={{ width: "100%", height: "100%" }}
+                  resizeMode="cover"
+                />
+                {isLastSlot ? (
+                  <View className="absolute inset-0 items-center justify-center bg-black/55">
+                    <AppText weight="semibold" className="text-on-primary text-body-sm">
+                      +{portfolioOverflow}
+                    </AppText>
+                  </View>
+                ) : null}
+              </Pressable>
+            );
+          })}
+        </View>
+      ) : null}
+      {/* Кнопки «Позвонить» / «WhatsApp» удалены 2026-05-27 (решение
             владельца). handleContact и так вёл на профиль (а не на phone://),
             то есть кнопки были визуально дублем — карточка целиком Pressable
             и ведёт туда же. Кроме того кнопки нарушали privacy-модель «номер
             скрыт» (Apple ревьюер мог подумать, что номер раздаётся в ленте без
             отклика). Реальные контакты с мастером — после создания заказа
             и отклика, либо со страницы мастера через LoginWall. */}
-      </>
     </Pressable>
   );
 }
@@ -845,13 +851,8 @@ function MasterRow({
 const GALLERY_W = 140;
 const GALLERY_H = 140; // square (фидбэк user 2026-05-14)
 
-function MasterRowGallery({
-  master,
-  onPress,
-}: {
-  master: MasterInCategory;
-  onPress: () => void;
-}) {
+// biome-ignore lint/correctness/noUnusedVariables: alternate gallery card is intentionally retained until the upcoming catalog redesign decision
+function MasterRowGallery({ master, onPress }: { master: MasterInCategory; onPress: () => void }) {
   const u = master.user;
   const profile = master.profile;
   const cityName = master.city?.name ?? null;
@@ -911,11 +912,7 @@ function MasterRowGallery({
             mt-2 между «верхом» (имя+статус) и мета-группой даёт правильный воздух. */}
         <View style={{ flex: 1 }}>
           {/* Имя */}
-          <AppText
-            weight="semibold"
-            className="text-ink text-body-lg"
-            numberOfLines={1}
-          >
+          <AppText weight="semibold" className="text-ink text-body-lg" numberOfLines={1}>
             {fullName}
           </AppText>
 

@@ -32,12 +32,12 @@ export interface RegisterInput {
 /** Регистрация: почта + пароль (auth) + телефон (профиль). */
 export function useRegister() {
   return useMutation({
-    mutationFn: async (input: RegisterInput): Promise<{ ok: true }> => {
+    mutationFn: async (input: RegisterInput): Promise<{ ok: true; userId: string }> => {
       const result = await registerWithCredentials(input);
       if (!result.ok) {
         throw new Error(result.error);
       }
-      return { ok: true };
+      return { ok: true, userId: result.userId };
     },
   });
 }
@@ -51,12 +51,12 @@ export interface LoginInput {
 /** Вход по «почта ИЛИ телефон» + пароль. */
 export function useLogin() {
   return useMutation({
-    mutationFn: async (input: LoginInput): Promise<{ ok: true }> => {
+    mutationFn: async (input: LoginInput): Promise<{ ok: true; userId: string }> => {
       const result = await loginWithCredentials(input);
       if (!result.ok) {
         throw new Error(result.error);
       }
-      return { ok: true };
+      return { ok: true, userId: result.userId };
     },
   });
 }

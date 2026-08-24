@@ -46,10 +46,7 @@ const PORTFOLIO_MIN_ASPECT = 0.5; // 1:2 — всё что у́же → обре
 const PORTFOLIO_MAX_ASPECT = 2.0; // 2:1 — всё что шире → обрезать
 const PORTFOLIO_TARGET_ASPECT = 4 / 5; // 0.8 — после crop'а так
 
-function maybeCropAction(
-  width: number,
-  height: number,
-): ImageManipulator.Action | null {
+function maybeCropAction(width: number, height: number): ImageManipulator.Action | null {
   if (width <= 0 || height <= 0) return null;
   const aspect = width / height;
   if (aspect >= PORTFOLIO_MIN_ASPECT && aspect <= PORTFOLIO_MAX_ASPECT) {
@@ -435,9 +432,7 @@ function randomId(): string {
  *  функция вызывала `launchImageLibraryAsync` напрямую — на сайте это работало
  *  ненадёжно (как у заказов до унификации). Камера multi-select не умеет,
  *  поэтому всегда галерея/файлы. */
-export async function pickMultiplePortfolioImages(
-  maxCount: number,
-): Promise<PickedImage[]> {
+export async function pickMultiplePortfolioImages(maxCount: number): Promise<PickedImage[]> {
   return pickMultipleImages(maxCount);
 }
 
@@ -470,9 +465,7 @@ export async function uploadPortfolioBatch(
     concurrency?: number;
     onProgress?: (done: number, total: number) => void;
   },
-): Promise<
-  Array<{ ok: true; path: string; publicUrl: string } | { ok: false; error: string }>
-> {
+): Promise<Array<{ ok: true; path: string; publicUrl: string } | { ok: false; error: string }>> {
   const concurrency = opts?.concurrency ?? 3;
   const results: Array<
     { ok: true; path: string; publicUrl: string } | { ok: false; error: string }
@@ -500,10 +493,7 @@ export async function uploadPortfolioBatch(
     }
   }
 
-  const workers = Array.from(
-    { length: Math.min(concurrency, items.length) },
-    () => worker(),
-  );
+  const workers = Array.from({ length: Math.min(concurrency, items.length) }, () => worker());
   await Promise.all(workers);
   return results;
 }
@@ -649,9 +639,7 @@ export async function uploadOrderPhotosBatch(
     concurrency?: number;
     onProgress?: (done: number, total: number) => void;
   },
-): Promise<
-  Array<{ ok: true; path: string; publicUrl: string } | { ok: false; error: string }>
-> {
+): Promise<Array<{ ok: true; path: string; publicUrl: string } | { ok: false; error: string }>> {
   const concurrency = opts?.concurrency ?? 3;
   const results: Array<
     { ok: true; path: string; publicUrl: string } | { ok: false; error: string }
@@ -676,10 +664,7 @@ export async function uploadOrderPhotosBatch(
     }
   }
 
-  const workers = Array.from(
-    { length: Math.min(concurrency, items.length) },
-    () => worker(),
-  );
+  const workers = Array.from({ length: Math.min(concurrency, items.length) }, () => worker());
   await Promise.all(workers);
   return results;
 }

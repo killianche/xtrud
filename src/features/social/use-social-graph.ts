@@ -54,7 +54,10 @@ export function useVouchesCount(targetUserId: string | null | undefined) {
   });
 }
 
-export function useMyVouchFor(voucherId: string | null | undefined, voucheeId: string | null | undefined) {
+export function useMyVouchFor(
+  voucherId: string | null | undefined,
+  voucheeId: string | null | undefined,
+) {
   return useQuery<boolean>({
     queryKey: myVouchKey(voucherId ?? undefined, voucheeId ?? undefined),
     queryFn: async () => {
@@ -113,10 +116,7 @@ export function useToggleVouch() {
 export function useImportContacts() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (input: {
-      userId: string;
-      contacts: { phone: string; name?: string }[];
-    }) => {
+    mutationFn: async (input: { userId: string; contacts: { phone: string; name?: string }[] }) => {
       // Сначала чистим прошлый импорт чтобы избежать stale records
       const { error: delErr } = await supabase
         .from("user_contacts")
@@ -140,7 +140,7 @@ export function useImportContacts() {
       }
       return rows.length;
     },
-    onSuccess: (_data, vars) => {
+    onSuccess: (_data, _vars) => {
       qc.invalidateQueries({ queryKey: ["common-contacts"] });
     },
   });

@@ -17,9 +17,9 @@ import { AppText } from "@/components/AppText";
 import { EmptyState } from "@/components/EmptyState";
 import { useAuthSession } from "@/features/auth/use-auth-session";
 import { useUserRecord } from "@/features/auth/use-user-record";
-import type { IconComponent } from "@/types/icon";
 import { useSafeBack } from "@/lib/use-safe-back";
 import { useThemeColors } from "@/lib/use-theme-color";
+import type { IconComponent } from "@/types/icon";
 
 interface HubCardProps {
   icon: IconComponent;
@@ -69,7 +69,11 @@ export default function AdminHubScreen() {
         className="flex-1 items-center justify-center bg-canvas px-6"
         style={{ paddingTop: insets.top }}
       >
-        <EmptyState icon={Warning} title="Доступ запрещён" hint="Эта страница только для админов." />
+        <EmptyState
+          icon={Warning}
+          title="Доступ запрещён"
+          hint="Эта страница только для админов."
+        />
         <Pressable
           accessibilityRole="button"
           onPress={goBack}

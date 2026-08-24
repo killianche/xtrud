@@ -219,20 +219,14 @@ export function formatServicePrice(service: {
     const value = service.price_max ?? service.price_min;
     if (value == null) return "Договорная";
     const base = `до ${formatPrice(value)}`;
-    return service.unit === "per_task"
-      ? base
-      : `${base} · ${SERVICE_UNIT_LABELS[service.unit]}`;
+    return service.unit === "per_task" ? base : `${base} · ${SERVICE_UNIT_LABELS[service.unit]}`;
   }
 
   // fixed / from / range (legacy) — все смотрят на price_min.
   if (service.price_min == null) return "Договорная";
   const base =
-    kind === "fixed"
-      ? formatPrice(service.price_min)
-      : `от ${formatPrice(service.price_min)}`;
-  return service.unit === "per_task"
-    ? base
-    : `${base} · ${SERVICE_UNIT_LABELS[service.unit]}`;
+    kind === "fixed" ? formatPrice(service.price_min) : `от ${formatPrice(service.price_min)}`;
+  return service.unit === "per_task" ? base : `${base} · ${SERVICE_UNIT_LABELS[service.unit]}`;
 }
 
 function formatPrice(value: number): string {

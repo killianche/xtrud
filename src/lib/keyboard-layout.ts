@@ -79,5 +79,5 @@ export function looksLikeWrongLayout(input: string): boolean {
   // Если в строке есть кириллица — скорее всего раскладка правильная.
   if (/[а-яА-ЯёЁ]/.test(input)) return false;
   // Только латиница + пробелы/цифры? Возможно, нужный flip.
-  return /^[a-zA-Z0-9\s\[\]\\;',./`]+$/.test(input);
+  return /^[a-zA-Z0-9\s[\]\\;',./`]+$/.test(input);
 }

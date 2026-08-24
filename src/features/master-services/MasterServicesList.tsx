@@ -43,12 +43,7 @@ export function MasterServicesList({
     return (
       <View className={hideTitle ? "gap-2" : "mt-4 gap-2"}>
         {[0, 1, 2].map((i) => (
-          <Skeleton
-            key={i}
-            className="rounded-lg"
-            height={compact ? 44 : 60}
-            width="100%"
-          />
+          <Skeleton key={i} className="rounded-lg" height={compact ? 44 : 60} width="100%" />
         ))}
       </View>
     );
@@ -60,8 +55,7 @@ export function MasterServicesList({
 
   const visibleServices =
     compact && !expanded ? services.slice(0, COMPACT_PREVIEW_LIMIT) : services;
-  const remaining =
-    compact && !expanded ? services.length - visibleServices.length : 0;
+  const remaining = compact && !expanded ? services.length - visibleServices.length : 0;
 
   return (
     <View>
@@ -90,10 +84,7 @@ export function MasterServicesList({
             priceText = "Договорная";
           } else if (kind === "up_to") {
             const value = service.price_max ?? service.price_min;
-            priceText =
-              value == null
-                ? "Договорная"
-                : `до ${value.toLocaleString("ru-RU")} ₽`;
+            priceText = value == null ? "Договорная" : `до ${value.toLocaleString("ru-RU")} ₽`;
           } else if (kind === "fixed") {
             priceText =
               service.price_min == null
@@ -115,17 +106,11 @@ export function MasterServicesList({
                 className="flex-row items-center justify-between gap-3 border-b border-hairline-soft py-3"
               >
                 <View className="flex-1 min-w-0">
-                  <AppText
-                    weight="medium"
-                    className="text-ink text-body-md"
-                    numberOfLines={1}
-                  >
+                  <AppText weight="medium" className="text-ink text-body-md" numberOfLines={1}>
                     {service.title}
                   </AppText>
                   {unitText ? (
-                    <AppText className="mt-0.5 text-caption text-mute">
-                      {unitText}
-                    </AppText>
+                    <AppText className="mt-0.5 text-caption text-mute">{unitText}</AppText>
                   ) : null}
                 </View>
                 <AppText weight="mono" className="text-ink text-mono-sm">
@@ -151,9 +136,7 @@ export function MasterServicesList({
                 </AppText>
               </View>
               {unitText ? (
-                <AppText className="mt-1 text-caption text-mute">
-                  {unitText}
-                </AppText>
+                <AppText className="mt-1 text-caption text-mute">{unitText}</AppText>
               ) : null}
             </View>
           );

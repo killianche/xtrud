@@ -71,8 +71,7 @@ export function LocationPicker({
 
   useEffect(() => {
     if (!selectedLocation) return;
-    const changed =
-      selectedLocation.cityId !== cityId || selectedLocation.district !== district;
+    const changed = selectedLocation.cityId !== cityId || selectedLocation.district !== district;
     if (changed) {
       onChange({ cityId: selectedLocation.cityId, district: selectedLocation.district });
     }
@@ -85,8 +84,7 @@ export function LocationPicker({
       ? "Вся Ингушетия"
       : (cities?.find((c) => c.id === cityId)?.name ?? null);
   const triggerParts = [cityName, district].filter((s): s is string => !!s);
-  const triggerLabel =
-    triggerParts.length === 0 ? "Выберите локацию" : triggerParts.join(" · ");
+  const triggerLabel = triggerParts.length === 0 ? "Выберите локацию" : triggerParts.join(" · ");
   const isPlaceholder = triggerParts.length === 0;
 
   return (

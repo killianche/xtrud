@@ -37,8 +37,8 @@ import { useRouter } from "expo-router";
 import { Drop, Sparkle, Thermometer, UsersThree } from "phosphor-react-native";
 import { Pressable, View } from "react-native";
 import { AppText } from "@/components/AppText";
-import type { IconComponent } from "@/types/icon";
 import { useThemeColors } from "@/lib/use-theme-color";
+import type { IconComponent } from "@/types/icon";
 
 // 4 токена цвета глифов, которые резолвим разом. Сужаем тип iconToken до них,
 // чтобы индексация iconColors[...] была типобезопасной.
@@ -125,14 +125,8 @@ export function QuickServices({ onShowAll }: QuickServicesProps) {
             >
               {/* Tinted-плитка одного семейства: мягкий брендовый фон + чистый
                   Phosphor-глиф в тон. Цвет несёт плитка, глиф строгий. */}
-              <View
-                className={`h-16 w-16 items-center justify-center rounded-2xl ${s.tintBg}`}
-              >
-                <Icon
-                  size={28}
-                  weight="duotone"
-                  color={iconColors[s.iconToken]}
-                />
+              <View className={`h-16 w-16 items-center justify-center rounded-2xl ${s.tintBg}`}>
+                <Icon size={28} weight="duotone" color={iconColors[s.iconToken]} />
               </View>
               <AppText
                 weight="medium"

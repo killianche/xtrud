@@ -66,13 +66,12 @@ interface MasterRecommendationsSectionProps {
 // по моим категориям, без откликов), просто увеличили лимит.
 const MAX_ITEMS = 10;
 
-export function MasterRecommendationsSection({
-  userId,
-}: MasterRecommendationsSectionProps) {
+export function MasterRecommendationsSection({ userId }: MasterRecommendationsSectionProps) {
   const router = useRouter();
 
-  const { recommendations, isLoading, hasCategories, respondedOrderIds } =
-    useMasterRecommendations({ userId, filter: "all", max: MAX_ITEMS });
+  const { recommendations, isLoading, hasCategories, respondedOrderIds } = useMasterRecommendations(
+    { userId, filter: "all", max: MAX_ITEMS },
+  );
 
   // Animated fade-in (тот же паттерн, что в соседних секциях).
   const opacity = useRef(new Animated.Value(0)).current;

@@ -20,10 +20,10 @@
  *   ?l2=<id>  — какую L2 открыть сразу. Если нет — chip-row из my-categories.
  */
 
+import { Image } from "expo-image";
 import { useLocalSearchParams } from "expo-router";
 import { CaretLeft, Check, Plus, X } from "phosphor-react-native";
 import { useMemo, useState } from "react";
-import { Image } from "expo-image";
 import { Pressable, ScrollView, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
@@ -65,7 +65,7 @@ export default function ServicesSuggestScreen() {
 
   const myCats = useMyMasterCategories(userId ?? undefined);
   const [activeL2, setActiveL2] = useState<string | null>(initialL2);
-  const resolvedL2 = activeL2 ?? (myCats.data && myCats.data[0]?.l2_id) ?? null;
+  const resolvedL2 = activeL2 ?? myCats.data?.[0]?.l2_id ?? null;
 
   const l3s = useCategoriesL3ByL2(resolvedL2);
   const upsert = useUpsertMasterService(userId);
@@ -363,9 +363,7 @@ export default function ServicesSuggestScreen() {
                         isSel ? "bg-ink" : "border border-hairline-strong"
                       }`}
                     >
-                      {isSel ? (
-                        <Check size={16} weight="bold" color={tc["on-primary"]} />
-                      ) : null}
+                      {isSel ? <Check size={16} weight="bold" color={tc["on-primary"]} /> : null}
                     </View>
                   </Pressable>
 
@@ -382,9 +380,7 @@ export default function ServicesSuggestScreen() {
                               accessibilityState={{ selected: active }}
                               onPress={() => updateKind(l3.id, k)}
                               className={`h-8 px-3 items-center justify-center rounded-full border ${
-                                active
-                                  ? "border-ink bg-ink"
-                                  : "border-hairline bg-canvas"
+                                active ? "border-ink bg-ink" : "border-hairline bg-canvas"
                               }`}
                             >
                               <AppText

@@ -16,11 +16,17 @@
  */
 
 import { useRouter } from "expo-router";
-import { Briefcase, CaretRight, CheckCircle, CircleDashed, ImageSquare } from "phosphor-react-native";
+import {
+  Briefcase,
+  CaretRight,
+  CheckCircle,
+  CircleDashed,
+  ImageSquare,
+} from "phosphor-react-native";
 import { Pressable, View } from "react-native";
 import { AppText } from "@/components/AppText";
-import { useThemeColors } from "@/lib/use-theme-color";
 import type { MasterPublishProgress } from "@/features/master-view/use-master-publish-progress";
+import { useThemeColors } from "@/lib/use-theme-color";
 
 interface RowProps {
   done: boolean;
@@ -46,10 +52,7 @@ function ChecklistRow({ done, title, hint, onPress, Icon }: RowProps) {
         )}
       </View>
       <View className="flex-1">
-        <AppText
-          weight="semibold"
-          className={`text-body-md ${done ? "text-mute" : "text-ink"}`}
-        >
+        <AppText weight="semibold" className={`text-body-md ${done ? "text-mute" : "text-ink"}`}>
           {title}
         </AppText>
         <AppText className="mt-0.5 text-caption text-mute">{hint}</AppText>
@@ -113,9 +116,7 @@ export function MasterPublishChecklist({ progress }: MasterPublishChecklistProps
           title="Укажите опыт работы"
           hint={
             progress.experienceYears && progress.experienceYears > 0
-              ? `${progress.experienceYears} ${
-                  progress.experienceYears === 1 ? "год" : "лет"
-                }`
+              ? `${progress.experienceYears} ${progress.experienceYears === 1 ? "год" : "лет"}`
               : "Сколько лет вы в профессии"
           }
           Icon={Briefcase}
@@ -128,8 +129,7 @@ export function MasterPublishChecklist({ progress }: MasterPublishChecklistProps
           (MASTER_RANKING_PLAN.md §3.5 — прозрачность для мастера). */}
       <View className="mt-3 border-t border-hairline pt-3">
         <AppText className="text-caption text-mute" style={{ lineHeight: 18 }}>
-          Нажимайте «Готов сегодня» и отвечайте на заказы — активные мастера
-          показываются выше.
+          Нажимайте «Готов сегодня» и отвечайте на заказы — активные мастера показываются выше.
         </AppText>
       </View>
     </View>

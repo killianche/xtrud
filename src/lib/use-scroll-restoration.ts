@@ -42,11 +42,7 @@
 
 import { useFocusEffect, usePathname } from "expo-router";
 import { useCallback, useRef } from "react";
-import type {
-  NativeScrollEvent,
-  NativeSyntheticEvent,
-  ScrollView,
-} from "react-native";
+import type { NativeScrollEvent, NativeSyntheticEvent, ScrollView } from "react-native";
 
 // Сохранённые offset'ы, keyed by route. Module-level → переживают remount экрана.
 const savedOffsets = new Map<string, number>();

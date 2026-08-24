@@ -29,17 +29,17 @@ import {
 import { useEffect, useMemo, useRef } from "react";
 import { Pressable, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { scrollViewToTop, useTabScrollResetCounter } from "@/lib/tab-scroll-reset";
 import { AppText } from "@/components/AppText";
 import { OrderRow } from "@/components/OrderRow";
 import { OrderRowsSkeleton } from "@/components/OrderRowsSkeleton";
 import { ScreenHeader } from "@/components/ui";
 import { useAuthSession } from "@/features/auth/use-auth-session";
 import { useUserRecord } from "@/features/auth/use-user-record";
-import { useMyOrders, type OrderWithRefs } from "@/features/orders/use-my-orders";
+import { type OrderWithRefs, useMyOrders } from "@/features/orders/use-my-orders";
 import { usePullToRefresh } from "@/hooks/use-pull-to-refresh";
-import type { IconComponent } from "@/types/icon";
+import { scrollViewToTop, useTabScrollResetCounter } from "@/lib/tab-scroll-reset";
 import { useThemeColors } from "@/lib/use-theme-color";
+import type { IconComponent } from "@/types/icon";
 
 type OrderTab = "active" | "done";
 

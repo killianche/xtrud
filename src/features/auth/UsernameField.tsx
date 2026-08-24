@@ -84,11 +84,7 @@ export function UsernameField({
   }
 
   const hintColorClass =
-    hint?.tone === "success"
-      ? "text-success"
-      : hint?.tone === "error"
-        ? "text-error"
-        : "text-mute";
+    hint?.tone === "success" ? "text-success" : hint?.tone === "error" ? "text-error" : "text-mute";
 
   // Статус-иконка справа — общая для обоих вариантов.
   const statusIcon =
@@ -125,7 +121,14 @@ export function UsernameField({
               editable={editable}
               maxFontSizeMultiplier={1.3}
               className="ml-0.5 flex-1 text-body-md text-ink"
-              style={{ color: tc.ink, outlineWidth: 0, outlineStyle: "none", paddingVertical: 4 } as object}
+              style={
+                {
+                  color: tc.ink,
+                  outlineWidth: 0,
+                  outlineStyle: "none",
+                  paddingVertical: 4,
+                } as object
+              }
             />
           </View>
           {statusIcon}
@@ -140,11 +143,7 @@ export function UsernameField({
   }
 
   // ── Вариант "boxed" (default) — отдельная карточка для экранов регистрации. ──
-  const borderClass = isFree
-    ? "border-success"
-    : isTaken
-      ? "border-error"
-      : "border-hairline";
+  const borderClass = isFree ? "border-success" : isTaken ? "border-error" : "border-hairline";
 
   return (
     <View>

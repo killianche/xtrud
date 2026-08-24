@@ -10,7 +10,7 @@
  *
  * Использование:
  *   <XtrudLogo size={28} />          // ink на canvas-фоне (default)
- *   <XtrudLogo size={28} color="#fff" />  // на тёмном фоне
+ *   <XtrudLogo size={28} color={onDarkColor} />  // на тёмном фоне
  */
 
 import { G, Path, Svg } from "react-native-svg";
@@ -36,11 +36,7 @@ export function XtrudLogo({ size = 28, color }: XtrudLogoProps) {
   const fill = color ?? ink ?? "#171717";
   return (
     <Svg width={size} height={size} viewBox="0 0 1400 1400">
-      <G
-        transform="translate(0,1400) scale(0.1,-0.1)"
-        fill={fill}
-        stroke="none"
-      >
+      <G transform="translate(0,1400) scale(0.1,-0.1)" fill={fill} stroke="none">
         <Path d={LOGO_PATH} />
       </G>
     </Svg>

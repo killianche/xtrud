@@ -11,7 +11,7 @@
  */
 
 import { useLocalSearchParams } from "expo-router";
-import { CheckCircle, WarningCircle, MapPin } from "phosphor-react-native";
+import { CheckCircle, WarningCircle } from "phosphor-react-native";
 import { useMemo } from "react";
 import { ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";

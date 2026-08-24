@@ -26,14 +26,12 @@ interface DescribeTaskIllustrationProps {
   size?: number;
 }
 
-export function DescribeTaskIllustration({
-  size = 220,
-}: DescribeTaskIllustrationProps) {
-  const { ink, link, "hairline-strong": hairlineStrong } = useThemeColors([
-    "ink",
-    "link",
-    "hairline-strong",
-  ]);
+export function DescribeTaskIllustration({ size = 220 }: DescribeTaskIllustrationProps) {
+  const {
+    ink,
+    link,
+    "hairline-strong": hairlineStrong,
+  } = useThemeColors(["ink", "link", "hairline-strong"]);
 
   return (
     <Svg width={size} height={size} viewBox="0 0 200 200" fill="none">
@@ -51,15 +49,9 @@ export function DescribeTaskIllustration({
       {/* === Лист бумаги (бриф задачи) === */}
       <G stroke={ink} strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
         {/* Контур листа — слегка наклонён, как лежит на столе */}
-        <Path
-          d="M 60 36 L 145 36 L 145 158 L 60 158 Z"
-          transform="rotate(-3 102 97)"
-        />
+        <Path d="M 60 36 L 145 36 L 145 158 L 60 158 Z" transform="rotate(-3 102 97)" />
         {/* Загнутый уголок — деталь, делает лист «бумажным» */}
-        <Path
-          d="M 135 36 L 145 46 L 135 46 Z"
-          transform="rotate(-3 102 97)"
-        />
+        <Path d="M 135 36 L 145 46 L 135 46 Z" transform="rotate(-3 102 97)" />
       </G>
 
       {/* === Заголовок задачи (3 коротких штриха-текстовых строки) === */}
@@ -73,15 +65,7 @@ export function DescribeTaskIllustration({
       <G stroke={link} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
         <Path d="M 70 84 L 74 88 L 82 80" transform="rotate(-3 102 97)" />
       </G>
-      <Line
-        x1="88"
-        y1="83"
-        x2="135"
-        y2="80"
-        stroke={ink}
-        strokeWidth={1.5}
-        strokeLinecap="round"
-      />
+      <Line x1="88" y1="83" x2="135" y2="80" stroke={ink} strokeWidth={1.5} strokeLinecap="round" />
 
       {/* Пункт 2 — выполнен (accent checkmark) */}
       <G stroke={link} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
@@ -99,14 +83,7 @@ export function DescribeTaskIllustration({
 
       {/* Пункт 3 — пустой чек-бокс (ещё не отмечен) */}
       <G stroke={ink} strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
-        <Rect
-          x="68"
-          y="119"
-          width="10"
-          height="10"
-          rx="1.5"
-          transform="rotate(-3 102 97)"
-        />
+        <Rect x="68" y="119" width="10" height="10" rx="1.5" transform="rotate(-3 102 97)" />
       </G>
       <Line
         x1="88"

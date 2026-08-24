@@ -73,8 +73,7 @@ export function useMasterPublishProgress(userId: string | null | undefined, enab
       const portfolioOk = portfolioCount >= PORTFOLIO_REQUIRED;
       const categoryOk = categoryCount >= CATEGORY_REQUIRED;
       const experienceOk = experienceYears != null && experienceYears > 0;
-      const doneCount =
-        (portfolioOk ? 1 : 0) + (categoryOk ? 1 : 0) + (experienceOk ? 1 : 0);
+      const doneCount = (portfolioOk ? 1 : 0) + (categoryOk ? 1 : 0) + (experienceOk ? 1 : 0);
 
       return {
         portfolioCount,

@@ -9,7 +9,7 @@
  */
 
 import { forwardRef, type ReactNode } from "react";
-import { TextInput, View, type TextInputProps } from "react-native";
+import { TextInput, type TextInputProps, View } from "react-native";
 import { AppText } from "@/components/AppText";
 
 export type InputSize = "sm" | "md" | "lg";
@@ -23,7 +23,10 @@ export interface InputProps extends Omit<TextInputProps, "style"> {
   error?: string;
 }
 
-const SIZE_MAP: Record<InputSize, { height: number; paddingX: number; textSize: 14 | 16; iconGap: number }> = {
+const SIZE_MAP: Record<
+  InputSize,
+  { height: number; paddingX: number; textSize: 14 | 16; iconGap: number }
+> = {
   sm: { height: 32, paddingX: 10, textSize: 14, iconGap: 6 },
   md: { height: 40, paddingX: 12, textSize: 14, iconGap: 8 },
   lg: { height: 48, paddingX: 14, textSize: 16, iconGap: 10 },
@@ -44,7 +47,11 @@ export const Input = forwardRef<TextInput, InputProps>(function Input(
   return (
     <View>
       {label ? (
-        <AppText weight="medium" className="text-ink" style={{ fontSize: 14, lineHeight: 20, marginBottom: 6 }}>
+        <AppText
+          weight="medium"
+          className="text-ink"
+          style={{ fontSize: 14, lineHeight: 20, marginBottom: 6 }}
+        >
           {label}
         </AppText>
       ) : null}

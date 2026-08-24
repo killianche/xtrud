@@ -7,9 +7,9 @@
 
 import { z } from "zod";
 import {
+  findDistrictByVillage as _findDistrictByVillage,
   ALL_INGUSHETIA_CITY_ID,
   districtNames,
-  findDistrictByVillage as _findDistrictByVillage,
   isDistrictName,
   villagesByDistrict,
 } from "@/lib/location-config";

@@ -53,10 +53,7 @@ export function useUpdateOrder() {
         title: input.title,
         contact_name: trimmedName.length === 0 ? null : trimmedName,
         description: trimmedDesc.length === 0 ? null : trimmedDesc,
-        city_id:
-          input.cityId === ALL_INGUSHETIA_CITY || !input.cityId
-            ? null
-            : input.cityId,
+        city_id: input.cityId === ALL_INGUSHETIA_CITY || !input.cityId ? null : input.cityId,
         district: input.district || null,
         urgency: input.urgency,
         preferred_date: input.urgency === "by_date" ? (input.preferredDate ?? null) : null,

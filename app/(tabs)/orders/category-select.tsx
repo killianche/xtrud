@@ -17,9 +17,9 @@
  * /orders/new слушает store и применяет выбор в react-hook-form.
  */
 
+import { Image } from "expo-image";
 import { MagnifyingGlass, Sparkle, X } from "phosphor-react-native";
 import { useMemo, useRef, useState } from "react";
-import { Image } from "expo-image";
 import { Pressable, ScrollView, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
@@ -48,8 +48,8 @@ export default function CategorySelectScreen() {
   // Унифицированный «row»-формат для UI (L2 напрямую, L3 — через родительскую L2).
   type Row = {
     rowKey: string;
-    l2_id: string;             // что записываем в draft при тапе
-    name_ru: string;           // что показываем
+    l2_id: string; // что записываем в draft при тапе
+    name_ru: string; // что показываем
     parentName: string | null; // для L3 — имя родительской L2
     icon: string | null;
     isL3: boolean;
@@ -77,7 +77,7 @@ export default function CategorySelectScreen() {
       // При L3 → используем родительскую l2_id (для заказа клиент выбирает L2).
       l2_id: hit.l2_id,
       name_ru: hit.name_ru,
-      parentName: hit.kind === "l3" ? l2NameById.get(hit.l2_id) ?? null : null,
+      parentName: hit.kind === "l3" ? (l2NameById.get(hit.l2_id) ?? null) : null,
       // Иконка от L2 (у L3 в БД есть icon, но он не в наших lucide-mapping'ах).
       icon: categories.find((c) => c.id === hit.l2_id)?.icon ?? null,
       isL3: hit.kind === "l3",
@@ -177,9 +177,7 @@ export default function CategorySelectScreen() {
             const colorUrl = getCategoryColorIconUrl(row.l2_id);
             const Icon = getCategoryIcon(row.icon);
             // Highlight только когда query реально ввели (browse — без подсветки).
-            const segments = isSearching
-              ? highlightMatch(row.name_ru, query)
-              : null;
+            const segments = isSearching ? highlightMatch(row.name_ru, query) : null;
             return (
               <Pressable
                 key={row.rowKey}

@@ -126,9 +126,7 @@ export function PickerSheet({
     if (!showSearch || !query.trim()) return options;
     const q = query.trim().toLowerCase();
     return options.filter(
-      (o) =>
-        o.title.toLowerCase().includes(q) ||
-        (o.subtitle?.toLowerCase().includes(q) ?? false),
+      (o) => o.title.toLowerCase().includes(q) || (o.subtitle?.toLowerCase().includes(q) ?? false),
     );
   }, [options, query, showSearch]);
 
@@ -160,10 +158,7 @@ export function PickerSheet({
               {title}
             </AppText>
             {subtitle ? (
-              <AppText
-                className="mt-0.5 text-caption text-mute"
-                numberOfLines={1}
-              >
+              <AppText className="mt-0.5 text-caption text-mute" numberOfLines={1}>
                 {subtitle}
               </AppText>
             ) : null}
@@ -245,9 +240,7 @@ export function PickerSheet({
         >
           {filtered.length === 0 ? (
             <View className="px-5 pt-8 items-center">
-              <AppText className="text-body-sm text-mute">
-                Ничего не найдено
-              </AppText>
+              <AppText className="text-body-sm text-mute">Ничего не найдено</AppText>
             </View>
           ) : (
             filtered.map((opt) => {
@@ -284,10 +277,7 @@ export function PickerSheet({
                         {opt.title}
                       </AppText>
                       {opt.subtitle ? (
-                        <AppText
-                          className="mt-0.5 text-caption text-mute"
-                          numberOfLines={1}
-                        >
+                        <AppText className="mt-0.5 text-caption text-mute" numberOfLines={1}>
                           {opt.subtitle}
                         </AppText>
                       ) : null}

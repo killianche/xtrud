@@ -5,9 +5,17 @@
 //
 // Sprint 31.5.
 
-import { PencilSimple, ListPlus, Pencil, Plus, Sparkle, Trash } from "phosphor-react-native";
+import { ListPlus, Pencil, PencilSimple, Plus, Sparkle, Trash } from "phosphor-react-native";
 import { useEffect, useMemo, useState } from "react";
-import { ActivityIndicator, Alert, Modal, Pressable, ScrollView, TextInput, View } from "react-native";
+import {
+  ActivityIndicator,
+  Alert,
+  Modal,
+  Pressable,
+  ScrollView,
+  TextInput,
+  View,
+} from "react-native";
 import { AppText } from "@/components/AppText";
 import { EmptyState } from "@/components/EmptyState";
 import { useCategoriesL3ByL2 } from "@/features/categories/use-categories-l3-by-l2";
@@ -150,9 +158,7 @@ function ServiceRow({ service, onEdit, onDelete, errorColor, inkColor }: Service
         <AppText weight="semibold" className="text-body-md text-ink" numberOfLines={1}>
           {service.title}
         </AppText>
-        <AppText className="mt-0.5 text-caption text-muted">
-          {formatServicePrice(service)}
-        </AppText>
+        <AppText className="mt-0.5 text-caption text-muted">{formatServicePrice(service)}</AppText>
       </View>
       <Pressable
         accessibilityRole="button"
@@ -239,9 +245,7 @@ function ServiceFormContent({ initial, masterId, onClose }: ServiceFormContentPr
   // freeMode = режим "своя формулировка". При создании новой услуги по
   // умолчанию false (показываем готовый список); при редактировании — true,
   // если у legacy-записи нет l3_id (значит, мастер вписывал руками).
-  const [freeMode, setFreeMode] = useState<boolean>(
-    initial != null && initial.l3_id == null,
-  );
+  const [freeMode, setFreeMode] = useState<boolean>(initial != null && initial.l3_id == null);
   // priceValue — единое поле «цена» которое мастер вводит в форме. На submit
   // мы переносим его в price_min (для fixed/from/hourly/range) или price_max
   // (для up_to). Это упрощает UI: один input независимо от kind, label меняется.
@@ -255,9 +259,7 @@ function ServiceFormContent({ initial, masterId, onClose }: ServiceFormContentPr
   // priceMaxLegacy — только для редактирования legacy записей с kind='range'.
   // Новые kind=range создать нельзя (KIND_OPTIONS его не показывает).
   const [priceMaxLegacy, setPriceMaxLegacy] = useState(
-    initial?.pricing_kind === "range" && initial.price_max != null
-      ? String(initial.price_max)
-      : "",
+    initial?.pricing_kind === "range" && initial.price_max != null ? String(initial.price_max) : "",
   );
   const [unit, setUnit] = useState<ServiceUnit>(initial?.unit ?? "per_task");
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -440,42 +442,165 @@ function ServiceFormContent({ initial, masterId, onClose }: ServiceFormContentPr
           keyboardShouldPersistTaps="handled"
           contentContainerStyle={{ paddingBottom: 8 }}
         >
-
-        {/* P0-4: блок выбора категории и услуги из готового списка.
+          {/* P0-4: блок выбора категории и услуги из готового списка.
             При freeMode скрываем список L3 и просим ввести title руками. */}
-        {noCategoriesYet ? (
-          <View className="mt-4 rounded-md border border-hairline bg-canvas-soft p-3">
-            <AppText weight="semibold" className="text-body-sm text-ink">
-              Сначала выберите категории
-            </AppText>
-            <AppText className="mt-1 text-caption text-muted">
-              Без категорий нельзя добавить услугу. Откройте «Профиль → Категории»
-              и выберите 1-5 направлений в которых работаете.
-            </AppText>
-          </View>
-        ) : (
+          {noCategoriesYet ? (
+            <View className="mt-4 rounded-md border border-hairline bg-canvas-soft p-3">
+              <AppText weight="semibold" className="text-body-sm text-ink">
+                Сначала выберите категории
+              </AppText>
+              <AppText className="mt-1 text-caption text-muted">
+                Без категорий нельзя добавить услугу. Откройте «Профиль → Категории» и выберите 1-5
+                направлений в которых работаете.
+              </AppText>
+            </View>
+          ) : (
+            <View className="mt-4">
+              <AppText weight="medium" className="text-caption text-muted">
+                Категория
+              </AppText>
+              <View className="mt-1.5 flex-row flex-wrap gap-2">
+                {(myCategories ?? []).map((mc) => {
+                  const selected = selectedL2 === mc.l2_id;
+                  return (
+                    <Pressable
+                      key={mc.l2_id}
+                      accessibilityRole="radio"
+                      accessibilityState={{ selected }}
+                      onPress={() => {
+                        setSelectedL2(mc.l2_id);
+                        // При смене категории сбрасываем L3-выбор и title (если он
+                        // был автоподставлен из L3 — иначе оставляем).
+                        const prevL3 = l3List?.find((x) => x.id === selectedL3);
+                        if (prevL3 && title.trim() === prevL3.name_ru.trim()) {
+                          setTitle("");
+                        }
+                        setSelectedL3(null);
+                      }}
+                      className={`rounded-pill border px-3 py-1.5 active:opacity-70 ${
+                        selected
+                          ? "border-accent bg-accent-soft"
+                          : "border-hairline bg-canvas hover:bg-surface-2"
+                      }`}
+                    >
+                      <AppText
+                        weight={selected ? "semibold" : "medium"}
+                        className={`text-caption ${selected ? "text-accent" : "text-ink"}`}
+                      >
+                        {mc.l2?.name_ru ?? mc.l2_id}
+                      </AppText>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            </View>
+          )}
+
+          {/* Pre-defined L3 услуги для выбранной L2 (skip в freeMode) */}
+          {!freeMode && !noCategoriesYet && selectedL2 && l3List && l3List.length > 0 ? (
+            <View className="mt-4">
+              <View className="flex-row items-center justify-between">
+                <AppText weight="medium" className="text-caption text-muted">
+                  Готовые услуги в этой категории
+                </AppText>
+                <Pressable
+                  onPress={() => {
+                    setFreeMode(true);
+                    setSelectedL3(null);
+                  }}
+                  accessibilityRole="button"
+                  hitSlop={6}
+                  className="flex-row items-center gap-1 active:opacity-60"
+                >
+                  <PencilSimple size={12} weight="bold" color={accentColor} />
+                  <AppText weight="medium" className="text-caption text-accent">
+                    Своя формулировка
+                  </AppText>
+                </Pressable>
+              </View>
+              <View className="mt-1.5 flex-row flex-wrap gap-1.5">
+                {l3List.map((l3) => {
+                  const selected = selectedL3 === l3.id;
+                  return (
+                    <Pressable
+                      key={l3.id}
+                      accessibilityRole="radio"
+                      accessibilityState={{ selected }}
+                      onPress={() => pickL3(l3)}
+                      className={`rounded-pill border px-2.5 py-1 active:opacity-70 ${
+                        selected
+                          ? "border-accent bg-accent-soft"
+                          : "border-hairline bg-canvas hover:bg-surface-2"
+                      }`}
+                    >
+                      <AppText
+                        weight={selected ? "semibold" : "medium"}
+                        className={`text-caption ${selected ? "text-accent" : "text-ink"}`}
+                      >
+                        {l3.name_ru}
+                      </AppText>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            </View>
+          ) : null}
+
+          {/* В freeMode — кнопка «вернуться к готовым услугам» */}
+          {freeMode && !noCategoriesYet && selectedL2 ? (
+            <View className="mt-3 flex-row items-center justify-end">
+              <Pressable
+                onPress={() => setFreeMode(false)}
+                accessibilityRole="button"
+                hitSlop={6}
+                className="active:opacity-60"
+              >
+                <AppText weight="medium" className="text-caption text-link">
+                  ← Готовые услуги
+                </AppText>
+              </Pressable>
+            </View>
+          ) : null}
+
           <View className="mt-4">
             <AppText weight="medium" className="text-caption text-muted">
-              Категория
+              Название
+            </AppText>
+            <TextInput
+              value={title}
+              onChangeText={(t) => {
+                setTitle(t);
+                // Если мастер редактирует title после выбора L3 — переходим
+                // в freeMode (значит, он уточняет формулировку).
+                const prevL3 = l3List?.find((x) => x.id === selectedL3);
+                if (prevL3 && t.trim() !== prevL3.name_ru.trim()) {
+                  // Не флипаем freeMode — оставляем l3_id как ссылку, но
+                  // сохраним пользовательскую формулировку. Это корректное
+                  // поведение из плана (см. P0-2 и MASTER_ACCOUNT_PLAN P0-4).
+                }
+              }}
+              placeholder={selectedL3Obj?.name_ru ?? "Например, Установка смесителя"}
+              placeholderTextColor={placeholderColor}
+              maxLength={100}
+              style={{ color: inkColor }}
+              className="mt-1.5 h-11 rounded-md border border-hairline bg-canvas px-3 text-body-md"
+            />
+          </View>
+
+          {/* Pricing kind toggles — главная P0-10 фича: режим «договорная» */}
+          <View className="mt-3">
+            <AppText weight="medium" className="text-caption text-muted">
+              Тип цены
             </AppText>
             <View className="mt-1.5 flex-row flex-wrap gap-2">
-              {(myCategories ?? []).map((mc) => {
-                const selected = selectedL2 === mc.l2_id;
+              {KIND_OPTIONS.map((opt) => {
+                const selected = pricingKind === opt;
                 return (
                   <Pressable
-                    key={mc.l2_id}
+                    key={opt}
                     accessibilityRole="radio"
                     accessibilityState={{ selected }}
-                    onPress={() => {
-                      setSelectedL2(mc.l2_id);
-                      // При смене категории сбрасываем L3-выбор и title (если он
-                      // был автоподставлен из L3 — иначе оставляем).
-                      const prevL3 = l3List?.find((x) => x.id === selectedL3);
-                      if (prevL3 && title.trim() === prevL3.name_ru.trim()) {
-                        setTitle("");
-                      }
-                      setSelectedL3(null);
-                    }}
+                    onPress={() => handleKindChange(opt)}
                     className={`rounded-pill border px-3 py-1.5 active:opacity-70 ${
                       selected
                         ? "border-accent bg-accent-soft"
@@ -486,241 +611,116 @@ function ServiceFormContent({ initial, masterId, onClose }: ServiceFormContentPr
                       weight={selected ? "semibold" : "medium"}
                       className={`text-caption ${selected ? "text-accent" : "text-ink"}`}
                     >
-                      {mc.l2?.name_ru ?? mc.l2_id}
+                      {PRICING_KIND_LABELS[opt]}
                     </AppText>
                   </Pressable>
                 );
               })}
             </View>
+            <AppText className="mt-1 text-caption text-muted">
+              {PRICING_KIND_HINT[pricingKind]}
+            </AppText>
           </View>
-        )}
 
-        {/* Pre-defined L3 услуги для выбранной L2 (skip в freeMode) */}
-        {!freeMode && !noCategoriesYet && selectedL2 && l3List && l3List.length > 0 ? (
-          <View className="mt-4">
-            <View className="flex-row items-center justify-between">
-              <AppText weight="medium" className="text-caption text-muted">
-                Готовые услуги в этой категории
-              </AppText>
-              <Pressable
-                onPress={() => {
-                  setFreeMode(true);
-                  setSelectedL3(null);
-                }}
-                accessibilityRole="button"
-                hitSlop={6}
-                className="flex-row items-center gap-1 active:opacity-60"
-              >
-                <PencilSimple size={12} weight="bold" color={accentColor} />
-                <AppText weight="medium" className="text-caption text-accent">
-                  Своя формулировка
-                </AppText>
-              </Pressable>
-            </View>
-            <View className="mt-1.5 flex-row flex-wrap gap-1.5">
-              {l3List.map((l3) => {
-                const selected = selectedL3 === l3.id;
-                return (
-                  <Pressable
-                    key={l3.id}
-                    accessibilityRole="radio"
-                    accessibilityState={{ selected }}
-                    onPress={() => pickL3(l3)}
-                    className={`rounded-pill border px-2.5 py-1 active:opacity-70 ${
-                      selected
-                        ? "border-accent bg-accent-soft"
-                        : "border-hairline bg-canvas hover:bg-surface-2"
-                    }`}
-                  >
-                    <AppText
-                      weight={selected ? "semibold" : "medium"}
-                      className={`text-caption ${selected ? "text-accent" : "text-ink"}`}
-                    >
-                      {l3.name_ru}
-                    </AppText>
-                  </Pressable>
-                );
-              })}
-            </View>
-          </View>
-        ) : null}
-
-        {/* В freeMode — кнопка «вернуться к готовым услугам» */}
-        {freeMode && !noCategoriesYet && selectedL2 ? (
-          <View className="mt-3 flex-row items-center justify-end">
-            <Pressable
-              onPress={() => setFreeMode(false)}
-              accessibilityRole="button"
-              hitSlop={6}
-              className="active:opacity-60"
-            >
-              <AppText weight="medium" className="text-caption text-link">
-                ← Готовые услуги
-              </AppText>
-            </Pressable>
-          </View>
-        ) : null}
-
-        <View className="mt-4">
-          <AppText weight="medium" className="text-caption text-muted">
-            Название
-          </AppText>
-          <TextInput
-            value={title}
-            onChangeText={(t) => {
-              setTitle(t);
-              // Если мастер редактирует title после выбора L3 — переходим
-              // в freeMode (значит, он уточняет формулировку).
-              const prevL3 = l3List?.find((x) => x.id === selectedL3);
-              if (prevL3 && t.trim() !== prevL3.name_ru.trim()) {
-                // Не флипаем freeMode — оставляем l3_id как ссылку, но
-                // сохраним пользовательскую формулировку. Это корректное
-                // поведение из плана (см. P0-2 и MASTER_ACCOUNT_PLAN P0-4).
-              }
-            }}
-            placeholder={
-              selectedL3Obj?.name_ru ?? "Например, Установка смесителя"
-            }
-            placeholderTextColor={placeholderColor}
-            maxLength={100}
-            style={{ color: inkColor }}
-            className="mt-1.5 h-11 rounded-md border border-hairline bg-canvas px-3 text-body-md"
-          />
-        </View>
-
-        {/* Pricing kind toggles — главная P0-10 фича: режим «договорная» */}
-        <View className="mt-3">
-          <AppText weight="medium" className="text-caption text-muted">
-            Тип цены
-          </AppText>
-          <View className="mt-1.5 flex-row flex-wrap gap-2">
-            {KIND_OPTIONS.map((opt) => {
-              const selected = pricingKind === opt;
-              return (
-                <Pressable
-                  key={opt}
-                  accessibilityRole="radio"
-                  accessibilityState={{ selected }}
-                  onPress={() => handleKindChange(opt)}
-                  className={`rounded-pill border px-3 py-1.5 active:opacity-70 ${
-                    selected ? "border-accent bg-accent-soft" : "border-hairline bg-canvas hover:bg-surface-2"
-                  }`}
-                >
-                  <AppText
-                    weight={selected ? "semibold" : "medium"}
-                    className={`text-caption ${selected ? "text-accent" : "text-ink"}`}
-                  >
-                    {PRICING_KIND_LABELS[opt]}
-                  </AppText>
-                </Pressable>
-              );
-            })}
-          </View>
-          <AppText className="mt-1 text-caption text-muted">
-            {PRICING_KIND_HINT[pricingKind]}
-          </AppText>
-        </View>
-
-        {showPriceValue && (
-          <>
-            <View className="mt-3 flex-row gap-3">
-              <View className="flex-1">
-                <AppText weight="medium" className="text-caption text-muted">
-                  {priceLabel}
-                </AppText>
-                <TextInput
-                  value={priceValue}
-                  onChangeText={setPriceValue}
-                  placeholder={pricePlaceholder}
-                  placeholderTextColor={placeholderColor}
-                  keyboardType="number-pad"
-                  style={{ color: inkColor }}
-                  className="mt-1.5 h-11 rounded-md border border-hairline bg-canvas px-3 text-body-md"
-                />
-              </View>
-              {showPriceMaxLegacy && (
+          {showPriceValue && (
+            <>
+              <View className="mt-3 flex-row gap-3">
                 <View className="flex-1">
                   <AppText weight="medium" className="text-caption text-muted">
-                    До, ₽
+                    {priceLabel}
                   </AppText>
                   <TextInput
-                    value={priceMaxLegacy}
-                    onChangeText={setPriceMaxLegacy}
-                    placeholder={
-                      selectedL3Obj?.avg_check_rub
-                        ? String(Math.round(selectedL3Obj.avg_check_rub * 1.5))
-                        : "3000"
-                    }
+                    value={priceValue}
+                    onChangeText={setPriceValue}
+                    placeholder={pricePlaceholder}
                     placeholderTextColor={placeholderColor}
                     keyboardType="number-pad"
                     style={{ color: inkColor }}
                     className="mt-1.5 h-11 rounded-md border border-hairline bg-canvas px-3 text-body-md"
                   />
                 </View>
-              )}
-            </View>
-            {/* P0-4: hint с рекомендованной ценой из avg_check_rub +
+                {showPriceMaxLegacy && (
+                  <View className="flex-1">
+                    <AppText weight="medium" className="text-caption text-muted">
+                      До, ₽
+                    </AppText>
+                    <TextInput
+                      value={priceMaxLegacy}
+                      onChangeText={setPriceMaxLegacy}
+                      placeholder={
+                        selectedL3Obj?.avg_check_rub
+                          ? String(Math.round(selectedL3Obj.avg_check_rub * 1.5))
+                          : "3000"
+                      }
+                      placeholderTextColor={placeholderColor}
+                      keyboardType="number-pad"
+                      style={{ color: inkColor }}
+                      className="mt-1.5 h-11 rounded-md border border-hairline bg-canvas px-3 text-body-md"
+                    />
+                  </View>
+                )}
+              </View>
+              {/* P0-4: hint с рекомендованной ценой из avg_check_rub +
                 кнопка «применить». Видно только если выбран L3 со known
                 ставкой и поле цены ещё пустое (иначе мастер уже сам
                 ввёл — не мешаем). */}
-            {selectedL3Obj?.avg_check_rub && priceValue.trim() === "" ? (
-              <Pressable
-                onPress={applyRecommendedPrice}
-                accessibilityRole="button"
-                hitSlop={6}
-                className="mt-2 flex-row items-center gap-1.5 self-start active:opacity-60"
-              >
-                <Sparkle size={12} weight="bold" color={accentColor} />
-                <AppText weight="medium" className="text-caption text-accent">
-                  В среднем берут {selectedL3Obj.avg_check_rub.toLocaleString("ru-RU")} ₽
-                  — применить
-                </AppText>
-              </Pressable>
-            ) : null}
-          </>
-        )}
+              {selectedL3Obj?.avg_check_rub && priceValue.trim() === "" ? (
+                <Pressable
+                  onPress={applyRecommendedPrice}
+                  accessibilityRole="button"
+                  hitSlop={6}
+                  className="mt-2 flex-row items-center gap-1.5 self-start active:opacity-60"
+                >
+                  <Sparkle size={12} weight="bold" color={accentColor} />
+                  <AppText weight="medium" className="text-caption text-accent">
+                    В среднем берут {selectedL3Obj.avg_check_rub.toLocaleString("ru-RU")} ₽ —
+                    применить
+                  </AppText>
+                </Pressable>
+              ) : null}
+            </>
+          )}
 
-        {showUnit && (
-          <View className="mt-3">
-            <AppText weight="medium" className="text-caption text-muted">
-              Единица
-            </AppText>
-            <View className="mt-1.5 flex-row flex-wrap gap-2">
-              {UNIT_OPTIONS.map((opt) => {
-                const selected = unit === opt;
-                return (
-                  <Pressable
-                    key={opt}
-                    accessibilityRole="radio"
-                    accessibilityState={{ selected }}
-                    onPress={() => setUnit(opt)}
-                    className={`rounded-pill border px-3 py-1.5 active:opacity-70 ${
-                      selected
-                        ? "border-accent bg-accent-soft"
-                        : "border-hairline bg-canvas hover:bg-surface-2"
-                    }`}
-                  >
-                    <AppText
-                      weight={selected ? "semibold" : "medium"}
-                      className={`text-caption ${selected ? "text-accent" : "text-ink"}`}
+          {showUnit && (
+            <View className="mt-3">
+              <AppText weight="medium" className="text-caption text-muted">
+                Единица
+              </AppText>
+              <View className="mt-1.5 flex-row flex-wrap gap-2">
+                {UNIT_OPTIONS.map((opt) => {
+                  const selected = unit === opt;
+                  return (
+                    <Pressable
+                      key={opt}
+                      accessibilityRole="radio"
+                      accessibilityState={{ selected }}
+                      onPress={() => setUnit(opt)}
+                      className={`rounded-pill border px-3 py-1.5 active:opacity-70 ${
+                        selected
+                          ? "border-accent bg-accent-soft"
+                          : "border-hairline bg-canvas hover:bg-surface-2"
+                      }`}
                     >
-                      {SERVICE_UNIT_LABELS[opt]}
-                    </AppText>
-                  </Pressable>
-                );
-              })}
+                      <AppText
+                        weight={selected ? "semibold" : "medium"}
+                        className={`text-caption ${selected ? "text-accent" : "text-ink"}`}
+                      >
+                        {SERVICE_UNIT_LABELS[opt]}
+                      </AppText>
+                    </Pressable>
+                  );
+                })}
+              </View>
             </View>
-          </View>
-        )}
+          )}
 
-        {submitError && (
-          <View className="mt-4">
-            <AppText weight="medium" className="text-caption text-error">
-              {submitError}
-            </AppText>
-          </View>
-        )}
-
+          {submitError && (
+            <View className="mt-4">
+              <AppText weight="medium" className="text-caption text-error">
+                {submitError}
+              </AppText>
+            </View>
+          )}
         </ScrollView>
 
         <View className="mt-6 flex-row gap-3">

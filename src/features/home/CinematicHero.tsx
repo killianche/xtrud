@@ -42,7 +42,7 @@ import { Animated, Easing, Platform, Pressable, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
 import { CITIES } from "@/components/CitySelector";
-import { PickerSheet, type PickerOption } from "@/components/ui";
+import { type PickerOption, PickerSheet } from "@/components/ui";
 import { XtrudWordmark } from "@/components/XtrudWordmark";
 import { useAuthSession } from "@/features/auth/use-auth-session";
 import { useUserRecord } from "@/features/auth/use-user-record";
@@ -121,13 +121,11 @@ export function CinematicHero() {
         const nextIdx = (currentIdx + 1) % HERO_PHOTOS.length;
         // Параллельный crossfade: следующее фото 0→1, текущее 1→0.
         // Одинаковая длительность и easing → синхронный плавный переход.
-        Animated.parallel([fade(nextIdx, 1), fade(currentIdx, 0)]).start(
-          ({ finished }) => {
-            if (!finished || cancelled) return;
-            currentIdx = nextIdx;
-            scheduleNext();
-          },
-        );
+        Animated.parallel([fade(nextIdx, 1), fade(currentIdx, 0)]).start(({ finished }) => {
+          if (!finished || cancelled) return;
+          currentIdx = nextIdx;
+          scheduleNext();
+        });
       }, PHOTO_HOLD_MS);
     };
 
@@ -163,7 +161,7 @@ export function CinematicHero() {
             driver — ноль re-render'ов на каждом кадре. */}
         {HERO_PHOTOS.map((src, i) => (
           <Animated.View
-            key={i}
+            key={String(src)}
             pointerEvents="none"
             style={{
               position: "absolute",
@@ -204,18 +202,11 @@ export function CinematicHero() {
             (dual-role), тогда он может одним тапом переключиться на главную
             мастера. У чистых клиентов справа пусто.
             Ряд 2: город под логотипом. */}
-        <View
-          className="absolute left-0 right-0 px-4"
-          style={{ top: insets.top + 6 }}
-        >
+        <View className="absolute left-0 right-0 px-4" style={{ top: insets.top + 6 }}>
           <View className="flex-row items-center justify-between">
             <XtrudWordmark size={30} color={ON_PHOTO} />
             {showRolePill && currentUserId ? (
-              <RoleSwitchPill
-                userId={currentUserId}
-                currentRole="client"
-                isClient={true}
-              />
+              <RoleSwitchPill userId={currentUserId} currentRole="client" isClient={true} />
             ) : null}
           </View>
           <Pressable
@@ -254,8 +245,7 @@ export function CinematicHero() {
             // прозрачная — там работает обычная тень снизу.
             className="mt-4 flex-row items-center gap-3 h-14 rounded-2xl bg-canvas px-5 border border-transparent dark:border-white/15 active:opacity-80"
             style={{
-              boxShadow:
-                Platform.OS === "web" ? "0 8px 24px rgba(0,0,0,0.18)" : undefined,
+              boxShadow: Platform.OS === "web" ? "0 8px 24px rgba(0,0,0,0.18)" : undefined,
               ...(Platform.OS !== "web"
                 ? {
                     shadowColor: "#000",

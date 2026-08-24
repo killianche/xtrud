@@ -104,7 +104,12 @@ export function useRealtimeNotifications(userId: string | null | undefined) {
       .channel(`notifications:${userId}`)
       .on(
         "postgres_changes",
-        { event: "INSERT", schema: "public", table: "notifications", filter: `user_id=eq.${userId}` },
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "notifications",
+          filter: `user_id=eq.${userId}`,
+        },
         () => {
           qc.invalidateQueries({ queryKey: notificationsKey(userId) });
           qc.invalidateQueries({ queryKey: unreadNotificationsKey(userId) });
@@ -112,7 +117,12 @@ export function useRealtimeNotifications(userId: string | null | undefined) {
       )
       .on(
         "postgres_changes",
-        { event: "UPDATE", schema: "public", table: "notifications", filter: `user_id=eq.${userId}` },
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "notifications",
+          filter: `user_id=eq.${userId}`,
+        },
         () => {
           qc.invalidateQueries({ queryKey: notificationsKey(userId) });
           qc.invalidateQueries({ queryKey: unreadNotificationsKey(userId) });

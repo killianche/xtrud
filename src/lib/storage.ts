@@ -54,67 +54,151 @@ const CHUNK_SIZE = 1800;
 const META_SUFFIX = "__meta";
 const CHUNK_SUFFIX = "__";
 
+interface ChunkMeta {
+  chunks: number;
+  /** Absent on legacy snapshots, which use `${key}__${index}`. */
+  generation?: string;
+  byteAware?: boolean;
+}
+
+const storageOperationQueues = new Map<string, Promise<unknown>>();
+let storageGeneration = 0;
+
+export function utf8ByteLength(value: string): number {
+  let bytes = 0;
+  for (const character of value) {
+    const codePoint = character.codePointAt(0) ?? 0;
+    if (codePoint <= 0x7f) bytes += 1;
+    else if (codePoint <= 0x7ff) bytes += 2;
+    else if (codePoint <= 0xffff) bytes += 3;
+    else bytes += 4;
+  }
+  return bytes;
+}
+
+export function splitUtf8SafeChunks(value: string, maxBytes: number): string[] {
+  if (!Number.isInteger(maxBytes) || maxBytes < 4) {
+    throw new Error("Chunk size must fit one UTF-8 code point");
+  }
+  if (value.length === 0) return [""];
+
+  const chunks: string[] = [];
+  let chunk = "";
+  let chunkBytes = 0;
+  for (const character of value) {
+    const characterBytes = utf8ByteLength(character);
+    if (chunk && chunkBytes + characterBytes > maxBytes) {
+      chunks.push(chunk);
+      chunk = "";
+      chunkBytes = 0;
+    }
+    chunk += character;
+    chunkBytes += characterBytes;
+  }
+  if (chunk) chunks.push(chunk);
+  return chunks;
+}
+
+function parseChunkMeta(value: string | null): ChunkMeta | null {
+  if (!value) return null;
+  try {
+    const parsed = JSON.parse(value) as Partial<ChunkMeta>;
+    if (!Number.isInteger(parsed.chunks) || (parsed.chunks ?? 0) < 1) return null;
+    if (parsed.generation !== undefined && typeof parsed.generation !== "string") return null;
+    return parsed as ChunkMeta;
+  } catch {
+    return null;
+  }
+}
+
+function chunkKey(key: string, meta: ChunkMeta, index: number): string {
+  return meta.generation
+    ? `${key}${CHUNK_SUFFIX}${meta.generation}${CHUNK_SUFFIX}${index}`
+    : `${key}${CHUNK_SUFFIX}${index}`;
+}
+
+async function removeChunks(key: string, meta: ChunkMeta | null): Promise<void> {
+  if (!meta) return;
+  for (let index = 0; index < meta.chunks; index += 1) {
+    await SecureStore.deleteItemAsync(chunkKey(key, meta, index));
+  }
+}
+
+async function enqueueStorageOperation<T>(key: string, operation: () => Promise<T>): Promise<T> {
+  const previous = storageOperationQueues.get(key) ?? Promise.resolve();
+  const queued = previous.catch(() => undefined).then(operation);
+  storageOperationQueues.set(key, queued);
+  try {
+    return await queued;
+  } finally {
+    if (storageOperationQueues.get(key) === queued) storageOperationQueues.delete(key);
+  }
+}
+
 export const largeSecureStorage = {
   getItem: async (key: string): Promise<string | null> => {
-    if (isWeb) {
-      return typeof window !== "undefined" ? window.localStorage.getItem(key) : null;
-    }
-    const metaRaw = await SecureStore.getItemAsync(`${key}${META_SUFFIX}`);
-    if (!metaRaw) {
-      // Backward-compat: значение могло быть сохранено без меты, как единое.
-      return SecureStore.getItemAsync(key);
-    }
-    const meta = JSON.parse(metaRaw) as { chunks: number };
-    const parts: string[] = [];
-    for (let i = 0; i < meta.chunks; i++) {
-      const part = await SecureStore.getItemAsync(`${key}${CHUNK_SUFFIX}${i}`);
-      if (part === null) return null;
-      parts.push(part);
-    }
-    return parts.join("");
+    return enqueueStorageOperation(key, async () => {
+      if (isWeb) {
+        return typeof window !== "undefined" ? window.localStorage.getItem(key) : null;
+      }
+      const meta = parseChunkMeta(await SecureStore.getItemAsync(`${key}${META_SUFFIX}`));
+      if (!meta) {
+        // Backward-compat: значение могло быть сохранено без меты, как единое.
+        return SecureStore.getItemAsync(key);
+      }
+      const parts: string[] = [];
+      for (let i = 0; i < meta.chunks; i += 1) {
+        const part = await SecureStore.getItemAsync(chunkKey(key, meta, i));
+        if (part === null) return null;
+        parts.push(part);
+      }
+      return parts.join("");
+    });
   },
   setItem: async (key: string, value: string): Promise<void> => {
-    if (isWeb) {
-      if (typeof window !== "undefined") window.localStorage.setItem(key, value);
-      return;
-    }
-    // Очистка предыдущих чанков (вдруг новое значение короче).
-    const oldMetaRaw = await SecureStore.getItemAsync(`${key}${META_SUFFIX}`);
-    if (oldMetaRaw) {
-      const oldMeta = JSON.parse(oldMetaRaw) as { chunks: number };
-      for (let i = 0; i < oldMeta.chunks; i++) {
-        await SecureStore.deleteItemAsync(`${key}${CHUNK_SUFFIX}${i}`);
+    await enqueueStorageOperation(key, async () => {
+      if (isWeb) {
+        if (typeof window !== "undefined") window.localStorage.setItem(key, value);
+        return;
       }
-    }
+      const metaKey = `${key}${META_SUFFIX}`;
+      const oldMeta = parseChunkMeta(await SecureStore.getItemAsync(metaKey));
+      const chunks = splitUtf8SafeChunks(value, CHUNK_SIZE);
 
-    if (value.length <= CHUNK_SIZE) {
-      await SecureStore.setItemAsync(key, value);
-      await SecureStore.deleteItemAsync(`${key}${META_SUFFIX}`);
-      return;
-    }
+      if (chunks.length === 1) {
+        await SecureStore.setItemAsync(key, value);
+        // Removing the pointer commits the single-value representation.
+        await SecureStore.deleteItemAsync(metaKey);
+        await removeChunks(key, oldMeta);
+        return;
+      }
 
-    const chunks = Math.ceil(value.length / CHUNK_SIZE);
-    for (let i = 0; i < chunks; i++) {
-      const chunk = value.slice(i * CHUNK_SIZE, (i + 1) * CHUNK_SIZE);
-      await SecureStore.setItemAsync(`${key}${CHUNK_SUFFIX}${i}`, chunk);
-    }
-    await SecureStore.setItemAsync(`${key}${META_SUFFIX}`, JSON.stringify({ chunks }));
-    // Очищаем "одиночный" слот на всякий.
-    await SecureStore.deleteItemAsync(key);
+      storageGeneration += 1;
+      const nextMeta: ChunkMeta = {
+        chunks: chunks.length,
+        generation: `${Date.now().toString(36)}-${storageGeneration.toString(36)}`,
+        byteAware: true,
+      };
+      for (let index = 0; index < chunks.length; index += 1) {
+        await SecureStore.setItemAsync(chunkKey(key, nextMeta, index), chunks[index] ?? "");
+      }
+      // Meta is the generation pointer: publish it only after every chunk exists.
+      await SecureStore.setItemAsync(metaKey, JSON.stringify(nextMeta));
+      await SecureStore.deleteItemAsync(key);
+      await removeChunks(key, oldMeta);
+    });
   },
   removeItem: async (key: string): Promise<void> => {
-    if (isWeb) {
-      if (typeof window !== "undefined") window.localStorage.removeItem(key);
-      return;
-    }
-    const metaRaw = await SecureStore.getItemAsync(`${key}${META_SUFFIX}`);
-    if (metaRaw) {
-      const meta = JSON.parse(metaRaw) as { chunks: number };
-      for (let i = 0; i < meta.chunks; i++) {
-        await SecureStore.deleteItemAsync(`${key}${CHUNK_SUFFIX}${i}`);
+    await enqueueStorageOperation(key, async () => {
+      if (isWeb) {
+        if (typeof window !== "undefined") window.localStorage.removeItem(key);
+        return;
       }
-      await SecureStore.deleteItemAsync(`${key}${META_SUFFIX}`);
-    }
-    await SecureStore.deleteItemAsync(key);
+      const metaKey = `${key}${META_SUFFIX}`;
+      const meta = parseChunkMeta(await SecureStore.getItemAsync(metaKey));
+      await SecureStore.deleteItemAsync(key);
+      await SecureStore.deleteItemAsync(metaKey);
+      await removeChunks(key, meta);
+    });
   },
 };

@@ -20,36 +20,36 @@
 
 import { Image as ExpoImage } from "expo-image";
 import { useRouter } from "expo-router";
-import { CaretRight, Drop, Sparkle, Lightning } from "phosphor-react-native";
+import { CaretRight, Drop, Lightning, Sparkle } from "phosphor-react-native";
 import { useEffect, useRef } from "react";
 import { Animated, FlatList, Pressable, ScrollView, View } from "react-native";
-import { useAppWidth } from "@/lib/use-app-width";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { getCategoryColorIconUrl } from "@/lib/category-color-icons";
-import { getCategoryIcon } from "@/lib/category-icons";
 import { AppText } from "@/components/AppText";
-import { Avatar, Card, Skeleton } from "@/components/ui";
 import { HelpCallout } from "@/components/HelpCallout";
+import { Avatar, Card, Skeleton } from "@/components/ui";
 import { useAuthSession } from "@/features/auth/use-auth-session";
 import { useUserRecord } from "@/features/auth/use-user-record";
 import { useVisibleCategories } from "@/features/categories/use-visible-categories";
-import { DescribeTaskCallout } from "@/features/home/DescribeTaskCallout";
 import { CinematicHero } from "@/features/home/CinematicHero";
-import { QuickServices } from "@/features/home/QuickServices";
+import { DescribeTaskCallout } from "@/features/home/DescribeTaskCallout";
 import { PromoBannerCarousel } from "@/features/home/PromoBannerCarousel";
-// HowItWorks скрыт 2026-05-18 — компонент остался в src/features/home/.
-// import { HowItWorks } from "@/features/home/HowItWorks";
-import { MasterCinematicHero } from "@/features/master-view/MasterCinematicHero";
-import { MasterHomeContent } from "@/features/master-view/MasterHomeContent";
+import { QuickServices } from "@/features/home/QuickServices";
 import {
   AVAILABILITY_DOT,
   effectiveStatus,
   isAvailabilityVisible,
 } from "@/features/master-view/availability";
+// HowItWorks скрыт 2026-05-18 — компонент остался в src/features/home/.
+// import { HowItWorks } from "@/features/home/HowItWorks";
+import { MasterCinematicHero } from "@/features/master-view/MasterCinematicHero";
+import { MasterHomeContent } from "@/features/master-view/MasterHomeContent";
 import { useRecordMasterView } from "@/features/master-view/use-record-view";
 import { useTopMasters } from "@/features/master-view/use-top-masters";
 import { usePullToRefresh } from "@/hooks/use-pull-to-refresh";
+import { getCategoryColorIconUrl } from "@/lib/category-color-icons";
+import { getCategoryIcon } from "@/lib/category-icons";
 import { scrollViewToTop, useTabScrollResetCounter } from "@/lib/tab-scroll-reset";
+import { useAppWidth } from "@/lib/use-app-width";
 
 export default function HomeTab() {
   const insets = useSafeAreaInsets();
@@ -100,9 +100,7 @@ export default function HomeTab() {
           onDescribeTask={(draft) => {
             // Передаём текст черновика в визард — orders/new подхватит его как
             // начальное значение поля description.
-            const url = draft
-              ? `/orders/new?draft=${encodeURIComponent(draft)}`
-              : "/orders/new";
+            const url = draft ? `/orders/new?draft=${encodeURIComponent(draft)}` : "/orders/new";
             router.push(url as never);
           }}
         />
@@ -129,7 +127,12 @@ interface ClientHomeProps {
   onDescribeTask: (draft?: string) => void;
 }
 
-function ClientHome({ scrollRef, onCategoryPress, onMasterPress, onDescribeTask }: ClientHomeProps) {
+function ClientHome({
+  scrollRef,
+  onCategoryPress,
+  onMasterPress,
+  onDescribeTask,
+}: ClientHomeProps) {
   // Y-позиция блока AllCategories — для кнопки «Все категории» в QuickServices
   // (плавный скролл вниз к полному списку). Запоминается через onLayout.
   const allCategoriesY = useRef(0);
@@ -217,6 +220,7 @@ const FEATURED: Array<{
   },
 ];
 
+// biome-ignore lint/correctness/noUnusedVariables: curated-search block is retained for the upcoming home functionality redesign
 function FeaturedRequests({ onCategoryPress }: { onCategoryPress: (id: string) => void }) {
   return (
     <View className="mt-10">
@@ -243,7 +247,9 @@ function FeaturedRequests({ onCategoryPress }: { onCategoryPress: (id: string) =
               style={{ width: 220 }}
             >
               {/* Hero-illustration: tinted фон + декоративные фигуры + центр-иконка */}
-              <View className={`h-28 ${item.tintBg} items-center justify-center relative overflow-hidden`}>
+              <View
+                className={`h-28 ${item.tintBg} items-center justify-center relative overflow-hidden`}
+              >
                 {/* Декоры — белые/canvas круги с разной прозрачностью, имитация Vercel docs covers */}
                 <View
                   className="absolute rounded-full bg-canvas"
@@ -255,7 +261,14 @@ function FeaturedRequests({ onCategoryPress }: { onCategoryPress: (id: string) =
                 />
                 <View
                   className="absolute rounded-md bg-canvas"
-                  style={{ top: 18, right: 18, width: 18, height: 18, opacity: 0.55, transform: [{ rotate: "12deg" }] }}
+                  style={{
+                    top: 18,
+                    right: 18,
+                    width: 18,
+                    height: 18,
+                    opacity: 0.55,
+                    transform: [{ rotate: "12deg" }],
+                  }}
                 />
                 {/* Центральная иконка */}
                 <View className="h-14 w-14 items-center justify-center rounded-full bg-canvas text-ink">
@@ -348,10 +361,7 @@ function TopMasters({ onMasterPress }: { onMasterPress: (id: string) => void }) 
         // Skeleton-карусель: 4 заглушки повторяющие реальный MasterMiniCard
         // (180×180 avatar-area + 3 строки текста), чтобы пользователь сразу
         // видел секцию и понимал что здесь будет.
-        <View
-          className="flex-row gap-3"
-          style={{ paddingHorizontal: 20, paddingTop: 12 }}
-        >
+        <View className="flex-row gap-3" style={{ paddingHorizontal: 20, paddingTop: 12 }}>
           {[0, 1, 2, 3].map((i) => (
             <View key={i} style={{ width: 180 }}>
               <Skeleton width={180} height={180} className="rounded-lg" />
@@ -542,9 +552,7 @@ function AllCategories({ onCategoryPress }: { onCategoryPress: (id: string) => v
         </View>
       ) : error ? (
         <View className="mt-4 px-5">
-          <AppText className="text-body-sm text-error">
-            Не удалось загрузить категории.
-          </AppText>
+          <AppText className="text-body-sm text-error">Не удалось загрузить категории.</AppText>
         </View>
       ) : !categories || categories.length === 0 ? (
         <View className="mt-4 px-5">
@@ -584,12 +592,21 @@ function AllCategories({ onCategoryPress }: { onCategoryPress: (id: string) => v
                 >
                   <View className="h-10 w-10 items-center justify-center rounded-full bg-canvas-soft text-ink">
                     {colorUrl ? (
-                      <ExpoImage source={{ uri: colorUrl }} style={{ width: 24, height: 24 }} contentFit="contain" cachePolicy="memory-disk" />
+                      <ExpoImage
+                        source={{ uri: colorUrl }}
+                        style={{ width: 24, height: 24 }}
+                        contentFit="contain"
+                        cachePolicy="memory-disk"
+                      />
                     ) : (
                       <Icon size={20} weight="bold" color="currentColor" />
                     )}
                   </View>
-                  <AppText weight="semibold" className="flex-1 text-body-md text-ink" numberOfLines={1}>
+                  <AppText
+                    weight="semibold"
+                    className="flex-1 text-body-md text-ink"
+                    numberOfLines={1}
+                  >
                     {cat.name_ru}
                   </AppText>
                   <View className="text-mute">
@@ -621,7 +638,12 @@ function AllCategories({ onCategoryPress }: { onCategoryPress: (id: string) => v
                     Иначе — Lucide моно (fallback). NB: эмодзи запрещены (см. CLAUDE.md). */}
                 <View className="h-10 w-10 items-center justify-center rounded-full bg-canvas-soft text-ink">
                   {colorUrl ? (
-                    <ExpoImage source={{ uri: colorUrl }} style={{ width: 24, height: 24 }} contentFit="contain" cachePolicy="memory-disk" />
+                    <ExpoImage
+                      source={{ uri: colorUrl }}
+                      style={{ width: 24, height: 24 }}
+                      contentFit="contain"
+                      cachePolicy="memory-disk"
+                    />
                   ) : (
                     <Icon size={20} weight="bold" color="currentColor" />
                   )}

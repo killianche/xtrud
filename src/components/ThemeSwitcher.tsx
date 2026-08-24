@@ -3,7 +3,7 @@
 // На mobile тоже работает (override системной); на web — необходимо, т.к.
 // системную тему пользователь не всегда контролирует.
 
-import { Check, Moon, DeviceMobile, Sun } from "phosphor-react-native";
+import { Check, DeviceMobile, Moon, Sun } from "phosphor-react-native";
 import { Pressable, View } from "react-native";
 import { AppText } from "@/components/AppText";
 import { useColorScheme } from "@/hooks/use-color-scheme";

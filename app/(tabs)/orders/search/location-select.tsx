@@ -34,9 +34,7 @@ import { useThemeColors } from "@/lib/use-theme-color";
  *  (h-11, rounded-pill, accent-soft selected, hairline default). */
 const chipClass = (selected: boolean) =>
   `h-11 items-center justify-center rounded-pill border px-4 active:opacity-70 ${
-    selected
-      ? "border-ink bg-ink"
-      : "border-hairline bg-canvas hover:bg-surface-2"
+    selected ? "border-ink bg-ink" : "border-hairline bg-canvas hover:bg-surface-2"
   }`;
 const chipTextClass = (selected: boolean) =>
   `text-body-sm ${selected ? "text-on-primary" : "text-ink"}`;

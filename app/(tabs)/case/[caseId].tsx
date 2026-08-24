@@ -25,13 +25,13 @@
 
 import { useLocalSearchParams } from "expo-router";
 import { useState } from "react";
-import { Image, Pressable, ScrollView, View } from "react-native";
-import { cdnImage } from "@/lib/image-cdn";
-import { useAppWidth } from "@/lib/use-app-width";
+import { Image, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
 import { ScreenHeader, Skeleton } from "@/components/ui";
 import { useCaseDetail } from "@/features/profile/use-portfolio-cases";
+import { cdnImage } from "@/lib/image-cdn";
+import { useAppWidth } from "@/lib/use-app-width";
 import { useSafeBack } from "@/lib/use-safe-back";
 
 const HERO_RATIO = 4 / 5;
@@ -138,8 +138,7 @@ export default function PublicCaseScreen() {
                       width: i === photoIndex ? 24 : 6,
                       height: 6,
                       borderRadius: 3,
-                      backgroundColor:
-                        i === photoIndex ? "#ffffff" : "rgba(255,255,255,0.5)",
+                      backgroundColor: i === photoIndex ? "#ffffff" : "rgba(255,255,255,0.5)",
                     }}
                   />
                 ))}
@@ -168,9 +167,7 @@ export default function PublicCaseScreen() {
             </AppText>
           ) : null}
           {data.description ? (
-            <AppText className="mt-4 text-body-md text-body leading-6">
-              {data.description}
-            </AppText>
+            <AppText className="mt-4 text-body-md text-body leading-6">{data.description}</AppText>
           ) : null}
 
           {/* Кнопка «Открыть профиль мастера» удалена 2026-05-27 (решение

@@ -21,19 +21,9 @@
 // Эталон UX: Avito Услуги «лента» / Profi.ru «биржа заявок».
 
 import { useRouter } from "expo-router";
-import {
-  Tray,
-  SlidersHorizontal,
-  Sparkle,
-} from "phosphor-react-native";
+import { SlidersHorizontal, Sparkle, Tray } from "phosphor-react-native";
 import { useEffect, useRef } from "react";
-import {
-  ActivityIndicator,
-  Animated,
-  Pressable,
-  ScrollView,
-  View,
-} from "react-native";
+import { ActivityIndicator, Animated, Pressable, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
 import { OrderRow } from "@/components/OrderRow";
@@ -91,8 +81,7 @@ export default function OrdersSearchScreen() {
   useEffect(() => {
     if (!userId) return;
     markSeenMutate();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userId]);
+  }, [userId, markSeenMutate]);
 
   const {
     data: feed,
@@ -136,8 +125,7 @@ export default function OrdersSearchScreen() {
         rightAction={{
           label: "Фильтры",
           Icon: SlidersHorizontal,
-          onPress: () =>
-            router.push("/(tabs)/orders/search/filters" as never),
+          onPress: () => router.push("/(tabs)/orders/search/filters" as never),
           active: hasActiveFilters,
         }}
       />
@@ -189,9 +177,7 @@ export default function OrdersSearchScreen() {
                 photosCount={o.photo_urls?.length ?? 0}
                 alreadyResponded={respondedOrderIds.has(o.id)}
                 showRespondButton
-                onPress={() =>
-                  router.push(`/(tabs)/orders/${o.id}` as never)
-                }
+                onPress={() => router.push(`/(tabs)/orders/${o.id}` as never)}
               />
             ))}
 
@@ -211,7 +197,6 @@ export default function OrdersSearchScreen() {
                 )}
               </Pressable>
             ) : null}
-
           </Animated.View>
         )}
       </ScrollView>
@@ -230,17 +215,11 @@ interface EmptyStateProps {
   accentColor: string;
 }
 
-function EmptyState({
-  hasActiveFilters,
-  onClearFilters,
-  accentColor,
-}: EmptyStateProps) {
+function EmptyState({ hasActiveFilters, onClearFilters, accentColor }: EmptyStateProps) {
   return (
     <View className="mt-10 items-center px-6">
       {/* Hero-иллюстрация: sky-tint фон + 3 декоративные фигуры + центр-иконка */}
-      <View
-        className="h-32 w-32 items-center justify-center rounded-2xl bg-badge-sky relative overflow-hidden"
-      >
+      <View className="h-32 w-32 items-center justify-center rounded-2xl bg-badge-sky relative overflow-hidden">
         <View
           className="absolute rounded-full bg-canvas"
           style={{ top: -20, left: -16, width: 60, height: 60, opacity: 0.35 }}
@@ -270,10 +249,7 @@ function EmptyState({
         </View>
       </View>
 
-      <AppText
-        weight="bold"
-        className="mt-6 text-center text-title-lg text-ink"
-      >
+      <AppText weight="bold" className="mt-6 text-center text-title-lg text-ink">
         {hasActiveFilters ? "Под фильтры ничего не нашлось" : "Открытых заявок пока нет"}
       </AppText>
       <AppText className="mt-2 text-center text-body-sm text-muted">

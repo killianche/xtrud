@@ -121,7 +121,8 @@ export function useMastersByL2(l2Id: string | null | undefined) {
       const hideDemo = shouldHideDemo();
       const filtered = (data ?? []).filter((r) => {
         if (r.profile?.is_hidden_from_search === true) return false;
-        if (hideDemo && (r.profile as { user?: { is_demo?: boolean } } | null)?.user?.is_demo) return false;
+        if (hideDemo && (r.profile as { user?: { is_demo?: boolean } } | null)?.user?.is_demo)
+          return false;
         // Скрываем мастеров без описания (пустой bio) — недозаполненные профили
         // не должны висеть в поиске (решение владельца 2026-05-27). Категория
         // у них есть по определению (фильтр .eq(l2_id) выше), но без описания

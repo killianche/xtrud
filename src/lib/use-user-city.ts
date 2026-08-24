@@ -30,14 +30,14 @@
  *     (migrate v3→v4 в zustand persist) приводятся к паре.
  */
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { Platform } from "react-native";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import {
+  getCityName as _getCityName,
   ALL_INGUSHETIA_CITY_ID,
   DEFAULT_CITY_ID,
-  getCityName as _getCityName,
   getNearestCity,
   normalizeCityId,
 } from "@/lib/location-config";

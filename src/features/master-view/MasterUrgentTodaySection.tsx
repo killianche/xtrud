@@ -33,13 +33,14 @@ interface MasterUrgentTodaySectionProps {
 
 const MAX_ITEMS = 4;
 
-export function MasterUrgentTodaySection({
-  userId,
-}: MasterUrgentTodaySectionProps) {
+export function MasterUrgentTodaySection({ userId }: MasterUrgentTodaySectionProps) {
   const router = useRouter();
 
-  const { recommendations, isLoading, hasCategories } =
-    useMasterRecommendations({ userId, filter: "urgent", max: MAX_ITEMS });
+  const { recommendations, isLoading, hasCategories } = useMasterRecommendations({
+    userId,
+    filter: "urgent",
+    max: MAX_ITEMS,
+  });
 
   const opacity = useRef(new Animated.Value(0)).current;
   useEffect(() => {

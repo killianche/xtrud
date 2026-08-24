@@ -61,9 +61,6 @@ export interface ScreenHeaderIconAction {
 
 interface ScreenHeaderProps {
   title: string;
-  /** Опц. подзаголовок под title — text-body-sm text-muted, mt-1.
-   *  По дизайн-правилам (design-quality §G) почти не используется. */
-  subtitle?: string;
   onBack?: () => void;
   /** Опц. pill-кнопка справа (Фильтры / Сохранить / Поделиться). */
   rightAction?: ScreenHeaderRightAction;
@@ -73,18 +70,13 @@ interface ScreenHeaderProps {
 }
 
 const HEADER_HEIGHT = 64;
-const HEADER_WITH_SUBTITLE_HEIGHT = 88;
 
-export function ScreenHeader({ title, subtitle, onBack, rightAction, iconAction }: ScreenHeaderProps) {
+export function ScreenHeader({ title, onBack, rightAction, iconAction }: ScreenHeaderProps) {
   const inkColor = useThemeColor("ink");
   const accentColor = useThemeColor("accent");
-  const height = subtitle ? HEADER_WITH_SUBTITLE_HEIGHT : HEADER_HEIGHT;
 
   return (
-    <View
-      className="flex-row items-center gap-2 bg-canvas px-3"
-      style={{ height }}
-    >
+    <View className="flex-row items-center gap-2 bg-canvas px-3" style={{ height: HEADER_HEIGHT }}>
       {onBack ? (
         <Pressable
           accessibilityRole="button"
@@ -105,11 +97,6 @@ export function ScreenHeader({ title, subtitle, onBack, rightAction, iconAction 
         >
           {title}
         </AppText>
-        {subtitle ? (
-          <AppText className="mt-1 text-body-sm text-muted" numberOfLines={2}>
-            {subtitle}
-          </AppText>
-        ) : null}
       </View>
 
       {rightAction ? (

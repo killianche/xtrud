@@ -53,8 +53,7 @@ export const AppText = forwardRef<Text, AppTextProps>(function AppText(
   const fontWeight = fontWeightMap[weight] as "400";
 
   // На web задаём системный sans явно; на native пустой fontFamily = системный.
-  const baseStyle =
-    Platform.OS === "web" ? { fontFamily: WEB_SANS, fontWeight } : { fontWeight };
+  const baseStyle = Platform.OS === "web" ? { fontFamily: WEB_SANS, fontWeight } : { fontWeight };
 
   return (
     <Text

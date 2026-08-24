@@ -11,7 +11,7 @@
 // Layout: компактные tile-карточки 2x2 grid. Цифра большая mono, label
 // маленький. Лимит откликов — с прогресс-баром.
 
-import { CheckCircle, ChatCenteredText, Trophy, Lightning } from "phosphor-react-native";
+import { ChatCenteredText, CheckCircle, Lightning, Trophy } from "phosphor-react-native";
 import { View } from "react-native";
 import { AppText } from "@/components/AppText";
 import { useMasterStats } from "@/features/master-view/use-master-stats";

@@ -14,18 +14,15 @@
  * карточки лучше преждевременной абстракции»).
  */
 
+import { Image } from "expo-image";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Wrench } from "phosphor-react-native";
-import { Image } from "expo-image";
 import { FlatList, Pressable, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
 import { ScreenHeader, Skeleton } from "@/components/ui";
-import {
-  type CaseWithPreview,
-  useMasterCases,
-} from "@/features/profile/use-portfolio-cases";
 import { useMasterPublicProfile } from "@/features/master-view/use-master-public";
+import { type CaseWithPreview, useMasterCases } from "@/features/profile/use-portfolio-cases";
 import { useSafeBack } from "@/lib/use-safe-back";
 import { useThemeColors } from "@/lib/use-theme-color";
 
@@ -42,9 +39,8 @@ export default function MasterCasesScreen() {
   const data = cases.data ?? [];
 
   const fullName =
-    [profile.data?.user?.first_name, profile.data?.user?.last_name]
-      .filter(Boolean)
-      .join(" ") || "Мастер";
+    [profile.data?.user?.first_name, profile.data?.user?.last_name].filter(Boolean).join(" ") ||
+    "Мастер";
 
   return (
     <View className="flex-1 bg-canvas" style={{ paddingTop: insets.top }}>
@@ -82,10 +78,7 @@ export default function MasterCasesScreen() {
             gap: 12,
           }}
           renderItem={({ item }) => (
-            <CaseCard
-              data={item}
-              onPress={() => router.push(`/(tabs)/case/${item.id}` as never)}
-            />
+            <CaseCard data={item} onPress={() => router.push(`/(tabs)/case/${item.id}` as never)} />
           )}
         />
       )}

@@ -28,7 +28,15 @@ export interface SearchBarProps extends Omit<InputProps, "leftIcon" | "rightIcon
 }
 
 export const SearchBar = forwardRef<TextInput, SearchBarProps>(function SearchBar(
-  { size = "lg", clearable = true, onClear, value, onChangeText, placeholder = "Что нужно сделать?", ...props },
+  {
+    size = "lg",
+    clearable = true,
+    onClear,
+    value,
+    onChangeText,
+    placeholder = "Что нужно сделать?",
+    ...props
+  },
   ref,
 ) {
   const mute = useThemeColor("mute");

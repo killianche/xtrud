@@ -34,14 +34,7 @@ export interface SkeletonProps {
   style?: ViewStyle;
 }
 
-export function Skeleton({
-  width,
-  height,
-  circle = false,
-  size,
-  className,
-  style,
-}: SkeletonProps) {
+export function Skeleton({ width, height, circle = false, size, className, style }: SkeletonProps) {
   const opacity = useRef(new Animated.Value(0.55)).current;
 
   useEffect(() => {
@@ -63,7 +56,7 @@ export function Skeleton({
     return () => loop.stop();
   }, [opacity]);
 
-  const diameter = circle ? size ?? (typeof width === "number" ? width : 40) : undefined;
+  const diameter = circle ? (size ?? (typeof width === "number" ? width : 40)) : undefined;
 
   const computedStyle: ViewStyle = {
     ...(width !== undefined ? { width: width as ViewStyle["width"] } : null),

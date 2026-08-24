@@ -41,7 +41,7 @@ export function ConfirmWorkSheet({ open, onClose, masterId, masterName }: Confir
   const router = useRouter();
   const queryClient = useQueryClient();
   const mutedSoftColor = useThemeColor("muted-soft");
-  // P1 fix 2026-05-20: было inline color="#f5a623" на star icon — заменили на
+  // P1 fix 2026-05-20: inline-цвет star icon заменён на
   // token warning. Звёзды в xtrud-палитре жёлто-янтарные (warning).
   const starColor = useThemeColor("warning");
 
@@ -153,11 +153,7 @@ export function ConfirmWorkSheet({ open, onClose, masterId, masterName }: Confir
                   accessibilityRole="button"
                   accessibilityLabel={`${n} звёзд`}
                 >
-                  <Star
-                    size={32}
-                    weight={n <= rating ? "fill" : "bold"}
-                    color={starColor}
-                  />
+                  <Star size={32} weight={n <= rating ? "fill" : "bold"} color={starColor} />
                 </Pressable>
               ))}
             </View>
@@ -183,9 +179,7 @@ export function ConfirmWorkSheet({ open, onClose, masterId, masterName }: Confir
             </View>
           ) : null}
 
-          {error ? (
-            <AppText className="text-caption text-error">{error}</AppText>
-          ) : null}
+          {error ? <AppText className="text-caption text-error">{error}</AppText> : null}
 
           <Button
             onPress={handleSubmit}

@@ -28,10 +28,10 @@ import { ArrowRight, MapPin } from "phosphor-react-native";
 import { type GestureResponderEvent, Pressable, View } from "react-native";
 import { AppText } from "@/components/AppText";
 import type { OrderStatusValue } from "@/components/OrderStatusBadge";
-import { cdnBlur, cdnImage } from "@/lib/image-cdn";
-import { getCategoryIcon } from "@/lib/category-icons";
 import { formatOrderTiming, formatPrice, urgencyLabel } from "@/features/orders/order-schema";
 import type { OrderPriceKind, OrderUrgency } from "@/features/orders/use-create-order";
+import { getCategoryIcon } from "@/lib/category-icons";
+import { cdnBlur, cdnImage } from "@/lib/image-cdn";
 import { useThemeColors } from "@/lib/use-theme-color";
 
 /** Визуальный variant для контекста списка (исторический prop, оставлен для
@@ -284,11 +284,7 @@ export function OrderRow(props: OrderRowProps) {
                   <AppText className="text-caption uppercase tracking-wide text-mute">
                     Бюджет
                   </AppText>
-                  <AppText
-                    weight="mono"
-                    className="mt-0.5 text-body-md text-ink"
-                    numberOfLines={1}
-                  >
+                  <AppText weight="mono" className="mt-0.5 text-body-md text-ink" numberOfLines={1}>
                     {formatPrice(props.budgetKind, props.budgetValue ?? null)}
                   </AppText>
                 </View>

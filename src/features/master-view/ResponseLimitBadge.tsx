@@ -97,11 +97,7 @@ export function ResponseLimitBadge({ variant = "pill" }: ResponseLimitBadgeProps
   // (success/warning/error), empty = использовано (canvas-soft-2 outline).
   // Mono counter справа. Компактно, читабельно, ощущение «энергии».
   const dotFilledClass =
-    remaining === 0
-      ? "bg-error"
-      : remaining <= 2
-        ? "bg-warning"
-        : "bg-success";
+    remaining === 0 ? "bg-error" : remaining <= 2 ? "bg-warning" : "bg-success";
 
   return (
     <View className="flex-row items-center gap-3 rounded-pill border border-hairline bg-canvas-soft px-3 py-2">
@@ -117,6 +113,7 @@ export function ResponseLimitBadge({ variant = "pill" }: ResponseLimitBadgeProps
           const isFilled = i < remaining;
           return (
             <View
+              // biome-ignore lint/suspicious/noArrayIndexKey: dots are fixed positional slots without independent state
               key={i}
               className={
                 isFilled
@@ -128,10 +125,7 @@ export function ResponseLimitBadge({ variant = "pill" }: ResponseLimitBadgeProps
         })}
       </View>
 
-      <AppText
-        weight="mono"
-        className={`text-mono-caption ${accentTextClass}`}
-      >
+      <AppText weight="mono" className={`text-mono-caption ${accentTextClass}`}>
         {remaining}/{max}
       </AppText>
     </View>

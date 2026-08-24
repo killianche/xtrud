@@ -103,7 +103,6 @@ export function getCategoryIcon(
   iconName: string | null | undefined,
 ): import("@/types/icon").IconComponent {
   if (!iconName) return DEFAULT_CATEGORY_ICON as unknown as import("@/types/icon").IconComponent;
-  return (CATEGORY_ICONS[iconName] ?? DEFAULT_CATEGORY_ICON) as unknown as import(
-    "@/types/icon"
-  ).IconComponent;
+  return (CATEGORY_ICONS[iconName] ??
+    DEFAULT_CATEGORY_ICON) as unknown as import("@/types/icon").IconComponent;
 }

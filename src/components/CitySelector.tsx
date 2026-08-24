@@ -23,7 +23,7 @@ import { CaretDown, MapPin } from "phosphor-react-native";
 import { useState } from "react";
 import { Pressable, View } from "react-native";
 import { AppText } from "@/components/AppText";
-import { PickerSheet, type PickerOption } from "@/components/ui";
+import { type PickerOption, PickerSheet } from "@/components/ui";
 import { ALL_INGUSHETIA_CITY_ID, PICKER_CITIES } from "@/lib/location-config";
 import { useThemeColor, useThemeColors } from "@/lib/use-theme-color";
 import { useUserCity } from "@/lib/use-user-city";
@@ -42,7 +42,7 @@ export const CITIES = [
 export type CityId = (typeof CITIES)[number]["id"];
 
 // Re-export для обратной совместимости. Новый код — импорт напрямую из @/lib/use-user-city.
-export { useCityStore, getCityName } from "@/lib/use-user-city";
+export { getCityName, useCityStore } from "@/lib/use-user-city";
 
 export function CitySelector() {
   const { cityId, cityName, setCity } = useUserCity();

@@ -27,11 +27,7 @@ interface MasterProfileFormBodyProps {
   cities?: never;
 }
 
-export function MasterProfileFormBody({
-  control,
-  errors,
-  isBusy,
-}: MasterProfileFormBodyProps) {
+export function MasterProfileFormBody({ control, errors, isBusy }: MasterProfileFormBodyProps) {
   const mutedSoftColor = useThemeColor("muted-soft");
   return (
     <>
@@ -255,10 +251,7 @@ type MPStringField = Extract<
   FieldPath<MasterProfileFormValues>,
   "firstName" | "lastName" | "cityId" | "district" | "bio"
 >;
-type MPNumberField = Extract<
-  FieldPath<MasterProfileFormValues>,
-  "experienceYears"
->;
+type MPNumberField = Extract<FieldPath<MasterProfileFormValues>, "experienceYears">;
 
 interface FormFieldProps {
   label: string;

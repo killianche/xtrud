@@ -5,10 +5,11 @@
 // иерархического выбора L1 → L2.
 //
 // **Product scope:** результат отфильтрован через `filterL1ByScope` —
-// показываем только L1, перечисленные в `IN_SCOPE_L1_IDS` (сейчас только
-// `construction`). См. `src/lib/product-scope.ts` и `CATEGORIES_AND_PROFILES.md`
-// → раздел «Product scope (MVP)». Расширение каталога — правкой одной
-// константы, без миграций.
+// показываем только L1, перечисленные в `IN_SCOPE_L1_IDS` (сейчас
+// `construction` + `home-services`). См. `src/lib/product-scope.ts` и
+// `CATEGORIES_AND_PROFILES.md`
+// → раздел «Product scope». Расширение каталога требует seed/migration БД и
+// синхронного обновления этой константы.
 
 import { useQuery } from "@tanstack/react-query";
 import { filterL1ByScope } from "@/lib/product-scope";

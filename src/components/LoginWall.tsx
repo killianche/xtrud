@@ -27,7 +27,7 @@ export interface LoginWallProps {
   reason?: string;
 }
 
-export function LoginWall({ open, onClose, reason }: LoginWallProps) {
+export function LoginWall({ open, onClose }: LoginWallProps) {
   const router = useRouter();
 
   const handleLogin = () => {
@@ -36,11 +36,7 @@ export function LoginWall({ open, onClose, reason }: LoginWallProps) {
   };
 
   return (
-    <BottomSheet
-      open={open}
-      onClose={onClose}
-      title="Войдите чтобы продолжить"
-    >
+    <BottomSheet open={open} onClose={onClose} title="Войдите чтобы продолжить">
       <View className="gap-3 mt-2">
         <Button size="lg" fullWidth onPress={handleLogin}>
           Войти по телефону

@@ -54,10 +54,7 @@ export function useCreateOrder() {
         //   - выбрана «Вся Ингушетия» (миграция 0045 сделала city_id nullable);
         //   - выбран район без города (LocationPicker позволяет «либо город,
         //     либо район» — territориальный фильтр по district).
-        city_id:
-          input.cityId === ALL_INGUSHETIA_CITY || !input.cityId
-            ? null
-            : input.cityId,
+        city_id: input.cityId === ALL_INGUSHETIA_CITY || !input.cityId ? null : input.cityId,
         district: input.district || null,
         urgency: input.urgency,
         // Дата только для «к дате», иначе NULL (даже если что-то прилетело).

@@ -9,22 +9,18 @@
  */
 
 import { CaretLeft, Star, Warning } from "phosphor-react-native";
-import { ScrollView, View } from "react-native";
+import { Pressable, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
 import { EmptyState } from "@/components/EmptyState";
 import { OrderRowsSkeleton } from "@/components/OrderRowsSkeleton";
+import type { AdminMasterRating } from "@/features/admin/use-admin-ratings";
 import { useAdminMastersRatings } from "@/features/admin/use-admin-ratings";
 import { useAuthSession } from "@/features/auth/use-auth-session";
 import { useUserRecord } from "@/features/auth/use-user-record";
-import {
-  AVAILABILITY_SHORT,
-  effectiveStatus,
-} from "@/features/master-view/availability";
-import type { AdminMasterRating } from "@/features/admin/use-admin-ratings";
+import { AVAILABILITY_SHORT, effectiveStatus } from "@/features/master-view/availability";
 import { useSafeBack } from "@/lib/use-safe-back";
 import { useThemeColors } from "@/lib/use-theme-color";
-import { Pressable } from "react-native";
 
 function MasterRatingRow({ m, rank }: { m: AdminMasterRating; rank: number }) {
   const tc = useThemeColors(["warning", "mute"]);
@@ -95,7 +91,11 @@ export default function AdminRatingsScreen() {
         className="flex-1 items-center justify-center bg-canvas px-6"
         style={{ paddingTop: insets.top }}
       >
-        <EmptyState icon={Warning} title="Доступ запрещён" hint="Эта страница только для админов." />
+        <EmptyState
+          icon={Warning}
+          title="Доступ запрещён"
+          hint="Эта страница только для админов."
+        />
       </View>
     );
   }

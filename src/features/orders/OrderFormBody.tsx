@@ -89,7 +89,6 @@ export function OrderFormBody({
   preferredDate,
   setPreferredDate,
   isBusy,
-  categories,
   cities,
   lockCategory,
   step,
@@ -310,9 +309,7 @@ export function OrderFormBody({
                         weight="medium"
                         className={`text-body-md ${byDateSelected ? "text-accent" : "text-ink"}`}
                       >
-                        {byDateSelected
-                          ? formatOrderTiming("by_date", preferredDate)
-                          : "К дате"}
+                        {byDateSelected ? formatOrderTiming("by_date", preferredDate) : "К дате"}
                       </AppText>
                     </Pressable>
                   </View>

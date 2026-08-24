@@ -21,10 +21,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
 import { useRequestReset } from "@/features/auth/use-auth-mutations";
-import {
-  type ForgotPasswordValues,
-  forgotPasswordSchema,
-} from "@/features/auth/validation";
+import { type ForgotPasswordValues, forgotPasswordSchema } from "@/features/auth/validation";
 import { useSafeBack } from "@/lib/use-safe-back";
 import { useThemeColors } from "@/lib/use-theme-color";
 
@@ -110,10 +107,7 @@ export default function ForgotPasswordScreen() {
               >
                 <CaretLeft size={24} weight="bold" color={tc.ink} />
               </Pressable>
-              <AppText
-                weight="bold"
-                className="mt-6 text-display-md tracking-tight text-ink"
-              >
+              <AppText weight="bold" className="mt-6 text-display-md tracking-tight text-ink">
                 Восстановление пароля
               </AppText>
 

@@ -25,8 +25,7 @@ export interface FavoriteMasterRow {
 }
 
 const FAVORITES_LIST_KEY = ["favorites", "my"] as const;
-const isFavoriteKey = (masterId: string | undefined) =>
-  ["favorites", "is", masterId] as const;
+const isFavoriteKey = (masterId: string | undefined) => ["favorites", "is", masterId] as const;
 
 export function useMyFavorites() {
   const { session } = useAuthSession();

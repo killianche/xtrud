@@ -42,12 +42,7 @@ interface ReportReviewSheetProps {
 
 const REVIEW_REASONS: ReportReason[] = reasonsFor("review");
 
-export function ReportReviewSheet({
-  open,
-  onClose,
-  review,
-  reporterId,
-}: ReportReviewSheetProps) {
+export function ReportReviewSheet({ open, onClose, review, reporterId }: ReportReviewSheetProps) {
   const mutedSoftColor = useThemeColor("muted-soft");
   const createReport = useCreateReport();
   const [reason, setReason] = useState<ReportReason | null>(null);
@@ -82,10 +77,7 @@ export function ReportReviewSheet({
         "Модератор рассмотрит отзыв. Если он нарушает правила — мы его удалим.",
       );
     } catch (e) {
-      Alert.alert(
-        "Не удалось отправить",
-        e instanceof Error ? e.message : "Попробуйте ещё раз.",
-      );
+      Alert.alert("Не удалось отправить", e instanceof Error ? e.message : "Попробуйте ещё раз.");
     }
   };
 

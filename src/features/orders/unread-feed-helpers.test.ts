@@ -96,12 +96,10 @@ describe("shouldInvalidateFeedOnInsert", () => {
 
   it("ignores row with missing fields (defensive)", () => {
     expect(shouldInvalidateFeedOnInsert({}, userId, l2Ids)).toBe(false);
-    expect(
-      shouldInvalidateFeedOnInsert({ status: "open" }, userId, l2Ids),
-    ).toBe(false);
-    expect(
-      shouldInvalidateFeedOnInsert({ status: "open", client_id: "x" }, userId, l2Ids),
-    ).toBe(false);
+    expect(shouldInvalidateFeedOnInsert({ status: "open" }, userId, l2Ids)).toBe(false);
+    expect(shouldInvalidateFeedOnInsert({ status: "open", client_id: "x" }, userId, l2Ids)).toBe(
+      false,
+    );
   });
 
   it("ignores row with null l2_id", () => {

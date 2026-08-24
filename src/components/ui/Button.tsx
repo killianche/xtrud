@@ -15,8 +15,8 @@
  * Состояния: disabled (opacity 50), loading (ActivityIndicator), pressed (opacity 70)
  */
 
-import { type ReactNode } from "react";
-import { ActivityIndicator, Pressable, View, type PressableProps } from "react-native";
+import type { ReactNode } from "react";
+import { ActivityIndicator, Pressable, type PressableProps, View } from "react-native";
 import { AppText } from "@/components/AppText";
 
 export type ButtonVariant = "primary" | "secondary" | "ghost" | "destructive";
@@ -32,7 +32,10 @@ export interface ButtonProps extends Omit<PressableProps, "style" | "children"> 
   fullWidth?: boolean;
 }
 
-const SIZE_MAP: Record<ButtonSize, { height: number; paddingX: number; textSize: 14 | 16; gap: number }> = {
+const SIZE_MAP: Record<
+  ButtonSize,
+  { height: number; paddingX: number; textSize: 14 | 16; gap: number }
+> = {
   sm: { height: 32, paddingX: 12, textSize: 14, gap: 6 },
   md: { height: 40, paddingX: 16, textSize: 14, gap: 8 },
   lg: { height: 48, paddingX: 20, textSize: 16, gap: 10 },
@@ -42,7 +45,13 @@ const VARIANT_CLASS: Record<
   ButtonVariant,
   { bg: string; text: string; border: string; borderWidth: number; iconText: string }
 > = {
-  primary: { bg: "bg-primary", text: "text-on-primary", border: "", borderWidth: 0, iconText: "text-on-primary" },
+  primary: {
+    bg: "bg-primary",
+    text: "text-on-primary",
+    border: "",
+    borderWidth: 0,
+    iconText: "text-on-primary",
+  },
   secondary: {
     bg: "bg-canvas",
     text: "text-ink",
@@ -51,7 +60,13 @@ const VARIANT_CLASS: Record<
     iconText: "text-ink",
   },
   ghost: { bg: "", text: "text-ink", border: "", borderWidth: 0, iconText: "text-ink" },
-  destructive: { bg: "bg-error", text: "text-on-dark", border: "", borderWidth: 0, iconText: "text-on-dark" },
+  destructive: {
+    bg: "bg-error",
+    text: "text-on-dark",
+    border: "",
+    borderWidth: 0,
+    iconText: "text-on-dark",
+  },
 };
 
 export function Button({

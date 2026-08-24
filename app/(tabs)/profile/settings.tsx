@@ -34,20 +34,12 @@ import {
   SignOut,
   Trash,
 } from "phosphor-react-native";
-import {
-  ActivityIndicator,
-  Pressable,
-  ScrollView,
-  Switch,
-  TextInput,
-  View,
-} from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { openExternalUrl } from "@/lib/open-link";
 import { useState } from "react";
+import { ActivityIndicator, Pressable, ScrollView, Switch, TextInput, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
-import { BottomSheet, ScreenHeader } from "@/components/ui";
 import { ThemeSwitcher } from "@/components/ThemeSwitcher";
+import { BottomSheet, ScreenHeader } from "@/components/ui";
 import { useAuthSession } from "@/features/auth/use-auth-session";
 import { useDeleteMyAccount } from "@/features/auth/use-delete-account";
 import { useUserRecord } from "@/features/auth/use-user-record";
@@ -55,8 +47,9 @@ import {
   useMasterPrivacy,
   useUpdateMasterPrivacy,
 } from "@/features/master-profile/use-master-privacy";
-import { confirmAsync } from "@/lib/confirm";
 import { signOut } from "@/lib/auth";
+import { confirmAsync } from "@/lib/confirm";
+import { openExternalUrl } from "@/lib/open-link";
 import { useSafeBack } from "@/lib/use-safe-back";
 import { useThemeColors } from "@/lib/use-theme-color";
 
@@ -97,9 +90,7 @@ export default function SettingsScreen() {
         {/* ============ Внешний вид ============ */}
         <Section icon={PaintBrush} title="Внешний вид">
           <View className="px-5 py-3">
-            <AppText className="text-body-sm text-mute mb-3">
-              Тема приложения
-            </AppText>
+            <AppText className="text-body-sm text-mute mb-3">Тема приложения</AppText>
             <ThemeSwitcher />
           </View>
         </Section>
@@ -353,8 +344,7 @@ function PrivacyToggleRow({ userId }: { userId: string }) {
             Скрыть профиль от клиентов
           </AppText>
           <AppText className="mt-0.5 text-body-sm text-mute">
-            Скрытого мастера не видно в каталоге и поиске. Текущие заказы
-            продолжают работать.
+            Скрытого мастера не видно в каталоге и поиске. Текущие заказы продолжают работать.
           </AppText>
         </View>
         {isLoading ? (
@@ -378,9 +368,7 @@ function PrivacyToggleRow({ userId }: { userId: string }) {
             hidden ? "bg-warning-soft" : "bg-success-soft"
           }`}
         >
-          <View
-            className={`h-1.5 w-1.5 rounded-full ${hidden ? "bg-warning" : "bg-success"}`}
-          />
+          <View className={`h-1.5 w-1.5 rounded-full ${hidden ? "bg-warning" : "bg-success"}`} />
           <AppText
             weight="medium"
             className={`text-caption ${hidden ? "text-warning-deep" : "text-success"}`}
@@ -392,7 +380,6 @@ function PrivacyToggleRow({ userId }: { userId: string }) {
     </View>
   );
 }
-
 
 // ============================================================================
 // Section — секция настроек (icon-eyebrow + body, list-style).
@@ -410,10 +397,7 @@ function Section({ icon: Icon, title, children }: SectionProps) {
     <View className="mt-6">
       <View className="px-5 pb-2 flex-row items-center gap-2">
         <Icon size={14} weight="bold" color={tc.mute} />
-        <AppText
-          weight="mono"
-          className="text-mono-caption text-mute uppercase tracking-widest"
-        >
+        <AppText weight="mono" className="text-mono-caption text-mute uppercase tracking-widest">
           {title}
         </AppText>
       </View>
@@ -457,9 +441,7 @@ function ActionRow({ label, icon: Icon, destructive, onPress }: ActionRowProps) 
       onPress={onPress}
       className="px-5 py-4 border-b border-hairline-soft flex-row items-center gap-3 active:bg-canvas-soft"
     >
-      {Icon ? (
-        <Icon size={18} weight="bold" color={destructive ? tc.error : tc.ink} />
-      ) : null}
+      {Icon ? <Icon size={18} weight="bold" color={destructive ? tc.error : tc.ink} /> : null}
       <AppText
         weight="medium"
         className={`flex-1 text-body-md ${destructive ? "text-error" : "text-ink"}`}

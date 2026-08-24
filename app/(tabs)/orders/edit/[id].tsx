@@ -4,7 +4,7 @@
  */
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useLocalSearchParams } from "expo-router";
 import { CaretLeft } from "phosphor-react-native";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
@@ -22,10 +22,7 @@ import { useAuthSession } from "@/features/auth/use-auth-session";
 import { useVisibleCategories } from "@/features/categories/use-visible-categories";
 import { useCities } from "@/features/cities/use-cities";
 import { OrderFormBody } from "@/features/orders/OrderFormBody";
-import {
-  type LocalOrderPhoto,
-  OrderPhotosPicker,
-} from "@/features/orders/OrderPhotosPicker";
+import { type LocalOrderPhoto, OrderPhotosPicker } from "@/features/orders/OrderPhotosPicker";
 import { type CreateOrderFormValues, createOrderSchema } from "@/features/orders/order-schema";
 import { useOrderDetail } from "@/features/orders/use-order-detail";
 import { useUpdateOrder } from "@/features/orders/use-update-order";
@@ -41,7 +38,6 @@ function isRemotePhoto(uri: string): boolean {
 
 export default function EditOrderScreen() {
   const insets = useSafeAreaInsets();
-  const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   const orderId = typeof id === "string" ? id : undefined;
 
@@ -55,9 +51,7 @@ export default function EditOrderScreen() {
   const inkColor = useThemeColor("ink");
   // safeBack: deeplink/refresh → fallback на сам заказ (если id известен),
   // иначе на /orders.
-  const goBack = useSafeBack(
-    (orderId ? `/(tabs)/orders/${orderId}` : "/(tabs)/orders") as never,
-  );
+  const goBack = useSafeBack((orderId ? `/(tabs)/orders/${orderId}` : "/(tabs)/orders") as never);
   // Сохраняем позицию прокрутки при уходе на выбор категории и возвращаем
   // её обратно — иначе на web форма прыгает в верх (use-scroll-restoration.ts).
   const { ref: scrollRef, onScroll: onFormScroll } = useScrollRestoration();

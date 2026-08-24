@@ -9,5 +9,5 @@
 // Для backwards-compat этот хук теперь прокидывает в `confirm_completion` RPC
 // (работает только для клиента; для мастера вернёт 42501 not_order_owner).
 
-export { useConfirmCompletion as useCompleteOrder } from "./use-confirm-completion";
 export type { ConfirmCompletionInput as CompleteOrderInput } from "./use-confirm-completion";
+export { useConfirmCompletion as useCompleteOrder } from "./use-confirm-completion";

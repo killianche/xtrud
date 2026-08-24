@@ -13,7 +13,7 @@
 // chips), bubbles-and-friends (group → category bottom sheet).
 
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { Check, CaretLeft, MagnifyingGlass, X } from "phosphor-react-native";
+import { CaretLeft, Check, MagnifyingGlass, X } from "phosphor-react-native";
 import { useEffect, useMemo, useState } from "react";
 import { Pressable, ScrollView, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -23,8 +23,8 @@ import { useAuthSession } from "@/features/auth/use-auth-session";
 import { useExitOnboarding } from "@/features/auth/use-exit-onboarding";
 import { useCategoriesL1 } from "@/features/categories/use-categories-l1";
 import {
-  type VisibleCategory,
   useVisibleCategories,
+  type VisibleCategory,
 } from "@/features/categories/use-visible-categories";
 import { useMyMasterCategories } from "@/features/master-categories/use-my-categories";
 import { useSetMasterCategories } from "@/features/master-categories/use-set-categories";

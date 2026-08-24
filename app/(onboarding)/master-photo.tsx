@@ -1,4 +1,5 @@
 import { Image } from "expo-image";
+import { useRouter } from "expo-router";
 import { Camera } from "phosphor-react-native";
 import { ActivityIndicator, Alert, Pressable, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -6,11 +7,10 @@ import { AppText } from "@/components/AppText";
 import { OnboardingProgress } from "@/components/OnboardingProgress";
 import { useAuthSession } from "@/features/auth/use-auth-session";
 import { useExitOnboarding } from "@/features/auth/use-exit-onboarding";
-import { useRouter } from "expo-router";
 import { useFinalizeMasterOnboarding } from "@/features/auth/use-finalize-master-onboarding";
-import { useAuthReturnUrlStore } from "@/lib/auth-return-url-store";
 import { useUserRecord } from "@/features/auth/use-user-record";
 import { useUpdateMyAvatar } from "@/features/profile/use-update-my-avatar";
+import { useAuthReturnUrlStore } from "@/lib/auth-return-url-store";
 import { realAvatarUrl } from "@/lib/avatar";
 import { useThemeColor } from "@/lib/use-theme-color";
 
@@ -52,8 +52,7 @@ export default function MasterPhotoScreen() {
         router.replace(returnUrl as never);
       }
     } catch (e) {
-      const message =
-        e instanceof Error ? e.message : "Неизвестная ошибка сервера.";
+      const message = e instanceof Error ? e.message : "Неизвестная ошибка сервера.";
       console.error("[MasterPhoto finalize]", e);
       Alert.alert("Не удалось завершить регистрацию", message);
     }

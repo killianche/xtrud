@@ -11,37 +11,43 @@
  */
 
 import { useQuery } from "@tanstack/react-query";
-import { Image } from "expo-image";
 import { useRouter } from "expo-router";
-import { Camera, CaretRight, ClipboardText, Eye, Gear, SignIn, SignOut, ChatCircle, Moon, Plus, ShieldCheck, DeviceMobile, Star, Sun, User, Wrench } from "phosphor-react-native";
+import {
+  Camera,
+  CaretRight,
+  DeviceMobile,
+  Eye,
+  Gear,
+  Moon,
+  ShieldCheck,
+  SignIn,
+  SignOut,
+  Star,
+  Sun,
+  User,
+  Wrench,
+} from "phosphor-react-native";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, Alert, Platform, Pressable, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { scrollViewToTop, useTabScrollResetCounter } from "@/lib/tab-scroll-reset";
 import { AppText } from "@/components/AppText";
 import { Avatar } from "@/components/Avatar";
 import { ScreenHeader, Skeleton } from "@/components/ui";
-import { useColorScheme } from "@/hooks/use-color-scheme";
 import { RoleSwitcher } from "@/features/auth/RoleSwitcher";
 import { useAuthSession } from "@/features/auth/use-auth-session";
 import { useEnableMasterMode } from "@/features/auth/use-enable-master-mode";
 import { useUserRecord } from "@/features/auth/use-user-record";
 import { MasterPublishChecklist } from "@/features/master-view/MasterPublishChecklist";
 import { useMasterPublishProgress } from "@/features/master-view/use-master-publish-progress";
-import type { ThemePreference } from "@/lib/theme";
-import { PortfolioGrid } from "@/features/profile/PortfolioGrid";
 import { PortfolioLightbox } from "@/features/profile/PortfolioLightbox";
-import {
-  PORTFOLIO_MAX,
-  useAddPortfolioItem,
-  useDeletePortfolioItem,
-  useMasterPortfolio,
-} from "@/features/profile/use-my-portfolio";
+import { useMasterPortfolio } from "@/features/profile/use-my-portfolio";
 import { useRemoveMyAvatar, useUpdateMyAvatar } from "@/features/profile/use-update-my-avatar";
-import { useUploadPortfolioImage } from "@/features/uploads/use-upload-image";
+import { useColorScheme } from "@/hooks/use-color-scheme";
 import { signOut } from "@/lib/auth";
 import { confirmAsync } from "@/lib/confirm";
 import { supabase } from "@/lib/supabase";
+import { scrollViewToTop, useTabScrollResetCounter } from "@/lib/tab-scroll-reset";
+import type { ThemePreference } from "@/lib/theme";
 import { useThemeColors } from "@/lib/use-theme-color";
 import type { Tables } from "@/types/database";
 
@@ -63,23 +69,16 @@ export default function ProfileScreen() {
   // Чек-лист «сделайте профиль ярче» — рекламная подсказка для любого мастера
   // (с 2026-05-20 профиль больше не скрывается автоматически). Карточка
   // самоисчезает, когда publishProgress.isReady=true.
-  const { data: publishProgress } = useMasterPublishProgress(
-    userId,
-    user?.is_master === true,
-  );
+  const { data: publishProgress } = useMasterPublishProgress(userId, user?.is_master === true);
   const updateAvatar = useUpdateMyAvatar(userId);
   const removeAvatar = useRemoveMyAvatar(userId);
   const portfolio = useMasterPortfolio(user?.is_master ? (userId ?? null) : null);
-  const uploadPortfolio = useUploadPortfolioImage(userId);
-  const addPortfolioItem = useAddPortfolioItem(userId ?? null);
-  const deletePortfolioItem = useDeletePortfolioItem(userId ?? null);
 
   const fullName = useMemo(() => {
     if (!user) return "";
     return [user.first_name, user.last_name].filter(Boolean).join(" ") || "Без имени";
   }, [user]);
 
-  const canAddPortfolio = (portfolio.data?.length ?? 0) < PORTFOLIO_MAX;
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const themeColors = useThemeColors([
     "ink",
@@ -143,45 +142,6 @@ export default function ProfileScreen() {
         { text: "Отмена", style: "cancel" },
       ]);
     }
-  };
-
-  const onAddPortfolio = async () => {
-    if (!canAddPortfolio || uploadPortfolio.isPending || addPortfolioItem.isPending) return;
-    try {
-      const uploaded = await uploadPortfolio.mutateAsync();
-      if (!uploaded) return; // отмена
-      await addPortfolioItem.mutateAsync({
-        url: uploaded.publicUrl,
-        storagePath: uploaded.path,
-      });
-    } catch (e) {
-      Alert.alert("Не удалось добавить фото", (e as Error).message);
-    }
-  };
-
-  // P1-4: confirmAsync вместо Alert.alert — на web Alert.alert no-op
-  // (react-native-web известный issue). confirmAsync проксирует на
-  // window.confirm на web, на native — на Alert.alert (см. src/lib/confirm.ts).
-  const onDeletePortfolio = async (id: string, storagePath: string) => {
-    const confirmed = await confirmAsync({
-      title: "Удалить фото?",
-      message: "Действие нельзя отменить.",
-      confirmText: "Удалить",
-      cancelText: "Отмена",
-      destructive: true,
-    });
-    if (!confirmed) return;
-    deletePortfolioItem.mutate(
-      { id, storagePath },
-      {
-        onError: (e) => {
-          // Используем Alert как fallback — для error message нет confirm-flow,
-          // на web всё равно покажется через console + ошибка в Alert не критична.
-          // TODO: заменить на toast-инфраструктуру когда появится.
-          Alert.alert("Не удалось удалить", e.message);
-        },
-      },
-    );
   };
 
   // Auth-сессия загружается асинхронно (~50-200мс на холодном входе).
@@ -336,9 +296,7 @@ export default function ProfileScreen() {
                 <AppText weight="semibold" className="text-body-md text-ink">
                   Редактировать профиль
                 </AppText>
-                <AppText className="mt-0.5 text-body-sm text-mute">
-                  Имя и юзернейм
-                </AppText>
+                <AppText className="mt-0.5 text-body-sm text-mute">Имя и юзернейм</AppText>
               </View>
               <CaretRight size={20} weight="bold" color={themeColors["muted-soft"]} />
             </Pressable>
@@ -360,7 +318,10 @@ export default function ProfileScreen() {
         {/* Sprint 2026-05-20: показываем ТОЛЬКО когда мастер реально в master-режиме.
             Раньше условие user.is_master=true показывало карточку и в client-режиме
             у dual-role пользователей. */}
-        {user.is_master && user.active_role === "master" && publishProgress && !publishProgress.isReady ? (
+        {user.is_master &&
+        user.active_role === "master" &&
+        publishProgress &&
+        !publishProgress.isReady ? (
           <MasterPublishChecklist progress={publishProgress} />
         ) : null}
 
@@ -450,10 +411,7 @@ export default function ProfileScreen() {
             Раньше у мастера был stacked 3-row ThemeSwitcher (огромный, занимал
             пол-экрана). Фидбэк user 2026-05-15 «тему сделай не такой огромной». */}
         <View className={`mt-8 ${isClient ? "px-5" : "px-6"}`}>
-          <AppText
-            weight="medium"
-            className="mb-2 text-caption text-mute uppercase tracking-wider"
-          >
+          <AppText weight="medium" className="mb-2 text-caption text-mute uppercase tracking-wider">
             Тема
           </AppText>
           <ClientThemeSegmented />
@@ -674,8 +632,8 @@ function GuestProfileScreen({ insets, themeColors, onLogin }: GuestProfileScreen
             className="mt-2 max-w-xs text-body-sm text-mute text-center"
             style={{ lineHeight: 20 }}
           >
-            Создавайте заказы, общайтесь с мастерами и оставляйте отзывы.
-            Регистрация по номеру телефона — 30 секунд.
+            Создавайте заказы, общайтесь с мастерами и оставляйте отзывы. Регистрация по номеру
+            телефона — 30 секунд.
           </AppText>
 
           <View className="mt-5 w-full max-w-xs">
@@ -694,10 +652,7 @@ function GuestProfileScreen({ insets, themeColors, onLogin }: GuestProfileScreen
 
         {/* Тема — работает и для анона. */}
         <View className="mt-10 px-6">
-          <AppText
-            weight="medium"
-            className="mb-2 text-caption text-mute uppercase tracking-wider"
-          >
+          <AppText weight="medium" className="mb-2 text-caption text-mute uppercase tracking-wider">
             Тема
           </AppText>
           <ClientThemeSegmented />

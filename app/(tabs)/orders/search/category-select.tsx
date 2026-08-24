@@ -36,6 +36,7 @@ export default function FiltersCategorySelectScreen() {
   const insets = useSafeAreaInsets();
   const inkColor = useThemeColor("ink");
   const muteColor = useThemeColor("mute");
+  const onDarkColor = useThemeColor("on-dark");
   const goBack = useSafeBack("/(tabs)/orders/search/filters" as const);
 
   // Скрываем TabBar — это full-screen detail-экран фильтров.
@@ -53,9 +54,7 @@ export default function FiltersCategorySelectScreen() {
   // Инициализируем из стора (чтобы при reopen уже выбранные были отмечены).
   const storeL2Ids = useOrdersSearchFiltersStore((s) => s.l2Ids);
   const setStoreL2Ids = useOrdersSearchFiltersStore((s) => s.setL2Ids);
-  const [selected, setSelected] = useState<Set<string>>(
-    () => new Set(storeL2Ids),
-  );
+  const [selected, setSelected] = useState<Set<string>>(() => new Set(storeL2Ids));
 
   const { data: categories = [] } = useVisibleCategories();
   const search = useSearchCategories(query, 20);
@@ -89,7 +88,7 @@ export default function FiltersCategorySelectScreen() {
       rowKey: `${hit.kind}:${hit.id}`,
       l2_id: hit.l2_id,
       name_ru: hit.name_ru,
-      parentName: hit.kind === "l3" ? l2NameById.get(hit.l2_id) ?? null : null,
+      parentName: hit.kind === "l3" ? (l2NameById.get(hit.l2_id) ?? null) : null,
       icon: categories.find((c) => c.id === hit.l2_id)?.icon ?? null,
       isL3: hit.kind === "l3",
     }));
@@ -198,9 +197,7 @@ export default function FiltersCategorySelectScreen() {
           rows.map((row) => {
             const colorUrl = getCategoryColorIconUrl(row.l2_id);
             const Icon = getCategoryIcon(row.icon);
-            const segments = isSearching
-              ? highlightMatch(row.name_ru, query)
-              : null;
+            const segments = isSearching ? highlightMatch(row.name_ru, query) : null;
             const isSelected = selected.has(row.l2_id);
             return (
               <Pressable
@@ -213,10 +210,7 @@ export default function FiltersCategorySelectScreen() {
               >
                 <View className="h-10 w-10 items-center justify-center rounded-full bg-canvas-soft shrink-0">
                   {colorUrl ? (
-                    <Image
-                      source={{ uri: colorUrl }}
-                      style={{ width: 24, height: 24 }}
-                    />
+                    <Image source={{ uri: colorUrl }} style={{ width: 24, height: 24 }} />
                   ) : (
                     <Icon size={20} weight="bold" color={inkColor} />
                   )}
@@ -237,10 +231,7 @@ export default function FiltersCategorySelectScreen() {
                       : row.name_ru}
                   </AppText>
                   {row.isL3 && row.parentName ? (
-                    <AppText
-                      className="mt-0.5 text-caption text-mute"
-                      numberOfLines={1}
-                    >
+                    <AppText className="mt-0.5 text-caption text-mute" numberOfLines={1}>
                       в категории «{row.parentName}»
                     </AppText>
                   ) : null}
@@ -249,14 +240,10 @@ export default function FiltersCategorySelectScreen() {
                     когда выбран. Чёрные индикаторы запрещены (user 2026-05-15). */}
                 <View
                   className={`h-7 w-7 items-center justify-center rounded-full border ${
-                    isSelected
-                      ? "border-accent bg-accent"
-                      : "border-hairline bg-canvas"
+                    isSelected ? "border-accent bg-accent" : "border-hairline bg-canvas"
                   }`}
                 >
-                  {isSelected ? (
-                    <Check size={16} weight="bold" color="#fff" />
-                  ) : null}
+                  {isSelected ? <Check size={16} weight="bold" color={onDarkColor} /> : null}
                 </View>
               </Pressable>
             );

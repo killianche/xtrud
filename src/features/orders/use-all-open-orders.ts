@@ -7,7 +7,7 @@
 // neq client_id != my own (мастер не должен видеть свои заказы).
 
 import { useInfiniteQuery } from "@tanstack/react-query";
-import { type OrderWithRefs } from "@/features/orders/use-my-orders";
+import type { OrderWithRefs } from "@/features/orders/use-my-orders";
 import { shouldHideDemo } from "@/lib/demo-mode";
 import { supabase } from "@/lib/supabase";
 
@@ -105,7 +105,8 @@ export function useAllOpenOrders({
         rows = rows.filter((r) => r.client?.is_demo !== true);
       }
 
-      const nextCursor = rows.length === PAGE_SIZE ? (rows[rows.length - 1]?.created_at ?? null) : null;
+      const nextCursor =
+        rows.length === PAGE_SIZE ? (rows[rows.length - 1]?.created_at ?? null) : null;
       return { rows: rows as OrderWithRefs[], nextCursor };
     },
     getNextPageParam: (last) => last.nextCursor,

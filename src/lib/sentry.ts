@@ -63,10 +63,7 @@ export function initSentry(): void {
  * Используется в корневом AppErrorBoundary и в местах, где мы ловим ошибку
  * сами (catch) и хотим, чтобы она не потерялась.
  */
-export function reportError(
-  error: unknown,
-  context?: Record<string, unknown>,
-): void {
+export function reportError(error: unknown, context?: Record<string, unknown>): void {
   if (!ENABLED || !initialized) return;
   Sentry.captureException(error, context ? { extra: context } : undefined);
 }

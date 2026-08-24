@@ -54,9 +54,7 @@ import { useThemeColors } from "@/lib/use-theme-color";
  *  default = bg-canvas + hairline. h-10 / text-body-sm для всех уровней. */
 const chipClass = (selected: boolean) =>
   `h-10 items-center justify-center rounded-pill border px-4 ${
-    selected
-      ? "border-ink bg-ink"
-      : "border-hairline bg-canvas active:opacity-70"
+    selected ? "border-ink bg-ink" : "border-hairline bg-canvas active:opacity-70"
   }`;
 const chipTextClass = (selected: boolean) =>
   `text-body-sm ${selected ? "text-on-primary" : "text-ink"}`;
@@ -72,8 +70,7 @@ export default function LocationSelectScreen() {
 
   // Draft-state локально — commit только на тап «Готово».
   const initialCity = typeof params.cityId === "string" ? params.cityId : "";
-  const initialDistrict =
-    typeof params.district === "string" ? params.district : "";
+  const initialDistrict = typeof params.district === "string" ? params.district : "";
   const [draftCity, setDraftCity] = useState(initialCity);
   const [draftDistrict, setDraftDistrict] = useState(initialDistrict);
 
@@ -229,9 +226,7 @@ export default function LocationSelectScreen() {
                           key={v}
                           accessibilityRole="button"
                           accessibilityState={{ selected }}
-                          onPress={() =>
-                            setDraftDistrict(selected ? activeDistrict : v)
-                          }
+                          onPress={() => setDraftDistrict(selected ? activeDistrict : v)}
                           className={chipClass(selected)}
                         >
                           <AppText weight="medium" className={chipTextClass(selected)}>

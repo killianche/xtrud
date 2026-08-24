@@ -124,8 +124,7 @@ export function OrderDateSheet({ visible, value, onSelect, onClose }: OrderDateS
   const cells = useMemo(() => buildMonthCells(viewYear, viewMonth), [viewYear, viewMonth]);
 
   // Текущий месяц — самый ранний доступный. Стрелку «назад» на нём гасим.
-  const isAtCurrentMonth =
-    viewYear === today.getFullYear() && viewMonth === today.getMonth();
+  const isAtCurrentMonth = viewYear === today.getFullYear() && viewMonth === today.getMonth();
 
   function goPrev() {
     if (isAtCurrentMonth) return; // не уходим в прошлое

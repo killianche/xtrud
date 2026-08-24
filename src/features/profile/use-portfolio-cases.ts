@@ -27,11 +27,9 @@ export interface CaseWithPreview extends PortfolioCase {
   items_count: number;
 }
 
-const CASES_KEY = (masterId: string | null | undefined) =>
-  ["portfolio-cases", masterId] as const;
+const CASES_KEY = (masterId: string | null | undefined) => ["portfolio-cases", masterId] as const;
 
-const CASE_DETAIL_KEY = (caseId: string | null | undefined) =>
-  ["portfolio-case", caseId] as const;
+const CASE_DETAIL_KEY = (caseId: string | null | undefined) => ["portfolio-case", caseId] as const;
 
 // ============================================================================
 // Список кейсов с preview-фото
@@ -194,10 +192,7 @@ export function useDeleteCase(userId: string | null | undefined) {
   const queryClient = useQueryClient();
   return useMutation<void, Error, { caseId: string }>({
     mutationFn: async ({ caseId }) => {
-      const { error } = await supabase
-        .from("portfolio_cases")
-        .delete()
-        .eq("id", caseId);
+      const { error } = await supabase.from("portfolio_cases").delete().eq("id", caseId);
       if (error) throw error;
     },
     onSuccess: () => {

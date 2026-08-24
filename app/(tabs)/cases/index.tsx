@@ -32,15 +32,14 @@
  * trigger), публичный показ портфолио на master/[id] (PortfolioGrid).
  */
 
-import { useRouter } from "expo-router";
 import { Image } from "expo-image";
+import { useRouter } from "expo-router";
 import { ImageSquare, Plus, SignIn } from "phosphor-react-native";
 import { useState } from "react";
 import { Alert, Pressable, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
 import { ScreenHeader } from "@/components/ui";
-import { useAppWidth } from "@/lib/use-app-width";
 import { useAuthSession } from "@/features/auth/use-auth-session";
 import { useAddPortfolioItem } from "@/features/profile/use-my-portfolio";
 import {
@@ -49,11 +48,8 @@ import {
   useMasterCases,
 } from "@/features/profile/use-portfolio-cases";
 import { cdnBlur, cdnImage } from "@/lib/image-cdn";
-import {
-  type PickedImage,
-  pickMultipleImages,
-  uploadPortfolioBatch,
-} from "@/lib/image-upload";
+import { type PickedImage, pickMultipleImages, uploadPortfolioBatch } from "@/lib/image-upload";
+import { useAppWidth } from "@/lib/use-app-width";
 import { useThemeColors } from "@/lib/use-theme-color";
 
 // Белый поверх тёмного overlay на обложке — фиксированная константа, не токен
@@ -79,9 +75,7 @@ export default function CasesScreen() {
 
   // Глобальный busy-стейт для «фото вперёд» — пока идёт создание+загрузка,
   // блокируем повторные тапы и показываем прогресс на sticky-кнопке.
-  const [creating, setCreating] = useState<{ done: number; total: number } | null>(
-    null,
-  );
+  const [creating, setCreating] = useState<{ done: number; total: number } | null>(null);
   // id кейса в который сейчас докидываем фото с обложки (для спиннера на плитке).
   const [addingToCaseId, setAddingToCaseId] = useState<string | null>(null);
 
@@ -96,15 +90,12 @@ export default function CasesScreen() {
         <ScreenHeader title="Ваши работы" />
         <View className="flex-1 items-center justify-center px-6">
           <ImageSquare size={48} weight="regular" color={tc["muted-soft"]} />
-          <AppText
-            weight="semibold"
-            className="mt-4 text-title-md text-ink text-center"
-          >
+          <AppText weight="semibold" className="mt-4 text-title-md text-ink text-center">
             Войдите в аккаунт
           </AppText>
           <AppText className="mt-2 text-body-sm text-mute text-center">
-            «Ваши работы» — портфолио мастера. Войдите по телефону, чтобы
-            добавить фото своих работ и привлечь клиентов.
+            «Ваши работы» — портфолио мастера. Войдите по телефону, чтобы добавить фото своих работ
+            и привлечь клиентов.
           </AppText>
           <Pressable
             accessibilityRole="button"
@@ -209,10 +200,7 @@ export default function CasesScreen() {
       });
       const failed = await attachUploaded(caseId, results);
       if (failed > 0) {
-        Alert.alert(
-          "Часть фото не загрузилась",
-          `Не удалось: ${failed}. Попробуйте ещё раз.`,
-        );
+        Alert.alert("Часть фото не загрузилась", `Не удалось: ${failed}. Попробуйте ещё раз.`);
       }
     } finally {
       setAddingToCaseId(null);
@@ -268,9 +256,7 @@ export default function CasesScreen() {
                 <View
                   className="h-full bg-ink"
                   style={{
-                    width: `${Math.round(
-                      (creating.done / Math.max(1, creating.total)) * 100,
-                    )}%`,
+                    width: `${Math.round((creating.done / Math.max(1, creating.total)) * 100)}%`,
                   }}
                 />
               </View>
@@ -283,10 +269,7 @@ export default function CasesScreen() {
               className="flex-row items-center justify-center gap-2 h-12 rounded-md bg-primary active:opacity-80"
             >
               <Plus size={20} weight="bold" color={tc["on-primary"]} />
-              <AppText
-                weight="semibold"
-                className="text-button-lg text-on-primary"
-              >
+              <AppText weight="semibold" className="text-button-lg text-on-primary">
                 Добавить работу
               </AppText>
             </Pressable>
@@ -313,10 +296,7 @@ const WIDTH_SAFETY = 3;
 
 /** Ширина плитки для надёжной 2-колоночной сетки. */
 function twoColTileWidth(screenW: number): number {
-  return Math.max(
-    120,
-    Math.floor((screenW - SCREEN_PADDING * 2 - GRID_GUTTER) / 2) - WIDTH_SAFETY,
-  );
+  return Math.max(120, Math.floor((screenW - SCREEN_PADDING * 2 - GRID_GUTTER) / 2) - WIDTH_SAFETY);
 }
 
 function CasesGrid({
@@ -450,11 +430,7 @@ function CaseTile({
 
       {/* Подпись под обложкой — название + дата (компактно). */}
       <View className="mt-2 px-0.5">
-        <AppText
-          weight="semibold"
-          className="text-body-sm text-ink"
-          numberOfLines={1}
-        >
+        <AppText weight="semibold" className="text-body-sm text-ink" numberOfLines={1}>
           {label}
         </AppText>
         {dateLabel ? (
@@ -483,10 +459,7 @@ function CasesGridSkeleton() {
           key={i}
           style={{ width: tileW }}
         >
-          <View
-            className="rounded-lg bg-canvas-soft-2"
-            style={{ width: tileW, height: coverH }}
-          />
+          <View className="rounded-lg bg-canvas-soft-2" style={{ width: tileW, height: coverH }} />
           <View className="mt-2 h-3.5 w-3/4 rounded-md bg-canvas-soft-2" />
         </View>
       ))}
@@ -512,10 +485,7 @@ function CasesEmptyState({
   return (
     <View className="items-center justify-center py-20 px-6">
       <ImageSquare size={48} weight="regular" color={mutedColor} />
-      <AppText
-        weight="semibold"
-        className="mt-4 text-title-md text-ink text-center"
-      >
+      <AppText weight="semibold" className="mt-4 text-title-md text-ink text-center">
         Покажите ваши работы
       </AppText>
       <AppText className="mt-2 text-body-sm text-mute text-center">

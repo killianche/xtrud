@@ -72,18 +72,17 @@ export function LegalScreen({
 
         {sections.map((s, i) => (
           <View key={s.title} className="mt-8">
-            <AppText weight="mono" className="text-mono-caption text-mute uppercase tracking-widest">
+            <AppText
+              weight="mono"
+              className="text-mono-caption text-mute uppercase tracking-widest"
+            >
               {String(i + 1).padStart(2, "0")}
             </AppText>
             <AppText weight="semibold" className="mt-1 text-title-lg text-ink">
               {s.title}
             </AppText>
-            {s.paragraphs.map((p, j) => (
-              <AppText
-                // i+j из одного scope, oрдер фиксированный → ok
-                key={`${i}-${j}`}
-                className="mt-3 text-body-md text-body"
-              >
+            {s.paragraphs.map((p) => (
+              <AppText key={`${s.title}:${p}`} className="mt-3 text-body-md text-body">
                 {p}
               </AppText>
             ))}

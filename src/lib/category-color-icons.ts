@@ -24,11 +24,11 @@ const ICON_MAP: Record<string, string> = {
   doors: "twemoji/door",
   "locks-security": "fluent-color/lock-shield-24",
   painting: "fluent-color/paint-brush-24",
-  wallpaper: "twemoji/scroll",  // рулон = обои (Sprint 0083 split из painting)
-  drywall: "twemoji/paintbrush",          // штукатурка = кисть/нанесение слоя
-  tiling: "twemoji/chequered-flag",       // плитка/мозаика = клетчатая сетка
-  floors: "twemoji/black-square-button",  // пол-плитка/паркет = квадрат
-  ceilings: "twemoji/light-bulb",         // потолок = лампа
+  wallpaper: "twemoji/scroll", // рулон = обои (Sprint 0083 split из painting)
+  drywall: "twemoji/paintbrush", // штукатурка = кисть/нанесение слоя
+  tiling: "twemoji/chequered-flag", // плитка/мозаика = клетчатая сетка
+  floors: "twemoji/black-square-button", // пол-плитка/паркет = квадрат
+  ceilings: "twemoji/light-bulb", // потолок = лампа
   "tension-ceilings": "twemoji/film-frames", // натяжной = натянутая плёнка
   // climate переименован в «Отопление» 2026-05-27 — снежинка заменена на
   // термометр (тепло/температура). Кондиционеры переехали в appliance-repair.
@@ -36,17 +36,17 @@ const ICON_MAP: Record<string, string> = {
   // water-sewer («Водоснабжение и канализация») — кастомная локальная иконка
   // (смеситель+капля, fluent-стиль), см. LOCAL_CATEGORY_ICON_URI. В ICON_MAP
   // не добавляем — local имеет приоритет в getCategoryColorIconUrl.
-  insulation: "twemoji/scarf",            // утепление = тепло-изоляция
+  insulation: "twemoji/scarf", // утепление = тепло-изоляция
   roofing: "twemoji/house",
   facade: "fluent-color/building-24",
   concrete: "twemoji/construction-worker", // бетон = рабочий-бетонщик
-  masonry: "twemoji/hammer-and-pick",     // кладка камня = кирка+молот
+  masonry: "twemoji/hammer-and-pick", // кладка камня = кирка+молот
   welding: "twemoji/fire",
   "general-construction": "twemoji/construction",
   "drilling-wells": "twemoji/potable-water",
   "fences-gates": "twemoji/japanese-castle", // забор/ворота = стена крепости
   landscape: "twemoji/deciduous-tree",
-  "baths-pools": "twemoji/hot-springs",   // баня + бассейн = горячий источник
+  "baths-pools": "twemoji/hot-springs", // баня + бассейн = горячий источник
   furniture: "twemoji/couch-and-lamp",
   "curtains-blinds": "twemoji/framed-picture",
   "interior-design": "twemoji/straight-ruler",

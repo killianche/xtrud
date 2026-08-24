@@ -34,10 +34,7 @@
 import { Briefcase, User } from "phosphor-react-native";
 import { Pressable, View } from "react-native";
 import { AppText } from "@/components/AppText";
-import {
-  type ActiveRole,
-  useSetActiveRole,
-} from "@/features/auth/use-set-active-role";
+import { type ActiveRole, useSetActiveRole } from "@/features/auth/use-set-active-role";
 
 // Белый для иконок ПОВЕРХ фото. Константа (не литерал в JSX) — обходит
 // grep `color="#"` design-enforcement; это легальный photo-overlay §B case.
@@ -58,11 +55,7 @@ const OPTIONS: Array<{
   { value: "master", label: "Мастер", Icon: Briefcase },
 ];
 
-export function RoleSwitchPill({
-  userId,
-  currentRole,
-  isClient,
-}: RoleSwitchPillProps) {
+export function RoleSwitchPill({ userId, currentRole, isClient }: RoleSwitchPillProps) {
   const setRole = useSetActiveRole();
 
   // Single-master без клиентской роли — нечего переключать, контрол скрыт.
@@ -105,23 +98,13 @@ export function RoleSwitchPill({
             // (фидбэк владельца 2026-05-27: «у активной пусть появляется текст»).
             // Неактивная — компактный кружок только с иконкой, как было.
             className={`h-7 flex-row items-center justify-center rounded-pill ${
-              isSelected
-                ? "gap-1.5 bg-white/20 px-2.5"
-                : "w-9 active:opacity-50"
+              isSelected ? "gap-1.5 bg-white/20 px-2.5" : "w-9 active:opacity-50"
             }`}
             style={isSelected ? undefined : { opacity: 0.6 }}
           >
-            <Icon
-              size={16}
-              weight={isSelected ? "fill" : "bold"}
-              color={ON_PHOTO}
-            />
+            <Icon size={16} weight={isSelected ? "fill" : "bold"} color={ON_PHOTO} />
             {isSelected ? (
-              <AppText
-                weight="semibold"
-                className="text-caption"
-                style={{ color: ON_PHOTO }}
-              >
+              <AppText weight="semibold" className="text-caption" style={{ color: ON_PHOTO }}>
                 {label}
               </AppText>
             ) : null}

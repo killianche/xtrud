@@ -78,9 +78,8 @@ export function useAdminMastersRatings() {
         cat.masters.push({
           masterId: r.profile.user.id,
           name:
-            [r.profile.user.first_name, r.profile.user.last_name]
-              .filter(Boolean)
-              .join(" ") || "Без имени",
+            [r.profile.user.first_name, r.profile.user.last_name].filter(Boolean).join(" ") ||
+            "Без имени",
           rankingScore: r.profile.ranking_score ?? 0,
           ratingAvg: r.profile.rating_overall_avg,
           ratingCount: r.profile.rating_overall_count ?? 0,
@@ -95,7 +94,9 @@ export function useAdminMastersRatings() {
       for (const cat of result) {
         cat.masters.sort((a, b) => b.rankingScore - a.rankingScore);
       }
-      result.sort((a, b) => a.sortOrder - b.sortOrder || a.categoryName.localeCompare(b.categoryName));
+      result.sort(
+        (a, b) => a.sortOrder - b.sortOrder || a.categoryName.localeCompare(b.categoryName),
+      );
       return result;
     },
     staleTime: 30_000,

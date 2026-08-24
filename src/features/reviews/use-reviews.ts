@@ -74,7 +74,10 @@ export function useSubmitReview() {
 // (2026-05-27). RPC сам проверяет лимит 1 отзыв / 30 дней / (author,target).
 // ============================================================================
 
-export function recentReviewByAuthorKey(targetId: string | undefined, authorId: string | undefined) {
+export function recentReviewByAuthorKey(
+  targetId: string | undefined,
+  authorId: string | undefined,
+) {
   return ["recent-review-by-author", targetId, authorId] as const;
 }
 

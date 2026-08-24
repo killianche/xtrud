@@ -70,21 +70,19 @@ export function useSubmitMasterProfile() {
       const trimmedWa = input.whatsappPhone.trim();
       const whatsappPhone = trimmedWa === "" ? null : trimmedWa;
 
-      const { error: profileErr } = await supabase
-        .from("master_profiles")
-        .upsert(
-          {
-            user_id: input.userId,
-            bio: input.bio.trim() === "" ? null : input.bio.trim(),
-            experience_years: input.experienceYears,
-            has_tools: false,
-            has_transport: false,
-            status: "pending",
-            whatsapp_same_as_phone: false,
-            whatsapp_phone: whatsappPhone,
-          },
-          { onConflict: "user_id" },
-        );
+      const { error: profileErr } = await supabase.from("master_profiles").upsert(
+        {
+          user_id: input.userId,
+          bio: input.bio.trim() === "" ? null : input.bio.trim(),
+          experience_years: input.experienceYears,
+          has_tools: false,
+          has_transport: false,
+          status: "pending",
+          whatsapp_same_as_phone: false,
+          whatsapp_phone: whatsappPhone,
+        },
+        { onConflict: "user_id" },
+      );
       if (profileErr) throw profileErr;
     },
     onSuccess: (_data, { userId }) => {

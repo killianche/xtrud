@@ -23,10 +23,10 @@ import { useColorScheme } from "@/hooks/use-color-scheme";
 import { type ColorToken, darkColors, lightColors } from "@/lib/colors";
 
 export function useThemeColor(token: ColorToken): string {
+  const { colorScheme } = useColorScheme();
   if (Platform.OS === "web") {
     return `rgb(var(--${token}))`;
   }
-  const { colorScheme } = useColorScheme();
   const palette = colorScheme === "dark" ? darkColors : lightColors;
   return palette[token];
 }
@@ -36,6 +36,7 @@ export function useThemeColor(token: ColorToken): string {
  *   const { ink, mute, hairline } = useThemeColors(["ink", "mute", "hairline"]);
  */
 export function useThemeColors<T extends ColorToken>(tokens: readonly T[]): Record<T, string> {
+  const { colorScheme } = useColorScheme();
   if (Platform.OS === "web") {
     const result = {} as Record<T, string>;
     for (const token of tokens) {
@@ -43,7 +44,6 @@ export function useThemeColors<T extends ColorToken>(tokens: readonly T[]): Reco
     }
     return result;
   }
-  const { colorScheme } = useColorScheme();
   const palette = colorScheme === "dark" ? darkColors : lightColors;
   const result = {} as Record<T, string>;
   for (const token of tokens) {

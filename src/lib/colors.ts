@@ -86,13 +86,13 @@ export const darkColors = {
   // secondary тонул в фоне, бордеры outline-кнопок не различались.
   // WCAG AA target для secondary text ≥ 4.5:1. Подняли все «middle» оттенки.
   canvas: "#0a0a0a",
-  "canvas-soft": "#161616",      // 11 → 16 (различим от canvas)
-  "canvas-soft-2": "#222222",    // 1a → 22 (card-row отделяется от фона)
+  "canvas-soft": "#161616", // 11 → 16 (различим от canvas)
+  "canvas-soft-2": "#222222", // 1a → 22 (card-row отделяется от фона)
   ink: "#fafafa",
-  body: "#b8b8b8",               // a1 → b8 (description-text легче читать)
-  mute: "#999999",               // 6b → 99 (мета «13 лет опыта», «Назрань»)
-  hairline: "#333333",           // 26 → 33 (видимая граница строк/карточек)
-  "hairline-strong": "#525252",  // 40 → 52 (outline-кнопки Позвонить/WhatsApp)
+  body: "#b8b8b8", // a1 → b8 (description-text легче читать)
+  mute: "#999999", // 6b → 99 (мета «13 лет опыта», «Назрань»)
+  hairline: "#333333", // 26 → 33 (видимая граница строк/карточек)
+  "hairline-strong": "#525252", // 40 → 52 (outline-кнопки Позвонить/WhatsApp)
   primary: "#fafafa",
   "on-primary": "#0a0a0a",
 
@@ -137,15 +137,15 @@ export const darkColors = {
   // === COMPAT ALIASES ===
   // Синхронизированы с base-токенами выше (canvas-soft / canvas-soft-2 /
   // hairline / mute / hairline-strong подняты для контраста 2026-05-14).
-  "surface-1": "#161616",        // = canvas-soft
-  "surface-2": "#222222",        // = canvas-soft-2
-  "surface-3": "#333333",        // = hairline
+  "surface-1": "#161616", // = canvas-soft
+  "surface-2": "#222222", // = canvas-soft-2
+  "surface-3": "#333333", // = hairline
   "hairline-soft": "#1f1f1f",
-  muted: "#999999",              // = mute
-  "muted-soft": "#525252",       // = hairline-strong
+  muted: "#999999", // = mute
+  "muted-soft": "#525252", // = hairline-strong
   // Фирменный accent на тёмном — чуть светлее для AA-контраста на canvas #0a.
   accent: "#ff6b87",
-  "accent-soft": "#4a1f29",      // тёмно-розовый приглушённый фон
+  "accent-soft": "#4a1f29", // тёмно-розовый приглушённый фон
 } as const;
 
 export type ColorToken = keyof typeof lightColors;

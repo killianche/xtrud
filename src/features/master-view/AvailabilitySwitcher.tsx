@@ -97,7 +97,13 @@ function formatCountdown(until: string | null | undefined): string | null {
 function Dot({ color, dim }: { color: string; dim?: boolean }) {
   return (
     <View
-      style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: color, opacity: dim ? 0.6 : 1 }}
+      style={{
+        width: 8,
+        height: 8,
+        borderRadius: 4,
+        backgroundColor: color,
+        opacity: dim ? 0.6 : 1,
+      }}
     />
   );
 }

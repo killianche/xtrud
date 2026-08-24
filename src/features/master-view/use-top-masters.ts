@@ -103,9 +103,7 @@ export function useTopMasters(limit = 7) {
       }
 
       // Подтянем категории всех отфильтрованных мастеров одним запросом.
-      const masterIds = filtered
-        .map((r) => r.user?.id)
-        .filter((v): v is string => !!v);
+      const masterIds = filtered.map((r) => r.user?.id).filter((v): v is string => !!v);
       const categoriesMap = new Map<string, string[]>();
       if (masterIds.length > 0) {
         const { data: catRows, error: catErr } = await supabase

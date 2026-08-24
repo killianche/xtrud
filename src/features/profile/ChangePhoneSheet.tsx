@@ -37,12 +37,7 @@ export interface ChangePhoneSheetProps {
   currentPhone: string | null;
 }
 
-export function ChangePhoneSheet({
-  open,
-  onClose,
-  userId,
-  currentPhone,
-}: ChangePhoneSheetProps) {
+export function ChangePhoneSheet({ open, onClose, userId, currentPhone }: ChangePhoneSheetProps) {
   const [phone, setPhone] = useState("");
   const [error, setError] = useState<string | null>(null);
 

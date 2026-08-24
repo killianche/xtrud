@@ -10,10 +10,10 @@ import { Image } from "expo-image";
 import { Image as ImageIcon, Trash } from "phosphor-react-native";
 import { useState } from "react";
 import { ActivityIndicator, Pressable, View } from "react-native";
-import { useAppWidth } from "@/lib/use-app-width";
 import { AppText } from "@/components/AppText";
 import type { PortfolioItem } from "@/features/profile/use-my-portfolio";
 import { cdnBlur, cdnImage } from "@/lib/image-cdn";
+import { useAppWidth } from "@/lib/use-app-width";
 import { useThemeColor } from "@/lib/use-theme-color";
 
 interface PortfolioGridProps {
@@ -54,13 +54,7 @@ export function PortfolioGrid({ items, isLoading, onDelete, onOpen }: PortfolioG
     <View className="flex-row flex-wrap" style={{ gap: GUTTER }}>
       {items.map((item) => {
         const interactive = !!onDelete || !!onOpen;
-        const content = (
-          <PortfolioTile
-            item={item}
-            size={itemSize}
-            onDelete={onDelete}
-          />
-        );
+        const content = <PortfolioTile item={item} size={itemSize} onDelete={onDelete} />;
 
         if (interactive && onOpen) {
           return (

@@ -37,9 +37,9 @@ import { useRouter } from "expo-router";
 import { Plus } from "phosphor-react-native";
 import { Pressable, View } from "react-native";
 import { AppText } from "@/components/AppText";
+import { useMyMasterCategories } from "@/features/master-categories/use-my-categories";
 import { MasterRecommendationsSection } from "@/features/master-view/MasterRecommendationsSection";
 import { MyResponsesEntry } from "@/features/master-view/MyResponsesEntry";
-import { useMyMasterCategories } from "@/features/master-categories/use-my-categories";
 import { useThemeColor } from "@/lib/use-theme-color";
 
 interface MasterHomeContentProps {

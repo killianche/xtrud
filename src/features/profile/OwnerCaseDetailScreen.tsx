@@ -37,35 +37,25 @@ import {
   Trash,
 } from "phosphor-react-native";
 import { useState } from "react";
-import {
-  ActivityIndicator,
-  Alert,
-  Pressable,
-  ScrollView,
-  TextInput,
-  View,
-} from "react-native";
+import { ActivityIndicator, Alert, Pressable, ScrollView, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
-import { useAppWidth } from "@/lib/use-app-width";
 import { BottomSheet } from "@/components/ui";
 import { useAuthSession } from "@/features/auth/use-auth-session";
-import {
-  useAddPortfolioItem,
-  useDeletePortfolioItem,
-} from "@/features/profile/use-my-portfolio";
+import { useAddPortfolioItem, useDeletePortfolioItem } from "@/features/profile/use-my-portfolio";
 import {
   useCaseDetail,
   useDeleteCase,
   useUpdateCase,
 } from "@/features/profile/use-portfolio-cases";
+import { confirmAsync } from "@/lib/confirm";
+import { cdnBlur, cdnImage } from "@/lib/image-cdn";
 import {
   type PickedImage,
   pickMultiplePortfolioImages,
   uploadPortfolioBatch,
 } from "@/lib/image-upload";
-import { cdnBlur, cdnImage } from "@/lib/image-cdn";
-import { confirmAsync } from "@/lib/confirm";
+import { useAppWidth } from "@/lib/use-app-width";
 import { useSafeBack } from "@/lib/use-safe-back";
 import { useThemeColors } from "@/lib/use-theme-color";
 
@@ -90,17 +80,8 @@ export default function OwnerCaseDetailScreen() {
   const { session } = useAuthSession();
   const userId = session?.user?.id ?? null;
   // Fallback при холодном открытии (нет истории) — список работ.
-  const goBack = useSafeBack(
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    "/(tabs)/cases" as any,
-  );
-  const tc = useThemeColors([
-    "ink",
-    "mute",
-    "muted-soft",
-    "error",
-    "on-primary",
-  ]);
+  const goBack = useSafeBack("/(tabs)/cases" as const);
+  const tc = useThemeColors(["ink", "mute", "muted-soft", "error", "on-primary"]);
 
   const screenW = useAppWidth();
   const tileSize = Math.floor((screenW - 32 - 16) / 3);
@@ -112,9 +93,7 @@ export default function OwnerCaseDetailScreen() {
   const deleteCaseM = useDeleteCase(userId);
 
   const [menuOpen, setMenuOpen] = useState(false);
-  const [progress, setProgress] = useState<{ done: number; total: number } | null>(
-    null,
-  );
+  const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
 
   // Единый режим правки: название + описание + дата сразу (фидбэк владельца).
   const [editing, setEditing] = useState(false);
@@ -183,10 +162,7 @@ export default function OwnerCaseDetailScreen() {
 
     setProgress(null);
     if (failed.length > 0) {
-      Alert.alert(
-        "Часть фото не загрузилась",
-        `Ошибки: ${failed.length}. Попробуйте ещё раз.`,
-      );
+      Alert.alert("Часть фото не загрузилась", `Ошибки: ${failed.length}. Попробуйте ещё раз.`);
     }
   };
 
@@ -359,9 +335,7 @@ export default function OwnerCaseDetailScreen() {
                       >
                         <AppText
                           weight={isSelected ? "semibold" : "medium"}
-                          className={`text-body-sm ${
-                            isSelected ? "text-accent" : "text-ink"
-                          }`}
+                          className={`text-body-sm ${isSelected ? "text-accent" : "text-ink"}`}
                         >
                           {q.label}
                         </AppText>
@@ -410,10 +384,7 @@ export default function OwnerCaseDetailScreen() {
                   onPress={startEdit}
                   className="flex-1 active:opacity-70"
                 >
-                  <AppText
-                    weight="bold"
-                    className="text-display-md tracking-tight text-ink"
-                  >
+                  <AppText weight="bold" className="text-display-md tracking-tight text-ink">
                     {caseDetail.title}
                   </AppText>
                 </Pressable>
@@ -446,9 +417,7 @@ export default function OwnerCaseDetailScreen() {
                 </View>
               ) : null}
               {caseDetail.description ? (
-                <AppText className="mt-4 text-body-md text-body">
-                  {caseDetail.description}
-                </AppText>
+                <AppText className="mt-4 text-body-md text-body">{caseDetail.description}</AppText>
               ) : null}
             </View>
           )
@@ -464,9 +433,7 @@ export default function OwnerCaseDetailScreen() {
               <View
                 className="h-full bg-ink"
                 style={{
-                  width: `${Math.round(
-                    (progress.done / Math.max(1, progress.total)) * 100,
-                  )}%`,
+                  width: `${Math.round((progress.done / Math.max(1, progress.total)) * 100)}%`,
                 }}
               />
             </View>

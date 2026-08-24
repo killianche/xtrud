@@ -25,16 +25,13 @@
  */
 
 import { useFocusEffect, useRouter } from "expo-router";
-import { CaretLeft, ClockCounterClockwise, TrendUp, X } from "phosphor-react-native";
+import { CaretLeft, ClockCounterClockwise, X } from "phosphor-react-native";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { FlatList, Pressable, ScrollView, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
 import { useRecentSearches } from "@/features/categories/use-recent-searches";
-import {
-  useLogSearchQuery,
-  usePopularQueries,
-} from "@/features/categories/use-search-analytics";
+import { useLogSearchQuery, usePopularQueries } from "@/features/categories/use-search-analytics";
 import { useSearchCategories } from "@/features/categories/use-search-categories";
 import { useSearchableServices } from "@/features/categories/use-searchable-services";
 import { highlightMatch } from "@/lib/highlight-match";
@@ -78,10 +75,7 @@ export default function SearchScreen() {
   const { data: services = [], isLoading: browseLoading } = useSearchableServices();
 
   // Search-режим — RPC с synonym/FTS/trigram + раскладка-fix.
-  const { data: searchResult, isLoading: searchLoading } = useSearchCategories(
-    debouncedQuery,
-    20,
-  );
+  const { data: searchResult, isLoading: searchLoading } = useSearchCategories(debouncedQuery, 20);
 
   const results: SearchListItem[] = useMemo(() => {
     if (isBrowseMode) {
@@ -208,11 +202,7 @@ export default function SearchScreen() {
             <View className="mt-4 px-5">
               <View className="flex-row items-center justify-between">
                 <View className="flex-row items-center gap-1.5">
-                  <ClockCounterClockwise
-                    size={14}
-                    weight="bold"
-                    color={tc["muted-soft"]}
-                  />
+                  <ClockCounterClockwise size={14} weight="bold" color={tc["muted-soft"]} />
                   <AppText
                     weight="mono"
                     className="text-mono-caption text-mute uppercase tracking-widest"
@@ -317,9 +307,7 @@ export default function SearchScreen() {
       ) : (
         <>
           <View className="px-5 mt-6">
-            <AppText className="text-body-sm text-mute">
-              Подходящие услуги или специалисты
-            </AppText>
+            <AppText className="text-body-sm text-mute">Подходящие услуги или специалисты</AppText>
           </View>
           <FlatList
             data={results}
@@ -331,8 +319,7 @@ export default function SearchScreen() {
               paddingBottom: insets.bottom + 24,
             }}
             renderItem={({ item }) => {
-              const highlightQuery =
-                wasFlipped && flippedQuery ? flippedQuery : debouncedQuery;
+              const highlightQuery = wasFlipped && flippedQuery ? flippedQuery : debouncedQuery;
               return (
                 <ResultRow
                   item={item}
@@ -397,13 +384,7 @@ function ResultRow({
             // biome-ignore lint/suspicious/noArrayIndexKey: stable segment index
             key={idx}
             weight={seg.match ? "semibold" : "regular"}
-            className={
-              highlightQuery
-                ? seg.match
-                  ? "text-ink"
-                  : "text-mute"
-                : "text-ink"
-            }
+            className={highlightQuery ? (seg.match ? "text-ink" : "text-mute") : "text-ink"}
           >
             {seg.text}
           </AppText>

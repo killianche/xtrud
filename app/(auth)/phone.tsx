@@ -2,13 +2,14 @@
 // проекту и LoginWall). Модель с 2026-06-05: «почта ИЛИ телефон» + пароль
 // (SMS-OTP убран — платный). См. src/features/auth/use-auth-mutations.ts.
 //
-// После успешного входа НЕ навигируем вручную — корневой AuthGate сам уводит
-// в онбординг / табы при появлении сессии.
+// При обычном входе навигацию делает AuthGate. Если вход начат из формы
+// задания, allowlist return-intent возвращает пользователя в сохранённый
+// черновик; незавершённый onboarding при этом не обходится.
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useNavigation, useRouter } from "expo-router";
 import { CaretLeft, Eye, EyeSlash } from "phosphor-react-native";
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import {
   KeyboardAvoidingView,
@@ -20,19 +21,76 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
+import { ORDER_CREATE_RETURN_TO, parseAuthReturnTo } from "@/features/auth/auth-return";
 import { useLogin } from "@/features/auth/use-auth-mutations";
 import { type LoginFormValues, loginFormSchema } from "@/features/auth/validation";
+import { useAuthReturnUrlStore } from "@/lib/auth-return-url-store";
+import {
+  applyGuestDraftAuthAbandonment,
+  completeGuestDraftAuthJourney,
+  revokeGuestDraftAuthJourney,
+  shouldAbandonGuestDraftAuthJourney,
+} from "@/lib/order-draft-store";
 import { useSafeBack } from "@/lib/use-safe-back";
 import { useThemeColors } from "@/lib/use-theme-color";
 
 export default function LoginScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const navigation = useNavigation();
+  const params = useLocalSearchParams<{
+    returnTo?: string | string[];
+    draftJourney?: string | string[];
+  }>();
+  const requestedReturnTo = parseAuthReturnTo(params.returnTo);
+  const draftJourney = Array.isArray(params.draftJourney)
+    ? params.draftJourney[0]
+    : params.draftJourney;
   const login = useLogin();
   const [serverError, setServerError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const tc = useThemeColors(["muted-soft", "ink", "mute"]);
-  const goBack = useSafeBack("/" as const);
+  const safeGoBack = useSafeBack("/" as const);
+
+  const abandonDraftJourney = useCallback((shouldAbandon: boolean) => {
+    applyGuestDraftAuthAbandonment(shouldAbandon, {
+      clearReturnIntent: () => {
+        const returnUrl = useAuthReturnUrlStore.getState().peekReturnUrl();
+        if (returnUrl === ORDER_CREATE_RETURN_TO) {
+          useAuthReturnUrlStore.getState().clearReturnUrl();
+        }
+      },
+      revokeJourney: revokeGuestDraftAuthJourney,
+    });
+  }, []);
+
+  useEffect(
+    () =>
+      navigation.addListener("beforeRemove", (event) => {
+        const action = event.data.action as { type: string; payload?: { name?: string } };
+        abandonDraftJourney(
+          shouldAbandonGuestDraftAuthJourney("phone", {
+            type: action.type,
+            targetRoute: action.payload?.name,
+          }),
+        );
+      }),
+    [abandonDraftJourney, navigation],
+  );
+
+  useEffect(() => {
+    if (requestedReturnTo) {
+      useAuthReturnUrlStore.getState().setReturnUrl(requestedReturnTo);
+    }
+  }, [requestedReturnTo]);
+
+  const goBack = () => {
+    // useSafeBack завершает переход через REPLACE, который lifecycle-policy
+    // считает успешной auth-навигацией. Поэтому видимая кнопка Back обязана
+    // явно отозвать гостевой journey до самого перехода.
+    abandonDraftJourney(true);
+    safeGoBack();
+  };
 
   const {
     control,
@@ -47,11 +105,16 @@ export default function LoginScreen() {
   const onSubmit = handleSubmit(async (values) => {
     setServerError(null);
     try {
-      await login.mutateAsync({
+      const result = await login.mutateAsync({
         login: values.login.trim(),
         password: values.password,
       });
-      // Навигацию делает AuthGate при появлении сессии.
+      await completeGuestDraftAuthJourney(draftJourney, result.userId);
+      const returnUrl = useAuthReturnUrlStore.getState().peekReturnUrl();
+      // Intent пока не consume: целевой экран проверит onboarding и только
+      // после этого одноразово очистит return. Так AuthGate и network timing не
+      // могут ни потерять возврат, ни пропустить обязательный onboarding.
+      if (returnUrl) router.replace(returnUrl as never);
     } catch (e) {
       setServerError(e instanceof Error ? e.message : "Не удалось войти");
     }
@@ -173,7 +236,10 @@ export default function LoginScreen() {
 
             <Pressable
               accessibilityRole="button"
-              onPress={() => router.push("/(auth)/forgot-password" as never)}
+              onPress={() => {
+                abandonDraftJourney(true);
+                router.push("/(auth)/forgot-password" as never);
+              }}
               hitSlop={6}
               className="mt-3 self-start active:opacity-70"
             >
@@ -183,7 +249,12 @@ export default function LoginScreen() {
             </Pressable>
 
             {serverError && (
-              <AppText weight="medium" className="mt-4 text-caption text-error">
+              <AppText
+                accessibilityRole="alert"
+                accessibilityLiveRegion="polite"
+                weight="medium"
+                className="mt-4 text-caption text-error"
+              >
                 {serverError}
               </AppText>
             )}
@@ -208,7 +279,20 @@ export default function LoginScreen() {
             <AppText className="text-body-sm text-body">Нет аккаунта? </AppText>
             <Pressable
               accessibilityRole="button"
-              onPress={() => router.push("/(auth)/register" as never)}
+              onPress={() => {
+                router.push(
+                  requestedReturnTo
+                    ? ({
+                        pathname: "/(auth)/register",
+                        params: {
+                          returnTo: requestedReturnTo,
+                          ...(draftJourney ? { draftJourney } : {}),
+                          authOrigin: "phone",
+                        },
+                      } as never)
+                    : ("/(auth)/register" as never),
+                );
+              }}
               hitSlop={6}
               className="active:opacity-70"
             >

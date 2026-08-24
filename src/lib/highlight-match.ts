@@ -59,7 +59,5 @@ export function filterServicesByQuery<T extends { name_ru: string }>(
     return services.slice(0, limit);
   }
   const q = trimmed.toLowerCase();
-  return services
-    .filter((s) => s.name_ru.toLowerCase().includes(q))
-    .slice(0, limit);
+  return services.filter((s) => s.name_ru.toLowerCase().includes(q)).slice(0, limit);
 }

@@ -90,7 +90,11 @@ export function MasterReviewSheet({
     <BottomSheet open={open} onClose={onClose} title="Оставить отзыв">
       <View className="px-5">
         <AppText className="text-body-md text-mute">
-          Ваша оценка мастера <AppText weight="semibold" className="text-ink">{masterName}</AppText>.
+          Ваша оценка мастера{" "}
+          <AppText weight="semibold" className="text-ink">
+            {masterName}
+          </AppText>
+          .
         </AppText>
 
         {/* Звёзды — крупные tap-targets, чтобы тап точно попадал. */}
@@ -118,10 +122,7 @@ export function MasterReviewSheet({
         </View>
 
         {rating > 0 ? (
-          <AppText
-            weight="medium"
-            className="mt-3 text-center text-caption text-mute"
-          >
+          <AppText weight="medium" className="mt-3 text-center text-caption text-mute">
             {ratingLabel(rating)}
           </AppText>
         ) : null}

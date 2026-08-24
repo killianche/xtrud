@@ -50,11 +50,7 @@ function unwrap(url: string): string {
 /** Можно ли оптимизировать эту ссылку через CDN. */
 function canOptimize(url: string | null | undefined): url is string {
   if (!url) return false;
-  if (
-    url.startsWith("data:") ||
-    url.startsWith("blob:") ||
-    url.startsWith("file:")
-  ) {
+  if (url.startsWith("data:") || url.startsWith("blob:") || url.startsWith("file:")) {
     return false;
   }
   // Локальный/относительный ассет (не http и не уже-weserv) — пропускаем.
@@ -94,9 +90,7 @@ export function cdnImage(url: string, opts: CdnOptions): string {
   const src = unwrap(url);
   const dpr = opts.dpr ?? 2;
   const logical =
-    Number.isFinite(opts.width) && opts.width >= MIN_VALID_WIDTH
-      ? opts.width
-      : FALLBACK_WIDTH;
+    Number.isFinite(opts.width) && opts.width >= MIN_VALID_WIDTH ? opts.width : FALLBACK_WIDTH;
   const w = Math.round(logical * dpr);
   const q = opts.quality ?? 62;
   return `${WESERV}${encodeSource(src)}&w=${w}&output=webp&q=${q}&we`;

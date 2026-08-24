@@ -27,6 +27,8 @@ import { useAuthSession } from "@/features/auth/use-auth-session";
 import { useCompleteOnboarding } from "@/features/auth/use-complete-onboarding";
 import { useExitOnboarding } from "@/features/auth/use-exit-onboarding";
 import { setUsernameErrorMessage, useSetUsername } from "@/features/auth/use-username";
+import { useAuthReturnUrlStore } from "@/lib/auth-return-url-store";
+import { supabase } from "@/lib/supabase";
 
 export default function ClientNameScreen() {
   const insets = useSafeAreaInsets();
@@ -49,6 +51,15 @@ export default function ClientNameScreen() {
     ? setUsernameErrorMessage(setUsernameMut.error.message)
     : completeOnboarding.error?.message;
 
+  const handleExit = async () => {
+    await exitOnboarding();
+    // useExitOnboarding может завершиться и после отказа в confirm. Очищаем
+    // return-intent только если подтверждённая отмена действительно вышла из
+    // сессии; сохранённый draft задания при этом остаётся на 14 дней.
+    const { data } = await supabase.auth.getSession();
+    if (!data.session) useAuthReturnUrlStore.getState().clearReturnUrl();
+  };
+
   const onSubmit = async () => {
     if (!canSubmit || !userId || isBusy) return;
     try {
@@ -61,9 +72,10 @@ export default function ClientNameScreen() {
         role: "client",
         firstName: trimmed,
       });
-      // AuthGate увидит onboarding_completed_at и сам редиректнет в (tabs).
-      // Подстраховка на случай если кэш не успел инвалидироваться — push явно.
-      router.replace("/(tabs)" as never);
+      // Return-intent одноразовый: auth из формы задания возвращает в черновик,
+      // обычный onboarding сохраняет прежний fallback на корень табов.
+      const returnUrl = useAuthReturnUrlStore.getState().consumeReturnUrl();
+      router.replace((returnUrl ?? "/(tabs)") as never);
     } catch (_e) {
       // Ошибка отображается через error в UI ниже.
     }
@@ -78,7 +90,7 @@ export default function ClientNameScreen() {
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Отменить регистрацию"
-          onPress={exitOnboarding}
+          onPress={() => void handleExit()}
           hitSlop={8}
           className="active:opacity-60"
         >
@@ -123,7 +135,12 @@ export default function ClientNameScreen() {
         </View>
 
         {error ? (
-          <AppText weight="medium" className="mt-4 text-caption text-error">
+          <AppText
+            accessibilityRole="alert"
+            accessibilityLiveRegion="polite"
+            weight="medium"
+            className="mt-4 text-caption text-error"
+          >
             {error}
           </AppText>
         ) : null}

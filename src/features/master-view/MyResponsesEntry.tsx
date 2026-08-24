@@ -27,10 +27,7 @@ import { useRouter } from "expo-router";
 import { CaretRight, ChatCenteredText } from "phosphor-react-native";
 import { Pressable, View } from "react-native";
 import { AppText } from "@/components/AppText";
-import {
-  isActiveResponse,
-  useMyResponses,
-} from "@/features/orders/use-my-responses";
+import { isActiveResponse, useMyResponses } from "@/features/orders/use-my-responses";
 import { useThemeColors } from "@/lib/use-theme-color";
 
 interface MyResponsesEntryProps {
@@ -42,9 +39,7 @@ export function MyResponsesEntry({ userId }: MyResponsesEntryProps) {
   const tc = useThemeColors(["accent", "mute"]);
 
   const myResponsesQ = useMyResponses(userId);
-  const activeResponsesCount = (myResponsesQ.data ?? []).filter(
-    isActiveResponse,
-  ).length;
+  const activeResponsesCount = (myResponsesQ.data ?? []).filter(isActiveResponse).length;
   const hasActive = activeResponsesCount > 0;
 
   return (

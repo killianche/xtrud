@@ -36,10 +36,7 @@ export function useReopenOrder() {
 }
 
 /** Helper: можно ли reopen заказ? Окно 7 дней с момента updated_at. */
-export function canReopenOrder(
-  status: string,
-  updatedAt: string | null | undefined,
-): boolean {
+export function canReopenOrder(status: string, updatedAt: string | null | undefined): boolean {
   if (status !== "cancelled" && status !== "expired") return false;
   if (!updatedAt) return false;
   const updatedMs = new Date(updatedAt).getTime();

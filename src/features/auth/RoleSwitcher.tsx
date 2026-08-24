@@ -17,10 +17,7 @@
 import { Briefcase, User } from "phosphor-react-native";
 import { Pressable, View } from "react-native";
 import { AppText } from "@/components/AppText";
-import {
-  type ActiveRole,
-  useSetActiveRole,
-} from "@/features/auth/use-set-active-role";
+import { type ActiveRole, useSetActiveRole } from "@/features/auth/use-set-active-role";
 import { useThemeColors } from "@/lib/use-theme-color";
 
 interface RoleSwitcherProps {
@@ -66,8 +63,7 @@ export function RoleSwitcher({ userId, currentRole, isMaster, isClient }: RoleSw
               style={
                 isSel
                   ? {
-                      boxShadow:
-                        "0 1px 2px rgba(0,0,0,0.06), 0 0 0 1px rgba(0,0,0,0.04)",
+                      boxShadow: "0 1px 2px rgba(0,0,0,0.06), 0 0 0 1px rgba(0,0,0,0.04)",
                     }
                   : undefined
               }

@@ -21,10 +21,7 @@
  * После миграции 0068 в БД физически живут только эти L1 — список
  * совпадает с реальным состоянием БД.
  */
-export const IN_SCOPE_L1_IDS: ReadonlyArray<string> = [
-  "construction",
-  "home-services",
-] as const;
+export const IN_SCOPE_L1_IDS: ReadonlyArray<string> = ["construction", "home-services"] as const;
 
 /** True если L1 показывается в каталоге сейчас. */
 export function isL1InScope(l1Id: string | null | undefined): boolean {

@@ -46,7 +46,7 @@ export function formatWhatsappDisplay(raw: string | null | undefined): string {
   if (!raw) return "";
   const digits = raw.replace(/\D/g, "");
   if (digits.length === 11 && (digits.startsWith("7") || digits.startsWith("8"))) {
-    const d = "7" + digits.slice(1);
+    const d = `7${digits.slice(1)}`;
     return `+${d.slice(0, 1)} (${d.slice(1, 4)}) ${d.slice(4, 7)}-${d.slice(7, 9)}-${d.slice(9, 11)}`;
   }
   return raw.startsWith("+") ? raw : `+${raw}`;

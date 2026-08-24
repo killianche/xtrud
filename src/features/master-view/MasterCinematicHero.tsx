@@ -37,11 +37,11 @@ import { Image as ExpoImage } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { CaretDown, MapPin } from "phosphor-react-native";
 import { useState } from "react";
-import { View, Pressable } from "react-native";
+import { Pressable, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
 import { CITIES } from "@/components/CitySelector";
-import { PickerSheet, type PickerOption } from "@/components/ui";
+import { type PickerOption, PickerSheet } from "@/components/ui";
 import { XtrudWordmark } from "@/components/XtrudWordmark";
 import { useUserRecord } from "@/features/auth/use-user-record";
 import {
@@ -53,8 +53,8 @@ import {
   useSetAvailability,
 } from "@/features/master-view/availability";
 import { RoleSwitchPill } from "@/features/master-view/RoleSwitchPill";
-import { useResponseLimit } from "@/features/orders/use-response-limit";
 import { useMyMasterViewStats } from "@/features/master-view/use-my-view-stats";
+import { useResponseLimit } from "@/features/orders/use-response-limit";
 import { useAppWidth } from "@/lib/use-app-width";
 import { useThemeColor } from "@/lib/use-theme-color";
 import { useUserCity } from "@/lib/use-user-city";
@@ -95,10 +95,7 @@ export function MasterCinematicHero({ userId }: MasterCinematicHeroProps) {
   const [availOpen, setAvailOpen] = useState(false);
   const { data: avail } = useMyAvailability(userId);
   const setAvailability = useSetAvailability();
-  const currentAvail = effectiveStatus(
-    avail?.availability_status,
-    avail?.availability_until,
-  );
+  const currentAvail = effectiveStatus(avail?.availability_status, avail?.availability_until);
 
   // Данные мастера: имя/фамилия/аватар + персональная статистика за неделю.
   const { data: user } = useUserRecord(userId);
@@ -161,10 +158,7 @@ export function MasterCinematicHero({ userId }: MasterCinematicHeroProps) {
             Pill — компактный (28px высоты, только иконки), помещается
             рядом с логотипом h=30. Скрывается для single-master.
             Ряд 2: город под логотипом. */}
-        <View
-          className="absolute left-0 right-0 px-4"
-          style={{ top: insets.top + 6 }}
-        >
+        <View className="absolute left-0 right-0 px-4" style={{ top: insets.top + 6 }}>
           <View className="flex-row items-center justify-between">
             <XtrudWordmark size={30} color={ON_PHOTO} />
             {user ? (

@@ -8,6 +8,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQuery } from "@tanstack/react-query";
 import { useFocusEffect, useRouter } from "expo-router";
+import { SignIn, User } from "phosphor-react-native";
 import { useCallback, useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import {
@@ -19,25 +20,24 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { SignIn, User } from "phosphor-react-native";
 import { AppText } from "@/components/AppText";
-import { confirmAsync } from "@/lib/confirm";
-import { useThemeColors } from "@/lib/use-theme-color";
 import {
   type MasterProfileFormValues,
   masterProfileSchema,
 } from "@/features/auth/master-profile-schema";
+import { UsernameField } from "@/features/auth/UsernameField";
 import { useAuthSession } from "@/features/auth/use-auth-session";
 import { useUserRecord } from "@/features/auth/use-user-record";
+import { setUsernameErrorMessage, useSetUsername } from "@/features/auth/use-username";
 import { useCities } from "@/features/cities/use-cities";
 import { MasterProfileFormBody } from "@/features/master-profile/MasterProfileFormBody";
-import { UsernameField } from "@/features/auth/UsernameField";
-import { setUsernameErrorMessage, useSetUsername } from "@/features/auth/use-username";
-import { useUpdateMasterProfile } from "@/features/master-profile/use-update-master-profile";
 import { ServiceAreasSection } from "@/features/master-profile/ServiceAreasSection";
+import { useUpdateMasterProfile } from "@/features/master-profile/use-update-master-profile";
+import { confirmAsync } from "@/lib/confirm";
 import { supabase } from "@/lib/supabase";
-import { useSafeBack } from "@/lib/use-safe-back";
 import { useTabBarVisibility } from "@/lib/tabbar-visibility";
+import { useSafeBack } from "@/lib/use-safe-back";
+import { useThemeColors } from "@/lib/use-theme-color";
 import type { Tables } from "@/types/database";
 
 export default function EditMasterScreen() {
@@ -48,7 +48,7 @@ export default function EditMasterScreen() {
 
   const { data: user } = useUserRecord(userId);
   const { data: masterProfile, isLoading: profileLoading } = useMyMasterProfile(userId);
-  const { data: cities, isLoading: citiesLoading } = useCities();
+  const { isLoading: citiesLoading } = useCities();
   const updateMaster = useUpdateMasterProfile();
   const setUsernameMut = useSetUsername();
 
@@ -97,8 +97,7 @@ export default function EditMasterScreen() {
     // (старые мастера на «совпадает с регистрационным») — поле останется пустым,
     // и мастер обязан ввести номер (поле теперь required). Регистрационный номер
     // НЕ подставляем. Каст through unknown — типы регенерятся следующим типгеном.
-    const contactPhoneFromDb = (user as unknown as { contact_phone: string | null })
-      .contact_phone;
+    const contactPhoneFromDb = (user as unknown as { contact_phone: string | null }).contact_phone;
 
     reset({
       firstName: user.first_name ?? "",
@@ -108,8 +107,7 @@ export default function EditMasterScreen() {
       bio: masterProfile.bio ?? "",
       experienceYears: masterProfile.experience_years ?? 0,
       whatsappPhone: masterProfile.whatsapp_phone ?? "",
-      contactPhone:
-        typeof contactPhoneFromDb === "string" ? contactPhoneFromDb : "",
+      contactPhone: typeof contactPhoneFromDb === "string" ? contactPhoneFromDb : "",
     });
     setUsernameValue(user.username ?? "");
   }, [user, masterProfile, reset]);
@@ -132,9 +130,7 @@ export default function EditMasterScreen() {
       goBack();
     } catch (e) {
       // Ошибку показываем строкой на экране (Alert.alert — no-op на вебе).
-      setSaveError(
-        e instanceof Error ? setUsernameErrorMessage(e.message) : "Ошибка сервера",
-      );
+      setSaveError(e instanceof Error ? setUsernameErrorMessage(e.message) : "Ошибка сервера");
     }
   });
 
@@ -250,11 +246,7 @@ export default function EditMasterScreen() {
           {/* Заголовок «Профиль мастера» — в навбаре сверху. Небольшой воздух. */}
           <View className="pt-4" />
 
-          <MasterProfileFormBody
-            control={control}
-            errors={errors}
-            isBusy={isBusy}
-          />
+          <MasterProfileFormBody control={control} errors={errors} isBusy={isBusy} />
 
           {/* Юзернейм — уникальный публичный @идентификатор, можно менять. */}
           <View className="mt-6 px-6">
@@ -306,15 +298,11 @@ function EditMasterGuestState({ onLogin }: { onLogin: () => void }) {
   return (
     <View className="flex-1 items-center justify-center px-6">
       <User size={48} weight="regular" color={tc["muted-soft"]} />
-      <AppText
-        weight="semibold"
-        className="mt-4 text-title-md text-ink text-center"
-      >
+      <AppText weight="semibold" className="mt-4 text-title-md text-ink text-center">
         Войдите в аккаунт
       </AppText>
       <AppText className="mt-2 text-body-sm text-mute text-center">
-        Редактирование профиля мастера доступно только после входа по номеру
-        телефона.
+        Редактирование профиля мастера доступно только после входа по номеру телефона.
       </AppText>
       <Pressable
         accessibilityRole="button"

@@ -6,9 +6,9 @@ import {
   Check,
   CheckCircle,
   Clock,
+  DotsThree,
   Flag,
   MapPin,
-  DotsThree,
   Pencil,
   Phone,
   Star,
@@ -29,17 +29,16 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { openExternalUrl } from "@/lib/open-link";
 import { z } from "zod";
 import { AppText } from "@/components/AppText";
 import { Avatar } from "@/components/Avatar";
 import { OrderStatusBadge } from "@/components/OrderStatusBadge";
+import { BottomSheet, ScreenHeader, Skeleton } from "@/components/ui";
 import { useAuthSession } from "@/features/auth/use-auth-session";
 import { useSetActiveRole } from "@/features/auth/use-set-active-role";
 import { useUserRecord } from "@/features/auth/use-user-record";
-import { BottomSheet, ScreenHeader, Skeleton } from "@/components/ui";
+import { useMasterPhone, useMasterPublicProfile } from "@/features/master-view/use-master-public";
 import { OrderPhotoCarousel } from "@/features/orders/OrderPhotoCarousel";
-import { useRejectResponse } from "@/features/orders/use-reject-response";
 import {
   formatOrderTiming,
   formatPrice,
@@ -48,8 +47,6 @@ import {
 } from "@/features/orders/order-schema";
 import { type CancelReason, useCancelOrder } from "@/features/orders/use-cancel-order";
 import { useDeleteOrder } from "@/features/orders/use-delete-order";
-import { canReopenOrder, useReopenOrder } from "@/features/orders/use-reopen-order";
-import { useWithdrawResponse } from "@/features/orders/use-withdraw-response";
 import { type OrderDetail, useOrderDetail } from "@/features/orders/use-order-detail";
 import {
   type OrderResponseWithMaster,
@@ -57,20 +54,17 @@ import {
   useOrderResponses,
   useSubmitResponse,
 } from "@/features/orders/use-order-responses";
-import {
-  useMasterPhone,
-  useMasterPublicProfile,
-} from "@/features/master-view/use-master-public";
-import {
-  isDailyLimitError,
-  useResponseLimit,
-} from "@/features/orders/use-response-limit";
+import { useRejectResponse } from "@/features/orders/use-reject-response";
+import { canReopenOrder, useReopenOrder } from "@/features/orders/use-reopen-order";
+import { isDailyLimitError, useResponseLimit } from "@/features/orders/use-response-limit";
 import { useMarkResponsesViewed } from "@/features/orders/use-unread-responses";
+import { useWithdrawResponse } from "@/features/orders/use-withdraw-response";
 import { ReportModal } from "@/features/reports/ReportModal";
 import { useColorScheme, useDomColorScheme } from "@/hooks/use-color-scheme";
 import { useAuthReturnUrlStore } from "@/lib/auth-return-url-store";
 import { darkColors, lightColors } from "@/lib/colors";
 import { confirmAsync } from "@/lib/confirm";
+import { openExternalUrl } from "@/lib/open-link";
 import { useSafeBack } from "@/lib/use-safe-back";
 import { useThemeColors } from "@/lib/use-theme-color";
 import { resolveWhatsappDigits } from "@/lib/whatsapp";
@@ -111,14 +105,12 @@ export default function OrderDetailScreen() {
   // откликаться дважды на один и тот же заказ — фидбэк владельца 2026-05-27).
   // Запрашиваем только когда есть смысл (is_master + chase в client-режиме на
   // чужом заказе) — иначе тратили бы запрос на каждом просмотре.
-  const shouldCheckMyResponse =
-    !!user?.is_master && !isMasterRole && !isOwner && !!userId && !!id;
+  const shouldCheckMyResponse = !!user?.is_master && !isMasterRole && !isOwner && !!userId && !!id;
   const myMasterResponseQ = useMyResponseForOrder(
     shouldCheckMyResponse ? id : undefined,
     shouldCheckMyResponse ? userId : undefined,
   );
   const hasMyMasterResponse = !!myMasterResponseQ.data;
-  const tc = useThemeColors(["ink", "muted-soft", "body", "mute"]);
   const [reportOpen, setReportOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   // Шит выбора причины закрытия заказа («нашёл мастера» / «больше не нужно»).
@@ -145,8 +137,7 @@ export default function OrderDetailScreen() {
   const reopenOrder = useReopenOrder();
 
   // Заказ закрыт клиентом или истёк → доступны «Удалить» / «Открыть заново».
-  const isClosedHistory =
-    !!order && (order.status === "cancelled" || order.status === "expired");
+  const isClosedHistory = !!order && (order.status === "cancelled" || order.status === "expired");
   const canReopen = !!order && canReopenOrder(order.status, order.updated_at);
 
   // Закрытие заказа с выбранной причиной. Вызывается из CloseReasonSheet.
@@ -166,8 +157,7 @@ export default function OrderDetailScreen() {
     setMenuOpen(false);
     const confirmed = await confirmAsync({
       title: "Удалить заказ?",
-      message:
-        "Заказ исчезнет из «Моих заказов» навсегда вместе с откликами. Это нельзя отменить.",
+      message: "Заказ исчезнет из «Моих заказов» навсегда вместе с откликами. Это нельзя отменить.",
       confirmText: "Удалить",
       cancelText: "Отмена",
       destructive: true,
@@ -274,9 +264,7 @@ export default function OrderDetailScreen() {
             />
           ) : null}
 
-          {isOwner && id && order && (
-            <ClientResponsesSection orderId={id} order={order} />
-          )}
+          {isOwner && id && order && <ClientResponsesSection orderId={id} order={order} />}
           {!isOwner && isMasterRole && userId && id && (
             <MasterResponseSection
               orderId={id}
@@ -326,11 +314,7 @@ export default function OrderDetailScreen() {
             cancelled/expired:  Открыть заново (в окне 7 дней), Удалить
             чужой заказ:        Пожаловаться */}
       {order && id && userId ? (
-        <BottomSheet
-          open={menuOpen}
-          onClose={() => setMenuOpen(false)}
-          title="Действия с заказом"
-        >
+        <BottomSheet open={menuOpen} onClose={() => setMenuOpen(false)} title="Действия с заказом">
           {/* Группировка (план §3 «состояние → действия»): сначала
               «безопасные» действия (редактировать / открыть заново / закрыть),
               затем — после тонкого разделителя — необратимое «Удалить» красным.
@@ -423,8 +407,7 @@ function ActionMenuItem({ icon: Icon, label, destructive, onPress }: ActionMenuI
   const isWeb = Platform.OS === "web";
   const domScheme = useDomColorScheme();
   const { colorScheme } = useColorScheme();
-  const palette =
-    (isWeb ? domScheme : colorScheme) === "dark" ? darkColors : lightColors;
+  const palette = (isWeb ? domScheme : colorScheme) === "dark" ? darkColors : lightColors;
   const tc = useThemeColors(["ink", "error"]);
   const inkColor = isWeb ? palette.ink : tc.ink;
   const errorColor = isWeb ? palette.error : tc.error;
@@ -465,10 +448,7 @@ function ActionMenuItem({ icon: Icon, label, destructive, onPress }: ActionMenuI
       >
         <Icon size={20} weight="bold" color={iconColor} />
       </View>
-      <AppText
-        weight="medium"
-        style={{ color: textColor, fontSize: 16, lineHeight: 22 }}
-      >
+      <AppText weight="medium" style={{ color: textColor, fontSize: 16, lineHeight: 22 }}>
         {label}
       </AppText>
     </Pressable>
@@ -514,8 +494,7 @@ function MyResponseBadgeCTA({ userId }: { userId: string }) {
         Отклик уже отправлен
       </AppText>
       <AppText className="mt-2 text-body-sm text-mute">
-        Откройте свой отклик, чтобы посмотреть статус и продолжить общение с
-        клиентом.
+        Откройте свой отклик, чтобы посмотреть статус и продолжить общение с клиентом.
       </AppText>
       <Pressable
         accessibilityRole="button"
@@ -595,7 +574,6 @@ function SwitchToMasterCTA({ userId }: { userId: string }) {
 
 function BecomeMasterCTA({ orderId }: { orderId: string }) {
   const router = useRouter();
-  const tc = useThemeColors(["accent"]);
   const { session } = useAuthSession();
   const userId = session?.user?.id;
 
@@ -747,8 +725,8 @@ function CloseReasonSheet({ open, pending, onClose, onPick }: CloseReasonSheetPr
         {/* Честное предупреждение о последствиях (паттерн Avito при снятии).
             Это не subtitle под H1, а сноска внизу списка вариантов. */}
         <AppText className="mt-2 text-caption text-mute" style={{ lineHeight: 18 }}>
-          Мастера перестанут видеть заказ и не смогут откликнуться. Контакты
-          мастеров, которые уже откликнулись, останутся у вас.
+          Мастера перестанут видеть заказ и не смогут откликнуться. Контакты мастеров, которые уже
+          откликнулись, останутся у вас.
         </AppText>
       </View>
     </BottomSheet>
@@ -814,15 +792,10 @@ function CloseReasonOption({
         <Icon size={24} weight={tone === "success" ? "fill" : "bold"} color={iconColor} />
       </View>
       <View style={{ flex: 1, minWidth: 0 }}>
-        <AppText
-          weight="semibold"
-          style={{ color: palette.ink, fontSize: 16, lineHeight: 22 }}
-        >
+        <AppText weight="semibold" style={{ color: palette.ink, fontSize: 16, lineHeight: 22 }}>
           {title}
         </AppText>
-        <AppText
-          style={{ color: palette.mute, fontSize: 13, lineHeight: 18, marginTop: 2 }}
-        >
+        <AppText style={{ color: palette.mute, fontSize: 13, lineHeight: 18, marginTop: 2 }}>
           {description}
         </AppText>
       </View>
@@ -871,10 +844,7 @@ function OrderInfoBlock({ order, isOwner }: OrderInfoBlockProps) {
 
       {/* Display-заголовок — теперь живёт в body (а не в ScreenHeader),
           выбор user 2026-05-15. Hero-стиль entity-page. */}
-      <AppText
-        weight="display"
-        className="mt-3 text-display-md tracking-tight text-ink"
-      >
+      <AppText weight="display" className="mt-3 text-display-md tracking-tight text-ink">
         {order.title}
       </AppText>
 
@@ -944,11 +914,7 @@ function OrderInfoBlock({ order, isOwner }: OrderInfoBlockProps) {
             >
               Заказчик
             </AppText>
-            <AppText
-              weight="semibold"
-              className="mt-0.5 text-body-md text-ink"
-              numberOfLines={1}
-            >
+            <AppText weight="semibold" className="mt-0.5 text-body-md text-ink" numberOfLines={1}>
               {contactDisplay}
             </AppText>
           </View>
@@ -1035,10 +1001,7 @@ function ClientResponsesSection({ orderId, order }: ClientResponsesSectionProps)
     <View className="mt-8 px-5">
       {/* Heading: «Отклики · N» */}
       <View className="flex-row items-baseline justify-between gap-2">
-        <AppText
-          weight="semibold"
-          className="text-title-md text-ink tracking-tight"
-        >
+        <AppText weight="semibold" className="text-title-md text-ink tracking-tight">
           Отклики
         </AppText>
         {hasResponses ? (
@@ -1070,9 +1033,9 @@ function ClientResponsesSection({ orderId, order }: ClientResponsesSectionProps)
                 Пока никто не откликнулся
               </AppText>
               <AppText className="mt-1 text-body-sm text-mute">
-                Так бывает — спрос на разные услуги разный. Чтобы заявкой
-                заинтересовались, попробуйте дополнить описание, добавить фото
-                или указать бюджет. Можно также найти мастера самому в каталоге.
+                Так бывает — спрос на разные услуги разный. Чтобы заявкой заинтересовались,
+                попробуйте дополнить описание, добавить фото или указать бюджет. Можно также найти
+                мастера самому в каталоге.
               </AppText>
             </>
           ) : (
@@ -1120,10 +1083,7 @@ function ClientResponsesSection({ orderId, order }: ClientResponsesSectionProps)
             className="flex-row items-center justify-between rounded-lg border border-hairline bg-canvas-soft px-4 py-3 active:opacity-70"
           >
             <View className="flex-1 flex-row items-center gap-2">
-              <AppText
-                weight="medium"
-                className="text-body-sm text-mute"
-              >
+              <AppText weight="medium" className="text-body-sm text-mute">
                 Скрытые отклики
               </AppText>
               <View className="rounded-full bg-canvas-soft-2 px-2 py-0.5">
@@ -1257,11 +1217,7 @@ function ClientMasterResponseCard({
           size="md"
         />
         <View className="flex-1 min-w-0">
-          <AppText
-            weight="semibold"
-            className="text-body-md text-ink"
-            numberOfLines={1}
-          >
+          <AppText weight="semibold" className="text-body-md text-ink" numberOfLines={1}>
             {masterName}
           </AppText>
           {hasRating ? (
@@ -1480,16 +1436,14 @@ function MasterResponseSection({
 
     // T15: можно отозвать пока response в sent/viewed (до accept).
     const canWithdraw =
-      orderStatus === "open" &&
-      (myResponse.status === "sent" || myResponse.status === "viewed");
+      orderStatus === "open" && (myResponse.status === "sent" || myResponse.status === "viewed");
     const isBusyWithdraw = withdrawResponse.isPending;
 
     const onWithdrawPress = async () => {
       if (isBusyWithdraw) return;
       const confirmed = await confirmAsync({
         title: "Отозвать отклик?",
-        message:
-          "Клиент получит уведомление. Восстановить отклик нельзя — можно создать новый.",
+        message: "Клиент получит уведомление. Восстановить отклик нельзя — можно создать новый.",
         confirmText: "Отозвать",
         cancelText: "Отмена",
       });
@@ -1779,8 +1733,8 @@ function MasterResponseSection({
             Лимит откликов на сегодня исчерпан
           </AppText>
           <AppText className="mt-1 text-caption text-muted">
-            Вы отправили {responseLimit?.used ?? 5} из {responseLimit?.max ?? 5} откликов. Завтра
-            в 00:00 (МСК) появятся новые.
+            Вы отправили {responseLimit?.used ?? 5} из {responseLimit?.max ?? 5} откликов. Завтра в
+            00:00 (МСК) появятся новые.
           </AppText>
         </View>
       )}

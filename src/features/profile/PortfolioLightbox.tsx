@@ -17,7 +17,6 @@ import { Image } from "expo-image";
 import { CaretLeft, CaretRight, X } from "phosphor-react-native";
 import { useEffect } from "react";
 import { Modal, Pressable, useWindowDimensions, View } from "react-native";
-import { useAppWidth } from "@/lib/use-app-width";
 import { Gesture, GestureDetector, GestureHandlerRootView } from "react-native-gesture-handler";
 import Animated, {
   runOnJS,
@@ -28,6 +27,7 @@ import Animated, {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
 import { cdnBlur, cdnImage } from "@/lib/image-cdn";
+import { useAppWidth } from "@/lib/use-app-width";
 
 // Белый поверх чёрного фона лайтбокса (крестик/стрелки/счётчик). Константа, не
 // литерал в JSX — легальный overlay-кейс (§B) и не триггерит enforcement grep.
@@ -205,84 +205,84 @@ export function PortfolioLightbox({
               зажат в телефонную колонку шириной `width` по центру. */}
           <View className="flex-1 bg-black items-center">
             <View style={{ flex: 1, width }}>
-            {/* Image with gestures */}
-            <GestureDetector gesture={composed}>
-              <Animated.View
-                style={[
-                  { width, height, alignItems: "center", justifyContent: "center" },
-                  animatedStyle,
-                ]}
-              >
-                <Image
-                  source={{ uri: cdnImage(item.url, { width: Math.round(width), quality: 80 }) }}
-                  placeholder={cdnBlur(item.url) ? { uri: cdnBlur(item.url) } : undefined}
-                  placeholderContentFit="contain"
-                  style={{ width: "100%", height: "100%" }}
-                  contentFit="contain"
-                  transition={200}
-                  cachePolicy="memory-disk"
-                />
-              </Animated.View>
-            </GestureDetector>
-
-            {/* Top bar: counter + close */}
-            <View
-              className="absolute top-0 right-0 left-0 flex-row items-center justify-between px-4"
-              style={{ paddingTop: insets.top + 8 }}
-              pointerEvents="box-none"
-            >
-              <View className="rounded-full bg-black/40 px-3 py-1">
-                <AppText weight="medium" className="text-caption text-on-dark">
-                  {(index ?? 0) + 1} / {total}
-                </AppText>
-              </View>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Закрыть"
-                onPress={onClose}
-                hitSlop={12}
-                className="h-10 w-10 items-center justify-center rounded-full bg-black/40 active:opacity-70"
-              >
-                <X size={22} weight="bold" color={OVERLAY_WHITE} />
-              </Pressable>
-            </View>
-
-            {/* Prev / Next arrows */}
-            {canNav && (
-              <>
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel="Предыдущее фото"
-                  onPress={goPrev}
-                  hitSlop={12}
-                  className="absolute top-1/2 left-3 h-11 w-11 items-center justify-center rounded-full bg-black/40 active:opacity-70"
-                  style={{ transform: [{ translateY: -22 }] }}
+              {/* Image with gestures */}
+              <GestureDetector gesture={composed}>
+                <Animated.View
+                  style={[
+                    { width, height, alignItems: "center", justifyContent: "center" },
+                    animatedStyle,
+                  ]}
                 >
-                  <CaretLeft size={26} weight="bold" color={OVERLAY_WHITE} />
-                </Pressable>
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel="Следующее фото"
-                  onPress={goNext}
-                  hitSlop={12}
-                  className="absolute top-1/2 right-3 h-11 w-11 items-center justify-center rounded-full bg-black/40 active:opacity-70"
-                  style={{ transform: [{ translateY: -22 }] }}
-                >
-                  <CaretRight size={26} weight="bold" color={OVERLAY_WHITE} />
-                </Pressable>
-              </>
-            )}
+                  <Image
+                    source={{ uri: cdnImage(item.url, { width: Math.round(width), quality: 80 }) }}
+                    placeholder={cdnBlur(item.url) ? { uri: cdnBlur(item.url) } : undefined}
+                    placeholderContentFit="contain"
+                    style={{ width: "100%", height: "100%" }}
+                    contentFit="contain"
+                    transition={200}
+                    cachePolicy="memory-disk"
+                  />
+                </Animated.View>
+              </GestureDetector>
 
-            {/* Caption */}
-            {item.caption && (
+              {/* Top bar: counter + close */}
               <View
-                className="absolute right-0 bottom-0 left-0 bg-black/55 px-6 py-4"
-                style={{ paddingBottom: insets.bottom + 16 }}
+                className="absolute top-0 right-0 left-0 flex-row items-center justify-between px-4"
+                style={{ paddingTop: insets.top + 8 }}
                 pointerEvents="box-none"
               >
-                <AppText className="text-body-sm text-on-dark">{item.caption}</AppText>
+                <View className="rounded-full bg-black/40 px-3 py-1">
+                  <AppText weight="medium" className="text-caption text-on-dark">
+                    {(index ?? 0) + 1} / {total}
+                  </AppText>
+                </View>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Закрыть"
+                  onPress={onClose}
+                  hitSlop={12}
+                  className="h-10 w-10 items-center justify-center rounded-full bg-black/40 active:opacity-70"
+                >
+                  <X size={22} weight="bold" color={OVERLAY_WHITE} />
+                </Pressable>
               </View>
-            )}
+
+              {/* Prev / Next arrows */}
+              {canNav && (
+                <>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="Предыдущее фото"
+                    onPress={goPrev}
+                    hitSlop={12}
+                    className="absolute top-1/2 left-3 h-11 w-11 items-center justify-center rounded-full bg-black/40 active:opacity-70"
+                    style={{ transform: [{ translateY: -22 }] }}
+                  >
+                    <CaretLeft size={26} weight="bold" color={OVERLAY_WHITE} />
+                  </Pressable>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="Следующее фото"
+                    onPress={goNext}
+                    hitSlop={12}
+                    className="absolute top-1/2 right-3 h-11 w-11 items-center justify-center rounded-full bg-black/40 active:opacity-70"
+                    style={{ transform: [{ translateY: -22 }] }}
+                  >
+                    <CaretRight size={26} weight="bold" color={OVERLAY_WHITE} />
+                  </Pressable>
+                </>
+              )}
+
+              {/* Caption */}
+              {item.caption && (
+                <View
+                  className="absolute right-0 bottom-0 left-0 bg-black/55 px-6 py-4"
+                  style={{ paddingBottom: insets.bottom + 16 }}
+                  pointerEvents="box-none"
+                >
+                  <AppText className="text-body-sm text-on-dark">{item.caption}</AppText>
+                </View>
+              )}
             </View>
           </View>
         </GestureHandlerRootView>

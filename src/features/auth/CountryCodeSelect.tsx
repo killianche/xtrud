@@ -55,7 +55,12 @@ export const COUNTRIES: Country[] = [
 ];
 
 /** Дефолтная страна — Россия. */
-export const DEFAULT_COUNTRY: Country = COUNTRIES[0]!;
+export const DEFAULT_COUNTRY: Country = COUNTRIES[0] ?? {
+  code: "RU",
+  name: "Россия",
+  dial: "7",
+  digitsLength: 10,
+};
 
 interface CountryCodeSelectProps {
   selected: Country;
@@ -63,11 +68,7 @@ interface CountryCodeSelectProps {
   disabled?: boolean;
 }
 
-export function CountryCodeSelect({
-  selected,
-  onSelect,
-  disabled,
-}: CountryCodeSelectProps) {
+export function CountryCodeSelect({ selected, onSelect, disabled }: CountryCodeSelectProps) {
   const [open, setOpen] = useState(false);
   const tc = useThemeColors(["mute", "accent"]);
 
@@ -93,11 +94,7 @@ export function CountryCodeSelect({
         <CaretDown size={14} weight="bold" color={tc.mute} />
       </Pressable>
 
-      <BottomSheet
-        open={open}
-        onClose={() => setOpen(false)}
-        title="Страна"
-      >
+      <BottomSheet open={open} onClose={() => setOpen(false)} title="Страна">
         <ScrollView showsVerticalScrollIndicator={false}>
           {COUNTRIES.map((country) => {
             const isSelected = country.code === selected.code;
@@ -125,9 +122,7 @@ export function CountryCodeSelect({
                     +{country.dial}
                   </AppText>
                 </View>
-                {isSelected ? (
-                  <Check size={20} weight="bold" color={tc.accent} />
-                ) : null}
+                {isSelected ? <Check size={20} weight="bold" color={tc.accent} /> : null}
               </Pressable>
             );
           })}

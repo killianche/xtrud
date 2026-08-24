@@ -6,7 +6,7 @@
  */
 
 import { Image } from "expo-image";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useLocalSearchParams } from "expo-router";
 import { CaretLeft } from "phosphor-react-native";
 import { useMemo } from "react";
 import { ActivityIndicator, Pressable, ScrollView, View } from "react-native";
@@ -68,7 +68,6 @@ function parseSimpleMarkdown(body: string): MdBlock[] {
 
 export default function ArticleScreen() {
   const insets = useSafeAreaInsets();
-  const router = useRouter();
   const { slug } = useLocalSearchParams<{ slug: string }>();
   const slugStr = typeof slug === "string" ? slug : undefined;
   const { data: article, isLoading, error } = useArticleBySlug(slugStr);
@@ -138,22 +137,14 @@ export default function ArticleScreen() {
             {blocks.map((b) => {
               if (b.type === "h1") {
                 return (
-                  <AppText
-                    key={b.key}
-                    weight="bold"
-                    className="text-display-sm text-ink"
-                  >
+                  <AppText key={b.key} weight="bold" className="text-display-sm text-ink">
                     {b.text}
                   </AppText>
                 );
               }
               if (b.type === "h2") {
                 return (
-                  <AppText
-                    key={b.key}
-                    weight="semibold"
-                    className="mt-2 text-title-md text-ink"
-                  >
+                  <AppText key={b.key} weight="semibold" className="mt-2 text-title-md text-ink">
                     {b.text}
                   </AppText>
                 );

@@ -18,30 +18,19 @@
  */
 
 import { useRouter } from "expo-router";
-import {
-  CaretLeft,
-  Image as ImageIcon,
-  Plus,
-} from "phosphor-react-native";
+import { CaretLeft, Image as ImageIcon, Plus } from "phosphor-react-native";
 import { useState } from "react";
-import {
-  Alert,
-  Image,
-  Pressable,
-  ScrollView,
-  TextInput,
-  View,
-} from "react-native";
+import { Alert, Image, Pressable, ScrollView, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
 import { BottomSheet } from "@/components/ui";
-import { useAppWidth } from "@/lib/use-app-width";
 import { useAuthSession } from "@/features/auth/use-auth-session";
 import {
   type CaseWithPreview,
   useCreateCase,
   useMasterCases,
 } from "@/features/profile/use-portfolio-cases";
+import { useAppWidth } from "@/lib/use-app-width";
 import { useSafeBack } from "@/lib/use-safe-back";
 import { useThemeColors } from "@/lib/use-theme-color";
 
@@ -116,15 +105,12 @@ export default function PortfolioCasesScreen() {
             style={{ minHeight: 260 }}
           >
             <ImageIcon size={36} weight="bold" color={tc["muted-soft"]} />
-            <AppText
-              weight="semibold"
-              className="mt-3 text-body-md text-ink text-center"
-            >
+            <AppText weight="semibold" className="mt-3 text-body-md text-ink text-center">
               Пока нет кейсов
             </AppText>
             <AppText className="mt-2 text-body-sm text-mute text-center">
-              Создайте первый кейс выполненной работы — клиенты доверяют
-              мастерам с портфолио в 4 раза чаще.
+              Создайте первый кейс выполненной работы — клиенты доверяют мастерам с портфолио в 4
+              раза чаще.
             </AppText>
             {/* P1 fix 2026-05-20: убрали inline-кнопку «Создать кейс» — она
                 дублировала sticky bottom CTA «Новый кейс» (визуальная избыточность).
@@ -136,9 +122,7 @@ export default function PortfolioCasesScreen() {
               <CaseCard
                 key={c.id}
                 caseItem={c}
-                onPress={() =>
-                  router.push(`/(tabs)/profile/portfolio/${c.id}` as never)
-                }
+                onPress={() => router.push(`/(tabs)/profile/portfolio/${c.id}` as never)}
               />
             ))}
           </View>
@@ -178,10 +162,7 @@ export default function PortfolioCasesScreen() {
             // Сразу открываем созданный кейс — мастер хочет добавить фото.
             router.push(`/(tabs)/profile/portfolio/${created.id}` as never);
           } catch (e) {
-            Alert.alert(
-              "Не удалось создать кейс",
-              e instanceof Error ? e.message : String(e),
-            );
+            Alert.alert("Не удалось создать кейс", e instanceof Error ? e.message : String(e));
           }
         }}
         isPending={createCase.isPending}
@@ -240,9 +221,7 @@ export function CaseCard({
           />
           {/* Счётчик доп. фото в углу — если фото больше 1. */}
           {photoCount > 1 ? (
-            <View
-              className="absolute bottom-2 right-2 flex-row items-center gap-1 rounded-full bg-black/60 px-2.5 py-1"
-            >
+            <View className="absolute bottom-2 right-2 flex-row items-center gap-1 rounded-full bg-black/60 px-2.5 py-1">
               <ImageIcon size={12} weight="fill" color="white" />
               <AppText weight="semibold" className="text-mono-caption text-white">
                 {photoCount}
@@ -264,11 +243,7 @@ export function CaseCard({
 
       {/* Title + meta ПОД фото — без рамки, чистый текст. */}
       <View className="mt-3 px-1">
-        <AppText
-          weight="semibold"
-          className="text-title-md text-ink"
-          numberOfLines={2}
-        >
+        <AppText weight="semibold" className="text-title-md text-ink" numberOfLines={2}>
           {caseItem.title}
         </AppText>
         {formattedDate ? (
@@ -311,10 +286,7 @@ const MAX_DESCRIPTION_LEN = 500;
 interface CreateCaseSheetProps {
   open: boolean;
   onClose: () => void;
-  onSubmit: (input: {
-    title: string;
-    description: string | null;
-  }) => void;
+  onSubmit: (input: { title: string; description: string | null }) => void;
   isPending: boolean;
 }
 

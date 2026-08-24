@@ -17,13 +17,13 @@
  * Сердечко на карточке убирает из избранного (optimistic update).
  */
 
+import { Image } from "expo-image";
 import { useRouter } from "expo-router";
 import { BookmarkSimple, MagnifyingGlass } from "phosphor-react-native";
-import { Image } from "expo-image";
 import { FlatList, Pressable, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
-import { Avatar, ScreenHeader, Skeleton, normalizeAvatarUrl } from "@/components/ui";
+import { Avatar, normalizeAvatarUrl, ScreenHeader, Skeleton } from "@/components/ui";
 import {
   type FavoriteMasterRow,
   useMyFavorites,
@@ -69,9 +69,7 @@ export default function FavoritesScreen() {
             <FavoriteRow
               item={item}
               onPress={() => router.push(`/(tabs)/master/${item.masterId}` as never)}
-              onUnfavorite={() =>
-                toggle.mutate({ masterId: item.masterId, nextValue: false })
-              }
+              onUnfavorite={() => toggle.mutate({ masterId: item.masterId, nextValue: false })}
               disabled={toggle.isPending}
             />
           )}
@@ -163,8 +161,8 @@ function EmptyState({ onSearch }: { onSearch: () => void }) {
         Пока никого
       </AppText>
       <AppText className="mt-2 text-body-md text-body text-center">
-        Нажмите на закладку на странице мастера — он появится здесь, и вы найдёте его одним
-        тапом, когда понадобится.
+        Нажмите на закладку на странице мастера — он появится здесь, и вы найдёте его одним тапом,
+        когда понадобится.
       </AppText>
       <Pressable
         accessibilityRole="button"

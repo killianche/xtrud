@@ -84,10 +84,7 @@ export function useMasterRecommendations({
 }: UseMasterRecommendationsInput): UseMasterRecommendationsResult {
   // 1. Категории мастера → l2Ids для фильтра ленты.
   const { data: myCats, isLoading: catsLoading } = useMyMasterCategories(userId);
-  const l2Ids = useMemo(
-    () => (myCats ?? []).map((c) => c.l2_id).filter(Boolean),
-    [myCats],
-  );
+  const l2Ids = useMemo(() => (myCats ?? []).map((c) => c.l2_id).filter(Boolean), [myCats]);
   const hasCategories = l2Ids.length > 0;
 
   // 2. Отклики мастера. Нужны в ДВУХ ролях:
@@ -113,9 +110,7 @@ export function useMasterRecommendations({
   // сделанные позже в этой сессии, в снимок не попадают → карточка остаётся.
   const initialRespondedRef = useRef<Set<string> | null>(null);
   if (initialRespondedRef.current === null && !respLoading) {
-    initialRespondedRef.current = new Set(
-      (myResponses ?? []).map((r) => r.response.order_id),
-    );
+    initialRespondedRef.current = new Set((myResponses ?? []).map((r) => r.response.order_id));
   }
   const initialResponded = initialRespondedRef.current;
 
@@ -133,14 +128,13 @@ export function useMasterRecommendations({
   //    иначе свежий отклик мгновенно убирал бы карточку. Пока снимок ещё не
   //    готов (respLoading) — initialResponded=null, не фильтруем по откликам
   //    (список появится через миг, когда снимок снимется).
+  // biome-ignore lint/correctness/useExhaustiveDependencies: respLoading is an intentional transition trigger for the ref snapshot described below
   const recommendations = useMemo(() => {
     if (!hasCategories) return [];
     const rows = (feed?.pages ?? []).flatMap((p) => p.rows);
 
     // Базовая фильтрация: не показывать заказы, откликнутые ДО входа (снимок).
-    let filtered = initialResponded
-      ? rows.filter((o) => !initialResponded.has(o.id))
-      : rows;
+    let filtered = initialResponded ? rows.filter((o) => !initialResponded.has(o.id)) : rows;
 
     if (filter === "urgent") {
       filtered = filtered.filter((o) => o.urgency === "urgent");

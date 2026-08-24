@@ -86,9 +86,7 @@ export default function ResetPasswordScreen() {
 
     const tryHashTokens = async (): Promise<boolean | null> => {
       if (Platform.OS !== "web" || typeof window === "undefined") return null;
-      const raw = window.location.hash?.startsWith("#")
-        ? window.location.hash.slice(1)
-        : "";
+      const raw = window.location.hash?.startsWith("#") ? window.location.hash.slice(1) : "";
       if (!raw) return null;
       const params = new URLSearchParams(raw);
       if (params.get("error") || params.get("error_code")) {
@@ -222,10 +220,7 @@ export default function ResetPasswordScreen() {
         {phase === "form" && (
           <>
             <View className="px-6 pt-16">
-              <AppText
-                weight="bold"
-                className="text-display-md tracking-tight text-ink"
-              >
+              <AppText weight="bold" className="text-display-md tracking-tight text-ink">
                 Новый пароль
               </AppText>
 

@@ -52,10 +52,7 @@ export function EmptyState({
   void _unused;
 
   return (
-    <View
-      className={`items-center px-6 py-10 ${className ?? "mx-6"}`}
-      accessibilityRole="summary"
-    >
+    <View className={`items-center px-6 py-10 ${className ?? "mx-6"}`} accessibilityRole="summary">
       {/* По запросу — без emoji/иконок. Чистый минимализм Vercel. */}
       <AppText weight="bold" className="text-center text-title-lg text-ink">
         {title}

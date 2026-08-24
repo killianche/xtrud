@@ -140,8 +140,7 @@ export function DescribeTaskCallout({ onPress }: { onPress: () => void }) {
           className="mt-5 h-12 flex-row items-center justify-center gap-2 self-start rounded-full px-6 active:opacity-80"
           style={{
             backgroundColor: PILL_BG,
-            boxShadow:
-              Platform.OS === "web" ? "0 8px 24px rgba(0,0,0,0.28)" : undefined,
+            boxShadow: Platform.OS === "web" ? "0 8px 24px rgba(0,0,0,0.28)" : undefined,
             ...(Platform.OS !== "web"
               ? {
                   shadowColor: "#000",

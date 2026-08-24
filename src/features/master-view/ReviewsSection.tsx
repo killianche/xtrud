@@ -104,9 +104,7 @@ function ReviewRow({
             <AppText weight="semibold" className="text-body-md text-ink">
               {authorName}
             </AppText>
-            <AppText className="text-caption text-muted">
-              {formatDate(review.created_at)}
-            </AppText>
+            <AppText className="text-caption text-muted">{formatDate(review.created_at)}</AppText>
           </View>
           <View className="mt-1 flex-row items-center gap-1.5">
             <View className="flex-row">

@@ -57,14 +57,9 @@ export function useSearchCategories(query: string, limit = 10) {
       const flipped = looksLikeWrongLayout(trimmed) ? flipLayout(trimmed) : null;
       const originalPromise = rpcSearch(trimmed, limit);
       const flippedPromise: Promise<SearchHit[]> =
-        flipped && flipped !== trimmed
-          ? rpcSearch(flipped, limit)
-          : Promise.resolve([]);
+        flipped && flipped !== trimmed ? rpcSearch(flipped, limit) : Promise.resolve([]);
 
-      const [originalHits, flippedHits] = await Promise.all([
-        originalPromise,
-        flippedPromise,
-      ]);
+      const [originalHits, flippedHits] = await Promise.all([originalPromise, flippedPromise]);
 
       if (originalHits.length > 0) {
         return { hits: originalHits, wasFlipped: false, flippedQuery: null };

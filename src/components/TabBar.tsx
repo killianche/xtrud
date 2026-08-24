@@ -30,8 +30,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
 import { useAuthSession } from "@/features/auth/use-auth-session";
 import { useUserRecord } from "@/features/auth/use-user-record";
-import { useTabBarVisibility } from "@/lib/tabbar-visibility";
 import { triggerTabScrollReset } from "@/lib/tab-scroll-reset";
+import { useTabBarVisibility } from "@/lib/tabbar-visibility";
 import { useThemeColors } from "@/lib/use-theme-color";
 
 // Порядок таб-роутов в навбаре. В центр между left/right вставляется
@@ -81,9 +81,9 @@ export function TabBar({ state, descriptors, navigation }: BottomTabBarProps) {
   if (tabBarHidden) return null;
 
   // Берём роуты в нужном порядке, отфильтрованные по существованию.
-  const orderedRoutes = TAB_ORDER.map((name) =>
-    state.routes.find((r) => r.name === name),
-  ).filter((r): r is NonNullable<typeof r> => Boolean(r));
+  const orderedRoutes = TAB_ORDER.map((name) => state.routes.find((r) => r.name === name)).filter(
+    (r): r is NonNullable<typeof r> => Boolean(r),
+  );
 
   // Левая часть: index + orders. Правая: chats + profile.
   // Для мастера orders-таб скрыт — заявки переехали на главную (под
@@ -176,8 +176,8 @@ export function TabBar({ state, descriptors, navigation }: BottomTabBarProps) {
                 right: -10,
                 backgroundColor: badgeBg,
                 borderRadius: 8,
-                minWidth: 16,
-                height: 16,
+                minWidth: 18,
+                height: 18,
                 alignItems: "center",
                 justifyContent: "center",
                 paddingHorizontal: 4,
@@ -185,7 +185,7 @@ export function TabBar({ state, descriptors, navigation }: BottomTabBarProps) {
             >
               <AppText
                 weight="semibold"
-                style={{ color: badgeTextColor, fontSize: 10, lineHeight: 14 }}
+                style={{ color: badgeTextColor, fontSize: 12, lineHeight: 14 }}
               >
                 {String(badge)}
               </AppText>
@@ -282,9 +282,7 @@ export function TabBar({ state, descriptors, navigation }: BottomTabBarProps) {
               borderRadius: 999,
               backgroundColor: isFavoritesActive ? tc["accent-soft"] : "transparent",
             }}
-            className={
-              isWeb ? (isFavoritesActive ? "bg-accent-soft" : undefined) : undefined
-            }
+            className={isWeb ? (isFavoritesActive ? "bg-accent-soft" : undefined) : undefined}
           >
             <BookmarkSimple
               size={26}

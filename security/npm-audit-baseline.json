@@ -1,0 +1,138 @@
+{
+  "schemaVersion": 1,
+  "reviewBy": "2026-10-01",
+  "context": "Expo SDK 54 build-tool dependencies that require a tested SDK upgrade; exact package ranges and direct advisory identities are pinned so new advisories cannot hide inside an allowed package.",
+  "packages": {
+    "@expo/cli": {
+      "severity": "high",
+      "range": "<=0.0.0-canary-20231123-1b19f96-4 || >=0.0.1-canary-20231125-d600e44"
+    },
+    "@expo/config": {
+      "severity": "moderate",
+      "range": "<=0.0.1-canary-20240418-8d74597 || >=3.3.23-alpha.0"
+    },
+    "@expo/config-plugins": {
+      "severity": "moderate",
+      "range": "*"
+    },
+    "@expo/metro": {
+      "severity": "high",
+      "range": "<=55.1.1 || 56.0.0-rc.0 - 56.0.1"
+    },
+    "@expo/metro-config": {
+      "severity": "high",
+      "range": "<=0.0.1-canary-20240418-8d74597 || >=0.1.49-alpha.0"
+    },
+    "@expo/prebuild-config": {
+      "severity": "moderate",
+      "range": "*"
+    },
+    "expo": {
+      "severity": "high",
+      "range": ">=41.0.0-alpha.0"
+    },
+    "expo-asset": {
+      "severity": "moderate",
+      "range": "<=0.0.1-canary-20240418-8d74597 || 8.6.1 - 55.0.0-canary-20260223-05214f1 || 55.0.3-canary-20260128-67ce8d5 || 55.0.8-canary-20260424-7bedc9d - 55.0.8-canary-20260429-a5e59cf || 55.0.11-canary-20260327-0789fbc - 55.0.11-canary-20260402-9da566b || 56.0.0-canary-20260212-4f61309 - 56.0.0-canary-20260506-964f25d"
+    },
+    "expo-constants": {
+      "severity": "moderate",
+      "range": "<=0.0.1-canary-20240418-8d74597 || 10.1.2 - 55.0.14 || 56.0.0-canary-20260212-4f61309 - 56.0.0-canary-20260506-964f25d"
+    },
+    "expo-linking": {
+      "severity": "moderate",
+      "range": "<=0.0.1-canary-20240418-8d74597 || 2.2.2 - 55.0.0-canary-20260223-05214f1 || 55.0.4-canary-20260128-67ce8d5 || 55.0.8-canary-20260424-7bedc9d - 55.0.8-canary-20260429-a5e59cf || 55.0.10-canary-20260327-0789fbc - 55.0.10-canary-20260402-9da566b || 56.0.0-canary-20260212-4f61309 - 56.0.0-canary-20260506-964f25d || 57.0.0-canary-20260526-13e89ca - 57.0.0-canary-20260623-1c70a78"
+    },
+    "expo-manifests": {
+      "severity": "moderate",
+      "range": "<=0.0.1-canary-20240418-8d74597 || 0.9.0 - 55.0.15 || 56.0.0-canary-20260212-4f61309 - 56.0.0-canary-20260506-964f25d"
+    },
+    "expo-splash-screen": {
+      "severity": "moderate",
+      "range": "<=0.0.1-canary-20240418-8d74597 || 0.11.0 - 56.0.0-canary-20260506-964f25d"
+    },
+    "expo-updates": {
+      "severity": "moderate",
+      "range": "<=0.0.1-canary-20240418-8d74597 || 0.20.0 - 55.0.0-canary-20260223-05214f1 || 55.0.6-canary-20260128-67ce8d5 || 55.0.12-canary-20260424-7bedc9d - 55.0.12-canary-20260429-a5e59cf || 55.0.17-canary-20260327-0789fbc - 55.0.17-canary-20260402-9da566b || 56.0.0-canary-20260212-4f61309 - 56.0.0-canary-20260506-964f25d || 58.0.0-canary-20260805-ccd18b9"
+    },
+    "image-size": {
+      "severity": "high",
+      "range": "*"
+    },
+    "metro": {
+      "severity": "high",
+      "range": "0.22.1 - 0.83.7 || 0.84.0 - 0.84.4 || >=0.85.0"
+    },
+    "metro-config": {
+      "severity": "high",
+      "range": "<=0.83.7 || 0.84.0 - 0.84.4 || >=0.85.0"
+    },
+    "metro-transform-worker": {
+      "severity": "high",
+      "range": "0.60.0 - 0.83.7 || 0.84.0 - 0.84.4 || >=0.85.0"
+    },
+    "postcss": {
+      "severity": "high",
+      "range": "<=8.5.22"
+    },
+    "uuid": {
+      "severity": "moderate",
+      "range": "<11.1.1"
+    },
+    "xcode": {
+      "severity": "moderate",
+      "range": ">=0.9.2"
+    }
+  },
+  "advisories": [
+    {
+      "source": 1117015,
+      "url": "https://github.com/advisories/GHSA-qx2v-qp2m-jg93",
+      "package": "postcss",
+      "severity": "moderate",
+      "range": "<8.5.10"
+    },
+    {
+      "source": 1119441,
+      "url": "https://github.com/advisories/GHSA-w5hq-g745-h8pq",
+      "package": "uuid",
+      "severity": "moderate",
+      "range": "<11.1.1"
+    },
+    {
+      "source": 1124252,
+      "url": "https://github.com/advisories/GHSA-6g55-p6wh-862q",
+      "package": "postcss",
+      "severity": "high",
+      "range": "<=8.5.11"
+    },
+    {
+      "source": 1130709,
+      "url": "https://github.com/advisories/GHSA-fxqj-rqcc-2cmp",
+      "package": "postcss",
+      "severity": "moderate",
+      "range": "<=8.5.22"
+    },
+    {
+      "source": 1138808,
+      "url": "https://github.com/advisories/GHSA-w3rx-r6r6-pgpr",
+      "package": "image-size",
+      "severity": "high",
+      "range": "<=2.0.2"
+    },
+    {
+      "source": 1138809,
+      "url": "https://github.com/advisories/GHSA-5p2g-fcmc-qvqq",
+      "package": "image-size",
+      "severity": "high",
+      "range": "<=2.0.2"
+    },
+    {
+      "source": 1139510,
+      "url": "https://github.com/advisories/GHSA-r28c-9q8g-f849",
+      "package": "postcss",
+      "severity": "high",
+      "range": "<=8.5.17"
+    }
+  ]
+}

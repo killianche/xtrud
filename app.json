@@ -12,17 +12,18 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.xtrud.app",
+      "associatedDomains": ["applinks:xtrud.pro"],
       "infoPlist": {
         "UIViewControllerBasedStatusBarAppearance": true,
         "UIStatusBarStyle": "UIStatusBarStyleDefault",
-        "NSLocationWhenInUseUsageDescription": "Приложение использует местоположение, чтобы предложить ваш город при создании заявки и поиске мастеров рядом. Можно выбрать город вручную, доступ опционален.",
         "NSPhotoLibraryAddUsageDescription": "Приложение может сохранять фотографии (например, из портфолио мастера) в вашу галерею.",
         "ITSAppUsesNonExemptEncryption": false
       },
-      "buildNumber": "10"
+      "buildNumber": "12"
     },
     "android": {
       "package": "com.xtrud.app",
+      "versionCode": 1,
       "adaptiveIcon": {
         "backgroundColor": "#ffffff",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
@@ -30,10 +31,7 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false,
-      "permissions": [
-        "android.permission.RECORD_AUDIO"
-      ]
+      "predictiveBackGestureEnabled": false
     },
     "web": {
       "bundler": "metro",

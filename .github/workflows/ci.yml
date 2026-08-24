@@ -24,17 +24,70 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: "22"
+          node-version: "20.19.4"
           cache: "npm"
 
       - name: Install dependencies
         run: npm ci --no-audit --no-fund
 
+      - name: Agent governance config
+        run: npm run governance:check
+
+      - name: Supabase migration integrity
+        run: node scripts/supabase/check-migration-integrity.mjs
+
+      - name: Supabase migration integrity tests
+        run: node --test scripts/supabase/check-migration-integrity.test.mjs
+
+      - name: Supabase universal draft contract tests
+        run: npm run supabase:universal:draft:test
+
+      - name: Dependency security baseline
+        run: npm run security:audit
+
+      - name: Dependency security gate tests
+        run: npm run security:audit:test
+
+      - name: Release version consistency
+        run: node scripts/release/check-version-consistency.mjs
+
+      - name: Production release contract
+        run: npm run release:contract:check
+
+      - name: Production release contract tests
+        run: npm run release:contract:test
+
+      - name: Public legal routes
+        run: npm run release:legal:check
+
+      - name: Public legal route gate tests
+        run: npm run release:legal:test
+
+      - name: Release version gate tests
+        run: npm run release:version:test
+
+      # Отдельно и рано: понятная ошибка по конкретному require/import вместо
+      # длинного Metro resolver stack только на финальном web export.
+      - name: Static asset references exist
+        run: node scripts/release/check-static-assets.mjs
+
       - name: TypeScript typecheck
         run: npm run typecheck
+
+      - name: Generated design tokens are current
+        run: npm run tokens:check
 
       - name: Biome lint + format
         run: npx biome ci .
 
       - name: Unit tests (Vitest)
         run: npm test
+
+      - name: Production web export
+        run: EXPO_PUBLIC_SUPABASE_URL="$(node -p "require('./release/production.json').backend.url")" npm run web:build:production
+        env:
+          # Статическая CI-сборка не обращается к backend. URL берётся из
+          # release ledger; publishable key здесь только format-placeholder.
+          EXPO_PUBLIC_SUPABASE_ANON_KEY: sb_publishable_ci_placeholder_xxxxxxxxxxxx
+          EXPO_PUBLIC_ENABLE_DEMO: "false"
+          EXPO_PUBLIC_DEMO_MODE: "false"

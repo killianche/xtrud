@@ -58,11 +58,12 @@ function extractPalette(source, name) {
   // Захватываем "key" или key (без кавычек) → hex
   const re = /(?:"([\w-]+)"|([\w-]+))\s*:\s*"(#[0-9a-fA-F]{6})"/g;
   const result = {};
-  let m;
-  while ((m = re.exec(body)) !== null) {
+  let m = re.exec(body);
+  while (m !== null) {
     const key = m[1] ?? m[2];
     const hex = m[3];
     result[key] = hex;
+    m = re.exec(body);
   }
   return result;
 }
@@ -130,9 +131,7 @@ function main() {
   }
 
   if (checkOnly) {
-    console.error(
-      "✗ global.css не синхронизирован с colors.ts.\nЗапусти: npm run tokens",
-    );
+    console.error("✗ global.css не синхронизирован с colors.ts.\nЗапусти: npm run tokens");
     process.exit(1);
   }
 

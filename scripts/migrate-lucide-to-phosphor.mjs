@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+
 // Миграция Lucide React Native → Phosphor React Native.
 //
 // Заменяет в .ts/.tsx файлах:
@@ -12,8 +13,8 @@
 //   node scripts/migrate-lucide-to-phosphor.mjs           # dry-run, печатает diff
 //   node scripts/migrate-lucide-to-phosphor.mjs --apply   # применяет
 
-import { readFileSync, writeFileSync } from "node:fs";
 import { execSync } from "node:child_process";
+import { readFileSync, writeFileSync } from "node:fs";
 
 // Полный маппинг Lucide → Phosphor.
 // Проверено: каждое правое значение существует в node_modules/phosphor-react-native.
@@ -117,16 +118,10 @@ const APPLY = process.argv.includes("--apply");
 // SKIP: категорийные fallback-файлы. Категории — особый случай (через Iconify CDN
 // в `category-color-icons.ts`), Lucide-fallback там для не-mapped L2. По правилу
 // «иконки категорий не трогать» оставляем как есть.
-const SKIP = new Set([
-  "src/components/CategoryTile.tsx",
-  "src/lib/category-icons.ts",
-]);
+const SKIP = new Set(["src/components/CategoryTile.tsx", "src/lib/category-icons.ts"]);
 
 // Список всех .ts/.tsx с Lucide-импортами.
-const files = execSync(
-  `grep -rl 'lucide-react-native' app src 2>/dev/null`,
-  { encoding: "utf-8" },
-)
+const files = execSync(`grep -rl 'lucide-react-native' app src 2>/dev/null`, { encoding: "utf-8" })
   .trim()
   .split("\n")
   .filter(Boolean)

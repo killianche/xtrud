@@ -45,6 +45,18 @@ dist_next/
 supabase/.branches/
 supabase/.temp/
 
+# Self-hosted Supabase: secrets, dumps and runtime state never enter Git
+infra/supabase/.env
+infra/supabase/*.env.local
+infra/supabase/functions.env
+infra/supabase/dumps/
+infra/supabase/backups/
+infra/supabase/volumes/
+infra/supabase/rclone.conf
+*.dump
+*.sql.gz
+*.sql.zst
+
 # Логи
 *.log
 npm-debug.log*
@@ -82,6 +94,9 @@ memory/
 
 # Локальные бэкапы для отката дизайна — git сам версия истории, дубли не нужны
 .design-backups/
+
+# Временные скриншоты визуальной проверки — создаются локальными QA-прогонами
+.tmp_*.png
 
 # Скретч-референсы (HTML-дампы Linear и т.п.) — не проектные артефакты
 Linear *.html

@@ -188,7 +188,10 @@ let map = readFileSync(MAP_FILE, "utf-8");
 for (const [id, svg] of Object.entries(SVGS)) {
   const uri = toDataUri(svg);
   const line = `  ${JSON.stringify(id)}: ${JSON.stringify(uri)},`;
-  const reExisting = new RegExp(`^\\s*${JSON.stringify(id).replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}:.*$`, "m");
+  const reExisting = new RegExp(
+    `^\\s*${JSON.stringify(id).replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}:.*$`,
+    "m",
+  );
   if (reExisting.test(map)) {
     map = map.replace(reExisting, line);
   } else {
@@ -197,4 +200,6 @@ for (const [id, svg] of Object.entries(SVGS)) {
 }
 writeFileSync(MAP_FILE, map, "utf-8");
 
-console.log(`✓ ${Object.keys(SVGS).length} иконок: исходники в assets/icons/category/, data-URI в local-category-icons.ts`);
+console.log(
+  `✓ ${Object.keys(SVGS).length} иконок: исходники в assets/icons/category/, data-URI в local-category-icons.ts`,
+);

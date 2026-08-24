@@ -18,6 +18,7 @@ rehearsal restore, smoke и только затем production.
 ## Файлы
 
 - `.supabase-version` — единая закреплённая версия upstream stack;
+- `.cli-version` — точная стабильная версия Supabase CLI для dump/restore;
 - `upstream-v0.8.0.env.names` — полный список обязательных имён upstream env;
 - `.env.example` — проверяемый names-only values contract без секретов;
 - `Caddyfile.example` — fail-closed TLS proxy с allowlist публичного API;
@@ -62,7 +63,9 @@ Inventory и logical dump требуют абсолютный output вне Git,
 явное шифрование age/GPG. Plaintext inventory вообще не создаётся; dump-файлы
 существуют только в приватном transient staging и удаляются EXIT trap. Запуск
 против Cloud всё равно является внешней операцией и требует отдельного
-разрешения, short-lived credential и утверждённого backup window.
+разрешения, short-lived credential и утверждённого backup window. Wrapper
+отказывается работать с другой CLI-версией и исключает внутренние Storage vector
+tables по актуальному официальному backup runbook.
 
 ## Required external gates
 

@@ -189,6 +189,10 @@ single-user host: без shell tracing/общего process access, в утве�
 с немедленной сменой project DB password или отзывом временной роли после
 проверки архива.
 
+CLI закреплён в `infra/supabase/.cli-version`; wrapper fail-closed проверяет
+точное совпадение и исключает `storage.buckets_vectors` и
+`storage.vector_indexes`, как требует текущий официальный backup runbook.
+
 **Acceptance:** есть зашифрованный immutable архив, inventory manifest и
 контрольные counts; секреты/PII не попали в Git, terminal log или chat.
 

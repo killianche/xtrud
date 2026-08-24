@@ -51,6 +51,13 @@ command -v tar >/dev/null 2>&1 || {
 supabase_require_encryption
 encryption_extension="$(supabase_encryption_extension)"
 output_dir="$(supabase_secure_output_dir "$1")"
+required_cli_version="$(tr -d '\r\n' <"${repo_root}/infra/supabase/.cli-version")"
+actual_cli_version="$(supabase --version | tr -d '\r\n')"
+if [[ "${actual_cli_version}" != "${required_cli_version}" ]]; then
+  printf 'ERROR: Supabase CLI %s is required; found %s.\n' \
+    "${required_cli_version}" "${actual_cli_version}" >&2
+  exit 2
+fi
 timestamp="$(date -u '+%Y%m%dT%H%M%SZ')"
 artifact_path="${output_dir}/supabase-cloud-logical-${timestamp}.tar.${encryption_extension}"
 stage_dir="$(mktemp -d "${output_dir}/.supabase-cloud-backup.XXXXXX")"
@@ -63,7 +70,10 @@ trap cleanup EXIT
 
 supabase db dump --db-url "$SOURCE_DB_URL" --file "${stage_dir}/roles.sql" --role-only
 supabase db dump --db-url "$SOURCE_DB_URL" --file "${stage_dir}/schema.sql"
-supabase db dump --db-url "$SOURCE_DB_URL" --file "${stage_dir}/data.sql" --use-copy --data-only
+supabase db dump --db-url "$SOURCE_DB_URL" --file "${stage_dir}/data.sql" \
+  --use-copy --data-only \
+  --exclude "storage.buckets_vectors" \
+  --exclude "storage.vector_indexes"
 
 {
   printf 'captured_at=%s\n' "$timestamp"

@@ -32,6 +32,10 @@ if [ -n "$input" ]; then cp "$input" "$out"; else /bin/cat >"$out"; fi
 printf '%s\n' 'safe aggregate inventory fixture'
 `,
     supabase: `#!/bin/sh
+if [ "\${1:-}" = "--version" ]; then
+  printf '%s\n' '2.115.0'
+  exit 0
+fi
 out=''
 while [ "$#" -gt 0 ]; do
   case "$1" in

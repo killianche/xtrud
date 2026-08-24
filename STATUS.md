@@ -94,6 +94,11 @@
   ещё не была применена. До её финального подтверждения официальный
   roles/schema/data dump и restore rehearsal не запускаются. После backup пароль
   нужно ещё раз ротировать, потому что первоначально он был передан через chat.
+- Локальный официальный backup toolchain готов: Supabase CLI закреплён на
+  `2.115.0`, Colima `0.10.3` работает через macOS Virtualization Framework,
+  Docker client/server проверены контейнером. Wrapper fail-closed сверяет CLI
+  version, шифрует поток age и исключает внутренние Storage vector tables;
+  safety-тесты и полный quality gate проходят.
 
 ### GitHub и Beget release gate — 2026-08-24
 

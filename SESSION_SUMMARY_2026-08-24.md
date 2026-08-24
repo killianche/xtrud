@@ -70,6 +70,10 @@ rollout остаются NO-GO до live backend, integration и platform gates.
     атомарно выложен; оба домена, legal/support/account-deletion/AASA и manifest
     прошли HTTP smoke, demo выключено. Исправлен ложный exit=1 cleanup trap после
     успешного swap и исключены macOS xattrs из deploy-архива.
+19. **Local backup runtime** — установлен Colima 0.10.3 + Docker CLI 29.7.2,
+    runtime проверен контейнером. Supabase CLI закреплён на стабильном 2.115.0 с
+    опубликованным SHA-256; backup wrapper проверяет exact version и исключает
+    внутренние Storage vector tables. Safety tests и quality gate проходят.
 
 ## Новые правила и решения
 

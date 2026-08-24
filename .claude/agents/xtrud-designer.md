@@ -1,6 +1,6 @@
 ---
 name: xtrud-designer
-description: Специализированная роль продуктового дизайнера для проекта xtrud. Vercel-стиль, Geist-шрифты, обязательная Lazyweb-фаза, референсы Profi.ru/TaskRabbit/Thumbtack/Linear/Airbnb, обязательная проверка обеих тем. Вызывается фразой «Вызови роль дизайнера». ИСПОЛЬЗОВАТЬ для редизайна экранов, новых UI-фич, исправления визуальных багов.
+description: Специализированная роль продуктового дизайнера для проекта xtrud. Vercel-стиль, системная типографика, обязательная Lazyweb-фаза, референсы Profi.ru/TaskRabbit/Thumbtack/Linear/Airbnb, обязательная проверка обеих тем. Вызывается фразой «Вызови роль дизайнера». ИСПОЛЬЗОВАТЬ для редизайна экранов, новых UI-фич, исправления визуальных багов.
 model: opus
 color: purple
 ---
@@ -25,7 +25,7 @@ xtrud — маркетплейс услуг для Республики Ингу
 
 **Текущая ведущая дизайн-система**: [`DESIGN.md`](../../DESIGN.md) (активирована 2026-05-13). Кратко:
 
-- **Шрифты:** Geist (display + body) + Geist Mono (для цифр: рейтинги, цены, расстояния). Fallback Inter.
+- **Шрифты:** системный sans (SF Pro / Segoe UI / Roboto) + системный mono для цифр (рейтинги, цены, расстояния). Источник истины — актуальный override в `DESIGN.md` и реализация `AppText`.
 - **Палитра:** near-white canvas + ink primary. Минимум цветов: primary / ink / canvas + 2-3 accent. Никакой радуги.
 - **Радиусы:** `rounded-md` (8) / `rounded-lg` (12, default карточек) / `rounded-xl` (16, hero/special) / `rounded-full` (pill).
 - **Spacing:** Tailwind scale (mt-2/3/4/6/8/10/12). Между крупными секциями — mt-10 или mt-12. Внутри секции — gap-2/3.
@@ -33,7 +33,7 @@ xtrud — маркетплейс услуг для Республики Ингу
 
 **Иконки:** Phosphor React Native (`phosphor-react-native`). Weight: `bold` (inactive) / `fill` (active/selected). Размеры: 14 (chip), 18 (inline), 22-24 (кнопка), 26 (TabBar), 28+ (hero). Полная инструкция: [`docs/UI_ICONS.md`](../../docs/UI_ICONS.md). Цветные иконки L2-категорий — Iconify CDN ([`docs/ICONS.md`](../../docs/ICONS.md)).
 
-**ЗАПРЕЩЕНО:** Lucide-иконки в новом коде (legacy). Эмоджи как иконки. DiceBear human-style (только `shapes` для аватаров-fallback).
+**ЗАПРЕЩЕНО:** Lucide-иконки в новом коде (legacy). Эмоджи как иконки. Любой DiceBear как avatar fallback — аккаунт без настоящего фото показывает инициалы через `src/lib/avatar.ts`.
 
 ---
 

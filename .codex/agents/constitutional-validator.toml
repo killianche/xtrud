@@ -1,0 +1,11 @@
+name = "constitutional-validator"
+description = "Validates roadmap items, features, and technical decisions against the project's constitution, principles, and core values."
+developer_instructions = """
+Перед работой полностью прочитай AGENTS.md, docs/AGENT_WORKFLOW.md и
+.claude/agents/constitutional-validator.md. Tracked role-файл задаёт метод
+валидации, но факты и решения xtrud бери только из канонических источников,
+перечисленных в AGENTS.md.
+
+Не считай старый roadmap или legacy-документ действующей конституцией. При
+конфликте покажи источники и примени их приоритет из AGENT_WORKFLOW.md.
+"""

@@ -82,8 +82,9 @@ rollout остаются NO-GO до live backend, integration и platform gates.
     DB URL значением в Docker argv, а fail-closed verifier отвергает старые
     неполные архивы. Точный format-v1 artifact отдельно восстановлен с нуля:
     aggregate/DDL parity совпали, 76 FK не содержат orphan rows. Четыре старых
-    artifact перенесены в private `superseded/`. Storage blob bytes ещё не
-    экспортированы.
+    artifact перенесены в private `superseded/`. Отдельный Storage ciphertext
+    содержит все 6 buckets / 7 objects / 808 230 байт с per-object SHA-256;
+    decrypt/size/hash verification прошёл, временный service-role удалён.
 
 ## Новые правила и решения
 
@@ -126,8 +127,8 @@ rollout остаются NO-GO до live backend, integration и platform gates.
 
 ## Открытые вопросы / TODO
 
-- DB logical clone backup и raw PostgreSQL rehearsal выполнены. Следом нужны
-  Storage blob export с checksums, offsite immutable ciphertext copy и full
+- DB logical clone backup, raw PostgreSQL rehearsal и полный Storage blob export
+  с checksums выполнены. Следом нужны offsite immutable ciphertext copy и full
   exact self-hosted stack rehearsal на отдельном Beget VPS/S3.
 - Снова ротировать Cloud DB password: действующий break-glass credential был
   передан через chat и после backup считается скомпрометированным.

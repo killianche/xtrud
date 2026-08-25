@@ -315,6 +315,12 @@ credentials разделены, upload/read/delete public objects и private sig
 работают, counts/bytes совпадают, в данных не осталось нужных приложению URL
 старого origin.
 
+**Cloud source evidence 2026-08-25:** отдельный age-encrypted Storage artifact
+содержит 6 buckets, 7 objects и 808 230 байт; manifest хранит per-object paths,
+sizes и SHA-256 только внутри ciphertext. Decrypt/exact-entry/size/hash проверка
+прошла, plaintext и временный service-role удалены. Это закрывает source backup,
+но не target S3/API smoke и не offsite immutable-copy gate.
+
 ### Gate E — Auth, Functions и background
 
 - настроить `SITE_URL`, `API_EXTERNAL_URL`, redirect allowlist и recovery;

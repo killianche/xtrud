@@ -122,9 +122,14 @@
 - Backup wrapper теперь не передаёт DB URL значением в Docker argv, использует
   immutable image digest, публикует ciphertext только после валидного SHA и
   имеет fail-closed verifier. Safety tests включены в `quality:check` и CI.
-- Storage backup пока неполный: SQL содержит metadata 6 buckets / 7 objects, но
-  сами 7 blob bytes и per-object checksums ещё не экспортированы. Backend
-  cutover остаётся NO-GO; Cloud удалять нельзя.
+- Отдельный Storage bundle завершён: 6 buckets, все 7 objects, 808 230 байт и
+  per-object SHA-256 сохранены в age-encrypted artifact mode 0600. Ciphertext
+  SHA-256: `87decc0d48b3fc2c2a514acd11958f83555ddd76e2b60555f14c45df99b2348b`.
+  Decrypt→exact entries→size/checksum verification прошёл; plaintext staging и
+  временный service-role файл удалены.
+- Backup toolchain commit `c61b40f` отправлен в GitHub `main`. Backend cutover
+  остаётся NO-GO до offsite immutable copy, отдельного Beget VPS/S3, exact-stack
+  smoke и ротации переданного через chat DB password; Cloud удалять нельзя.
 
 ### GitHub и Beget release gate — 2026-08-24
 

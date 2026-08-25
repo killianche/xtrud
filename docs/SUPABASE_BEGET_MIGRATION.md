@@ -3,7 +3,11 @@
 > Статус на 2026-08-25: проверенные DB и Storage ciphertext вынесены на текущий
 > Beget web VPS как off-machine copy; новый backend VPS, S3 и DNS ещё не
 > созданы. Production Cloud DB password подтверждён владельцем и проверен через
-> session pooler. Любой dump содержит персональные данные и секреты, поэтому
+> session pooler. Exact upstream commit/tree, multi-arch image digests и
+> loopback-only rehearsal overlay закреплены; runtime containers/restore ещё не
+> запускались. Production overlay и versioned restore orchestration отсутствуют;
+> runtime restore и cutover остаются P1 / NO-GO. Любой dump содержит
+> персональные данные и секреты, поэтому
 > хранится только зашифрованно вне Git.
 
 ## 1. Решение
@@ -225,23 +229,26 @@ CLI закреплён в `infra/supabase/.cli-version`, PostgreSQL image — im
 
 ### Gate B — изолированный target
 
-1. Поднять официальный pinned Docker snapshot без public DNS.
-2. Сгенерировать новые Postgres/JWT/API/Realtime/Storage/Dashboard secrets.
-3. Сверить полный upstream env names-contract командой
+1. До render/pull/start пройти отдельный source-binding gate: tag, exact
+   commit, `docker/` tree и upstream metadata image lock должны совпасть.
+   Rendered Compose не доказывает происхождение upstream source.
+2. Поднять официальный pinned Docker snapshot без public DNS.
+3. Сгенерировать новые Postgres/JWT/API/Realtime/Storage/Dashboard secrets.
+4. Сверить полный upstream env names-contract командой
    `node scripts/supabase/check-env-contract.mjs`; сгенерировать ключи штатными
    upstream utilities, а не вручную.
-4. Проверить `docker compose config`: Envoy опубликован только как
+5. Проверить `docker compose config`: Envoy опубликован только как
    `127.0.0.1:8000:8000`, Postgres/Studio не имеют public host ports. Полный
    вывод содержит подставленные secrets: не писать его в chat/CI/manifest;
    сохранять только redacted assertions и SHA-256 fingerprint.
-5. Применить fail-closed `infra/supabase/Caddyfile.example` и с внешнего host
+6. Применить fail-closed `infra/supabase/Caddyfile.example` и с внешнего host
    доказать, что разрешённые API prefixes доступны, а Studio/metadata — 404.
-6. Настроить firewall, S3 и системный monitoring.
-7. До отключения root/password SSH создать non-root sudo user, установить ключ,
+7. Настроить firewall, S3 и системный monitoring.
+8. До отключения root/password SSH создать non-root sudo user, установить ключ,
    проверить отдельную вторую сессию и сохранить provider-console break-glass.
-8. Проверить `pg_available_extensions` и конкретные версии.
-9. Запретить cron/outbound `pg_net` до окончания restore.
-10. Реализовать WAL/PITR и восстановить backup target на третью пустую
+9. Проверить `pg_available_extensions` и конкретные версии.
+10. Запретить cron/outbound `pg_net` до окончания restore.
+11. Реализовать WAL/PITR и восстановить backup target на третью пустую
     инсталляцию.
 
 **Acceptance:** health checks зелёные, Postgres/Studio не доступны из Интернета,
@@ -250,6 +257,12 @@ checks сохранены в manifest без secrets, PITR restore-test успе
 RPO/RTO.
 
 ### Gate C — два разных restore-контракта
+
+Versioned exact-stack restore orchestration пока отсутствует. Это
+**P1 / NO-GO** для runtime restore, full-stack rehearsal и cutover. Команды
+ниже описывают reviewable recipe, но не заменяют versioned tool с
+fail-closed cleanup, outbound isolation, exact-entry allowlist, FK validation и
+redacted manifest. Ручной restore не закрывает этот gate.
 
 `system-schema.sql` и `provider-ledger-data.sql` — снимок Cloud provider-owned
 схем для forensic/raw PostgreSQL clone. Результат уже был проверен на disposable
@@ -333,6 +346,10 @@ sizes и SHA-256 только внутри ciphertext. Decrypt/exact-entry/size/
 
 - настроить `SITE_URL`, `API_EXTERNAL_URL`, redirect allowlist и recovery;
 - включить anonymous users только если JIT/demo остаётся;
+- для всех четырёх текущих Functions выставить
+  `FUNCTIONS_VERIFY_JWT=false`: `register-user` и `send-reset-email` —
+  публичные anonymous flows, `notify` защищён `x-notify-secret`,
+  `send-sms` — Standard Webhooks signature;
 - развернуть `register-user`, `send-reset-email` и восстановленный `notify`;
 - dormant `send-sms` не включать без продуктового решения;
 - закрепить Deno dependencies, убрать runtime-зависимость от случайной
@@ -343,8 +360,21 @@ sizes и SHA-256 только внутри ciphertext. Decrypt/exact-entry/size/
 - включить только `nightly_expire_orders`, availability/ranking jobs после
   проверки; legacy auto-confirm/cancel lifecycle jobs оставить выключенными.
 
-**Acceptance:** регистрация, login email/phone, recovery, Realtime и ручной
-вызов разрешённых jobs прошли; старый cloud hostname отсутствует в runtime SQL.
+Route-specific negative-auth QA обязателен:
+
+- `register-user`: без JWT доступен только registration contract;
+  wrong method, malformed/invalid payload, abuse/rate-limit и privilege escalation
+  не создают аккаунт или orphan data;
+- `send-reset-email`: без JWT доступен только recovery contract;
+  invalid payload/rate-limit не позволяют account enumeration и mail abuse;
+- `notify`: missing, empty и wrong `x-notify-secret` возвращают `401` и не
+  читают tokens/не вызывают Expo;
+- `send-sms`: missing, invalid, stale и replayed webhook signature отклоняются
+  до вызова SMS.ru.
+
+**Acceptance:** регистрация, login email/phone, recovery, Realtime, все
+четыре route-specific negative-auth набора и ручной вызов разрешённых jobs
+прошли; старый cloud hostname отсутствует в runtime SQL.
 
 ### Gate F — end-to-end rehearsal
 
@@ -361,6 +391,11 @@ sizes и SHA-256 только внутри ciphertext. Decrypt/exact-entry/size/
 - backup age/alert и полный restore-test.
 
 ### Gate G — production cutover
+
+Production Compose overlay и отдельный production validator пока отсутствуют.
+До их versioned review запрещено запускать
+`scripts/supabase/check-runtime-env.mjs --mode production` и трактовать его
+как release evidence. Production cutover остаётся NO-GO.
 
 1. Заранее снизить DNS TTL.
 2. Выпустить совместимую iOS-версию.

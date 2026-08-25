@@ -134,6 +134,24 @@
   Это off-machine copy, но не immutable/S3 и тот же failure domain, что web.
   Backend cutover остаётся NO-GO до отдельного Beget VPS/S3 и exact-stack smoke;
   Cloud удалять нельзя.
+- Static exact-stack gate 2026-08-25 усилен после независимого CTO/QA/security
+  review: upstream закреплён не только tag, но exact commit + `docker/` tree;
+  все 11 runtime images имеют registry digest lock для amd64/arm64. Rehearsal
+  overlay оставляет единственный host-port Envoy на `127.0.0.1:18000`, полностью
+  удаляет Supavisor ports и подключает JWT/JWKS без мутации upstream compose.
+  Private env validator fail-closed проверяет mode `0600`, placeholders/defaults,
+  legacy JWT signatures, modern key consistency, `.test` URLs и image locks;
+  rendered-compose gate проверяет итоговые ports/images без печати secrets.
+  Compose 2.24.4 render для обеих архитектур и 15 contract tests прошли.
+  Контрольный sparse bootstrap повторно прошёл оба source/snapshot validator;
+  временный каталог после проверки удалён.
+- Контейнеры намеренно не запускались: после точечной очистки безопасно
+  восстанавливаемых npm/Gradle/Xcode caches на Mac доступно около 14 GiB;
+  Compose plugin
+  локально отсутствует, а versioned exact-stack restore orchestration ещё не
+  доказан. Для runtime rehearsal нужно довести свободное место минимум до
+  30–40 GiB, установить
+  Compose, затем выполнить два clean restore и полный QA checklist.
 
 ### GitHub и Beget release gate — 2026-08-24
 

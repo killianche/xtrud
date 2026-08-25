@@ -92,6 +92,17 @@ rollout остаются NO-GO до live backend, integration и platform gates.
     Beget VPS в mode `0600`, удалённые размеры и SHA-256 совпали с локальными.
     Копия off-machine, но не immutable/S3 и не снимает требование отдельного
     backend VPS/S3 перед cutover.
+22. **Exact-stack static safety contract** — после независимого CTO/QA/security
+    review закреплены upstream commit + docker tree и 11 multi-arch image
+    digests. Rehearsal overlay оставляет только loopback Envoy, удаляет host
+    ports Supavisor и подключает JWT/JWKS без изменения upstream compose.
+    No-output gates проверяют private mode-0600 runtime env и rendered JSON:
+    placeholders/defaults, JWT/key consistency, `.test` URLs, exact images и
+    published ports. Реальный Compose 2.24.4 render для amd64/arm64 и 15 contract
+    tests прошли. Containers/restore не запускались: Compose plugin отсутствует,
+    после точечной очистки caches на Mac доступно около 14 GiB, а restore
+    orchestration остаётся отдельным P1. Контрольный sparse bootstrap прошёл
+    pre-copy и post-copy validator; временный snapshot после проверки удалён.
 
 ## Новые правила и решения
 
@@ -141,6 +152,10 @@ rollout остаются NO-GO до live backend, integration и platform gates.
 - Cloud DB password подтверждён владельцем, проверен и сохранён в основной
   записи Keychain. Не выполнять новую автоматическую ротацию без отдельной
   явной команды владельца.
+- Exact-stack static contract готов, но runtime rehearsal не начинать до
+  освобождения минимум 30–40 GiB, установки Compose >=2.24.4 и review
+  versioned restore orchestration. Нужны два clean restore, QA Auth/REST/RLS/
+  Storage/Realtime/Functions и только затем Beget VPS/S3 gate.
 - Закрыть шесть promotion blockers отдельной forward-only security работой;
   только затем перенести проверенные drafts в новую последовательную migration
   chain и регенерировать `src/types/database.ts`.

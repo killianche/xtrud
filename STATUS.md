@@ -152,6 +152,11 @@
   доказан. Для runtime rehearsal нужно довести свободное место минимум до
   30–40 GiB, установить
   Compose, затем выполнить два clean restore и полный QA checklist.
+- Обязательная restore state machine зафиксирована в
+  `docs/RESTORE_ORCHESTRATION_CONTRACT.md`: один immutable DB ciphertext на run,
+  отдельный Storage artifact, exact disposable target, outbound isolation и два
+  разных clean restore. Это спецификация, не реализация; DB-only script не
+  закрывает runtime gate.
 
 ### GitHub и Beget release gate — 2026-08-24
 

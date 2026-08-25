@@ -35,6 +35,8 @@ rehearsal restore, smoke и только затем production.
 - `.env.example` — проверяемый names-only values contract без секретов;
 - `Caddyfile.example` — fail-closed TLS proxy с allowlist публичного API;
 - `docs/SUPABASE_BEGET_MIGRATION.md` — gates, acceptance, cutover и rollback.
+- `docs/RESTORE_ORCHESTRATION_CONTRACT.md` — обязательная state machine,
+  evidence и adversarial gates для двух clean restore.
 
 ## Target layout
 

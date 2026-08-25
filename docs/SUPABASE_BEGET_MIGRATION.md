@@ -263,6 +263,8 @@ Versioned exact-stack restore orchestration пока отсутствует. Э�
 ниже описывают reviewable recipe, но не заменяют versioned tool с
 fail-closed cleanup, outbound isolation, exact-entry allowlist, FK validation и
 redacted manifest. Ручной restore не закрывает этот gate.
+Обязательная state machine, DB/Storage binding, два clean target и adversarial
+test contract закреплены в `docs/RESTORE_ORCHESTRATION_CONTRACT.md`.
 
 `system-schema.sql` и `provider-ledger-data.sql` — снимок Cloud provider-owned
 схем для forensic/raw PostgreSQL clone. Результат уже был проверен на disposable

@@ -156,6 +156,10 @@ rollout остаются NO-GO до live backend, integration и platform gates.
   освобождения минимум 30–40 GiB, установки Compose >=2.24.4 и review
   versioned restore orchestration. Нужны два clean restore, QA Auth/REST/RLS/
   Storage/Realtime/Functions и только затем Beget VPS/S3 gate.
+- Restore orchestration реализовывать только как state machine из
+  `docs/RESTORE_ORCHESTRATION_CONTRACT.md`: DB + Storage artifacts, новый target,
+  isolation, teardown и второй независимый restore. Частичный DB runner не
+  является release evidence.
 - Закрыть шесть promotion blockers отдельной forward-only security работой;
   только затем перенести проверенные drafts в новую последовательную migration
   chain и регенерировать `src/types/database.ts`.

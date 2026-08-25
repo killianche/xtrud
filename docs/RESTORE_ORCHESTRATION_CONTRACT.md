@@ -1,8 +1,27 @@
 # Exact-stack restore orchestration contract
 
-Статус: **обязательная спецификация, реализация и runtime evidence отсутствуют**.
-Этот документ не разрешает restore или production cutover. Он фиксирует единый
-контракт, чтобы агент не заменил full-stack rehearsal набором ручных команд.
+Статус: **реализован только validation-only preflight; decrypt, target access,
+restore, receipt и runtime evidence отсутствуют**. Этот документ не разрешает
+production restore или cutover. Он фиксирует единый контракт, чтобы агент не
+заменил full-stack rehearsal набором ручных команд.
+
+Текущий `scripts/supabase/restore-exact-stack.sh` не является orchestrator:
+он связывает DB и Storage ciphertext с одним внешним approved backup-set
+manifest, проверяет exact pins, allowlist, plaintext-size/resource boundaries и
+private config validators, после чего останавливается. Он не вызывает
+`age`/Docker/`psql`, не расшифровывает SQL, не касается target и не создаёт
+receipt. До реализации tracked ownership volumes/networks, outbound isolation,
+cleanup, Storage и двух clean runs destructive restore остаётся **NO-GO**.
+
+Validation-only CLI требует оба ciphertext через `--archive` и
+`--storage-archive`, а также отдельный mode-0600 `--approved-manifest` вне Git.
+Exact format `xtrud-approved-backup-set-v1` связывает один `backup_set_id`, SHA и
+bytes обоих ciphertext, pinned snapshot/CLI/PostgreSQL image, explicit
+`migration_data_policy=skip`, ordered allowlist семи DB entries и SHA/bytes
+каждого entry. `db_plaintext_total_bytes` обязан равняться сумме семи sizes;
+каждый entry ограничен 8 GiB, total — 16 GiB. Free-space preflight использует
+`DB ciphertext + Storage ciphertext + 3 × approved DB plaintext total + 1 GiB`
+и минимум 30 GiB; approved Storage ciphertext ограничен 1 TiB.
 
 ## Граница готовности
 
@@ -215,6 +234,8 @@ fingerprints.
 ## Текущие блокеры
 
 - локально около 14 GiB свободно и нет Compose plugin;
+- validation-only preflight проверен локальными tests; decrypt/SQL mutation,
+  disposable PostgreSQL integration и exact-stack runtime отсутствуют;
 - нет versioned outbound-isolation и Storage restore tooling;
 - нет project-ledger comparator и source-derived unified DB+Storage manifest;
 - runtime containers, два clean restore и service smoke не выполнялись.

@@ -42,6 +42,15 @@ jobs:
       - name: Supabase backup safety tests
         run: npm run supabase:backup-safety:test
 
+      - name: Supabase rehearsal contract tests
+        run: npm run supabase:rehearsal-contract:test
+
+      - name: Supabase production contract tests
+        run: npm run supabase:production-contract:test
+
+      - name: Supabase restore validation-only preflight tests
+        run: npm run supabase:restore-preflight:test
+
       - name: Supabase universal draft contract tests
         run: npm run supabase:universal:draft:test
 
@@ -68,6 +77,12 @@ jobs:
 
       - name: Release version gate tests
         run: npm run release:version:test
+
+      - name: Mobile runtime config
+        run: npm run mobile:config:check
+
+      - name: Mobile runtime config tests
+        run: npm run mobile:config:test
 
       # Отдельно и рано: понятная ошибка по конкретному require/import вместо
       # длинного Metro resolver stack только на финальном web export.

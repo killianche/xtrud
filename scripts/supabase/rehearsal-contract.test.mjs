@@ -179,7 +179,7 @@ function createRenderedConfig(directory, { arch = "arm64", mode = 0o600, mutate 
   ];
   services.auth.environment = { GOTRUE_JWT_KEYS: "private-jwk-fixture" };
   services.realtime.environment = { API_JWT_JWKS: "jwks-fixture" };
-  services.storage.environment = { JWT_JWKS: "jwks-fixture" };
+  services.storage.environment = { JWT_JWKS: "jwks-fixture", STORAGE_BACKEND: "file" };
   services.functions.environment = { SUPABASE_JWKS: "jwks-fixture", VERIFY_JWT: "false" };
   const config = { name: "xtrud-rehearsal", services };
   mutate(config);
@@ -341,7 +341,7 @@ test("runtime env accepts authentic ES256 keys and exact arm64/amd64 image locks
     }
   }));
 
-test("runtime env rejects permissions, symlinks, repository paths and production mode", () =>
+test("runtime env rejects permissions, symlinks, repository paths and unknown mode", () =>
   withTempDirectory((directory) => {
     const insecure = createRuntimeEnv(directory);
     chmodSync(insecure, 0o644);
@@ -366,8 +366,8 @@ test("runtime env rejects permissions, symlinks, repository paths and production
       /outside the repository/u,
     );
     assert.throws(
-      () => validateRuntimeEnv({ arch: "arm64", envPath: valid, mode: "production" }),
-      /only rehearsal mode/u,
+      () => validateRuntimeEnv({ arch: "arm64", envPath: valid, mode: "unknown" }),
+      /mode must be/u,
     );
   }));
 
@@ -545,6 +545,11 @@ test("rendered compose rejects service, network, privilege, platform and JWT wir
       [(config) => (config.services.db.devices = ["/dev/disk0"]), /host devices/u],
       [(config) => (config.services.db.security_opt = ["seccomp=unconfined"]), /security/u],
       [(config) => (config.services.db.user = "0:0"), /root/u],
+      [
+        (config) =>
+          (config.services.db.labels = { "com.xtrud.restore.target-marker": randomUUID() }),
+        /restore-only ownership label/u,
+      ],
       [(config) => (config.services.db.volumes = ["/etc:/host:rw"]), /stack root/u],
       [(config) => (config.services.auth.platform = "linux/amd64"), /platform/u],
       [(config) => delete config.services.storage.environment.JWT_JWKS, /JWT_JWKS/u],

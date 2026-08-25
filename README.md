@@ -1,6 +1,8 @@
 # xtrud
 
-Маркетплейс услуг (мастера ↔ клиенты) для Республики Ингушетия. Web-сайт + iOS + Android в одной кодовой базе.
+Mobile-first маркетплейс услуг (исполнители ↔ заказчики) для Республики
+Ингушетия. Главный продукт — iOS/Android-приложение в одной Expo-кодовой базе;
+web сохраняется как supporting surface для legal/recovery/deep links.
 
 ## Стек
 
@@ -13,7 +15,9 @@
 - **Иконки:** Phosphor (`phosphor-react-native`); Lucide — legacy, в новом коде не использовать
 - **Отслеживание сбоев:** Sentry (`src/lib/sentry.ts`, активен при `EXPO_PUBLIC_SENTRY_DSN`)
 - **Lint/format:** Biome 2.x
-- **Деплой:** web → защищённый `deploy/web.sh` (VPS, `xtrud.pro` + `xtrud.alanbani.ru`); iOS 1.0.1 опубликована через EAS/App Store; Android пока не собирался.
+- **Релизы:** iOS 1.0.1 опубликована через EAS/App Store; Android развивается
+  в общей кодовой базе, но preview/device gate ещё не подтверждён; web →
+  защищённый `deploy/web.sh` только для supporting surface.
 
 ## Документация
 
@@ -27,7 +31,10 @@
 - [PROJECT_MAP.md](PROJECT_MAP.md) — legacy-концепт, не источник текущего поведения
 - [DESIGN.md](DESIGN.md) — дизайн-система: токены, цвета, типографика
 - [UI_PATTERNS.md](UI_PATTERNS.md) — кук-бук экранов (читать перед версткой)
-- [CROSS_PLATFORM_RULES.md](CROSS_PLATFORM_RULES.md) — актуальный контракт общей кодовой базы web+iOS; Android пока future
+- [docs/MOBILE_RELEASE_STRATEGY.md](docs/MOBILE_RELEASE_STRATEGY.md) — iOS-first,
+  ранний Android preview и backend transition
+- [CROSS_PLATFORM_RULES.md](CROSS_PLATFORM_RULES.md) — общий mobile-first
+  контракт iOS/Android и supporting web
 - [CATEGORIES_AND_PROFILES.md](CATEGORIES_AND_PROFILES.md) — таксономия, профили, схема БД
 - [PRODUCT_BLINDSPOTS.md](PRODUCT_BLINDSPOTS.md) — риски и грабли (⚠️ частично под старую модель)
 - [.claude/rules/](.claude/rules/) — детальные правила работы AI-агентов

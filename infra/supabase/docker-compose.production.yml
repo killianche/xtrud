@@ -1,0 +1,66 @@
+# Production adapter for the exact docker tree pinned by .supabase-docker-tree.
+# Requires Docker Compose >= 2.24.4 for !override/!reset. Merge it after the
+# pinned upstream docker/docker-compose.yml; never run this overlay alone.
+
+services:
+  studio:
+    image: ${XTRUD_IMAGE_STUDIO:?set the amd64 digest-pinned production image}
+    platform: linux/${XTRUD_TARGET_ARCH:?set XTRUD_TARGET_ARCH}
+
+  api-gw:
+    image: ${XTRUD_IMAGE_API_GW:?set the amd64 digest-pinned production image}
+    platform: linux/${XTRUD_TARGET_ARCH:?set XTRUD_TARGET_ARCH}
+    ports: !override
+      - "127.0.0.1:8000:8000/tcp"
+
+  auth:
+    image: ${XTRUD_IMAGE_AUTH:?set the amd64 digest-pinned production image}
+    platform: linux/${XTRUD_TARGET_ARCH:?set XTRUD_TARGET_ARCH}
+    environment:
+      GOTRUE_JWT_KEYS: ${JWT_KEYS:?generate JWT_KEYS with the exact upstream utility}
+
+  rest:
+    image: ${XTRUD_IMAGE_REST:?set the amd64 digest-pinned production image}
+    platform: linux/${XTRUD_TARGET_ARCH:?set XTRUD_TARGET_ARCH}
+
+  realtime:
+    image: ${XTRUD_IMAGE_REALTIME:?set the amd64 digest-pinned production image}
+    platform: linux/${XTRUD_TARGET_ARCH:?set XTRUD_TARGET_ARCH}
+    environment:
+      API_JWT_JWKS: ${JWT_JWKS:?generate JWT_JWKS with the exact upstream utility}
+
+  storage:
+    image: ${XTRUD_IMAGE_STORAGE:?set the amd64 digest-pinned production image}
+    platform: linux/${XTRUD_TARGET_ARCH:?set XTRUD_TARGET_ARCH}
+    environment:
+      JWT_JWKS: ${JWT_JWKS:?generate JWT_JWKS with the exact upstream utility}
+      STORAGE_BACKEND: s3
+      GLOBAL_S3_ENDPOINT: ${GLOBAL_S3_ENDPOINT:?set the absolute HTTPS Beget S3 endpoint URL}
+      GLOBAL_S3_PROTOCOL: ${GLOBAL_S3_PROTOCOL:?set GLOBAL_S3_PROTOCOL=https}
+      GLOBAL_S3_FORCE_PATH_STYLE: ${GLOBAL_S3_FORCE_PATH_STYLE:?set the reviewed path-style value}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:?set the private Beget S3 access key}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:?set the private Beget S3 secret key}
+      REGION: ${REGION:?set the verified Beget S3 region}
+
+  imgproxy:
+    image: ${XTRUD_IMAGE_IMGPROXY:?set the amd64 digest-pinned production image}
+    platform: linux/${XTRUD_TARGET_ARCH:?set XTRUD_TARGET_ARCH}
+
+  meta:
+    image: ${XTRUD_IMAGE_META:?set the amd64 digest-pinned production image}
+    platform: linux/${XTRUD_TARGET_ARCH:?set XTRUD_TARGET_ARCH}
+
+  functions:
+    image: ${XTRUD_IMAGE_FUNCTIONS:?set the amd64 digest-pinned production image}
+    platform: linux/${XTRUD_TARGET_ARCH:?set XTRUD_TARGET_ARCH}
+    environment:
+      SUPABASE_JWKS: ${JWT_JWKS:?generate JWT_JWKS with the exact upstream utility}
+
+  db:
+    image: ${XTRUD_IMAGE_DB:?set the amd64 digest-pinned production image}
+    platform: linux/${XTRUD_TARGET_ARCH:?set XTRUD_TARGET_ARCH}
+
+  supavisor:
+    image: ${XTRUD_IMAGE_SUPAVISOR:?set the amd64 digest-pinned production image}
+    platform: linux/${XTRUD_TARGET_ARCH:?set XTRUD_TARGET_ARCH}
+    ports: !reset []

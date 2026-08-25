@@ -3,13 +3,15 @@
 ## TL;DR
 
 xtrud разрабатывается **только** в `/Users/ruslancherbizhev/Desktop/xtrud` и
-хранится в GitHub `killianche/xtrud`. Web на VPS — производная статика, iOS в
-App Store — производный binary, локальные `ios/`, `dist/` и `node_modules/` —
+хранится в GitHub `killianche/xtrud`. Главный продукт — mobile: iOS выпускается
+первым, Android сохраняет общий контракт и проходит ранние preview/device gates.
+Web на VPS — supporting surface и производная статика; store binaries,
+локальные `ios/`, `android/`, `dist/` и `node_modules/` — производные или
 пересоздаваемые каталоги. Backend живёт в Supabase, но текущая папка миграций не
 является полным снимком production: до любых изменений БД нужен read-only export
 реальной схемы и backup.
 
-Актуальность фактов в этом документе проверена 2026-08-23. История продуктовых
+Актуальность фактов в этом документе проверена 2026-08-25. История продуктовых
 решений остаётся в `STATUS.md`; фактическая модель продукта — в `AGENTS.md` /
 `CLAUDE.md` и `docs/SIMPLE_FLOW.md`.
 
@@ -22,13 +24,13 @@ App Store — производный binary, локальные `ios/`, `dist/` 
   │    └─ GitHub Actions: npm ci, typecheck, tokens, Biome, tests, web export
   │
   ├─ app/ + src/ + assets/ + public/
-  │    ├─ Expo web export -> dist/
-  │    │    └─ deploy/web.sh -> 62.113.106.30:/var/www/xtrud
-  │    │         ├─ https://xtrud.pro
-  │    │         └─ https://xtrud.alanbani.ru
-  │    └─ EAS Build
-  │         ├─ iOS -> App Store (1.0.1, build 11)
-  │         └─ Android -> сборок и Google Play listing пока нет
+  │    ├─ EAS Build
+  │    │    ├─ iOS -> App Store (1.0.1, build 11; primary release)
+  │    │    └─ Android -> shared code; preview/device gate ещё не подтверждён
+  │    └─ supporting web export -> dist/
+  │         └─ deploy/web.sh -> 62.113.106.30:/var/www/xtrud
+  │              ├─ https://xtrud.pro
+  │              └─ https://xtrud.alanbani.ru
   │
   └─ Backend
        ├─ сейчас: Supabase Cloud project wgeimsajvjkzrrnfrnkb
@@ -90,8 +92,9 @@ SQL-источника в Git. Поэтому `supabase/migrations/` сейча�
 - Production VPS: `root@62.113.106.30`.
 - Caddy root: `/var/www/xtrud`.
 - `xtrud.pro` и `xtrud.alanbani.ru` отдают один bundle.
-- Последний фактический deploy: 2026-06-11.
-- Текущий публичный bundle собран с demo-входом.
+- Проверенный production deploy выполнен 2026-08-24 из clean Git release;
+  live manifest и оба домена проверены после атомарного swap.
+- Текущий публичный bundle собран с `demo=false`.
 - GitHub Actions автоматически сайт не выкладывает.
 - Следующий deploy должен идти только новым `deploy/web.sh` и только по явной
   команде владельца.
@@ -112,8 +115,11 @@ SQL-источника в Git. Поэтому `supabase/migrations/` сейча�
 - EAS Android builds: 0.
 - Google Play listing: нет.
 - `android/` локально отсутствует и при необходимости генерируется из Expo config.
-- Перед первой сборкой проверить разрешения; `RECORD_AUDIO` сейчас заявлено без
-  соответствующей функции продукта.
+- В Expo config `RECORD_AUDIO` явно блокируется, а image-picker не объявляет
+  microphone usage; `scripts/release/check-mobile-config.mjs` проверяет
+  introspected native config. Реальный APK/AAB и device QA всё ещё не выполнены.
+- Первый preview/device smoke обязателен до заморозки iOS release candidate
+  после крупного vertical slice; production Google Play идёт отдельной волной.
 
 ## 4. Безопасное удаление и очистка
 
@@ -200,13 +206,19 @@ npm run store:check:android
 
 ## 7. Текущие стоп-факторы перед любой выкладкой
 
-1. Рабочая копия dirty; часть изменений существовала до аудита.
-2. Production сайт всё ещё отдаёт старый demo-bundle; новый безопасный deploy
-   подготовлен локально, но не запускался.
-3. До любых Supabase-изменений нужен live read-only audit + backup.
+1. Рабочая копия dirty на время текущей локальной задачи; release возможен
+   только после reviewed commit и `main == origin/main`.
+2. Новый отдельный Beget VPS/S3/DNS отсутствует; backend deploy невозможен.
+3. Live read-only inventory и encrypted DB/Storage backups готовы, но
+   versioned full-stack restore, два clean restore, S3 smoke, WAL/PITR и
+   monitoring ещё не доказаны.
 4. iOS 1.0.1 содержит Cloud URL внутри binary; backend cutover без новой версии
    App Store создаст split-brain или отключит старое приложение.
-5. Канонический local/CI/EAS runtime — Node 20.19.4. Это минимальная версия,
+5. Production-mode iOS и Android JS/Hermes exports 2026-08-25 повторно прошли
+   на каноническом Node 20.19.4 командами `expo export --platform ios` и
+   `expo export --platform android`. APK/AAB/IPA build, TestFlight/store и
+   real-device QA ещё не выполнялись; mobile production остаётся NO-GO.
+6. Канонический local/CI/EAS runtime — Node 20.19.4. Это минимальная версия,
    совместимая с текущими React Native 0.81.5, Metro 0.83.3, Vite 8 и Rolldown;
    Node 20.18.0 пропускает обязательный optional native binding при `npm ci`.
 

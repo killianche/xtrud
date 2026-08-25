@@ -8,6 +8,54 @@
 
 ---
 
+## Mobile-first и подготовка отдельного Beget — 2026-08-25
+
+- Продуктовый контур закреплён как мобильное приложение: одна Expo/React Native
+  кодовая база для iOS и Android, iOS — первый production/device-контур,
+  Android проверяется на каждом вертикальном срезе и выходит следующей волной.
+  Web остаётся только для legal/support/account deletion, recovery, AASA и
+  лёгких публичных маршрутов. Решение и границы описаны в
+  [`docs/MOBILE_RELEASE_STRATEGY.md`](docs/MOBILE_RELEASE_STRATEGY.md) и
+  [`docs/adr/0001-mobile-first-expo-and-beget-supabase.md`](docs/adr/0001-mobile-first-expo-and-beget-supabase.md).
+- MVP остаётся простым classifieds-flow: заказчик публикует задание, исполнитель
+  откликается, дальше стороны связываются напрямую. Чат, lifecycle заказа,
+  выбор победителя, escrow и платформенные платежи в текущий MVP не добавляются.
+- Для всех агентов введён fail-closed контракт доказательности: факт,
+  подтверждённый кодом/read-only состоянием/первичным источником, отделяется от
+  решения и `UNKNOWN`; неизвестные реквизиты, нагрузка, SLO или live-состояние
+  не подменяются догадкой. Значимые продуктовые, архитектурные, UI, data,
+  security и release-задачи проходят совет ролей и независимые QA/review.
+- Mobile config усилен: `RECORD_AUDIO` удаляется из Android manifest, iOS больше
+  не получает `NSMicrophoneUsageDescription`; отдельный fail-closed Expo
+  introspection gate и 4 contract tests проходят. Полный `quality:check` и
+  реальные production-mode iOS/Android JS/Hermes exports повторно проходят на
+  каноническом Node `20.19.4`. Это не доказывает native IPA/APK/AAB,
+  TestFlight/store или работу на устройствах.
+- Expo SDK 54 / React Native / Expo Router / TypeScript признаны подходящим
+  shared-mobile стеком для MVP. Self-hosted Supabase остаётся подходящим
+  модульным backend-монолитом; микросервисы и Kubernetes не добавляются без
+  измеренной необходимости.
+- Подготовлен secret-free production Adapter точного Supabase snapshot
+  `self-hosted/v0.8.0`: exact commit/docker tree, 11 digest-pinned images для
+  amd64/arm64, loopback-only Envoy, закрытые DB/Studio/Supavisor и внешний
+  Beget S3. 8 production и 15 rehearsal contract tests проходят; отдельный
+  sparse snapshot успешно сверён с upstream. Фактические Beget endpoint,
+  region, credentials и DNS остаются `UNKNOWN` до создания ресурсов.
+- Реализован только fail-closed validation-only restore preflight: он связывает
+  DB и Storage ciphertext с одним внешним approved backup-set manifest,
+  проверяет SHA/bytes, exact pins, entry allowlist/размеры и свободное место.
+  Preflight физически не вызывает `age`, `tar`, Docker или `psql`, не расшифровывает
+  данные, не меняет target и не выпускает restore receipt; 11 adversarial tests
+  проходят. Destructive orchestration, resource ownership/isolation, реальные
+  DB/Storage restore и два чистых full-stack restore остаются **NO-GO**.
+- Текущий Supabase Cloud остаётся единственным production backend. Новый Beget
+  VPS/S3/DNS отсутствует, поэтому deploy/cutover не выполнялся и
+  `release/production.json` не переключался. Runtime exact-stack, два clean
+  restore, full DB+Storage smoke, WAL/PITR, monitoring, native builds и device
+  QA остаются обязательными **NO-GO** gates.
+
+---
+
 ## Универсальная доска и совет качества — 2026-08-24
 
 - По прямому решению владельца закреплён совет из шести независимых ролей:
@@ -155,8 +203,8 @@
 - Обязательная restore state machine зафиксирована в
   `docs/RESTORE_ORCHESTRATION_CONTRACT.md`: один immutable DB ciphertext на run,
   отдельный Storage artifact, exact disposable target, outbound isolation и два
-  разных clean restore. Это спецификация, не реализация; DB-only script не
-  закрывает runtime gate.
+  разных clean restore. Это спецификация, не реализация; validation-only
+  preflight не закрывает runtime gate.
 
 ### GitHub и Beget release gate — 2026-08-24
 

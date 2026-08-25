@@ -40,6 +40,8 @@ const secretNames = [
   "SMTP_PASS",
 ];
 
+const productionSecretNames = ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY"];
+
 const minimumLengths = new Map([
   ["POSTGRES_PASSWORD", 32],
   ["JWT_SECRET", 32],
@@ -238,8 +240,9 @@ function validateModernAuthKeys(entries) {
 
 export function validateRuntimeEnv({ envPath, mode, arch }) {
   if (!isAbsolute(envPath)) throw new Error("runtime env path must be absolute");
-  if (mode !== "rehearsal")
-    throw new Error("only rehearsal mode is supported until production overlay review");
+  if (!new Set(["production", "rehearsal"]).has(mode)) {
+    throw new Error("mode must be production or rehearsal");
+  }
   if (!new Set(["amd64", "arm64"]).has(arch)) throw new Error("arch must be amd64 or arm64");
 
   const linkMetadata = lstatSync(envPath);
@@ -267,7 +270,9 @@ export function validateRuntimeEnv({ envPath, mode, arch }) {
     throw new Error(`runtime env contains placeholders: ${placeholders.join(", ")}`);
   }
 
-  for (const name of secretNames) {
+  const requiredSecretNames =
+    mode === "production" ? [...secretNames, ...productionSecretNames] : secretNames;
+  for (const name of requiredSecretNames) {
     const value = entries.get(name) ?? "";
     if (!value) throw new Error(`${name} is unset`);
     if (knownUnsafeValues.has(value)) throw new Error(`${name} uses a known unsafe default`);
@@ -326,41 +331,123 @@ export function validateRuntimeEnv({ envPath, mode, arch }) {
     }
   }
 
-  if (publicUrl.href !== "http://127.0.0.1:18000/") {
-    throw new Error("rehearsal API must use http://127.0.0.1:18000");
-  }
-  if (!siteUrl.hostname.endsWith(".test")) throw new Error("rehearsal SITE_URL must use .test");
-  if (!(entries.get("PROXY_DOMAIN") ?? "").endsWith(".test")) {
-    throw new Error("rehearsal PROXY_DOMAIN must use .test");
-  }
-  for (const rawRedirect of (entries.get("ADDITIONAL_REDIRECT_URLS") ?? "").split(",")) {
+  const redirects = (entries.get("ADDITIONAL_REDIRECT_URLS") ?? "")
+    .split(",")
+    .map((value) => value.trim())
+    .filter(Boolean);
+  const parsedRedirects = [];
+  for (const rawRedirect of redirects) {
     let redirect;
     try {
       redirect = new URL(rawRedirect);
     } catch {
       throw new Error("ADDITIONAL_REDIRECT_URLS contains an invalid URL");
     }
-    if (redirect.protocol !== "xtrud-rehearsal:" && !redirect.hostname.endsWith(".test")) {
-      throw new Error("rehearsal redirects must use .test or xtrud-rehearsal://");
+    parsedRedirects.push(redirect);
+  }
+
+  if (mode === "rehearsal") {
+    if (publicUrl.href !== "http://127.0.0.1:18000/") {
+      throw new Error("rehearsal API must use http://127.0.0.1:18000");
     }
-  }
-  const allUrls = [
-    entries.get("SUPABASE_PUBLIC_URL"),
-    entries.get("API_EXTERNAL_URL"),
-    entries.get("SITE_URL"),
-    entries.get("ADDITIONAL_REDIRECT_URLS"),
-  ].join(",");
-  if (/xtrud\.pro|alanbani\.ru/u.test(allUrls)) {
-    throw new Error("rehearsal env must not reference production domains");
-  }
-  if (entries.get("API_GW_HTTP_PORT") !== "127.0.0.1:18000") {
-    throw new Error("rehearsal Envoy must bind to 127.0.0.1:18000");
-  }
-  if (entries.get("XTRUD_REHEARSAL_API_PORT") !== "18000") {
-    throw new Error("XTRUD_REHEARSAL_API_PORT must be 18000");
-  }
-  if (entries.get("COMPOSE_FILE") !== "docker-compose.yml:docker-compose.rehearsal.yml") {
-    throw new Error("COMPOSE_FILE must contain only the exact base and rehearsal overlay");
+    if (!siteUrl.hostname.endsWith(".test")) {
+      throw new Error("rehearsal SITE_URL must use .test");
+    }
+    if (!(entries.get("PROXY_DOMAIN") ?? "").endsWith(".test")) {
+      throw new Error("rehearsal PROXY_DOMAIN must use .test");
+    }
+    for (const redirect of parsedRedirects) {
+      if (redirect.protocol !== "xtrud-rehearsal:" && !redirect.hostname.endsWith(".test")) {
+        throw new Error("rehearsal redirects must use .test or xtrud-rehearsal://");
+      }
+    }
+    const allUrls = [
+      entries.get("SUPABASE_PUBLIC_URL"),
+      entries.get("API_EXTERNAL_URL"),
+      entries.get("SITE_URL"),
+      entries.get("ADDITIONAL_REDIRECT_URLS"),
+    ].join(",");
+    if (/xtrud\.pro|alanbani\.ru/u.test(allUrls)) {
+      throw new Error("rehearsal env must not reference production domains");
+    }
+    if (entries.get("API_GW_HTTP_PORT") !== "127.0.0.1:18000") {
+      throw new Error("rehearsal Envoy must bind to 127.0.0.1:18000");
+    }
+    if (entries.get("XTRUD_REHEARSAL_API_PORT") !== "18000") {
+      throw new Error("XTRUD_REHEARSAL_API_PORT must be 18000");
+    }
+    if (entries.get("COMPOSE_FILE") !== "docker-compose.yml:docker-compose.rehearsal.yml") {
+      throw new Error("COMPOSE_FILE must contain only the exact base and rehearsal overlay");
+    }
+  } else {
+    if (publicUrl.href !== "https://api.xtrud.pro/") {
+      throw new Error("production SUPABASE_PUBLIC_URL must be https://api.xtrud.pro");
+    }
+    if (siteUrl.href !== "https://xtrud.pro/") {
+      throw new Error("production SITE_URL must be https://xtrud.pro");
+    }
+    if (entries.get("PROXY_DOMAIN") !== "api.xtrud.pro") {
+      throw new Error("production PROXY_DOMAIN must be api.xtrud.pro");
+    }
+    const redirectValues = new Set(parsedRedirects.map((redirect) => redirect.href));
+    if (
+      redirectValues.size !== 2 ||
+      !redirectValues.has("https://xtrud.pro/reset-password") ||
+      !redirectValues.has("xtrud://reset-password")
+    ) {
+      throw new Error("production redirects must contain only the web and xtrud:// reset routes");
+    }
+    if (entries.get("ENABLE_ANONYMOUS_USERS") !== "false") {
+      throw new Error("production ENABLE_ANONYMOUS_USERS must be false");
+    }
+    if (entries.get("API_GW_HTTP_PORT") !== "127.0.0.1:8000") {
+      throw new Error("production Envoy must bind to 127.0.0.1:8000");
+    }
+    if (entries.get("COMPOSE_FILE") !== "docker-compose.yml:docker-compose.production.yml") {
+      throw new Error("COMPOSE_FILE must contain only the exact base and production overlay");
+    }
+    if (entries.get("STORAGE_BACKEND") !== "s3") {
+      throw new Error("production STORAGE_BACKEND must be s3");
+    }
+    if (entries.get("GLOBAL_S3_PROTOCOL") !== "https") {
+      throw new Error("production external S3 must use GLOBAL_S3_PROTOCOL=https");
+    }
+    if (entries.get("GLOBAL_S3_FORCE_PATH_STYLE") !== "true") {
+      throw new Error("production Beget S3 must enable GLOBAL_S3_FORCE_PATH_STYLE");
+    }
+    const endpoint = entries.get("GLOBAL_S3_ENDPOINT") ?? "";
+    let endpointUrl;
+    try {
+      endpointUrl = new URL(endpoint);
+    } catch {
+      throw new Error("GLOBAL_S3_ENDPOINT must be an absolute HTTPS URL");
+    }
+    if (
+      endpointUrl.protocol !== "https:" ||
+      !endpointUrl.hostname.includes(".") ||
+      endpointUrl.username ||
+      endpointUrl.password ||
+      endpointUrl.pathname !== "/" ||
+      endpointUrl.search ||
+      endpointUrl.hash ||
+      /^(?:localhost|127\.|10\.|192\.168\.|172\.(?:1[6-9]|2\d|3[01])\.)/u.test(endpointUrl.hostname)
+    ) {
+      throw new Error("GLOBAL_S3_ENDPOINT must be a path-free external HTTPS URL");
+    }
+    if (
+      entries.get("AWS_ACCESS_KEY_ID") === entries.get("S3_PROTOCOL_ACCESS_KEY_ID") ||
+      entries.get("AWS_SECRET_ACCESS_KEY") === entries.get("S3_PROTOCOL_ACCESS_KEY_SECRET")
+    ) {
+      throw new Error("external S3 credentials must differ from S3 protocol credentials");
+    }
+    const serializedValues = [...entries.values()].join("\n");
+    if (
+      /wgeimsajvjkzrrnfrnkb\.supabase\.co|62\.113\.106\.30|(?:^|[./-])(?:minio|rustfs)(?:[./:-]|$)/imu.test(
+        serializedValues,
+      )
+    ) {
+      throw new Error("production env references a forbidden legacy backend or object store");
+    }
   }
 
   return { arch, mode, names: entries.size, images: Object.keys(imageEnvByService).length };

@@ -11,7 +11,10 @@ const defaultPaths = {
   commitPath: resolve(root, "infra/supabase/.supabase-commit"),
   dockerTreePath: resolve(root, "infra/supabase/.supabase-docker-tree"),
   imageLockPath: resolve(root, "infra/supabase/image-digests.json"),
-  overlayPath: resolve(root, "infra/supabase/docker-compose.rehearsal.yml"),
+  overlayPaths: {
+    production: resolve(root, "infra/supabase/docker-compose.production.yml"),
+    rehearsal: resolve(root, "infra/supabase/docker-compose.rehearsal.yml"),
+  },
   versionPath: resolve(root, "infra/supabase/.supabase-version"),
 };
 
@@ -219,12 +222,17 @@ export function validateUpstreamSnapshot({
   commitPath = defaultPaths.commitPath,
   dockerTreePath = defaultPaths.dockerTreePath,
   imageLockPath = defaultPaths.imageLockPath,
-  overlayPath = defaultPaths.overlayPath,
+  overlayPath,
+  profile = "rehearsal",
   versionPath = defaultPaths.versionPath,
 }) {
   if (typeof snapshotPath !== "string" || !isAbsolute(snapshotPath)) {
     throw new Error("upstream snapshot path must be absolute");
   }
+  if (!new Set(["production", "rehearsal"]).has(profile)) {
+    throw new Error("snapshot profile must be production or rehearsal");
+  }
+  const expectedOverlayPath = overlayPath ?? defaultPaths.overlayPaths[profile];
   const linkMetadata = lstatSync(snapshotPath);
   if (linkMetadata.isSymbolicLink()) throw new Error("upstream snapshot must not be a symlink");
   const snapshotRoot = realpathSync(snapshotPath);
@@ -272,15 +280,15 @@ export function validateUpstreamSnapshot({
   }
   const copiedOverlayPath = containedRegularFile(
     snapshotRoot,
-    "stack/docker-compose.rehearsal.yml",
-    "snapshot rehearsal overlay",
+    `stack/docker-compose.${profile}.yml`,
+    `snapshot ${profile} overlay`,
   );
-  const overlayMetadata = lstatSync(overlayPath);
+  const overlayMetadata = lstatSync(expectedOverlayPath);
   if (overlayMetadata.isSymbolicLink() || !overlayMetadata.isFile()) {
-    throw new Error("tracked rehearsal overlay must be a regular non-symlink file");
+    throw new Error(`tracked ${profile} overlay must be a regular non-symlink file`);
   }
-  if (!readFileSync(copiedOverlayPath).equals(readFileSync(overlayPath))) {
-    throw new Error("snapshot rehearsal overlay does not byte-match the tracked overlay");
+  if (!readFileSync(copiedOverlayPath).equals(readFileSync(expectedOverlayPath))) {
+    throw new Error(`snapshot ${profile} overlay does not byte-match the tracked overlay`);
   }
 
   const manifestPath = containedRegularFile(snapshotRoot, "manifest.json", "snapshot manifest");
@@ -288,7 +296,7 @@ export function validateUpstreamSnapshot({
   exactKeys(manifest, ["format", "upstream", "runnable", "nextGate"], "snapshot manifest");
   exactKeys(manifest.upstream, ["tag", "commit", "dockerTree"], "snapshot manifest upstream");
   if (
-    manifest.format !== "xtrud-exact-rehearsal-v1" ||
+    manifest.format !== `xtrud-exact-${profile}-v1` ||
     manifest.runnable !== false ||
     manifest.upstream.tag !== pins.tag ||
     manifest.upstream.commit !== pins.commit ||
@@ -309,23 +317,38 @@ export function validateUpstreamSnapshot({
 }
 
 function readCliArgs(argv) {
-  if (argv.length !== 2 || !new Set(["--compose", "--snapshot"]).has(argv[0]) || !argv[1]) {
-    throw new Error("usage: check-upstream-snapshot.mjs (--compose PATH | --snapshot PATH)");
+  if (argv.length < 2 || argv.length > 4 || argv.length % 2 !== 0) {
+    throw new Error(
+      "usage: check-upstream-snapshot.mjs (--compose PATH | --snapshot PATH) [--profile PROFILE]",
+    );
   }
-  return argv[0] === "--compose"
-    ? { composePath: argv[1], snapshotPath: undefined }
-    : { composePath: undefined, snapshotPath: argv[1] };
+  const args = new Map();
+  for (let index = 0; index < argv.length; index += 2) {
+    if (args.has(argv[index])) throw new Error(`duplicate argument: ${argv[index]}`);
+    args.set(argv[index], argv[index + 1]);
+  }
+  const composePath = args.get("--compose");
+  const snapshotPath = args.get("--snapshot");
+  if (Boolean(composePath) === Boolean(snapshotPath)) {
+    throw new Error("provide exactly one of --compose or --snapshot");
+  }
+  if (
+    [...args.keys()].some((name) => !new Set(["--compose", "--profile", "--snapshot"]).has(name))
+  ) {
+    throw new Error("unknown argument");
+  }
+  if (composePath && args.has("--profile")) {
+    throw new Error("--profile applies only to --snapshot");
+  }
+  return { composePath, profile: args.get("--profile") ?? "rehearsal", snapshotPath };
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   try {
     const args = readCliArgs(process.argv.slice(2));
-    if (Boolean(args.composePath) === Boolean(args.snapshotPath)) {
-      throw new Error("provide exactly one of --compose or --snapshot");
-    }
     const result = args.composePath
       ? validateUpstreamCompose({ composePath: args.composePath })
-      : validateUpstreamSnapshot({ snapshotPath: args.snapshotPath });
+      : validateUpstreamSnapshot({ profile: args.profile, snapshotPath: args.snapshotPath });
     console.log(
       `Supabase upstream snapshot passed: tag=${result.tag}, commit=${result.commit}, dockerTree=${result.dockerTree}, images=${result.images}, composeSha256=${result.composeSha256}.`,
     );

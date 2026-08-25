@@ -1,14 +1,18 @@
-# xtrud — правила общей кодовой базы Web + iOS
+# xtrud — mobile-first правила iOS + Android + supporting web
 
-> Актуально на 2026-08-24. Этот документ описывает эксплуатационные различия
+> Актуально на 2026-08-25. Этот документ описывает эксплуатационные различия
 > платформ. Визуальные правила находятся в `DESIGN.md` и `UI_PATTERNS.md`, а
 > сборка и выкладка — в `PROJECT_OPERATIONS.md`.
 
 ## 1. Область действия
 
-- Активные платформы: web и iOS.
-- Android остаётся будущей платформой до первой EAS preview-сборки и проверки
-  на реальном устройстве.
+- Главный продукт — мобильное приложение; iOS является первым production и
+  ежедневным visual/device контуром.
+- Android разрабатывается в общей кодовой базе сразу. Его production-релиз
+  идёт после iOS, но первый preview/device smoke обязателен до заморозки iOS
+  release candidate и повторяется после каждого крупного vertical slice.
+- Web — supporting surface для legal/support/account deletion, recovery,
+  universal links и совместимости маршрутов; он не определяет mobile UX.
 - По умолчанию экран, feature, schema валидации и запросы к данным общие.
 - Platform gate допустим только там, где различается capability браузера и
   native runtime. Нельзя создавать две копии бизнес-логики ради небольшого
@@ -36,23 +40,23 @@ Reanimated 4, TanStack Query 5, Zustand, react-hook-form/zod, Supabase.
    на VPS не являются исходниками.
 2. `ios/` и `android/` вручную не редактировать. Native-изменение выражается
    через Expo config, зависимость или config plugin.
-3. Web и iOS релизы независимы. Общий commit не означает автоматическую
-   выкладку обеих платформ.
-4. Backend должен оставаться совместимым со всеми поддерживаемыми версиями iOS:
+3. Web, iOS и Android релизы независимы. Общий commit не означает
+   автоматическую выкладку всех платформ.
+4. Backend должен оставаться совместимым со всеми поддерживаемыми версиями mobile:
    установленный binary нельзя мгновенно заменить вместе с web.
 
 ## 3. Общий код и platform capabilities
 
-| Capability | Общий Interface / Adapter | Web Implementation | iOS Implementation |
-|---|---|---|---|
-| Session storage | `src/lib/storage.ts` | `localStorage` под SSR guard | chunked `SecureStore` |
-| Supabase client | `src/lib/supabase.ts` | PKCE, URL session detection | PKCE, AppState token refresh |
-| Выбор и подготовка фото | `src/lib/image-upload.ts` | скрытый DOM input внутри helper | Expo Image Picker |
-| Подтверждение действия | `src/lib/confirm.ts` | browser confirm | `Alert` |
-| Внешняя ссылка | `src/lib/open-link.ts` | browser/opening fallback | React Native Linking |
-| Тема | `src/hooks/use-color-scheme.ts` | DOM class + system media query | Appearance/NativeWind |
-| Ширина приложения | `src/lib/use-app-width.ts` | ширина `PhoneFrame`, максимум 480 | ширина устройства |
-| Back navigation | `src/lib/use-safe-back.ts` | browser history-aware | Router stack-aware |
+| Capability | Общий Interface / Adapter | Web Implementation | iOS Implementation | Android Implementation |
+|---|---|---|---|---|
+| Session storage | `src/lib/storage.ts` | `localStorage` под SSR guard | chunked Keychain через `SecureStore` | chunked Keystore через `SecureStore` |
+| Supabase client | `src/lib/supabase.ts` | PKCE, URL session detection | PKCE, AppState token refresh | PKCE, AppState token refresh |
+| Выбор и подготовка фото | `src/lib/image-upload.ts` | скрытый DOM input внутри helper | Expo Image Picker | сейчас Expo Image Picker; recovery через `getPendingResultAsync` ещё не реализован и блокирует Android-ready |
+| Подтверждение действия | `src/lib/confirm.ts` | browser confirm | `Alert` | `Alert` |
+| Внешняя ссылка | `src/lib/open-link.ts` | browser/opening fallback | React Native Linking | React Native Linking/intent |
+| Тема | `src/hooks/use-color-scheme.ts` | DOM class + system media query | Appearance/NativeWind | Appearance/NativeWind |
+| Ширина приложения | `src/lib/use-app-width.ts` | ширина `PhoneFrame`, максимум 480 | ширина устройства | ширина устройства |
+| Back navigation | `src/lib/use-safe-back.ts` | browser history-aware | Router stack-aware/swipe-back | Router stack-aware/system Back |
 
 Новый platform-specific Adapter добавляется только на реальном Seam между
 browser API и native API. Бизнес-правила остаются над этим Interface.
@@ -87,9 +91,11 @@ SSR-проверкой `typeof ... !== "undefined"`.
 1. Пользовательский текст рендерится через `AppText`, если компонент не требует
    строго RN `Text` API.
 2. Шкала типографики определяется `DESIGN.md`/Tailwind tokens, а не этим файлом.
-3. `KeyboardAvoidingView`: `behavior="padding"` на iOS, без `behavior` на web.
+3. `KeyboardAvoidingView`: `behavior="padding"` на iOS; текущий общий Adapter
+   не задаёт `behavior` на Android/web. Android IME обязан пройти device smoke,
+   а не считаться корректным по iOS-проверке.
 4. Scroll-форма задаёт `keyboardShouldPersistTaps`, прокрутку к первой ошибке и
-   одну общую zod-схему для web/iOS.
+   одну общую zod-схему для web/iOS/Android.
 5. Input должен иметь label, error state, корректный `textContentType` /
    `autoComplete`, enter-key behavior и доступный размер шрифта.
 6. `maxFontSizeMultiplier` для Text/Input централизуется в общих компонентах.
@@ -107,8 +113,8 @@ SSR-проверкой `typeof ... !== "undefined"`.
    `realAvatarUrl()`/`Avatar` для пользовательских аватаров.
 3. Подтверждение удаления и иных важных действий — через `confirmAsync()`.
 4. `tel:`, WhatsApp и внешние HTTP(S) URL — через `openExternalUrl()`.
-5. Ошибка permission/picker/upload обязана иметь понятное состояние на обеих
-   платформах; молча проглатывать её нельзя.
+5. Ошибка permission/picker/upload обязана иметь понятное состояние на web,
+   iOS и Android; молча проглатывать её нельзя.
 
 ## 7. Навигация и ссылки
 
@@ -135,19 +141,20 @@ SSR-проверкой `typeof ... !== "undefined"`.
 ## 8. Auth, storage и server state
 
 1. Supabase client создаётся один раз в `src/lib/supabase.ts`.
-2. Web хранит сессию в localStorage через Adapter; iOS — в SecureStore через тот
-   же Adapter.
+2. Web хранит сессию в localStorage через Adapter; iOS/Android — в SecureStore
+   (Keychain/Keystore) через тот же Adapter.
 3. Server state — TanStack Query. Локальные preferences/UI state — Zustand.
 4. Logout очищает session-dependent query cache и возвращает предсказуемый route.
 5. Любой persisted PII draft имеет TTL и явные clear rules.
-6. PKCE callback, recovery и session persistence тестируются отдельно на web и
-   iOS.
-7. Изменение Supabase URL/JWT означает повторный вход. Старый iOS binary с
-   вшитым URL сам не переключится на новый backend.
+6. PKCE callback, recovery и session persistence тестируются отдельно на web,
+   iOS и Android; Android PASS требует APK/device evidence.
+7. Изменение Supabase URL/JWT означает повторный вход. Установленный iOS или
+   Android binary с вшитым URL сам не переключится на новый backend.
 8. Для новых релизов backend URL должен быть собственным стабильным доменом
    `https://api.xtrud.pro`, а не hostname конкретного провайдера.
 9. Перед несовместимым backend cutover выпускается переходная iOS-версия и
-   механизм минимально поддерживаемой версии/обязательного обновления.
+   механизм минимально поддерживаемой версии/обязательного обновления; Android
+   beta затем проверяется против того же API contract.
 
 ### Universal task draft и auth-return
 
@@ -155,14 +162,16 @@ SSR-проверкой `typeof ... !== "undefined"`.
 [`docs/UNIVERSAL_TASK_BOARD.md`](docs/UNIVERSAL_TASK_BOARD.md). Platform contract:
 
 1. Черновик имеет версию schema, timestamp/TTL и owner/session binding; поля
-   восстанавливаются одинаково на web/iOS через общий store/adapter.
+   восстанавливаются одинаково на web/iOS/Android через общий store/adapter.
 2. Guest submit ведёт в обычный login/register и возвращает на `/orders/new`.
    После возврата draft повторно валидируется; auto-publish запрещён.
-3. Web reload/browser Back и iOS cold/warm return — отдельные тесты. Нельзя
-   считать in-memory navigation достаточной persistence.
+3. Web reload/browser Back, iOS cold/warm return и Android cold/warm/activity
+   recreation — отдельные тесты. Нельзя считать in-memory navigation
+   достаточной persistence; Android остаётся `UNKNOWN` до device evidence.
 4. Web `blob:` URL не является сохранённым фото. Временные фото либо копируются
-   в управляемое хранилище с TTL/cleanup, либо UI явно требует reattach. На iOS
-   то же правило действует для временного picker URI.
+   в управляемое хранилище с TTL/cleanup, либо UI явно требует reattach. На
+   iOS/Android то же правило действует для временного picker URI; Android
+   pending-result recovery пока не реализован.
 5. Logout/account switch очищает или изолирует PII-черновик; новый пользователь
    не получает адрес, текст и фото предыдущего.
 6. Реализация хранит persistent draft поколениями с сериализованными
@@ -187,7 +196,7 @@ SSR-проверкой `typeof ... !== "undefined"`.
 - Android наследует общий код, но считается непроверенным до preview build и
   реального device QA.
 
-## 9. Web contract
+## 9. Web supporting contract
 
 Разработка и проверка:
 
@@ -262,9 +271,9 @@ npm run web:build:production
 preview по правилам проекта. Красный существующий baseline не игнорируется и не
 маскируется: он фиксируется отдельным blocker и устраняется отдельной серией.
 
-## 12. Android — future appendix
+## 12. Android contract
 
-Android становится активной платформой только после:
+Android нельзя называть production-ready до:
 
 1. первой EAS preview APK;
 2. проверки на реальном устройстве;
@@ -273,5 +282,7 @@ Android становится активной платформой только 
 5. проверки SecureStore/Keystore и notification strategy;
 6. подготовки Google Play Data Safety и отдельной release-матрицы.
 
-До этого Android-совместимость не должна ломаться намеренно, но отсутствие
-Android QA всегда указывается честно и не блокирует web/iOS изменения.
+До этого Android-совместимость является обязательным архитектурным ограничением,
+а отсутствие реального Android QA указывается как `UNKNOWN`. Оно не блокирует
+локальную iOS-разработку, но блокирует заморозку mobile release candidate после
+крупного vertical slice и любые заявления Android-ready.

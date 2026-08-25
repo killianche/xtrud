@@ -5,8 +5,12 @@
 > созданы. Production Cloud DB password подтверждён владельцем и проверен через
 > session pooler. Exact upstream commit/tree, multi-arch image digests и
 > loopback-only rehearsal overlay закреплены; runtime containers/restore ещё не
-> запускались. Production overlay и versioned restore orchestration отсутствуют;
-> runtime restore и cutover остаются P1 / NO-GO. Любой dump содержит
+> запускались. Production Adapter, внешний-S3 wiring, private-env и rendered
+> validators готовы и покрыты тестами; реальный exact production snapshot
+> подготовлен из pinned upstream. Versioned validation-only restore preflight
+> подготовлен, но destructive orchestration, runtime Compose/S3 evidence и
+> PITR пока отсутствуют, поэтому cutover остаётся NO-GO.
+> Любой dump содержит
 > персональные данные и секреты, поэтому
 > хранится только зашифрованно вне Git.
 
@@ -93,7 +97,7 @@ web-сервера. Закрывать S3/versioning/PITR gate этой копи
 | Auth | email/password, вход по телефону через RPC, recovery, anonymous JIT/demo |
 | Storage | `avatars`, `portfolio`, `category-covers`, `order-photos`, private `master-verifications`, dormant `chat-images` |
 | Realtime | `orders`, `order_responses`, `notifications` — подтвердить live publication |
-| Edge Functions | `register-user`, `send-reset-email`, dormant `send-sms`, отсутствующая в Git `notify` |
+| Edge Functions | `register-user`, `send-reset-email`, dormant `send-sms`, восстановленная в Git `notify` |
 | Extensions | `pgcrypto`, `pg_trgm`, `pg_net`, `pg_cron`, Vault |
 | Background | expire orders, availability/ranking; legacy lifecycle jobs не включать автоматически |
 
@@ -114,7 +118,7 @@ Git после сверки должен получить недостающие
 
 Отдельно должны быть восстановлены:
 
-1. исходник deployed-функции `notify`;
+1. проверенный tracked-исходник `notify` и его target deployment/config;
 2. `notify_secret`, Unisender key и остальные secrets через защищённый канал;
 3. Realtime publication и allowlist cron jobs;
 4. абсолютные Storage URL в данных;
@@ -258,9 +262,11 @@ RPO/RTO.
 
 ### Gate C — два разных restore-контракта
 
-Versioned exact-stack restore orchestration пока отсутствует. Это
-**P1 / NO-GO** для runtime restore, full-stack rehearsal и cutover. Команды
-ниже описывают reviewable recipe, но не заменяют versioned tool с
+Versioned validation-only preflight проверяет approved backup-set manifest,
+ciphertext SHA, pins и resource bounds, но destructive exact-stack restore
+orchestration пока отсутствует. Это **P1 / NO-GO** для runtime restore,
+full-stack rehearsal и cutover. Команды ниже описывают reviewable recipe, но не
+заменяют versioned tool с
 fail-closed cleanup, outbound isolation, exact-entry allowlist, FK validation и
 redacted manifest. Ручной restore не закрывает этот gate.
 Обязательная state machine, DB/Storage binding, два clean target и adversarial
@@ -271,9 +277,9 @@ test contract закреплены в `docs/RESTORE_ORCHESTRATION_CONTRACT.md`.
 PostgreSQL 17.6 с полным row-count и DDL parity, но это **не** доказательство
 совместимости GoTrue, Storage API, Realtime и остальных сервисов target stack.
 Поэтому эти два файла нельзя применять в cutover поверх официально поднятого
-self-hosted Supabase. Для повторного raw-clone rehearsal нужен отдельный
-versioned restore tool и redacted verification manifest; до их появления ручной
-raw-clone не является release gate.
+self-hosted Supabase. Для повторного raw-clone rehearsal нужен destructive
+versioned restore tool и redacted verification manifest; validation-only
+preflight и ручной raw-clone не являются release gate.
 
 Кандидат для восстановления в уже инициализированный exact self-hosted stack —
 только platform-filtered project contract:
@@ -394,10 +400,12 @@ Route-specific negative-auth QA обязателен:
 
 ### Gate G — production cutover
 
-Production Compose overlay и отдельный production validator пока отсутствуют.
-До их versioned review запрещено запускать
-`scripts/supabase/check-runtime-env.mjs --mode production` и трактовать его
-как release evidence. Production cutover остаётся NO-GO.
+Production Compose/S3 Adapter и отдельные private-env/rendered validators
+реализованы и включены в CI. Runtime-команду допустимо запускать только с
+реальным mode-0600 env вне Git, полученным из созданных Beget ресурсов. Пока
+нет VPS/S3 credentials, Compose render/runtime smoke, restore и PITR evidence,
+прохождение статического validator не является release evidence. Production
+cutover остаётся NO-GO.
 
 1. Заранее снизить DNS TTL.
 2. Выпустить совместимую iOS-версию.

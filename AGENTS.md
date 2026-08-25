@@ -26,7 +26,9 @@
 | UI и новый экран | [`UI_PATTERNS.md`](UI_PATTERNS.md), [`DESIGN.md`](DESIGN.md), [`CROSS_PLATFORM_RULES.md`](CROSS_PLATFORM_RULES.md), [`.claude/rules/design-quality.md`](.claude/rules/design-quality.md), [`.claude/rules/design-enforcement.md`](.claude/rules/design-enforcement.md) |
 | UI-иконки | [`docs/UI_ICONS.md`](docs/UI_ICONS.md); новый mono UI — Phosphor |
 | Аватары | [`src/lib/avatar.ts`](src/lib/avatar.ts): только реальное фото, иначе инициалы; любой DiceBear — legacy |
+| Mobile-first release | [`docs/MOBILE_RELEASE_STRATEGY.md`](docs/MOBILE_RELEASE_STRATEGY.md), [`CROSS_PLATFORM_RULES.md`](CROSS_PLATFORM_RULES.md) |
 | Web/mobile/backend и серверы | [`PROJECT_OPERATIONS.md`](PROJECT_OPERATIONS.md) |
+| Стек и внешние сервисы | [`docs/adr/0001-mobile-first-expo-and-beget-supabase.md`](docs/adr/0001-mobile-first-expo-and-beget-supabase.md), [`docs/EXTERNAL_DEPENDENCIES.md`](docs/EXTERNAL_DEPENDENCIES.md) |
 | Setup и команды | [`README.md`](README.md), [`package.json`](package.json) |
 
 Если исторический текст внутри документа противоречит более новому явно
@@ -45,6 +47,12 @@
   редактирования исходников и не источник для обратного копирования в Git.
 - Для backend сначала нужен live read-only снимок и backup: цепочка миграций в
   репозитории пока не доказана как полный снимок production.
+- Никогда не угадывай факты, значения конфигурации или внешнее состояние:
+  проверь кодом/read-only источником либо явно зафиксируй `UNKNOWN` и закрой
+  опасное действие. Правила доказательности — в `docs/AGENT_WORKFLOW.md`.
+- Любая осмысленная product/architecture/UI/data/release-задача проходит совет
+  ролей из `.claude/rules/agent-delegation.md`; автор не является единственным
+  QA или финальным reviewer собственной работы.
 - Для нового/изменённого UI обязательны профильные design-rules, обе темы и
   preview-проверка. Основной шрифт — системный, не Geist.
 - Изображения шире 1200 px уменьши до `<=1200 px` перед визуальным чтением.

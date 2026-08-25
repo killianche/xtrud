@@ -24,6 +24,7 @@
     "android": {
       "package": "com.xtrud.app",
       "versionCode": 1,
+      "blockedPermissions": ["android.permission.RECORD_AUDIO"],
       "adaptiveIcon": {
         "backgroundColor": "#ffffff",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
@@ -59,7 +60,8 @@
         "expo-image-picker",
         {
           "photosPermission": "Приложению нужен доступ к фото, чтобы вы могли загрузить аватар и работы в портфолио.",
-          "cameraPermission": "Приложению нужен доступ к камере, чтобы сделать снимок для аватара или портфолио."
+          "cameraPermission": "Приложению нужен доступ к камере, чтобы сделать снимок для аватара или портфолио.",
+          "microphonePermission": false
         }
       ],
       "@sentry/react-native/expo"

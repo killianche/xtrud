@@ -121,15 +121,23 @@ signature. Gateway-wide JWT не заменяет эти route-specific controls
 любым rollout обязателен отдельный negative-auth QA каждого маршрута;
 один общий health check этот gate не закрывает.
 
-Production overlay в Git сейчас отсутствует. Поэтому запуск
-`check-runtime-env.mjs --mode production` **запрещён** и не закрывает
-никакой release gate. Сначала нужны versioned reviewed production overlay,
-отдельный production validator и redacted rendered-config assertions.
+Production Adapter хранится в `docker-compose.production.yml`; он использует те
+же exact image locks, loopback Envoy, закрывает Supavisor ports и подключает
+только внешний S3 backend. `production.env.example`, общий private-env
+validator и redacted rendered-config assertions fail-closed отделяют реальные
+runtime values от Git. Статический PASS не закрывает release gate без созданных
+Beget ресурсов, реального render/runtime smoke и restore evidence.
 
-Versioned restore orchestration ещё не реализован. Это **P1 / NO-GO**
-для runtime restore, full-stack rehearsal и production cutover: ручная
-последовательность команд из runbook не считается воспроизводимым
-restore tool.
+`scripts/supabase/restore-exact-stack.sh` сейчас является только validation-only
+preflight. Он требует один private approved manifest, который связывает exact
+DB и Storage ciphertext SHA/bytes, pins, entry allowlist и plaintext sizes, и
+проверяет ресурсную границу из approved plaintext total; Storage ciphertext
+ограничен 1 TiB. Скрипт намеренно не
+вызывает decrypt/Docker/`psql`, не касается target и не создаёт receipt.
+Ownership/cleanup volumes и networks, outbound isolation, Storage restore,
+service smoke и два clean exact-stack run ещё не реализованы, поэтому любой
+destructive restore, full-stack rehearsal и production cutover остаются
+**P1 / NO-GO**.
 
 ## Локальные gates
 
@@ -137,7 +145,12 @@ restore tool.
 node scripts/supabase/check-env-contract.mjs
 npm run supabase:backup-safety:test
 npm run supabase:rehearsal-contract:test
+npm run supabase:production-contract:test
+npm run supabase:restore-preflight:test
 bash -n scripts/supabase/prepare-exact-rehearsal.sh
+# Secret-free exact production snapshot; containers не запускаются:
+scripts/supabase/prepare-exact-stack.sh production \
+  /private/tmp/xtrud-exact-production.manual-check
 # На подготовленном snapshot до render/pull/start:
 node scripts/supabase/check-upstream-snapshot.mjs \
   --snapshot /private/tmp/xtrud-exact-stack.manual-check

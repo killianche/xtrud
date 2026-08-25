@@ -19,6 +19,8 @@ rehearsal restore, smoke и только затем production.
 
 - `.supabase-version` — единая закреплённая версия upstream stack;
 - `.cli-version` — точная стабильная версия Supabase CLI для dump/restore;
+- `.postgres-image` — immutable `tag@sha256` образ PostgreSQL для узкого
+  provider-ledger export и raw-clone rehearsal;
 - `upstream-v0.8.0.env.names` — полный список обязательных имён upstream env;
 - `.env.example` — проверяемый names-only values contract без секретов;
 - `Caddyfile.example` — fail-closed TLS proxy с allowlist публичного API;
@@ -53,10 +55,13 @@ pg-meta, analytics и новые неизвестные upstream routes закр
 
 ```bash
 node scripts/supabase/check-env-contract.mjs
-node --test scripts/supabase/backup-safety.test.mjs
+npm run supabase:backup-safety:test
 bash -n scripts/supabase/collect-db-inventory.sh \
   scripts/supabase/create-encrypted-cloud-backup.sh \
+  scripts/supabase/verify-encrypted-cloud-backup.sh \
   scripts/supabase/lib/secure-artifact.sh
+# После restore на disposable target:
+psql --file scripts/supabase/validate-restored-foreign-keys.sql "$TARGET_DB_URL"
 ```
 
 Inventory и logical dump требуют абсолютный output вне Git, `umask 077` и
@@ -64,8 +69,13 @@ Inventory и logical dump требуют абсолютный output вне Git,
 существуют только в приватном transient staging и удаляются EXIT trap. Запуск
 против Cloud всё равно является внешней операцией и требует отдельного
 разрешения, short-lived credential и утверждённого backup window. Wrapper
-отказывается работать с другой CLI-версией и исключает внутренние Storage vector
-tables по актуальному официальному backup runbook.
+отказывается работать с другой CLI-версией или mutable PostgreSQL image.
+Итоговый bundle содержит официальные `roles/schema/data`, project migration
+ledger и forensic-only provider schemas/ledgers. Последние нельзя применять
+поверх готового self-hosted stack без отдельного full-stack rehearsal. Verifier
+fail-closed принимает только полный format-v1 bundle, сверяет exact entries и
+каждый SHA-256. Внутренние Storage vector tables исключены по актуальному
+официальному backup runbook.
 
 ## Required external gates
 

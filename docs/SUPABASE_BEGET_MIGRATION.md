@@ -153,9 +153,10 @@ Git после сверки должен получить недостающие
 
 ```bash
 node scripts/supabase/check-env-contract.mjs
-node --test scripts/supabase/backup-safety.test.mjs
+npm run supabase:backup-safety:test
 bash -n scripts/supabase/collect-db-inventory.sh \
   scripts/supabase/create-encrypted-cloud-backup.sh \
+  scripts/supabase/verify-encrypted-cloud-backup.sh \
   scripts/supabase/lib/secure-artifact.sh
 ```
 
@@ -170,7 +171,7 @@ scripts/supabase/collect-db-inventory.sh /absolute/path/outside/repo/inventory
 По умолчанию row counts — estimates без полных scans. Точные counts разрешены
 только в согласованное окно: добавить `--exact-counts` перед output path.
 
-Официальные `roles/schema/data` dumps создаёт один wrapper:
+Полный encrypted logical bundle создаёт один wrapper:
 
 ```bash
 scripts/supabase/create-encrypted-cloud-backup.sh \
@@ -180,8 +181,24 @@ scripts/supabase/create-encrypted-cloud-backup.sh \
 Оба wrapper требуют `BACKUP_ENCRYPTION=age|gpg` и `BACKUP_RECIPIENT`, абсолютный
 output вне repo и `umask 077`; plaintext final artifact не создаётся. Dump SQL
 живёт только в private transient staging под EXIT trap, затем tar stream сразу
-шифруется. Raw `pg_dump` вместо Supabase CLI не использовать: официальный
-инструмент фильтрует platform internals и зарезервированные роли. Ограничение:
+шифруется. Формат v1 содержит `roles.sql`, `schema.sql`, `data.sql`, project
+`migration-data.sql`, forensic `system-schema.sql` и два provider ledger в
+`provider-ledger-data.sql`, а также manifest с exact entries, tool/image pins и
+SHA-256. Проверка перед использованием:
+
+```bash
+BACKUP_IDENTITY=/absolute/private/age-key \
+  scripts/supabase/verify-encrypted-cloud-backup.sh \
+  /absolute/archive.tar.age
+```
+
+Raw `pg_dump` вместо Supabase CLI для обычных dumps не использовать:
+официальный инструмент фильтрует platform internals и зарезервированные роли.
+Единственное узкое исключение wrapper — data-only export двух provider-owned
+ledger tables (`auth.schema_migrations`, `storage.migrations`) через immutable
+Supabase PostgreSQL image, потому что CLI намеренно их исключает. Эти ledgers
+forensic-only и не разрешены к применению поверх готового self-hosted stack.
+Ограничение:
 Supabase CLI получает привилегированный DB URL через `--db-url`; wrapper не
 может доказать, что credential краткоживущий, а аргумент может быть виден
 локальным process observers. Это break-glass операция только на доверенном
@@ -189,9 +206,11 @@ single-user host: без shell tracing/общего process access, в утве�
 с немедленной сменой project DB password или отзывом временной роли после
 проверки архива.
 
-CLI закреплён в `infra/supabase/.cli-version`; wrapper fail-closed проверяет
-точное совпадение и исключает `storage.buckets_vectors` и
-`storage.vector_indexes`, как требует текущий официальный backup runbook.
+CLI закреплён в `infra/supabase/.cli-version`, PostgreSQL image — immutable
+`tag@sha256` в `infra/supabase/.postgres-image`; wrapper fail-closed проверяет
+оба pin и исключает `storage.buckets_vectors` и `storage.vector_indexes`, как
+требует текущий официальный backup runbook. Старые архивы без format-v1 manifest
+и полного набора из семи entries verifier отвергает.
 
 **Acceptance:** есть зашифрованный immutable архив, inventory manifest и
 контрольные counts; секреты/PII не попали в Git, terminal log или chat.
@@ -222,7 +241,19 @@ S3 private/public semantics работают, `docker compose config` и externa
 checks сохранены в manifest без secrets, PITR restore-test успешен в пределах
 RPO/RTO.
 
-### Gate C — rehearsal restore
+### Gate C — два разных restore-контракта
+
+`system-schema.sql` и `provider-ledger-data.sql` — снимок Cloud provider-owned
+схем для forensic/raw PostgreSQL clone. Результат уже был проверен на disposable
+PostgreSQL 17.6 с полным row-count и DDL parity, но это **не** доказательство
+совместимости GoTrue, Storage API, Realtime и остальных сервисов target stack.
+Поэтому эти два файла нельзя применять в cutover поверх официально поднятого
+self-hosted Supabase. Для повторного raw-clone rehearsal нужен отдельный
+versioned restore tool и redacted verification manifest; до их появления ручной
+raw-clone не является release gate.
+
+Кандидат для восстановления в уже инициализированный exact self-hosted stack —
+только platform-filtered project contract:
 
 ```bash
 psql \
@@ -235,9 +266,22 @@ psql \
   --dbname "$TARGET_DB_URL"
 ```
 
+`migration-data.sql` применяется отдельным проверенным шагом только после
+сверки project migration ledger target; его нельзя смешивать с provider-owned
+ledger. Если target Auth/Storage service migrations отличаются, cutover
+останавливается, а не «чинится» переносом Cloud ledgers.
+
 Сначала расшифровать архив в mode-0700 staging на disposable target, проверить
 SHA-256 из manifest и выполнять только там. Plaintext удалить сразу после
 rehearsal; не переносить его в Git, chat, shell log или общий backup каталог.
+
+После загрузки data обязательно отдельно проверить все FK, потому что
+`session_replication_role=replica` временно обходил constraint triggers:
+
+```bash
+psql --dbname "$TARGET_DB_URL" \
+  --file scripts/supabase/validate-restored-foreign-keys.sql
+```
 
 До запуска отдельно доказать, что target Postgres major совместим, а restore
 role имеет право создать требуемые роли и выполнить
@@ -245,8 +289,10 @@ role имеет право создать требуемые роли и вып�
 гарантия совместимости с ещё не созданным target. Ошибки исправляются
 документированными forward-only patches, а не ручной правкой production.
 
-**Acceptance:** counts, FK, constraints, RLS и критичные RPC совпадают; повторный
-restore с нуля воспроизводим.
+**Acceptance:** полный exact self-hosted stack стартует после restore; login,
+recovery, public/private Storage, Realtime и service migrations проходят smoke;
+counts, FK/orphan checks, constraints, RLS и критичные RPC совпадают; повторный
+restore с нуля воспроизводим и сохраняет redacted verification manifest.
 
 ### Gate D — Storage
 

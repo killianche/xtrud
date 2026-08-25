@@ -89,16 +89,42 @@
 - Runbook усилен после независимого security-review: привилегированный DB URL
   считается break-glass credential, запрещён вывод полного `docker compose
   config`, расширен список secrets и least-privilege/rotation contract.
-- Новый DB password передан владельцем и сохранён только в macOS Keychain;
-  session pooler пока отклоняет его, потому что открытая Dashboard-форма reset
-  ещё не была применена. До её финального подтверждения официальный
-  roles/schema/data dump и restore rehearsal не запускаются. После backup пароль
-  нужно ещё раз ротировать, потому что первоначально он был передан через chat.
+- Новый DB password применён владельцем; session pooler подтвердил доступ.
+  Break-glass credential был передан через chat, поэтому после уже выполненного
+  backup он считается скомпрометированным и подлежит обязательной ротации.
 - Локальный официальный backup toolchain готов: Supabase CLI закреплён на
   `2.115.0`, Colima `0.10.3` работает через macOS Virtualization Framework,
   Docker client/server проверены контейнером. Wrapper fail-closed сверяет CLI
   version, шифрует поток age и исключает внутренние Storage vector tables;
   safety-тесты и полный quality gate проходят.
+
+### Gate B Supabase Cloud — encrypted logical clone 2026-08-24
+
+- Создан и независимо проверен age-encrypted DB bundle вне Git: format включает
+  official roles/schema/data, project migration ledger и forensic-only
+  Auth/Storage schemas + provider ledgers. Ciphertext mode 0600, SHA-256
+  `a830a586f9bffce98b3efe3b10bd954acb559bccc61bdb538bf612e825c79909`.
+- Clean PostgreSQL 17.6 raw-clone rehearsal прошёл: 54 Auth users, 31 public
+  tables, 95 public functions, 104 policies, 138 project migrations, 77 Auth
+  migrations, 65 Storage migrations, 6 buckets и 7 object metadata совпали;
+  row-count parity по 63 таблицам и DDL inventory parity подтверждены.
+- Новый format-v1 ciphertext отдельно восстановлен с нуля: aggregate parity
+  совпал — Auth users 54, public tables 31, public functions 95, all policies
+  106, project/Auth/Storage migrations 138/77/65, buckets/objects 6/7. DDL
+  inventory четырёх целевых схем также совпал: constraints 286, functions 116,
+  indexes 232, policies 104, tables 63, triggers 36, materialized views 1. Все
+  76 FK проверены — orphan rows нет.
+  Четыре прежних архива перенесены в private `superseded/`; активным оставлен
+  только verifier-compatible format-v1 artifact.
+- Это доказательство логического clone backup, но не совместимости полного
+  self-hosted stack. Provider schemas/ledgers помечены forensic-only; до cutover
+  обязательны exact-stack Auth/Storage/Realtime smoke и FK/orphan validation.
+- Backup wrapper теперь не передаёт DB URL значением в Docker argv, использует
+  immutable image digest, публикует ciphertext только после валидного SHA и
+  имеет fail-closed verifier. Safety tests включены в `quality:check` и CI.
+- Storage backup пока неполный: SQL содержит metadata 6 buckets / 7 objects, но
+  сами 7 blob bytes и per-object checksums ещё не экспортированы. Backend
+  cutover остаётся NO-GO; Cloud удалять нельзя.
 
 ### GitHub и Beget release gate — 2026-08-24
 

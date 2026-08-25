@@ -114,7 +114,10 @@ supabase_sha256() {
   local file="$1"
   if command -v sha256sum >/dev/null 2>&1; then
     sha256sum "$file" | awk '{print $1}'
-  else
+  elif command -v shasum >/dev/null 2>&1; then
     shasum -a 256 "$file" | awk '{print $1}'
+  else
+    printf '%s\n' 'ERROR: sha256sum or shasum is required.' >&2
+    return 2
   fi
 }

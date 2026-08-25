@@ -39,6 +39,9 @@ jobs:
       - name: Supabase migration integrity tests
         run: node --test scripts/supabase/check-migration-integrity.test.mjs
 
+      - name: Supabase backup safety tests
+        run: npm run supabase:backup-safety:test
+
       - name: Supabase universal draft contract tests
         run: npm run supabase:universal:draft:test
 

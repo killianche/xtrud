@@ -74,6 +74,16 @@ rollout остаются NO-GO до live backend, integration и platform gates.
     runtime проверен контейнером. Supabase CLI закреплён на стабильном 2.115.0 с
     опубликованным SHA-256; backup wrapper проверяет exact version и исключает
     внутренние Storage vector tables. Safety tests и quality gate проходят.
+20. **Encrypted Cloud DB clone** — создан age-encrypted format-v1 bundle вне
+    Git, проверен decrypt/checksum и восстановлен в чистый PostgreSQL 17.6.
+    Row counts 63 таблиц и DDL inventory совпали. Provider schemas/ledgers
+    классифицированы forensic-only: до full self-hosted stack smoke они не
+    являются cutover-рецептом. Wrapper закрепляет CLI и image digest, не кладёт
+    DB URL значением в Docker argv, а fail-closed verifier отвергает старые
+    неполные архивы. Точный format-v1 artifact отдельно восстановлен с нуля:
+    aggregate/DDL parity совпали, 76 FK не содержат orphan rows. Четыре старых
+    artifact перенесены в private `superseded/`. Storage blob bytes ещё не
+    экспортированы.
 
 ## Новые правила и решения
 
@@ -116,13 +126,11 @@ rollout остаются NO-GO до live backend, integration и platform gates.
 
 ## Открытые вопросы / TODO
 
-- На основе полученного PII-safe live inventory создать официальный encrypted
-  roles/schema/data backup и выполнить успешный rehearsal restore.
-- Live PII-safe inventory получен; переданный DB password сохранён в Keychain,
-  но session pooler его отклоняет, пока владелец не применит уже открытую форму
-  Dashboard password reset. После этого создать официальный encrypted
-  roles/schema/data backup, выполнить restore rehearsal и снова ротировать
-  пароль, поскольку первоначально он был передан через chat.
+- DB logical clone backup и raw PostgreSQL rehearsal выполнены. Следом нужны
+  Storage blob export с checksums, offsite immutable ciphertext copy и full
+  exact self-hosted stack rehearsal на отдельном Beget VPS/S3.
+- Снова ротировать Cloud DB password: действующий break-glass credential был
+  передан через chat и после backup считается скомпрометированным.
 - Закрыть шесть promotion blockers отдельной forward-only security работой;
   только затем перенести проверенные drafts в новую последовательную migration
   chain и регенерировать `src/types/database.ts`.

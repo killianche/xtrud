@@ -1,8 +1,10 @@
 # Перенос xtrud: Supabase Cloud → Beget
 
-> Статус на 2026-08-23: архитектура и runbook подготовлены; новый VPS, DNS и
-> production-данные ещё не менялись. Любой dump содержит персональные данные и
-> секреты, поэтому хранится только зашифрованно вне Git.
+> Статус на 2026-08-25: проверенные DB и Storage ciphertext вынесены на текущий
+> Beget web VPS как off-machine copy; новый backend VPS, S3 и DNS ещё не
+> созданы. Production Cloud DB password подтверждён владельцем и проверен через
+> session pooler. Любой dump содержит персональные данные и секреты, поэтому
+> хранится только зашифрованно вне Git.
 
 ## 1. Решение
 
@@ -72,6 +74,12 @@ VPS Beget**, а объекты Supabase Storage — в **Beget S3**. Сущес�
 - point-in-time restore на третью изолированную инсталляцию с замером RPO/RTO.
 
 Nightly logical dump сам по себе не обеспечивает RPO 15 минут.
+
+Промежуточная копия 2026-08-25 хранится на текущем web VPS в
+`/var/backups/xtrud/supabase-cloud/`: DB и Storage ciphertext имеют права `0600`,
+а удалённые размеры и SHA-256 совпадают с локальными. Это защищает от потери
+одного Mac, но не является immutable backup и не устраняет общий failure domain
+web-сервера. Закрывать S3/versioning/PITR gate этой копией запрещено.
 
 ## 3. Что переносится
 

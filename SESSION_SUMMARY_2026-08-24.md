@@ -85,6 +85,13 @@ rollout остаются NO-GO до live backend, integration и platform gates.
     artifact перенесены в private `superseded/`. Отдельный Storage ciphertext
     содержит все 6 buckets / 7 objects / 808 230 байт с per-object SHA-256;
     decrypt/size/hash verification прошёл, временный service-role удалён.
+21. **Cloud access + Beget backup copy** — 2026-08-25 владелец явно закрепил
+    выбранный Cloud DB password и запретил дальнейшую автоматическую ротацию;
+    основная запись Keychain дважды прошла read-only session-pooler проверку,
+    временный секрет удалён. DB и Storage ciphertext скопированы на текущий
+    Beget VPS в mode `0600`, удалённые размеры и SHA-256 совпали с локальными.
+    Копия off-machine, но не immutable/S3 и не снимает требование отдельного
+    backend VPS/S3 перед cutover.
 
 ## Новые правила и решения
 
@@ -128,10 +135,12 @@ rollout остаются NO-GO до live backend, integration и platform gates.
 ## Открытые вопросы / TODO
 
 - DB logical clone backup, raw PostgreSQL rehearsal и полный Storage blob export
-  с checksums выполнены. Следом нужны offsite immutable ciphertext copy и full
-  exact self-hosted stack rehearsal на отдельном Beget VPS/S3.
-- Снова ротировать Cloud DB password: действующий break-glass credential был
-  передан через chat и после backup считается скомпрометированным.
+  с checksums выполнены; отдельная ciphertext-копия с совпавшими SHA находится
+  на текущем Beget VPS. Следом нужны именно immutable S3 copy и full exact
+  self-hosted stack rehearsal на отдельном Beget VPS/S3.
+- Cloud DB password подтверждён владельцем, проверен и сохранён в основной
+  записи Keychain. Не выполнять новую автоматическую ротацию без отдельной
+  явной команды владельца.
 - Закрыть шесть promotion blockers отдельной forward-only security работой;
   только затем перенести проверенные drafts в новую последовательную migration
   chain и регенерировать `src/types/database.ts`.

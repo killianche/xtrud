@@ -89,9 +89,10 @@
 - Runbook усилен после независимого security-review: привилегированный DB URL
   считается break-glass credential, запрещён вывод полного `docker compose
   config`, расширен список secrets и least-privilege/rotation contract.
-- Новый DB password применён владельцем; session pooler подтвердил доступ.
-  Break-glass credential был передан через chat, поэтому после уже выполненного
-  backup он считается скомпрометированным и подлежит обязательной ротации.
+- Владелец 2026-08-25 явно закрепил выбранный им Cloud DB password и запретил
+  дальнейшую автоматическую ротацию. Session pooler дважды подтвердил read-only
+  доступ через основную запись macOS Keychain; временная запись и plaintext
+  удалены, в Git секрет не попадал.
 - Локальный официальный backup toolchain готов: Supabase CLI закреплён на
   `2.115.0`, Colima `0.10.3` работает через macOS Virtualization Framework,
   Docker client/server проверены контейнером. Wrapper fail-closed сверяет CLI
@@ -127,9 +128,12 @@
   SHA-256: `87decc0d48b3fc2c2a514acd11958f83555ddd76e2b60555f14c45df99b2348b`.
   Decrypt→exact entries→size/checksum verification прошёл; plaintext staging и
   временный service-role файл удалены.
-- Backup toolchain commit `c61b40f` отправлен в GitHub `main`. Backend cutover
-  остаётся NO-GO до offsite immutable copy, отдельного Beget VPS/S3, exact-stack
-  smoke и ротации переданного через chat DB password; Cloud удалять нельзя.
+- Backup toolchain commit `c61b40f` отправлен в GitHub `main`. Обе активные
+  ciphertext-копии 2026-08-25 вынесены с Mac на текущий Beget VPS в закрытый
+  `/var/backups/xtrud/supabase-cloud/`: размеры и SHA-256 совпали, права `0600`.
+  Это off-machine copy, но не immutable/S3 и тот же failure domain, что web.
+  Backend cutover остаётся NO-GO до отдельного Beget VPS/S3 и exact-stack smoke;
+  Cloud удалять нельзя.
 
 ### GitHub и Beget release gate — 2026-08-24
 

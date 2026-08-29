@@ -1,11 +1,12 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "expo-router";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
 import { OnboardingProgress } from "@/components/OnboardingProgress";
+import { masterOnboardingFormDefaults } from "@/features/auth/master-onboarding-draft";
 import {
   type MasterProfileFormValues,
   masterProfileSchema,
@@ -13,6 +14,7 @@ import {
 import { UsernameField } from "@/features/auth/UsernameField";
 import { useAuthSession } from "@/features/auth/use-auth-session";
 import { useExitOnboarding } from "@/features/auth/use-exit-onboarding";
+import { useMasterOnboardingDraft } from "@/features/auth/use-master-onboarding-draft";
 import { useSubmitMasterProfile } from "@/features/auth/use-submit-master-profile";
 import { useUserRecord } from "@/features/auth/use-user-record";
 import { setUsernameErrorMessage, useSetUsername } from "@/features/auth/use-username";
@@ -38,6 +40,11 @@ export default function MasterProfileScreen() {
   // он УЖЕ есть (клиент стал мастером, чтобы откликнуться — путь из orders/[id]),
   // поле не показываем и повторно не ставим (set_username бросил бы ошибку).
   const { data: userRec } = useUserRecord(userId);
+  const {
+    data: profileDraft,
+    isLoading: profileDraftLoading,
+    isError: profileDraftError,
+  } = useMasterOnboardingDraft(userId);
   const hasUsername = !!userRec?.username;
   const [usernameValue, setUsernameValue] = useState("");
   const [usernameValid, setUsernameValid] = useState(false);
@@ -46,6 +53,7 @@ export default function MasterProfileScreen() {
   const {
     control,
     handleSubmit,
+    reset,
     formState: { errors, isValid },
   } = useForm<MasterProfileFormValues>({
     resolver: zodResolver(masterProfileSchema),
@@ -63,6 +71,21 @@ export default function MasterProfileScreen() {
     },
     mode: "onChange",
   });
+
+  const hydratedUserRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (
+      !userId ||
+      !userRec ||
+      profileDraftLoading ||
+      profileDraftError ||
+      hydratedUserRef.current === userId
+    ) {
+      return;
+    }
+    reset(masterOnboardingFormDefaults(userRec, profileDraft ?? null), { keepDirtyValues: true });
+    hydratedUserRef.current = userId;
+  }, [profileDraft, profileDraftError, profileDraftLoading, reset, userId, userRec]);
 
   // Sprint 2026-05-20 reorder: profile теперь ПЕРВЫЙ шаг (1/3), не последний.
   // submitMaster сохраняет данные через client + RLS, БЕЗ финализации онбординга.
@@ -101,7 +124,14 @@ export default function MasterProfileScreen() {
 
   const isBusy = submitMaster.isPending || setUsernameMut.isPending;
   const submitError = submitMaster.error?.message;
-  const canSubmit = isValid && usernameOk && !isBusy && !!userId && !citiesLoading;
+  const canSubmit =
+    isValid &&
+    usernameOk &&
+    !isBusy &&
+    !!userId &&
+    !citiesLoading &&
+    !profileDraftLoading &&
+    !profileDraftError;
 
   return (
     <KeyboardAvoidingView
@@ -148,6 +178,14 @@ export default function MasterProfileScreen() {
           </View>
         )}
 
+        {profileDraftError ? (
+          <View className="mt-6 px-6">
+            <AppText weight="medium" className="text-caption text-error">
+              Не удалось загрузить сохранённый профиль. Повторите позже — данные не изменены.
+            </AppText>
+          </View>
+        ) : null}
+
         <View className="mt-8 px-6">
           <Pressable
             accessibilityRole="button"
@@ -157,7 +195,10 @@ export default function MasterProfileScreen() {
               canSubmit ? "bg-primary active:opacity-80" : "bg-surface-3"
             }`}
           >
-            <AppText weight="semibold" className="text-button text-on-primary">
+            <AppText
+              weight="semibold"
+              className={`text-button ${canSubmit ? "text-on-primary" : "text-muted-soft"}`}
+            >
               {isBusy ? "Сохраняем..." : "Продолжить"}
             </AppText>
           </Pressable>

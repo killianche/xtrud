@@ -42,6 +42,7 @@ import {
   revokeGuestDraftAuthJourney,
   shouldAbandonGuestDraftAuthJourney,
 } from "@/lib/order-draft-store";
+import { useBackGestureLock } from "@/lib/use-back-gesture-lock";
 import { useSafeBack } from "@/lib/use-safe-back";
 import { useThemeColors } from "@/lib/use-theme-color";
 
@@ -99,6 +100,7 @@ export default function RegisterScreen() {
   useEffect(
     () =>
       navigation.addListener("beforeRemove", (event) => {
+        if (register.isPending) return;
         const action = event.data.action as { type: string; payload?: { name?: string } };
         abandonDraftJourney(
           shouldAbandonGuestDraftAuthJourney(
@@ -108,7 +110,7 @@ export default function RegisterScreen() {
           ),
         );
       }),
-    [abandonDraftJourney, authOrigin, navigation],
+    [abandonDraftJourney, authOrigin, navigation, register.isPending],
   );
 
   useEffect(() => {
@@ -120,13 +122,9 @@ export default function RegisterScreen() {
   const goBack = () => {
     if (requestedReturnTo) {
       if (authOrigin === "phone") {
-        router.replace({
-          pathname: "/(auth)/phone",
-          params: {
-            returnTo: requestedReturnTo,
-            ...(draftJourney ? { draftJourney } : {}),
-          },
-        } as never);
+        // Phone is already the previous native Stack screen with the same
+        // return params. Pop it instead of creating a duplicate via replace.
+        safeGoBack();
         return;
       }
       abandonDraftJourney(true);
@@ -155,6 +153,10 @@ export default function RegisterScreen() {
       });
       await completeGuestDraftAuthJourney(draftJourney, result.userId);
       if (useAuthReturnUrlStore.getState().peekReturnUrl()) {
+        if (useAuthReturnUrlStore.getState().isPerformerOnboardingRequested()) {
+          // AuthGate owns performer routing after the session/user row settles.
+          return;
+        }
         router.replace("/(onboarding)/client-name" as never);
       }
     } catch (e) {
@@ -163,6 +165,7 @@ export default function RegisterScreen() {
   });
 
   const isBusy = register.isPending;
+  useBackGestureLock(isBusy);
   const canSubmit = isValid && acceptedTerms && !isBusy;
 
   return (
@@ -182,11 +185,11 @@ export default function RegisterScreen() {
             accessibilityLabel="Назад"
             disabled={isBusy}
             onPress={goBack}
-            className={`-ml-2 h-10 w-10 items-center justify-center rounded-full ${
+            className={`-ml-2 h-12 w-12 items-center justify-center rounded-full ${
               isBusy ? "opacity-30" : "active:bg-canvas-soft"
             }`}
           >
-            <CaretLeft size={24} weight="bold" color={tc.ink} />
+            <CaretLeft size={28} weight="bold" color={tc.ink} />
           </Pressable>
           <AppText weight="bold" className="mt-6 text-display-md tracking-tight text-ink">
             Создать аккаунт
@@ -335,7 +338,7 @@ export default function RegisterScreen() {
               <AppText
                 weight="medium"
                 className="text-caption text-ink underline"
-                onPress={() => router.push("/legal/terms" as never)}
+                onPress={isBusy ? undefined : () => router.push("/legal/terms" as never)}
               >
                 Условиями использования
               </AppText>
@@ -343,7 +346,7 @@ export default function RegisterScreen() {
               <AppText
                 weight="medium"
                 className="text-caption text-ink underline"
-                onPress={() => router.push("/legal/privacy" as never)}
+                onPress={isBusy ? undefined : () => router.push("/legal/privacy" as never)}
               >
                 Политикой конфиденциальности
               </AppText>
@@ -381,8 +384,15 @@ export default function RegisterScreen() {
             <AppText className="text-body-sm text-body">Уже есть аккаунт? </AppText>
             <Pressable
               accessibilityRole="button"
+              disabled={isBusy}
               onPress={() => {
-                router.push(
+                if (authOrigin === "phone") {
+                  goBack();
+                  return;
+                }
+                // Switching auth mode from a direct registration entry is a
+                // replacement, not a new level users should return to.
+                router.replace(
                   requestedReturnTo
                     ? ({
                         pathname: "/(auth)/phone",
@@ -395,7 +405,7 @@ export default function RegisterScreen() {
                 );
               }}
               hitSlop={6}
-              className="active:opacity-70"
+              className={isBusy ? "opacity-30" : "active:opacity-70"}
             >
               <AppText weight="semibold" className="text-body-sm text-ink underline">
                 Войти

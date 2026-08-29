@@ -10,8 +10,12 @@ const secureStoreState = vi.hoisted(() => ({
 
 vi.mock("react-native", () => ({ Platform: { OS: "ios" } }));
 vi.mock("expo-secure-store", () => ({
-  getItemAsync: async (key: string) => secureStoreState.data.get(key) ?? null,
+  getItemAsync: async (key: string) => {
+    if (!/^[A-Za-z0-9._-]+$/.test(key)) throw new Error(`Invalid SecureStore key: ${key}`);
+    return secureStoreState.data.get(key) ?? null;
+  },
   setItemAsync: async (key: string, value: string) => {
+    if (!/^[A-Za-z0-9._-]+$/.test(key)) throw new Error(`Invalid SecureStore key: ${key}`);
     if (secureStoreState.shouldDelayFirstWrite && value.startsWith("FIRST")) {
       secureStoreState.shouldDelayFirstWrite = false;
       await new Promise<void>((resolve) => {
@@ -21,6 +25,7 @@ vi.mock("expo-secure-store", () => ({
     secureStoreState.data.set(key, value);
   },
   deleteItemAsync: async (key: string) => {
+    if (!/^[A-Za-z0-9._-]+$/.test(key)) throw new Error(`Invalid SecureStore key: ${key}`);
     if (secureStoreState.delayDeleteKey === key) {
       secureStoreState.delayDeleteKey = undefined;
       await new Promise<void>((resolve) => {
@@ -31,7 +36,7 @@ vi.mock("expo-secure-store", () => ({
   },
 }));
 
-import { largeSecureStorage, splitUtf8SafeChunks, utf8ByteLength } from "./storage";
+import { largeSecureStorage, splitUtf8SafeChunks, storage, utf8ByteLength } from "./storage";
 
 describe("largeSecureStorage", () => {
   beforeEach(() => {
@@ -60,6 +65,41 @@ describe("largeSecureStorage", () => {
     secureStoreState.data.set("legacy__0", "старый-");
     secureStoreState.data.set("legacy__1", "формат");
     expect(await largeSecureStorage.getItem("legacy")).toBe("старый-формат");
+  });
+
+  it("encodes unsupported native key characters for both storage adapters", async () => {
+    await storage.setItem("xtrud:theme", "dark");
+    await largeSecureStorage.setItem("xtrud:order-draft", "Описание ".repeat(300));
+
+    await expect(storage.getItem("xtrud:theme")).resolves.toBe("dark");
+    await expect(largeSecureStorage.getItem("xtrud:order-draft")).resolves.toBe(
+      "Описание ".repeat(300),
+    );
+    expect([...secureStoreState.data.keys()]).toEqual(
+      expect.arrayContaining([expect.stringMatching(/^xtrud\.encoded\.[A-Za-z0-9._-]+$/)]),
+    );
+    expect([...secureStoreState.data.keys()].every((key) => /^[A-Za-z0-9._-]+$/.test(key))).toBe(
+      true,
+    );
+
+    await storage.removeItem("xtrud:theme");
+    await largeSecureStorage.removeItem("xtrud:order-draft");
+    await expect(storage.getItem("xtrud:theme")).resolves.toBeNull();
+    await expect(largeSecureStorage.getItem("xtrud:order-draft")).resolves.toBeNull();
+  });
+
+  it("preserves valid Supabase keys and isolates the encoded-key namespace", async () => {
+    const supabaseKey = "sb-wgeimsajvjkzrrnfrnkb-auth-token";
+    const reservedPrefixKey = "xtrud.encoded.00780074007200750064";
+
+    await storage.setItem(supabaseKey, "session");
+    await storage.setItem("xtrud:theme", "dark");
+    await storage.setItem(reservedPrefixKey, "reserved");
+
+    expect(secureStoreState.data.get(supabaseKey)).toBe("session");
+    await expect(storage.getItem("xtrud:theme")).resolves.toBe("dark");
+    await expect(storage.getItem(reservedPrefixKey)).resolves.toBe("reserved");
+    expect(secureStoreState.data.size).toBe(3);
   });
 
   it("serializes concurrent writes to the same logical key", async () => {

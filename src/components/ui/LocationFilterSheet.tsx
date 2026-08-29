@@ -35,7 +35,8 @@ import { CaretRight, MagnifyingGlass, X } from "phosphor-react-native";
 import { useEffect, useMemo, useState } from "react";
 import { Pressable, ScrollView, TextInput, View } from "react-native";
 import { AppText } from "@/components/AppText";
-import { BottomSheet, Button } from "@/components/ui";
+import { BottomSheet } from "@/components/ui/BottomSheet";
+import { Button } from "@/components/ui/Button";
 import {
   FILTER_VILLAGES,
   type LocSet,

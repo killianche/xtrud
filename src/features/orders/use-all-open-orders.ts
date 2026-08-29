@@ -7,33 +7,29 @@
 // neq client_id != my own (мастер не должен видеть свои заказы).
 
 import { useInfiniteQuery } from "@tanstack/react-query";
+import {
+  buildFeedPage,
+  FEED_PAGE_SIZE,
+  type FeedCursor,
+  feedCursorFilter,
+} from "@/features/orders/feed-page";
 import type { OrderWithRefs } from "@/features/orders/use-my-orders";
 import { shouldHideDemo } from "@/lib/demo-mode";
 import { supabase } from "@/lib/supabase";
 
-const PAGE_SIZE = 20;
-
-type Page = { rows: OrderWithRefs[]; nextCursor: string | null };
+type Page = { rows: OrderWithRefs[]; nextCursor: FeedCursor | null };
 
 interface UseAllOpenOrdersInput {
   userId: string | undefined;
   /** Опц. фильтр по конкретным L2-id (если null — все категории). */
   l2Ids?: string[] | null;
-  /** Сортировка: 'newest' (по умолчанию) | 'urgent' (срочные сверху). */
-  sort?: "newest" | "urgent";
   /** Опц. фильтр по локации. Передавай "" / undefined чтобы не фильтровать
    *  («Вся Ингушетия»). cityId и district взаимоисключающие (см. фильтр-стор). */
   cityId?: string | null;
   district?: string | null;
 }
 
-export function useAllOpenOrders({
-  userId,
-  l2Ids,
-  sort = "newest",
-  cityId,
-  district,
-}: UseAllOpenOrdersInput) {
+export function useAllOpenOrders({ userId, l2Ids, cityId, district }: UseAllOpenOrdersInput) {
   // Нормализуем пустые строки в null — чтобы queryKey и условия были стабильны.
   const cityFilter = cityId ? cityId : null;
   const districtFilter = district ? district : null;
@@ -42,12 +38,13 @@ export function useAllOpenOrders({
       "all-open-orders",
       userId ?? "anon",
       l2Ids ?? null,
-      sort,
       cityFilter,
       districtFilter,
     ] as const,
-    initialPageParam: null as string | null,
+    initialPageParam: null as FeedCursor | null,
     queryFn: async ({ pageParam }) => {
+      const cursor = pageParam as FeedCursor | null;
+      const hideDemo = shouldHideDemo();
       // 2026-05-21: анон (нет userId) ТОЖЕ видит ленту. Раньше тут был
       // early-return пустого результата для анона → центральная кнопка
       // «Смотреть заказы» (доступна всем с 2026-05-20) показывала пустой
@@ -58,10 +55,18 @@ export function useAllOpenOrders({
       let q = supabase
         .from("orders")
         .select(
-          "*, l2:categories_l2(id, name_ru, icon), city:cities(id, name), client:users!orders_client_id_fkey(is_demo)",
+          hideDemo
+            ? "*, l2:categories_l2(id, name_ru, icon), city:cities(id, name), client:users!orders_client_id_fkey!inner(is_demo)"
+            : "*, l2:categories_l2(id, name_ru, icon), city:cities(id, name), client:users!orders_client_id_fkey(is_demo)",
         )
         .eq("status", "open")
-        .limit(PAGE_SIZE);
+        .limit(FEED_PAGE_SIZE);
+
+      // Фильтруем demo на сервере ДО limit/cursor. Клиентская фильтрация после
+      // limit обрезала пагинацию, если в полной сырой странице встречался demo.
+      if (hideDemo) {
+        q = q.eq("client.is_demo", false);
+      }
 
       // Свои заказы не показываем в ленте — но только когда юзер известен.
       // У анона своих заказов нет, фильтр не нужен.
@@ -81,33 +86,15 @@ export function useAllOpenOrders({
         q = q.eq("district", districtFilter);
       }
 
-      // Сортировка. Для urgent: сначала urgency='today' / 'asap',
-      // потом по created_at. Для newest — просто created_at desc.
-      if (sort === "urgent") {
-        q = q
-          .order("urgency", { ascending: true }) // 'asap' < 'today' < 'week' < 'flexible'
-          .order("created_at", { ascending: false });
-      } else {
-        q = q.order("created_at", { ascending: false });
-      }
+      q = q.order("created_at", { ascending: false }).order("id", { ascending: false });
 
-      if (typeof pageParam === "string") {
-        q = q.lt("created_at", pageParam);
+      if (cursor) {
+        q = q.or(feedCursorFilter(cursor));
       }
       const { data, error } = await q;
       if (error) throw error;
-      let rows = (data ?? []) as unknown as (OrderWithRefs & {
-        client?: { is_demo: boolean } | null;
-      })[];
-
-      // P0-09: скрываем заказы от demo-клиентов в production (EXPO_PUBLIC_DEMO_MODE=false).
-      if (shouldHideDemo()) {
-        rows = rows.filter((r) => r.client?.is_demo !== true);
-      }
-
-      const nextCursor =
-        rows.length === PAGE_SIZE ? (rows[rows.length - 1]?.created_at ?? null) : null;
-      return { rows: rows as OrderWithRefs[], nextCursor };
+      const rows = (data ?? []) as unknown as OrderWithRefs[];
+      return buildFeedPage(rows, FEED_PAGE_SIZE);
     },
     getNextPageParam: (last) => last.nextCursor,
     // enabled всегда true — анон тоже грузит ленту (см. комментарий в queryFn).

@@ -66,6 +66,11 @@ interface OrderFormBodyProps {
   cities: Pick<Tables<"cities">, "id" | "name">[] | undefined;
   /** Если задана — категорию нельзя сменить (после создания заказа). */
   lockCategory?: boolean;
+  /** Creation flow already confirmed title/category in its intent step. */
+  hideTitleField?: boolean;
+  hideCategoryField?: boolean;
+  /** Reviewed category-specific guidance for the free-text details field. */
+  detailsPlaceholder?: string;
   /**
    * Слот «Фото» — рендерится после описания, перед категорией (дизайн-спека
    * ORDER_PHOTOS_DESIGN.md §3.1). Передаётся только из формы создания заказа
@@ -91,12 +96,15 @@ export function OrderFormBody({
   isBusy,
   cities,
   lockCategory,
+  hideTitleField = false,
+  hideCategoryField = false,
+  detailsPlaceholder = "Что важно знать исполнителю — объём, особенности и что уже есть…",
   step,
   photosSlot,
 }: OrderFormBodyProps) {
   const mutedSoftColor = useThemeColor("muted-soft");
   // Цвета иконки chip «К дате» — резолвленные токены (SVG красится не className).
-  const { accent: accentColor, ink: inkColor } = useThemeColors(["accent", "ink"]);
+  const { ink: inkColor } = useThemeColors(["ink"]);
   // Видимость календаря «К дате».
   const [dateSheetOpen, setDateSheetOpen] = useState(false);
   // Wizard 2 шага: step 1 = описание + категория на одном экране, step 2 = бюджет/город.
@@ -106,7 +114,7 @@ export function OrderFormBody({
   return (
     <>
       {/* Title + Description — Шаг 1 (новый: сначала «что нужно сделать») */}
-      {showContent && (
+      {showContent && !hideTitleField && (
         <View className="px-6">
           <TextField
             label="Опишите задачу в двух словах"
@@ -134,7 +142,7 @@ export function OrderFormBody({
                   value={value}
                   onBlur={onBlur}
                   onChangeText={onChange}
-                  placeholder="Что важно знать мастеру — детали, сроки, особенности…"
+                  placeholder={detailsPlaceholder}
                   placeholderTextColor={mutedSoftColor}
                   multiline
                   numberOfLines={5}
@@ -176,7 +184,7 @@ export function OrderFormBody({
       {/* Категория — Шаг 1 (CategoryPicker — compact selector + bottom-sheet
           с typeahead). 2-col grid плиток выглядел перегружено для 32 категорий.
           Lazyweb-вывод: Klarna/Profi/Яндекс используют compact + bottom-sheet. */}
-      {showCategory && (
+      {showCategory && !hideCategoryField && (
         <View className={showContent ? "mt-6 px-6" : "px-6"}>
           <AppText weight="semibold" className="text-body-sm text-ink">
             Категория
@@ -255,7 +263,11 @@ export function OrderFormBody({
               const byDateSelected = value === "by_date";
               return (
                 <>
-                  <View className="mt-2 flex-row flex-wrap gap-2">
+                  <View
+                    accessibilityRole="radiogroup"
+                    accessibilityLabel="Сроки"
+                    className="mt-2 flex-row flex-wrap gap-2"
+                  >
                     {/* 4 относительных срока. Выбор любого — mutex: обнуляет точную
                         дату (правило §E), иначе остался бы «и срочно, и 12 июня». */}
                     {orderUrgencyOptions.map((u) => {
@@ -263,8 +275,8 @@ export function OrderFormBody({
                       return (
                         <Pressable
                           key={u}
-                          accessibilityRole="button"
-                          accessibilityState={{ selected }}
+                          accessibilityRole="radio"
+                          accessibilityState={{ checked: selected, disabled: isBusy }}
                           disabled={isBusy}
                           onPress={() => {
                             onChange(u);
@@ -276,10 +288,7 @@ export function OrderFormBody({
                               : "border-hairline bg-canvas active:opacity-70"
                           }`}
                         >
-                          <AppText
-                            weight="medium"
-                            className={`text-body-md ${selected ? "text-accent" : "text-ink"}`}
-                          >
+                          <AppText weight="medium" className="text-body-md text-ink">
                             {urgencyLabel(u)}
                           </AppText>
                         </Pressable>
@@ -289,8 +298,8 @@ export function OrderFormBody({
                     {/* 5-й вариант — «К дате»: открывает календарь. Если дата уже
                         выбрана — показываем «К 12 июня» и активный стиль. */}
                     <Pressable
-                      accessibilityRole="button"
-                      accessibilityState={{ selected: byDateSelected }}
+                      accessibilityRole="radio"
+                      accessibilityState={{ checked: byDateSelected, disabled: isBusy }}
                       accessibilityLabel="Выбрать дату"
                       disabled={isBusy}
                       onPress={() => setDateSheetOpen(true)}
@@ -303,12 +312,9 @@ export function OrderFormBody({
                       <CalendarBlank
                         size={18}
                         weight={byDateSelected ? "fill" : "bold"}
-                        color={byDateSelected ? accentColor : inkColor}
+                        color={inkColor}
                       />
-                      <AppText
-                        weight="medium"
-                        className={`text-body-md ${byDateSelected ? "text-accent" : "text-ink"}`}
-                      >
+                      <AppText weight="medium" className="text-body-md text-ink">
                         {byDateSelected ? formatOrderTiming("by_date", preferredDate) : "К дате"}
                       </AppText>
                     </Pressable>
@@ -355,14 +361,18 @@ export function OrderFormBody({
             control={control}
             name="budgetKind"
             render={({ field: { value, onChange } }) => (
-              <View className="mt-2 flex-row flex-wrap gap-2">
+              <View
+                accessibilityRole="radiogroup"
+                accessibilityLabel="Бюджет"
+                className="mt-2 flex-row flex-wrap gap-2"
+              >
                 {orderPriceKindOptions.map((k) => {
                   const selected = value === k;
                   return (
                     <Pressable
                       key={k}
-                      accessibilityRole="button"
-                      accessibilityState={{ selected }}
+                      accessibilityRole="radio"
+                      accessibilityState={{ checked: selected, disabled: isBusy }}
                       disabled={isBusy}
                       onPress={() => onChange(k)}
                       className={`h-11 items-center justify-center rounded-pill border px-4 ${
@@ -371,10 +381,7 @@ export function OrderFormBody({
                           : "border-hairline bg-canvas active:opacity-70"
                       }`}
                     >
-                      <AppText
-                        weight="medium"
-                        className={`text-body-md ${selected ? "text-accent" : "text-ink"}`}
-                      >
+                      <AppText weight="medium" className="text-body-md text-ink">
                         {priceKindLabel(k)}
                       </AppText>
                     </Pressable>
@@ -449,6 +456,7 @@ function TextField(props: TextFieldProps) {
             {props.label}
           </AppText>
           <TextInput
+            accessibilityLabel={props.label}
             value={value ?? ""}
             onBlur={onBlur}
             onChangeText={onChange}
@@ -493,6 +501,7 @@ function NumberField(props: NumberFieldProps) {
             {props.label}
           </AppText>
           <TextInput
+            accessibilityLabel={props.label}
             value={value === null || value === undefined ? "" : String(value)}
             onBlur={onBlur}
             onChangeText={(raw) => {

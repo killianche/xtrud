@@ -62,6 +62,7 @@ export interface ScreenHeaderIconAction {
 interface ScreenHeaderProps {
   title: string;
   onBack?: () => void;
+  backDisabled?: boolean;
   /** Опц. pill-кнопка справа (Фильтры / Сохранить / Поделиться). */
   rightAction?: ScreenHeaderRightAction;
   /** Опц. круглая icon-кнопка справа (overflow «⋮» / share / edit и т.п.).
@@ -71,7 +72,13 @@ interface ScreenHeaderProps {
 
 const HEADER_HEIGHT = 64;
 
-export function ScreenHeader({ title, onBack, rightAction, iconAction }: ScreenHeaderProps) {
+export function ScreenHeader({
+  title,
+  onBack,
+  backDisabled = false,
+  rightAction,
+  iconAction,
+}: ScreenHeaderProps) {
   const inkColor = useThemeColor("ink");
   const accentColor = useThemeColor("accent");
 
@@ -81,11 +88,15 @@ export function ScreenHeader({ title, onBack, rightAction, iconAction }: ScreenH
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Назад"
+          accessibilityState={{ disabled: backDisabled }}
+          disabled={backDisabled}
           onPress={onBack}
           hitSlop={8}
-          className="h-12 w-12 items-center justify-center rounded-full active:bg-canvas-soft"
+          className={`h-12 w-12 items-center justify-center rounded-full active:bg-canvas-soft ${
+            backDisabled ? "opacity-40" : ""
+          }`}
         >
-          <CaretLeft size={26} weight="bold" color={inkColor} />
+          <CaretLeft size={28} weight="bold" color={inkColor} />
         </Pressable>
       ) : null}
 

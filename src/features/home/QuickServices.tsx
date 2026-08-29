@@ -1,40 +1,10 @@
 /**
- * QuickServices — горизонтальный ряд из 4 «быстрых категорий» на главной
- * клиента, сразу под hero-блоком (перед рекламными баннерами).
- *
- * ── Редизайн 2026-06-04 (единая система tinted-плиток) ────────────────────
- * Проблема прошлой версии: визуальный разнобой. Уборка падала в моно-fallback
- * `Users` (нет L2-маппинга `cleaning` в ICON_MAP — баг), Сантехника/Отопление
- * рисовались глянцевыми мультяшными twemoji (капля/термометр), а «Все мастера»
- * — снова моно `Users`. Итог: две плоские серые line-иконки рядом с двумя
- * «детскими» цветными — несобранно, не премиально.
- *
- * Решение (Linear/Stripe-паттерн «soft tinted tile + clean glyph», подтверждён
- * DoorDash Browse — там вся сетка иконок выдержана в ОДНОМ семействе):
- *   - Каждая плитка = мягкий tinted-квадрат (rounded-2xl) одного из брендовых
- *     оттенков + один Phosphor-глиф (duotone) в тон. Цвет несёт плитка, глиф
- *     остаётся чистым и строгим — никакого глянца.
- *   - 4 плитки = одно семейство (Phosphor — наш моно-стандарт), но цветные.
- *   - Палитра сдержанная (Vercel-правило «без радуги»): акцент бренда + 2 тона.
- *   - «Все мастера» выделена фирменным accent-tint (розово-красный #fe5574) как
- *     primary-action ряда и иконкой UsersThree (а не Users — не дублирует чужой
- *     глиф). Категории — sky/cyan/amber soft.
- *
- * Почему НЕ цветные twemoji/fluent для категорий: единого цветного семейства
- * под cleaning/plumbing/climate в Iconify нет (в fluent-color отсутствуют
- * broom/water/thermometer; twemoji глянцево-мультяшен — ровно та претензия,
- * что и была). Tinted-Phosphor гарантирует 100% консистентность и обе темы
- * через токены без единого inline-hex.
- *
- * 4 категории (фикс.):
- *   1. Уборка квартиры → /category/cleaning   (Sparkle, sky-tint)
- *   2. Сантехника      → /category/plumbing   (Drop, cyan-tint)
- *   3. Отопление       → /category/climate    (Thermometer, amber-tint)
- *   4. Все мастера     → скролл к AllCategories (UsersThree, brand accent-tint)
+ * Быстрый task-first вход: четыре понятных примера открывают единый сценарий
+ * `/orders/new`, а не каталог исполнителей. Конкретная категория подтверждается
+ * уже в intent-step; плитки только подставляют понятный черновик запроса.
  */
 
-import { useRouter } from "expo-router";
-import { Drop, Sparkle, Thermometer, UsersThree } from "phosphor-react-native";
+import { Drop, Lightning, Plus, Sparkle } from "phosphor-react-native";
 import { Pressable, View } from "react-native";
 import { AppText } from "@/components/AppText";
 import { useThemeColors } from "@/lib/use-theme-color";
@@ -53,59 +23,57 @@ interface QuickService {
   tintBg: string;
   /** Токен цвета глифа — контрастная пара к tintBg в обеих темах. */
   iconToken: GlyphToken;
-  /** Куда ведёт тап. null — action-кнопка «Все мастера» (скролл). */
-  href: string | null;
+  /** Начальный текст, который подставляется в создание задания. */
+  draft: string;
 }
 
 const SERVICES: QuickService[] = [
   {
     id: "cleaning",
-    label: "Уборка квартиры",
+    label: "Убрать после ремонта",
     Icon: Sparkle,
     tintBg: "bg-link-bg-soft",
     iconToken: "link",
-    href: "/category/cleaning",
+    draft: "Уборка после ремонта",
   },
   {
     id: "plumbing",
-    label: "Сантехника",
+    label: "Нужен сантехник",
     Icon: Drop,
     tintBg: "bg-cyan-soft",
     iconToken: "cyan-deep",
-    href: "/category/plumbing",
+    draft: "Нужен сантехник",
   },
   {
-    id: "climate",
-    label: "Отопление",
-    Icon: Thermometer,
+    id: "electrical",
+    label: "Нужен электрик",
+    Icon: Lightning,
     tintBg: "bg-warning-soft",
     iconToken: "warning-deep",
-    href: "/category/climate",
+    draft: "Нужен электрик",
   },
   {
     id: "all",
-    label: "Все мастера",
-    Icon: UsersThree,
+    label: "Другая задача",
+    Icon: Plus,
     tintBg: "bg-accent-soft",
     iconToken: "accent",
-    href: null,
+    draft: "",
   },
 ];
 
 interface QuickServicesProps {
-  /** Колбэк 4-й плитки «Все мастера» — плавный скролл к блоку AllCategories. */
-  onShowAll: () => void;
+  onCreateTask: (draft?: string) => void;
 }
 
-export function QuickServices({ onShowAll }: QuickServicesProps) {
-  const router = useRouter();
+export function QuickServices({ onCreateTask }: QuickServicesProps) {
   // Цвета глифов всех 4 плиток разом — резолв через токены (обе темы).
   const iconColors = useThemeColors(ICON_TOKENS);
 
   return (
     <View className="mt-6">
       <AppText weight="bold" className="mb-3 px-5 text-title-lg text-ink">
-        Популярные категории
+        Примеры заданий
       </AppText>
 
       <View className="flex-row justify-between px-5">
@@ -116,10 +84,7 @@ export function QuickServices({ onShowAll }: QuickServicesProps) {
               key={s.id}
               accessibilityRole="button"
               accessibilityLabel={s.label}
-              onPress={() => {
-                if (s.href === null) onShowAll();
-                else router.push(s.href as never);
-              }}
+              onPress={() => onCreateTask(s.draft || undefined)}
               className="items-center active:opacity-70"
               style={{ width: 72 }}
             >

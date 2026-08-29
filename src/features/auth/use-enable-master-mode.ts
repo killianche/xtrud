@@ -11,12 +11,12 @@
  *      - Идемпотентно, ON CONFLICT DO NOTHING.
  *   2. Инвалидирует `userRecord` кэш — UI сразу видит is_master=true.
  *
- * После успеха frontend пушит юзера на /(onboarding)/master-categories?mode=onboarding
- * чтобы он начал заполнять обязательные поля (категории → фото → bio/опыт).
+ * После успеха frontend открывает единый wizard исполнителя:
+ * master-profile → master-categories → master-photo.
  *
  * Мастер остаётся скрытым (is_hidden_from_search=true + status='pending')
- * пока не завершит wizard через `complete_master_onboarding` — тот RPC
- * сбрасывает оба флага в visible-состояние.
+ * пока не завершит последний photo-шаг через `finalize_master_onboarding` —
+ * тот RPC сбрасывает оба флага в visible-состояние.
  */
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";

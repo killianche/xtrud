@@ -85,6 +85,9 @@ export default function TabsLayout() {
             tabBarIcon: ({ color }) => <XtrudLogo size={24} color={color} />,
           }}
         />
+        {/* Tabs contain only root lists. Full-screen forms, pickers and detail
+            routes live in `app/(details)` so the root native Stack preserves
+            the real caller and provides the standard iOS edge-swipe. */}
         <Tabs.Screen
           name="orders"
           options={{
@@ -135,21 +138,9 @@ export default function TabsLayout() {
             ),
           }}
         />
-        {/* Detail-экраны (одиночные файлы, прямые дети Tabs) — НЕ показываем в
-          нижней панели. NB: только реальные прямые дети навигатора. Роуты
-          внутри вложенных стеков/папок (orders/search, orders/my-responses —
-          живут в стеке `orders/_layout`; admin/*, useful/* — в своих папках)
-          сюда НЕ объявляются: для Tabs они не существуют как прямые дети, и
-          объявление их через <Tabs.Screen> вызывало шторм предупреждений
-          «No route named … exists in nested children» (аудит 2026-05-28).
-          От нижней панели они и так скрыты — кастомный TabBar рендерит только
-          TAB_ORDER (index/orders/cases/profile). */}
-        <Tabs.Screen name="category/[id]" options={{ href: null }} />
-        <Tabs.Screen name="master/[id]" options={{ href: null }} />
-        <Tabs.Screen name="client/[id]" options={{ href: null }} />
-        <Tabs.Screen name="admin/ratings" options={{ href: null }} />
-        <Tabs.Screen name="admin/reports" options={{ href: null }} />
-        <Tabs.Screen name="search" options={{ href: null }} />
+        {/* Detail routes live in the root native Stack (`app/(details)`), not
+          as hidden Tabs screens. This preserves the exact caller and enables
+          the standard iOS edge-swipe back gesture. */}
         {/* favorites — отдельный root-таб (не подпункт профиля). Скрыт из
           автоматической нижней панели; кастомный TabBar рендерит для клиента
           центральную кнопку «закладки», которая push'ит сюда. См. шапку

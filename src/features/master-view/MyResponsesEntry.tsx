@@ -52,7 +52,7 @@ export function MyResponsesEntry({ userId }: MyResponsesEntryProps) {
         accessibilityLabel={
           hasActive ? `Мои отклики, активных ${activeResponsesCount}` : "Мои отклики"
         }
-        onPress={() => router.push("/(tabs)/orders/my-responses" as never)}
+        onPress={() => router.push("/orders/my-responses" as never)}
         className="flex-row items-center gap-3 rounded-2xl border border-hairline bg-canvas px-4 py-3.5 active:bg-canvas-soft"
       >
         <View className="h-10 w-10 items-center justify-center rounded-full bg-canvas-soft-2">

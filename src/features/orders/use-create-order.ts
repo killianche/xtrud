@@ -2,8 +2,16 @@
 // RLS orders_insert_own проверит auth.uid() = client_id.
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import {
+  ActiveOrderLimitError,
+  getOrderPublishCapacity,
+} from "@/features/orders/order-publish-capacity";
 import { ALL_INGUSHETIA_CITY } from "@/features/orders/order-schema";
 import { myOrdersKey } from "@/features/orders/use-my-orders";
+import {
+  fetchActiveOrderCount,
+  orderPublishCapacityKey,
+} from "@/features/orders/use-order-publish-capacity";
 import { supabase } from "@/lib/supabase";
 import type { Database, Enums } from "@/types/database";
 
@@ -38,6 +46,12 @@ export function useCreateOrder() {
 
   return useMutation({
     mutationFn: async (input: CreateOrderInput): Promise<{ id: string }> => {
+      // UX precheck directly before insert. It closes the ordinary app path,
+      // but is intentionally not presented as authoritative: two devices can
+      // still race until the reviewed backend quota trigger/RPC is deployed.
+      const capacity = getOrderPublishCapacity(await fetchActiveOrderCount(input.clientId));
+      if (!capacity.canPublish) throw new ActiveOrderLimitError(capacity.limit);
+
       // Description опционально (UI помечен «необязательно»). Если пустая
       // строка — отправляем NULL вместо "" (миграция 0089 разрешает NULL и
       // снимает min length=10).
@@ -70,6 +84,7 @@ export function useCreateOrder() {
     },
     onSuccess: (_data, { clientId }) => {
       queryClient.invalidateQueries({ queryKey: myOrdersKey(clientId) });
+      queryClient.invalidateQueries({ queryKey: orderPublishCapacityKey(clientId) });
     },
   });
 }

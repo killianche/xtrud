@@ -13,6 +13,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { myOrdersKey } from "@/features/orders/use-my-orders";
 import { orderDetailKey } from "@/features/orders/use-order-detail";
+import { orderPublishCapacityKey } from "@/features/orders/use-order-publish-capacity";
 import { supabase } from "@/lib/supabase";
 
 /** Машинная причина закрытия заказа клиентом. Хранится в orders.cancel_reason. */
@@ -45,6 +46,7 @@ export function useCancelOrder() {
     onSuccess: (_data, { orderId, clientId }) => {
       queryClient.invalidateQueries({ queryKey: orderDetailKey(orderId) });
       queryClient.invalidateQueries({ queryKey: myOrdersKey(clientId) });
+      queryClient.invalidateQueries({ queryKey: orderPublishCapacityKey(clientId) });
     },
   });
 }

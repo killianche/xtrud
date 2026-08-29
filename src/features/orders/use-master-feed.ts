@@ -7,7 +7,13 @@
 // Sprint 19.3: pure-логика выделена в `feed-page.ts` для unit-тестов.
 
 import { useInfiniteQuery } from "@tanstack/react-query";
-import { buildFeedPage, FEED_PAGE_SIZE, masterFeedKey } from "@/features/orders/feed-page";
+import {
+  buildFeedPage,
+  FEED_PAGE_SIZE,
+  type FeedCursor,
+  feedCursorFilter,
+  masterFeedKey,
+} from "@/features/orders/feed-page";
 import type { OrderWithRefs } from "@/features/orders/use-my-orders";
 import { supabase } from "@/lib/supabase";
 
@@ -18,13 +24,14 @@ interface UseMasterFeedInput {
   l2Ids: string[];
 }
 
-type Page = { rows: OrderWithRefs[]; nextCursor: string | null };
+type Page = { rows: OrderWithRefs[]; nextCursor: FeedCursor | null };
 
 export function useMasterFeed({ userId, l2Ids }: UseMasterFeedInput) {
   return useInfiniteQuery<Page>({
     queryKey: masterFeedKey(userId, l2Ids),
-    initialPageParam: null as string | null,
+    initialPageParam: null as FeedCursor | null,
     queryFn: async ({ pageParam }) => {
+      const cursor = pageParam as FeedCursor | null;
       if (!userId || l2Ids.length === 0) return { rows: [], nextCursor: null };
       let q = supabase
         .from("orders")
@@ -33,9 +40,10 @@ export function useMasterFeed({ userId, l2Ids }: UseMasterFeedInput) {
         .neq("client_id", userId)
         .in("l2_id", l2Ids)
         .order("created_at", { ascending: false })
+        .order("id", { ascending: false })
         .limit(FEED_PAGE_SIZE);
-      if (typeof pageParam === "string") {
-        q = q.lt("created_at", pageParam);
+      if (cursor) {
+        q = q.or(feedCursorFilter(cursor));
       }
       const { data, error } = await q;
       if (error) throw error;

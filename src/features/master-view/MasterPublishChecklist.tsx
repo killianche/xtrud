@@ -120,7 +120,7 @@ export function MasterPublishChecklist({ progress }: MasterPublishChecklistProps
               : "Сколько лет вы в профессии"
           }
           Icon={Briefcase}
-          onPress={() => router.push("/(tabs)/profile/edit-master" as never)}
+          onPress={() => router.push("/profile/edit-master" as never)}
         />
       </View>
 

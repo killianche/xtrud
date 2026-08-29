@@ -31,6 +31,7 @@ import { AppText } from "@/components/AppText";
 import { useAuthSession } from "@/features/auth/use-auth-session";
 import { useUserRecord } from "@/features/auth/use-user-record";
 import { triggerTabScrollReset } from "@/lib/tab-scroll-reset";
+import { shouldHideTabBarForPath } from "@/lib/tabbar-route-policy";
 import { useTabBarVisibility } from "@/lib/tabbar-visibility";
 import { useThemeColors } from "@/lib/use-theme-color";
 
@@ -76,9 +77,9 @@ export function TabBar({ state, descriptors, navigation }: BottomTabBarProps) {
   // оставляю startsWith на будущее).
   const isFavoritesActive = pathname.startsWith("/favorites");
 
-  // Скрыт глобальным флагом (используется на full-screen wizard'ах вроде
-  // orders/new — там TabBar отвлекает от формы).
-  if (tabBarHidden) return null;
+  // Route policy is the source of truth: only actual tab roots show the bar.
+  // The legacy owner flag remains as an additional lock during transitions.
+  if (tabBarHidden || shouldHideTabBarForPath(pathname)) return null;
 
   // Берём роуты в нужном порядке, отфильтрованные по существованию.
   const orderedRoutes = TAB_ORDER.map((name) => state.routes.find((r) => r.name === name)).filter(

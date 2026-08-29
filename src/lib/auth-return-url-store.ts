@@ -21,8 +21,11 @@ import { storage } from "@/lib/storage";
 interface AuthReturnUrlState {
   returnUrl: string | null;
   intent: AuthReturnIntent | null;
+  performerOnboardingRequested: boolean;
   /** Backward-compatible API для существующего master-onboarding flow. */
   setReturnUrl: (url: string | null) => void;
+  requestPerformerOnboarding: (returnUrl: string) => void;
+  isPerformerOnboardingRequested: () => boolean;
   peekReturnUrl: () => string | null;
   consumeReturnUrl: () => string | null;
   clearReturnUrl: () => void;
@@ -33,38 +36,66 @@ export const useAuthReturnUrlStore = create<AuthReturnUrlState>()(
     (set, get) => ({
       returnUrl: null,
       intent: null,
+      performerOnboardingRequested: false,
       setReturnUrl: (url) => {
         const safeUrl = parseAuthReturnTo(url);
         set({
           returnUrl: safeUrl,
           intent: safeUrl ? createAuthReturnIntent(safeUrl) : null,
+          performerOnboardingRequested: false,
         });
+      },
+      requestPerformerOnboarding: (returnUrl) => {
+        const safeUrl = parseAuthReturnTo(returnUrl);
+        set({
+          returnUrl: safeUrl,
+          intent: safeUrl ? createAuthReturnIntent(safeUrl) : null,
+          performerOnboardingRequested: !!safeUrl,
+        });
+      },
+      isPerformerOnboardingRequested: () => {
+        const { intent, performerOnboardingRequested } = get();
+        return performerOnboardingRequested && isAuthReturnIntentActive(intent);
       },
       peekReturnUrl: () => {
         const { intent } = get();
         if (isAuthReturnIntentActive(intent)) return intent.returnTo;
-        if (intent || get().returnUrl) set({ returnUrl: null, intent: null });
+        if (intent || get().returnUrl) {
+          set({ returnUrl: null, intent: null, performerOnboardingRequested: false });
+        }
         return null;
       },
       consumeReturnUrl: () => {
         const consumed = consumeAuthReturnIntent(get().intent);
-        set({ returnUrl: null, intent: consumed.nextIntent });
+        set({
+          returnUrl: null,
+          intent: consumed.nextIntent,
+          performerOnboardingRequested: false,
+        });
         return consumed.returnTo;
       },
-      clearReturnUrl: () => set({ returnUrl: null, intent: null }),
+      clearReturnUrl: () =>
+        set({ returnUrl: null, intent: null, performerOnboardingRequested: false }),
     }),
     {
       name: "xtrud:auth-return-url",
       version: 1,
       storage: createJSONStorage(() => storage),
-      partialize: (state) => ({ intent: state.intent }),
+      partialize: (state) => ({
+        intent: state.intent,
+        performerOnboardingRequested: state.performerOnboardingRequested,
+      }),
       merge: (persistedState, currentState) => {
-        const persisted = persistedState as { intent?: AuthReturnIntent } | undefined;
+        const persisted = persistedState as
+          | { intent?: AuthReturnIntent; performerOnboardingRequested?: boolean }
+          | undefined;
         const intent = isAuthReturnIntentActive(persisted?.intent) ? persisted?.intent : null;
         return {
           ...currentState,
           intent,
           returnUrl: intent?.returnTo ?? null,
+          performerOnboardingRequested:
+            !!intent && persisted?.performerOnboardingRequested === true,
         };
       },
     },

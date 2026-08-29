@@ -5,7 +5,7 @@ name: Guest navigation and password form
     clearState: true
     clearKeychain: true
 - assertVisible:
-    text: "Найдутся мастера"
+    text: "Создать задание бесплатно"
     timeout: 20000
 - tapOn: "Профиль"
 - assertVisible: "Войти по телефону"

@@ -31,6 +31,7 @@ import {
   revokeGuestDraftAuthJourney,
   shouldAbandonGuestDraftAuthJourney,
 } from "@/lib/order-draft-store";
+import { useBackGestureLock } from "@/lib/use-back-gesture-lock";
 import { useSafeBack } from "@/lib/use-safe-back";
 import { useThemeColors } from "@/lib/use-theme-color";
 
@@ -67,6 +68,10 @@ export default function LoginScreen() {
   useEffect(
     () =>
       navigation.addListener("beforeRemove", (event) => {
+        // usePreventRemove blocks the actual transition while login is in
+        // flight; the observer must not revoke the draft for that prevented
+        // gesture/action.
+        if (login.isPending) return;
         const action = event.data.action as { type: string; payload?: { name?: string } };
         abandonDraftJourney(
           shouldAbandonGuestDraftAuthJourney("phone", {
@@ -75,7 +80,7 @@ export default function LoginScreen() {
           }),
         );
       }),
-    [abandonDraftJourney, navigation],
+    [abandonDraftJourney, login.isPending, navigation],
   );
 
   useEffect(() => {
@@ -114,13 +119,20 @@ export default function LoginScreen() {
       // Intent пока не consume: целевой экран проверит onboarding и только
       // после этого одноразово очистит return. Так AuthGate и network timing не
       // могут ни потерять возврат, ни пропустить обязательный onboarding.
-      if (returnUrl) router.replace(returnUrl as never);
+      if (useAuthReturnUrlStore.getState().isPerformerOnboardingRequested()) {
+        // AuthGate — единственный владелец performer branch/consume/redirect.
+        // Здесь не конкурируем с ним за одноразовый return intent.
+        return;
+      } else if (returnUrl) {
+        router.replace(returnUrl as never);
+      }
     } catch (e) {
       setServerError(e instanceof Error ? e.message : "Не удалось войти");
     }
   });
 
   const isBusy = login.isPending;
+  useBackGestureLock(isBusy);
 
   return (
     <KeyboardAvoidingView
@@ -139,11 +151,11 @@ export default function LoginScreen() {
             accessibilityLabel="Назад"
             disabled={isBusy}
             onPress={goBack}
-            className={`-ml-2 h-10 w-10 items-center justify-center rounded-full ${
+            className={`-ml-2 h-12 w-12 items-center justify-center rounded-full ${
               isBusy ? "opacity-30" : "active:bg-canvas-soft"
             }`}
           >
-            <CaretLeft size={24} weight="bold" color={tc.ink} />
+            <CaretLeft size={28} weight="bold" color={tc.ink} />
           </Pressable>
           <AppText weight="bold" className="mt-6 text-display-md tracking-tight text-ink">
             Вход в xtrud
@@ -236,12 +248,13 @@ export default function LoginScreen() {
 
             <Pressable
               accessibilityRole="button"
+              disabled={isBusy}
               onPress={() => {
                 abandonDraftJourney(true);
                 router.push("/(auth)/forgot-password" as never);
               }}
               hitSlop={6}
-              className="mt-3 self-start active:opacity-70"
+              className={`mt-3 self-start ${isBusy ? "opacity-30" : "active:opacity-70"}`}
             >
               <AppText weight="medium" className="text-caption text-ink underline">
                 Забыли пароль?
@@ -279,6 +292,7 @@ export default function LoginScreen() {
             <AppText className="text-body-sm text-body">Нет аккаунта? </AppText>
             <Pressable
               accessibilityRole="button"
+              disabled={isBusy}
               onPress={() => {
                 router.push(
                   requestedReturnTo
@@ -294,7 +308,7 @@ export default function LoginScreen() {
                 );
               }}
               hitSlop={6}
-              className="active:opacity-70"
+              className={isBusy ? "opacity-30" : "active:opacity-70"}
             >
               <AppText weight="semibold" className="text-body-sm text-ink underline">
                 Зарегистрироваться

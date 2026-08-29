@@ -29,6 +29,7 @@ import {
   sanitizePersistedOrderDraftState,
   shouldPreserveOrderDraftProcessState,
   toPersistedPhotoSlots,
+  withoutOrderDraftOwnerSnapshot,
 } from "@/lib/order-draft-policy";
 import { largeSecureStorage } from "@/lib/storage";
 
@@ -38,6 +39,7 @@ interface OrderDraftState {
   draft: OrderDraft;
   setDraft: (patch: Partial<CreateOrderFormValues>) => void;
   clearDraft: () => void;
+  clearDraftForOwner: (ownerId: OrderDraftOwnerId) => void;
 
   /** Full URIs are available only while the current JS process is alive. */
   photos: OrderDraftPhoto[];
@@ -122,6 +124,19 @@ export const useOrderDraftStore = create<OrderDraftState>()(
           selectedLocation: null,
           snapshots: withoutActiveSnapshot(state),
         })),
+      clearDraftForOwner: (ownerId) =>
+        set((state) => {
+          const snapshots = withoutOrderDraftOwnerSnapshot(state.snapshots, ownerId);
+          if (state.activeOwnerId !== ownerId) return { snapshots };
+          return {
+            draft: {},
+            photos: [],
+            photoSlots: [],
+            selectedL2: null,
+            selectedLocation: null,
+            snapshots,
+          };
+        }),
 
       photos: [],
       photoSlots: [],

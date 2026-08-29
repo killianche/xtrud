@@ -13,7 +13,14 @@
 // Эталон: Google «Showing results for ...» pattern.
 
 import { useQuery } from "@tanstack/react-query";
-import { flipLayout, looksLikeWrongLayout } from "@/lib/keyboard-layout";
+import {
+  type CategoryDataSource,
+  searchTaskCatalogWithFallback,
+} from "@/features/categories/bundled-task-catalog";
+import {
+  enforceCategorySearchContract,
+  resolvedCategorySearchQuery,
+} from "@/features/categories/category-search-contract";
 import { supabase } from "@/lib/supabase";
 
 export interface SearchHit {
@@ -35,6 +42,10 @@ export interface SearchResult {
   flippedQuery: string | null;
 }
 
+interface SourcedSearchResult extends SearchResult {
+  source: CategoryDataSource;
+}
+
 async function rpcSearch(query: string, limit: number): Promise<SearchHit[]> {
   const { data, error } = await supabase.rpc("search_categories", {
     p_query: query,
@@ -48,28 +59,26 @@ export function useSearchCategories(query: string, limit = 10) {
   const trimmed = (query ?? "").trim();
   const enabled = trimmed.length >= 2;
 
-  return useQuery<SearchResult>({
+  const result = useQuery<SourcedSearchResult>({
     queryKey: ["search-categories", trimmed, limit] as const,
-    queryFn: async () => {
-      // 1. Исходный запрос всегда.
-      // 2. Раскладка-fix параллельно — только если строка похожа на
-      //    «латиница в русской раскладке» (looksLikeWrongLayout).
-      const flipped = looksLikeWrongLayout(trimmed) ? flipLayout(trimmed) : null;
-      const originalPromise = rpcSearch(trimmed, limit);
-      const flippedPromise: Promise<SearchHit[]> =
-        flipped && flipped !== trimmed ? rpcSearch(flipped, limit) : Promise.resolve([]);
-
-      const [originalHits, flippedHits] = await Promise.all([originalPromise, flippedPromise]);
-
-      if (originalHits.length > 0) {
-        return { hits: originalHits, wasFlipped: false, flippedQuery: null };
-      }
-      if (flippedHits.length > 0 && flipped) {
-        return { hits: flippedHits, wasFlipped: true, flippedQuery: flipped };
-      }
-      return { hits: [], wasFlipped: false, flippedQuery: null };
-    },
+    queryFn: () => searchTaskCatalogWithFallback(trimmed, limit, rpcSearch),
     enabled,
-    staleTime: 30_000,
+    staleTime: (queryState) => (queryState.state.data?.source === "bundle" ? 0 : 30_000),
+    refetchOnReconnect: true,
   });
+
+  return {
+    ...result,
+    data: result.data
+      ? {
+          hits: enforceCategorySearchContract(
+            resolvedCategorySearchQuery(trimmed, result.data.wasFlipped, result.data.flippedQuery),
+            result.data.hits,
+          ),
+          wasFlipped: result.data.wasFlipped,
+          flippedQuery: result.data.flippedQuery,
+        }
+      : undefined,
+    source: result.data?.source ?? null,
+  };
 }

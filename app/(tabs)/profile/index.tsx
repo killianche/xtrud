@@ -35,7 +35,6 @@ import { Avatar } from "@/components/Avatar";
 import { ScreenHeader, Skeleton } from "@/components/ui";
 import { RoleSwitcher } from "@/features/auth/RoleSwitcher";
 import { useAuthSession } from "@/features/auth/use-auth-session";
-import { useEnableMasterMode } from "@/features/auth/use-enable-master-mode";
 import { useUserRecord } from "@/features/auth/use-user-record";
 import { MasterPublishChecklist } from "@/features/master-view/MasterPublishChecklist";
 import { useMasterPublishProgress } from "@/features/master-view/use-master-publish-progress";
@@ -188,7 +187,7 @@ export default function ProfileScreen() {
         rightAction={{
           label: "Настройки",
           Icon: Gear,
-          onPress: () => router.push("/(tabs)/profile/settings" as never),
+          onPress: () => router.push("/profile/settings" as never),
           accessibilityLabel: "Настройки",
         }}
       />
@@ -289,7 +288,7 @@ export default function ProfileScreen() {
           <View className="mt-4">
             <Pressable
               accessibilityRole="button"
-              onPress={() => router.push("/(tabs)/profile/edit-client" as never)}
+              onPress={() => router.push("/profile/edit-client" as never)}
               className="mx-5 flex-row items-center justify-between rounded-lg border border-hairline bg-canvas p-4 active:bg-canvas-soft"
             >
               <View className="flex-1">
@@ -305,7 +304,7 @@ export default function ProfileScreen() {
                 под карточкой профиля. Только для не-мастеров. */}
             {!user.is_master ? (
               <View className="mt-3 items-center">
-                <BecomeMasterButton userId={user.id} />
+                <BecomeMasterButton />
               </View>
             ) : null}
           </View>
@@ -333,7 +332,7 @@ export default function ProfileScreen() {
             {/* Edit master profile shortcut */}
             <Pressable
               accessibilityRole="button"
-              onPress={() => router.push("/(tabs)/profile/edit-master" as never)}
+              onPress={() => router.push("/profile/edit-master" as never)}
               className="mx-6 mt-3 flex-row items-center justify-between rounded-lg border border-hairline bg-canvas p-4 active:opacity-70"
             >
               <AppText weight="semibold" className="flex-1 text-body-md text-ink">
@@ -348,7 +347,7 @@ export default function ProfileScreen() {
                 мастер видит оставленные ему отзывы и может их обжаловать. */}
             <Pressable
               accessibilityRole="button"
-              onPress={() => router.push(`/(tabs)/master/${user.id}` as never)}
+              onPress={() => router.push(`/master/${user.id}` as never)}
               className="mx-6 mt-3 flex-row items-center justify-between rounded-lg border border-hairline bg-canvas p-4 active:opacity-70"
             >
               <AppText weight="semibold" className="flex-1 text-body-md text-ink">
@@ -374,7 +373,7 @@ export default function ProfileScreen() {
                 подсказки — ремонт унитаза и т.д., не вручную всё забивать». */}
             <Pressable
               accessibilityRole="button"
-              onPress={() => router.push("/(tabs)/profile/services-suggest" as never)}
+              onPress={() => router.push("/profile/services-suggest" as never)}
               className="mx-6 mt-3 flex-row items-center justify-between rounded-lg border border-hairline bg-canvas p-4 active:opacity-70"
             >
               <AppText weight="semibold" className="flex-1 text-body-md text-ink">
@@ -395,7 +394,7 @@ export default function ProfileScreen() {
                 ссылки; этот компромисс даёт минимальный визуальный вес. */}
             <Pressable
               accessibilityRole="button"
-              onPress={() => router.push(`/(tabs)/master/${user.id}` as never)}
+              onPress={() => router.push(`/master/${user.id}` as never)}
               className="mx-6 mt-4 flex-row items-center gap-2 self-start active:opacity-60"
               hitSlop={6}
             >
@@ -422,7 +421,7 @@ export default function ProfileScreen() {
           <View className={`mt-8 ${isClient ? "px-5" : "px-6"}`}>
             <Pressable
               accessibilityRole="button"
-              onPress={() => router.push("/(tabs)/admin" as never)}
+              onPress={() => router.push("/admin" as never)}
               className="h-12 flex-row items-center justify-center gap-2 rounded-md border border-hairline bg-canvas active:opacity-70"
             >
               <ShieldCheck size={18} weight="bold" color={themeColors.body} />
@@ -670,29 +669,22 @@ function GuestProfileScreen({ insets, themeColors, onLogin }: GuestProfileScreen
 // ----------------------------------------------------------------------------
 
 // ----------------------------------------------------------------------------
-// BecomeMasterButton — кнопка «Я хочу стать мастером» (фидбэк user 2026-05-18).
+// BecomeMasterButton — вход в регистрацию исполнителя.
 //
-// Тап → RPC enable_master_mode (создаёт скрытый master_profile с
-// status='pending', is_hidden_from_search=true) → push на master-wizard.
-// До завершения wizard'а мастер не виден в каталоге.
+// До финального шага wizard не меняем роль пользователя. Профиль и категории
+// сохраняются как черновик, а `finalize_master_onboarding` атомарно включает
+// роль исполнителя только после успешного завершения всех обязательных шагов.
 // ----------------------------------------------------------------------------
 
-function BecomeMasterButton({ userId }: { userId: string }) {
+function BecomeMasterButton() {
   const router = useRouter();
-  const enable = useEnableMasterMode(userId);
   const mutedColor = useThemeColors(["mute"]).mute;
 
-  const handlePress = async () => {
-    if (enable.isPending) return;
-    try {
-      await enable.mutateAsync();
-      // После успеха пользователь стал мастером (status=pending, скрыт).
-      // Пушим на категории — там он выберет L2 и продолжит wizard
-      // master-photo → master-profile, который сбросит status в active.
-      router.push("/(onboarding)/master-categories?mode=onboarding" as never);
-    } catch (_e) {
-      // Ошибка отображается через enable.error в UI.
-    }
+  const handlePress = () => {
+    router.push({
+      pathname: "/(onboarding)/master-profile",
+      params: { mode: "onboarding" },
+    } as never);
   };
 
   return (
@@ -702,22 +694,16 @@ function BecomeMasterButton({ userId }: { userId: string }) {
           ловит случайные тапы. Раньше — крупная тёмная кнопка во всю ширину. */}
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel="Хочу стать мастером"
-        disabled={enable.isPending}
+        accessibilityLabel="Хочу стать исполнителем"
         onPress={handlePress}
         hitSlop={8}
         className="flex-row items-center gap-1.5 px-3 py-2 active:opacity-60"
       >
         <Wrench size={15} weight="bold" color={mutedColor} />
         <AppText weight="medium" className="text-body-sm text-mute">
-          {enable.isPending ? "Активируем…" : "Хочу стать мастером"}
+          Хочу стать исполнителем
         </AppText>
       </Pressable>
-      {enable.error ? (
-        <AppText weight="medium" className="mt-1 text-caption text-error">
-          Не удалось активировать. {enable.error.message}
-        </AppText>
-      ) : null}
     </View>
   );
 }

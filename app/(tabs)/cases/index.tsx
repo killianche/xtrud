@@ -24,8 +24,8 @@
  * коллекцию без захода внутрь.
  *
  * Скрыт у клиента через href: null в (tabs)/_layout.tsx (active_role !== "master").
- * Детальный экран работы — /(tabs)/cases/[caseId] (тот же стек cases → активной
- * остаётся вкладка «Ваши работы», back ведёт в список). Legacy-роут
+ * Детальный экран работы — /cases/[caseId] в root details Stack; back ведёт
+ * в список, а TabBar на details скрыт. Legacy-роут
  * /profile/portfolio (старый список) оставлен как есть.
  *
  * Бизнес-логику не трогаем: авто-создание кейса при завершении заказа (DB
@@ -172,7 +172,7 @@ export default function CasesScreen() {
       // Открываем созданную работу — мастер сразу видит результат и может
       // переименовать / добавить ещё. Роут ВНУТРИ вкладки cases → активной
       // остаётся «Ваши работы», back вернёт в список.
-      router.push(`/(tabs)/cases/${created.id}` as never);
+      router.push(`/cases/${created.id}` as never);
     } catch (e) {
       setCreating(null);
       Alert.alert(
@@ -227,7 +227,7 @@ export default function CasesScreen() {
           <CasesGrid
             cases={cases}
             addingToCaseId={addingToCaseId}
-            onOpen={(id) => router.push(`/(tabs)/cases/${id}` as never)}
+            onOpen={(id) => router.push(`/cases/${id}` as never)}
             onAddPhoto={handleAddToCase}
           />
         ) : (

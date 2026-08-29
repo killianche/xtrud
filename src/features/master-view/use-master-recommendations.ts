@@ -9,7 +9,7 @@
  * экран после геро-фото. DoorDash / Yelp / Whatnot тоже верстают home как
  * стэк коротких лент с разной выборкой по одному фиду — это паттерн.
  *
- * Один RPC и один кэш-ключ (`useAllOpenOrders` с `sort: 'newest'`) обслуживает
+ * Один запрос и один кэш-ключ (`useAllOpenOrders`) обслуживает
  * ВСЕ три подборки. Фильтрация — на клиенте, без новых endpoints. Иначе три
  * параллельных запроса с почти-одинаковыми параметрами били бы по БД зря и
  * усложняли реалтайм-инвалидацию (правило connect-the-dots.md — не плодим
@@ -114,13 +114,11 @@ export function useMasterRecommendations({
   }
   const initialResponded = initialRespondedRef.current;
 
-  // 3. Open-заказы по категориям мастера. ВСЕГДА sort='newest' — у нас один
-  //    кэш-ключ на все 3 подборки, локальная сортировка на клиенте при
-  //    необходимости (для 'urgent' и так подходит newest, для остальных тоже).
+  // 3. Open-заказы по категориям мастера. Сервер всегда отдаёт стабильный
+  //    порядок created_at DESC, id DESC; один кэш обслуживает все подборки.
   const { data: feed, isLoading: feedLoading } = useAllOpenOrders({
     userId,
     l2Ids: hasCategories ? l2Ids : null,
-    sort: "newest",
   });
 
   // 4. Применяем фильтр + ограничиваем размер.

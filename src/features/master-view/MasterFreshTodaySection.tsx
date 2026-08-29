@@ -87,7 +87,7 @@ export function MasterFreshTodaySection({ userId }: MasterFreshTodaySectionProps
             budgetKind={o.budget_kind}
             budgetValue={o.budget_value}
             showRespondButton
-            onPress={() => router.push(`/(tabs)/orders/${o.id}` as never)}
+            onPress={() => router.push(`/orders/${o.id}` as never)}
           />
         ))}
       </Animated.View>

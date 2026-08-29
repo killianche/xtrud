@@ -9,15 +9,18 @@ import {
 
 describe("auth return intent", () => {
   it("accepts only the allowlisted order-create route", () => {
-    const orderDetail = "/(tabs)/orders/4fd91df3-bb3d-4ec7-9ce0-0fddd1f6d7ab";
+    const orderDetail = "/orders/4fd91df3-bb3d-4ec7-9ce0-0fddd1f6d7ab";
+    const legacyOrderDetail = "/(tabs)/orders/4fd91df3-bb3d-4ec7-9ce0-0fddd1f6d7ab";
     expect(parseAuthReturnTo(ORDER_CREATE_RETURN_TO)).toBe(ORDER_CREATE_RETURN_TO);
     expect(parseAuthReturnTo(orderDetail)).toBe(orderDetail);
+    expect(parseAuthReturnTo("/(tabs)/orders/new")).toBe(ORDER_CREATE_RETURN_TO);
+    expect(parseAuthReturnTo(legacyOrderDetail)).toBe(orderDetail);
     expect(parseAuthReturnTo([ORDER_CREATE_RETURN_TO, "https://evil.example"])).toBe(
       ORDER_CREATE_RETURN_TO,
     );
     expect(parseAuthReturnTo("https://evil.example")).toBeNull();
-    expect(parseAuthReturnTo("/(tabs)/orders/new?next=https://evil.example")).toBeNull();
-    expect(parseAuthReturnTo("/(tabs)/orders/not-a-uuid")).toBeNull();
+    expect(parseAuthReturnTo("/orders/new?next=https://evil.example")).toBeNull();
+    expect(parseAuthReturnTo("/orders/not-a-uuid")).toBeNull();
   });
 
   it("consumes a live intent exactly once", () => {

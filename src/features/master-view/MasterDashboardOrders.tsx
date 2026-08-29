@@ -85,7 +85,7 @@ export function MasterDashboardOrders({ userId }: MasterDashboardOrdersProps) {
           <Pressable
             accessibilityRole="button"
             accessibilityLabel={`История откликов, ${historyCount}`}
-            onPress={() => router.push("/(tabs)/orders/responses-history" as never)}
+            onPress={() => router.push("/orders/responses-history" as never)}
             hitSlop={8}
             className="h-8 shrink-0 flex-row items-center gap-1.5 rounded-full border border-hairline bg-canvas px-3 active:opacity-70"
           >
@@ -129,7 +129,7 @@ export function MasterDashboardOrders({ userId }: MasterDashboardOrdersProps) {
               alreadyResponded
               budgetKind={r.order.budget_kind}
               budgetValue={r.order.budget_value}
-              onPress={() => router.push(`/(tabs)/orders/${r.order.id}` as never)}
+              onPress={() => router.push(`/orders/${r.order.id}` as never)}
             />
           ))}
         </Animated.View>

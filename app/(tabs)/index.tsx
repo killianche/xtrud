@@ -11,9 +11,9 @@
  *
  * Auth-логика:
  *   - Анон может всё смотреть.
- *   - Тап "Описать задачу" → /(tabs)/orders/new (на финальной отправке login wall)
- *   - Тап карточки мастера → /(tabs)/master/[id]
- *   - Тап категории → /(tabs)/category/[id]
+ *   - Тап «Создать задание» → /orders/new (на финальной отправке login wall)
+ *   - Тап карточки исполнителя → /master/[id]
+ *   - Тап категории → /category/[id]
  *
  * Master-режим (если active_role === "master") — отдельный экран MasterHomeContent.
  */
@@ -25,13 +25,11 @@ import { useEffect, useRef } from "react";
 import { Animated, FlatList, Pressable, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
-import { HelpCallout } from "@/components/HelpCallout";
 import { Avatar, Card, Skeleton } from "@/components/ui";
 import { useAuthSession } from "@/features/auth/use-auth-session";
 import { useUserRecord } from "@/features/auth/use-user-record";
 import { useVisibleCategories } from "@/features/categories/use-visible-categories";
 import { CinematicHero } from "@/features/home/CinematicHero";
-import { DescribeTaskCallout } from "@/features/home/DescribeTaskCallout";
 import { PromoBannerCarousel } from "@/features/home/PromoBannerCarousel";
 import { QuickServices } from "@/features/home/QuickServices";
 import {
@@ -94,7 +92,6 @@ export default function HomeTab() {
         </View>
       ) : (
         <ClientHome
-          scrollRef={scrollRef}
           onCategoryPress={(id) => router.push(`/category/${id}` as never)}
           onMasterPress={(id) => router.push(`/master/${id}` as never)}
           onDescribeTask={(draft) => {
@@ -119,64 +116,30 @@ export default function HomeTab() {
 // ============================================================================
 
 interface ClientHomeProps {
-  /** Ref внешнего ScrollView — для скролла к блоку «Все категории». */
-  scrollRef: React.RefObject<ScrollView | null>;
   onCategoryPress: (id: string) => void;
   onMasterPress: (id: string) => void;
   /** Принимает черновик описания задачи (если пользователь начал писать в hero-input). */
   onDescribeTask: (draft?: string) => void;
 }
 
-function ClientHome({
-  scrollRef,
-  onCategoryPress,
-  onMasterPress,
-  onDescribeTask,
-}: ClientHomeProps) {
-  // Y-позиция блока AllCategories — для кнопки «Все категории» в QuickServices
-  // (плавный скролл вниз к полному списку). Запоминается через onLayout.
-  const allCategoriesY = useRef(0);
-  const scrollToAllCategories = () => {
-    scrollRef.current?.scrollTo({ y: Math.max(0, allCategoriesY.current - 12), animated: true });
-  };
-
+function ClientHome({ onCategoryPress, onMasterPress, onDescribeTask }: ClientHomeProps) {
   return (
     <View>
-      {/* Cinematic full-bleed фото-hero (Farce-style, 2026-05-21). */}
-      <CinematicHero />
-      {/* Категории — 4 круга (Уборка/Сантехника/Доставка воды/Все категории).
-          Возвращены под hero по фидбэку юзера 2026-05-21. */}
-      <QuickServices onShowAll={scrollToAllCategories} />
+      <CinematicHero onCreateTask={() => onDescribeTask()} />
+      <QuickServices onCreateTask={onDescribeTask} />
       {/* Блок «Часто ищут» (FeaturedRequests) скрыт по фидбэку юзера 2026-05-21.
           Компонент сохранён ниже — вернуть можно раскомментировав строку:
           <FeaturedRequests onCategoryPress={onCategoryPress} /> */}
       {/* Promo-баннеры партнёров (рекламные фото-баннеры 16:9). */}
       <PromoBannerCarousel />
-      {/* Второй кинематографичный фото-hero «Создайте заказ» (edge-to-edge).
-          Divider убран 2026-05-21: у фото-блока своя визуальная граница
-          (скруглённые углы + тёмное фото на canvas), hairline-линия с боковыми
-          отступами прямо перед full-bleed баннером смотрелась обрезанной. */}
-      <DescribeTaskCallout onPress={() => onDescribeTask()} />
       <TopMasters onMasterPress={onMasterPress} />
-      <View
-        onLayout={(e) => {
-          allCategoriesY.current = e.nativeEvent.layout.y;
-        }}
-      >
+      <View>
         <AllCategories onCategoryPress={onCategoryPress} />
       </View>
       {/* HowItWorks скрыт по фидбэку user 2026-05-18 («не нужен»).
           Компонент остался в `src/features/home/HowItWorks.tsx` если
           вернёшь — можно раскомментировать.
           <HowItWorks /> */}
-      {/* Help-плашка под полным списком категорий — «не нашли мастера?» */}
-      <View className="mt-8 mx-5">
-        <HelpCallout
-          title="Не нашли нужного мастера?"
-          body="Сообщите нам, мы поищем подходящих мастеров по республике, бесплатно"
-          onPress={() => onDescribeTask()}
-        />
-      </View>
     </View>
   );
 }
@@ -352,7 +315,7 @@ function TopMasters({ onMasterPress }: { onMasterPress: (id: string) => void }) 
     <View className="mt-10">
       <View className="px-5">
         <AppText weight="semibold" className="text-title-lg text-ink">
-          Лучшие мастера рядом
+          Исполнители рядом
         </AppText>
         <AppText className="mt-1 text-body-sm text-mute">По рейтингу и отзывам</AppText>
       </View>
@@ -428,7 +391,7 @@ function MasterMiniCard({
   availabilityStatus,
   onPress,
 }: MasterMiniCardProps) {
-  const fullName = [firstName, lastName].filter(Boolean).join(" ") || "Мастер";
+  const fullName = [firstName, lastName].filter(Boolean).join(" ") || "Исполнитель";
   // 1-2 категории через · разделитель — больше не помещается в w-180
   const categoriesText = categories.slice(0, 2).join(" · ");
 
@@ -532,7 +495,7 @@ function AllCategories({ onCategoryPress }: { onCategoryPress: (id: string) => v
     <View className="mt-10">
       <View className="px-5">
         <AppText weight="semibold" className="text-title-lg text-ink">
-          Все мастера
+          Категории исполнителей
         </AppText>
       </View>
 
@@ -557,7 +520,7 @@ function AllCategories({ onCategoryPress }: { onCategoryPress: (id: string) => v
       ) : !categories || categories.length === 0 ? (
         <View className="mt-4 px-5">
           <AppText className="text-body-sm text-mute">
-            Категории ещё не настроены. Свяжитесь с поддержкой.
+            Категории услуг ещё не настроены. Свяжитесь с поддержкой.
           </AppText>
         </View>
       ) : isGrid ? (

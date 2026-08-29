@@ -31,7 +31,7 @@ export interface UpdateOrderInput {
   /**
    * Итоговый список URL фото (обложка = индекс 0). Уже включает и оставленные
    * старые фото, и публичные URL только что загруженных новых — экран edit
-   * собирает его перед вызовом (см. app/(tabs)/orders/edit/[id].tsx). Если
+   * собирает его перед вызовом (см. app/(details)/orders/edit/[id].tsx). Если
    * undefined — поле photo_urls в БД не трогаем (back-compat).
    */
   photoUrls?: string[];

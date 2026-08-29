@@ -15,7 +15,7 @@
  * Раньше выбор локации жил в bottom-sheet (`BottomSheet`), а выбор категории —
  * в отдельном route. Два разных механизма = разный стиль окна. По фидбэку
  * владельца оба унифицированы как отдельные route-экраны (см.
- * `app/(tabs)/orders/location-select.tsx`). Bottom-sheet на web давал
+ * `app/(details)/orders/location-select.tsx`). Bottom-sheet на web давал
  * визуальные артефакты — поэтому «оба как страницы». Сам триггер приведён
  * к единому виду с `CategoryPicker` (h-14, rounded-lg, leading-иконка +
  * label + CaretRight «открыть страницу»).
@@ -98,7 +98,7 @@ export function LocationPicker({
         disabled={disabled}
         onPress={() =>
           router.push({
-            pathname: "/(tabs)/orders/location-select",
+            pathname: "/orders/location-select",
             params: { cityId, district },
           } as never)
         }

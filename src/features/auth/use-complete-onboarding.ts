@@ -12,7 +12,8 @@
 // **Client flow с именем (фидбэк user 2026-05-18):**
 //   /auth/phone → /auth/verify → /(onboarding)/role
 //     → если выбрал 'client': push /(onboarding)/client-name → submit { role, firstName }
-//     → если выбрал 'master': push /(onboarding)/master-categories (имя в master-profile)
+//     → если выбрал 'master': push /(onboarding)/master-profile
+//       → master-categories → master-photo
 //
 // firstName опционален в API — мастер-wizard вызывает без него (имя
 // записывается через RPC complete_master_onboarding).

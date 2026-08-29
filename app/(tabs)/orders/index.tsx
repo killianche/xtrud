@@ -112,7 +112,7 @@ function ClientOrdersView({ userId }: ClientOrdersViewProps) {
         rightAction={{
           label: "Создать",
           Icon: Plus,
-          onPress: () => router.push("/(tabs)/orders/new" as never),
+          onPress: () => router.push("/orders/new" as never),
         }}
       />
 
@@ -143,10 +143,10 @@ function ClientOrdersView({ userId }: ClientOrdersViewProps) {
                 title="Активных заказов нет"
                 hint="Опишите задачу — и мастера пришлют отклики с ценой и сроком."
                 ctaLabel="Разместить заказ"
-                onCta={() => router.push("/(tabs)/orders/new" as never)}
+                onCta={() => router.push("/orders/new" as never)}
               />
             }
-            onPress={(id) => router.push(`/(tabs)/orders/${id}` as never)}
+            onPress={(id) => router.push(`/orders/${id}` as never)}
           />
         )}
 
@@ -160,7 +160,7 @@ function ClientOrdersView({ userId }: ClientOrdersViewProps) {
                 hint="Сюда переедут заказы, которые вы закрыли или которые истекли."
               />
             }
-            onPress={(id) => router.push(`/(tabs)/orders/${id}` as never)}
+            onPress={(id) => router.push(`/orders/${id}` as never)}
           />
         )}
       </ScrollView>

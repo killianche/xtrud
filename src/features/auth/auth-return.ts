@@ -10,7 +10,8 @@ declare const authReturnToBrand: unique symbol;
 
 export type AuthReturnTo = string & { readonly [authReturnToBrand]: true };
 
-export const ORDER_CREATE_RETURN_TO = "/(tabs)/orders/new" as AuthReturnTo;
+export const ORDER_CREATE_RETURN_TO = "/orders/new" as AuthReturnTo;
+const LEGACY_ORDER_CREATE_RETURN_TO = "/(tabs)/orders/new";
 export const AUTH_RETURN_TTL_MS = 60 * 60 * 1000;
 
 export interface AuthReturnIntent {
@@ -20,12 +21,13 @@ export interface AuthReturnIntent {
 
 export function parseAuthReturnTo(raw: string | string[] | null | undefined): AuthReturnTo | null {
   const value = Array.isArray(raw) ? raw[0] : raw;
-  if (value === ORDER_CREATE_RETURN_TO) return value as AuthReturnTo;
-  return /^\/\(tabs\)\/orders\/[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
-    value ?? "",
-  )
-    ? ((value ?? null) as AuthReturnTo | null)
-    : null;
+  if (value === ORDER_CREATE_RETURN_TO || value === LEGACY_ORDER_CREATE_RETURN_TO) {
+    return ORDER_CREATE_RETURN_TO;
+  }
+  const match = value?.match(
+    /^\/(?:\(tabs\)\/)?orders\/([0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})$/i,
+  );
+  return match ? (`/orders/${match[1]}` as AuthReturnTo) : null;
 }
 
 export function createAuthReturnIntent(returnTo: AuthReturnTo, now = Date.now()): AuthReturnIntent {

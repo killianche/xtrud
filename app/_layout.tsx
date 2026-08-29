@@ -1,6 +1,6 @@
 import "../global.css";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { Slot, useRouter, useSegments } from "expo-router";
+import { Stack, useRouter, useSegments } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 import { useEffect, useState } from "react";
@@ -9,12 +9,21 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import "react-native-reanimated";
 import { AppErrorBoundary } from "@/components/AppErrorBoundary";
 import { PhoneFrame } from "@/components/PhoneFrame";
+import { needsMasterFinalization } from "@/features/auth/master-onboarding-recovery";
+import { isPublicDetailsRoute } from "@/features/auth/public-route-policy";
 import { useAuthSession } from "@/features/auth/use-auth-session";
+import { useMasterOnboardingStatus } from "@/features/auth/use-master-onboarding-status";
 import { useUserRecord } from "@/features/auth/use-user-record";
 import { useRegisterPushToken } from "@/features/notifications/use-register-push-token";
+import { useAuthReturnUrlStore } from "@/lib/auth-return-url-store";
 import { installGlobalErrorHandlers } from "@/lib/error-reporting";
 import { NavHistoryTracker } from "@/lib/nav-history";
 import { initSentry } from "@/lib/sentry";
+import { useThemeColor } from "@/lib/use-theme-color";
+
+export const unstable_settings = {
+  initialRouteName: "(tabs)",
+};
 
 /*
  * RootLayout — корень приложения.
@@ -78,6 +87,11 @@ function AuthGate({ children }: { children: React.ReactNode }) {
   const { status, session } = useAuthSession();
   const userId = session?.user?.id;
   const { data: userRecord, isLoading: userLoading } = useUserRecord(userId);
+  const {
+    data: masterStatus,
+    isLoading: masterStatusLoading,
+    isError: masterStatusError,
+  } = useMasterOnboardingStatus(userId, userRecord?.is_master === true);
 
   useRegisterPushToken(userId ?? null);
 
@@ -91,6 +105,9 @@ function AuthGate({ children }: { children: React.ReactNode }) {
     const inAuth = group === "(auth)";
     const inOnboarding = group === "(onboarding)";
     const inTabs = group === "(tabs)";
+    // Only explicit marketplace routes are public. New details fail closed;
+    // profile/settings/history/edit/admin never inherit anonymous access.
+    const inPublicDetails = isPublicDetailsRoute(segments);
     // /legal/* — Privacy Policy / Terms of Service. Доступны всем без auth
     // (Apple/Google review проверяет ссылку из App Store description, должна
     // открываться без логина). Пропускаем во всех ветках allowlist'ом.
@@ -105,7 +122,7 @@ function AuthGate({ children }: { children: React.ReactNode }) {
     if (status === "unauthenticated") {
       // Анон в (tabs) / (auth) / legal / reset-password — пропускаем.
       // Анон в (onboarding) — невозможно без сессии, отправляем в (tabs).
-      if (inTabs || inAuth || inLegal || inReset) return;
+      if (inTabs || inAuth || inPublicDetails || inLegal || inReset) return;
       if (inOnboarding) {
         router.replace("/(tabs)");
         return;
@@ -116,7 +133,9 @@ function AuthGate({ children }: { children: React.ReactNode }) {
     }
 
     // ============ ЗАЛОГИНЕН ============
-    if (userLoading) return;
+    if (userLoading || (userRecord?.is_master && (masterStatusLoading || masterStatusError))) {
+      return;
+    }
 
     if (!userRecord) {
       // Сессия есть, но запись users не создалась (триггер handle_new_auth_user
@@ -126,13 +145,32 @@ function AuthGate({ children }: { children: React.ReactNode }) {
     }
 
     const onboardingDone = userRecord.onboarding_completed_at !== null;
+    const mustFinishMasterOnboarding = needsMasterFinalization(userRecord.is_master, masterStatus);
+    const performerOnboardingRequested = useAuthReturnUrlStore
+      .getState()
+      .isPerformerOnboardingRequested();
+
+    // Crash/network recovery: legacy RPC and profile publication are two
+    // commits. A durable draft/pending status keeps the user in the last step
+    // until retry completes instead of silently releasing a broken master.
+    if (mustFinishMasterOnboarding && !inOnboarding) {
+      router.replace("/(onboarding)/master-photo");
+      return;
+    }
 
     // Залогинен в (auth) — отправляем туда куда положено.
     // Экран выбора роли /role удалён (2026-06-06): новый пользователь по
     // умолчанию клиент, сразу на ввод имени → в приложение. Мастером становятся
     // позже через «Хочу стать мастером» в профиле (→ master-categories).
     if (inAuth) {
-      if (!onboardingDone) {
+      if (performerOnboardingRequested) {
+        if (userRecord.is_master) {
+          const destination = useAuthReturnUrlStore.getState().consumeReturnUrl();
+          router.replace((destination ?? "/(tabs)") as never);
+        } else {
+          router.replace("/(onboarding)/master-profile");
+        }
+      } else if (!onboardingDone) {
         router.replace("/(onboarding)/client-name");
       } else {
         router.replace("/(tabs)");
@@ -142,16 +180,31 @@ function AuthGate({ children }: { children: React.ReactNode }) {
 
     // Не онбордил — отправляем на ввод имени, кроме (tabs), legal и reset-password
     // (Privacy/Terms и смена пароля должны открываться на любом этапе).
-    if (!onboardingDone && !inOnboarding && !inTabs && !inLegal && !inReset) {
+    if (!onboardingDone && !inOnboarding && !inTabs && !inPublicDetails && !inLegal && !inReset) {
       router.replace("/(onboarding)/client-name");
     }
     // Иначе — оставляем где есть.
-  }, [status, userLoading, userRecord, segments, router]);
+  }, [
+    status,
+    userLoading,
+    userRecord,
+    masterStatus,
+    masterStatusLoading,
+    masterStatusError,
+    segments,
+    router,
+  ]);
 
-  return <>{children}</>;
+  const unauthenticatedPrivateDetails =
+    status === "unauthenticated" && segments[0] === "(details)" && !isPublicDetailsRoute(segments);
+
+  // Prevent a one-frame render of settings/edit/history while the redirect
+  // effect moves an anonymous cold deep link back to the public tabs.
+  return unauthenticatedPrivateDetails ? null : children;
 }
 
 export default function RootLayout() {
+  const canvasColor = useThemeColor("canvas");
   const [queryClient] = useState(
     () =>
       new QueryClient({
@@ -186,7 +239,20 @@ export default function RootLayout() {
             <AuthGate>
               <NavHistoryTracker />
               <PhoneFrame>
-                <Slot />
+                <Stack
+                  screenOptions={{
+                    headerShown: false,
+                    animation: "slide_from_right",
+                    gestureEnabled: true,
+                    contentStyle: { backgroundColor: canvasColor },
+                  }}
+                >
+                  <Stack.Screen
+                    name="(tabs)"
+                    options={{ animation: "none", gestureEnabled: false }}
+                  />
+                  <Stack.Screen name="(onboarding)" options={{ gestureEnabled: false }} />
+                </Stack>
               </PhoneFrame>
             </AuthGate>
             <StatusBar style="auto" />

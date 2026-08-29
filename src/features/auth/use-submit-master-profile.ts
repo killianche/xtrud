@@ -8,7 +8,7 @@
 //
 // Что делаем тут:
 //   UPDATE users SET first_name, last_name, district (через client + RLS).
-//   UPSERT master_profiles { bio, experience_years, whatsapp_*, status='pending' }.
+//   UPSERT master_profiles { bio, experience_years, whatsapp_* }.
 //   onboarding_completed_at и is_master НЕ трогаем.
 //
 // Race-condition / атомарность: на этом шаге две операции (users + master_profiles).
@@ -17,6 +17,7 @@
 // onboarding_completed_at) → следующая попытка просто переUPSERTит.
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { masterOnboardingDraftKey } from "@/features/auth/use-master-onboarding-draft";
 import { userRecordKey } from "@/features/auth/use-user-record";
 import { supabase } from "@/lib/supabase";
 
@@ -64,7 +65,10 @@ export function useSubmitMasterProfile() {
         .eq("id", input.userId);
       if (userErr) throw userErr;
 
-      // 2. UPSERT master_profiles — bio / experience_years / whatsapp / status.
+      // 2. UPSERT master_profiles — bio / experience_years / whatsapp.
+      //    Статус намеренно не передаём: INSERT получает schema-default draft,
+      //    а повторное сохранение никогда не демотирует существующий active.
+      //    Публикация выполняется только финальным шагом onboarding.
       //    WhatsApp без чекбокса → whatsapp_same_as_phone всегда false (ветка
       //    NOT same в constraint master_profiles_whatsapp_xor). Пусто → NULL.
       const trimmedWa = input.whatsappPhone.trim();
@@ -77,7 +81,6 @@ export function useSubmitMasterProfile() {
           experience_years: input.experienceYears,
           has_tools: false,
           has_transport: false,
-          status: "pending",
           whatsapp_same_as_phone: false,
           whatsapp_phone: whatsappPhone,
         },
@@ -87,6 +90,7 @@ export function useSubmitMasterProfile() {
     },
     onSuccess: (_data, { userId }) => {
       queryClient.invalidateQueries({ queryKey: userRecordKey(userId) });
+      queryClient.invalidateQueries({ queryKey: masterOnboardingDraftKey(userId) });
       queryClient.invalidateQueries({ queryKey: ["master-public", userId] });
     },
   });

@@ -19,10 +19,9 @@ import { useThemeColor } from "@/lib/use-theme-color";
 // Фото — опциональное (skip разрешён), но мотивируем мастера добавить:
 // карточка без фото получает заметно меньше откликов.
 //
-// На этом шаге вызывается finalize_master_onboarding() RPC — ставит
-// is_master=true + onboarding_completed_at=now() → AuthGate редиректит на
-// /(tabs). До этого момента все данные (имя, категории, master_profiles row)
-// уже сохранены на предыдущих шагах.
+// На этом шаге финализируются роль и публикация master_profiles. До этого
+// момента все данные (имя, категории, master_profiles row) уже сохранены на
+// предыдущих шагах, но профиль ещё не считается активным исполнителем.
 
 export default function MasterPhotoScreen() {
   const insets = useSafeAreaInsets();
@@ -44,13 +43,11 @@ export default function MasterPhotoScreen() {
   const onFinalize = async () => {
     try {
       await finalize.mutateAsync();
-      // Sprint 2026-05-20: если был сохранён return-URL (клиент стал мастером
-      // через CTA «Откликнуться» на чужом заказе) — возвращаем его на тот
-      // же заказ. Иначе AuthGate сам редиректит на /(tabs) по onboarding_completed_at.
+      // Если был сохранён return-URL (пользователь стал исполнителем через CTA
+      // на задании) — возвращаем его на тот же экран. Иначе явно выходим из
+      // onboarding в приложение: не полагаемся на побочный редирект AuthGate.
       const returnUrl = useAuthReturnUrlStore.getState().consumeReturnUrl();
-      if (returnUrl) {
-        router.replace(returnUrl as never);
-      }
+      router.replace((returnUrl ?? "/(tabs)") as never);
     } catch (e) {
       const message = e instanceof Error ? e.message : "Неизвестная ошибка сервера.";
       console.error("[MasterPhoto finalize]", e);
@@ -124,7 +121,10 @@ export default function MasterPhotoScreen() {
               !isBusy ? "bg-primary active:opacity-80" : "bg-surface-3"
             }`}
           >
-            <AppText weight="semibold" className="text-button text-on-primary">
+            <AppText
+              weight="semibold"
+              className={`text-button ${isBusy ? "text-muted-soft" : "text-on-primary"}`}
+            >
               {finalize.isPending ? "Завершаем..." : "Завершить"}
             </AppText>
           </Pressable>

@@ -8,6 +8,7 @@ import { AppText } from "@/components/AppText";
 import { OtpInput, type OtpInputHandle } from "@/components/OtpInput";
 import { useSendOtp, useVerifyOtp } from "@/features/auth/use-auth-mutations";
 import { type OtpFormValues, otpFormSchema } from "@/features/auth/validation";
+import { useBackGestureLock } from "@/lib/use-back-gesture-lock";
 import { useSafeBack } from "@/lib/use-safe-back";
 
 const COOLDOWN_SEC = 60;
@@ -72,7 +73,8 @@ export default function VerifyScreen() {
     }
   };
 
-  const isBusy = verifyOtp.isPending;
+  const isBusy = verifyOtp.isPending || sendOtp.isPending;
+  useBackGestureLock(isBusy);
   const error = verifyOtp.error?.message;
 
   return (
@@ -85,9 +87,10 @@ export default function VerifyScreen() {
         <View>
           <Pressable
             accessibilityRole="button"
+            disabled={isBusy}
             onPress={goBack}
             hitSlop={12}
-            className="mb-6 self-start"
+            className={`mb-6 min-h-12 self-start justify-center ${isBusy ? "opacity-30" : ""}`}
           >
             <AppText weight="medium" className="text-body-md text-muted">
               ← Назад

@@ -30,7 +30,8 @@ import { Check, MapPin } from "phosphor-react-native";
 import { useEffect, useState } from "react";
 import { Pressable, ScrollView, View } from "react-native";
 import { AppText } from "@/components/AppText";
-import { BottomSheet, Button } from "@/components/ui";
+import { BottomSheet } from "@/components/ui/BottomSheet";
+import { Button } from "@/components/ui/Button";
 import {
   DISTRICTS,
   EMPTY_LOCATION_FILTER,

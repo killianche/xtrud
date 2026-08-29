@@ -129,7 +129,7 @@ export default function MasterCategoriesScreen() {
       {/* Top bar: в onboarding — progress + кнопка «Отмена», в settings — back. */}
       {isOnboarding ? (
         <View className="py-4">
-          <OnboardingProgress step={1} total={3} onCancel={exitOnboarding} />
+          <OnboardingProgress step={2} total={3} onCancel={exitOnboarding} />
         </View>
       ) : (
         <View className="flex-row items-center px-3 py-2">
@@ -219,7 +219,7 @@ export default function MasterCategoriesScreen() {
                     isDisabled={!selected.has(cat.id) && reachedLimit}
                     isBusy={isBusy}
                     onPress={() => toggleCategory(cat.id)}
-                    selectedIconColor={tc["on-primary"]}
+                    selectedIconColor={tc.accent}
                   />
                 ))}
               </View>
@@ -248,7 +248,7 @@ export default function MasterCategoriesScreen() {
                       isDisabled={!selected.has(cat.id) && reachedLimit}
                       isBusy={isBusy}
                       onPress={() => toggleCategory(cat.id)}
-                      selectedIconColor={tc["on-primary"]}
+                      selectedIconColor={tc.accent}
                     />
                   ))}
                 </View>
@@ -281,7 +281,14 @@ export default function MasterCategoriesScreen() {
               : "bg-surface-3"
           }`}
         >
-          <AppText weight="semibold" className="text-button text-on-primary">
+          <AppText
+            weight="semibold"
+            className={`text-button ${
+              !isBusy && userId && !initialLoading && !(isOnboarding && selected.size === 0)
+                ? "text-on-primary"
+                : "text-muted-soft"
+            }`}
+          >
             {isBusy ? "Сохраняем..." : isOnboarding ? "Продолжить" : "Сохранить"}
           </AppText>
         </Pressable>
@@ -311,13 +318,13 @@ function CategoryChip({
 }: CategoryChipProps) {
   return (
     <Pressable
-      accessibilityRole="button"
-      accessibilityState={{ selected: isSelected, disabled: isDisabled || isBusy }}
+      accessibilityRole="checkbox"
+      accessibilityState={{ checked: isSelected, disabled: isDisabled || isBusy }}
       disabled={isDisabled || isBusy}
       onPress={onPress}
-      className={`flex-row items-center gap-1.5 rounded-pill border px-3 py-2 ${
+      className={`h-11 flex-row items-center gap-1.5 rounded-pill border px-3 ${
         isSelected
-          ? "border-ink bg-ink"
+          ? "border-accent bg-accent-soft"
           : isDisabled
             ? "border-hairline bg-surface-2 opacity-50"
             : "border-hairline bg-canvas active:opacity-70"
@@ -326,7 +333,7 @@ function CategoryChip({
       {isSelected ? <Check size={14} weight="fill" color={selectedIconColor} /> : null}
       <AppText
         weight={isSelected ? "semibold" : "medium"}
-        className={`text-body-sm ${isSelected ? "text-on-primary" : "text-ink"}`}
+        className={`text-body-sm ${isSelected ? "text-accent" : "text-ink"}`}
       >
         {cat.name_ru}
       </AppText>

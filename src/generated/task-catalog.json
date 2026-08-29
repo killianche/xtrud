@@ -1,0 +1,4103 @@
+{
+  "schema_version": 1,
+  "categories": [
+    {
+      "id": "plumbing",
+      "l1_id": "construction",
+      "name_ru": "Сантехника",
+      "icon": "Droplet",
+      "sort_order": 10,
+      "is_active": true,
+      "is_visible": true,
+      "is_featured": true
+    },
+    {
+      "id": "water-sewer",
+      "l1_id": "construction",
+      "name_ru": "Водоснабжение и канализация",
+      "icon": "Droplets",
+      "sort_order": 15,
+      "is_active": true,
+      "is_visible": true,
+      "is_featured": false
+    },
+    {
+      "id": "electrical",
+      "l1_id": "construction",
+      "name_ru": "Электрика",
+      "icon": "Zap",
+      "sort_order": 30,
+      "is_active": true,
+      "is_visible": true,
+      "is_featured": false
+    },
+    {
+      "id": "renovation",
+      "l1_id": "construction",
+      "name_ru": "Ремонт и отделка",
+      "icon": "Hammer",
+      "sort_order": 40,
+      "is_active": true,
+      "is_visible": true,
+      "is_featured": true
+    },
+    {
+      "id": "handyman",
+      "l1_id": "construction",
+      "name_ru": "Мастер на час",
+      "icon": "Wrench",
+      "sort_order": 50,
+      "is_active": true,
+      "is_visible": true,
+      "is_featured": false
+    },
+    {
+      "id": "cleaning-post-renovation",
+      "l1_id": "construction",
+      "name_ru": "Уборка после ремонта",
+      "icon": "Sparkles",
+      "sort_order": 60,
+      "is_active": true,
+      "is_visible": true,
+      "is_featured": false
+    },
+    {
+      "id": "windows",
+      "l1_id": "construction",
+      "name_ru": "Окна и остекление",
+      "icon": "RectangleHorizontal",
+      "sort_order": 70,
+      "is_active": true,
+      "is_visible": true,
+      "is_featured": false
+    },
+    {
+      "id": "doors",
+      "l1_id": "construction",
+      "name_ru": "Двери",
+      "icon": "DoorOpen",
+      "sort_order": 80,
+      "is_active": true,
+      "is_visible": true,
+      "is_featured": false
+    },
+    {
+      "id": "locks-security",
+      "l1_id": "construction",
+      "name_ru": "Замки и безопасность",
+      "icon": "Lock",
+      "sort_order": 90,
+      "is_active": true,
+      "is_visible": true,
+      "is_featured": false
+    },
+    {
+      "id": "painting",
+      "l1_id": "construction",
+      "name_ru": "Штукатурка и покраска",
+      "icon": "Paintbrush",
+      "sort_order": 100,
+      "is_active": true,
+      "is_visible": true,
+      "is_featured": false
+    },
+    {
+      "id": "wallpaper",
+      "l1_id": "construction",
+      "name_ru": "Обои",
+      "icon": "Paintbrush",
+      "sort_order": 105,
+      "is_active": true,
+      "is_visible": true,
+      "is_featured": false
+    },
+    {
+      "id": "drywall",
+      "l1_id": "construction",
+      "name_ru": "Гипсокартон",
+      "icon": "Layers",
+      "sort_order": 120,
+      "is_active": true,
+      "is_visible": true,
+      "is_featured": false
+    },
+    {
+      "id": "tiling",
+      "l1_id": "construction",
+      "name_ru": "Плитка и мозаика",
+      "icon": "Grid3x3",
+      "sort_order": 130,
+      "is_active": true,
+      "is_visible": true,
+      "is_featured": false
+    },
+    {
+      "id": "floors",
+      "l1_id": "construction",
+      "name_ru": "Полы и стяжка",
+      "icon": "LayoutGrid",
+      "sort_order": 140,
+      "is_active": true,
+      "is_visible": true,
+      "is_featured": false
+    },
+    {
+      "id": "ceilings",
+      "l1_id": "construction",
+      "name_ru": "Потолки",
+      "icon": "Square",
+      "sort_order": 150,
+      "is_active": true,
+      "is_visible": true,
+      "is_featured": false
+    },
+    {
+      "id": "tension-ceilings",
+      "l1_id": "construction",
+      "name_ru": "Натяжные потолки",
+      "icon": "CloudFog",
+      "sort_order": 160,
+      "is_active": true,
+      "is_visible": true,
+      "is_featured": false
+    },
+    {
+      "id": "climate",
+      "l1_id": "construction",
+      "name_ru": "Отопление",
+      "icon": "Thermometer",
+      "sort_order": 170,
+      "is_active": true,
+      "is_visible": true,
+      "is_featured": false
+    },
+    {
+      "id": "insulation",
+      "l1_id": "construction",
+      "name_ru": "Утепление и изоляция",
+      "icon": "Snowflake",
+      "sort_order": 180,
+      "is_active": true,
+      "is_visible": true,
+      "is_featured": false
+    },
+    {
+      "id": "roofing",
+      "l1_id": "construction",
+      "name_ru": "Кровля",
+      "icon": "Home",
+      "sort_order": 190,
+      "is_active": true,
+      "is_visible": true,
+      "is_featured": false
+    },
+    {
+      "id": "facade",
+      "l1_id": "construction",
+      "name_ru": "Фасадные работы",
+      "icon": "Building2",
+      "sort_order": 200,
+      "is_active": true,
+      "is_visible": true,
+      "is_featured": false
+    },
+    {
+      "id": "concrete",
+      "l1_id": "construction",
+      "name_ru": "Бетонные работы",
+      "icon": "Construction",
+      "sort_order": 210,
+      "is_active": true,
+      "is_visible": true,
+      "is_featured": false
+    },
+    {
+      "id": "masonry",
+      "l1_id": "construction",
+      "name_ru": "Каменщики и кладка",
+      "icon": "Rows3",
+      "sort_order": 220,
+      "is_active": true,
+      "is_visible": true,
+      "is_featured": false
+    },
+    {
+      "id": "welding",
+      "l1_id": "construction",
+      "name_ru": "Сварочные работы",
+      "icon": "Flame",
+      "sort_order": 230,
+      "is_active": true,
+      "is_visible": true,
+      "is_featured": false
+    },
+    {
+      "id": "general-construction",
+      "l1_id": "construction",
+      "name_ru": "Строительство",
+      "icon": "HardHat",
+      "sort_order": 240,
+      "is_active": true,
+      "is_visible": true,
+      "is_featured": false
+    },
+    {
+      "id": "drilling-wells",
+      "l1_id": "construction",
+      "name_ru": "Бурение скважин и колодцы",
+      "icon": "Drill",
+      "sort_order": 250,
+      "is_active": true,
+      "is_visible": true,
+      "is_featured": false
+    },
+    {
+      "id": "fences-gates",
+      "l1_id": "construction",
+      "name_ru": "Заборы и ворота",
+      "icon": "Fence",
+      "sort_order": 260,
+      "is_active": true,
+      "is_visible": true,
+      "is_featured": false
+    },
+    {
+      "id": "landscape",
+      "l1_id": "construction",
+      "name_ru": "Благоустройство и ландшафт",
+      "icon": "Trees",
+      "sort_order": 270,
+      "is_active": true,
+      "is_visible": true,
+      "is_featured": false
+    },
+    {
+      "id": "baths-pools",
+      "l1_id": "construction",
+      "name_ru": "Бани, бассейны и хамамы",
+      "icon": "Waves",
+      "sort_order": 280,
+      "is_active": true,
+      "is_visible": true,
+      "is_featured": false
+    },
+    {
+      "id": "furniture",
+      "l1_id": "construction",
+      "name_ru": "Мебель и сборка",
+      "icon": "Armchair",
+      "sort_order": 290,
+      "is_active": true,
+      "is_visible": true,
+      "is_featured": false
+    },
+    {
+      "id": "curtains-blinds",
+      "l1_id": "construction",
+      "name_ru": "Шторы и жалюзи",
+      "icon": "Blinds",
+      "sort_order": 300,
+      "is_active": true,
+      "is_visible": true,
+      "is_featured": false
+    },
+    {
+      "id": "interior-design",
+      "l1_id": "construction",
+      "name_ru": "Дизайн интерьера",
+      "icon": "PencilRuler",
+      "sort_order": 310,
+      "is_active": true,
+      "is_visible": true,
+      "is_featured": false
+    },
+    {
+      "id": "demolition",
+      "l1_id": "construction",
+      "name_ru": "Демонтаж",
+      "icon": "Pickaxe",
+      "sort_order": 320,
+      "is_active": true,
+      "is_visible": true,
+      "is_featured": false
+    },
+    {
+      "id": "movers",
+      "l1_id": "construction",
+      "name_ru": "Грузчики и переезды",
+      "icon": "Truck",
+      "sort_order": 330,
+      "is_active": true,
+      "is_visible": true,
+      "is_featured": false
+    },
+    {
+      "id": "appliance-repair",
+      "l1_id": "construction",
+      "name_ru": "Ремонт бытовой техники",
+      "icon": "Refrigerator",
+      "sort_order": 340,
+      "is_active": true,
+      "is_visible": true,
+      "is_featured": false
+    },
+    {
+      "id": "satellite-tv",
+      "l1_id": "construction",
+      "name_ru": "Спутниковое ТВ и антенны",
+      "icon": "Antenna",
+      "sort_order": 360,
+      "is_active": true,
+      "is_visible": true,
+      "is_featured": false
+    },
+    {
+      "id": "security-systems",
+      "l1_id": "construction",
+      "name_ru": "Видеонаблюдение и охрана",
+      "icon": "Camera",
+      "sort_order": 370,
+      "is_active": true,
+      "is_visible": true,
+      "is_featured": false
+    },
+    {
+      "id": "other",
+      "l1_id": "construction",
+      "name_ru": "Прочее",
+      "icon": "MoreHorizontal",
+      "sort_order": 9999,
+      "is_active": true,
+      "is_visible": true,
+      "is_featured": false
+    }
+  ],
+  "services": [
+    {
+      "id": "appl-washing",
+      "l2_id": "appliance-repair",
+      "name_ru": "Стиральная машина",
+      "sort_order": 10,
+      "is_active": true
+    },
+    {
+      "id": "appl-fridge",
+      "l2_id": "appliance-repair",
+      "name_ru": "Холодильник",
+      "sort_order": 20,
+      "is_active": true
+    },
+    {
+      "id": "appl-dishwasher",
+      "l2_id": "appliance-repair",
+      "name_ru": "Посудомоечная машина",
+      "sort_order": 30,
+      "is_active": true
+    },
+    {
+      "id": "appl-stove",
+      "l2_id": "appliance-repair",
+      "name_ru": "Плита (газовая/электро)",
+      "sort_order": 40,
+      "is_active": true
+    },
+    {
+      "id": "appl-microwave",
+      "l2_id": "appliance-repair",
+      "name_ru": "Микроволновая печь",
+      "sort_order": 50,
+      "is_active": true
+    },
+    {
+      "id": "appl-tv",
+      "l2_id": "appliance-repair",
+      "name_ru": "Телевизор",
+      "sort_order": 60,
+      "is_active": true
+    },
+    {
+      "id": "appl-ac",
+      "l2_id": "appliance-repair",
+      "name_ru": "Кондиционер",
+      "sort_order": 70,
+      "is_active": true
+    },
+    {
+      "id": "appl-small",
+      "l2_id": "appliance-repair",
+      "name_ru": "Мелкая бытовая техника",
+      "sort_order": 80,
+      "is_active": true
+    },
+    {
+      "id": "ac-install",
+      "l2_id": "appliance-repair",
+      "name_ru": "Установка кондиционера",
+      "sort_order": 90,
+      "is_active": true
+    },
+    {
+      "id": "ac-service",
+      "l2_id": "appliance-repair",
+      "name_ru": "Чистка / заправка кондиционера",
+      "sort_order": 100,
+      "is_active": true
+    },
+    {
+      "id": "ac-uninstall",
+      "l2_id": "appliance-repair",
+      "name_ru": "Демонтаж кондиционера",
+      "sort_order": 110,
+      "is_active": true
+    },
+    {
+      "id": "bath-turnkey",
+      "l2_id": "baths-pools",
+      "name_ru": "Баня под ключ",
+      "sort_order": 10,
+      "is_active": true
+    },
+    {
+      "id": "bath-interior",
+      "l2_id": "baths-pools",
+      "name_ru": "Внутренняя отделка бани",
+      "sort_order": 20,
+      "is_active": true
+    },
+    {
+      "id": "bath-stove",
+      "l2_id": "baths-pools",
+      "name_ru": "Установка банной печи",
+      "sort_order": 30,
+      "is_active": true
+    },
+    {
+      "id": "hammam",
+      "l2_id": "baths-pools",
+      "name_ru": "Турецкая баня (хамам)",
+      "sort_order": 40,
+      "is_active": true
+    },
+    {
+      "id": "pool-build",
+      "l2_id": "baths-pools",
+      "name_ru": "Строительство бассейна",
+      "sort_order": 50,
+      "is_active": true
+    },
+    {
+      "id": "pool-interior",
+      "l2_id": "baths-pools",
+      "name_ru": "Отделка бассейна",
+      "sort_order": 60,
+      "is_active": true
+    },
+    {
+      "id": "pool-service",
+      "l2_id": "baths-pools",
+      "name_ru": "Обслуживание / чистка",
+      "sort_order": 70,
+      "is_active": true
+    },
+    {
+      "id": "pool-waterproof",
+      "l2_id": "baths-pools",
+      "name_ru": "Гидроизоляция бассейна",
+      "sort_order": 80,
+      "is_active": true
+    },
+    {
+      "id": "ceiling-armstrong",
+      "l2_id": "ceilings",
+      "name_ru": "Подвесной (Армстронг)",
+      "sort_order": 10,
+      "is_active": true
+    },
+    {
+      "id": "ceiling-rack",
+      "l2_id": "ceilings",
+      "name_ru": "Реечный потолок",
+      "sort_order": 20,
+      "is_active": true
+    },
+    {
+      "id": "ceiling-cassette",
+      "l2_id": "ceilings",
+      "name_ru": "Кассетный потолок",
+      "sort_order": 30,
+      "is_active": true
+    },
+    {
+      "id": "ceiling-wood",
+      "l2_id": "ceilings",
+      "name_ru": "Деревянный потолок",
+      "sort_order": 40,
+      "is_active": true
+    },
+    {
+      "id": "ceiling-paint",
+      "l2_id": "ceilings",
+      "name_ru": "Покраска / побелка потолка",
+      "sort_order": 50,
+      "is_active": true
+    },
+    {
+      "id": "ceiling-drywall",
+      "l2_id": "ceilings",
+      "name_ru": "Гипсокартонный потолок",
+      "sort_order": 60,
+      "is_active": true
+    },
+    {
+      "id": "clean-after-capital",
+      "l2_id": "cleaning-post-renovation",
+      "name_ru": "Уборка после капитального ремонта",
+      "sort_order": 10,
+      "is_active": true
+    },
+    {
+      "id": "clean-after-cosm",
+      "l2_id": "cleaning-post-renovation",
+      "name_ru": "Уборка после косметического",
+      "sort_order": 20,
+      "is_active": true
+    },
+    {
+      "id": "clean-residue",
+      "l2_id": "cleaning-post-renovation",
+      "name_ru": "Удаление цемента и краски",
+      "sort_order": 30,
+      "is_active": true
+    },
+    {
+      "id": "clean-windows-post",
+      "l2_id": "cleaning-post-renovation",
+      "name_ru": "Мытьё окон после ремонта",
+      "sort_order": 40,
+      "is_active": true
+    },
+    {
+      "id": "clean-dust",
+      "l2_id": "cleaning-post-renovation",
+      "name_ru": "Удаление строительной пыли",
+      "sort_order": 50,
+      "is_active": true
+    },
+    {
+      "id": "clean-pre-move",
+      "l2_id": "cleaning-post-renovation",
+      "name_ru": "Подготовка к заселению",
+      "sort_order": 60,
+      "is_active": true
+    },
+    {
+      "id": "ventilation",
+      "l2_id": "climate",
+      "name_ru": "Приточно-вытяжная вентиляция",
+      "sort_order": 40,
+      "is_active": true
+    },
+    {
+      "id": "radiator-install",
+      "l2_id": "climate",
+      "name_ru": "Монтаж радиаторов",
+      "sort_order": 50,
+      "is_active": true
+    },
+    {
+      "id": "warm-baseboard",
+      "l2_id": "climate",
+      "name_ru": "Тёплый плинтус",
+      "sort_order": 60,
+      "is_active": true
+    },
+    {
+      "id": "gas-boiler",
+      "l2_id": "climate",
+      "name_ru": "Газовый котёл (с лицензией)",
+      "sort_order": 70,
+      "is_active": true
+    },
+    {
+      "id": "electric-boiler",
+      "l2_id": "climate",
+      "name_ru": "Электрокотёл",
+      "sort_order": 80,
+      "is_active": true
+    },
+    {
+      "id": "heating-flush",
+      "l2_id": "climate",
+      "name_ru": "Промывка системы отопления",
+      "sort_order": 90,
+      "is_active": true
+    },
+    {
+      "id": "foundation",
+      "l2_id": "concrete",
+      "name_ru": "Заливка фундамента",
+      "sort_order": 10,
+      "is_active": true
+    },
+    {
+      "id": "monolith-overlap",
+      "l2_id": "concrete",
+      "name_ru": "Монолитные перекрытия",
+      "sort_order": 20,
+      "is_active": true
+    },
+    {
+      "id": "concrete-stairs",
+      "l2_id": "concrete",
+      "name_ru": "Бетонные лестницы",
+      "sort_order": 30,
+      "is_active": true
+    },
+    {
+      "id": "concrete-screed",
+      "l2_id": "concrete",
+      "name_ru": "Стяжка / черновой пол",
+      "sort_order": 40,
+      "is_active": true
+    },
+    {
+      "id": "rebar",
+      "l2_id": "concrete",
+      "name_ru": "Армирование",
+      "sort_order": 50,
+      "is_active": true
+    },
+    {
+      "id": "formwork",
+      "l2_id": "concrete",
+      "name_ru": "Опалубка",
+      "sort_order": 60,
+      "is_active": true
+    },
+    {
+      "id": "concrete-decor",
+      "l2_id": "concrete",
+      "name_ru": "Декоративный бетон",
+      "sort_order": 70,
+      "is_active": true
+    },
+    {
+      "id": "diamond-cut",
+      "l2_id": "concrete",
+      "name_ru": "Резка / алмазное бурение",
+      "sort_order": 80,
+      "is_active": true
+    },
+    {
+      "id": "cornice-install",
+      "l2_id": "curtains-blinds",
+      "name_ru": "Установка карнизов",
+      "sort_order": 10,
+      "is_active": true
+    },
+    {
+      "id": "curtain-sewing",
+      "l2_id": "curtains-blinds",
+      "name_ru": "Пошив штор на заказ",
+      "sort_order": 20,
+      "is_active": true
+    },
+    {
+      "id": "roman-blinds",
+      "l2_id": "curtains-blinds",
+      "name_ru": "Римские / рулонные шторы",
+      "sort_order": 30,
+      "is_active": true
+    },
+    {
+      "id": "blinds-horizontal",
+      "l2_id": "curtains-blinds",
+      "name_ru": "Горизонтальные жалюзи",
+      "sort_order": 40,
+      "is_active": true
+    },
+    {
+      "id": "blinds-vertical",
+      "l2_id": "curtains-blinds",
+      "name_ru": "Вертикальные жалюзи",
+      "sort_order": 50,
+      "is_active": true
+    },
+    {
+      "id": "blinds-day-night",
+      "l2_id": "curtains-blinds",
+      "name_ru": "Плиссе / день-ночь",
+      "sort_order": 60,
+      "is_active": true
+    },
+    {
+      "id": "window-tint",
+      "l2_id": "curtains-blinds",
+      "name_ru": "Тонировка / витражная плёнка",
+      "sort_order": 70,
+      "is_active": true
+    },
+    {
+      "id": "demo-walls",
+      "l2_id": "demolition",
+      "name_ru": "Демонтаж стен / перегородок",
+      "sort_order": 10,
+      "is_active": true
+    },
+    {
+      "id": "demo-tile",
+      "l2_id": "demolition",
+      "name_ru": "Демонтаж плитки",
+      "sort_order": 20,
+      "is_active": true
+    },
+    {
+      "id": "demo-floor",
+      "l2_id": "demolition",
+      "name_ru": "Демонтаж напольных покрытий",
+      "sort_order": 30,
+      "is_active": true
+    },
+    {
+      "id": "demo-wallpaper",
+      "l2_id": "demolition",
+      "name_ru": "Демонтаж обоев / штукатурки",
+      "sort_order": 40,
+      "is_active": true
+    },
+    {
+      "id": "demo-windows-doors",
+      "l2_id": "demolition",
+      "name_ru": "Демонтаж окон / дверей",
+      "sort_order": 50,
+      "is_active": true
+    },
+    {
+      "id": "demo-plumbing",
+      "l2_id": "demolition",
+      "name_ru": "Демонтаж сантехники",
+      "sort_order": 60,
+      "is_active": true
+    },
+    {
+      "id": "demo-ceilings",
+      "l2_id": "demolition",
+      "name_ru": "Демонтаж потолков",
+      "sort_order": 70,
+      "is_active": true
+    },
+    {
+      "id": "demo-buildings",
+      "l2_id": "demolition",
+      "name_ru": "Снос построек / домов",
+      "sort_order": 80,
+      "is_active": true
+    },
+    {
+      "id": "debris-removal",
+      "l2_id": "demolition",
+      "name_ru": "Вывоз строительного мусора",
+      "sort_order": 90,
+      "is_active": true
+    },
+    {
+      "id": "door-entry",
+      "l2_id": "doors",
+      "name_ru": "Установка входной двери",
+      "sort_order": 10,
+      "is_active": true
+    },
+    {
+      "id": "door-interior",
+      "l2_id": "doors",
+      "name_ru": "Установка межкомнатной двери",
+      "sort_order": 20,
+      "is_active": true
+    },
+    {
+      "id": "door-restore",
+      "l2_id": "doors",
+      "name_ru": "Реставрация / ремонт двери",
+      "sort_order": 30,
+      "is_active": true
+    },
+    {
+      "id": "door-sliding",
+      "l2_id": "doors",
+      "name_ru": "Раздвижные двери",
+      "sort_order": 40,
+      "is_active": true
+    },
+    {
+      "id": "door-closer",
+      "l2_id": "doors",
+      "name_ru": "Установка доводчика",
+      "sort_order": 50,
+      "is_active": true
+    },
+    {
+      "id": "door-frame",
+      "l2_id": "doors",
+      "name_ru": "Замена дверной коробки",
+      "sort_order": 60,
+      "is_active": true
+    },
+    {
+      "id": "door-leaf",
+      "l2_id": "doors",
+      "name_ru": "Замена дверного полотна",
+      "sort_order": 70,
+      "is_active": true
+    },
+    {
+      "id": "well-drill",
+      "l2_id": "drilling-wells",
+      "name_ru": "Бурение скважины на воду",
+      "sort_order": 10,
+      "is_active": true
+    },
+    {
+      "id": "well-repair",
+      "l2_id": "drilling-wells",
+      "name_ru": "Капитальный ремонт скважины",
+      "sort_order": 20,
+      "is_active": true
+    },
+    {
+      "id": "caisson-install",
+      "l2_id": "drilling-wells",
+      "name_ru": "Монтаж кессона",
+      "sort_order": 30,
+      "is_active": true
+    },
+    {
+      "id": "well-house-connect",
+      "l2_id": "drilling-wells",
+      "name_ru": "Подключение скважины к дому",
+      "sort_order": 40,
+      "is_active": true
+    },
+    {
+      "id": "well-dig",
+      "l2_id": "drilling-wells",
+      "name_ru": "Копка колодца",
+      "sort_order": 50,
+      "is_active": true
+    },
+    {
+      "id": "well-deepen",
+      "l2_id": "drilling-wells",
+      "name_ru": "Чистка / углубление колодца",
+      "sort_order": 60,
+      "is_active": true
+    },
+    {
+      "id": "pump-select",
+      "l2_id": "drilling-wells",
+      "name_ru": "Подбор и установка насоса",
+      "sort_order": 70,
+      "is_active": true
+    },
+    {
+      "id": "water-analysis",
+      "l2_id": "drilling-wells",
+      "name_ru": "Анализ воды",
+      "sort_order": 80,
+      "is_active": true
+    },
+    {
+      "id": "drywall-partition",
+      "l2_id": "drywall",
+      "name_ru": "Перегородки из гипсокартона",
+      "sort_order": 10,
+      "is_active": true
+    },
+    {
+      "id": "drywall-ceiling-1",
+      "l2_id": "drywall",
+      "name_ru": "Потолок одноуровневый",
+      "sort_order": 20,
+      "is_active": true
+    },
+    {
+      "id": "drywall-ceiling-n",
+      "l2_id": "drywall",
+      "name_ru": "Потолок многоуровневый",
+      "sort_order": 30,
+      "is_active": true
+    },
+    {
+      "id": "drywall-box",
+      "l2_id": "drywall",
+      "name_ru": "Короба из гипсокартона",
+      "sort_order": 40,
+      "is_active": true
+    },
+    {
+      "id": "drywall-arch",
+      "l2_id": "drywall",
+      "name_ru": "Арки и ниши",
+      "sort_order": 50,
+      "is_active": true
+    },
+    {
+      "id": "drywall-walls",
+      "l2_id": "drywall",
+      "name_ru": "Обшивка стен гипсокартоном",
+      "sort_order": 60,
+      "is_active": true
+    },
+    {
+      "id": "drywall-decor",
+      "l2_id": "drywall",
+      "name_ru": "Декоративные элементы",
+      "sort_order": 70,
+      "is_active": true
+    },
+    {
+      "id": "outlet-replace",
+      "l2_id": "electrical",
+      "name_ru": "Замена розетки / выключателя",
+      "sort_order": 10,
+      "is_active": true
+    },
+    {
+      "id": "outlet-install",
+      "l2_id": "electrical",
+      "name_ru": "Установка новой розетки",
+      "sort_order": 20,
+      "is_active": true
+    },
+    {
+      "id": "wiring-apt",
+      "l2_id": "electrical",
+      "name_ru": "Электропроводка в квартире",
+      "sort_order": 30,
+      "is_active": true
+    },
+    {
+      "id": "wiring-house",
+      "l2_id": "electrical",
+      "name_ru": "Электропроводка в доме",
+      "sort_order": 40,
+      "is_active": true
+    },
+    {
+      "id": "panel-install",
+      "l2_id": "electrical",
+      "name_ru": "Сборка / установка электрощита",
+      "sort_order": 50,
+      "is_active": true
+    },
+    {
+      "id": "lighting-install",
+      "l2_id": "electrical",
+      "name_ru": "Установка люстры / светильника",
+      "sort_order": 60,
+      "is_active": true
+    },
+    {
+      "id": "led-strip",
+      "l2_id": "electrical",
+      "name_ru": "Монтаж LED-подсветки",
+      "sort_order": 70,
+      "is_active": true
+    },
+    {
+      "id": "troubleshoot",
+      "l2_id": "electrical",
+      "name_ru": "Поиск и устранение неисправности",
+      "sort_order": 80,
+      "is_active": true
+    },
+    {
+      "id": "grounding",
+      "l2_id": "electrical",
+      "name_ru": "Заземление",
+      "sort_order": 90,
+      "is_active": true
+    },
+    {
+      "id": "rcd-install",
+      "l2_id": "electrical",
+      "name_ru": "Установка УЗО / автоматов",
+      "sort_order": 100,
+      "is_active": true
+    },
+    {
+      "id": "facade-plaster",
+      "l2_id": "facade",
+      "name_ru": "Штукатурка фасада",
+      "sort_order": 10,
+      "is_active": true
+    },
+    {
+      "id": "facade-paint",
+      "l2_id": "facade",
+      "name_ru": "Покраска фасада",
+      "sort_order": 20,
+      "is_active": true
+    },
+    {
+      "id": "siding",
+      "l2_id": "facade",
+      "name_ru": "Сайдинг",
+      "sort_order": 30,
+      "is_active": true
+    },
+    {
+      "id": "facade-stone",
+      "l2_id": "facade",
+      "name_ru": "Облицовка камнем",
+      "sort_order": 40,
+      "is_active": true
+    },
+    {
+      "id": "facade-brick",
+      "l2_id": "facade",
+      "name_ru": "Облицовка кирпичом",
+      "sort_order": 50,
+      "is_active": true
+    },
+    {
+      "id": "ventilated-facade",
+      "l2_id": "facade",
+      "name_ru": "Вентилируемый фасад",
+      "sort_order": 60,
+      "is_active": true
+    },
+    {
+      "id": "facade-insulation",
+      "l2_id": "facade",
+      "name_ru": "Утепление фасада",
+      "sort_order": 70,
+      "is_active": true
+    },
+    {
+      "id": "fence-profnastil",
+      "l2_id": "fences-gates",
+      "name_ru": "Забор из профнастила",
+      "sort_order": 10,
+      "is_active": true
+    },
+    {
+      "id": "fence-mesh",
+      "l2_id": "fences-gates",
+      "name_ru": "Забор из сетки-рабицы",
+      "sort_order": 20,
+      "is_active": true
+    },
+    {
+      "id": "fence-euro",
+      "l2_id": "fences-gates",
+      "name_ru": "Евроштакетник",
+      "sort_order": 30,
+      "is_active": true
+    },
+    {
+      "id": "fence-brick",
+      "l2_id": "fences-gates",
+      "name_ru": "Кирпичный забор",
+      "sort_order": 40,
+      "is_active": true
+    },
+    {
+      "id": "fence-forged",
+      "l2_id": "fences-gates",
+      "name_ru": "Кованый забор",
+      "sort_order": 50,
+      "is_active": true
+    },
+    {
+      "id": "gates-swing",
+      "l2_id": "fences-gates",
+      "name_ru": "Распашные ворота",
+      "sort_order": 60,
+      "is_active": true
+    },
+    {
+      "id": "gates-sliding",
+      "l2_id": "fences-gates",
+      "name_ru": "Откатные ворота",
+      "sort_order": 70,
+      "is_active": true
+    },
+    {
+      "id": "gates-auto",
+      "l2_id": "fences-gates",
+      "name_ru": "Автоматика для ворот",
+      "sort_order": 80,
+      "is_active": true
+    },
+    {
+      "id": "wickets",
+      "l2_id": "fences-gates",
+      "name_ru": "Калитки",
+      "sort_order": 90,
+      "is_active": true
+    },
+    {
+      "id": "screed-cement",
+      "l2_id": "floors",
+      "name_ru": "Стяжка цементная",
+      "sort_order": 10,
+      "is_active": true
+    },
+    {
+      "id": "screed-self-level",
+      "l2_id": "floors",
+      "name_ru": "Самовыравнивающаяся стяжка",
+      "sort_order": 20,
+      "is_active": true
+    },
+    {
+      "id": "screed-dry",
+      "l2_id": "floors",
+      "name_ru": "Сухая стяжка (Кнауф)",
+      "sort_order": 30,
+      "is_active": true
+    },
+    {
+      "id": "laminate",
+      "l2_id": "floors",
+      "name_ru": "Укладка ламината",
+      "sort_order": 40,
+      "is_active": true
+    },
+    {
+      "id": "parquet",
+      "l2_id": "floors",
+      "name_ru": "Укладка паркетной доски",
+      "sort_order": 50,
+      "is_active": true
+    },
+    {
+      "id": "linoleum",
+      "l2_id": "floors",
+      "name_ru": "Укладка линолеума",
+      "sort_order": 60,
+      "is_active": true
+    },
+    {
+      "id": "quartz-vinyl",
+      "l2_id": "floors",
+      "name_ru": "Кварц-винил / SPC",
+      "sort_order": 70,
+      "is_active": true
+    },
+    {
+      "id": "warm-floor-elec",
+      "l2_id": "floors",
+      "name_ru": "Тёплый пол электрический",
+      "sort_order": 80,
+      "is_active": true
+    },
+    {
+      "id": "warm-floor-water",
+      "l2_id": "floors",
+      "name_ru": "Тёплый пол водяной",
+      "sort_order": 90,
+      "is_active": true
+    },
+    {
+      "id": "floor-sanding",
+      "l2_id": "floors",
+      "name_ru": "Циклёвка / шлифовка пола",
+      "sort_order": 100,
+      "is_active": true
+    },
+    {
+      "id": "furniture-assembly",
+      "l2_id": "furniture",
+      "name_ru": "Сборка корпусной мебели",
+      "sort_order": 10,
+      "is_active": true
+    },
+    {
+      "id": "furniture-custom",
+      "l2_id": "furniture",
+      "name_ru": "Изготовление на заказ",
+      "sort_order": 20,
+      "is_active": true
+    },
+    {
+      "id": "furniture-kitchen",
+      "l2_id": "furniture",
+      "name_ru": "Кухонные гарнитуры",
+      "sort_order": 30,
+      "is_active": true
+    },
+    {
+      "id": "furniture-wardrobe",
+      "l2_id": "furniture",
+      "name_ru": "Шкафы-купе",
+      "sort_order": 40,
+      "is_active": true
+    },
+    {
+      "id": "furniture-massive",
+      "l2_id": "furniture",
+      "name_ru": "Мебель из массива",
+      "sort_order": 50,
+      "is_active": true
+    },
+    {
+      "id": "furniture-repair",
+      "l2_id": "furniture",
+      "name_ru": "Реставрация / ремонт",
+      "sort_order": 60,
+      "is_active": true
+    },
+    {
+      "id": "furniture-reupholst",
+      "l2_id": "furniture",
+      "name_ru": "Перетяжка мягкой мебели",
+      "sort_order": 70,
+      "is_active": true
+    },
+    {
+      "id": "build-turnkey",
+      "l2_id": "general-construction",
+      "name_ru": "Дом под ключ",
+      "sort_order": 10,
+      "is_active": true
+    },
+    {
+      "id": "build-shell",
+      "l2_id": "general-construction",
+      "name_ru": "Возведение коробки",
+      "sort_order": 20,
+      "is_active": true
+    },
+    {
+      "id": "build-frame",
+      "l2_id": "general-construction",
+      "name_ru": "Каркасное строительство",
+      "sort_order": 30,
+      "is_active": true
+    },
+    {
+      "id": "build-garage",
+      "l2_id": "general-construction",
+      "name_ru": "Гараж / навес",
+      "sort_order": 40,
+      "is_active": true
+    },
+    {
+      "id": "build-extension",
+      "l2_id": "general-construction",
+      "name_ru": "Пристройка",
+      "sort_order": 50,
+      "is_active": true
+    },
+    {
+      "id": "build-dacha",
+      "l2_id": "general-construction",
+      "name_ru": "Дачные / садовые домики",
+      "sort_order": 60,
+      "is_active": true
+    },
+    {
+      "id": "build-shed",
+      "l2_id": "general-construction",
+      "name_ru": "Хозблок / сарай",
+      "sort_order": 70,
+      "is_active": true
+    },
+    {
+      "id": "mount-tv",
+      "l2_id": "handyman",
+      "name_ru": "Повесить телевизор / полку",
+      "sort_order": 10,
+      "is_active": true
+    },
+    {
+      "id": "mount-picture",
+      "l2_id": "handyman",
+      "name_ru": "Повесить картину / зеркало",
+      "sort_order": 20,
+      "is_active": true
+    },
+    {
+      "id": "assemble-small",
+      "l2_id": "handyman",
+      "name_ru": "Сборка мелкой мебели",
+      "sort_order": 30,
+      "is_active": true
+    },
+    {
+      "id": "curtain-install",
+      "l2_id": "handyman",
+      "name_ru": "Установка карниза / штор",
+      "sort_order": 40,
+      "is_active": true
+    },
+    {
+      "id": "small-plumbing",
+      "l2_id": "handyman",
+      "name_ru": "Мелкая сантехника",
+      "sort_order": 50,
+      "is_active": true
+    },
+    {
+      "id": "small-electrical",
+      "l2_id": "handyman",
+      "name_ru": "Мелкая электрика",
+      "sort_order": 60,
+      "is_active": true
+    },
+    {
+      "id": "seal-crack",
+      "l2_id": "handyman",
+      "name_ru": "Заделать щель / трещину",
+      "sort_order": 70,
+      "is_active": true
+    },
+    {
+      "id": "misc-small",
+      "l2_id": "handyman",
+      "name_ru": "Прочий мелкий ремонт",
+      "sort_order": 80,
+      "is_active": true
+    },
+    {
+      "id": "insul-walls-in",
+      "l2_id": "insulation",
+      "name_ru": "Утепление стен (внутри)",
+      "sort_order": 10,
+      "is_active": true
+    },
+    {
+      "id": "insul-facade",
+      "l2_id": "insulation",
+      "name_ru": "Утепление фасада",
+      "sort_order": 20,
+      "is_active": true
+    },
+    {
+      "id": "insul-roof",
+      "l2_id": "insulation",
+      "name_ru": "Утепление кровли",
+      "sort_order": 30,
+      "is_active": true
+    },
+    {
+      "id": "insul-floor",
+      "l2_id": "insulation",
+      "name_ru": "Утепление пола",
+      "sort_order": 40,
+      "is_active": true
+    },
+    {
+      "id": "insul-balcony",
+      "l2_id": "insulation",
+      "name_ru": "Утепление балкона / лоджии",
+      "sort_order": 50,
+      "is_active": true
+    },
+    {
+      "id": "sound-walls",
+      "l2_id": "insulation",
+      "name_ru": "Шумоизоляция стен",
+      "sort_order": 60,
+      "is_active": true
+    },
+    {
+      "id": "sound-ceiling",
+      "l2_id": "insulation",
+      "name_ru": "Шумоизоляция потолка",
+      "sort_order": 70,
+      "is_active": true
+    },
+    {
+      "id": "vapor-barrier",
+      "l2_id": "insulation",
+      "name_ru": "Пароизоляция / гидроизоляция",
+      "sort_order": 80,
+      "is_active": true
+    },
+    {
+      "id": "design-apt",
+      "l2_id": "interior-design",
+      "name_ru": "Дизайн-проект квартиры",
+      "sort_order": 10,
+      "is_active": true
+    },
+    {
+      "id": "design-house",
+      "l2_id": "interior-design",
+      "name_ru": "Дизайн-проект дома",
+      "sort_order": 20,
+      "is_active": true
+    },
+    {
+      "id": "design-commercial",
+      "l2_id": "interior-design",
+      "name_ru": "Коммерческое помещение",
+      "sort_order": 30,
+      "is_active": true
+    },
+    {
+      "id": "design-3d",
+      "l2_id": "interior-design",
+      "name_ru": "3D-визуализация",
+      "sort_order": 40,
+      "is_active": true
+    },
+    {
+      "id": "design-materials",
+      "l2_id": "interior-design",
+      "name_ru": "Подбор материалов",
+      "sort_order": 50,
+      "is_active": true
+    },
+    {
+      "id": "design-supervision",
+      "l2_id": "interior-design",
+      "name_ru": "Авторский надзор",
+      "sort_order": 60,
+      "is_active": true
+    },
+    {
+      "id": "design-replan",
+      "l2_id": "interior-design",
+      "name_ru": "Перепланировка / зонирование",
+      "sort_order": 70,
+      "is_active": true
+    },
+    {
+      "id": "paving",
+      "l2_id": "landscape",
+      "name_ru": "Тротуарная плитка",
+      "sort_order": 10,
+      "is_active": true
+    },
+    {
+      "id": "lawn",
+      "l2_id": "landscape",
+      "name_ru": "Газон (рулонный / посевной)",
+      "sort_order": 20,
+      "is_active": true
+    },
+    {
+      "id": "tree-pruning",
+      "l2_id": "landscape",
+      "name_ru": "Спил / обрезка деревьев",
+      "sort_order": 30,
+      "is_active": true
+    },
+    {
+      "id": "rockery",
+      "l2_id": "landscape",
+      "name_ru": "Альпийские горки / клумбы",
+      "sort_order": 40,
+      "is_active": true
+    },
+    {
+      "id": "drainage-system",
+      "l2_id": "landscape",
+      "name_ru": "Дренажная система",
+      "sort_order": 50,
+      "is_active": true
+    },
+    {
+      "id": "auto-watering",
+      "l2_id": "landscape",
+      "name_ru": "Автополив",
+      "sort_order": 60,
+      "is_active": true
+    },
+    {
+      "id": "garden-lighting",
+      "l2_id": "landscape",
+      "name_ru": "Освещение участка",
+      "sort_order": 70,
+      "is_active": true
+    },
+    {
+      "id": "gazebo",
+      "l2_id": "landscape",
+      "name_ru": "Беседки / навесы / перголы",
+      "sort_order": 80,
+      "is_active": true
+    },
+    {
+      "id": "playground",
+      "l2_id": "landscape",
+      "name_ru": "Детская / спортивная площадка",
+      "sort_order": 90,
+      "is_active": true
+    },
+    {
+      "id": "lock-replace",
+      "l2_id": "locks-security",
+      "name_ru": "Замена дверного замка",
+      "sort_order": 10,
+      "is_active": true
+    },
+    {
+      "id": "lock-emergency",
+      "l2_id": "locks-security",
+      "name_ru": "Аварийное вскрытие замка",
+      "sort_order": 20,
+      "is_active": true
+    },
+    {
+      "id": "lock-rekey",
+      "l2_id": "locks-security",
+      "name_ru": "Перекодировка замка",
+      "sort_order": 30,
+      "is_active": true
+    },
+    {
+      "id": "intercom",
+      "l2_id": "locks-security",
+      "name_ru": "Домофон / видеоглазок",
+      "sort_order": 40,
+      "is_active": true
+    },
+    {
+      "id": "alarm-install",
+      "l2_id": "locks-security",
+      "name_ru": "Монтаж сигнализации",
+      "sort_order": 50,
+      "is_active": true
+    },
+    {
+      "id": "cctv-install",
+      "l2_id": "locks-security",
+      "name_ru": "Камеры видеонаблюдения",
+      "sort_order": 60,
+      "is_active": true
+    },
+    {
+      "id": "masonry-brick",
+      "l2_id": "masonry",
+      "name_ru": "Кладка кирпича",
+      "sort_order": 10,
+      "is_active": true
+    },
+    {
+      "id": "masonry-aerated",
+      "l2_id": "masonry",
+      "name_ru": "Газобетонные блоки",
+      "sort_order": 20,
+      "is_active": true
+    },
+    {
+      "id": "masonry-foam",
+      "l2_id": "masonry",
+      "name_ru": "Пенобетонные блоки",
+      "sort_order": 30,
+      "is_active": true
+    },
+    {
+      "id": "masonry-shell",
+      "l2_id": "masonry",
+      "name_ru": "Ракушечник",
+      "sort_order": 40,
+      "is_active": true
+    },
+    {
+      "id": "masonry-clinker",
+      "l2_id": "masonry",
+      "name_ru": "Облицовочный кирпич",
+      "sort_order": 50,
+      "is_active": true
+    },
+    {
+      "id": "masonry-fireplace",
+      "l2_id": "masonry",
+      "name_ru": "Печи / камины",
+      "sort_order": 60,
+      "is_active": true
+    },
+    {
+      "id": "masonry-partition",
+      "l2_id": "masonry",
+      "name_ru": "Перегородки",
+      "sort_order": 70,
+      "is_active": true
+    },
+    {
+      "id": "move-apt",
+      "l2_id": "movers",
+      "name_ru": "Переезд квартиры",
+      "sort_order": 10,
+      "is_active": true
+    },
+    {
+      "id": "move-office",
+      "l2_id": "movers",
+      "name_ru": "Переезд офиса",
+      "sort_order": 20,
+      "is_active": true
+    },
+    {
+      "id": "lift-heavy",
+      "l2_id": "movers",
+      "name_ru": "Подъём / спуск техники, мебели",
+      "sort_order": 30,
+      "is_active": true
+    },
+    {
+      "id": "mover-assembly",
+      "l2_id": "movers",
+      "name_ru": "Сборка-разборка при переезде",
+      "sort_order": 40,
+      "is_active": true
+    },
+    {
+      "id": "movers-hour",
+      "l2_id": "movers",
+      "name_ru": "Грузчики на час",
+      "sort_order": 50,
+      "is_active": true
+    },
+    {
+      "id": "truck-with-movers",
+      "l2_id": "movers",
+      "name_ru": "Газель с грузчиками",
+      "sort_order": 60,
+      "is_active": true
+    },
+    {
+      "id": "paint-walls",
+      "l2_id": "painting",
+      "name_ru": "Покраска стен",
+      "sort_order": 10,
+      "is_active": true
+    },
+    {
+      "id": "paint-ceiling",
+      "l2_id": "painting",
+      "name_ru": "Покраска потолка",
+      "sort_order": 20,
+      "is_active": true
+    },
+    {
+      "id": "paint-facade",
+      "l2_id": "painting",
+      "name_ru": "Покраска фасада",
+      "sort_order": 30,
+      "is_active": true
+    },
+    {
+      "id": "paint-radiator",
+      "l2_id": "painting",
+      "name_ru": "Покраска радиаторов / труб",
+      "sort_order": 40,
+      "is_active": true
+    },
+    {
+      "id": "paint-finish-putty",
+      "l2_id": "painting",
+      "name_ru": "Финишная шпаклёвка под покраску",
+      "sort_order": 50,
+      "is_active": true
+    },
+    {
+      "id": "paint-sanding",
+      "l2_id": "painting",
+      "name_ru": "Шлифовка стен",
+      "sort_order": 60,
+      "is_active": true
+    },
+    {
+      "id": "paint-decorative",
+      "l2_id": "painting",
+      "name_ru": "Декоративная покраска",
+      "sort_order": 70,
+      "is_active": true
+    },
+    {
+      "id": "plaster-venetian",
+      "l2_id": "painting",
+      "name_ru": "Венецианская штукатурка",
+      "sort_order": 160,
+      "is_active": true
+    },
+    {
+      "id": "plaster-koroed",
+      "l2_id": "painting",
+      "name_ru": "Штукатурка короед",
+      "sort_order": 170,
+      "is_active": true
+    },
+    {
+      "id": "plaster-silk",
+      "l2_id": "painting",
+      "name_ru": "Шёлковая штукатурка",
+      "sort_order": 180,
+      "is_active": true
+    },
+    {
+      "id": "plaster-microcement",
+      "l2_id": "painting",
+      "name_ru": "Микроцемент / арт-бетон",
+      "sort_order": 190,
+      "is_active": true
+    },
+    {
+      "id": "plaster-machine",
+      "l2_id": "painting",
+      "name_ru": "Машинная штукатурка",
+      "sort_order": 200,
+      "is_active": true
+    },
+    {
+      "id": "plaster-manual",
+      "l2_id": "painting",
+      "name_ru": "Ручная штукатурка",
+      "sort_order": 210,
+      "is_active": true
+    },
+    {
+      "id": "plaster-beacons",
+      "l2_id": "painting",
+      "name_ru": "Штукатурка по маякам",
+      "sort_order": 220,
+      "is_active": true
+    },
+    {
+      "id": "putty-walls",
+      "l2_id": "painting",
+      "name_ru": "Шпаклёвка стен",
+      "sort_order": 230,
+      "is_active": true
+    },
+    {
+      "id": "putty-ceiling",
+      "l2_id": "painting",
+      "name_ru": "Шпаклёвка потолка",
+      "sort_order": 240,
+      "is_active": true
+    },
+    {
+      "id": "walls-level",
+      "l2_id": "painting",
+      "name_ru": "Выравнивание стен",
+      "sort_order": 250,
+      "is_active": true
+    },
+    {
+      "id": "faucet-replace",
+      "l2_id": "plumbing",
+      "name_ru": "Замена смесителя",
+      "sort_order": 10,
+      "is_active": true
+    },
+    {
+      "id": "toilet-install",
+      "l2_id": "plumbing",
+      "name_ru": "Установка унитаза",
+      "sort_order": 20,
+      "is_active": true
+    },
+    {
+      "id": "bath-install",
+      "l2_id": "plumbing",
+      "name_ru": "Установка ванны",
+      "sort_order": 30,
+      "is_active": true
+    },
+    {
+      "id": "shower-install",
+      "l2_id": "plumbing",
+      "name_ru": "Установка душевой кабины",
+      "sort_order": 40,
+      "is_active": true
+    },
+    {
+      "id": "sink-install",
+      "l2_id": "plumbing",
+      "name_ru": "Установка раковины / мойки",
+      "sort_order": 50,
+      "is_active": true
+    },
+    {
+      "id": "boiler-install",
+      "l2_id": "plumbing",
+      "name_ru": "Установка водонагревателя",
+      "sort_order": 60,
+      "is_active": true
+    },
+    {
+      "id": "washer-connect",
+      "l2_id": "plumbing",
+      "name_ru": "Подключение стиральной машины",
+      "sort_order": 70,
+      "is_active": true
+    },
+    {
+      "id": "dishwasher-connect",
+      "l2_id": "plumbing",
+      "name_ru": "Подключение посудомойки",
+      "sort_order": 80,
+      "is_active": true
+    },
+    {
+      "id": "water-filter",
+      "l2_id": "plumbing",
+      "name_ru": "Установка фильтра воды",
+      "sort_order": 90,
+      "is_active": true
+    },
+    {
+      "id": "clog-clear",
+      "l2_id": "plumbing",
+      "name_ru": "Прочистка засоров",
+      "sort_order": 100,
+      "is_active": true
+    },
+    {
+      "id": "cosmetic-apt",
+      "l2_id": "renovation",
+      "name_ru": "Косметический ремонт квартиры",
+      "sort_order": 10,
+      "is_active": true
+    },
+    {
+      "id": "capital-apt",
+      "l2_id": "renovation",
+      "name_ru": "Капитальный ремонт квартиры",
+      "sort_order": 20,
+      "is_active": true
+    },
+    {
+      "id": "turnkey-apt",
+      "l2_id": "renovation",
+      "name_ru": "Ремонт под ключ",
+      "sort_order": 30,
+      "is_active": true
+    },
+    {
+      "id": "bathroom-reno",
+      "l2_id": "renovation",
+      "name_ru": "Ремонт ванной комнаты",
+      "sort_order": 40,
+      "is_active": true
+    },
+    {
+      "id": "kitchen-reno",
+      "l2_id": "renovation",
+      "name_ru": "Ремонт кухни",
+      "sort_order": 50,
+      "is_active": true
+    },
+    {
+      "id": "balcony-reno",
+      "l2_id": "renovation",
+      "name_ru": "Ремонт балкона / лоджии",
+      "sort_order": 60,
+      "is_active": true
+    },
+    {
+      "id": "office-reno",
+      "l2_id": "renovation",
+      "name_ru": "Ремонт офиса / коммерческого",
+      "sort_order": 70,
+      "is_active": true
+    },
+    {
+      "id": "house-reno",
+      "l2_id": "renovation",
+      "name_ru": "Ремонт частного дома",
+      "sort_order": 80,
+      "is_active": true
+    },
+    {
+      "id": "roof-metal",
+      "l2_id": "roofing",
+      "name_ru": "Металлочерепица",
+      "sort_order": 10,
+      "is_active": true
+    },
+    {
+      "id": "roof-soft",
+      "l2_id": "roofing",
+      "name_ru": "Мягкая кровля (битум)",
+      "sort_order": 20,
+      "is_active": true
+    },
+    {
+      "id": "roof-profnastil",
+      "l2_id": "roofing",
+      "name_ru": "Профнастил",
+      "sort_order": 30,
+      "is_active": true
+    },
+    {
+      "id": "roof-tile-natural",
+      "l2_id": "roofing",
+      "name_ru": "Натуральная черепица",
+      "sort_order": 40,
+      "is_active": true
+    },
+    {
+      "id": "roof-repair",
+      "l2_id": "roofing",
+      "name_ru": "Ремонт кровли",
+      "sort_order": 50,
+      "is_active": true
+    },
+    {
+      "id": "drainage",
+      "l2_id": "roofing",
+      "name_ru": "Водосточная система",
+      "sort_order": 60,
+      "is_active": true
+    },
+    {
+      "id": "roof-insulation",
+      "l2_id": "roofing",
+      "name_ru": "Утепление кровли",
+      "sort_order": 70,
+      "is_active": true
+    },
+    {
+      "id": "snow-stops",
+      "l2_id": "roofing",
+      "name_ru": "Снегозадержатели / переходы",
+      "sort_order": 80,
+      "is_active": true
+    },
+    {
+      "id": "sat-install",
+      "l2_id": "satellite-tv",
+      "name_ru": "Установка спутниковой антенны",
+      "sort_order": 10,
+      "is_active": true
+    },
+    {
+      "id": "sat-tricolor",
+      "l2_id": "satellite-tv",
+      "name_ru": "Триколор ТВ",
+      "sort_order": 20,
+      "is_active": true
+    },
+    {
+      "id": "sat-ntv",
+      "l2_id": "satellite-tv",
+      "name_ru": "НТВ+",
+      "sort_order": 30,
+      "is_active": true
+    },
+    {
+      "id": "sat-otv",
+      "l2_id": "satellite-tv",
+      "name_ru": "Эфирные антенны",
+      "sort_order": 40,
+      "is_active": true
+    },
+    {
+      "id": "sat-iptv",
+      "l2_id": "satellite-tv",
+      "name_ru": "IPTV / интернет-ТВ",
+      "sort_order": 50,
+      "is_active": true
+    },
+    {
+      "id": "sat-amp",
+      "l2_id": "satellite-tv",
+      "name_ru": "Усилитель сигнала",
+      "sort_order": 60,
+      "is_active": true
+    },
+    {
+      "id": "cctv-install-pro",
+      "l2_id": "security-systems",
+      "name_ru": "Установка видеокамер",
+      "sort_order": 10,
+      "is_active": true
+    },
+    {
+      "id": "cctv-cloud",
+      "l2_id": "security-systems",
+      "name_ru": "Облачное видеонаблюдение",
+      "sort_order": 20,
+      "is_active": true
+    },
+    {
+      "id": "alarm-security",
+      "l2_id": "security-systems",
+      "name_ru": "Охранная сигнализация",
+      "sort_order": 30,
+      "is_active": true
+    },
+    {
+      "id": "alarm-fire",
+      "l2_id": "security-systems",
+      "name_ru": "Пожарная сигнализация",
+      "sort_order": 40,
+      "is_active": true
+    },
+    {
+      "id": "access-control",
+      "l2_id": "security-systems",
+      "name_ru": "Контроль доступа",
+      "sort_order": 50,
+      "is_active": true
+    },
+    {
+      "id": "intercom-pro",
+      "l2_id": "security-systems",
+      "name_ru": "Домофоны",
+      "sort_order": 60,
+      "is_active": true
+    },
+    {
+      "id": "tension-1lvl",
+      "l2_id": "tension-ceilings",
+      "name_ru": "Одноуровневый",
+      "sort_order": 10,
+      "is_active": true
+    },
+    {
+      "id": "tension-nlvl",
+      "l2_id": "tension-ceilings",
+      "name_ru": "Многоуровневый",
+      "sort_order": 20,
+      "is_active": true
+    },
+    {
+      "id": "tension-light",
+      "l2_id": "tension-ceilings",
+      "name_ru": "С подсветкой",
+      "sort_order": 30,
+      "is_active": true
+    },
+    {
+      "id": "tension-fabric",
+      "l2_id": "tension-ceilings",
+      "name_ru": "Тканевый",
+      "sort_order": 40,
+      "is_active": true
+    },
+    {
+      "id": "tension-print",
+      "l2_id": "tension-ceilings",
+      "name_ru": "Фотопечать",
+      "sort_order": 50,
+      "is_active": true
+    },
+    {
+      "id": "tension-stars",
+      "l2_id": "tension-ceilings",
+      "name_ru": "Звёздное небо",
+      "sort_order": 60,
+      "is_active": true
+    },
+    {
+      "id": "tension-repair",
+      "l2_id": "tension-ceilings",
+      "name_ru": "Ремонт натяжного потолка",
+      "sort_order": 70,
+      "is_active": true
+    },
+    {
+      "id": "tile-bathroom",
+      "l2_id": "tiling",
+      "name_ru": "Облицовка ванной / санузла",
+      "sort_order": 10,
+      "is_active": true
+    },
+    {
+      "id": "tile-floor",
+      "l2_id": "tiling",
+      "name_ru": "Укладка плитки на пол",
+      "sort_order": 20,
+      "is_active": true
+    },
+    {
+      "id": "tile-kitchen-apron",
+      "l2_id": "tiling",
+      "name_ru": "Кухонный фартук",
+      "sort_order": 30,
+      "is_active": true
+    },
+    {
+      "id": "tile-mosaic",
+      "l2_id": "tiling",
+      "name_ru": "Мозаика",
+      "sort_order": 40,
+      "is_active": true
+    },
+    {
+      "id": "tile-porcelain",
+      "l2_id": "tiling",
+      "name_ru": "Керамогранит на пол",
+      "sort_order": 50,
+      "is_active": true
+    },
+    {
+      "id": "tile-grout",
+      "l2_id": "tiling",
+      "name_ru": "Затирка / реставрация швов",
+      "sort_order": 60,
+      "is_active": true
+    },
+    {
+      "id": "tile-demo",
+      "l2_id": "tiling",
+      "name_ru": "Демонтаж старой плитки",
+      "sort_order": 70,
+      "is_active": true
+    },
+    {
+      "id": "wallpaper-vinyl",
+      "l2_id": "wallpaper",
+      "name_ru": "Поклейка виниловых обоев",
+      "sort_order": 80,
+      "is_active": true
+    },
+    {
+      "id": "wallpaper-fleece",
+      "l2_id": "wallpaper",
+      "name_ru": "Поклейка флизелиновых обоев",
+      "sort_order": 90,
+      "is_active": true
+    },
+    {
+      "id": "wallpaper-paper",
+      "l2_id": "wallpaper",
+      "name_ru": "Поклейка бумажных обоев",
+      "sort_order": 100,
+      "is_active": true
+    },
+    {
+      "id": "wallpaper-paintable",
+      "l2_id": "wallpaper",
+      "name_ru": "Поклейка обоев под покраску",
+      "sort_order": 110,
+      "is_active": true
+    },
+    {
+      "id": "wallpaper-photo",
+      "l2_id": "wallpaper",
+      "name_ru": "Поклейка фотообоев",
+      "sort_order": 120,
+      "is_active": true
+    },
+    {
+      "id": "wallpaper-liquid",
+      "l2_id": "wallpaper",
+      "name_ru": "Нанесение жидких обоев",
+      "sort_order": 130,
+      "is_active": true
+    },
+    {
+      "id": "wallpaper-removal",
+      "l2_id": "wallpaper",
+      "name_ru": "Удаление старых обоев",
+      "sort_order": 140,
+      "is_active": true
+    },
+    {
+      "id": "wallpaper-repair",
+      "l2_id": "wallpaper",
+      "name_ru": "Ремонт обоев (стыки, пузыри)",
+      "sort_order": 150,
+      "is_active": true
+    },
+    {
+      "id": "pipes-water",
+      "l2_id": "water-sewer",
+      "name_ru": "Замена труб водопровода",
+      "sort_order": 10,
+      "is_active": true
+    },
+    {
+      "id": "water-routing-apt",
+      "l2_id": "water-sewer",
+      "name_ru": "Разводка воды в квартире",
+      "sort_order": 20,
+      "is_active": true
+    },
+    {
+      "id": "sewer-internal",
+      "l2_id": "water-sewer",
+      "name_ru": "Монтаж канализационных труб",
+      "sort_order": 30,
+      "is_active": true
+    },
+    {
+      "id": "sewer-external",
+      "l2_id": "water-sewer",
+      "name_ru": "Прокладка наружной канализации",
+      "sort_order": 40,
+      "is_active": true
+    },
+    {
+      "id": "septic-install",
+      "l2_id": "water-sewer",
+      "name_ru": "Установка септика",
+      "sort_order": 50,
+      "is_active": true
+    },
+    {
+      "id": "pump-station",
+      "l2_id": "water-sewer",
+      "name_ru": "Насосная станция (монтаж/сервис)",
+      "sort_order": 60,
+      "is_active": true
+    },
+    {
+      "id": "pipe-insulation",
+      "l2_id": "water-sewer",
+      "name_ru": "Утепление труб",
+      "sort_order": 70,
+      "is_active": true
+    },
+    {
+      "id": "emergency-plumber",
+      "l2_id": "water-sewer",
+      "name_ru": "Аварийный сантехник (прорыв)",
+      "sort_order": 80,
+      "is_active": true
+    },
+    {
+      "id": "weld-gates",
+      "l2_id": "welding",
+      "name_ru": "Сварка ворот / калиток",
+      "sort_order": 10,
+      "is_active": true
+    },
+    {
+      "id": "weld-bars",
+      "l2_id": "welding",
+      "name_ru": "Сварка решёток на окна",
+      "sort_order": 20,
+      "is_active": true
+    },
+    {
+      "id": "weld-structures",
+      "l2_id": "welding",
+      "name_ru": "Сварка металлоконструкций",
+      "sort_order": 30,
+      "is_active": true
+    },
+    {
+      "id": "weld-pipe",
+      "l2_id": "welding",
+      "name_ru": "Сварка труб",
+      "sort_order": 40,
+      "is_active": true
+    },
+    {
+      "id": "weld-fence",
+      "l2_id": "welding",
+      "name_ru": "Сварка ограждений / лестниц",
+      "sort_order": 50,
+      "is_active": true
+    },
+    {
+      "id": "weld-onsite",
+      "l2_id": "welding",
+      "name_ru": "Выезд со сварочным аппаратом",
+      "sort_order": 60,
+      "is_active": true
+    },
+    {
+      "id": "weld-semi-auto",
+      "l2_id": "welding",
+      "name_ru": "Полуавтоматическая сварка",
+      "sort_order": 70,
+      "is_active": true
+    },
+    {
+      "id": "weld-argon",
+      "l2_id": "welding",
+      "name_ru": "Аргонная сварка",
+      "sort_order": 80,
+      "is_active": true
+    },
+    {
+      "id": "windows-pvc",
+      "l2_id": "windows",
+      "name_ru": "Пластиковые окна (замер, монтаж)",
+      "sort_order": 10,
+      "is_active": true
+    },
+    {
+      "id": "windows-wood",
+      "l2_id": "windows",
+      "name_ru": "Деревянные окна",
+      "sort_order": 20,
+      "is_active": true
+    },
+    {
+      "id": "windows-aluminum",
+      "l2_id": "windows",
+      "name_ru": "Алюминиевые окна",
+      "sort_order": 30,
+      "is_active": true
+    },
+    {
+      "id": "balcony-glazing",
+      "l2_id": "windows",
+      "name_ru": "Остекление балкона / лоджии",
+      "sort_order": 40,
+      "is_active": true
+    },
+    {
+      "id": "window-slope",
+      "l2_id": "windows",
+      "name_ru": "Установка оконных откосов",
+      "sort_order": 50,
+      "is_active": true
+    },
+    {
+      "id": "glass-replace",
+      "l2_id": "windows",
+      "name_ru": "Замена стеклопакета",
+      "sort_order": 60,
+      "is_active": true
+    },
+    {
+      "id": "window-repair",
+      "l2_id": "windows",
+      "name_ru": "Регулировка / ремонт окон",
+      "sort_order": 70,
+      "is_active": true
+    },
+    {
+      "id": "mosquito-net",
+      "l2_id": "windows",
+      "name_ru": "Москитные сетки",
+      "sort_order": 80,
+      "is_active": true
+    }
+  ],
+  "terms": [
+    {
+      "term": "3d визуализация",
+      "l2_id": "interior-design",
+      "l3_id": null,
+      "weight": 90
+    },
+    {
+      "term": "антенна",
+      "l2_id": "satellite-tv",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "армопояс",
+      "l2_id": "concrete",
+      "l3_id": null,
+      "weight": 90
+    },
+    {
+      "term": "армстронг",
+      "l2_id": "ceilings",
+      "l3_id": null,
+      "weight": 90
+    },
+    {
+      "term": "арт-бетон",
+      "l2_id": null,
+      "l3_id": "plaster-microcement",
+      "weight": 100
+    },
+    {
+      "term": "баня",
+      "l2_id": "baths-pools",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "бассейн",
+      "l2_id": "baths-pools",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "бетон",
+      "l2_id": "concrete",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "бетон-эффект",
+      "l2_id": null,
+      "l3_id": "plaster-microcement",
+      "weight": 100
+    },
+    {
+      "term": "бетонщик",
+      "l2_id": "concrete",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "битумная черепица",
+      "l2_id": "roofing",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "благоустройство",
+      "l2_id": "landscape",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "бойлер",
+      "l2_id": "plumbing",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "бумажные обои",
+      "l2_id": null,
+      "l3_id": "wallpaper-paper",
+      "weight": 100
+    },
+    {
+      "term": "ванна",
+      "l2_id": "plumbing",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "венецианка",
+      "l2_id": null,
+      "l3_id": "plaster-venetian",
+      "weight": 100
+    },
+    {
+      "term": "венецианская",
+      "l2_id": null,
+      "l3_id": "plaster-venetian",
+      "weight": 100
+    },
+    {
+      "term": "видеокамера",
+      "l2_id": "security-systems",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "видеонаблюдение",
+      "l2_id": "locks-security",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "видеонаблюдение",
+      "l2_id": "security-systems",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "винил",
+      "l2_id": null,
+      "l3_id": "wallpaper-vinyl",
+      "weight": 100
+    },
+    {
+      "term": "виниловые",
+      "l2_id": null,
+      "l3_id": "wallpaper-vinyl",
+      "weight": 100
+    },
+    {
+      "term": "водонагреватель",
+      "l2_id": "plumbing",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "водопровод",
+      "l2_id": "plumbing",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "водоснабжение скважина",
+      "l2_id": "drilling-wells",
+      "l3_id": null,
+      "weight": 80
+    },
+    {
+      "term": "водосток",
+      "l2_id": "roofing",
+      "l3_id": null,
+      "weight": 90
+    },
+    {
+      "term": "ворота",
+      "l2_id": "fences-gates",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "врезка замка",
+      "l2_id": "locks-security",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "входная дверь",
+      "l2_id": "doors",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "выключатели",
+      "l2_id": "electrical",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "выключатель",
+      "l2_id": "electrical",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "газоблок",
+      "l2_id": "masonry",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "газовый котёл",
+      "l2_id": "climate",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "газон",
+      "l2_id": "landscape",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "генеральная",
+      "l2_id": "cleaning-post-renovation",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "гипсокартон",
+      "l2_id": "drywall",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "гкл",
+      "l2_id": "drywall",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "грузчики",
+      "l2_id": "movers",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "двери",
+      "l2_id": "doors",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "дверь",
+      "l2_id": "doors",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "двор",
+      "l2_id": "landscape",
+      "l3_id": null,
+      "weight": 80
+    },
+    {
+      "term": "декор стен снаружи",
+      "l2_id": "facade",
+      "l3_id": null,
+      "weight": 80
+    },
+    {
+      "term": "декоратив",
+      "l2_id": null,
+      "l3_id": "paint-decorative",
+      "weight": 100
+    },
+    {
+      "term": "декоративная штукатурка",
+      "l2_id": null,
+      "l3_id": "paint-decorative",
+      "weight": 100
+    },
+    {
+      "term": "демонтаж",
+      "l2_id": "demolition",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "дизайн",
+      "l2_id": "interior-design",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "дизайнер",
+      "l2_id": "interior-design",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "дом",
+      "l2_id": "general-construction",
+      "l3_id": null,
+      "weight": 90
+    },
+    {
+      "term": "домофон",
+      "l2_id": "security-systems",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "дорожки",
+      "l2_id": "landscape",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "духовка",
+      "l2_id": "appliance-repair",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "жалюзи",
+      "l2_id": "curtains-blinds",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "жидкие обои",
+      "l2_id": null,
+      "l3_id": "wallpaper-liquid",
+      "weight": 100
+    },
+    {
+      "term": "забор",
+      "l2_id": "fences-gates",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "заборы",
+      "l2_id": "fences-gates",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "заземление",
+      "l2_id": "electrical",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "залить",
+      "l2_id": "concrete",
+      "l3_id": null,
+      "weight": 90
+    },
+    {
+      "term": "замена бачка",
+      "l2_id": "plumbing",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "замена счётчиков воды",
+      "l2_id": "plumbing",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "замки",
+      "l2_id": "locks-security",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "замок",
+      "l2_id": "locks-security",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "замыкание",
+      "l2_id": "electrical",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "засор",
+      "l2_id": "plumbing",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "затирка швов",
+      "l2_id": "tiling",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "изоляция",
+      "l2_id": "insulation",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "икея",
+      "l2_id": "furniture",
+      "l3_id": null,
+      "weight": 90
+    },
+    {
+      "term": "интерьер",
+      "l2_id": "interior-design",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "калитка",
+      "l2_id": "fences-gates",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "каменщик",
+      "l2_id": "masonry",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "камень",
+      "l2_id": "masonry",
+      "l3_id": null,
+      "weight": 80
+    },
+    {
+      "term": "камера",
+      "l2_id": "security-systems",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "камеры",
+      "l2_id": "security-systems",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "канализация",
+      "l2_id": "plumbing",
+      "l3_id": null,
+      "weight": 90
+    },
+    {
+      "term": "капремонт",
+      "l2_id": "renovation",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "каркасный дом",
+      "l2_id": "general-construction",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "карниз",
+      "l2_id": "curtains-blinds",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "кафель",
+      "l2_id": "tiling",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "кварц-винил",
+      "l2_id": "floors",
+      "l3_id": null,
+      "weight": 90
+    },
+    {
+      "term": "кирпич",
+      "l2_id": "masonry",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "кладка",
+      "l2_id": "masonry",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "клининг",
+      "l2_id": "cleaning-post-renovation",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "колодец",
+      "l2_id": "drilling-wells",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "кондиционер",
+      "l2_id": "climate",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "короб",
+      "l2_id": "drywall",
+      "l3_id": null,
+      "weight": 90
+    },
+    {
+      "term": "короед",
+      "l2_id": null,
+      "l3_id": "plaster-koroed",
+      "weight": 100
+    },
+    {
+      "term": "короткое замыкание",
+      "l2_id": "electrical",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "косметический ремонт",
+      "l2_id": "renovation",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "котел",
+      "l2_id": "climate",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "котёл",
+      "l2_id": "climate",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "коттедж",
+      "l2_id": "general-construction",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "кран",
+      "l2_id": "plumbing",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "кран течет",
+      "l2_id": "plumbing",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "крана",
+      "l2_id": "plumbing",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "кровать",
+      "l2_id": "furniture",
+      "l3_id": null,
+      "weight": 90
+    },
+    {
+      "term": "кровля",
+      "l2_id": "roofing",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "крыша",
+      "l2_id": "roofing",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "кухня",
+      "l2_id": "furniture",
+      "l3_id": null,
+      "weight": 90
+    },
+    {
+      "term": "ламинат",
+      "l2_id": "floors",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "лампочка",
+      "l2_id": "electrical",
+      "l3_id": null,
+      "weight": 90
+    },
+    {
+      "term": "ландшафт",
+      "l2_id": "landscape",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "линолеум",
+      "l2_id": "floors",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "люстра",
+      "l2_id": "electrical",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "мастер на час",
+      "l2_id": "handyman",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "мебель",
+      "l2_id": "furniture",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "межкомнатная дверь",
+      "l2_id": "doors",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "мелкий ремонт",
+      "l2_id": "handyman",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "металлочерепица",
+      "l2_id": "roofing",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "микроволновка",
+      "l2_id": "appliance-repair",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "микроцемент",
+      "l2_id": null,
+      "l3_id": "plaster-microcement",
+      "weight": 100
+    },
+    {
+      "term": "минвата",
+      "l2_id": "insulation",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "мозаика",
+      "l2_id": "tiling",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "москитная сетка",
+      "l2_id": "windows",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "муж на час",
+      "l2_id": "handyman",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "мытьё",
+      "l2_id": "cleaning-post-renovation",
+      "l3_id": null,
+      "weight": 80
+    },
+    {
+      "term": "навесной фасад",
+      "l2_id": "facade",
+      "l3_id": null,
+      "weight": 90
+    },
+    {
+      "term": "наклеить обои",
+      "l2_id": "wallpaper",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "наливной пол",
+      "l2_id": "floors",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "напольное покрытие",
+      "l2_id": "floors",
+      "l3_id": null,
+      "weight": 90
+    },
+    {
+      "term": "натяжной потолок",
+      "l2_id": "ceilings",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "натяжной потолок",
+      "l2_id": "tension-ceilings",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "натяжные потолки",
+      "l2_id": "ceilings",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "натяжные потолки",
+      "l2_id": "tension-ceilings",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "нет света",
+      "l2_id": "electrical",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "нтв плюс",
+      "l2_id": "satellite-tv",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "облицовка",
+      "l2_id": "facade",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "обои",
+      "l2_id": "wallpaper",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "обойщик",
+      "l2_id": "wallpaper",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "оклейка",
+      "l2_id": "wallpaper",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "окна",
+      "l2_id": "windows",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "окна помыть",
+      "l2_id": "cleaning-post-renovation",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "окно",
+      "l2_id": "windows",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "ондулин",
+      "l2_id": "roofing",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "остекление балкона",
+      "l2_id": "windows",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "отделка",
+      "l2_id": "renovation",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "отопление",
+      "l2_id": "climate",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "охрана",
+      "l2_id": "security-systems",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "паркет",
+      "l2_id": "floors",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "парная",
+      "l2_id": "baths-pools",
+      "l3_id": null,
+      "weight": 90
+    },
+    {
+      "term": "пвх потолок",
+      "l2_id": "tension-ceilings",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "пеноблок",
+      "l2_id": "masonry",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "пенопласт",
+      "l2_id": "insulation",
+      "l3_id": null,
+      "weight": 90
+    },
+    {
+      "term": "пеноплекс",
+      "l2_id": "insulation",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "перегородка",
+      "l2_id": "drywall",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "переезд",
+      "l2_id": "movers",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "переклеить",
+      "l2_id": "wallpaper",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "пластиковые окна",
+      "l2_id": "windows",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "плита",
+      "l2_id": "appliance-repair",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "плитка",
+      "l2_id": "tiling",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "плитки",
+      "l2_id": "tiling",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "плитку",
+      "l2_id": "tiling",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "плиточник",
+      "l2_id": "tiling",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "поверка счётчиков",
+      "l2_id": "plumbing",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "повесить",
+      "l2_id": "handyman",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "повесить полку",
+      "l2_id": "handyman",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "под ключ",
+      "l2_id": "renovation",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "подвесной потолок",
+      "l2_id": "ceilings",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "поклеить",
+      "l2_id": "wallpaper",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "поклеить обои",
+      "l2_id": "wallpaper",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "поклейка",
+      "l2_id": "wallpaper",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "покрасить стены",
+      "l2_id": "painting",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "пол",
+      "l2_id": "floors",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "положить плитку",
+      "l2_id": "tiling",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "полы",
+      "l2_id": "floors",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "помощь по дому",
+      "l2_id": "handyman",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "помыть окна",
+      "l2_id": "cleaning-post-renovation",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "построить",
+      "l2_id": "general-construction",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "посудомойка",
+      "l2_id": "appliance-repair",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "потолки",
+      "l2_id": "ceilings",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "потолок",
+      "l2_id": "ceilings",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "потолок из гипсокартона",
+      "l2_id": "ceilings",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "починить унитаз",
+      "l2_id": "plumbing",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "прибить",
+      "l2_id": "handyman",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "приварить",
+      "l2_id": "welding",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "пробурить",
+      "l2_id": "drilling-wells",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "проводка",
+      "l2_id": "electrical",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "проводки",
+      "l2_id": "electrical",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "проект",
+      "l2_id": "interior-design",
+      "l3_id": null,
+      "weight": 80
+    },
+    {
+      "term": "протечка",
+      "l2_id": "plumbing",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "профлист",
+      "l2_id": "roofing",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "профнастил",
+      "l2_id": "fences-gates",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "прочистить засор",
+      "l2_id": "plumbing",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "прочистка канализации",
+      "l2_id": "plumbing",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "разобрать",
+      "l2_id": "demolition",
+      "l3_id": null,
+      "weight": 90
+    },
+    {
+      "term": "реечный потолок",
+      "l2_id": "ceilings",
+      "l3_id": null,
+      "weight": 90
+    },
+    {
+      "term": "ремонт",
+      "l2_id": "renovation",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "ремонт ванной",
+      "l2_id": "renovation",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "ремонт квартиры",
+      "l2_id": "renovation",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "ремонт кровли",
+      "l2_id": "roofing",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "ремонт кухни",
+      "l2_id": "renovation",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "ремонт обоев",
+      "l2_id": null,
+      "l3_id": "wallpaper-repair",
+      "weight": 100
+    },
+    {
+      "term": "ремонт стиралки",
+      "l2_id": "appliance-repair",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "ремонт техники",
+      "l2_id": "appliance-repair",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "ремонт холодильника",
+      "l2_id": "appliance-repair",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "розетка",
+      "l2_id": "electrical",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "розетки",
+      "l2_id": "electrical",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "ролеты",
+      "l2_id": "curtains-blinds",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "рулонные шторы",
+      "l2_id": "curtains-blinds",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "сайдинг",
+      "l2_id": "facade",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "сантехник",
+      "l2_id": "plumbing",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "сантехника",
+      "l2_id": "plumbing",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "сауна",
+      "l2_id": "baths-pools",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "сбить плитку",
+      "l2_id": "demolition",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "сборка",
+      "l2_id": "furniture",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "сварка",
+      "l2_id": "welding",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "сварка металла",
+      "l2_id": "welding",
+      "l3_id": null,
+      "weight": 90
+    },
+    {
+      "term": "сварочные работы",
+      "l2_id": "welding",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "сварщик",
+      "l2_id": "welding",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "свет",
+      "l2_id": "electrical",
+      "l3_id": null,
+      "weight": 70
+    },
+    {
+      "term": "сетка-рабица",
+      "l2_id": "fences-gates",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "сигнализация",
+      "l2_id": "locks-security",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "сигнализация",
+      "l2_id": "security-systems",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "скважина",
+      "l2_id": "drilling-wells",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "сломать стену",
+      "l2_id": "demolition",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "смеситель",
+      "l2_id": "plumbing",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "смесителя",
+      "l2_id": "plumbing",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "снести",
+      "l2_id": "demolition",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "снять обои",
+      "l2_id": null,
+      "l3_id": "wallpaper-removal",
+      "weight": 100
+    },
+    {
+      "term": "собрать",
+      "l2_id": "furniture",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "собрать мебель",
+      "l2_id": "handyman",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "содрать обои",
+      "l2_id": null,
+      "l3_id": "wallpaper-removal",
+      "weight": 100
+    },
+    {
+      "term": "сплит",
+      "l2_id": "climate",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "сплит-система",
+      "l2_id": "climate",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "спутник",
+      "l2_id": "satellite-tv",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "стеклопакет",
+      "l2_id": "windows",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "стиралка",
+      "l2_id": "appliance-repair",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "стиральная",
+      "l2_id": "appliance-repair",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "строительство дома",
+      "l2_id": "general-construction",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "стройка",
+      "l2_id": "general-construction",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "стяжка",
+      "l2_id": "concrete",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "стяжка",
+      "l2_id": "floors",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "стяжка пола",
+      "l2_id": "floors",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "счётчик воды",
+      "l2_id": "plumbing",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "счётчик электричества",
+      "l2_id": "electrical",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "тарелка",
+      "l2_id": "satellite-tv",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "тв",
+      "l2_id": "appliance-repair",
+      "l3_id": null,
+      "weight": 80
+    },
+    {
+      "term": "телевизор",
+      "l2_id": "appliance-repair",
+      "l3_id": null,
+      "weight": 90
+    },
+    {
+      "term": "тёплый пол",
+      "l2_id": "climate",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "течет",
+      "l2_id": "plumbing",
+      "l3_id": null,
+      "weight": 90
+    },
+    {
+      "term": "течёт крыша",
+      "l2_id": "roofing",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "течь",
+      "l2_id": "plumbing",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "тканевый потолок",
+      "l2_id": "tension-ceilings",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "триколор",
+      "l2_id": "satellite-tv",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "тротуарная плитка",
+      "l2_id": "landscape",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "труба",
+      "l2_id": "plumbing",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "трубы",
+      "l2_id": "plumbing",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "туалет",
+      "l2_id": "plumbing",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "туалета",
+      "l2_id": "plumbing",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "туалете",
+      "l2_id": "plumbing",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "тюль",
+      "l2_id": "curtains-blinds",
+      "l3_id": null,
+      "weight": 90
+    },
+    {
+      "term": "уборка",
+      "l2_id": "cleaning-post-renovation",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "уборка после ремонта",
+      "l2_id": "cleaning-post-renovation",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "убрать",
+      "l2_id": "cleaning-post-renovation",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "удалить обои",
+      "l2_id": null,
+      "l3_id": "wallpaper-removal",
+      "weight": 100
+    },
+    {
+      "term": "узо",
+      "l2_id": "electrical",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "унитаз",
+      "l2_id": "plumbing",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "унитаза",
+      "l2_id": "plumbing",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "унитазе",
+      "l2_id": "plumbing",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "установить дверь",
+      "l2_id": "doors",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "установить карниз",
+      "l2_id": "handyman",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "установить люстру",
+      "l2_id": "electrical",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "установить унитаз",
+      "l2_id": "plumbing",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "установка ванны",
+      "l2_id": "plumbing",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "установка кондиционера",
+      "l2_id": "climate",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "установка раковины",
+      "l2_id": "plumbing",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "утепление",
+      "l2_id": "insulation",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "утеплить",
+      "l2_id": "insulation",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "фактурка",
+      "l2_id": null,
+      "l3_id": "paint-decorative",
+      "weight": 100
+    },
+    {
+      "term": "фасад",
+      "l2_id": "facade",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "флизелин",
+      "l2_id": null,
+      "l3_id": "wallpaper-fleece",
+      "weight": 100
+    },
+    {
+      "term": "флизелин",
+      "l2_id": "wallpaper",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "флизелиновые",
+      "l2_id": null,
+      "l3_id": "wallpaper-fleece",
+      "weight": 100
+    },
+    {
+      "term": "флизелиновые",
+      "l2_id": "wallpaper",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "фотообои",
+      "l2_id": null,
+      "l3_id": "wallpaper-photo",
+      "weight": 100
+    },
+    {
+      "term": "фотообои",
+      "l2_id": "wallpaper",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "фундамент",
+      "l2_id": "concrete",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "хамам",
+      "l2_id": "baths-pools",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "химчистка",
+      "l2_id": "cleaning-post-renovation",
+      "l3_id": null,
+      "weight": 90
+    },
+    {
+      "term": "холодильник",
+      "l2_id": "appliance-repair",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "шёлковая штукатурка",
+      "l2_id": null,
+      "l3_id": "plaster-silk",
+      "weight": 100
+    },
+    {
+      "term": "шкаф",
+      "l2_id": "furniture",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "штакетник",
+      "l2_id": "fences-gates",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "штора",
+      "l2_id": "curtains-blinds",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "шторы",
+      "l2_id": "curtains-blinds",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "щиток",
+      "l2_id": "electrical",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "эковата",
+      "l2_id": "insulation",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "электрик",
+      "l2_id": "electrical",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "эфирное тв",
+      "l2_id": "satellite-tv",
+      "l3_id": null,
+      "weight": 90
+    },
+    {
+      "term": "cctv",
+      "l2_id": "security-systems",
+      "l3_id": null,
+      "weight": 100
+    }
+  ],
+  "content_sha256": "4f858a77badaeb9c77ae853d49da7e7e8ee9220b8872ddc4fb3a76e048711267"
+}

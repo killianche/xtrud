@@ -7,25 +7,38 @@
 // раздел «Product scope (MVP)».
 
 import { useQuery } from "@tanstack/react-query";
+import {
+  type BundledVisibleCategory,
+  loadVisibleTaskCatalogWithFallback,
+  type SourcedVisibleCategories,
+} from "@/features/categories/bundled-task-catalog";
 import { filterL2ByScope } from "@/lib/product-scope";
 import { supabase } from "@/lib/supabase";
-import type { Tables } from "@/types/database";
 
-export type VisibleCategory = Tables<"categories_l2">;
+export type VisibleCategory = BundledVisibleCategory;
+
+async function fetchVisibleCategories(): Promise<VisibleCategory[]> {
+  const { data, error } = await supabase
+    .from("categories_l2")
+    .select("id,l1_id,name_ru,icon,sort_order,is_active,is_visible,is_featured")
+    .eq("is_visible", true)
+    .eq("is_active", true)
+    .order("sort_order");
+  if (error) throw error;
+  return filterL2ByScope(data ?? []);
+}
 
 export function useVisibleCategories() {
-  return useQuery<VisibleCategory[]>({
+  const result = useQuery<SourcedVisibleCategories>({
     queryKey: ["categories", "visible-l2", "in-scope"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("categories_l2")
-        .select("*")
-        .eq("is_visible", true)
-        .eq("is_active", true)
-        .order("sort_order");
-      if (error) throw error;
-      return filterL2ByScope(data ?? []);
-    },
-    staleTime: 30 * 60_000, // 30 минут — таксономия меняется редко
+    queryFn: () => loadVisibleTaskCatalogWithFallback(fetchVisibleCategories),
+    staleTime: (queryState) => (queryState.state.data?.source === "bundle" ? 0 : 30 * 60_000),
+    refetchOnReconnect: true,
   });
+
+  return {
+    ...result,
+    data: result.data?.items,
+    source: result.data?.source ?? null,
+  };
 }

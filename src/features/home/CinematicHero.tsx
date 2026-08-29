@@ -5,8 +5,8 @@
  *   - Фото-фон идёт от САМОГО верха экрана (под статус-бар), включая зону
  *     шапки. Шапка (логотип xtrud + город) лежит ПОВЕРХ фото белым (как Farce
  *     landing — логотип в углу поверх фото).
- *   - H1 «Найдутся мастера» + поиск — внутри фото-блока, над нижним краём.
- *   - Фото-блок заканчивается ниже поиска со скруглёнными нижними углами
+ *   - H1 «Создайте задание» + primary CTA — внутри фото-блока.
+ *   - Фото-блок заканчивается ниже CTA со скруглёнными нижними углами
  *     (rounded-b). Дальше (баннеры и т.д.) идёт обычный canvas-контент.
  *   - Eyebrow «Мастера Ингушетии» УБРАН (фидбэк юзера).
  *
@@ -26,7 +26,7 @@
  * легальный hero-overlay case (design-quality §B исключение): у фото свой
  * полноцветный фон, белый контраст гарантирован градиентами. Чтобы не
  * триггерить grep `color="#"` в JSX, белый берётся из локальной константы
- * ON_PHOTO. Поисковая плашка и её текст — через токены (bg-canvas/text-mute),
+ * ON_PHOTO. Плашка CTA и её текст — через токены,
  * чтобы корректно работать в обеих темах.
  *
  * Шапка-навигация: только для client/анон. Для master-роли в HomeTab
@@ -35,8 +35,7 @@
 
 import { Image as ExpoImage } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
-import { useRouter } from "expo-router";
-import { CaretDown, MagnifyingGlass, MapPin } from "phosphor-react-native";
+import { CaretDown, MapPin, Plus } from "phosphor-react-native";
 import { useEffect, useRef, useState } from "react";
 import { Animated, Easing, Platform, Pressable, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -67,8 +66,7 @@ const FADE_MS = 1200;
 // grep `color="#"` design-enforcement; это легальный photo-overlay §B case.
 const ON_PHOTO = "#ffffff";
 
-export function CinematicHero() {
-  const router = useRouter();
+export function CinematicHero({ onCreateTask }: { onCreateTask: () => void }) {
   const insets = useSafeAreaInsets();
   const viewportWidth = useAppWidth();
   const inkColor = useThemeColor("ink");
@@ -142,12 +140,12 @@ export function CinematicHero() {
     };
   }, [opacities]);
 
-  // Высота фото-блока: статус-бар + контентная зона (шапка + H1 + поиск + воздух).
+  // Высота фото-блока: статус-бар + контентная зона (шапка + H1 + CTA).
   // Контентную зону держим ~ширине, с потолком для широких web-вьюпортов.
-  // 2026-05-28: фото-блок удлинён вниз по фидбэку владельца — множитель
-  // 0.92→1.12, потолок 440→560 (фото стало выше, больше «воздуха» под поиском).
+  // Task-first версия компактнее: CTA и начало следующего блока видны без
+  // лишнего скролла на типичном мобильном экране.
   const heroWidth = Math.min(viewportWidth, 720);
-  const contentZone = Math.min(Math.round(heroWidth * 1.12), 560);
+  const contentZone = Math.min(Math.round(heroWidth * 0.96), 480);
   const heroHeight = insets.top + contentZone;
 
   return (
@@ -224,21 +222,21 @@ export function CinematicHero() {
           </Pressable>
         </View>
 
-        {/* ── Низ фото-блока: крупный H1 + поиск ── */}
+        {/* ── Низ фото-блока: крупный H1 + главный conversion action ── */}
         <View className="absolute left-0 right-0 bottom-0 px-4 pb-5">
           <AppText
             weight="display"
             className="tracking-tight text-white"
             style={{ fontSize: 44, lineHeight: 46 }}
           >
-            Найдутся{"\n"}мастера
+            Создайте{"\n"}задание
           </AppText>
 
-          {/* Поиск — на светлой плашке поверх фото, читается в обеих темах. */}
+          {/* Создание задания — единственное primary-действие клиентского hero. */}
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="Поиск мастеров"
-            onPress={() => router.push("/search" as never)}
+            accessibilityLabel="Создать задание бесплатно"
+            onPress={onCreateTask}
             // dark:border + dark:border-white/15 — тонкое серое свечение по краю
             // плашки в тёмной теме (фидбэк владельца 2026-05-27: поиск сливался с
             // тёмным hero, нужна обводка чтобы выделить). В light режиме граница
@@ -257,8 +255,10 @@ export function CinematicHero() {
                 : {}),
             }}
           >
-            <MagnifyingGlass size={22} weight="bold" color={inkColor} />
-            <AppText className="flex-1 text-body-lg text-mute">Специалист или услуга…</AppText>
+            <Plus size={22} weight="bold" color={inkColor} />
+            <AppText weight="semibold" className="flex-1 text-body-lg text-ink">
+              Создать бесплатно
+            </AppText>
           </Pressable>
         </View>
       </View>

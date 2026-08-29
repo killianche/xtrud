@@ -11,6 +11,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { myOrdersKey } from "@/features/orders/use-my-orders";
 import { orderDetailKey } from "@/features/orders/use-order-detail";
+import { orderPublishCapacityKey } from "@/features/orders/use-order-publish-capacity";
 import { supabase } from "@/lib/supabase";
 
 export interface ReopenOrderInput {
@@ -31,6 +32,7 @@ export function useReopenOrder() {
     onSuccess: (_data, vars) => {
       qc.invalidateQueries({ queryKey: orderDetailKey(vars.orderId) });
       qc.invalidateQueries({ queryKey: myOrdersKey(vars.userId) });
+      qc.invalidateQueries({ queryKey: orderPublishCapacityKey(vars.userId) });
     },
   });
 }

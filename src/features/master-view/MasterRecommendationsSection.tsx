@@ -130,7 +130,7 @@ export function MasterRecommendationsSection({ userId }: MasterRecommendationsSe
                 budgetValue={o.budget_value}
                 showRespondButton
                 alreadyResponded={responded}
-                onPress={() => router.push(`/(tabs)/orders/${o.id}` as never)}
+                onPress={() => router.push(`/orders/${o.id}` as never)}
               />
             );
           })}

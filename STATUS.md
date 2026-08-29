@@ -8,6 +8,240 @@
 
 ---
 
+## Каталог услуг, честная приоритизация и iOS picker — 2026-08-26
+
+- YouDo, Яндекс Исполнители, присланные владельцем экраны и текущий код
+  повторно проверены независимыми product, design, technical, QA и review
+  ролями. Каноническая матрица добавлена в `docs/SERVICE_PRIORITY.md`: отдельно
+  зафиксированы FACT, исторические сигналы, Core, Core gap, кандидаты,
+  experiment/long-tail, restricted и OUT. Реальный рейтинг спроса
+  Магаса/Назрани остаётся `UNKNOWN`; место в меню и число исполнителей не
+  выдаются за популярность.
+- CURRENT release bundle по-прежнему содержит 37 L2, 285 L3 и 288 terms, и все
+  37 L2 фактически относятся к `construction`. Канонический seed содержит семь
+  веток `home-services`, но их отсутствие в authoritative release snapshot —
+  backend/catalog gap. Generated JSON вручную не дополнялся.
+- TARGET-модель сопоставляет поддерживаемые группы YouDo/Яндекс с 10 L1 и
+  feature-off draft `0120`, включая виртуального помощника, digital repair,
+  event staff/audio и курьерские подвиды; аренда без услуги остаётся OUT, а
+  охрана требует отдельного mapping/legal решения. Найден и закрыт риск старого
+  клиента: draft больше не вставляет
+  aliases выключенных категорий, потому что текущий public synonym RPC не
+  фильтрует inactive/hidden targets. Их добавление заблокировано до отдельного
+  search hardening; fixture закрепляет fail-closed контракт.
+- Видимые неподтверждённые заявления «Популярные задачи»/«из популярных»
+  заменены на доказательные «Примеры заданий» и нейтральный empty state. Сырой
+  search text и публичные query chips отключены до versioned PII-safe SQL и
+  правил агрегации. Dormant analytics helper проверяет `{ error }` Supabase RPC
+  и покрыт success/error тестами.
+- iOS intent/picker доведён без скрытого назначения категории: Search на
+  клавиатуре только закрывает её и показывает live-results, исходный task text
+  передаётся и остаётся в owner-bound draft, оба input соблюдают Dynamic Type.
+  Исправлены реальные prompt IDs `windows`, `doors`, `landscape`; picker получил
+  skeleton loading, icon+heading error/empty states и Retry.
+- Финальный локальный `quality:check` PASS: 37 test files / 229 tests,
+  TypeScript, Biome по 391 файлу, governance, Supabase/catalog/release/assets
+  contracts. Production-mode iOS Hermes export PASS. QA дал локальному срезу
+  GO; реальный iPhone/Simulator light/dark, VoiceOver, keyboard и half-swipe
+  остаются ручным device gate.
+- Supabase/Beget, production migrations, commit, push, deploy и EAS build/submit
+  не выполнялись. Universal activation остаётся NO-GO до search hardening,
+  exact restore/security gates и отдельной forward-only activation migration.
+
+---
+
+## Свежий Cloud snapshot/backup и security gate — 2026-08-26
+
+- Read-only инвентаризация live Supabase `wgeimsajvjkzrrnfrnkb` снята через
+  IPv4 session pooler и сразу зашифрована. Проверенный ciphertext хранится вне
+  Git в `~/.config/xtrud/inventory/`; SHA-256:
+  `af3f74643a9d67519c4addabc56f022a38e9d1e9224af5bfa27d5c2fb09728e7`.
+  Подтверждены PostgreSQL 17.6, фактические policies/grants/functions/triggers и
+  реальные P0: broad owner-update для `users`, `master_profiles` и
+  `master_categories`, активный demo-admin и публичный pre-login
+  `resolve_login_email`. `get_master_phone` в live уже закрыт от `anon`.
+- Создан и независимо проверен свежий age-encrypted logical DB bundle вне Git:
+  `supabase-cloud-logical-20260826T133139Z.tar.age`, SHA-256
+  `2eff20b5dfbc1784d048c6c08406edd0f9d451a69ce53345e9b5911fba575bb0`.
+  Добавлен versioned Storage creator/verifier; свежий ciphertext
+  `supabase-storage-20260826T135436Z.tar.age`, SHA-256
+  `44a712720f6bac4111075058e722c3c0fa808bf235254cdce56a6e351024bb49`,
+  содержит 6 buckets, 7 objects и 808 230 bytes. Каждый object проверен по
+  размеру и SHA-256, plaintext staging и временный service key удалены.
+- Подготовлен только unnumbered draft
+  `supabase/migration-drafts/security_hardening_live_verified.sql` и отдельный
+  fail-closed contract-test. Он ограничивает owner writes, trust/ranking/admin
+  поля, снимает demo-admin и сужает RPC ACL, но намеренно не включён в runnable
+  migration chain и не применялся к Cloud.
+- Fresh exact-stack restore всё ещё **NO-GO**: Docker Compose отсутствует,
+  локально меньше требуемых 30 GiB, а forensic raw PostgreSQL restore доказал
+  несовместимость простого наложения provider schema поверх инициализированного
+  Supabase image. Нужны source-derived unified DB+Storage boundary, versioned
+  Storage restore, isolated official Compose target, два чистых restore и
+  PostgREST/Auth/Storage/Realtime/RLS smoke. Новый Beget VPS/S3 пока отсутствует.
+- Fresh ciphertext хранится только локально: копирование на текущий web VPS не
+  выполнялось. Supabase, VPS, DNS, Git commit/push и deploy не менялись.
+  Использованные текущие Cloud credentials до final cutover нужно ротировать;
+  в этом цикле их намеренно не меняли, чтобы не ломать работающий production.
+
+---
+
+## iOS native navigation и быстрый intent-flow задания — 2026-08-26
+
+- Detail/edit/picker-маршруты вынесены из скрытых Tabs в настоящий native
+  Stack `app/(details)`. Кнопка Back и iOS edge-swipe используют одну policy:
+  обычный native pop, безопасный fallback для cold deep link, защита dirty-форм,
+  блокировка перехода во время сохранения/публикации и явный выход после success.
+  Приватные settings/edit/history routes больше не показываются анонимному
+  пользователю даже на один кадр; публичный allowlist задан явно и fail-closed.
+- Создание задания разделено на два коротких native-шага: намерение и детали.
+  Детерминированное точное совпадение показывает известное название вместе с
+  категорией и переходит дальше только после тапа пользователя. Неоднозначный
+  или необычный текст показывает не более трёх подтверждаемых L2-подсказок и
+  путь «Все категории»; слабый trigram не назначает категорию. Любое изменение
+  текста атомарно очищает ранее выбранную L2.
+- Wrong-layout correction проверяется по фактически исправленному запросу.
+  Каноническое решение «кондиционеры/сплит-системы → Ремонт техники» защищено
+  client-contract; подготовлен, но не применён, forward-only draft `0123` для
+  исправления четырёх legacy exact terms после live snapshot/backup Beget.
+- Профиль исполнителя восстанавливает сохранённые поля онбординга после ухода и
+  возврата. В форме задания исправлены контраст выбранных вариантов, radio
+  accessibility, disabled-состояния Back/«Отмена» и реальная 44×44 зона удаления
+  фото. Design, QA и code-review прошли независимыми агентами.
+- Финальный локальный gate после последней правки: `quality:check` — 35 test
+  files / 218 tests, TypeScript/Biome по 385 файлам, governance, Supabase,
+  catalog, assets и version contracts PASS; iOS Hermes export — PASS. Главная
+  визуально открыта в iPhone 17 Pro Simulator. Реальный half-swipe/VoiceOver и
+  полный device flow остаются отдельным ручным device gate; Android отложен.
+- Production backend/Beget, Supabase migrations, commit, push, EAS build/submit
+  и deploy не выполнялись. Рабочая копия остаётся смешанной и незакоммиченной.
+
+---
+
+## Task-first главная, поиск намерения и Beget-ready каталог — 2026-08-26
+
+- Главная мобильного приложения перестроена вокруг одного основного действия:
+  hero «Создайте задание» с CTA «Создать бесплатно». Ниже остаются короткие
+  task-intent плитки; дублирующие рекламные CTA удалены. Публичная терминология
+  главной переведена с «мастеров» на «исполнителей».
+- Исправлен deterministic autocomplete создания задания. Первый вариант
+  сохраняет формулировку пользователя и явно показывает подтверждаемую L2;
+  небезопасные L3-sibling варианты отбрасываются. Реальная форма
+  «поклеить обои» больше не превращается в «удаление старых обоев».
+  Исправленная русская раскладка показывается явно и используется как
+  подтверждаемое публичное название, а не сохраняет латинскую абракадабру.
+- Для недоступной сети добавлен generated bundled-каталог текущего публичного
+  scope: 37 L2, 285 активных L3 и 288 terms. Он строится read-only генератором,
+  имеет SHA-256, локальный shape/reference/duplicate gate и не содержит URL,
+  ключей, PII или цен. Backend остаётся первым источником; корректный пустой
+  ответ не подменяется, а fallback включается только для классифицированного
+  transport/DNS/timeout-сбоя. Auth/RLS/API-contract ошибки остаются видимыми.
+  UI явно сообщает о сохранённом каталоге.
+- Bundled-каталог и существующий UI-список городов разрешают заполнить локальный
+  черновик, но не являются authority публикации. Непосредственно до проверки
+  лимита, загрузки фото и insert клиент свежим backend-read повторно проверяет
+  active/visible/in-scope L2 и реальный active city; «Вся Ингушетия», районы и
+  сёла проверяются по каноническому location-контракту. При недоступном backend
+  нет upload, insert или ложного success; поля остаются в owner-bound draft. Cold-process
+  guest snapshot по прежнему privacy-контракту карантинируется и автоматически
+  не показывается, а авторизованный owner-draft имеет TTL 14 дней.
+- По публичным каталогам YouDo и Яндекс Исполнителей проведён source-backed
+  обзор. Недостающие группы (виртуальный помощник, ремонт цифровой техники,
+  персонал/промо, аудио, курьерские подвиды) добавлены только в feature-off
+  `migration-drafts/0120`. Search aliases для них намеренно не вставляются до
+  hardening публичного synonym RPC: иначе выключенные ветки протекут старым
+  клиентам. Неподтверждённые цены не выдумываются и оставлены `NULL`.
+- Целевой backend не менялся: это официальный self-hosted Supabase-compatible
+  stack на новом отдельном Beget VPS + Beget S3. Изменённый mobile-код не
+  содержит Cloud URL/project ID и переключается через env. Supabase Cloud
+  использовался только read-only как текущий эталон; deploy/migration туда не
+  выполнялись. Beget cutover остаётся NO-GO до отдельного VPS/S3/DNS и
+  обязательных snapshot/backup/restore/security gates.
+- Обновлённый локальный `quality:check` PASS: 28 test files / 174 tests,
+  TypeScript/Biome по 367 файлам, assets/governance/release/catalog contracts
+  PASS; production-mode iOS JS/Hermes export PASS. На iPhone 17 Simulator при
+  фактической недоступности старого Cloud DNS проверены task-first cold start,
+  «Поклеить обои» → «Обои», details, bundled city list, accessibility tree и
+  light/dark preview. iOS store-gate теперь fail-closed связывает источник с
+  EAS production и release ledger по URL/hash client key, затем сверяет snapshot
+  с production-каталогом. Android по новому явному решению владельца отложен и не
+  является текущим iOS-slice gate; запущенные Android build/emulator остановлены,
+  воспроизводимая ignored `android/` удалена. Production deploy/migration,
+  commit/push и Beget cutover не выполнялись.
+
+---
+
+## Search-first создание задания — 2026-08-26
+
+- Локально реализован новый mobile-first вход: крупный CTA «Создать задание»
+  под hero на главной ведёт в `/orders/new`; пользователь сначала вводит задачу
+  своими словами, затем явно выбирает вариант названия вместе с категорией или
+  сохраняет свой текст и выбирает категорию вручную.
+- Категория не назначается скрыто. Подсказки строятся детерминированно через
+  существующий category search и пересекаются с видимым runtime-каталогом;
+  legacy L3 используется только как сигнал поиска, а не как публичное название.
+  Категория из URL/старого draft не допускается в details/insert без текущего
+  visible allowlist. Генеративный AI и изменение пользовательского текста не
+  добавлялись.
+- После intent остаётся компактная фаза деталей в том же маршруте. Для
+  проверенных категорий есть контекстная подсказка описания, для остальных —
+  универсальное ручное поле. Публикация обозначена как бесплатная.
+- Введён временный продуктовый лимит 3 открытых задания на аккаунт: клиент
+  показывает capacity-state, проверяет exact-count до загрузки фото и повторяет
+  проверку перед insert. При batch/insert error загруженные paths удаляются
+  best-effort. Async result привязан к исходному аккаунту: он не очищает draft
+  и не показывает success в новой сессии; после insert сверяются и React-owner,
+  и фактическая текущая Supabase session. Post-commit session error сохраняет
+  терминальный success без чужого order ID и уже не удаляет привязанные фото.
+  Синхронный single-flight gate блокирует повторный тап до первого network
+  await. Это всё ещё только UX-precheck; гонка двух устройств остаётся возможной.
+- Локальный gate на Node `20.19.4`: `quality:check` PASS, 21 файл / 139 тестов,
+  TypeScript/Biome/assets/governance/release contracts PASS; production-mode
+  iOS и Android JS/Hermes exports PASS. Web preview bundle собран, но
+  интерактивный визуальный проход не засчитан: встроенный Browser после раннего
+  `connection refused` заблокировал повторный localhost-переход своей URL
+  policy. Нативный simulator/device preview остаётся обязательным.
+- **Release NO-GO:** production Supabase не менялся. До production нужен
+  атомарный серверный quota/RPC с idempotency key, forward-only migration после
+  live snapshot/backup, E2E двух аккаунтов и iOS/Android device/accessibility
+  smoke. Число 3 остаётся продуктовым решением MVP и может быть пересмотрено
+  владельцем без изменения архитектуры.
+
+---
+
+## Mobile task marketplace slice — 2026-08-25
+
+- Локально собран первый mobile-first вертикальный срез доски заданий по
+  [`docs/MOBILE_TASK_MARKETPLACE_UX.md`](docs/MOBILE_TASK_MARKETPLACE_UX.md):
+  виртуализированная лента «Задания», стабильная tuple-пагинация
+  `created_at + id`, фильтры категорий/локации, detail, форма отклика и плоский
+  список предложений исполнителей. Референсы YouDo использованы только для
+  продуктовой архитектуры; визуальный язык остаётся xtrud.
+- Один аккаунт остаётся заказчиком и исполнителем. Гостевой CTA сохраняет
+  безопасный intent, новый исполнитель проходит единый путь
+  `профиль → категории → фото`, существующий исполнитель возвращается к
+  заданию без повторного onboarding. Intent имеет одного владельца навигации.
+- Устранены найденные советом P1: ложная client-side urgent-сортировка удалена;
+  demo фильтруется server-side до `limit`; composite cursor не теряет строки с
+  одинаковым timestamp; незавершённая публикация профиля восстанавливается по
+  durable `master_profiles.status`; повторный profile submit не демотирует
+  active-исполнителя.
+- Отклик валидирует trimmed сообщение и положительную сумму в пределах
+  PostgreSQL `int`; контакты исполнителя загружаются только по явному тапу;
+  ключевые поля и ошибки формы получили accessibility labels/live-region, а
+  price controls — минимальную высоту 44 pt.
+- Локальный gate на Node `20.19.4`: `quality:check` PASS, 16 файлов / 123 теста,
+  TypeScript/Biome/assets/governance/release contracts PASS. Production-mode
+  iOS и Android JS/Hermes exports проходят. Это не заменяет native build и
+  проверку на устройствах.
+- **Release NO-GO:** production Supabase не менялся. Перед релизом обязательны
+  live read-only snapshot + backup, forward-only security/data migration,
+  атомарная серверная финализация профиля, DB constraint `price_value > 0`,
+  устранение baseline self-admin/anonymous phone P0, двухаккаунтный live E2E и
+  iOS/Android device + VoiceOver/TalkBack/Dynamic Type/offline smoke.
+
+---
+
 ## Mobile-first и подготовка отдельного Beget — 2026-08-25
 
 - Продуктовый контур закреплён как мобильное приложение: одна Expo/React Native

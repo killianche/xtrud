@@ -7,7 +7,7 @@
  *
  * При тапе открывается ПОЛНОЦЕННАЯ страница `/orders/category-select` с
  * typeahead + списком всех L2. После выбора пользователь возвращается
- * на /orders/new — выбранный l2 приходит через Zustand-store
+ * в открывшую форму — выбранный l2 приходит через Zustand-store
  * `useOrderDraftStore.selectedL2`, который CategoryPicker слушает через
  * useEffect и применяет в react-hook-form.
  *
@@ -66,7 +66,7 @@ export function CategoryPicker({ value, onChange, disabled, error }: CategoryPic
         accessibilityRole="button"
         accessibilityLabel="Выбрать категорию"
         disabled={disabled}
-        onPress={() => router.push("/(tabs)/orders/category-select" as never)}
+        onPress={() => router.push("/orders/category-select" as never)}
         className={`mt-2 flex-row items-center gap-3 h-14 rounded-lg bg-canvas border px-4 active:opacity-70 ${
           error ? "border-error" : "border-hairline"
         } ${disabled ? "opacity-50" : ""}`}

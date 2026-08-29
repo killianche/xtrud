@@ -1,6 +1,6 @@
 // Mutation: владелец удаляет свой заказ из «Истории» (cancelled / expired).
 //
-// USAGE: подключён в app/(tabs)/orders/[id].tsx (action-меню «Удалить»),
+// USAGE: подключён в app/(details)/orders/[id].tsx (action-меню «Удалить»),
 // доступно только когда заказ cancelled / expired (статусы «Истории»).
 //
 // 2026-05-21 (план ORDER_LIFECYCLE_CLIENT_PLAN.md §4 «Удалить заказ»):

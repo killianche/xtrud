@@ -11,22 +11,13 @@
 // фильтрует напрямую по L2 (Сантехника, Электрика и т.д.). L1 остаётся
 // в БД как организационная группа, но не показывается в UI как фильтр.
 //
-// **2026-05-15 — defaults из master_categories.** При первом заходе мастера
-// на /orders/search его l2Ids подставляются автоматически из категорий
-// профиля (master_categories) — он сразу видит релевантные заявки, не
-// нужно вручную выбирать фильтры. Триггер — `initFromMasterCategories(userId, ids)`.
-// Реинициализация защищена `initializedForUserId`: если юзер очистил
-// фильтры — повторно не перезаливаем, чтобы можно было увидеть «все категории».
-// Смена юзера (logout/login другой) → `initializedForUserId` не совпадает →
-// дефолты подставятся заново.
+// По умолчанию фильтры пустые: вход всегда показывает все задания. Категории
+// профиля доступны только как явные quick-select chips на экране фильтров.
 
 import { create } from "zustand";
 
-export type OrdersSearchSort = "newest" | "urgent";
-
 interface OrdersSearchFiltersState {
   l2Ids: string[]; // выбранные L2 категории
-  sort: OrdersSearchSort;
   /**
    * Фильтр по локации. cityId="" и district="" = «Вся Ингушетия» (без фильтра).
    * Иначе выбран ЛИБО город (cityId), ЛИБО район (district) — взаимоисключающе
@@ -35,34 +26,18 @@ interface OrdersSearchFiltersState {
    */
   cityId: string;
   district: string;
-  /**
-   * userId, для которого l2Ids уже были инициализированы из master_categories.
-   * null = ни разу не подставляли defaults в этой сессии (или logout).
-   */
-  initializedForUserId: string | null;
   setL2Ids: (next: string[]) => void;
   toggleL2: (id: string) => void;
-  setSort: (s: OrdersSearchSort) => void;
   /** Выставить локацию-фильтр. cityId+district взаимоисключающие — передавай
    *  один непустой, второй "". Оба "" = снять фильтр («Вся Ингушетия»). */
   setLocation: (cityId: string, district: string) => void;
   clearAll: () => void;
-  /**
-   * Подставить defaults из master_categories при первом заходе пользователя
-   * на /orders/search. Идемпотентна — повторный вызов с тем же userId no-op.
-   * Вызывать когда useMyMasterCategories отдал данные (даже пустой массив —
-   * это валидное состояние «у мастера нет категорий», тоже считаем как
-   * initialized чтобы не дёргать на каждом mount).
-   */
-  initFromMasterCategories: (userId: string, masterL2Ids: string[]) => void;
 }
 
 export const useOrdersSearchFiltersStore = create<OrdersSearchFiltersState>((set, get) => ({
   l2Ids: [],
-  sort: "newest",
   cityId: "",
   district: "",
-  initializedForUserId: null,
   setL2Ids: (next) => set({ l2Ids: next }),
   toggleL2: (id) => {
     const cur = new Set(get().l2Ids);
@@ -70,23 +45,14 @@ export const useOrdersSearchFiltersStore = create<OrdersSearchFiltersState>((set
     else cur.add(id);
     set({ l2Ids: Array.from(cur) });
   },
-  setSort: (s) => set({ sort: s }),
   setLocation: (cityId, district) => set({ cityId, district }),
-  clearAll: () => set({ l2Ids: [], sort: "newest", cityId: "", district: "" }),
-  initFromMasterCategories: (userId, masterL2Ids) => {
-    if (get().initializedForUserId === userId) return;
-    set({
-      l2Ids: masterL2Ids.slice(),
-      initializedForUserId: userId,
-    });
-  },
+  clearAll: () => set({ l2Ids: [], cityId: "", district: "" }),
 }));
 
 /** Helper: подсчёт активных фильтров для бейджа на кнопке «Фильтры». */
 export function countActiveFilters(state: OrdersSearchFiltersState): number {
   let n = 0;
   if (state.l2Ids.length > 0) n += state.l2Ids.length;
-  if (state.sort !== "newest") n += 1;
   // Локация (город ИЛИ район) — один активный фильтр.
   if (state.cityId || state.district) n += 1;
   return n;

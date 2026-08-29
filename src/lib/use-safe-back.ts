@@ -14,14 +14,15 @@
  * делает `history.replaceState`, не `pushState`. Поэтому browser-history
  * предыдущий entry — это уже /orders (список), а не /orders/[id].
  *
- * Решение. Отдельный in-app стек путей (`@/lib/nav-history`) пушится на
- * каждое изменение `usePathname()`. useSafeBack берёт предпоследний путь
- * из стека и делает `router.replace(prev)` — это «откуда я пришёл»
- * независимо от того, какой механизм истории использует expo-router внутри.
+ * Решение. Внутри настоящего Stack используем его native pop — так кнопка и
+ * iOS edge-swipe имеют одну историю и одну анимацию. Отдельный in-app стек
+ * путей (`@/lib/nav-history`) остаётся fallback'ом только для переходов между
+ * navigator'ами, где native Stack не владеет предыдущим экраном.
  *
  * Приоритет:
- *   1. nav-history имеет запись «откуда» → router.replace(prev) на неё.
- *   2. Нет (deeplink / refresh) → router.replace(fallback).
+ *   1. Текущий navigator — Stack и может вернуться → native goBack().
+ *   2. nav-history имеет запись «откуда» → router.replace(prev) на неё.
+ *   3. Нет (deeplink / refresh) → router.replace(fallback).
  *
  * Фидбэк user 2026-05-15: «Мои заказы → заказ → мастер → "назад" уводит
  * куда попало». Без nav-history стек пуст после reload и back уходил
@@ -32,8 +33,9 @@
  *     рекомендуется `as const`, чтобы TS проверил route.
  */
 
-import { type Href, useRouter } from "expo-router";
-import { useCallback } from "react";
+import { type Href, useNavigation, useRouter } from "expo-router";
+import { useCallback, useRef } from "react";
+import { mayPopLocalStack } from "./nav-back-policy";
 import { useNavHistory } from "./nav-history";
 
 /** Извлекает namespace-сегмент из expo-router пути:
@@ -57,8 +59,52 @@ function segmentsCount(path: string): number {
 
 export function useSafeBack(fallback: Href) {
   const router = useRouter();
+  const navigation = useNavigation();
+  const rootNavigation = useNavigation("/");
   const goBackInStack = useNavHistory((s) => s.goBack);
+  const transitionLocked = useRef(false);
   return useCallback(() => {
+    if (transitionLocked.current) return;
+    transitionLocked.current = true;
+
+    const localState = navigation.getState();
+    const rootState = rootNavigation.getState();
+    const localIsRoot = !!localState?.key && localState.key === rootState?.key;
+    const hasTrackedCaller = useNavHistory.getState().stack.length >= 2;
+    const localCanPop =
+      localState?.type === "stack" &&
+      localState.index > 0 &&
+      navigation.canGoBack() &&
+      mayPopLocalStack({ localIsRoot, hasTrackedCaller });
+    const rootCanPop =
+      !localIsRoot &&
+      rootState?.type === "stack" &&
+      rootState.index > 0 &&
+      rootNavigation.canGoBack() &&
+      hasTrackedCaller;
+    const nativeOwner = localCanPop ? navigation : rootCanPop ? rootNavigation : null;
+    const nativeState = localCanPop ? localState : rootCanPop ? rootState : undefined;
+    const observedState = nativeState ?? localState;
+    const routeBefore = observedState?.routes[observedState.index]?.key;
+    const unlockIfNavigationWasPrevented = (owner = navigation) => {
+      requestAnimationFrame(() => {
+        const stateAfter = owner.getState();
+        const routeAfter = stateAfter?.routes[stateAfter.index]?.key;
+        if (routeAfter === routeBefore) transitionLocked.current = false;
+      });
+    };
+
+    // A real Stack owns its history and its iOS interactive transition.
+    // Pop it instead of replacing the current route (which used to leave a
+    // duplicate screen underneath and animate Back as a forward push).
+    // `canGoBack()` alone may be true because a parent Tab/Stack can move.
+    // Require a locally poppable Stack so Back never escapes to a wrong tab.
+    if (nativeOwner) {
+      nativeOwner.goBack();
+      unlockIfNavigationWasPrevented(nativeOwner);
+      return;
+    }
+
     const prev = goBackInStack();
     if (prev) {
       // Detail-страница (≥2 сегмента: /chats/abc, /orders/xyz) — это
@@ -68,6 +114,7 @@ export function useSafeBack(fallback: Href) {
       // 2026-05-16). С этим — возвращаемся в /chats/abc.
       if (segmentsCount(prev) >= 2) {
         router.replace(prev as Href);
+        unlockIfNavigationWasPrevented();
         return;
       }
       // prev — tab-корень (/profile, /chats). Если его таб совпадает с
@@ -77,9 +124,11 @@ export function useSafeBack(fallback: Href) {
       const fbSeg = typeof fallback === "string" ? tabSegment(fallback) : null;
       if (!fbSeg || prevSeg === fbSeg) {
         router.replace(prev as Href);
+        unlockIfNavigationWasPrevented();
         return;
       }
     }
     router.replace(fallback);
-  }, [router, fallback, goBackInStack]);
+    unlockIfNavigationWasPrevented();
+  }, [router, navigation, rootNavigation, fallback, goBackInStack]);
 }

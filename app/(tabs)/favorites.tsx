@@ -68,7 +68,7 @@ export default function FavoritesScreen() {
           renderItem={({ item }) => (
             <FavoriteRow
               item={item}
-              onPress={() => router.push(`/(tabs)/master/${item.masterId}` as never)}
+              onPress={() => router.push(`/master/${item.masterId}` as never)}
               onUnfavorite={() => toggle.mutate({ masterId: item.masterId, nextValue: false })}
               disabled={toggle.isPending}
             />

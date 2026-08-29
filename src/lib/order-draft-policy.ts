@@ -96,6 +96,17 @@ export function orderDraftOwnerKey(ownerId: OrderDraftOwnerId): string {
   return ownerId === null ? ORDER_DRAFT_GUEST_KEY : `user:${ownerId}`;
 }
 
+/** Removes exactly one owner's persisted snapshot without touching another
+ * account that may have become active while an async publish was in flight. */
+export function withoutOrderDraftOwnerSnapshot(
+  snapshots: Record<string, PersistedOrderDraftSnapshot>,
+  ownerId: OrderDraftOwnerId,
+): Record<string, PersistedOrderDraftSnapshot> {
+  const next = { ...snapshots };
+  delete next[orderDraftOwnerKey(ownerId)];
+  return next;
+}
+
 export function isOrderDraftExpired(
   draft: OrderDraft | null | undefined,
   now = Date.now(),
@@ -242,6 +253,37 @@ export function consumeInitialRouteDraft(
   alreadyApplied: boolean,
 ): { value: string; nextApplied: true } {
   return { value: alreadyApplied ? "" : initialDraft, nextApplied: true };
+}
+
+/** A shortcut may seed only a genuinely empty draft. Mixing a new title with
+ * old photos, location, deadline or budget would create a different order than
+ * the one the owner sees in the shortcut. */
+export function canApplyInitialTaskExample(
+  draft: OrderDraft,
+  attachmentCount: number,
+  routeValue: string,
+): boolean {
+  if (routeValue.trim().length === 0 || attachmentCount > 0) return false;
+  return Object.entries(draft).every(([key, value]) => {
+    if (key === "updatedAt" || value === null || value === undefined || value === "") return true;
+    return Array.isArray(value) && value.length === 0;
+  });
+}
+
+/**
+ * The caller first proves through canApplyInitialTaskExample that the whole
+ * draft is empty. A gated route example then wins; otherwise restored text is
+ * left untouched.
+ */
+export function resolveInitialOrderDraftText(
+  restoredValue: string | null | undefined,
+  routeValue: string,
+  maxLength: number,
+): string {
+  if (routeValue.trim().length > 0) {
+    return routeValue.slice(0, maxLength);
+  }
+  return restoredValue ?? "";
 }
 
 export function shouldPreserveOrderDraftProcessState(

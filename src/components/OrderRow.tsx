@@ -67,7 +67,8 @@ export interface OrderRowProps {
   /** Мастер уже отправил отклик на этот заказ — чип «Вы откликнулись» + лёгкий
    *  тонированный фон всей строки. */
   alreadyResponded?: boolean;
-  /** Показать кнопку «Откликнуться» в карточке. ТОЛЬКО в ленте «Поиск заказов»
+  /** Показать кнопку «Откликнуться» в карточке. Только в отдельных компактных
+   *  подборках; основная лента заданий открывает детали тапом по всей строке.
    *  (где мастер находит новые заказы). НЕ показываем в «Ваши отклики» /
    *  «Мои заказы» / на главной мастера — там отклик уже отправлен либо это свой
    *  заказ. Дополнительно скрывается, если на этот заказ уже откликнулись. */
@@ -194,14 +195,18 @@ export function OrderRow(props: OrderRowProps) {
   // Кнопка «Откликнуться» — только в ленте поиска и только если ещё не откликнулись.
   const showButton = !!props.showRespondButton && !props.alreadyResponded;
 
-  // Ведущая иконка категории слева — монохромная line-иконка (Gravity-стиль).
-  // Заняла место номера «01» из референса (фидбэк владельца 2026-05-24:
-  // «вместо цифр — иконки категорий»). Сразу показывает категорию заказа.
-  const catIcon = <Icon size={20} color={tc.mute} />;
-
-  const ariaLabel = `${props.title} — ${pill.label}${
-    props.alreadyResponded ? ", вы откликнулись" : ""
-  }`;
+  const locationLabel = `${props.cityName}${props.district ? `, ${props.district}` : ""}`;
+  const ariaLabel = [
+    props.title,
+    props.categoryName,
+    pill.label,
+    locationLabel,
+    props.budgetKind ? formatPrice(props.budgetKind, props.budgetValue ?? null) : null,
+    `Опубликовано ${timeAgoShort(props.createdAt)}`,
+    props.alreadyResponded ? "Вы откликнулись" : null,
+  ]
+    .filter(Boolean)
+    .join(". ");
 
   // Уже откликался → приглушённый фон строки (паттерн «прочитанного» инбокса).
   // Разделитель между карточками — мягкая сплошная линия hairline-strong/50
@@ -224,20 +229,17 @@ export function OrderRow(props: OrderRowProps) {
       style={isDimmed ? { opacity: 0.7 } : undefined}
     >
       <View className="flex-row items-start gap-3">
-        {/* Ведущая иконка категории слева (вместо номера «01» из референса). */}
-        <View style={{ marginTop: 2 }}>{catIcon}</View>
+        <View className="h-9 w-9 items-center justify-center rounded-lg bg-canvas-soft-2">
+          <Icon size={20} color={tc.mute} />
+        </View>
         <View className="flex-1 min-w-0">
-          {/* Row 1: статус-плашка + название категории + время справа. */}
+          {/* Row 1: категория + время публикации. */}
           <View className="flex-row items-center gap-2">
-            <View
-              className={`flex-row items-center gap-1.5 self-start rounded-pill px-2 py-0.5 ${pill.bgClass}`}
+            <AppText
+              weight="medium"
+              className="min-w-0 flex-1 text-caption text-mute"
+              numberOfLines={1}
             >
-              <View className={`h-1.5 w-1.5 rounded-full ${pill.dotClass}`} />
-              <AppText weight="semibold" className={`text-caption ${pill.textClass}`}>
-                {pill.label}
-              </AppText>
-            </View>
-            <AppText className="min-w-0 flex-1 text-caption text-mute" numberOfLines={1}>
               {props.categoryName}
             </AppText>
             <AppText weight="mono" className="text-mono-caption text-muted-soft">
@@ -265,13 +267,23 @@ export function OrderRow(props: OrderRowProps) {
             </AppText>
           ) : null}
 
-          {/* Row 4: локация. */}
-          <View className="mt-2 flex-row items-center gap-1">
-            <MapPin size={12} weight="bold" color={tc["muted-soft"]} />
-            <AppText className="text-caption text-mute" numberOfLines={1}>
-              {props.cityName}
-              {props.district ? ` · ${props.district}` : ""}
-            </AppText>
+          {/* Row 4: срок/статус + локация. */}
+          <View className="mt-2 flex-row flex-wrap items-center gap-x-2 gap-y-1">
+            <View
+              className={`flex-row items-center gap-1.5 self-start rounded-pill px-2 py-0.5 ${pill.bgClass}`}
+            >
+              <View className={`h-1.5 w-1.5 rounded-full ${pill.dotClass}`} />
+              <AppText weight="semibold" className={`text-caption ${pill.textClass}`}>
+                {pill.label}
+              </AppText>
+            </View>
+            <View className="min-w-0 flex-row items-center gap-1">
+              <MapPin size={12} weight="bold" color={tc["muted-soft"]} />
+              <AppText className="text-caption text-mute" numberOfLines={1}>
+                {props.cityName}
+                {props.district ? ` · ${props.district}` : ""}
+              </AppText>
+            </View>
           </View>
 
           {/* Row 5: пунктирный разделитель + «Бюджет» слева + справа либо кнопка
@@ -294,7 +306,7 @@ export function OrderRow(props: OrderRowProps) {
               {showButton ? (
                 <Pressable
                   accessibilityRole="button"
-                  accessibilityLabel="Откликнуться на заказ"
+                  accessibilityLabel="Откликнуться на задание"
                   onPress={handleRespond}
                   className="flex-row items-center gap-1.5 self-end rounded-md bg-primary px-4 py-2 active:opacity-80"
                 >

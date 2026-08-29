@@ -9,15 +9,18 @@
  * `window.history.back()` (предыдущий entry — уже /orders, а не
  * /orders/[id]) не возвращают пользователя «туда, откуда я пришёл».
  *
- * Решение. Отдельный Zustand-стек, который пушится на каждое изменение
- * `usePathname()`. useSafeBack читает стек, popит верхнюю запись (текущая)
- * и навигирует на предпоследнюю — это и есть «откуда я пришёл».
+ * Решение. Отдельный Zustand-стек зеркалит изменения `usePathname()`.
+ * Настоящий native Stack остаётся главным владельцем back-навигации, а этот
+ * стек используется как fallback между navigator'ами. Если pathname снова
+ * стал предпоследней записью, policy распознаёт native pop и снимает top,
+ * вместо того чтобы загрязнять историю последовательностью [A, B, A].
  *
  * Подписка происходит в корневом `app/_layout.tsx` через `<NavHistoryTracker />`.
  *
  * Ограничения:
  * - дедупликация смежных одинаковых записей (повторный рендер на той же
  *   странице не плодит stack);
+ * - возврат на непосредственно предыдущий path трактуется как pop;
  * - cap на 50 записей, чтобы стек не рос бесконечно при долгих сессиях;
  * - history-tracker должен быть смонтирован один раз; useSafeBack ниже него
  *   в дереве может рассчитывать что stack актуален.
@@ -26,53 +29,23 @@
 import { usePathname } from "expo-router";
 import { useEffect } from "react";
 import { create } from "zustand";
+import { popNavPath, recordNavPath } from "./nav-history-policy";
 
 interface NavHistoryState {
   stack: string[];
-  /** Timestamp последнего push — для intermediate-redirect debounce.
-   *  Если новый push приходит < INTERMEDIATE_MS после предыдущего, считаем
-   *  что это transient pathname во время router.push (например, мастер
-   *  пушит `/(tabs)/orders/[id]` → expo-router проходит через
-   *  `/(tabs)/orders/index` который содержит `<Redirect href="/(tabs)" />`
-   *  → потом `/(tabs)/orders/[id]`). usePathname ловит intermediate path и
-   *  без debounce'а он попадает в stack — потом goBack возвращает туда. */
-  lastPushAt: number;
   push: (path: string) => void;
   /** Снимает top (текущий) и возвращает новый top (предыдущий). undefined если стек был ≤1. */
   goBack: () => string | undefined;
 }
 
-const MAX_STACK = 50;
-const INTERMEDIATE_MS = 150;
-
 export const useNavHistory = create<NavHistoryState>((set, get) => ({
   stack: [],
-  lastPushAt: 0,
-  push: (path) =>
-    set((s) => {
-      const top = s.stack[s.stack.length - 1];
-      if (top === path) return s;
-      const now = Date.now();
-      // Intermediate redirect: pathname меняется внутри одного router.push.
-      // Заменяем последнюю entry вместо append, чтобы в стек попадал только
-      // финальный path (а не цепочка transient redirect-ов).
-      if (now - s.lastPushAt < INTERMEDIATE_MS && s.stack.length > 0) {
-        const next = [...s.stack.slice(0, -1), path];
-        return { stack: next, lastPushAt: now };
-      }
-      const next = [...s.stack, path];
-      // cap
-      if (next.length > MAX_STACK) next.splice(0, next.length - MAX_STACK);
-      return { stack: next, lastPushAt: now };
-    }),
+  push: (path) => set((s) => ({ stack: recordNavPath(s.stack, path) })),
   goBack: () => {
-    const s = get();
-    if (s.stack.length < 2) return undefined;
-    // Снимаем текущий и предыдущий: предыдущий вернёт push() обратно после navigate.
-    const next = s.stack.slice(0, -2);
-    const prev = s.stack[s.stack.length - 2];
-    set({ stack: next });
-    return prev;
+    const result = popNavPath(get().stack);
+    if (!result.previous) return undefined;
+    set({ stack: result.stack });
+    return result.previous;
   },
 }));
 

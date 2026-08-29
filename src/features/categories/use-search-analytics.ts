@@ -1,16 +1,20 @@
 /**
- * use-search-analytics — аналитика поисковых запросов + popular chips
- * (миграция 0086).
+ * Dormant search analytics client.
  *
  * Фидбэк user 2026-05-18: «сделай поиск как у людей — изучи Profi/Avito/
  * Yandex/YouDo». Из competitor-аудита: Profi.ru показывает chip cloud с 22+
  * популярными запросами под input — это search shortcuts, генерируемые из
  * реальных поисковых логов + ручной курации.
  *
- * Hooks:
+ * В runnable migrations нет проверенного PII-safe SQL/retention/publication
+ * контракта, поэтому UI не импортирует эти hooks. Они остаются изолированным
+ * legacy adapter до отдельной versioned backend migration.
+ *
+ * Adapters:
  *   - useLogSearchQuery — fire-and-forget mutation. Вызывается при сабмите
- *     результата (debounced). NB: пишет в БД через `log_search_query` RPC.
- *     Не блокирует UI, ошибки молча игнорируем.
+ *     результата. NB: пишет в БД через `log_search_query` RPC и не должен
+ *     подключаться к raw free-text UI до privacy gate.
+ *     Не блокирует UI; ошибки остаются в mutation state React Query.
  *   - usePopularQueries(limit) — chip cloud из top_queries_7d (с fallback
  *     на curated synonyms когда логов мало).
  */
@@ -27,22 +31,22 @@ export interface LogQueryInput {
   hits: number;
 }
 
+export async function logSearchQuery({ query, hits }: LogQueryInput): Promise<void> {
+  const { error } = await supabase.rpc("log_search_query", {
+    p_query: query,
+    p_hits: hits,
+  });
+  if (error) throw error;
+}
+
 /**
- * Fire-and-forget logging — никогда не throw'ит наверх, не блокирует UI.
- * Используется через `mutate({ query, hits })` после рендера результатов.
+ * Fire-and-forget logging через `mutate({ query, hits })` не блокирует UI.
+ * Ошибка отклоняет mutationFn, чтобы React Query корректно отметил mutation
+ * как failed; сам callback `mutate` остаётся void/non-throwing.
  */
 export function useLogSearchQuery() {
   return useMutation<void, Error, LogQueryInput>({
-    mutationFn: async ({ query, hits }) => {
-      try {
-        await supabase.rpc("log_search_query", {
-          p_query: query,
-          p_hits: hits,
-        });
-      } catch {
-        // тихо: аналитика не должна ломать UX
-      }
-    },
+    mutationFn: logSearchQuery,
     // retry false — analytics best-effort, не критично терять одну запись
     retry: false,
   });

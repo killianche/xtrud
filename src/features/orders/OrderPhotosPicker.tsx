@@ -165,10 +165,11 @@ export function OrderPhotosPicker({ photos, onChange, disabled }: OrderPhotosPic
               accessibilityLabel={`Удалить фото ${i + 1}`}
               disabled={disabled}
               onPress={() => handleRemove(p.id)}
-              hitSlop={8}
-              className="absolute right-1 top-1 h-6 w-6 items-center justify-center rounded-full bg-black/50 active:opacity-70"
+              className="absolute right-0 top-0 h-11 w-11 items-center justify-center active:opacity-70"
             >
-              <X size={14} weight="bold" color={OVERLAY_WHITE} />
+              <View className="h-6 w-6 items-center justify-center rounded-full bg-black/50">
+                <X size={14} weight="bold" color={OVERLAY_WHITE} />
+              </View>
             </Pressable>
 
             {/* Обложка — на первом фото */}

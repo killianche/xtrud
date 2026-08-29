@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildFeedPage, FEED_PAGE_SIZE, masterFeedKey } from "./feed-page";
+import { buildFeedPage, FEED_PAGE_SIZE, feedCursorFilter, masterFeedKey } from "./feed-page";
 
 type Row = { created_at: string; id: string };
 const r = (id: string, created_at: string): Row => ({ id, created_at });
@@ -50,7 +50,7 @@ describe("buildFeedPage", () => {
     ];
     const result = buildFeedPage(rows, 3);
     expect(result.rows).toBe(rows);
-    expect(result.nextCursor).toBe("2026-05-08T10:00:00Z");
+    expect(result.nextCursor).toEqual({ createdAt: "2026-05-08T10:00:00Z", id: "x2" });
   });
 
   it("overfilled page (rows > pageSize, defensive) → null cursor", () => {
@@ -70,7 +70,22 @@ describe("buildFeedPage", () => {
     const rows = Array.from({ length: 20 }, (_, i) =>
       r(`x${i}`, new Date(Date.UTC(2026, 4, 20 - i, 10, 0, 0)).toISOString()),
     );
-    // last row = rows[19]; курсор должен быть равен его created_at
-    expect(buildFeedPage(rows).nextCursor).toBe(rows[19]?.created_at);
+    expect(buildFeedPage(rows).nextCursor).toEqual({
+      createdAt: rows[19]?.created_at,
+      id: rows[19]?.id,
+    });
+  });
+});
+
+describe("feedCursorFilter", () => {
+  it("uses id as a deterministic tie-breaker for equal timestamps", () => {
+    expect(
+      feedCursorFilter({
+        createdAt: "2026-05-10T10:00:00Z",
+        id: "00000000-0000-0000-0000-000000000020",
+      }),
+    ).toBe(
+      "created_at.lt.2026-05-10T10:00:00Z,and(created_at.eq.2026-05-10T10:00:00Z,id.lt.00000000-0000-0000-0000-000000000020)",
+    );
   });
 });

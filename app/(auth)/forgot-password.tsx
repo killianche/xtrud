@@ -22,6 +22,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
 import { useRequestReset } from "@/features/auth/use-auth-mutations";
 import { type ForgotPasswordValues, forgotPasswordSchema } from "@/features/auth/validation";
+import { useBackGestureLock } from "@/lib/use-back-gesture-lock";
 import { useSafeBack } from "@/lib/use-safe-back";
 import { useThemeColors } from "@/lib/use-theme-color";
 
@@ -55,6 +56,7 @@ export default function ForgotPasswordScreen() {
   });
 
   const isBusy = requestReset.isPending;
+  useBackGestureLock(isBusy);
 
   return (
     <KeyboardAvoidingView
@@ -101,11 +103,11 @@ export default function ForgotPasswordScreen() {
                 accessibilityLabel="Назад"
                 disabled={isBusy}
                 onPress={goBack}
-                className={`-ml-2 h-10 w-10 items-center justify-center rounded-full ${
+                className={`-ml-2 h-12 w-12 items-center justify-center rounded-full ${
                   isBusy ? "opacity-30" : "active:bg-canvas-soft"
                 }`}
               >
-                <CaretLeft size={24} weight="bold" color={tc.ink} />
+                <CaretLeft size={28} weight="bold" color={tc.ink} />
               </Pressable>
               <AppText weight="bold" className="mt-6 text-display-md tracking-tight text-ink">
                 Восстановление пароля

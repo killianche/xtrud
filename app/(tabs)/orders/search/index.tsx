@@ -1,4 +1,4 @@
-// /orders/search — глобальный поиск заявок для мастера.
+// /orders/search — лента открытых заданий для исполнителя.
 //
 // В отличие от /orders → таб «Новые» (только моя категории), здесь
 // показываются ВСЕ open-orders сайта. Фильтры выбираются на отдельном
@@ -20,10 +20,11 @@
 //
 // Эталон UX: Avito Услуги «лента» / Profi.ru «биржа заявок».
 
+import { FlashList } from "@shopify/flash-list";
 import { useRouter } from "expo-router";
 import { SlidersHorizontal, Sparkle, Tray } from "phosphor-react-native";
 import { useEffect, useRef } from "react";
-import { ActivityIndicator, Animated, Pressable, ScrollView, View } from "react-native";
+import { ActivityIndicator, Animated, Pressable, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
 import { OrderRow } from "@/components/OrderRow";
@@ -53,7 +54,7 @@ export default function OrdersSearchScreen() {
   // l1Id удалён 2026-05-15 (фидбэк user: убрать «Разделы» из фильтров,
   // оставить только L2 категории).
   const filters = useOrdersSearchFiltersStore();
-  const { l2Ids, sort, cityId, district, clearAll } = filters;
+  const { l2Ids, cityId, district, clearAll } = filters;
   const activeCount = countActiveFilters(filters);
   const hasActiveFilters = activeCount > 0;
 
@@ -62,10 +63,8 @@ export default function OrdersSearchScreen() {
   // его L2-категории (master_categories) → он видел только релевантные.
   // Проблема: если у мастера 1 категория, а open-orders в БД в других
   // категориях — он видел «Открытых заявок нет» (ложный empty state).
-  // Также клиент с центральной кнопкой «Смотреть заказы» (Sprint 2026-05-20)
-  // тоже попадает на этот экран — у него нет master_categories, но
-  // initFromMasterCategories(userId, []) ставил initializedForUserId,
-  // блокируя дальнейшую инициализацию.
+  // Также клиент с центральной кнопкой «Смотреть задания» попадает сюда без
+  // master_categories. Поэтому сам переход на экран никогда не меняет фильтры.
   //
   // Новое поведение: показываем ВСЕ open-orders по умолчанию. Если мастер
   // хочет отфильтровать — нажимает «Фильтры» и сам выбирает категории
@@ -87,12 +86,14 @@ export default function OrdersSearchScreen() {
     data: feed,
     isLoading,
     error,
+    refetch,
+    isRefetching,
     hasNextPage,
     fetchNextPage,
     isFetchingNextPage,
-  } = useAllOpenOrders({ userId, l2Ids: effectiveL2Ids, sort, cityId, district });
+  } = useAllOpenOrders({ userId, l2Ids: effectiveL2Ids, cityId, district });
 
-  const allOrders = (feed?.pages ?? []).flatMap((p) => p.rows);
+  const displayedOrders = (feed?.pages ?? []).flatMap((p) => p.rows);
 
   // Сет order_id, на которые мастер уже откликнулся (любой статус кроме
   // withdrawn). Используется для маркера «Вы откликнулись» в OrderRow,
@@ -109,23 +110,23 @@ export default function OrdersSearchScreen() {
   // данные пришли. Skeleton → real list переход не должен быть «дёрганый».
   const opacity = useRef(new Animated.Value(0)).current;
   useEffect(() => {
-    if (!isLoading && !error && allOrders.length > 0) {
+    if (!isLoading && !error && displayedOrders.length > 0) {
       Animated.timing(opacity, {
         toValue: 1,
         duration: 280,
         useNativeDriver: true,
       }).start();
     }
-  }, [isLoading, error, allOrders.length, opacity]);
+  }, [isLoading, error, displayedOrders.length, opacity]);
 
   return (
     <View className="flex-1 bg-canvas" style={{ paddingTop: insets.top }}>
       <ScreenHeader
-        title="Поиск заказов"
+        title="Задания"
         rightAction={{
-          label: "Фильтры",
+          label: hasActiveFilters ? `Фильтры · ${activeCount}` : "Фильтры",
           Icon: SlidersHorizontal,
-          onPress: () => router.push("/(tabs)/orders/search/filters" as never),
+          onPress: () => router.push("/orders/search/filters" as never),
           active: hasActiveFilters,
         }}
       />
@@ -134,30 +135,45 @@ export default function OrdersSearchScreen() {
           «Подобрали для вас»). Фидбэк владельца 2026-05-28 (вечер). См.
           src/features/master-view/MyResponsesEntry.tsx. */}
 
-      <ScrollView
-        className="flex-1"
-        contentContainerStyle={{ paddingBottom: insets.bottom + 24 }}
-        keyboardShouldPersistTaps="handled"
-      >
-        {isLoading ? (
+      {isLoading ? (
+        <View className="flex-1">
           <OrderRowsSkeleton count={5} />
-        ) : error ? (
-          <View className="mt-6 px-6">
-            <AppText weight="medium" className="text-caption text-error">
-              {error.message}
+        </View>
+      ) : error ? (
+        <View className="flex-1 px-6 pt-6">
+          <AppText weight="semibold" className="text-body-md text-ink">
+            Не удалось загрузить задания
+          </AppText>
+          <AppText className="mt-1 text-body-sm text-mute">{error.message}</AppText>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Повторить загрузку заданий"
+            disabled={isRefetching}
+            onPress={() => void refetch()}
+            className="mt-4 h-11 self-start items-center justify-center rounded-md border border-hairline bg-canvas px-4 active:bg-canvas-soft"
+          >
+            <AppText weight="semibold" className="text-button-sm text-ink">
+              {isRefetching ? "Загружаем…" : "Повторить"}
             </AppText>
-          </View>
-        ) : allOrders.length === 0 ? (
-          <EmptyState
-            hasActiveFilters={hasActiveFilters}
-            onClearFilters={clearAll}
-            accentColor={accentColor}
-          />
-        ) : (
-          <Animated.View style={{ opacity }} className="mt-2">
-            {allOrders.map((o) => (
+          </Pressable>
+        </View>
+      ) : displayedOrders.length === 0 ? (
+        <EmptyState
+          hasActiveFilters={hasActiveFilters}
+          onClearFilters={clearAll}
+          accentColor={accentColor}
+        />
+      ) : (
+        <Animated.View style={{ opacity }} className="flex-1">
+          <FlashList
+            data={displayedOrders}
+            extraData={myResponsesQ.data}
+            keyExtractor={(order) => order.id}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={{ paddingTop: 8, paddingBottom: insets.bottom + 24 }}
+            renderItem={({ item: o }) => (
               <OrderRow
-                key={o.id}
                 id={o.id}
                 title={o.title}
                 categoryName={o.l2?.name_ru ?? o.l2_id}
@@ -176,30 +192,23 @@ export default function OrdersSearchScreen() {
                 coverUrl={o.photo_urls?.[0] ?? null}
                 photosCount={o.photo_urls?.length ?? 0}
                 alreadyResponded={respondedOrderIds.has(o.id)}
-                showRespondButton
-                onPress={() => router.push(`/(tabs)/orders/${o.id}` as never)}
+                onPress={() => router.push(`/orders/${o.id}` as never)}
               />
-            ))}
-
-            {hasNextPage ? (
-              <Pressable
-                accessibilityRole="button"
-                disabled={isFetchingNextPage}
-                onPress={() => fetchNextPage()}
-                className="mx-5 mt-4 h-11 flex-row items-center justify-center rounded-md border border-hairline active:opacity-70"
-              >
-                {isFetchingNextPage ? (
+            )}
+            onEndReached={() => {
+              if (hasNextPage && !isFetchingNextPage) void fetchNextPage();
+            }}
+            onEndReachedThreshold={0.4}
+            ListFooterComponent={
+              isFetchingNextPage ? (
+                <View className="h-16 items-center justify-center">
                   <ActivityIndicator size="small" />
-                ) : (
-                  <AppText weight="medium" className="text-button text-body">
-                    Показать ещё
-                  </AppText>
-                )}
-              </Pressable>
-            ) : null}
-          </Animated.View>
-        )}
-      </ScrollView>
+                </View>
+              ) : null
+            }
+          />
+        </Animated.View>
+      )}
     </View>
   );
 }
@@ -217,7 +226,7 @@ interface EmptyStateProps {
 
 function EmptyState({ hasActiveFilters, onClearFilters, accentColor }: EmptyStateProps) {
   return (
-    <View className="mt-10 items-center px-6">
+    <View className="flex-1 items-center px-6 pt-10">
       {/* Hero-иллюстрация: sky-tint фон + 3 декоративные фигуры + центр-иконка */}
       <View className="h-32 w-32 items-center justify-center rounded-2xl bg-badge-sky relative overflow-hidden">
         <View
@@ -250,12 +259,12 @@ function EmptyState({ hasActiveFilters, onClearFilters, accentColor }: EmptyStat
       </View>
 
       <AppText weight="bold" className="mt-6 text-center text-title-lg text-ink">
-        {hasActiveFilters ? "Под фильтры ничего не нашлось" : "Открытых заявок пока нет"}
+        {hasActiveFilters ? "Под фильтры ничего не нашлось" : "Открытых заданий пока нет"}
       </AppText>
       <AppText className="mt-2 text-center text-body-sm text-muted">
         {hasActiveFilters
-          ? "Попробуйте сбросить или изменить фильтры — на сайте есть и другие заявки."
-          : "Скоро здесь появятся свежие заявки клиентов. Загляните позже или расширьте категории в профиле."}
+          ? "Попробуйте сбросить или изменить фильтры — в приложении есть и другие задания."
+          : "Скоро здесь появятся свежие задания клиентов. Загляните позже или расширьте категории в профиле."}
       </AppText>
 
       {hasActiveFilters ? (
@@ -263,7 +272,7 @@ function EmptyState({ hasActiveFilters, onClearFilters, accentColor }: EmptyStat
           onPress={onClearFilters}
           accessibilityRole="button"
           hitSlop={8}
-          className="mt-4 h-10 flex-row items-center justify-center rounded-pill border border-hairline bg-canvas px-4 active:opacity-70"
+          className="mt-4 h-11 flex-row items-center justify-center rounded-pill border border-hairline bg-canvas px-4 active:opacity-70"
         >
           <AppText weight="semibold" className="text-button text-ink">
             Сбросить фильтры

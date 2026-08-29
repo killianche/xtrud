@@ -19,12 +19,23 @@ export function masterFeedKey(
 }
 
 export interface FeedRowMinimal {
+  id: string;
   created_at: string;
+}
+
+export interface FeedCursor {
+  createdAt: string;
+  id: string;
 }
 
 export interface FeedPage<T extends FeedRowMinimal> {
   rows: T[];
-  nextCursor: string | null;
+  nextCursor: FeedCursor | null;
+}
+
+/** Stable PostgREST keyset for `created_at DESC, id DESC`. */
+export function feedCursorFilter(cursor: FeedCursor): string {
+  return `created_at.lt.${cursor.createdAt},and(created_at.eq.${cursor.createdAt},id.lt.${cursor.id})`;
 }
 
 /**
@@ -45,5 +56,8 @@ export function buildFeedPage<T extends FeedRowMinimal>(
     return { rows, nextCursor: null };
   }
   const last = rows[rows.length - 1];
-  return { rows, nextCursor: last?.created_at ?? null };
+  return {
+    rows,
+    nextCursor: last ? { createdAt: last.created_at, id: last.id } : null,
+  };
 }

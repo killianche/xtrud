@@ -13,6 +13,18 @@ import * as SecureStore from "expo-secure-store";
 import { Platform } from "react-native";
 
 const isWeb = Platform.OS === "web";
+const SECURE_STORE_KEY_PATTERN = /^[A-Za-z0-9._-]+$/;
+const ENCODED_KEY_PREFIX = "xtrud.encoded.";
+
+function nativeSecureStoreKey(key: string): string {
+  if (SECURE_STORE_KEY_PATTERN.test(key) && !key.startsWith(ENCODED_KEY_PREFIX)) return key;
+
+  let encoded = "";
+  for (let index = 0; index < key.length; index += 1) {
+    encoded += key.charCodeAt(index).toString(16).padStart(4, "0");
+  }
+  return `${ENCODED_KEY_PREFIX}${encoded}`;
+}
 
 /**
  * Простой адаптер для значений < 2 KB.
@@ -23,21 +35,21 @@ export const storage = {
     if (isWeb) {
       return typeof window !== "undefined" ? window.localStorage.getItem(key) : null;
     }
-    return SecureStore.getItemAsync(key);
+    return SecureStore.getItemAsync(nativeSecureStoreKey(key));
   },
   setItem: async (key: string, value: string): Promise<void> => {
     if (isWeb) {
       if (typeof window !== "undefined") window.localStorage.setItem(key, value);
       return;
     }
-    await SecureStore.setItemAsync(key, value);
+    await SecureStore.setItemAsync(nativeSecureStoreKey(key), value);
   },
   removeItem: async (key: string): Promise<void> => {
     if (isWeb) {
       if (typeof window !== "undefined") window.localStorage.removeItem(key);
       return;
     }
-    await SecureStore.deleteItemAsync(key);
+    await SecureStore.deleteItemAsync(nativeSecureStoreKey(key));
   },
 };
 
@@ -141,14 +153,15 @@ export const largeSecureStorage = {
       if (isWeb) {
         return typeof window !== "undefined" ? window.localStorage.getItem(key) : null;
       }
-      const meta = parseChunkMeta(await SecureStore.getItemAsync(`${key}${META_SUFFIX}`));
+      const nativeKey = nativeSecureStoreKey(key);
+      const meta = parseChunkMeta(await SecureStore.getItemAsync(`${nativeKey}${META_SUFFIX}`));
       if (!meta) {
         // Backward-compat: значение могло быть сохранено без меты, как единое.
-        return SecureStore.getItemAsync(key);
+        return SecureStore.getItemAsync(nativeKey);
       }
       const parts: string[] = [];
       for (let i = 0; i < meta.chunks; i += 1) {
-        const part = await SecureStore.getItemAsync(chunkKey(key, meta, i));
+        const part = await SecureStore.getItemAsync(chunkKey(nativeKey, meta, i));
         if (part === null) return null;
         parts.push(part);
       }
@@ -161,15 +174,16 @@ export const largeSecureStorage = {
         if (typeof window !== "undefined") window.localStorage.setItem(key, value);
         return;
       }
-      const metaKey = `${key}${META_SUFFIX}`;
+      const nativeKey = nativeSecureStoreKey(key);
+      const metaKey = `${nativeKey}${META_SUFFIX}`;
       const oldMeta = parseChunkMeta(await SecureStore.getItemAsync(metaKey));
       const chunks = splitUtf8SafeChunks(value, CHUNK_SIZE);
 
       if (chunks.length === 1) {
-        await SecureStore.setItemAsync(key, value);
+        await SecureStore.setItemAsync(nativeKey, value);
         // Removing the pointer commits the single-value representation.
         await SecureStore.deleteItemAsync(metaKey);
-        await removeChunks(key, oldMeta);
+        await removeChunks(nativeKey, oldMeta);
         return;
       }
 
@@ -180,12 +194,12 @@ export const largeSecureStorage = {
         byteAware: true,
       };
       for (let index = 0; index < chunks.length; index += 1) {
-        await SecureStore.setItemAsync(chunkKey(key, nextMeta, index), chunks[index] ?? "");
+        await SecureStore.setItemAsync(chunkKey(nativeKey, nextMeta, index), chunks[index] ?? "");
       }
       // Meta is the generation pointer: publish it only after every chunk exists.
       await SecureStore.setItemAsync(metaKey, JSON.stringify(nextMeta));
-      await SecureStore.deleteItemAsync(key);
-      await removeChunks(key, oldMeta);
+      await SecureStore.deleteItemAsync(nativeKey);
+      await removeChunks(nativeKey, oldMeta);
     });
   },
   removeItem: async (key: string): Promise<void> => {
@@ -194,11 +208,12 @@ export const largeSecureStorage = {
         if (typeof window !== "undefined") window.localStorage.removeItem(key);
         return;
       }
-      const metaKey = `${key}${META_SUFFIX}`;
+      const nativeKey = nativeSecureStoreKey(key);
+      const metaKey = `${nativeKey}${META_SUFFIX}`;
       const meta = parseChunkMeta(await SecureStore.getItemAsync(metaKey));
-      await SecureStore.deleteItemAsync(key);
+      await SecureStore.deleteItemAsync(nativeKey);
       await SecureStore.deleteItemAsync(metaKey);
-      await removeChunks(key, meta);
+      await removeChunks(nativeKey, meta);
     });
   },
 };

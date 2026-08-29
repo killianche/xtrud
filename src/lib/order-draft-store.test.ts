@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   activateOrderDraftOwner,
   bindGuestDraftClaimToUser,
+  canApplyInitialTaskExample,
   consumeGuestDraftClaimRecord,
   consumeInitialRouteDraft,
   createGuestDraftAuthJourney,
@@ -11,13 +12,28 @@ import {
   ORDER_DRAFT_GUEST_KEY,
   ORDER_DRAFT_TTL_MS,
   orderDraftOwnerKey,
+  resolveInitialOrderDraftText,
   restoreOrderDraftSnapshot,
   sanitizePersistedOrderDraftState,
   shouldPreserveOrderDraftProcessState,
   toPersistedPhotoSlots,
+  withoutOrderDraftOwnerSnapshot,
 } from "./order-draft-policy";
 
 describe("order draft persistence policy", () => {
+  it("clears only the owner that started an async publish", () => {
+    const snapshots = {
+      [orderDraftOwnerKey("user-a")]: { draft: { title: "A", updatedAt: 1 } },
+      [orderDraftOwnerKey("user-b")]: { draft: { title: "B", updatedAt: 1 } },
+    };
+
+    const next = withoutOrderDraftOwnerSnapshot(snapshots, "user-a");
+
+    expect(next[orderDraftOwnerKey("user-a")]).toBeUndefined();
+    expect(next[orderDraftOwnerKey("user-b")]?.draft?.title).toBe("B");
+    expect(snapshots[orderDraftOwnerKey("user-a")]?.draft?.title).toBe("A");
+  });
+
   it("restores form fields inside the 14 day TTL", () => {
     const now = 2_000_000;
     const restored = restoreOrderDraftSnapshot(
@@ -323,6 +339,27 @@ describe("order draft persistence policy", () => {
     const afterOwnerSwitch = consumeInitialRouteDraft("Нужен тракторист", first.nextApplied);
     expect(first.value).toBe("Нужен тракторист");
     expect(afterOwnerSwitch.value).toBe("");
+  });
+
+  it("uses an explicit task example as a new intent and otherwise keeps restored text", () => {
+    expect(resolveInitialOrderDraftText(undefined, "Нужен электрик", 80)).toBe("Нужен электрик");
+    expect(resolveInitialOrderDraftText("", "Нужен сантехник", 80)).toBe("Нужен сантехник");
+    expect(resolveInitialOrderDraftText("Мой сохранённый текст", "Нужен электрик", 80)).toBe(
+      "Нужен электрик",
+    );
+    expect(resolveInitialOrderDraftText("Мой сохранённый текст", "", 80)).toBe(
+      "Мой сохранённый текст",
+    );
+  });
+
+  it("applies a task example only to a draft without fields or attachments", () => {
+    expect(canApplyInitialTaskExample({}, 0, "Нужен электрик")).toBe(true);
+    expect(canApplyInitialTaskExample({ updatedAt: 123 }, 0, "Нужен электрик")).toBe(true);
+    expect(canApplyInitialTaskExample({ title: "" }, 0, "Нужен электрик")).toBe(true);
+    expect(canApplyInitialTaskExample({ l2Id: "plumbing" }, 0, "Нужен электрик")).toBe(false);
+    expect(canApplyInitialTaskExample({ budgetValue: 3000 }, 0, "Нужен электрик")).toBe(false);
+    expect(canApplyInitialTaskExample({}, 1, "Нужен электрик")).toBe(false);
+    expect(canApplyInitialTaskExample({}, 0, "")).toBe(false);
   });
 
   it("keeps form controls unavailable until hydration and owner snapshot application", () => {

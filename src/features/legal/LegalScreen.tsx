@@ -48,7 +48,8 @@ export function LegalScreen({
   contactLine,
 }: LegalScreenProps) {
   const insets = useSafeAreaInsets();
-  // back на /(tabs)/profile — у нас sole entry-point (settings + auth/phone link).
+  // Root native Stack returns to the exact caller (settings or auth). The
+  // profile route is only a deterministic cold-launch fallback.
   const goBack = useSafeBack("/(tabs)/profile" as const);
 
   return (

@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 
-# Runs the read-only SQL inventory without placing a database URL on the psql
-# command line. The report is encrypted as a stream, so no plaintext report is
-# retained on disk. Exact row counts are an explicit opt-in because they scan.
+# Runs the read-only SQL inventory. Prefer standard libpq PG* variables so no
+# database URL is placed on the psql command line. The report is encrypted as a
+# stream, so no plaintext report is retained on disk. Exact row counts are an
+# explicit opt-in because they scan.
 
 set -euo pipefail
 umask 077
@@ -17,7 +18,8 @@ usage() {
     'Usage: scripts/supabase/collect-db-inventory.sh [--exact-counts] /absolute/output/directory' \
     '' \
     'Required environment (load from a local secret store, not shell history):' \
-    '  SUPABASE_DB_URL      short-lived read-only database URL' \
+    '  Preferred: standard libpq PGHOST/PGPORT/PGDATABASE/PGUSER plus PGPASSFILE' \
+    '  Compatibility: SUPABASE_DB_URL (may be visible to same-host process observers)' \
     '  BACKUP_ENCRYPTION   age or gpg' \
     '  BACKUP_RECIPIENT    encryption recipient/public key identity' \
     '' \
@@ -40,8 +42,10 @@ if [[ "$#" -ne 1 ]]; then
   exit 2
 fi
 
-if [[ -z "${SUPABASE_DB_URL:-}" ]]; then
-  printf '%s\n' 'ERROR: SUPABASE_DB_URL is required and was not printed.' >&2
+if [[ -z "${SUPABASE_DB_URL:-}" ]] && \
+  { [[ -z "${PGHOST:-}" ]] || [[ -z "${PGDATABASE:-}" ]] || [[ -z "${PGUSER:-}" ]]; }; then
+  printf '%s\n' \
+    'ERROR: set standard libpq PGHOST/PGDATABASE/PGUSER variables or SUPABASE_DB_URL.' >&2
   exit 2
 fi
 
@@ -63,14 +67,29 @@ cleanup() {
 }
 trap cleanup EXIT
 
-if ! PGDATABASE="$SUPABASE_DB_URL" PGCONNECT_TIMEOUT="${PGCONNECT_TIMEOUT:-15}" \
-  psql \
-    --no-psqlrc \
-    --no-password \
-    --set=ON_ERROR_STOP=1 \
-    --set="exact_counts=${exact_counts}" \
-    --file="${script_dir}/db-inventory.sql" \
-    2>"$temporary_error" | supabase_encrypt_stream "$report_path"; then
+run_inventory_psql() {
+  if [[ -n "${SUPABASE_DB_URL:-}" ]]; then
+    # libpq does not interpret a URI supplied through PGDATABASE as conninfo.
+    # This compatibility path therefore has to use --dbname. Production runs
+    # should use the standard PG* variables and a mode-0600 PGPASSFILE instead.
+    psql --dbname="$SUPABASE_DB_URL" \
+      --no-psqlrc \
+      --no-password \
+      --set=ON_ERROR_STOP=1 \
+      --set="exact_counts=${exact_counts}" \
+      --file="${script_dir}/db-inventory.sql"
+  else
+    psql \
+      --no-psqlrc \
+      --no-password \
+      --set=ON_ERROR_STOP=1 \
+      --set="exact_counts=${exact_counts}" \
+      --file="${script_dir}/db-inventory.sql"
+  fi
+}
+
+export PGCONNECT_TIMEOUT="${PGCONNECT_TIMEOUT:-15}"
+if ! run_inventory_psql 2>"$temporary_error" | supabase_encrypt_stream "$report_path"; then
   rm -f -- "$report_path"
   printf '%s\n' \
     'ERROR: read-only inventory failed. Connection details and raw database errors were suppressed.' \

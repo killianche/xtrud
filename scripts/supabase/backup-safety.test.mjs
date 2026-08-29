@@ -74,6 +74,7 @@ printf '%s\n' '20260825T000000Z'
 `,
     psql: `#!/bin/sh
 printf '%s\n' 'safe aggregate inventory fixture'
+for arg in "$@"; do printf 'argv=%s\n' "$arg"; done
 `,
     supabase: `#!/bin/sh
 if [ "\${1:-}" = "--version" ]; then
@@ -139,6 +140,29 @@ test("inventory retains ciphertext only and defaults to estimates", () => {
     const files = readdirSync(output);
     assert.equal(files.length, 1);
     assert.match(files[0], /^supabase-db-inventory-.*\.txt\.age$/);
+  } finally {
+    rmSync(base, { recursive: true, force: true });
+  }
+});
+
+test("inventory supports libpq environment without a database URL in argv", () => {
+  const { base, bin } = fixture();
+  const output = join(base, "inventory");
+  try {
+    execFileSync(inventoryScript, [output], {
+      env: env(bin, {
+        SUPABASE_DB_URL: "",
+        PGHOST: "fixture.invalid",
+        PGPORT: "5432",
+        PGDATABASE: "postgres",
+        PGUSER: "read_only",
+        PGPASSFILE: join(base, "fixture.pgpass"),
+      }),
+      stdio: "pipe",
+    });
+    const [artifact] = readdirSync(output);
+    const ciphertextFixture = readFileSync(join(output, artifact), "utf8");
+    assert.doesNotMatch(ciphertextFixture, /postgresql:\/\/|fixture\.invalid|read_only/);
   } finally {
     rmSync(base, { recursive: true, force: true });
   }

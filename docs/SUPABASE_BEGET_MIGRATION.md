@@ -1,15 +1,13 @@
 # Перенос xtrud: Supabase Cloud → Beget
 
-> Статус на 2026-08-25: проверенные DB и Storage ciphertext вынесены на текущий
-> Beget web VPS как off-machine copy; новый backend VPS, S3 и DNS ещё не
-> созданы. Production Cloud DB password подтверждён владельцем и проверен через
-> session pooler. Exact upstream commit/tree, multi-arch image digests и
-> loopback-only rehearsal overlay закреплены; runtime containers/restore ещё не
-> запускались. Production Adapter, внешний-S3 wiring, private-env и rendered
-> validators готовы и покрыты тестами; реальный exact production snapshot
-> подготовлен из pinned upstream. Versioned validation-only restore preflight
-> подготовлен, но destructive orchestration, runtime Compose/S3 evidence и
-> PITR пока отсутствуют, поэтому cutover остаётся NO-GO.
+> Статус на 2026-08-26: свежие read-only inventory, DB ciphertext и Storage
+> ciphertext созданы и независимо проверены локально вне Git. На текущем web VPS
+> остаётся только более ранняя off-machine copy; свежие ciphertext туда не
+> загружались. Новый backend VPS, Beget S3 и DNS ещё не созданы. Live policies,
+> grants и critical RPC подтверждены; forward-only hardening существует только
+> как unnumbered draft. Exact upstream commit/tree, image digests и validators
+> закреплены, но официальный Compose restore, два clean runs, target S3/API
+> evidence и PITR отсутствуют, поэтому security apply и cutover остаются NO-GO.
 > Любой dump содержит
 > персональные данные и секреты, поэтому
 > хранится только зашифрованно вне Git.
@@ -170,6 +168,8 @@ Git после сверки должен получить недостающие
 ```bash
 node scripts/supabase/check-env-contract.mjs
 npm run supabase:backup-safety:test
+npm run supabase:storage-backup:test
+npm run supabase:security-hardening:test
 bash -n scripts/supabase/collect-db-inventory.sh \
   scripts/supabase/create-encrypted-cloud-backup.sh \
   scripts/supabase/verify-encrypted-cloud-backup.sh \
@@ -183,6 +183,11 @@ history:
 ```bash
 scripts/supabase/collect-db-inventory.sh /absolute/path/outside/repo/inventory
 ```
+
+Предпочтительный DB input — стандартные libpq `PGHOST`, `PGPORT`,
+`PGDATABASE`, `PGUSER` и private `PGPASSFILE`; они не передают URL в argv.
+`SUPABASE_DB_URL` оставлен только как compatibility/break-glass режим с явным
+предупреждением о local process observers.
 
 По умолчанию row counts — estimates без полных scans. Точные counts разрешены
 только в согласованное окно: добавить `--exact-counts` перед output path.
@@ -349,6 +354,14 @@ credentials разделены, upload/read/delete public objects и private sig
 sizes и SHA-256 только внутри ciphertext. Decrypt/exact-entry/size/hash проверка
 прошла, plaintext и временный service-role удалены. Это закрывает source backup,
 но не target S3/API smoke и не offsite immutable-copy gate.
+
+**Fresh Cloud source evidence 2026-08-26:** versioned creator/verifier повторно
+снял 6 buckets, 7 objects и 808 230 bytes; ciphertext SHA-256
+`44a712720f6bac4111075058e722c3c0fa808bf235254cdce56a6e351024bb49`.
+Bucket config, object bytes и source-derived per-object SHA-256 проверены после
+decrypt; changing inventory fail-closed отменяет публикацию. Plaintext staging
+и временный source key удалены. Артефакт пока только локальный и не заменяет
+unified DB+Storage boundary, target restore/S3 smoke или immutable offsite copy.
 
 ### Gate E — Auth, Functions и background
 

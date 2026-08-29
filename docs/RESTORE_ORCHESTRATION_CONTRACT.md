@@ -179,8 +179,8 @@ Realtime, public/private Storage, gateway deny и route-specific negative-auth Q
 ## Storage gate
 
 DB backup содержит Storage metadata, но не object bytes. Проверенный encrypted
-Storage artifact уже существует, но пока нет versioned restore/verifier и
-unified DB+Storage binding. Artifact mode не использует Cloud/source credential:
+Storage artifact и versioned source creator/verifier уже существуют, но пока
+нет versioned target restore и unified DB+Storage binding. Artifact mode не использует Cloud/source credential:
 нужны decrypt identity и write-scoped target credential; delete разрешён только
 для orchestrator-owned target по exact instance ID. Direct source copy, если
 когда-либо понадобится, является отдельным явно versioned mode и не считается
@@ -233,10 +233,10 @@ fingerprints.
 
 ## Текущие блокеры
 
-- локально около 14 GiB свободно и нет Compose plugin;
+- локально меньше 30 GiB, требуемых preflight-контрактом, и нет Compose plugin;
 - validation-only preflight проверен локальными tests; decrypt/SQL mutation,
   disposable PostgreSQL integration и exact-stack runtime отсутствуют;
-- нет versioned outbound-isolation и Storage restore tooling;
+- нет versioned outbound-isolation и Storage target restore tooling;
 - нет project-ledger comparator и source-derived unified DB+Storage manifest;
 - runtime containers, два clean restore и service smoke не выполнялись.
 

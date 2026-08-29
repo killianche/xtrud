@@ -224,23 +224,27 @@ npm run store:check:android
 
 ## 8. Подтверждённые риски безопасности backend
 
-Это статические находки в migration-chain; эксплуатационные проверки против
-production не выполнялись.
+Read-only inventory live Cloud от 2026-08-26 подтвердил policies, column grants,
+function ACL/security modes и demo-state. Эксплуатационные атаки и mutations
+против production не выполнялись.
 
-- owner-update policy для `users` не ограничивает `is_admin` после добавления
-  колонки — возможен self-admin, если live grants/policies совпадают с Git;
-- demo-admin был снова создан после миграции, которая снимала admin с demo;
-- владельцы `master_profiles` / `master_categories` потенциально могут менять
-  trust/ranking/verification-поля;
-- `resolve_login_email` и `get_master_phone` выданы `anon` и раскрывают больше,
-  чем нужно текущей модели;
+- live owner-update policy для `users` не ограничивает `is_admin`, а grants
+  разрешают широкий набор колонок — self-admin риск подтверждён структурно;
+- live demo-admin активен после миграции, которая должна была снять admin;
+- live owner policies/grants для `master_profiles` / `master_categories`
+  позволяют менять trust/ranking/verification-поля;
+- `resolve_login_email` в live явно доступен `anon` и создаёт pre-login
+  enumeration риск; `get_master_phone` в live уже закрыт от `anon` и доступен
+  только `authenticated`/`service_role`;
 - `delete_my_account()` отстаёт от текущей auth/data-модели;
 - legacy push migration содержит общий секрет в истории Git — его нужно
   ротировать, не копировать в новую документацию;
 - публичные Storage/telemetry endpoints требуют quota/MIME/rate-limit проверки.
 
-Правильный порядок исправления: live read-only подтверждение -> backup -> одна
-forward-only security migration -> проверка RLS/ACL/RPC -> обновление типов и
+Unnumbered fail-closed draft `security_hardening_live_verified.sql` подготовлен,
+но не является runnable migration. Правильный порядок исправления: fresh
+DB+Storage boundary -> exact-stack restore -> PostgREST/RLS/ACL/RPC matrix ->
+reviewed forward-only migration -> повторная матрица -> обновление типов и
 документации. Не тестировать уязвимости на реальных аккаунтах.
 
 ## 9. Что считать документацией, а что историей

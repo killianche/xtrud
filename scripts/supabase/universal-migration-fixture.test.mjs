@@ -94,6 +94,42 @@ test("tractor and legal services keep stable canonical IDs and parents", () => {
   assert.match(taxonomyMigration, /v_existing\.l2_id IS DISTINCT FROM NEW\.l2_id/);
 });
 
+test("YouDo catalogue gaps are prepared but remain feature-off and search-hidden", () => {
+  for (const [id, parentId] of [
+    ["event-staff", "events"],
+    ["audio-production", "events"],
+    ["virtual-assistant", "business"],
+    ["device-repair", "it-digital"],
+  ]) {
+    assert.match(taxonomyMigration, new RegExp(`\\('${id}'\\s*,\\s*'${parentId}'`));
+  }
+
+  for (const id of [
+    "courier-purchase",
+    "promoter",
+    "audio-editing",
+    "data-entry",
+    "phone-repair",
+  ]) {
+    assert.match(taxonomyMigration, new RegExp(`\\('${id}'\\s*,`));
+  }
+
+  assert.match(taxonomyMigration, /WHERE id IN \([^;]*'virtual-assistant'[^;]*'device-repair'/s);
+  assert.match(taxonomyMigration, /WHERE l2_id IN \([^;]*'event-staff'[^;]*'audio-production'/s);
+  assert.doesNotMatch(
+    taxonomyMigration,
+    /INSERT INTO public\.category_terms[\s\S]*'virtual-assistant'/,
+  );
+  assert.doesNotMatch(
+    taxonomyMigration,
+    /INSERT INTO public\.category_terms[\s\S]*'device-repair'/,
+  );
+  assert.match(taxonomyMigration, /Search aliases are deliberately NOT inserted/);
+  assert.match(taxonomyMigration, /current public\.search_categories synonym branch/);
+  assert.match(taxonomyMigration, /\('promoter'[^\n]*NULL/);
+  assert.match(taxonomyMigration, /\('phone-repair'[^\n]*NULL/);
+});
+
 test("all eight removed branches are restored from the canonical seed", () => {
   const removedL1 = [
     "auto",

@@ -99,6 +99,16 @@ git diff --cached --name-only | grep -E "\\.(tsx)$" | xargs grep -nE "BottomShee
 
 **Не закрывать задачу пока скриншот не подтверждает финальный вид.** Не «у меня TS прошёл, значит ок». TS не ловит subtitle.
 
+## Обязательный navigation review
+
+Любое изменение route, Stack/Tabs layout, Back/Cancel, wizard phase,
+`usePreventRemove` или поведения системного свайпа проверяет роль
+`xtrud-designer` до финального отчёта. Для iOS одного клика по стрелке
+недостаточно: независимый QA обязан выполнить реальный edge-swipe, отменённый
+наполовину swipe и следующий повторный Back. Кнопка и жест должны приводить к
+одному semantic previous step и одной dirty/busy policy; detail route внутри
+скрытого `Tabs.Screen` считается архитектурным дефектом.
+
 ## Lazyweb-чек (для новых экранов и существенных редизайнов)
 
 Прописано в [`lazyweb-rules.md`](lazyweb-rules.md). Здесь — повторно для усиления:

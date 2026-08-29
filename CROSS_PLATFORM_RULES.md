@@ -1,6 +1,6 @@
 # xtrud — mobile-first правила iOS + Android + supporting web
 
-> Актуально на 2026-08-25. Этот документ описывает эксплуатационные различия
+> Актуально на 2026-08-26. Этот документ описывает эксплуатационные различия
 > платформ. Визуальные правила находятся в `DESIGN.md` и `UI_PATTERNS.md`, а
 > сборка и выкладка — в `PROJECT_OPERATIONS.md`.
 
@@ -125,6 +125,17 @@ SSR-проверкой `typeof ... !== "undefined"`.
 4. `window.history` допустим только в web-only helper очистки auth callback.
 5. Каждый публичный detail route тестируется обычным переходом, browser refresh,
    прямым URL и cold app launch.
+6. Корни продукта живут в `Tabs`; detail/picker/edit живут в native `Stack`
+   над Tabs или во вложенном Stack своего таба. Detail запрещено объявлять
+   скрытым `Tabs.Screen`: это лишает iOS стандартного edge-swipe.
+7. В настоящем Stack `useSafeBack` выполняет native pop. Path-history — только
+   fallback между navigator'ами/deep link и обязана синхронизироваться с pop.
+8. Кнопка Back, iOS edge-swipe и системное удаление маршрута используют одну
+   semantic policy. Dirty-форма применяет `usePreventRemove`; успешное
+   сохранение разрешает ровно один исходный transition.
+9. Каждая правка навигации до отчёта проходит отдельный review роли
+   `xtrud-designer` и независимый iOS QA: button Back, edge-swipe, отменённый
+   наполовину swipe, повторный Back, light/dark и cold fallback.
 
 ### Матрица deep links
 

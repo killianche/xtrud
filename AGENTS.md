@@ -22,7 +22,7 @@
 | Область | Читать перед работой |
 |---|---|
 | Текущая модель продукта | [`docs/SIMPLE_FLOW.md`](docs/SIMPLE_FLOW.md), [`PRODUCT_CONTEXT.md`](PRODUCT_CONTEXT.md) |
-| Категории и product scope | [`src/lib/product-scope.ts`](src/lib/product-scope.ts), [`CATEGORIES_AND_PROFILES.md`](CATEGORIES_AND_PROFILES.md) |
+| Категории и product scope | [`src/lib/product-scope.ts`](src/lib/product-scope.ts), [`CATEGORIES_AND_PROFILES.md`](CATEGORIES_AND_PROFILES.md), [`docs/SERVICE_PRIORITY.md`](docs/SERVICE_PRIORITY.md) |
 | UI и новый экран | [`UI_PATTERNS.md`](UI_PATTERNS.md), [`DESIGN.md`](DESIGN.md), [`CROSS_PLATFORM_RULES.md`](CROSS_PLATFORM_RULES.md), [`.claude/rules/design-quality.md`](.claude/rules/design-quality.md), [`.claude/rules/design-enforcement.md`](.claude/rules/design-enforcement.md) |
 | UI-иконки | [`docs/UI_ICONS.md`](docs/UI_ICONS.md); новый mono UI — Phosphor |
 | Аватары | [`src/lib/avatar.ts`](src/lib/avatar.ts): только реальное фото, иначе инициалы; любой DiceBear — legacy |

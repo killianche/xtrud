@@ -172,15 +172,19 @@ VALUES
   ('decor',         'events', 'Декор и оформление',    'Sparkles', 4, false, true),
   ('photo-video',   'events', 'Фото и видео',          'Camera',   5, false, true),
   ('rentals',       'events', 'Прокат и аренда',       'Package',  6, false, true),
+  ('event-staff',    'events', 'Персонал и промоакции', 'Building2',7, false, true),
+  ('audio-production','events','Аудио и звукозапись',   'Waves',    8, false, true),
   ('legal',       'business', 'Юридические услуги',    'Scale',      1, false, true),
   ('accounting',  'business', 'Бухгалтерия и налоги',  'Calculator', 2, false, true),
   ('translation', 'business', 'Переводы и нотариус',   'Languages',  3, false, true),
   ('hr',          'business', 'HR и рекрутинг',        'Users',      4, false, true),
   ('insurance',   'business', 'Страхование',           'Shield',     5, false, true),
+  ('virtual-assistant','business','Виртуальный помощник','Pencil',    6, false, true),
   ('computer-help', 'it-digital', 'Компьютерная помощь', 'Laptop',    1, false, true),
   ('dev-sites',     'it-digital', 'Разработка и сайты',  'Code',      2, false, true),
   ('marketing',     'it-digital', 'SMM и реклама',       'Megaphone', 3, false, true),
   ('design',        'it-digital', 'Дизайн',              'Palette',   4, false, true),
+  ('device-repair', 'it-digital', 'Ремонт цифровой техники','Wrench',5, false, true),
   ('childcare',                 'personal-services', 'Уход за детьми',                 'Baby',           1, false, true),
   ('eldercare',                 'personal-services', 'Уход за пожилыми',               'Heart',          2, false, true),
   ('psychology',                'personal-services', 'Психология и коучинг',           'Brain',          3, false, true),
@@ -230,6 +234,8 @@ VALUES
   ('mobile-fuel', 'towing', 'Подвоз топлива',     'Fuel',  1500, 'urgent', 'year_round', false, 3),
   ('courier-city',  'delivery', 'Курьер по городу',          'Package',     400, 'urgent', 'year_round', false, 1),
   ('delivery-food', 'delivery', 'Доставка еды / продуктов',  'ShoppingBag', 300, 'urgent', 'year_round', false, 2),
+  ('courier-purchase','delivery','Купить и доставить',        'ShoppingBag', NULL, 'urgent', 'year_round', false, 3),
+  ('courier-express','delivery','Срочная доставка документов','Package',     NULL, 'urgent', 'year_round', false, 4),
   ('manicure-classic', 'nails', 'Классический маникюр',     'Hand',        800, 'week', 'year_round', false, 1),
   ('manicure-gel',     'nails', 'Маникюр с гель-лаком',     'Hand',       1500, 'week', 'year_round', false, 2),
   ('pedicure',         'nails', 'Педикюр',                  'Footprints', 1800, 'week', 'year_round', false, 3),
@@ -316,6 +322,10 @@ VALUES
   ('dress-rental',  'rentals', 'Прокат свадебного / вечернего платья', 'Shirt', 5000, 'week',  'wedding_season', false, 1),
   ('car-wedding',   'rentals', 'Свадебный кортеж / лимузин',           'Car',   8000, 'month', 'wedding_season', false, 2),
   ('tent-rental',   'rentals', 'Аренда шатра / мебели',                'Tent', 25000, 'month', 'wedding_season', false, 3),
+  ('promoter',      'event-staff', 'Промоутер',                         'Pencil',    NULL, 'urgent', 'year_round', false, 1),
+  ('event-helper',  'event-staff', 'Помощник на мероприятие',           'Building2', NULL, 'week',   'year_round', false, 2),
+  ('audio-editing', 'audio-production', 'Монтаж и обработка аудио',     'Waves',     NULL, 'week',   'year_round', false, 1),
+  ('voice-recording','audio-production','Запись голоса и озвучка',      'Waves',     NULL, 'week',   'year_round', false, 2),
   ('legal-consult',     'legal', 'Консультация юриста',                 'Scale',     1500, 'week',  'year_round', false, 1),
   ('contracts',         'legal', 'Составление договоров',               'FileText',  3500, 'week',  'year_round', false, 2),
   ('court-rep',         'legal', 'Представительство в суде',            'Scale',    15000, 'month', 'year_round', false, 3),
@@ -332,6 +342,10 @@ VALUES
   ('kasko',              'insurance', 'КАСКО',                'Car',         1500, 'week',   'year_round', false, 2),
   ('property-insurance', 'insurance', 'Страхование жилья',    'Home',        1500, 'week',   'year_round', false, 3),
   ('health-insurance',   'insurance', 'ДМС',                  'Stethoscope', 1500, 'week',   'year_round', false, 4),
+  ('document-assistant','virtual-assistant','Работа с документами',     'Pencil', NULL, 'week', 'year_round', false, 1),
+  ('data-entry',        'virtual-assistant','Ввод и обработка данных',   'Rows3',  NULL, 'week', 'year_round', false, 2),
+  ('research-assistant','virtual-assistant','Поиск и сбор информации',   'Pencil', NULL, 'week','year_round',false,3),
+  ('copywriting',       'virtual-assistant','Тексты и редактирование',   'Pencil', NULL, 'week','year_round',false,4),
   ('windows-setup',  'computer-help', 'Установка Windows / macOS', 'Monitor',  1500, 'urgent', 'year_round', false, 1),
   ('virus-removal',  'computer-help', 'Удаление вирусов',           'Bug',     1500, 'urgent', 'year_round', false, 2),
   ('data-recovery',  'computer-help', 'Восстановление данных',      'Database',5000, 'urgent', 'year_round', false, 3),
@@ -348,6 +362,9 @@ VALUES
   ('interior-design', 'design', 'Дизайн интерьера',              'Home',    60000, 'month', 'year_round', false, 1),
   ('graphic-design',  'design', 'Графический дизайн / полиграфия','Palette', 3500, 'week',  'year_round', false, 2),
   ('3d-vis',          'design', '3D-визуализация',               'Box',     25000, 'month', 'year_round', false, 3),
+  ('phone-repair',   'device-repair', 'Ремонт телефона',          'Wrench', NULL, 'urgent', 'year_round', false, 1),
+  ('tablet-repair',  'device-repair', 'Ремонт планшета',          'Wrench', NULL, 'week',   'year_round', false, 2),
+  ('console-repair', 'device-repair', 'Ремонт игровой приставки', 'Wrench', NULL, 'week',   'year_round', false, 3),
   ('nanny-hourly',   'childcare', 'Няня почасовая',     'Baby',  350, 'week',   'year_round', false, 1),
   ('nanny-fulltime', 'childcare', 'Няня постоянная',    'Baby',35000, 'month',  'year_round', false, 2),
   ('governess',      'childcare', 'Гувернантка',        'User',50000, 'month',  'year_round', false, 3),
@@ -376,6 +393,15 @@ VALUES
   ('astrology', 'alt-services', 'Астрология / нумерология', 'Sparkles', 2500, 'week', 'year_round', false, 1),
   ('other', 'other-personal', 'Прочее (с обязательным описанием)', 'MoreHorizontal', NULL, 'week', 'year_round', false, 1)
 ON CONFLICT (id) DO NOTHING;
+
+-- Search aliases are deliberately NOT inserted in this data-only draft.
+-- The current public.search_categories synonym branch and the anon SELECT
+-- policy on category_terms do not filter inactive/hidden targets. Inserting
+-- aliases here would expose feature-off categories to old clients. A separate
+-- forward-only search hardening migration must filter the synonym target and
+-- its parent L1/L2 before a later activation migration adds aliases such as
+-- "тракторист", "юрист", "виртуальный помощник" or "ремонт телефона".
+-- This is a release blocker, not a TODO that may be bypassed.
 
 -- Internal fallback preserves orders.l2_id NOT NULL for free-form tasks. It is
 -- deliberately inactive and feature-off until a separate controlled rollout
@@ -452,7 +478,7 @@ SET is_visible = false,
     catalog_enabled = false,
     matching_enabled = false,
     requires_verification = false
-WHERE id IN ('auto-service', 'tire-service', 'body-paint', 'car-wash', 'roadside', 'cargo', 'heavy-equipment', 'towing', 'delivery', 'nails', 'lashes-brows', 'hair', 'cosmetology', 'massage', 'stylist', 'home-medical', 'school-subjects', 'exam-prep', 'languages', 'religious-education', 'extra-education', 'sports-coach', 'catering', 'confectionery', 'entertainment', 'decor', 'photo-video', 'rentals', 'legal', 'accounting', 'translation', 'hr', 'insurance', 'computer-help', 'dev-sites', 'marketing', 'design', 'childcare', 'eldercare', 'psychology', 'sewing', 'pet-services', 'religious-services', 'b2b-services', 'alt-services', 'wedding-services-umbrella', 'other-personal');
+WHERE id IN ('auto-service', 'tire-service', 'body-paint', 'car-wash', 'roadside', 'cargo', 'heavy-equipment', 'towing', 'delivery', 'nails', 'lashes-brows', 'hair', 'cosmetology', 'massage', 'stylist', 'home-medical', 'school-subjects', 'exam-prep', 'languages', 'religious-education', 'extra-education', 'sports-coach', 'catering', 'confectionery', 'entertainment', 'decor', 'photo-video', 'rentals', 'event-staff', 'audio-production', 'legal', 'accounting', 'translation', 'hr', 'insurance', 'virtual-assistant', 'computer-help', 'dev-sites', 'marketing', 'design', 'device-repair', 'childcare', 'eldercare', 'psychology', 'sewing', 'pet-services', 'religious-services', 'b2b-services', 'alt-services', 'wedding-services-umbrella', 'other-personal');
 
 UPDATE public.categories_l3
 SET is_active = false,
@@ -460,7 +486,7 @@ SET is_active = false,
     catalog_enabled = false,
     matching_enabled = false,
     requires_verification = requires_license
-WHERE l2_id IN ('auto-service', 'tire-service', 'body-paint', 'car-wash', 'roadside', 'cargo', 'heavy-equipment', 'towing', 'delivery', 'nails', 'lashes-brows', 'hair', 'cosmetology', 'massage', 'stylist', 'home-medical', 'school-subjects', 'exam-prep', 'languages', 'religious-education', 'extra-education', 'sports-coach', 'catering', 'confectionery', 'entertainment', 'decor', 'photo-video', 'rentals', 'legal', 'accounting', 'translation', 'hr', 'insurance', 'computer-help', 'dev-sites', 'marketing', 'design', 'childcare', 'eldercare', 'psychology', 'sewing', 'pet-services', 'religious-services', 'b2b-services', 'alt-services', 'wedding-services-umbrella', 'other-personal');
+WHERE l2_id IN ('auto-service', 'tire-service', 'body-paint', 'car-wash', 'roadside', 'cargo', 'heavy-equipment', 'towing', 'delivery', 'nails', 'lashes-brows', 'hair', 'cosmetology', 'massage', 'stylist', 'home-medical', 'school-subjects', 'exam-prep', 'languages', 'religious-education', 'extra-education', 'sports-coach', 'catering', 'confectionery', 'entertainment', 'decor', 'photo-video', 'rentals', 'event-staff', 'audio-production', 'legal', 'accounting', 'translation', 'hr', 'insurance', 'virtual-assistant', 'computer-help', 'dev-sites', 'marketing', 'design', 'device-repair', 'childcare', 'eldercare', 'psychology', 'sewing', 'pet-services', 'religious-services', 'b2b-services', 'alt-services', 'wedding-services-umbrella', 'other-personal');
 
 DO $assertions$
 DECLARE

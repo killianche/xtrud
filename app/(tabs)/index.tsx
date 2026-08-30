@@ -18,9 +18,11 @@
  * Master-режим (если active_role === "master") — отдельный экран MasterHomeContent.
  */
 
+import { FlashList, type FlashListRef } from "@shopify/flash-list";
 import { Image as ExpoImage } from "expo-image";
 import { useRouter } from "expo-router";
 import { CaretRight, Drop, Lightning, Sparkle } from "phosphor-react-native";
+import type { RefObject } from "react";
 import { useEffect, useRef } from "react";
 import { Animated, FlatList, Pressable, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -28,7 +30,10 @@ import { AppText } from "@/components/AppText";
 import { Avatar, Card, Skeleton } from "@/components/ui";
 import { useAuthSession } from "@/features/auth/use-auth-session";
 import { useUserRecord } from "@/features/auth/use-user-record";
-import { useVisibleCategories } from "@/features/categories/use-visible-categories";
+import {
+  useVisibleCategories,
+  type VisibleCategory,
+} from "@/features/categories/use-visible-categories";
 import { CinematicHero } from "@/features/home/CinematicHero";
 import { PromoBannerCarousel } from "@/features/home/PromoBannerCarousel";
 import { QuickServices } from "@/features/home/QuickServices";
@@ -48,6 +53,7 @@ import { getCategoryColorIconUrl } from "@/lib/category-color-icons";
 import { getCategoryIcon } from "@/lib/category-icons";
 import { scrollViewToTop, useTabScrollResetCounter } from "@/lib/tab-scroll-reset";
 import { useAppWidth } from "@/lib/use-app-width";
+import { useThemeColor } from "@/lib/use-theme-color";
 
 export default function HomeTab() {
   const insets = useSafeAreaInsets();
@@ -59,6 +65,43 @@ export default function HomeTab() {
   const activeRole = user?.active_role ?? "client";
   const refresh = usePullToRefresh();
 
+  if (activeRole === "master" && userId) {
+    // Мастер: фото-герой (логотип + лимит откликов + город + приветствие +
+    // статистика поверх фото) от самого верха, затем контент на canvas.
+    // Контент мастера — фиксированный набор блоков (не растёт от данных),
+    // поэтому виртуализация ему не нужна (docs/IOS_FOUNDATION.md §6.1).
+    return <MasterHome userId={userId} insets={insets} refresh={refresh} />;
+  }
+
+  return (
+    <ClientHome
+      insets={insets}
+      refresh={refresh}
+      onCategoryPress={(id) => router.push(`/category/${id}` as never)}
+      onMasterPress={(id) => router.push(`/master/${id}` as never)}
+      onDescribeTask={(draft) => {
+        // Передаём текст черновика в визард — orders/new подхватит его как
+        // начальное значение поля description.
+        const url = draft ? `/orders/new?draft=${encodeURIComponent(draft)}` : "/orders/new";
+        router.push(url as never);
+      }}
+    />
+  );
+}
+
+// ============================================================================
+// Master home — фото-герой + дискавери-блоки. Контент MasterHomeContent
+// ограничен ~10 карточками (см. её комментарий), не растёт от прокрутки
+// пользователя — обычный ScrollView, не FlashList.
+// ============================================================================
+
+interface MasterHomeProps {
+  userId: string;
+  insets: ReturnType<typeof useSafeAreaInsets>;
+  refresh: ReturnType<typeof usePullToRefresh>;
+}
+
+function MasterHome({ userId, insets, refresh }: MasterHomeProps) {
   // Tap-on-active-tab → scroll to top (стандартный mobile-pattern).
   // TabBar trigger'ит счётчик при тапе на focused-таб «Главная».
   const scrollRef = useRef<ScrollView>(null);
@@ -72,42 +115,33 @@ export default function HomeTab() {
       ref={scrollRef}
       className="flex-1 bg-canvas"
       contentContainerStyle={{
-        // Обе роли: фото-hero идёт от самого верха экрана (под статус-бар),
-        // поэтому НЕ добавляем paddingTop — CinematicHero (клиент) и
-        // MasterCinematicHero (мастер) сами учитывают inset.
+        // Фото-hero идёт от самого верха экрана (под статус-бар), поэтому НЕ
+        // добавляем paddingTop — MasterCinematicHero сам учитывает inset.
         paddingTop: 0,
         paddingBottom: insets.bottom + 24,
       }}
       showsVerticalScrollIndicator={false}
       refreshControl={refresh.control}
     >
-      {activeRole === "master" && userId ? (
-        // Мастер: фото-герой (логотип + лимит откликов + город + приветствие +
-        // статистика поверх фото) от самого верха, затем контент на canvas.
-        <View>
-          <MasterCinematicHero userId={userId} />
-          <View className="mt-3">
-            <MasterHomeContent userId={userId} />
-          </View>
-        </View>
-      ) : (
-        <ClientHome
-          onCategoryPress={(id) => router.push(`/category/${id}` as never)}
-          onMasterPress={(id) => router.push(`/master/${id}` as never)}
-          onDescribeTask={(draft) => {
-            // Передаём текст черновика в визард — orders/new подхватит его как
-            // начальное значение поля description.
-            const url = draft ? `/orders/new?draft=${encodeURIComponent(draft)}` : "/orders/new";
-            router.push(url as never);
-          }}
-        />
-      )}
+      <MasterCinematicHero userId={userId} />
+      <View className="mt-3">
+        <MasterHomeContent userId={userId} />
+      </View>
     </ScrollView>
   );
 }
 
 // ============================================================================
-// Client home — Hero + Featured + Categories + Top masters
+// Client home — Hero + Featured + Categories + Top masters.
+//
+// Виртуализация (2026-08-30): единственный реально растущий список на
+// главной — «Все категории» (таксономия L2, сейчас ~48 записей, admin-
+// managed, порог ≤15 для plain ScrollView из docs/IOS_FOUNDATION.md §6.1
+// превышен). Поэтому весь экран клиента — один FlashList, где категории —
+// его `data`, а всё остальное (hero, промо, топ-мастера) — ListHeaderComponent.
+// Вложенный FlashList в ScrollView не работает (warning о nested
+// virtualization) — по этой же причине здесь нельзя оставить прежний
+// ScrollView с .map() внутри.
 //
 // NB: TopBar (логотип + город + лимит откликов на canvas) удалён 2026-05-24.
 // Раньше рендерился только для мастера; теперь его роль выполняет фото-герой
@@ -116,31 +150,118 @@ export default function HomeTab() {
 // ============================================================================
 
 interface ClientHomeProps {
+  insets: ReturnType<typeof useSafeAreaInsets>;
+  refresh: ReturnType<typeof usePullToRefresh>;
   onCategoryPress: (id: string) => void;
   onMasterPress: (id: string) => void;
   /** Принимает черновик описания задачи (если пользователь начал писать в hero-input). */
   onDescribeTask: (draft?: string) => void;
 }
 
-function ClientHome({ onCategoryPress, onMasterPress, onDescribeTask }: ClientHomeProps) {
+// Раскладка сетки категорий на широком экране — 2/3 колонки (см. прежнюю
+// AllCategories). Плитка тянет свой gutter через paddingHorizontal — контейнер
+// компенсирует внешние 20px через CONTAINER_HORIZONTAL_PADDING.
+const CATEGORY_TILE_GUTTER = 6;
+const CATEGORY_SCREEN_PADDING = 20;
+const CATEGORY_CONTAINER_PADDING = CATEGORY_SCREEN_PADDING - CATEGORY_TILE_GUTTER;
+
+function ClientHome({
+  insets,
+  refresh,
+  onCategoryPress,
+  onMasterPress,
+  onDescribeTask,
+}: ClientHomeProps) {
+  const { data: categories, isLoading, error } = useVisibleCategories();
+  const width = useAppWidth();
+  const canvasBg = useThemeColor("canvas");
+  // На desktop колонок 2-3 (Lazyweb-паттерн: afterpay/people/zara — категории
+  // в marketplace на широком вьюпорте подаются grid'ом, не длинной колонкой
+  // ~30+ строк). Mobile остаётся 1 столбец — там grid 2x проигрывает list-view
+  // по сканируемости.
+  const columns = width >= 1024 ? 3 : width >= 768 ? 2 : 1;
+  const isGrid = columns > 1;
+
+  // Tap-on-active-tab → scroll to top. Тот же паттерн, что и у ScrollView-веток
+  // (scrollViewToTop поддерживает FlatList/FlashList-рефы через scrollToOffset —
+  // см. src/lib/tab-scroll-reset.ts).
+  const listRef = useRef<FlashListRef<VisibleCategory>>(null);
+  const resetCounter = useTabScrollResetCounter("index");
+  useEffect(() => {
+    if (resetCounter > 0) {
+      scrollViewToTop(listRef as unknown as RefObject<FlatList | null>);
+    }
+  }, [resetCounter]);
+
+  const ready = !isLoading && !error && !!categories;
+  const listData = ready ? categories : [];
+  // На grid-раскладке контейнер даёт -6px компенсацию (см. CATEGORY_CONTAINER_PADDING) —
+  // hero/promo/топ-мастера должны остаться full-bleed, поэтому header и
+  // ListEmptyComponent гасят этот отступ обратной отрицательной маргой.
+  const gridCancelStyle = isGrid ? { marginHorizontal: -CATEGORY_CONTAINER_PADDING } : undefined;
+
   return (
-    <View>
-      <CinematicHero onCreateTask={() => onDescribeTask()} />
-      <QuickServices onCreateTask={onDescribeTask} />
-      {/* Блок «Часто ищут» (FeaturedRequests) скрыт по фидбэку юзера 2026-05-21.
-          Компонент сохранён ниже — вернуть можно раскомментировав строку:
-          <FeaturedRequests onCategoryPress={onCategoryPress} /> */}
-      {/* Promo-баннеры партнёров (рекламные фото-баннеры 16:9). */}
-      <PromoBannerCarousel />
-      <TopMasters onMasterPress={onMasterPress} />
-      <View>
-        <AllCategories onCategoryPress={onCategoryPress} />
-      </View>
-      {/* HowItWorks скрыт по фидбэку user 2026-05-18 («не нужен»).
-          Компонент остался в `src/features/home/HowItWorks.tsx` если
-          вернёшь — можно раскомментировать.
-          <HowItWorks /> */}
-    </View>
+    <FlashList
+      style={{ flex: 1, backgroundColor: canvasBg }}
+      ref={listRef}
+      data={listData}
+      keyExtractor={(c) => c.id}
+      numColumns={columns}
+      extraData={isGrid}
+      showsVerticalScrollIndicator={false}
+      refreshControl={refresh.control}
+      contentContainerStyle={{
+        // Фото-hero идёт от самого верха экрана (под статус-бар), поэтому НЕ
+        // добавляем paddingTop — CinematicHero сам учитывает inset.
+        paddingHorizontal: isGrid ? CATEGORY_CONTAINER_PADDING : 0,
+        paddingBottom: insets.bottom + 24,
+      }}
+      ListHeaderComponent={
+        <View style={gridCancelStyle}>
+          <CinematicHero onCreateTask={() => onDescribeTask()} />
+          <QuickServices onCreateTask={onDescribeTask} />
+          {/* Блок «Часто ищут» (FeaturedRequests) скрыт по фидбэку юзера 2026-05-21.
+              Компонент сохранён ниже — вернуть можно раскомментировав строку:
+              <FeaturedRequests onCategoryPress={onCategoryPress} /> */}
+          {/* Promo-баннеры партнёров (рекламные фото-баннеры 16:9). */}
+          <PromoBannerCarousel />
+          <TopMasters onMasterPress={onMasterPress} />
+          {/* HowItWorks скрыт по фидбэку user 2026-05-18 («не нужен»).
+              Компонент остался в `src/features/home/HowItWorks.tsx` если
+              вернёшь — можно раскомментировать.
+              <HowItWorks /> */}
+          <View className="mt-10 px-5">
+            <AppText weight="semibold" className="text-title-lg text-ink">
+              Категории исполнителей
+            </AppText>
+          </View>
+          <View style={{ height: 16 }} />
+        </View>
+      }
+      renderItem={({ item, index }) => (
+        <CategoryItem
+          category={item}
+          isGrid={isGrid}
+          isLast={index === listData.length - 1}
+          onPress={() => onCategoryPress(item.id)}
+        />
+      )}
+      ListEmptyComponent={
+        isLoading ? (
+          <CategoriesSkeleton style={gridCancelStyle} />
+        ) : error ? (
+          <View className="px-5" style={gridCancelStyle}>
+            <AppText className="text-body-sm text-error">Не удалось загрузить категории.</AppText>
+          </View>
+        ) : (
+          <View className="px-5" style={gridCancelStyle}>
+            <AppText className="text-body-sm text-mute">
+              Категории услуг ещё не настроены. Свяжитесь с поддержкой.
+            </AppText>
+          </View>
+        )
+      }
+    />
   );
 }
 
@@ -465,163 +586,112 @@ function MasterMiniCard({
 }
 
 // ----------------------------------------------------------------------------
-// All categories — сетка
+// Категории — элемент FlashList (ClientHome). Grid-плитка (desktop, numColumns
+// > 1) и list-строка (mobile, 1 колонка) — тот же визуал, что был у прежней
+// AllCategories, только рендерится per-item вместо .map() внутри ScrollView.
+//
+// NB: crossfade skeleton → реальные карточки (был в прежней AllCategories,
+// Animated.Value 280ms) сюда сознательно не перенесён. FlashList recycle'ит
+// ячейки — анимация появления должна жить per-cell (через CellRendererComponent
+// или локальный Animated.Value в каждом item'е), а не одним общим opacity на
+// весь список, иначе героем/промо/топ-мастерами из ListHeaderComponent тоже
+// пришлось бы ждать первую отрисовку категорий. Это лишний вес ради
+// декоративного перехода — §1.1 design-quality («убрать лучше, чем
+// добавить»). Skeleton/ошибка/пустое состояние — сохранены без изменений.
 // ----------------------------------------------------------------------------
 
-function AllCategories({ onCategoryPress }: { onCategoryPress: (id: string) => void }) {
-  const { data: categories, isLoading, error } = useVisibleCategories();
-  const width = useAppWidth();
-  // На desktop колонок 2-3 (Lazyweb-паттерн: afterpay/people/zara — категории
-  // в marketplace на широком вьюпорте подаются grid'ом, не длинной колонкой
-  // ~30+ строк). Mobile остаётся 1 столбец — там grid 2x проигрывает list-view
-  // по сканируемости.
-  const columns = width >= 1024 ? 3 : width >= 768 ? 2 : 1;
-  const isGrid = columns > 1;
+interface CategoryItemProps {
+  category: VisibleCategory;
+  isGrid: boolean;
+  isLast: boolean;
+  onPress: () => void;
+}
 
-  // Fade-in реального списка при появлении (skeleton → categories), чтобы
-  // переход не был резким. См. ту же логику в TopMasters.
-  const opacity = useRef(new Animated.Value(0)).current;
-  useEffect(() => {
-    if (!isLoading && categories && categories.length > 0) {
-      Animated.timing(opacity, {
-        toValue: 1,
-        duration: 280,
-        useNativeDriver: true,
-      }).start();
-    }
-  }, [isLoading, categories, opacity]);
+function CategoryItem({ category, isGrid, isLast, onPress }: CategoryItemProps) {
+  const Icon = getCategoryIcon(category.icon);
+  // Mapping по L2 id — гарантирует уникальную иконку каждой категории.
+  const colorUrl = getCategoryColorIconUrl(category.id);
+  // Если есть fluent-color match — рендерим цветную SVG-иконку через CDN.
+  // Иначе — Phosphor моно (fallback). NB: эмодзи запрещены (см. CLAUDE.md).
+  const iconNode = colorUrl ? (
+    <ExpoImage
+      source={{ uri: colorUrl }}
+      style={{ width: 24, height: 24 }}
+      contentFit="contain"
+      cachePolicy="memory-disk"
+    />
+  ) : (
+    <Icon size={20} weight="bold" color="currentColor" />
+  );
 
-  return (
-    <View className="mt-10">
-      <View className="px-5">
-        <AppText weight="semibold" className="text-title-lg text-ink">
-          Категории исполнителей
-        </AppText>
-      </View>
-
-      {/* Vertical list-view 32 категории — Vercel-стиль: монохром, hairline
-          разделители между строками, иконка-в-круге слева + название + chevron.
-          Lazyweb: Yelp/TaskRabbit/Booksy используют этот паттерн для длинных
-          списков категорий (читается лучше grid'а при N > 12). */}
-      {isLoading ? (
-        <View className="mt-4">
-          {Array.from({ length: 10 }).map((_, i) => (
-            // biome-ignore lint/suspicious/noArrayIndexKey: stable position-based key
-            <View key={i} className="px-5 py-3 flex-row items-center gap-3">
-              <View className="h-10 w-10 rounded-full bg-canvas-soft-2" />
-              <View className="h-4 flex-1 max-w-[200px] rounded bg-canvas-soft-2" />
-            </View>
-          ))}
-        </View>
-      ) : error ? (
-        <View className="mt-4 px-5">
-          <AppText className="text-body-sm text-error">Не удалось загрузить категории.</AppText>
-        </View>
-      ) : !categories || categories.length === 0 ? (
-        <View className="mt-4 px-5">
-          <AppText className="text-body-sm text-mute">
-            Категории услуг ещё не настроены. Свяжитесь с поддержкой.
-          </AppText>
-        </View>
-      ) : isGrid ? (
-        // Desktop grid: 2 (md) / 3 (lg) колонки, карточки с бордером,
-        // gap-y/gap-x через padding половинок. Без hairline-разделителей —
-        // карточки сами по себе образуют визуальные ячейки.
-        // NB: flexDirection/flexWrap через style — на Animated.View
-        // NativeWind-классы flex-row/flex-wrap иногда не докатывают через
-        // RN-Web (фактический display:flex остаётся column).
-        <Animated.View
-          className="mt-4 px-5"
-          style={{
-            opacity,
-            flexDirection: "row",
-            flexWrap: "wrap",
-            marginHorizontal: -6,
-          }}
+  if (isGrid) {
+    // Desktop grid: 2 (md) / 3 (lg) колонки, карточки с бордером. Без
+    // hairline-разделителей — карточки сами по себе образуют визуальные ячейки.
+    // Ширину колонки считает сам FlashList (numColumns) — плитка только даёт
+    // gutter через padding.
+    return (
+      <View
+        style={{ paddingHorizontal: CATEGORY_TILE_GUTTER, paddingVertical: CATEGORY_TILE_GUTTER }}
+      >
+        <Pressable
+          onPress={onPress}
+          accessibilityRole="button"
+          accessibilityLabel={category.name_ru}
+          className="flex-row items-center gap-3 px-4 py-3 rounded-lg border border-hairline bg-canvas active:bg-canvas-soft-2"
         >
-          {categories.map((cat) => {
-            const Icon = getCategoryIcon(cat.icon);
-            const colorUrl = getCategoryColorIconUrl(cat.id);
-            return (
-              <View
-                key={cat.id}
-                style={{ width: `${100 / columns}%`, paddingHorizontal: 6, paddingVertical: 6 }}
-              >
-                <Pressable
-                  onPress={() => onCategoryPress(cat.id)}
-                  accessibilityRole="button"
-                  accessibilityLabel={cat.name_ru}
-                  className="flex-row items-center gap-3 px-4 py-3 rounded-lg border border-hairline bg-canvas active:bg-canvas-soft-2"
-                >
-                  <View className="h-10 w-10 items-center justify-center rounded-full bg-canvas-soft text-ink">
-                    {colorUrl ? (
-                      <ExpoImage
-                        source={{ uri: colorUrl }}
-                        style={{ width: 24, height: 24 }}
-                        contentFit="contain"
-                        cachePolicy="memory-disk"
-                      />
-                    ) : (
-                      <Icon size={20} weight="bold" color="currentColor" />
-                    )}
-                  </View>
-                  <AppText
-                    weight="semibold"
-                    className="flex-1 text-body-md text-ink"
-                    numberOfLines={1}
-                  >
-                    {cat.name_ru}
-                  </AppText>
-                  <View className="text-mute">
-                    <CaretRight size={18} weight="bold" color="currentColor" />
-                  </View>
-                </Pressable>
-              </View>
-            );
-          })}
-        </Animated.View>
-      ) : (
-        <Animated.View className="mt-4" style={{ opacity }}>
-          {categories.map((cat, idx) => {
-            const Icon = getCategoryIcon(cat.icon);
-            // Mapping по L2 id — гарантирует уникальную иконку каждой категории.
-            const colorUrl = getCategoryColorIconUrl(cat.id);
-            const isLast = idx === categories.length - 1;
-            return (
-              <Pressable
-                key={cat.id}
-                onPress={() => onCategoryPress(cat.id)}
-                accessibilityRole="button"
-                accessibilityLabel={cat.name_ru}
-                className={`flex-row items-center gap-3 px-5 py-3 active:bg-canvas-soft-2 ${
-                  isLast ? "" : "border-b border-hairline"
-                }`}
-              >
-                {/* Если есть fluent-color match — рендерим цветную SVG-иконку через CDN.
-                    Иначе — Lucide моно (fallback). NB: эмодзи запрещены (см. CLAUDE.md). */}
-                <View className="h-10 w-10 items-center justify-center rounded-full bg-canvas-soft text-ink">
-                  {colorUrl ? (
-                    <ExpoImage
-                      source={{ uri: colorUrl }}
-                      style={{ width: 24, height: 24 }}
-                      contentFit="contain"
-                      cachePolicy="memory-disk"
-                    />
-                  ) : (
-                    <Icon size={20} weight="bold" color="currentColor" />
-                  )}
-                </View>
-                <AppText weight="semibold" className="flex-1 text-body-md text-ink">
-                  {cat.name_ru}
-                </AppText>
-                <View className="text-mute">
-                  <CaretRight size={20} weight="bold" color="currentColor" />
-                </View>
-              </Pressable>
-            );
-          })}
-        </Animated.View>
-      )}
+          <View className="h-10 w-10 items-center justify-center rounded-full bg-canvas-soft text-ink">
+            {iconNode}
+          </View>
+          <AppText weight="semibold" className="flex-1 text-body-md text-ink" numberOfLines={1}>
+            {category.name_ru}
+          </AppText>
+          <View className="text-mute">
+            <CaretRight size={18} weight="bold" color="currentColor" />
+          </View>
+        </Pressable>
+      </View>
+    );
+  }
+
+  // Mobile: vertical list-view — Vercel-стиль, hairline разделители между
+  // строками, иконка-в-круге слева + название + chevron. Lazyweb:
+  // Yelp/TaskRabbit/Booksy используют этот паттерн для длинных списков
+  // категорий (читается лучше grid'а при N > 12).
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={category.name_ru}
+      className={`flex-row items-center gap-3 px-5 py-3 active:bg-canvas-soft-2 ${
+        isLast ? "" : "border-b border-hairline"
+      }`}
+    >
+      <View className="h-10 w-10 items-center justify-center rounded-full bg-canvas-soft text-ink">
+        {iconNode}
+      </View>
+      <AppText weight="semibold" className="flex-1 text-body-md text-ink">
+        {category.name_ru}
+      </AppText>
+      <View className="text-mute">
+        <CaretRight size={20} weight="bold" color="currentColor" />
+      </View>
+    </Pressable>
+  );
+}
+
+/** Skeleton-заглушка категорий на время загрузки — та же форма, что раньше
+ *  показывала AllCategories: 10 строк иконка+текст, list-style независимо от
+ *  grid/mobile раскладки (её и до FlashList выбирали такой же). */
+function CategoriesSkeleton({ style }: { style?: { marginHorizontal: number } }) {
+  return (
+    <View style={style}>
+      {Array.from({ length: 10 }).map((_, i) => (
+        // biome-ignore lint/suspicious/noArrayIndexKey: stable position-based key
+        <View key={i} className="px-5 py-3 flex-row items-center gap-3">
+          <View className="h-10 w-10 rounded-full bg-canvas-soft-2" />
+          <View className="h-4 flex-1 max-w-[200px] rounded bg-canvas-soft-2" />
+        </View>
+      ))}
     </View>
   );
 }

@@ -18,6 +18,7 @@
  * /orders убран из мастер-таббара, мастерские заявки на dashboard).
  */
 
+import { FlashList, type FlashListRef } from "@shopify/flash-list";
 import { Redirect, useLocalSearchParams, useRouter } from "expo-router";
 import {
   ArrowClockwise,
@@ -26,8 +27,9 @@ import {
   Plus,
   WarningCircle,
 } from "phosphor-react-native";
+import type { RefObject } from "react";
 import { useEffect, useMemo, useRef } from "react";
-import { Pressable, ScrollView, View } from "react-native";
+import { type FlatList, Pressable, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
 import { OrderRow } from "@/components/OrderRow";
@@ -98,12 +100,21 @@ function ClientOrdersView({ userId }: ClientOrdersViewProps) {
     };
   }, [orders]);
 
-  // Tap-on-active-tab → scroll to top.
-  const scrollRef = useRef<ScrollView>(null);
+  // Tap-on-active-tab → scroll to top. scrollViewToTop поддерживает
+  // FlatList/FlashList-рефы через scrollToOffset — см. src/lib/tab-scroll-reset.ts.
+  const listRef = useRef<FlashListRef<OrderWithRefs>>(null);
   const resetCounter = useTabScrollResetCounter("orders");
   useEffect(() => {
-    if (resetCounter > 0) scrollViewToTop(scrollRef);
+    if (resetCounter > 0) {
+      scrollViewToTop(listRef as unknown as RefObject<FlatList | null>);
+    }
   }, [resetCounter]);
+
+  // Список текущего таба — виртуализуется через FlashList (личная история
+  // заказов растёт со временем, порог ≤15 для plain ScrollView из
+  // docs/IOS_FOUNDATION.md §6.1 не гарантирован).
+  const currentOrders = tab === "active" ? activeOrders : doneOrders;
+  const hasItems = !isLoading && !error && currentOrders.length > 0;
 
   return (
     <View className="flex-1 bg-canvas" style={{ paddingTop: insets.top }}>
@@ -123,47 +134,63 @@ function ClientOrdersView({ userId }: ClientOrdersViewProps) {
         doneCount={doneOrders.length}
       />
 
-      <ScrollView
-        ref={scrollRef}
+      <FlashList
+        style={{ flex: 1 }}
+        ref={listRef}
+        data={hasItems ? currentOrders : []}
+        extraData={tab}
+        keyExtractor={(o) => o.id}
         contentContainerStyle={{ paddingBottom: insets.bottom + 100 }}
         showsVerticalScrollIndicator={false}
         refreshControl={refresh.control}
-      >
-        {/* Loading — скелетоны по форме OrderRow, не голый спиннер (§5). */}
-        {isLoading && <OrderRowsSkeleton count={5} />}
-
-        {error && <OrdersErrorState message={error.message} onRetry={() => refetch()} />}
-
-        {tab === "active" && !isLoading && !error && (
-          <OrdersList
-            orders={activeOrders}
-            empty={
-              <EmptyState
-                icon={ClipboardText}
-                title="Активных заказов нет"
-                hint="Опишите задачу — и мастера пришлют отклики с ценой и сроком."
-                ctaLabel="Разместить заказ"
-                onCta={() => router.push("/orders/new" as never)}
-              />
-            }
-            onPress={(id) => router.push(`/orders/${id}` as never)}
+        // Реальные строки начинаются с отступа mt-4 (16px) — как раньше у
+        // OrdersList. Skeleton/ошибка/empty несут собственный отступ и в
+        // этом спейсере не нуждаются.
+        ListHeaderComponent={hasItems ? <View style={{ height: 16 }} /> : null}
+        renderItem={({ item: o }) => (
+          <OrderRow
+            id={o.id}
+            title={o.title}
+            categoryName={o.l2?.name_ru ?? o.l2_id}
+            categoryIcon={o.l2?.icon ?? null}
+            categoryL2Id={o.l2_id}
+            cityName={o.city?.name ?? o.city_id ?? "Вся Ингушетия"}
+            district={o.district}
+            urgency={o.urgency}
+            preferredDate={o.preferred_date}
+            responsesCount={o.responses_count}
+            createdAt={o.created_at}
+            status={o.status}
+            budgetKind={o.budget_kind}
+            budgetValue={o.budget_value}
+            coverUrl={o.photo_urls?.[0] ?? null}
+            photosCount={o.photo_urls?.length ?? 0}
+            onPress={() => router.push(`/orders/${o.id}` as never)}
           />
         )}
-
-        {tab === "done" && !isLoading && !error && (
-          <OrdersList
-            orders={doneOrders}
-            empty={
-              <EmptyState
-                icon={ClockCounterClockwise}
-                title="В истории пока пусто"
-                hint="Сюда переедут заказы, которые вы закрыли или которые истекли."
-              />
-            }
-            onPress={(id) => router.push(`/orders/${id}` as never)}
-          />
-        )}
-      </ScrollView>
+        ListEmptyComponent={
+          isLoading ? (
+            // Loading — скелетоны по форме OrderRow, не голый спиннер (§5).
+            <OrderRowsSkeleton count={5} />
+          ) : error ? (
+            <OrdersErrorState message={error.message} onRetry={() => refetch()} />
+          ) : tab === "active" ? (
+            <EmptyState
+              icon={ClipboardText}
+              title="Активных заказов нет"
+              hint="Опишите задачу — и мастера пришлют отклики с ценой и сроком."
+              ctaLabel="Разместить заказ"
+              onCta={() => router.push("/orders/new" as never)}
+            />
+          ) : (
+            <EmptyState
+              icon={ClockCounterClockwise}
+              title="В истории пока пусто"
+              hint="Сюда переедут заказы, которые вы закрыли или которые истекли."
+            />
+          )
+        }
+      />
     </View>
   );
 }
@@ -238,45 +265,9 @@ function TabsBar({ tab, onChange, activeCount, doneCount }: TabsBarProps) {
   );
 }
 
-// ============================================================================
-// OrdersList — общий компонент для активных и завершённых.
-// ============================================================================
-
-interface OrdersListProps {
-  orders: OrderWithRefs[];
-  empty: React.ReactNode;
-  onPress: (id: string) => void;
-}
-
-function OrdersList({ orders, empty, onPress }: OrdersListProps) {
-  if (orders.length === 0) return <>{empty}</>;
-  return (
-    <View className="mt-4">
-      {orders.map((o) => (
-        <OrderRow
-          key={o.id}
-          id={o.id}
-          title={o.title}
-          categoryName={o.l2?.name_ru ?? o.l2_id}
-          categoryIcon={o.l2?.icon ?? null}
-          categoryL2Id={o.l2_id}
-          cityName={o.city?.name ?? o.city_id ?? "Вся Ингушетия"}
-          district={o.district}
-          urgency={o.urgency}
-          preferredDate={o.preferred_date}
-          responsesCount={o.responses_count}
-          createdAt={o.created_at}
-          status={o.status}
-          budgetKind={o.budget_kind}
-          budgetValue={o.budget_value}
-          coverUrl={o.photo_urls?.[0] ?? null}
-          photosCount={o.photo_urls?.length ?? 0}
-          onPress={() => onPress(o.id)}
-        />
-      ))}
-    </View>
-  );
-}
+// OrdersList (был общий компонент для активных/завершённых через .map() в
+// ScrollView) удалён 2026-08-30 — рендер строк теперь через renderItem
+// FlashList в OrdersScreen (виртуализация личной истории заказов).
 
 // DraftsSection и formatRelative удалены 2026-05-20 — таб «Черновики» убран.
 // Авто-сохранение в форме создания заказа (orders/new.tsx) продолжает работать

@@ -32,11 +32,12 @@
  * trigger), публичный показ портфолио на master/[id] (PortfolioGrid).
  */
 
+import { FlashList } from "@shopify/flash-list";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
 import { ImageSquare, Plus, SignIn } from "phosphor-react-native";
 import { useState } from "react";
-import { Alert, Pressable, ScrollView, View } from "react-native";
+import { Alert, Pressable, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
 import { ScreenHeader } from "@/components/ui";
@@ -213,32 +214,41 @@ export default function CasesScreen() {
     <View className="flex-1 bg-canvas" style={{ paddingTop: insets.top }}>
       <ScreenHeader title="Ваши работы" />
 
-      <ScrollView
+      <FlashList
+        style={{ flex: 1 }}
+        data={hasCases ? cases : []}
+        numColumns={2}
+        keyExtractor={(c) => c.id}
+        extraData={addingToCaseId}
         contentContainerStyle={{
-          paddingHorizontal: 16,
+          // Плитка сама даёт горизонтальный gutter (см. CasesTile) — контейнер
+          // компенсирует внешние 16px через CASES_CONTAINER_PADDING.
+          paddingHorizontal: CASES_CONTAINER_PADDING,
           paddingTop: 16,
           paddingBottom: insets.bottom + 96,
         }}
         showsVerticalScrollIndicator={false}
-      >
-        {isLoading ? (
-          <CasesGridSkeleton />
-        ) : hasCases ? (
-          <CasesGrid
-            cases={cases}
-            addingToCaseId={addingToCaseId}
-            onOpen={(id) => router.push(`/cases/${id}` as never)}
-            onAddPhoto={handleAddToCase}
-          />
-        ) : (
-          <CasesEmptyState
-            onStart={handleCreateWithPhotos}
-            busy={!!creating}
-            mutedColor={tc["muted-soft"]}
-            onPrimaryColor={tc["on-primary"]}
+        renderItem={({ item }) => (
+          <CaseTile
+            caseItem={item}
+            adding={addingToCaseId === item.id}
+            onPress={() => router.push(`/cases/${item.id}` as never)}
+            onAddPhoto={() => handleAddToCase(item.id)}
           />
         )}
-      </ScrollView>
+        ListEmptyComponent={
+          isLoading ? (
+            <CasesGridSkeleton />
+          ) : (
+            <CasesEmptyState
+              onStart={handleCreateWithPhotos}
+              busy={!!creating}
+              mutedColor={tc["muted-soft"]}
+              onPrimaryColor={tc["on-primary"]}
+            />
+          )
+        }
+      />
 
       {/* Sticky bottom CTA — «Добавить работу». Один тап = выбор фото → новая
           работа. Во время создания/загрузки показываем прогресс. */}
@@ -281,73 +291,56 @@ export default function CasesScreen() {
 }
 
 // ============================================================================
-// CasesGrid — компактная сетка обложек 2-в-ряд.
+// Сетка обложек 2-в-ряд — раскладка отдана FlashList (numColumns=2 в
+// CasesScreen), здесь остаются только константы и сама плитка (CaseTile).
 // ============================================================================
 
 const GRID_GUTTER = 12;
 const SCREEN_PADDING = 16;
-// Запас на дробное округление ширины на web: useAppWidth даёт ~480, а реальная
-// колонка под горизонтальным padding оказывается ~446 (≈2px «теряются» на
-// рамке PhoneFrame). Без запаса две плитки встают ровно по краю контейнера и
-// flex-wrap переносит вторую в новый столбец (баг 2026-05-24: сетка кейсов
-// схлопывалась в 1 колонку). 3px на плитку (6px на пару) — гарантирует 2 в ряд
-// и на web, и на нативе, лишний воздух справа незаметен.
+// Виртуализация (2026-08-30): CasesGrid (общий flex-wrap контейнер) удалён —
+// плитки теперь renderItem FlashList с numColumns=2, колонку считает сам
+// FlashList. Контейнер даёт компенсацию под собственный gutter плитки
+// (см. CasesTile) — CASES_CONTAINER_PADDING.
+const CASES_CONTAINER_PADDING = SCREEN_PADDING - GRID_GUTTER / 2;
+
+// Запас на дробное округление ширины на web: используется только в
+// CasesGridSkeleton (плейсхолдер из фиксированных 4 плиток — обычный
+// flex-wrap, не FlashList). Реальная колонка под горизонтальным padding
+// оказывается ~446 у useAppWidth ~480 (≈2px «теряются» на рамке PhoneFrame).
+// Без запаса две плитки встают ровно по краю контейнера и flex-wrap переносит
+// вторую в новый столбец (баг 2026-05-24). 3px на плитку — гарантирует 2 в
+// ряд и на web, и на нативе.
 const WIDTH_SAFETY = 3;
 
-/** Ширина плитки для надёжной 2-колоночной сетки. */
+/** Ширина плитки для надёжной 2-колоночной сетки (skeleton) и CDN-хинта
+ *  размера фото в реальной плитке (см. CaseTile). */
 function twoColTileWidth(screenW: number): number {
   return Math.max(120, Math.floor((screenW - SCREEN_PADDING * 2 - GRID_GUTTER) / 2) - WIDTH_SAFETY);
 }
 
-function CasesGrid({
-  cases,
-  addingToCaseId,
-  onOpen,
-  onAddPhoto,
-}: {
-  cases: CaseWithPreview[];
-  addingToCaseId: string | null;
-  onOpen: (id: string) => void;
-  onAddPhoto: (id: string) => void;
-}) {
-  const screenW = useAppWidth();
-  const tileW = twoColTileWidth(screenW);
-
-  return (
-    <View className="flex-row flex-wrap" style={{ gap: GRID_GUTTER }}>
-      {cases.map((c) => (
-        <CaseTile
-          key={c.id}
-          caseItem={c}
-          width={tileW}
-          adding={addingToCaseId === c.id}
-          onPress={() => onOpen(c.id)}
-          onAddPhoto={() => onAddPhoto(c.id)}
-        />
-      ))}
-    </View>
-  );
-}
-
 // ============================================================================
 // CaseTile — одна плитка работы: обложка 4:5 + подпись под ней.
+//
+// Ширину колонки в FlashList-сетке (numColumns=2) считает сам FlashList —
+// плитка не задаёт себе width, обложка держит пропорцию через aspectRatio
+// вместо фиксированного px-height (twoColTileWidth используется только как
+// хинт размера для CDN-ресайза фото, не для layout).
 // ============================================================================
 
 function CaseTile({
   caseItem,
-  width,
   adding,
   onPress,
   onAddPhoto,
 }: {
   caseItem: CaseWithPreview;
-  width: number;
   adding: boolean;
   onPress: () => void;
   onAddPhoto: () => void;
 }) {
   const tc = useThemeColors(["muted-soft", "ink"]);
-  const coverH = Math.round(width * 1.25); // 4:5 (вертикальная обложка)
+  const screenW = useAppWidth();
+  const cdnWidth = twoColTileWidth(screenW);
 
   const hero = caseItem.preview_items[0] ?? null;
   const photoCount = caseItem.items_count;
@@ -367,16 +360,16 @@ function CaseTile({
       accessibilityLabel={label}
       onPress={onPress}
       className="active:opacity-90"
-      style={{ width }}
+      style={{ paddingHorizontal: GRID_GUTTER / 2, paddingBottom: GRID_GUTTER }}
     >
-      {/* Обложка */}
+      {/* Обложка — 4:5 (вертикальная), пропорция вместо фикс. px-height. */}
       <View
         className="overflow-hidden rounded-lg bg-canvas-soft-2"
-        style={{ width, height: coverH, position: "relative" }}
+        style={{ width: "100%", aspectRatio: 0.8, position: "relative" }}
       >
         {hero && !failed ? (
           <Image
-            source={{ uri: cdnImage(hero.url, { width }) }}
+            source={{ uri: cdnImage(hero.url, { width: cdnWidth }) }}
             placeholder={cdnBlur(hero.url) ? { uri: cdnBlur(hero.url) } : undefined}
             placeholderContentFit="cover"
             style={{ width: "100%", height: "100%" }}
@@ -452,7 +445,14 @@ function CasesGridSkeleton() {
   const tileW = twoColTileWidth(screenW);
   const coverH = Math.round(tileW * 1.25);
   return (
-    <View className="flex-row flex-wrap" style={{ gap: GRID_GUTTER }}>
+    // ListEmptyComponent рендерится внутри того же contentContainerStyle, что
+    // и реальные плитки (paddingHorizontal: CASES_CONTAINER_PADDING = 10, а не
+    // 16) — компенсируем разницу (+6), чтобы плейсхолдер стоял вровень с
+    // исходным SCREEN_PADDING.
+    <View
+      className="flex-row flex-wrap"
+      style={{ gap: GRID_GUTTER, marginHorizontal: SCREEN_PADDING - CASES_CONTAINER_PADDING }}
+    >
       {Array.from({ length: 4 }).map((_, i) => (
         <View
           // biome-ignore lint/suspicious/noArrayIndexKey: skeleton position
@@ -483,7 +483,12 @@ function CasesEmptyState({
   onPrimaryColor: string;
 }) {
   return (
-    <View className="items-center justify-center py-20 px-6">
+    // Та же компенсация контейнерного паддинга, что и в CasesGridSkeleton
+    // (см. её комментарий) — держит исходный SCREEN_PADDING вокруг CTA.
+    <View
+      className="items-center justify-center py-20 px-6"
+      style={{ marginHorizontal: SCREEN_PADDING - CASES_CONTAINER_PADDING }}
+    >
       <ImageSquare size={48} weight="regular" color={mutedColor} />
       <AppText weight="semibold" className="mt-4 text-title-md text-ink text-center">
         Покажите ваши работы

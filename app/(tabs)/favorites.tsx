@@ -17,10 +17,11 @@
  * Сердечко на карточке убирает из избранного (optimistic update).
  */
 
+import { FlashList } from "@shopify/flash-list";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
 import { BookmarkSimple, MagnifyingGlass } from "phosphor-react-native";
-import { FlatList, Pressable, View } from "react-native";
+import { Pressable, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
 import { Avatar, normalizeAvatarUrl, ScreenHeader, Skeleton } from "@/components/ui";
@@ -56,15 +57,19 @@ export default function FavoritesScreen() {
       ) : (favorites.data ?? []).length === 0 ? (
         <EmptyState onSearch={() => router.push("/(tabs)/" as never)} />
       ) : (
-        <FlatList
+        <FlashList
+          style={{ flex: 1 }}
           data={favorites.data ?? []}
           keyExtractor={(it) => it.masterId}
           contentContainerStyle={{
             paddingHorizontal: 20,
             paddingTop: 8,
             paddingBottom: insets.bottom + 32,
-            gap: 12,
           }}
+          // FlashList не поддерживает `gap` в contentContainerStyle — ячейки
+          // позиционируются абсолютно (см. docs/IOS_FOUNDATION.md §6). Отступ
+          // между карточками — через ItemSeparatorComponent, как раньше через gap.
+          ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
           renderItem={({ item }) => (
             <FavoriteRow
               item={item}

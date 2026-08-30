@@ -152,7 +152,6 @@ export function ReportModal({ visible, targetType, targetId, onClose }: ReportMo
                   numberOfLines={3}
                   maxLength={2000}
                   textAlignVertical="top"
-                  maxFontSizeMultiplier={1.3}
                   className="mt-3 min-h-20 rounded-md border border-hairline bg-canvas px-3 py-2 text-body-sm text-ink"
                   editable={!submit.isPending}
                 />

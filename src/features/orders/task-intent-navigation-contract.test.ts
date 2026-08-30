@@ -19,9 +19,15 @@ describe("task intent navigation contract", () => {
     );
   });
 
-  it("keeps both raw search inputs within the reviewed Dynamic Type limit", () => {
-    expect(taskIntentSource).toContain("maxFontSizeMultiplier={1.3}");
-    expect(categoryPickerSource).toContain("maxFontSizeMultiplier={1.3}");
+  // 2026-08-30: было наоборот — тест требовал наличие maxFontSizeMultiplier={1.3}
+  // на обоих полях. Это и был артефакт капа Dynamic Type (docs/IOS_FOUNDATION.md
+  // §9.2 п.3): AppText больше не задаёт его глобально (src/components/AppText.tsx),
+  // а эти два TextInput не задают его точечно — обёртки под них уже растущие
+  // (min-h вместо h), так что кап им не нужен. Контракт теперь охраняет
+  // обратное: чтобы кап сюда не вернули не глядя.
+  it("keeps both raw search inputs free of an artificial Dynamic Type cap", () => {
+    expect(taskIntentSource).not.toContain("maxFontSizeMultiplier");
+    expect(categoryPickerSource).not.toContain("maxFontSizeMultiplier");
   });
 
   it("makes the category search key reveal live results without changing the task draft", () => {

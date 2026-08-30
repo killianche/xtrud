@@ -144,7 +144,9 @@ export default function CategorySelectScreen() {
       {/* Typeahead инпут — крупный (h-16 + 20px шрифт), чтобы не было
           ощущения «инпут размером с шрифт». */}
       <View className="px-5 mt-5">
-        <View className="flex-row items-center gap-3 h-16 rounded-2xl bg-canvas-soft px-4">
+        {/* min-h, не h: строка растёт вместе с текстом инпута — Dynamic Type
+            больше не ограничен искусственным капом (docs/IOS_FOUNDATION.md §3.4). */}
+        <View className="flex-row items-center gap-3 min-h-16 rounded-2xl bg-canvas-soft px-4 py-5">
           <View className="text-mute">
             <MagnifyingGlass size={22} weight="bold" color="currentColor" />
           </View>
@@ -152,7 +154,6 @@ export default function CategorySelectScreen() {
             ref={inputRef}
             autoFocus
             value={query}
-            maxFontSizeMultiplier={1.3}
             onChangeText={setQuery}
             onSubmitEditing={showSearchResults}
             placeholder="Например, окна, обои или уборка"

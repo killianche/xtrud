@@ -186,7 +186,6 @@ export function TaskIntentStep({
           autoCorrect
           editable={!isBusy}
           maxLength={MAX_TITLE_LENGTH}
-          maxFontSizeMultiplier={1.3}
           onChangeText={(value) => {
             setQuery(value);
             setSelectionError(null);

@@ -148,7 +148,6 @@ export function OrderFormBody({
                   numberOfLines={5}
                   maxLength={2000}
                   textAlignVertical="top"
-                  maxFontSizeMultiplier={1.3}
                   className={`mt-2 min-h-36 rounded-lg border bg-canvas px-4 py-3.5 text-body-md text-ink ${
                     errors.description ? "border-error" : "border-hairline"
                   }`}
@@ -463,8 +462,7 @@ function TextField(props: TextFieldProps) {
             placeholder={props.placeholder}
             placeholderTextColor={mutedSoftColor}
             autoCapitalize={props.autoCapitalize ?? "none"}
-            maxFontSizeMultiplier={1.3}
-            className={`mt-2 h-14 rounded-lg border bg-canvas px-4 text-body-md text-ink ${
+            className={`mt-2 min-h-14 rounded-lg border bg-canvas px-4 py-4 text-body-md text-ink ${
               props.error ? "border-error" : "border-hairline"
             }`}
             editable={!props.disabled}
@@ -512,8 +510,7 @@ function NumberField(props: NumberFieldProps) {
             placeholderTextColor={mutedSoftColor}
             keyboardType="number-pad"
             inputMode="numeric"
-            maxFontSizeMultiplier={1.3}
-            className={`mt-2 h-14 rounded-lg border bg-canvas px-4 text-body-md text-ink ${
+            className={`mt-2 min-h-14 rounded-lg border bg-canvas px-4 py-4 text-body-md text-ink ${
               props.error ? "border-error" : "border-hairline"
             }`}
             editable={!props.disabled}

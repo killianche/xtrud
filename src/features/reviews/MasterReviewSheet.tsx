@@ -144,7 +144,6 @@ export function MasterReviewSheet({
             placeholderTextColor={tc["muted-soft"]}
             multiline
             numberOfLines={5}
-            maxFontSizeMultiplier={1.3}
             editable={!submit.isPending}
             className="mt-2 min-h-[120px] rounded-md border border-hairline bg-canvas px-3 py-3 text-body-md text-ink"
             style={{ textAlignVertical: "top" }}

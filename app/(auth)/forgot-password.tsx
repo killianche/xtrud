@@ -87,7 +87,7 @@ export default function ForgotPasswordScreen() {
             <Pressable
               accessibilityRole="button"
               onPress={goBack}
-              className="mt-10 h-12 w-full items-center justify-center rounded-md bg-primary active:opacity-80"
+              className="mt-10 min-h-12 w-full items-center justify-center rounded-md bg-primary active:opacity-80"
             >
               <AppText weight="semibold" className="text-button text-on-primary">
                 Вернуться ко входу
@@ -132,8 +132,7 @@ export default function ForgotPasswordScreen() {
                       autoCorrect={false}
                       autoComplete="email"
                       inputMode="email"
-                      maxFontSizeMultiplier={1.3}
-                      className={`mt-2 h-12 rounded-md border bg-canvas px-3 text-body-md text-ink ${
+                      className={`mt-2 min-h-12 rounded-md border bg-canvas px-3 py-3 text-body-md text-ink ${
                         errors.email ? "border-error" : "border-hairline focus:border-ink"
                       }`}
                       editable={!isBusy}

@@ -79,7 +79,6 @@ export function MasterProfileFormBody({ control, errors, isBusy }: MasterProfile
                   numberOfLines={4}
                   maxLength={500}
                   textAlignVertical="top"
-                  maxFontSizeMultiplier={1.3}
                   className={`mt-2 min-h-24 rounded-md border bg-canvas px-3 py-3 text-body-md text-ink ${
                     errors.bio ? "border-error" : "border-hairline"
                   }`}
@@ -164,8 +163,7 @@ function ContactPhoneSection({ control, errors, isBusy }: ContactPhoneSectionPro
               keyboardType="phone-pad"
               inputMode="tel"
               maxLength={20}
-              maxFontSizeMultiplier={1.3}
-              className={`h-12 rounded-md border bg-canvas px-3 text-body-md text-ink ${
+              className={`min-h-12 rounded-md border bg-canvas px-3 py-3 text-body-md text-ink ${
                 errors.contactPhone ? "border-error" : "border-hairline"
               }`}
               editable={!isBusy}
@@ -223,8 +221,7 @@ function WhatsappSection({ control, errors, isBusy }: WhatsappSectionProps) {
               keyboardType="phone-pad"
               inputMode="tel"
               maxLength={20}
-              maxFontSizeMultiplier={1.3}
-              className={`h-12 rounded-md border bg-canvas px-3 text-body-md text-ink ${
+              className={`min-h-12 rounded-md border bg-canvas px-3 py-3 text-body-md text-ink ${
                 errors.whatsappPhone ? "border-error" : "border-hairline"
               }`}
               editable={!isBusy}
@@ -281,8 +278,7 @@ function FormField(props: FormFieldProps) {
             placeholder={props.placeholder}
             placeholderTextColor={mutedSoftColor}
             autoCapitalize={props.autoCapitalize ?? "none"}
-            maxFontSizeMultiplier={1.3}
-            className={`mt-2 h-12 rounded-md border bg-canvas px-3 text-body-md text-ink ${
+            className={`mt-2 min-h-12 rounded-md border bg-canvas px-3 py-3 text-body-md text-ink ${
               props.error ? "border-error" : "border-hairline"
             }`}
             editable={!props.disabled}
@@ -329,8 +325,7 @@ function NumberField(props: NumberFieldProps) {
             placeholderTextColor={mutedSoftColor}
             keyboardType="number-pad"
             inputMode="numeric"
-            maxFontSizeMultiplier={1.3}
-            className={`mt-2 h-12 rounded-md border bg-canvas px-3 text-body-md text-ink ${
+            className={`mt-2 min-h-12 rounded-md border bg-canvas px-3 py-3 text-body-md text-ink ${
               props.error ? "border-error" : "border-hairline"
             }`}
             editable={!props.disabled}

@@ -83,7 +83,15 @@ export function ScreenHeader({
   const accentColor = useThemeColor("accent");
 
   return (
-    <View className="flex-row items-center gap-2 bg-canvas px-3" style={{ height: HEADER_HEIGHT }}>
+    // `minHeight`, не `height`: title раньше рендерился с глобальным
+    // maxFontSizeMultiplier=1.3, который держал text-display-md в один
+    // рост даже при увеличенном шрифте. После снятия капа (AppText.tsx,
+    // 2026-08-30, docs/IOS_FOUNDATION.md §9.2 п.3) title растёт на
+    // AX-размерах — фиксированная height обрезала бы его сверху/снизу.
+    <View
+      className="flex-row items-center gap-2 bg-canvas px-3"
+      style={{ minHeight: HEADER_HEIGHT }}
+    >
       {onBack ? (
         <Pressable
           accessibilityRole="button"

@@ -137,7 +137,6 @@ export function ReportReviewSheet({ open, onClose, review, reporterId }: ReportR
           numberOfLines={4}
           maxLength={500}
           textAlignVertical="top"
-          maxFontSizeMultiplier={1.3}
           editable={!createReport.isPending}
           className="mt-2 min-h-24 rounded-lg border border-hairline bg-canvas px-3 py-3 text-body-md text-ink"
           style={{ outlineWidth: 0, outlineStyle: "none" } as object}

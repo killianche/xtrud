@@ -119,7 +119,6 @@ export function UsernameField({
               spellCheck={false}
               returnKeyType="done"
               editable={editable}
-              maxFontSizeMultiplier={1.3}
               className="ml-0.5 flex-1 text-body-md text-ink"
               style={
                 {
@@ -151,7 +150,7 @@ export function UsernameField({
         Юзернейм
       </AppText>
       <View
-        className={`mt-2 h-12 flex-row items-center rounded-md border ${borderClass} bg-canvas px-3`}
+        className={`mt-2 min-h-12 flex-row items-center rounded-md border ${borderClass} bg-canvas px-3`}
       >
         <AppText weight="medium" className="text-body-md text-mute">
           @
@@ -167,8 +166,7 @@ export function UsernameField({
           spellCheck={false}
           returnKeyType="done"
           editable={editable}
-          maxFontSizeMultiplier={1.3}
-          className="ml-1 h-12 flex-1 text-body-md text-ink"
+          className="ml-1 min-h-12 flex-1 py-3 text-body-md text-ink"
         />
         {statusIcon}
       </View>

@@ -79,7 +79,11 @@ export function CountryCodeSelect({ selected, onSelect, disabled }: CountryCodeS
         accessibilityLabel={`Код страны: ${selected.name}, +${selected.dial}`}
         disabled={disabled}
         onPress={() => setOpen(true)}
-        className={`h-12 flex-row items-center gap-2 rounded-md border border-hairline bg-canvas px-3 ${
+        // min-h, не h: сидит в одном ряду с полем номера
+        // (app/(auth)/register.tsx), у которого больше нет
+        // maxFontSizeMultiplier — обе фиксированные высоты должны расти
+        // синхронно на AX-размерах, иначе ряд разъедется.
+        className={`min-h-12 flex-row items-center gap-2 rounded-md border border-hairline bg-canvas px-3 py-3 ${
           disabled ? "opacity-50" : "active:bg-canvas-soft"
         }`}
       >
@@ -107,7 +111,7 @@ export function CountryCodeSelect({ selected, onSelect, disabled }: CountryCodeS
                   onSelect(country);
                   setOpen(false);
                 }}
-                className="h-14 flex-row items-center gap-3 px-6 active:bg-canvas-soft"
+                className="min-h-14 flex-row items-center gap-3 px-6 active:bg-canvas-soft"
               >
                 <Image
                   source={{ uri: flagUrl(country.code) }}

@@ -216,8 +216,7 @@ export default function RegisterScreen() {
                     autoComplete="tel-national"
                     textContentType="telephoneNumber"
                     inputMode="tel"
-                    maxFontSizeMultiplier={1.3}
-                    className={`h-12 flex-1 rounded-md border bg-canvas px-3 text-body-md text-ink ${
+                    className={`min-h-12 flex-1 rounded-md border bg-canvas px-3 py-3 text-body-md text-ink ${
                       errors.phone ? "border-error" : "border-hairline focus:border-ink"
                     }`}
                     editable={!isBusy}
@@ -252,8 +251,7 @@ export default function RegisterScreen() {
                   autoCorrect={false}
                   autoComplete="email"
                   inputMode="email"
-                  maxFontSizeMultiplier={1.3}
-                  className={`mt-2 h-12 rounded-md border bg-canvas px-3 text-body-md text-ink ${
+                  className={`mt-2 min-h-12 rounded-md border bg-canvas px-3 py-3 text-body-md text-ink ${
                     errors.email ? "border-error" : "border-hairline focus:border-ink"
                   }`}
                   editable={!isBusy}
@@ -288,8 +286,7 @@ export default function RegisterScreen() {
                     autoCapitalize="none"
                     autoCorrect={false}
                     autoComplete="new-password"
-                    maxFontSizeMultiplier={1.3}
-                    className={`h-12 flex-1 rounded-md border bg-canvas pl-3 pr-11 text-body-md text-ink ${
+                    className={`min-h-12 flex-1 rounded-md border bg-canvas py-3 pl-3 pr-11 text-body-md text-ink ${
                       errors.password ? "border-error" : "border-hairline focus:border-ink"
                     }`}
                     editable={!isBusy}
@@ -301,7 +298,7 @@ export default function RegisterScreen() {
                 accessibilityLabel={showPassword ? "Скрыть пароль" : "Показать пароль"}
                 onPress={() => setShowPassword((v) => !v)}
                 hitSlop={8}
-                className="absolute right-0 h-12 w-11 items-center justify-center"
+                className="absolute inset-y-0 right-0 w-11 items-center justify-center"
               >
                 {showPassword ? (
                   <EyeSlash size={20} weight="bold" color={tc.mute} />

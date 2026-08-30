@@ -52,7 +52,7 @@ BEGIN
   -- 2a. Helpers are SECURITY DEFINER and bypass RLS deliberately.
   IF NOT EXISTS (
     SELECT 1 FROM pg_proc AS function_row
-    WHERE function_row.oid = to_regprocedure('public.current_user_blocked_counterparties()')
+    WHERE function_row.oid = to_regprocedure('xtrud_private.current_user_blocked_counterparties()')
       AND function_row.prosecdef
       AND function_row.proconfig @> ARRAY['row_security=off']
   ) THEN
@@ -61,7 +61,7 @@ BEGIN
 
   IF NOT EXISTS (
     SELECT 1 FROM pg_proc AS function_row
-    WHERE function_row.oid = to_regprocedure('public.current_user_can_interact_with(uuid)')
+    WHERE function_row.oid = to_regprocedure('xtrud_private.current_user_can_interact_with(uuid)')
       AND function_row.prosecdef
       AND function_row.proconfig @> ARRAY['row_security=off']
   ) THEN
@@ -70,7 +70,7 @@ BEGIN
 
   IF NOT EXISTS (
     SELECT 1 FROM pg_proc AS function_row
-    WHERE function_row.oid = to_regprocedure('public.order_client_id(uuid)')
+    WHERE function_row.oid = to_regprocedure('xtrud_private.order_client_id(uuid)')
       AND function_row.prosecdef
       AND function_row.proconfig @> ARRAY['row_security=off']
   ) THEN
@@ -104,16 +104,53 @@ BEGIN
     RAISE EXCEPTION 'blocking_service_role_inherited_default_privileges';
   END IF;
 
-  -- 2c. Function grants.
-  IF NOT has_function_privilege('anon', 'public.current_user_blocked_counterparties()', 'EXECUTE')
-     OR NOT has_function_privilege('authenticated', 'public.current_user_blocked_counterparties()', 'EXECUTE') THEN
-    RAISE EXCEPTION 'blocking_array_helper_not_executable_by_api_roles';
+  -- 2c. Reachable surface. PostgREST publishes every function of an exposed
+  -- schema as /rest/v1/rpc/<name>, and its db-schemas default is "public".
+  -- A relationship helper living there would hand a blocked user the reverse
+  -- direction of the block list that public.user_blocks RLS withholds, so the
+  -- contract is that NO such helper exists in the exposed schema.
+  IF to_regprocedure('public.current_user_blocked_counterparties()') IS NOT NULL
+     OR to_regprocedure('public.current_user_can_interact_with(uuid)') IS NOT NULL
+     OR to_regprocedure('public.order_client_id(uuid)') IS NOT NULL THEN
+    RAISE EXCEPTION 'blocking_helper_is_reachable_through_the_exposed_schema';
   END IF;
 
-  IF has_function_privilege('anon', 'public.order_client_id(uuid)', 'EXECUTE')
-     OR has_function_privilege('service_role', 'public.order_client_id(uuid)', 'EXECUTE')
-     OR has_function_privilege('service_role', 'public.current_user_blocked_counterparties()', 'EXECUTE')
-     OR has_function_privilege('service_role', 'public.current_user_can_interact_with(uuid)', 'EXECUTE') THEN
+  -- Generalised: no SECURITY DEFINER function in the exposed schema may read
+  -- public.user_blocks at all, under any name. This catches re-introduction of
+  -- the same oracle by a later migration.
+  IF EXISTS (
+    SELECT 1
+    FROM pg_proc AS function_row
+    JOIN pg_namespace AS schema_row ON schema_row.oid = function_row.pronamespace
+    WHERE schema_row.nspname = 'public'
+      AND function_row.prosecdef
+      AND pg_get_functiondef(function_row.oid) ~* 'user_blocks'
+  ) THEN
+    RAISE EXCEPTION 'blocking_definer_oracle_present_in_the_exposed_schema';
+  END IF;
+
+  -- The private schema must be usable by the API roles (RLS expressions run as
+  -- the caller) but must never let them create anything in it.
+  IF NOT has_schema_privilege('anon', 'xtrud_private', 'USAGE')
+     OR NOT has_schema_privilege('authenticated', 'xtrud_private', 'USAGE') THEN
+    RAISE EXCEPTION 'blocking_private_schema_not_usable_by_api_roles';
+  END IF;
+
+  IF has_schema_privilege('anon', 'xtrud_private', 'CREATE')
+     OR has_schema_privilege('authenticated', 'xtrud_private', 'CREATE') THEN
+    RAISE EXCEPTION 'blocking_private_schema_is_writable_by_api_roles';
+  END IF;
+
+  -- Function grants stay exactly as declared.
+  IF NOT has_function_privilege('anon', 'xtrud_private.current_user_blocked_counterparties()', 'EXECUTE')
+     OR NOT has_function_privilege('authenticated', 'xtrud_private.current_user_blocked_counterparties()', 'EXECUTE') THEN
+    RAISE EXCEPTION 'blocking_array_helper_not_executable_for_policy_evaluation';
+  END IF;
+
+  IF has_function_privilege('anon', 'xtrud_private.order_client_id(uuid)', 'EXECUTE')
+     OR has_function_privilege('service_role', 'xtrud_private.order_client_id(uuid)', 'EXECUTE')
+     OR has_function_privilege('service_role', 'xtrud_private.current_user_blocked_counterparties()', 'EXECUTE')
+     OR has_function_privilege('service_role', 'xtrud_private.current_user_can_interact_with(uuid)', 'EXECUTE') THEN
     RAISE EXCEPTION 'blocking_helper_grants_are_wider_than_declared';
   END IF;
 
@@ -125,20 +162,24 @@ BEGIN
       AND policyname IN (
         'orders_block_relation_restrictive',
         'order_responses_block_relation_select_restrictive',
-        'order_responses_block_relation_insert_restrictive'
+        'order_responses_block_relation_insert_restrictive',
+        'order_responses_block_relation_update_restrictive'
       )
-  ) <> 3 THEN
+  ) <> 4 THEN
     RAISE EXCEPTION 'blocking_restrictive_policies_missing_or_not_restrictive';
   END IF;
 
-  IF EXISTS (
+  -- The UPDATE policy must screen the NEW row too, otherwise a response can be
+  -- moved onto a blocked counterpart's order.
+  IF NOT EXISTS (
     SELECT 1 FROM pg_policies
     WHERE schemaname = 'public'
-      AND tablename = 'order_responses'
-      AND permissive = 'RESTRICTIVE'
+      AND policyname = 'order_responses_block_relation_update_restrictive'
       AND cmd = 'UPDATE'
+      AND qual IS NOT NULL
+      AND with_check IS NOT NULL
   ) THEN
-    RAISE EXCEPTION 'blocking_unexpected_restrictive_update_policy';
+    RAISE EXCEPTION 'blocking_update_policy_missing_using_or_with_check';
   END IF;
 
   SELECT count(*) INTO v_changed
@@ -163,8 +204,8 @@ BEGIN
     FROM public.fixture_policy_baseline
   ) AS added;
 
-  -- 3 RESTRICTIVE + 3 owner policies on public.user_blocks, nothing else.
-  IF v_new_policies <> 6 THEN
+  -- 4 RESTRICTIVE + 3 owner policies on public.user_blocks, nothing else.
+  IF v_new_policies <> 7 THEN
     RAISE EXCEPTION 'blocking_migration_added_unexpected_policy_count: %', v_new_policies;
   END IF;
 END
@@ -370,9 +411,47 @@ BEGIN
     RAISE EXCEPTION 'blocking_leaked_into_unrelated_orders';
   END IF;
 
-  -- The blocked user must not be able to enumerate who blocked them.
+  -- The blocked user must not be able to enumerate who blocked them, through
+  -- the table OR through any entry PostgREST could route to. Calling the
+  -- helpers by their exposed-schema names must not even resolve.
   IF EXISTS (SELECT 1 FROM public.user_blocks) THEN
     RAISE EXCEPTION 'blocking_blocked_user_can_read_foreign_block_rows';
+  END IF;
+
+  BEGIN
+    PERFORM public.current_user_blocked_counterparties();
+    RAISE EXCEPTION 'blocking_reverse_direction_oracle_is_callable_as_rpc';
+  EXCEPTION
+    WHEN undefined_function THEN NULL;
+  END;
+
+  BEGIN
+    PERFORM public.current_user_can_interact_with('10000000-0000-4000-8000-000000000001');
+    RAISE EXCEPTION 'blocking_pairwise_oracle_is_callable_as_rpc';
+  EXCEPTION
+    WHEN undefined_function THEN NULL;
+  END;
+
+  BEGIN
+    PERFORM public.order_client_id('70000000-0000-4000-8000-000000000007');
+    RAISE EXCEPTION 'blocking_order_owner_oracle_is_callable_as_rpc';
+  EXCEPTION
+    WHEN undefined_function THEN NULL;
+  END;
+
+  -- Positive control: enforcement still works while the oracle is closed, so
+  -- the fix cannot be "the helpers stopped functioning".
+  IF EXISTS (
+    SELECT 1 FROM public.orders
+    WHERE client_id = '10000000-0000-4000-8000-000000000001'
+  ) THEN
+    RAISE EXCEPTION 'blocking_enforcement_lost_while_closing_the_oracle';
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM public.orders WHERE id = '60000000-0000-4000-8000-000000000006'
+  ) THEN
+    RAISE EXCEPTION 'blocking_feed_broken_while_closing_the_oracle';
   END IF;
 
   -- New interaction with the blocking party is rejected...
@@ -393,6 +472,35 @@ BEGIN
     '20000000-0000-4000-8000-000000000002',
     'plumbing'
   );
+
+  -- The same outcome must not be reachable by moving an existing row. An
+  -- UPDATE that reads no column skips the SELECT policies, so the row being
+  -- hidden is not what stops this; the RESTRICTIVE UPDATE policy is.
+  BEGIN
+    UPDATE public.order_responses
+    SET order_id = '50000000-0000-4000-8000-000000000005';
+    RAISE EXCEPTION 'blocking_insert_rule_bypassable_by_update';
+  EXCEPTION
+    WHEN insufficient_privilege THEN NULL;
+  END;
+
+  IF EXISTS (
+    SELECT 1 FROM public.order_responses AS moved
+    WHERE moved.order_id = '50000000-0000-4000-8000-000000000005'
+      AND moved.master_id = '20000000-0000-4000-8000-000000000002'
+      AND moved.id NOT IN (
+        'a0000000-0000-4000-8000-00000000000a',
+        'c0000000-0000-4000-8000-00000000000c'
+      )
+  ) THEN
+    RAISE EXCEPTION 'blocking_response_was_planted_on_the_blocker_order';
+  END IF;
+
+  -- A blocked master must never be trapped: the SECURITY DEFINER lifecycle
+  -- RPC still reaches its own hidden response.
+  IF NOT public.withdraw_response_fixture('a0000000-0000-4000-8000-00000000000a') THEN
+    RAISE EXCEPTION 'blocking_trapped_the_blocked_master_lifecycle_rpc';
+  END IF;
 END
 $blocked_view$;
 
@@ -427,7 +535,7 @@ $third_party_view$;
 -- RLS, an invisible order resolves to NULL, `NULL = ANY (non_empty)` is NULL,
 -- and NOT NULL denies the row. master_c below blocks client_d and must still
 -- see its own response to an invisible order of client_a, whom it never
--- blocked. public.order_client_id exists precisely to make this hold.
+-- blocked. xtrud_private.order_client_id exists precisely to make this hold.
 -- ---------------------------------------------------------------------------
 
 SELECT set_config('request.jwt.claim.sub', '30000000-0000-4000-8000-000000000003', false);
@@ -485,18 +593,18 @@ DO $anonymous_view$
 DECLARE
   v_diff bigint;
 BEGIN
-  IF public.current_user_can_interact_with(
+  IF xtrud_private.current_user_can_interact_with(
     '20000000-0000-4000-8000-000000000002'
   ) THEN
     RAISE EXCEPTION 'blocking_anonymous_interaction_helper_not_fail_closed';
   END IF;
 
-  IF public.current_user_blocked_counterparties() <> ARRAY[]::uuid[] THEN
+  IF xtrud_private.current_user_blocked_counterparties() <> ARRAY[]::uuid[] THEN
     RAISE EXCEPTION 'blocking_anonymous_counterparty_helper_not_empty';
   END IF;
 
   BEGIN
-    PERFORM public.order_client_id('50000000-0000-4000-8000-000000000005');
+    PERFORM xtrud_private.order_client_id('50000000-0000-4000-8000-000000000005');
     RAISE EXCEPTION 'blocking_anonymous_order_owner_helper_not_revoked';
   EXCEPTION
     WHEN insufficient_privilege THEN NULL;

@@ -10,10 +10,16 @@
 
 DO $objects_removed$
 BEGIN
-  IF to_regprocedure('public.current_user_blocked_counterparties()') IS NOT NULL
-     OR to_regprocedure('public.current_user_can_interact_with(uuid)') IS NOT NULL
-     OR to_regprocedure('public.order_client_id(uuid)') IS NOT NULL THEN
+  IF to_regprocedure('xtrud_private.current_user_blocked_counterparties()') IS NOT NULL
+     OR to_regprocedure('xtrud_private.current_user_can_interact_with(uuid)') IS NOT NULL
+     OR to_regprocedure('xtrud_private.order_client_id(uuid)') IS NOT NULL THEN
     RAISE EXCEPTION 'blocking_revert_left_helper_functions_behind';
+  END IF;
+
+  -- The private schema was created by 0124 and left empty by the revert, so it
+  -- must be gone too.
+  IF to_regnamespace('xtrud_private') IS NOT NULL THEN
+    RAISE EXCEPTION 'blocking_revert_left_the_private_schema_behind';
   END IF;
 
   IF EXISTS (
@@ -22,7 +28,8 @@ BEGIN
       AND policyname IN (
         'orders_block_relation_restrictive',
         'order_responses_block_relation_select_restrictive',
-        'order_responses_block_relation_insert_restrictive'
+        'order_responses_block_relation_insert_restrictive',
+        'order_responses_block_relation_update_restrictive'
       )
   ) THEN
     RAISE EXCEPTION 'blocking_revert_left_restrictive_policies_behind';

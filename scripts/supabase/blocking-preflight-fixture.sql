@@ -160,6 +160,27 @@ $$;
 REVOKE ALL ON FUNCTION public.get_master_phone(uuid) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.get_master_phone(uuid) TO anon, authenticated;
 
+-- Migration 0081 turned the lifecycle RPCs into SECURITY DEFINER so they could
+-- reach notify_user. They therefore run as the table owner and are NOT subject
+-- to RLS. Modelled here so the claim "a blocked master is never trapped" is
+-- testable rather than asserted.
+CREATE FUNCTION public.withdraw_response_fixture(p_response_id uuid)
+RETURNS boolean
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+BEGIN
+  UPDATE public.order_responses
+  SET created_at = created_at
+  WHERE id = p_response_id AND master_id = auth.uid();
+  RETURN FOUND;
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.withdraw_response_fixture(uuid) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.withdraw_response_fixture(uuid) TO authenticated;
+
 GRANT USAGE ON SCHEMA public, auth TO anon, authenticated, service_role;
 GRANT EXECUTE ON FUNCTION auth.uid() TO anon, authenticated, service_role;
 GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public

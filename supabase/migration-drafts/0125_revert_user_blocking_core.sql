@@ -35,11 +35,45 @@ DROP POLICY IF EXISTS order_responses_block_relation_select_restrictive
   ON public.order_responses;
 DROP POLICY IF EXISTS order_responses_block_relation_insert_restrictive
   ON public.order_responses;
+DROP POLICY IF EXISTS order_responses_block_relation_update_restrictive
+  ON public.order_responses;
 
 -- Helpers are dropped after the policies that reference them.
-DROP FUNCTION IF EXISTS public.order_client_id(uuid);
-DROP FUNCTION IF EXISTS public.current_user_can_interact_with(uuid);
-DROP FUNCTION IF EXISTS public.current_user_blocked_counterparties();
+DROP FUNCTION IF EXISTS xtrud_private.order_client_id(uuid);
+DROP FUNCTION IF EXISTS xtrud_private.current_user_can_interact_with(uuid);
+DROP FUNCTION IF EXISTS xtrud_private.current_user_blocked_counterparties();
+
+-- The private helper schema is removed only when this migration left it empty.
+-- A non-empty schema means something else started using it, and dropping that
+-- blindly would be a data-loss rollback rather than a revert.
+DO $drop_private_schema$
+DECLARE
+  v_remaining bigint;
+BEGIN
+  IF to_regnamespace('xtrud_private') IS NULL THEN
+    RETURN;
+  END IF;
+
+  SELECT count(*) INTO v_remaining
+  FROM pg_class
+  WHERE relnamespace = to_regnamespace('xtrud_private')::oid;
+
+  SELECT v_remaining + count(*) INTO v_remaining
+  FROM pg_proc
+  WHERE pronamespace = to_regnamespace('xtrud_private')::oid;
+
+  SELECT v_remaining + count(*) INTO v_remaining
+  FROM pg_type
+  WHERE typnamespace = to_regnamespace('xtrud_private')::oid
+    AND typtype <> 'b';
+
+  IF v_remaining = 0 THEN
+    DROP SCHEMA xtrud_private RESTRICT;
+  ELSE
+    RAISE NOTICE 'xtrud_private kept: % object(s) remain and are not owned by this migration', v_remaining;
+  END IF;
+END
+$drop_private_schema$;
 
 COMMENT ON TABLE public.user_blocks IS
   'Owner-managed UGC safety blocks. Enforcement policies are currently reverted (0125); rows are preserved so that re-enabling enforcement restores user intent. Do not drop without an approved export.';

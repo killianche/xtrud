@@ -26,6 +26,17 @@
 -- the visible row sets are byte-identical to the pre-migration ones. The
 -- accompanying fixture asserts exactly that instead of claiming it.
 --
+-- SCHEMA EXPOSURE (load-bearing security boundary):
+-- the three relationship helpers below live in schema xtrud_private, NOT in
+-- public. PostgREST publishes every function of an exposed schema as
+-- /rest/v1/rpc/<name>, and its `db-schemas` setting defaults to "public"
+-- (PostgREST configuration reference); Supabase likewise exposes only `public`
+-- on the Data API until a schema is added to "Exposed schemas" in the project
+-- API settings. Keeping the helpers in an unexposed schema is what prevents a
+-- blocked user from calling them directly and reading the reverse direction of
+-- the block list, which public.user_blocks RLS deliberately withholds.
+-- xtrud_private MUST NEVER be added to the exposed-schemas list.
+--
 -- NOT CLAIMED and still open, each requiring a live read-only snapshot:
 -- profile/catalogue/search visibility, push and Realtime delivery, storage and
 -- signed URLs, the full SECURITY DEFINER/RPC inventory, notification triggers.
@@ -124,6 +135,13 @@ BEGIN
   -- a pre-existing object of the same name aborts the transaction instead of
   -- being silently replaced. This guard turns that into a named error.
   IF to_regclass('public.user_blocks') IS NOT NULL
+     OR to_regnamespace('xtrud_private') IS NOT NULL
+     OR to_regprocedure('xtrud_private.current_user_blocked_counterparties()') IS NOT NULL
+     OR to_regprocedure('xtrud_private.current_user_can_interact_with(uuid)') IS NOT NULL
+     OR to_regprocedure('xtrud_private.order_client_id(uuid)') IS NOT NULL
+     -- Draft 0122 would have created these in the exposed schema. If a live
+     -- database already carries them, that is an unrelated deployment whose
+     -- state must be inventoried before anything is layered on top.
      OR to_regprocedure('public.current_user_blocked_counterparties()') IS NOT NULL
      OR to_regprocedure('public.current_user_can_interact_with(uuid)') IS NOT NULL
      OR to_regprocedure('public.order_client_id(uuid)') IS NOT NULL
@@ -172,7 +190,7 @@ CREATE TABLE public.user_blocks (
 );
 
 COMMENT ON TABLE public.user_blocks IS
-  'Owner-managed UGC safety blocks. A pair hides orders and responses in both directions and rejects new responses between the pair. Rows are immutable: there is no UPDATE policy and no UPDATE grant; a block is removed by deleting it.';
+  'Owner-managed UGC safety blocks. A pair hides orders and responses in both directions and rejects new responses between the pair. Rows are immutable: there is no UPDATE policy and no UPDATE grant; a block is removed by deleting it. Accepted risk: created_at only defaults to now() and the INSERT grant lets the blocker send any timestamp. It is not used for enforcement, ordering against other users or auditing, so a forged value only distorts that user own block list screen. Bind it server-side if it ever becomes load-bearing.';
 
 -- Reverse lookup for the "who blocked me" direction.
 CREATE INDEX user_blocks_blocked_id_idx
@@ -203,15 +221,29 @@ REVOKE ALL ON TABLE public.user_blocks FROM PUBLIC, anon, authenticated, service
 GRANT SELECT, INSERT, DELETE ON TABLE public.user_blocks TO authenticated;
 
 -- ---------------------------------------------------------------------------
--- Relationship helpers
+-- Relationship helpers, deliberately OUTSIDE the PostgREST-exposed schema
 -- ---------------------------------------------------------------------------
+
+-- These helpers must be callable from RLS policy expressions, which run with
+-- the privileges of the querying role, so anon and authenticated need EXECUTE.
+-- Revoking EXECUTE instead is not an option: every read of public.orders would
+-- then fail with "permission denied for function" and nobody would see a feed.
+-- The reachable-surface problem is therefore solved by placement, not by grants:
+-- an unexposed schema has no /rest/v1/rpc route at all.
+CREATE SCHEMA xtrud_private;
+
+COMMENT ON SCHEMA xtrud_private IS
+  'Internal helpers for RLS composition. NEVER add this schema to the PostgREST/Supabase exposed-schemas list: its functions answer questions that public.user_blocks RLS deliberately refuses to answer.';
+
+REVOKE ALL ON SCHEMA xtrud_private FROM PUBLIC;
+GRANT USAGE ON SCHEMA xtrud_private TO anon, authenticated;
 
 -- Set-shaped helper used by the RLS policies. It takes no argument, so an
 -- uncorrelated (SELECT ...) around it is folded into a single InitPlan and is
 -- evaluated once per query instead of once per row.
 -- COALESCE to an empty array is load-bearing: NULL = ANY (...) yields NULL,
 -- and NOT NULL reads as deny, which would hide the whole anonymous feed.
-CREATE FUNCTION public.current_user_blocked_counterparties()
+CREATE FUNCTION xtrud_private.current_user_blocked_counterparties()
 RETURNS uuid[]
 LANGUAGE sql
 SECURITY DEFINER
@@ -231,20 +263,20 @@ AS $function$
   ) AS pairs;
 $function$;
 
-COMMENT ON FUNCTION public.current_user_blocked_counterparties() IS
+COMMENT ON FUNCTION xtrud_private.current_user_blocked_counterparties() IS
   'Every user id blocked by or blocking the current caller, in one array. Empty for anonymous callers: an anonymous visitor has no identity against which a personal block list could be evaluated.';
 
-REVOKE ALL ON FUNCTION public.current_user_blocked_counterparties()
+REVOKE ALL ON FUNCTION xtrud_private.current_user_blocked_counterparties()
   FROM PUBLIC, anon, authenticated, service_role;
 -- anon needs EXECUTE because PostgreSQL does not guarantee OR short-circuiting
 -- in the orders policy below. An anonymous call returns an empty array and
 -- discloses no relationship state.
-GRANT EXECUTE ON FUNCTION public.current_user_blocked_counterparties()
+GRANT EXECUTE ON FUNCTION xtrud_private.current_user_blocked_counterparties()
   TO anon, authenticated;
 
 -- Scalar form for triggers, RPCs and future surfaces. Fail-closed: anonymous
 -- callers and NULL targets can never interact.
-CREATE FUNCTION public.current_user_can_interact_with(p_other_id uuid)
+CREATE FUNCTION xtrud_private.current_user_can_interact_with(p_other_id uuid)
 RETURNS boolean
 LANGUAGE sql
 SECURITY DEFINER
@@ -265,12 +297,12 @@ AS $function$
   END;
 $function$;
 
-COMMENT ON FUNCTION public.current_user_can_interact_with(uuid) IS
+COMMENT ON FUNCTION xtrud_private.current_user_can_interact_with(uuid) IS
   'Authenticated caller relationship guard. Anonymous callers and NULL targets fail closed.';
 
-REVOKE ALL ON FUNCTION public.current_user_can_interact_with(uuid)
+REVOKE ALL ON FUNCTION xtrud_private.current_user_can_interact_with(uuid)
   FROM PUBLIC, anon, authenticated, service_role;
-GRANT EXECUTE ON FUNCTION public.current_user_can_interact_with(uuid)
+GRANT EXECUTE ON FUNCTION xtrud_private.current_user_can_interact_with(uuid)
   TO anon, authenticated;
 
 -- Resolves an order owner WITHOUT depending on whether the caller may read the
@@ -278,7 +310,7 @@ GRANT EXECUTE ON FUNCTION public.current_user_can_interact_with(uuid)
 -- policy would run under the caller's RLS, so a response to an order that is
 -- merely invisible (cancelled, expired) would resolve to NULL and be denied
 -- even when no block exists. Blocking must not be entangled with order status.
-CREATE FUNCTION public.order_client_id(p_order_id uuid)
+CREATE FUNCTION xtrud_private.order_client_id(p_order_id uuid)
 RETURNS uuid
 LANGUAGE sql
 SECURITY DEFINER
@@ -291,12 +323,12 @@ AS $function$
   WHERE order_row.id = p_order_id;
 $function$;
 
-COMMENT ON FUNCTION public.order_client_id(uuid) IS
-  'Order owner id for RLS composition only. Discloses nothing an authenticated feed reader cannot already see.';
+COMMENT ON FUNCTION xtrud_private.order_client_id(uuid) IS
+  'Order owner id for RLS composition only. It DOES disclose more than a feed reader can see: the owner of a draft, cancelled, expired or block-hidden order. That is why it lives in an unexposed schema and is granted only to authenticated for policy evaluation; it must never be reachable as an RPC.';
 
-REVOKE ALL ON FUNCTION public.order_client_id(uuid)
+REVOKE ALL ON FUNCTION xtrud_private.order_client_id(uuid)
   FROM PUBLIC, anon, authenticated, service_role;
-GRANT EXECUTE ON FUNCTION public.order_client_id(uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION xtrud_private.order_client_id(uuid) TO authenticated;
 
 -- ---------------------------------------------------------------------------
 -- RESTRICTIVE composition. Existing PERMISSIVE policies are untouched.
@@ -315,7 +347,7 @@ CREATE POLICY orders_block_relation_restrictive ON public.orders
     OR orders.client_id = (SELECT auth.uid())
     OR NOT (
       orders.client_id = ANY (
-        COALESCE((SELECT public.current_user_blocked_counterparties()), ARRAY[]::uuid[])
+        COALESCE((SELECT xtrud_private.current_user_blocked_counterparties()), ARRAY[]::uuid[])
       )
     )
   );
@@ -330,12 +362,12 @@ CREATE POLICY order_responses_block_relation_select_restrictive
   USING (
     NOT (
       order_responses.master_id = ANY (
-        COALESCE((SELECT public.current_user_blocked_counterparties()), ARRAY[]::uuid[])
+        COALESCE((SELECT xtrud_private.current_user_blocked_counterparties()), ARRAY[]::uuid[])
       )
     )
     AND NOT (
-      public.order_client_id(order_responses.order_id) = ANY (
-        COALESCE((SELECT public.current_user_blocked_counterparties()), ARRAY[]::uuid[])
+      xtrud_private.order_client_id(order_responses.order_id) = ANY (
+        COALESCE((SELECT xtrud_private.current_user_blocked_counterparties()), ARRAY[]::uuid[])
       )
     )
   );
@@ -350,12 +382,12 @@ CREATE POLICY order_responses_block_relation_insert_restrictive
   WITH CHECK (
     NOT (
       order_responses.master_id = ANY (
-        COALESCE((SELECT public.current_user_blocked_counterparties()), ARRAY[]::uuid[])
+        COALESCE((SELECT xtrud_private.current_user_blocked_counterparties()), ARRAY[]::uuid[])
       )
     )
     AND NOT (
-      public.order_client_id(order_responses.order_id) = ANY (
-        COALESCE((SELECT public.current_user_blocked_counterparties()), ARRAY[]::uuid[])
+      xtrud_private.order_client_id(order_responses.order_id) = ANY (
+        COALESCE((SELECT xtrud_private.current_user_blocked_counterparties()), ARRAY[]::uuid[])
       )
     )
   );
@@ -363,14 +395,66 @@ CREATE POLICY order_responses_block_relation_insert_restrictive
 COMMENT ON POLICY order_responses_block_relation_insert_restrictive ON public.order_responses IS
   'No new response may be created between a blocked pair in either direction.';
 
--- NO RESTRICTIVE UPDATE policy on public.order_responses, on purpose:
---   * withdraw_response is SECURITY DEFINER (migration 0081) and would bypass
---     it anyway, so it would add no protection;
---   * accept_response is SECURITY INVOKER (migration 0110), so a restrictive
---     UPDATE would turn a blocked-but-still-open response into a state the
---     client can neither see nor resolve;
---   * a blocked master can still edit only its own response row, which the
---     counterpart can no longer read at all.
--- This is a named residual risk handed to security review, not an omission.
+-- A RESTRICTIVE UPDATE policy is REQUIRED, not optional. Without it the INSERT
+-- rule above is fully bypassable, which was proven on a real database:
+--
+--   INSERT of a response onto the blocker's order is rejected by
+--   order_responses_block_relation_insert_restrictive, but
+--   `UPDATE public.order_responses SET order_id = '<blocker order>'`
+--   moved three existing rows onto that same order and succeeded.
+--
+-- Two upstream facts combine to allow it. Policy
+-- order_responses_update_own_or_client (migration 0009) declares USING and no
+-- WITH CHECK, and PostgreSQL reuses USING as the check for UPDATE, so any row
+-- keeping master_id = auth.uid() passes. And an UPDATE that reads no column
+-- skips the SELECT policies entirely, so the fact that the row is hidden from
+-- the blocked master does not stop it from writing to it. Nothing user-visible
+-- changes at the time (orders.responses_count only fires on INSERT/DELETE, and
+-- no notification runs on UPDATE), but the row stays attached to the blocker's
+-- order and surfaces the moment the block is lifted.
+--
+-- USING screens the OLD row and WITH CHECK the NEW one, so neither moving a
+-- response off a blocked pair nor onto one is possible.
+CREATE POLICY order_responses_block_relation_update_restrictive
+  ON public.order_responses
+  AS RESTRICTIVE
+  FOR UPDATE TO authenticated
+  USING (
+    NOT (
+      order_responses.master_id = ANY (
+        COALESCE((SELECT xtrud_private.current_user_blocked_counterparties()), ARRAY[]::uuid[])
+      )
+    )
+    AND NOT (
+      xtrud_private.order_client_id(order_responses.order_id) = ANY (
+        COALESCE((SELECT xtrud_private.current_user_blocked_counterparties()), ARRAY[]::uuid[])
+      )
+    )
+  )
+  WITH CHECK (
+    NOT (
+      order_responses.master_id = ANY (
+        COALESCE((SELECT xtrud_private.current_user_blocked_counterparties()), ARRAY[]::uuid[])
+      )
+    )
+    AND NOT (
+      xtrud_private.order_client_id(order_responses.order_id) = ANY (
+        COALESCE((SELECT xtrud_private.current_user_blocked_counterparties()), ARRAY[]::uuid[])
+      )
+    )
+  );
+
+COMMENT ON POLICY order_responses_block_relation_update_restrictive ON public.order_responses IS
+  'A response may be neither moved off nor onto an order that belongs to a blocked counterpart. Without this the INSERT restriction is bypassable by UPDATE.';
+
+-- Deliberately NOT fixed here, and handed to security review: the missing
+-- WITH CHECK on order_responses_update_own_or_client is an upstream defect of
+-- migration 0009 that also lets a master repoint its own response between two
+-- orders it is NOT blocked from. Blocking is now airtight, ordinary data
+-- integrity is not. Fixing it means rewriting a policy this migration is
+-- forbidden to touch, so it belongs to its own reviewed change.
+-- SECURITY DEFINER lifecycle RPCs (withdraw_response and friends, migration
+-- 0081) run as the table owner and are unaffected by this policy, so a blocked
+-- master can still withdraw its response and is never trapped.
 
 COMMIT;

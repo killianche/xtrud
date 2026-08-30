@@ -471,9 +471,9 @@ test("0124 keeps the anonymous feed open and every other path fail-closed", () =
   // empty array. `= ANY ((SELECT fn()))` does not even compile.
   assert.match(blockingCore, /COALESCE\(array_agg\(pairs\.counterpart\), ARRAY\[\]::uuid\[\]\)/);
   const anyOperands = blockingCoreSql.match(
-    /= ANY \(\s*\n?\s*COALESCE\(\(SELECT public\.current_user_blocked_counterparties\(\)\), ARRAY\[\]::uuid\[\]\)/g,
+    /= ANY \(\s*\n?\s*COALESCE\(\(SELECT xtrud_private\.current_user_blocked_counterparties\(\)\), ARRAY\[\]::uuid\[\]\)/g,
   );
-  assert.equal(anyOperands?.length, 5, "every ANY operand must be a COALESCE-guarded array");
+  assert.equal(anyOperands?.length, 9, "every ANY operand must be a COALESCE-guarded array");
   assert.doesNotMatch(blockingCoreSql, /= ANY \(\(SELECT/);
 
   assert.match(blockingCore, /\(SELECT auth\.uid\(\)\) IS NULL/);
@@ -482,7 +482,7 @@ test("0124 keeps the anonymous feed open and every other path fail-closed", () =
 
   // The response policy must resolve the order owner through a definer helper,
   // not through a sub-SELECT that runs under the caller's own RLS.
-  assert.match(blockingCore, /CREATE FUNCTION public\.order_client_id\(p_order_id uuid\)/);
+  assert.match(blockingCore, /CREATE FUNCTION xtrud_private\.order_client_id\(p_order_id uuid\)/);
   assert.doesNotMatch(
     blockingCoreSql,
     /SELECT order_row\.client_id\s+FROM public\.orders AS order_row\s+WHERE order_row\.id = order_responses/,
@@ -495,9 +495,9 @@ test("0124 keeps the anonymous feed open and every other path fail-closed", () =
   assert.equal((blockingCoreSql.match(/^SECURITY DEFINER$/gm) ?? []).length, 3);
   assert.equal((blockingCoreSql.match(/SET row_security = off/g) ?? []).length, 3);
   for (const helper of [
-    "public.current_user_blocked_counterparties()",
-    "public.current_user_can_interact_with(uuid)",
-    "public.order_client_id(uuid)",
+    "xtrud_private.current_user_blocked_counterparties()",
+    "xtrud_private.current_user_can_interact_with(uuid)",
+    "xtrud_private.order_client_id(uuid)",
   ]) {
     const escaped = helper.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     assert.match(
@@ -509,7 +509,7 @@ test("0124 keeps the anonymous feed open and every other path fail-closed", () =
   }
   assert.match(
     blockingCore,
-    /GRANT EXECUTE ON FUNCTION public\.order_client_id\(uuid\) TO authenticated;/,
+    /GRANT EXECUTE ON FUNCTION xtrud_private\.order_client_id\(uuid\) TO authenticated;/,
   );
 });
 
@@ -525,13 +525,60 @@ test("0124 owns its grants and leaves the existing permissive policies alone", (
     /GRANT SELECT, INSERT, DELETE ON TABLE public\.user_blocks TO authenticated;/,
   );
   // Immutable rows: no UPDATE grant and no UPDATE policy anywhere.
-  assert.doesNotMatch(blockingCoreSql, /FOR UPDATE/);
+  assert.equal((blockingCoreSql.match(/FOR UPDATE/g) ?? []).length, 1);
+  assert.match(
+    blockingCoreSql,
+    /CREATE POLICY order_responses_block_relation_update_restrictive[\s\S]*?FOR UPDATE TO authenticated[\s\S]*?USING \([\s\S]*?WITH CHECK \(/,
+  );
   assert.doesNotMatch(blockingCoreSql, /GRANT[^;]*UPDATE[^;]*user_blocks/);
 
-  assert.equal((blockingCoreSql.match(/AS RESTRICTIVE/g) ?? []).length, 3);
+  assert.equal((blockingCoreSql.match(/AS RESTRICTIVE/g) ?? []).length, 4);
   assert.match(blockingCore, /FOR SELECT TO anon, authenticated/);
   // A blocked user must not be able to enumerate who blocked them.
   assert.doesNotMatch(blockingCoreSql, /USING \(\(SELECT auth\.uid\(\)\) = blocked_id\)/);
+});
+
+test("0124 keeps every relationship helper out of the PostgREST-exposed schema", () => {
+  // PostgREST publishes each function of an exposed schema as
+  // /rest/v1/rpc/<name> and defaults db-schemas to "public", so a helper that
+  // returns BOTH directions of a block would let a blocked user read the
+  // direction public.user_blocks RLS withholds.
+  assert.match(blockingCoreSql, /CREATE SCHEMA xtrud_private;/);
+  assert.match(blockingCoreSql, /REVOKE ALL ON SCHEMA xtrud_private FROM PUBLIC;/);
+  assert.match(blockingCoreSql, /GRANT USAGE ON SCHEMA xtrud_private TO anon, authenticated;/);
+  assert.doesNotMatch(blockingCoreSql, /GRANT (?:ALL|CREATE)[^;]*ON SCHEMA xtrud_private/);
+
+  // The guard deliberately probes for the legacy public-schema helpers, so
+  // those existence checks are removed before asserting that nothing else in
+  // the migration defines, grants or calls a helper in the exposed schema.
+  const withoutLegacyProbes = blockingCoreSql.replace(/to_regprocedure\('public\.[^']+'\)/g, "");
+  for (const helper of [
+    "current_user_blocked_counterparties",
+    "current_user_can_interact_with",
+    "order_client_id",
+  ]) {
+    assert.doesNotMatch(withoutLegacyProbes, new RegExp(`public\\.${helper}\\s*\\(`));
+    assert.match(blockingCoreSql, new RegExp(`CREATE FUNCTION xtrud_private\\.${helper}`));
+  }
+
+  // The guard must refuse to run on a database that already carries the old
+  // public-schema helpers from draft 0122.
+  assert.match(blockingCoreSql, /to_regnamespace\('xtrud_private'\) IS NOT NULL/);
+  assert.match(
+    blockingCoreSql,
+    /to_regprocedure\('public\.current_user_can_interact_with\(uuid\)'\) IS NOT NULL/,
+  );
+
+  // The order-owner helper discloses more than a feed reader sees, and its
+  // comment must say so rather than claim the opposite.
+  assert.match(blockingCore, /It DOES disclose more than a feed reader can see/);
+  assert.doesNotMatch(blockingCore, /Discloses nothing an authenticated feed reader/);
+
+  // The proven bypass must stay closed, and the residual upstream defect of
+  // migration 0009 must stay documented rather than silently fixed.
+  assert.match(blockingCore, /the INSERT\n-- rule above is fully bypassable/);
+  assert.match(blockingCore, /declares USING and no\n-- WITH CHECK/);
+  assert.match(blockingCore, /created_at only defaults to now\(\)/);
 });
 
 test("0125 reverts enforcement without destroying user safety choices", () => {
@@ -545,19 +592,24 @@ test("0125 reverts enforcement without destroying user safety choices", () => {
     blockingRevert,
     /DROP POLICY IF EXISTS order_responses_block_relation_insert_restrictive/,
   );
-  assert.match(blockingRevert, /DROP FUNCTION IF EXISTS public\.order_client_id\(uuid\)/);
   assert.match(
     blockingRevert,
-    /DROP FUNCTION IF EXISTS public\.current_user_blocked_counterparties\(\)/,
+    /DROP POLICY IF EXISTS order_responses_block_relation_update_restrictive/,
+  );
+  assert.match(blockingRevert, /DROP FUNCTION IF EXISTS xtrud_private\.order_client_id\(uuid\)/);
+  assert.match(
+    blockingRevert,
+    /DROP FUNCTION IF EXISTS xtrud_private\.current_user_blocked_counterparties\(\)/,
   );
   // The block rows are user decisions about personal safety.
+  assert.match(blockingRevertSql, /DROP SCHEMA xtrud_private RESTRICT;/);
   assert.doesNotMatch(blockingRevertSql, /DROP TABLE/);
   assert.doesNotMatch(blockingRevertSql, /DELETE FROM public\.user_blocks/);
   // Helpers are dropped after the policies that depend on them.
   assert.ok(
     blockingRevert.indexOf(
       "DROP POLICY IF EXISTS order_responses_block_relation_insert_restrictive",
-    ) < blockingRevert.indexOf("DROP FUNCTION IF EXISTS public.order_client_id(uuid)"),
+    ) < blockingRevert.indexOf("DROP FUNCTION IF EXISTS xtrud_private.order_client_id(uuid)"),
   );
 });
 
@@ -588,8 +640,18 @@ test("the executable blocking fixture models the CURRENT world and skips loudly"
   assert.match(blockingPostflight, /blocking_policy_helper_is_not_folded_into_an_initplan/);
   assert.match(blockingPostflight, /blocking_user_blocks_row_is_not_immutable/);
 
+  assert.match(blockingPostflight, /blocking_helper_is_reachable_through_the_exposed_schema/);
+  assert.match(blockingPostflight, /blocking_definer_oracle_present_in_the_exposed_schema/);
+  assert.match(blockingPostflight, /blocking_reverse_direction_oracle_is_callable_as_rpc/);
+  assert.match(blockingPostflight, /blocking_enforcement_lost_while_closing_the_oracle/);
+  assert.match(blockingPostflight, /blocking_private_schema_is_writable_by_api_roles/);
+  assert.match(blockingPostflight, /blocking_insert_rule_bypassable_by_update/);
+  assert.match(blockingPostflight, /blocking_response_was_planted_on_the_blocker_order/);
+  assert.match(blockingPostflight, /blocking_trapped_the_blocked_master_lifecycle_rpc/);
+
   assert.match(blockingRevertAssertions, /blocking_revert_destroyed_user_safety_choices/);
   assert.match(blockingRevertAssertions, /blocking_revert_did_not_restore_visibility/);
+  assert.match(blockingRevertAssertions, /blocking_revert_left_the_private_schema_behind/);
 
   // A machine without PostgreSQL must say so loudly instead of passing.
   assert.match(blockingRunner, /SKIP: the user-blocking fixture DID NOT RUN\./);

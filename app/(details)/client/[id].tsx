@@ -10,18 +10,31 @@
  * в chat header (если собеседник-клиент).
  */
 
+import * as Haptics from "expo-haptics";
 import { useLocalSearchParams } from "expo-router";
-import { CheckCircle, WarningCircle } from "phosphor-react-native";
-import { useMemo } from "react";
-import { ScrollView, View } from "react-native";
+import {
+  CheckCircle,
+  DotsThreeVertical,
+  Flag,
+  Prohibit,
+  WarningCircle,
+} from "phosphor-react-native";
+import { useMemo, useState } from "react";
+import { Alert, Pressable, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
 import { Avatar } from "@/components/Avatar";
-import { ScreenHeader, Skeleton } from "@/components/ui";
+import { BottomSheet, ScreenHeader, Skeleton } from "@/components/ui";
+import { useAuthSession } from "@/features/auth/use-auth-session";
+import { blockConfirmMessage } from "@/features/blocking/blocking-copy";
+import { blockingActionFailureMessage } from "@/features/blocking/blocking-error-message";
+import { useBlockUser } from "@/features/blocking/use-user-blocks";
 import { useClientPublicProfile } from "@/features/client-view/use-client-public";
 import { ReviewsSection } from "@/features/master-view/ReviewsSection";
 import { useReviewsForTarget } from "@/features/master-view/use-master-public";
+import { ReportModal } from "@/features/reports/ReportModal";
 import { usePullToRefresh } from "@/hooks/use-pull-to-refresh";
+import { confirmAsync } from "@/lib/confirm";
 import { pluralizeClosedOrders as pluralizeCompleted } from "@/lib/pluralize";
 import { useSafeBack } from "@/lib/use-safe-back";
 import { useThemeColors } from "@/lib/use-theme-color";
@@ -37,11 +50,46 @@ export default function ClientPublicScreen() {
   const tc = useThemeColors(["ink", "muted-soft", "error", "success", "warning"]);
   const goBack = useSafeBack("/" as const);
 
+  const { session } = useAuthSession();
+  const currentUserId = session?.user?.id;
+  const isOwnProfile = !!clientId && clientId === currentUserId;
+  const isAnon = !currentUserId;
+  const blockUser = useBlockUser();
+  const [actionMenuOpen, setActionMenuOpen] = useState(false);
+  const [reportOpen, setReportOpen] = useState(false);
+
   const fullName = useMemo(() => {
     if (!profile.data?.user) return "";
     const u = profile.data.user;
     return [u.first_name, u.last_name].filter(Boolean).join(" ") || "Клиент";
   }, [profile.data]);
+
+  // Блокировка (UGC safety, App Store Guideline 1.2). См. пояснение в
+  // app/(details)/master/[id].tsx: не обещаем «звонки и WhatsApp станут
+  // недоступны» — вне-приложенческий контакт мы остановить не можем.
+  const handleBlock = async () => {
+    if (!clientId || blockUser.isPending) return;
+    setActionMenuOpen(false);
+    const confirmed = await confirmAsync({
+      title: "Заблокировать пользователя?",
+      message: blockConfirmMessage(fullName),
+      confirmText: "Заблокировать",
+      cancelText: "Отмена",
+      destructive: true,
+    });
+    if (!confirmed) return;
+    blockUser.mutate(clientId, {
+      onSuccess: async () => {
+        try {
+          await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        } catch {
+          // haptics недоступны (Low Power Mode / симулятор и т.п.) — не блокирует успех
+        }
+        goBack();
+      },
+      onError: (e) => Alert.alert("Не удалось заблокировать", blockingActionFailureMessage(e)),
+    });
+  };
 
   return (
     <View className="flex-1 bg-canvas" style={{ paddingTop: insets.top }}>
@@ -50,8 +98,22 @@ export default function ClientPublicScreen() {
           onBack идёт через useSafeBack — он берёт предыдущий path из
           in-app nav-history stack (см. src/lib/nav-history.ts). router.back()
           здесь не подходит: orders/[id] → client/[id] на вебе делается через
-          history.replaceState, browser-history уже потерял точку возврата. */}
-      <ScreenHeader title="" onBack={goBack} />
+          history.replaceState, browser-history уже потерял точку возврата.
+          iconAction (⋮) — overflow-меню «Заблокировать» / «Пожаловаться»,
+          скрыт на своей же странице (isOwnProfile). */}
+      <ScreenHeader
+        title=""
+        onBack={goBack}
+        iconAction={
+          !isOwnProfile && clientId
+            ? {
+                Icon: DotsThreeVertical,
+                onPress: () => setActionMenuOpen(true),
+                accessibilityLabel: "Действия",
+              }
+            : undefined
+        }
+      />
 
       <ScrollView
         contentContainerStyle={{ paddingBottom: insets.bottom + 32 }}
@@ -145,6 +207,75 @@ export default function ClientPublicScreen() {
           </>
         )}
       </ScrollView>
+
+      {/* Action menu — overflow ⋮ из header. Тот же визуальный рецепт, что и
+          на master/[id].tsx: «Заблокировать» первым, разделитель, «Пожаловаться». */}
+      {!isOwnProfile ? (
+        <BottomSheet
+          open={actionMenuOpen}
+          onClose={() => setActionMenuOpen(false)}
+          title="Действия"
+        >
+          <View className="pb-2">
+            {!isAnon ? (
+              <>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityHint="Скроет его заказы и отклики от вас и ваши от него"
+                  onPress={handleBlock}
+                  style={({ pressed }) => ({
+                    opacity: pressed ? 0.7 : 1,
+                    flexDirection: "row",
+                    alignItems: "center",
+                    gap: 12,
+                    paddingHorizontal: 20,
+                    paddingVertical: 14,
+                  })}
+                >
+                  <View className="h-9 w-9 items-center justify-center rounded-md bg-error-soft">
+                    <Prohibit size={18} weight="bold" color={tc.error} />
+                  </View>
+                  <AppText weight="semibold" className="text-body-md text-error">
+                    Заблокировать
+                  </AppText>
+                </Pressable>
+                <View className="mx-5 border-t border-hairline" />
+              </>
+            ) : null}
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => {
+                setActionMenuOpen(false);
+                setReportOpen(true);
+              }}
+              style={({ pressed }) => ({
+                opacity: pressed ? 0.7 : 1,
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 12,
+                paddingHorizontal: 20,
+                paddingVertical: 14,
+              })}
+            >
+              <View className="h-9 w-9 items-center justify-center rounded-md bg-error-soft">
+                <Flag size={18} weight="bold" color={tc.error} />
+              </View>
+              <AppText weight="semibold" className="text-body-md text-error">
+                Пожаловаться
+              </AppText>
+            </Pressable>
+          </View>
+        </BottomSheet>
+      ) : null}
+
+      {!isOwnProfile && clientId ? (
+        <ReportModal
+          visible={reportOpen}
+          onClose={() => setReportOpen(false)}
+          targetType="user"
+          targetId={clientId}
+        />
+      ) : null}
     </View>
   );
 }

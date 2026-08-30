@@ -10,6 +10,7 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuthSession } from "@/features/auth/use-auth-session";
+import { excludeBlockedUsers, useBlockedUserIds } from "@/features/blocking/use-user-blocks";
 import { supabase } from "@/lib/supabase";
 
 export interface FavoriteMasterRow {
@@ -31,7 +32,7 @@ export function useMyFavorites() {
   const { session } = useAuthSession();
   const userId = session?.user?.id;
 
-  return useQuery<FavoriteMasterRow[]>({
+  const query = useQuery<FavoriteMasterRow[]>({
     queryKey: FAVORITES_LIST_KEY,
     queryFn: async () => {
       if (!userId) return [];
@@ -86,6 +87,12 @@ export function useMyFavorites() {
     enabled: !!userId,
     staleTime: 60_000,
   });
+
+  // UGC safety: не показываем в избранном тех, кого текущий пользователь сам
+  // заблокировал (одностороннее — см. use-user-blocks.ts, useBlockedUserIds).
+  const blocked = useBlockedUserIds();
+  const data = excludeBlockedUsers(query.data, blocked.data, (f) => f.masterId);
+  return { ...query, data };
 }
 
 export function useIsFavorite(masterId: string | undefined) {

@@ -12,6 +12,7 @@
  */
 
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
+import { useBlockedUserIds } from "@/features/blocking/use-user-blocks";
 import { supabase } from "@/lib/supabase";
 import type { Tables } from "@/types/database";
 
@@ -42,7 +43,7 @@ export type MasterPublicProfile = {
 };
 
 export function useMasterPublicProfile(masterId: string | null | undefined) {
-  return useQuery<MasterPublicProfile | null>({
+  const query = useQuery<MasterPublicProfile | null>({
     queryKey: ["master-public", masterId],
     queryFn: async () => {
       if (!masterId) return null;
@@ -79,6 +80,16 @@ export function useMasterPublicProfile(masterId: string | null | undefined) {
     enabled: !!masterId,
     staleTime: 60_000,
   });
+
+  // UGC safety блокировка (см. use-user-blocks.ts): если ТЕКУЩИЙ пользователь
+  // заблокировал masterId, экран должен вести себя так же, как для несущест-
+  // вующего профиля — переиспользуем состояние «профиль не найден» вместо
+  // нового баннера, чтобы не выдавать, что здесь сработала именно блокировка
+  // (двусмысленность намеренная). Обратное направление («меня заблокировал
+  // этот мастер») клиенту недоступно и не фильтруется — см. useBlockedUserIds.
+  const blocked = useBlockedUserIds();
+  const isBlockedByMe = !!masterId && !!blocked.data?.has(masterId);
+  return { ...query, data: isBlockedByMe ? null : query.data };
 }
 
 /**

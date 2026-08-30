@@ -12,6 +12,7 @@
  */
 
 import { useQuery } from "@tanstack/react-query";
+import { excludeBlockedUsers, useBlockedUserIds } from "@/features/blocking/use-user-blocks";
 import { rankingSortValue } from "@/features/master-view/availability";
 import { shouldHideDemo } from "@/lib/demo-mode";
 import { supabase } from "@/lib/supabase";
@@ -86,7 +87,7 @@ function profileCompleteness(m: MasterInCategory): number {
 }
 
 export function useMastersByL2(l2Id: string | null | undefined) {
-  return useQuery<MasterInCategory[]>({
+  const query = useQuery<MasterInCategory[]>({
     queryKey: ["masters-by-l2", l2Id],
     queryFn: async () => {
       if (!l2Id) return [];
@@ -231,4 +232,10 @@ export function useMastersByL2(l2Id: string | null | undefined) {
     enabled: !!l2Id,
     staleTime: 60_000,
   });
+
+  // UGC safety: прячем в каталоге мастеров, которых текущий пользователь сам
+  // заблокировал (одностороннее — см. use-user-blocks.ts, useBlockedUserIds).
+  const blocked = useBlockedUserIds();
+  const data = excludeBlockedUsers(query.data, blocked.data, (m) => m.user.id);
+  return { ...query, data };
 }

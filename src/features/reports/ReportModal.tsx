@@ -164,6 +164,17 @@ export function ReportModal({ visible, targetType, targetId, onClose }: ReportMo
                 </AppText>
               )}
 
+              {/* Анон может открыть эту модалку (гейт стоит не на всех точках
+                  входа), но submit требует userId и без объяснения кнопка
+                  навсегда неактивна — тихий тупик. Явно называем причину, как
+                  и другие disabled-состояния в проекте (например
+                  app/(tabs)/cases/index.tsx: «Войдите по телефону, чтобы…»). */}
+              {!userId && (
+                <AppText className="mt-2 text-caption text-mute">
+                  Войдите в аккаунт, чтобы отправить жалобу.
+                </AppText>
+              )}
+
               <Pressable
                 accessibilityRole="button"
                 disabled={!canSubmit}

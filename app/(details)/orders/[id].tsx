@@ -1,4 +1,5 @@
 import { zodResolver } from "@hookform/resolvers/zod";
+import * as Haptics from "expo-haptics";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import {
   ArrowCounterClockwise,
@@ -11,6 +12,7 @@ import {
   MapPin,
   Pencil,
   Phone,
+  Prohibit,
   Star,
   Trash,
   WhatsappLogo,
@@ -36,6 +38,9 @@ import { BottomSheet, ScreenHeader, Skeleton } from "@/components/ui";
 import { useAuthSession } from "@/features/auth/use-auth-session";
 import { useSetActiveRole } from "@/features/auth/use-set-active-role";
 import { useUserRecord } from "@/features/auth/use-user-record";
+import { blockConfirmMessage, blockSuccessMessage } from "@/features/blocking/blocking-copy";
+import { blockingActionFailureMessage } from "@/features/blocking/blocking-error-message";
+import { useBlockUser } from "@/features/blocking/use-user-blocks";
 import { useMasterPhone, useMasterPublicProfile } from "@/features/master-view/use-master-public";
 import { OrderPhotoCarousel } from "@/features/orders/OrderPhotoCarousel";
 import {
@@ -131,6 +136,7 @@ export default function OrderDetailScreen() {
   const cancelOrder = useCancelOrder();
   const deleteOrder = useDeleteOrder();
   const reopenOrder = useReopenOrder();
+  const blockUser = useBlockUser();
 
   // Заказ закрыт клиентом или истёк → доступны «Удалить» / «Открыть заново».
   const isClosedHistory = !!order && (order.status === "cancelled" || order.status === "expired");
@@ -167,6 +173,37 @@ export default function OrderDetailScreen() {
         onError: (e) => Alert.alert("Не удалось удалить", e.message),
       },
     );
+  };
+
+  // Блокировка заказчика (UGC safety, App Store Guideline 1.2). Целимся в
+  // order.client_id напрямую — на профиль клиента не переходим, там нет живой
+  // точки входа (решение владельца 2026-05-24). Текст подтверждения не
+  // обещает «звонки и WhatsApp станут недоступны» — вне-приложенческий
+  // контакт мы остановить не можем (см. app/(details)/master/[id].tsx).
+  const handleBlockClient = async () => {
+    if (!order || blockUser.isPending) return;
+    setMenuOpen(false);
+    const clientDisplay =
+      [order.client?.first_name, order.client?.last_name].filter(Boolean).join(" ") || "Клиент";
+    const confirmed = await confirmAsync({
+      title: "Заблокировать заказчика?",
+      message: blockConfirmMessage(clientDisplay),
+      confirmText: "Заблокировать",
+      cancelText: "Отмена",
+      destructive: true,
+    });
+    if (!confirmed) return;
+    blockUser.mutate(order.client_id, {
+      onSuccess: async () => {
+        try {
+          await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        } catch {
+          // haptics недоступны (Low Power Mode / симулятор и т.п.) — не блокирует успех
+        }
+        Alert.alert("Заказчик заблокирован", blockSuccessMessage());
+      },
+      onError: (e) => Alert.alert("Не удалось заблокировать", blockingActionFailureMessage(e)),
+    });
   };
 
   // Открыть заново — возвращает заказ в ленту мастеров (+14 дней).
@@ -320,7 +357,8 @@ export default function OrderDetailScreen() {
           Набор действий зависит от статуса (план §3 «состояние → действия»):
             open:               Редактировать, Закрыть заказ
             cancelled/expired:  Открыть заново (в окне 7 дней), Удалить
-            чужой заказ:        Пожаловаться */}
+            чужой заказ:        Заблокировать заказчика, Пожаловаться
+                                (UGC safety, App Store Guideline 1.2) */}
       {order && id && userId ? (
         <BottomSheet open={menuOpen} onClose={() => setMenuOpen(false)} title="Действия с заданием">
           {/* Группировка (план §3 «состояние → действия»): сначала
@@ -370,6 +408,15 @@ export default function OrderDetailScreen() {
             ) : null}
             {!isOwner ? (
               <ActionMenuItem
+                icon={Prohibit}
+                label="Заблокировать заказчика"
+                destructive
+                onPress={handleBlockClient}
+                accessibilityHint="Скроет его заказы и отклики от вас и ваши от него"
+              />
+            ) : null}
+            {!isOwner ? (
+              <ActionMenuItem
                 icon={Flag}
                 label="Пожаловаться на задание"
                 destructive
@@ -403,9 +450,17 @@ interface ActionMenuItemProps {
   label: string;
   destructive?: boolean;
   onPress: () => void;
+  /** IOS_FOUNDATION.md §7.2 — для действий с неочевидным последствием. */
+  accessibilityHint?: string;
 }
 
-function ActionMenuItem({ icon: Icon, label, destructive, onPress }: ActionMenuItemProps) {
+function ActionMenuItem({
+  icon: Icon,
+  label,
+  destructive,
+  onPress,
+  accessibilityHint,
+}: ActionMenuItemProps) {
   // BottomSheet рендерится в react-native-web Modal portal, CSS-vars
   // `rgb(var(--X))` там не резолвятся. Получаем hex напрямую из палитры.
   // ВАЖНО: на web используем DOM-тему (читает <html class>), а не системную
@@ -433,6 +488,7 @@ function ActionMenuItem({ icon: Icon, label, destructive, onPress }: ActionMenuI
   return (
     <Pressable
       accessibilityRole="button"
+      accessibilityHint={accessibilityHint}
       onPress={onPress}
       style={({ pressed }) => ({
         opacity: pressed ? 0.7 : 1,

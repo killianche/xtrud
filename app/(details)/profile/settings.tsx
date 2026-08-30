@@ -25,6 +25,7 @@
 import Constants from "expo-constants";
 import { useRouter } from "expo-router";
 import {
+  CaretRight,
   EyeSlash,
   Gear,
   Headset,
@@ -43,6 +44,7 @@ import { BottomSheet, ScreenHeader } from "@/components/ui";
 import { useAuthSession } from "@/features/auth/use-auth-session";
 import { useDeleteMyAccount } from "@/features/auth/use-delete-account";
 import { useUserRecord } from "@/features/auth/use-user-record";
+import { useBlockedUsers } from "@/features/blocking/use-user-blocks";
 import {
   useMasterPrivacy,
   useUpdateMasterPrivacy,
@@ -67,6 +69,11 @@ export default function SettingsScreen() {
   const [deleteSheetOpen, setDeleteSheetOpen] = useState(false);
 
   const isMaster = user?.is_master === true;
+  // Блокировка пользователей доступна всем авторизованным (не только
+  // мастеру), поэтому раздел раскрыт с master-only на общий. blockedUsers
+  // работает только при userId (см. useBlockedUsers) — до применения
+  // миграции 0124 запрос падает и count просто не показывается.
+  const blockedUsers = useBlockedUsers();
 
   return (
     <View className="flex-1 bg-canvas" style={{ paddingTop: insets.top }}>
@@ -76,14 +83,19 @@ export default function SettingsScreen() {
         contentContainerStyle={{ paddingBottom: insets.bottom + 32 }}
         showsVerticalScrollIndicator={false}
       >
-        {/* ============ Приватность (master only) ============
-            Единственная master-only настройка в settings (всё остальное —
-            на /profile через прямые shortcuts: категории, прайс, портфолио,
-            edit-master). Шторка «Скрыть профиль» именно settings, не profile —
-            это поведенческий флажок, не редактирование данных. */}
-        {isMaster && userId ? (
-          <Section icon={ShieldCheck} title="Приватность">
-            <PrivacyToggleRow userId={userId} />
+        {/* ============ Приватность и блокировки ============
+            «Скрыть профиль» — master-only (поведенческий флажок, не
+            редактирование данных). «Заблокированные пользователи» — для
+            любой авторизованной роли (UGC safety, App Store Guideline 1.2). */}
+        {userId ? (
+          <Section icon={ShieldCheck} title="Приватность и блокировки">
+            {isMaster ? <PrivacyToggleRow userId={userId} /> : null}
+            <ActionRow
+              label="Заблокированные пользователи"
+              count={blockedUsers.data?.length}
+              chevron
+              onPress={() => router.push("/profile/blocked-users" as never)}
+            />
           </Section>
         ) : null}
 
@@ -427,14 +439,19 @@ interface ActionRowProps {
   label: string;
   icon?: typeof Gear;
   destructive?: boolean;
+  /** Счётчик справа от текста (напр. число заблокированных). Не рендерится
+   *  при 0 или undefined — пустой счётчик не несёт информации. */
+  count?: number;
+  /** Показать шеврон справа — знак перехода на подэкран (не действие на месте). */
+  chevron?: boolean;
   onPress: () => void;
 }
 
-function ActionRow({ label, icon: Icon, destructive, onPress }: ActionRowProps) {
+function ActionRow({ label, icon: Icon, destructive, count, chevron, onPress }: ActionRowProps) {
   // Цвет текста — через className-токен (text-ink/text-error), НЕ inline style:
   // inline style={{color}} из useThemeColors не переключался корректно на тёмной
   // теме → текст был чёрным на тёмном фоне (фидбэк владельца 2026-05-29).
-  const tc = useThemeColors(["ink", "error"]);
+  const tc = useThemeColors(["ink", "error", "mute"]);
   return (
     <Pressable
       accessibilityRole="button"
@@ -448,6 +465,12 @@ function ActionRow({ label, icon: Icon, destructive, onPress }: ActionRowProps) 
       >
         {label}
       </AppText>
+      {count ? (
+        <AppText weight="mono" className="text-mono-caption text-mute">
+          {count}
+        </AppText>
+      ) : null}
+      {chevron ? <CaretRight size={16} weight="bold" color={tc.mute} /> : null}
     </Pressable>
   );
 }

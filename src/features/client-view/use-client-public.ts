@@ -8,6 +8,7 @@
  */
 
 import { useQuery } from "@tanstack/react-query";
+import { useBlockedUserIds } from "@/features/blocking/use-user-blocks";
 import { supabase } from "@/lib/supabase";
 import type { Tables } from "@/types/database";
 
@@ -30,7 +31,7 @@ export type ClientPublicProfile = {
 };
 
 export function useClientPublicProfile(clientId: string | null | undefined) {
-  return useQuery<ClientPublicProfile | null>({
+  const query = useQuery<ClientPublicProfile | null>({
     queryKey: ["client-public", clientId],
     queryFn: async () => {
       if (!clientId) return null;
@@ -74,4 +75,11 @@ export function useClientPublicProfile(clientId: string | null | undefined) {
     enabled: !!clientId,
     staleTime: 60_000,
   });
+
+  // UGC safety блокировка — см. пояснение в use-master-public.ts
+  // (useMasterPublicProfile): переиспользуем состояние «профиль не найден»
+  // вместо нового баннера, фильтрация односторонняя (см. useBlockedUserIds).
+  const blocked = useBlockedUserIds();
+  const isBlockedByMe = !!clientId && !!blocked.data?.has(clientId);
+  return { ...query, data: isBlockedByMe ? null : query.data };
 }

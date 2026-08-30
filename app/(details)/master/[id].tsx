@@ -15,6 +15,7 @@
  * Анон-friendly: контакт-кнопки открывают LoginWall на тапе если userId == null.
  */
 
+import * as Haptics from "expo-haptics";
 import { Image as ExpoImage } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -24,11 +25,13 @@ import {
   CaretLeft,
   DotsThreeVertical,
   Flag,
+  Prohibit,
   Star,
   Users,
 } from "phosphor-react-native";
 import { useEffect, useState } from "react";
 import {
+  Alert,
   FlatList,
   Image,
   type NativeScrollEvent,
@@ -40,6 +43,10 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
 import { Avatar, BottomSheet, Button, normalizeAvatarUrl, Skeleton } from "@/components/ui";
+import { blockConfirmMessage } from "@/features/blocking/blocking-copy";
+import { blockingActionFailureMessage } from "@/features/blocking/blocking-error-message";
+import { useBlockUser } from "@/features/blocking/use-user-blocks";
+import { confirmAsync } from "@/lib/confirm";
 import { openExternalUrl } from "@/lib/open-link";
 import { useAppWidth } from "@/lib/use-app-width";
 
@@ -128,6 +135,7 @@ export default function MasterPublicScreen() {
   const [reportOpen, setReportOpen] = useState(false);
   const [actionMenuOpen, setActionMenuOpen] = useState(false);
   const [reviewSheetOpen, setReviewSheetOpen] = useState(false);
+  const blockUser = useBlockUser();
   // Отзыв, который мастер обжалует (#163). null → шит закрыт.
   const [reportReview, setReportReview] = useState<ReviewWithAuthor | null>(null);
 
@@ -205,6 +213,34 @@ export default function MasterPublicScreen() {
     if (phoneWa) {
       openExternalUrl(`https://wa.me/${phoneWa}`);
     }
+  };
+
+  // Блокировка (UGC safety, App Store Guideline 1.2). Текст подтверждения не
+  // обещает «звонки и WhatsApp станут недоступны» — если собеседник уже знает
+  // номер, вне-приложенческий контакт мы остановить не можем (whatsapp_phone
+  // мастера читается публично по RLS независимо от блокировки, src/lib/whatsapp.ts).
+  const handleBlock = async () => {
+    if (!masterId || blockUser.isPending) return;
+    setActionMenuOpen(false);
+    const confirmed = await confirmAsync({
+      title: "Заблокировать пользователя?",
+      message: blockConfirmMessage(fullName),
+      confirmText: "Заблокировать",
+      cancelText: "Отмена",
+      destructive: true,
+    });
+    if (!confirmed) return;
+    blockUser.mutate(masterId, {
+      onSuccess: async () => {
+        try {
+          await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        } catch {
+          // haptics недоступны (Low Power Mode / симулятор и т.п.) — не блокирует успех
+        }
+        goBack();
+      },
+      onError: (e) => Alert.alert("Не удалось заблокировать", blockingActionFailureMessage(e)),
+    });
   };
 
   // Цельный skeleton всей страницы пока грузятся основные данные (профиль +
@@ -332,6 +368,7 @@ export default function MasterPublicScreen() {
                     accessibilityRole="button"
                     accessibilityLabel="Действия"
                     onPress={() => setActionMenuOpen(true)}
+                    hitSlop={4}
                     className="h-9 w-9 items-center justify-center rounded-full bg-black/50 active:opacity-70"
                   >
                     <DotsThreeVertical size={20} weight="bold" color={tc["on-dark"]} />
@@ -399,6 +436,7 @@ export default function MasterPublicScreen() {
                     accessibilityRole="button"
                     accessibilityLabel="Действия"
                     onPress={() => setActionMenuOpen(true)}
+                    hitSlop={4}
                     className="h-9 w-9 items-center justify-center rounded-full bg-black/50 active:opacity-70"
                   >
                     <DotsThreeVertical size={20} weight="bold" color={tc["on-dark"]} />
@@ -790,7 +828,8 @@ export default function MasterPublicScreen() {
       {/* Action menu — overflow ⋮ из header. 2026-05-20 «classifieds»:
           из меню убран пункт «Этот мастер выполнил мне работу» (ad-hoc
           подтверждение оффлайн-работы) — он завязан на lifecycle, которого
-          в текущей модели больше нет. Остался только «Пожаловаться». */}
+          в текущей модели больше нет. «Заблокировать» (только авторизованным)
+          и «Пожаловаться» — UGC safety, App Store Guideline 1.2. */}
       {!isOwnProfile ? (
         <BottomSheet
           open={actionMenuOpen}
@@ -798,6 +837,33 @@ export default function MasterPublicScreen() {
           title="Действия"
         >
           <View className="pb-2">
+            {/* «Заблокировать» — только для авторизованных (гость не может
+                иметь blocker_id). Аноним видит один пункт «Пожаловаться». */}
+            {!isAnon ? (
+              <>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityHint="Скроет его заказы и отклики от вас и ваши от него"
+                  onPress={handleBlock}
+                  style={({ pressed }) => ({
+                    opacity: pressed ? 0.7 : 1,
+                    flexDirection: "row",
+                    alignItems: "center",
+                    gap: 12,
+                    paddingHorizontal: 20,
+                    paddingVertical: 14,
+                  })}
+                >
+                  <View className="h-9 w-9 items-center justify-center rounded-md bg-error-soft">
+                    <Prohibit size={18} weight="bold" color={tc.error} />
+                  </View>
+                  <AppText weight="semibold" className="text-body-md text-error">
+                    Заблокировать
+                  </AppText>
+                </Pressable>
+                <View className="mx-5 border-t border-hairline" />
+              </>
+            ) : null}
             <Pressable
               accessibilityRole="button"
               onPress={() => {

@@ -9,6 +9,7 @@
  */
 
 import { useQuery } from "@tanstack/react-query";
+import { excludeBlockedUsers, useBlockedUserIds } from "@/features/blocking/use-user-blocks";
 import { shouldHideDemo } from "@/lib/demo-mode";
 import { supabase } from "@/lib/supabase";
 import type { Tables } from "@/types/database";
@@ -34,7 +35,7 @@ export type TopMaster = {
 };
 
 export function useTopMasters(limit = 7) {
-  return useQuery<TopMaster[]>({
+  const query = useQuery<TopMaster[]>({
     queryKey: ["top-masters", limit] as const,
     queryFn: async () => {
       const { data, error } = await supabase
@@ -147,4 +148,9 @@ export function useTopMasters(limit = 7) {
     },
     staleTime: 60_000,
   });
+
+  // UGC safety: та же односторонняя фильтрация, что и в use-masters-by-l2.ts.
+  const blocked = useBlockedUserIds();
+  const data = excludeBlockedUsers(query.data, blocked.data, (m) => m.user.id);
+  return { ...query, data };
 }

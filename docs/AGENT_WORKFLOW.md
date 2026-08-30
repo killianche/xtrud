@@ -16,7 +16,7 @@ Production web, EAS/App Store и Supabase — производные состо�
    сервиса на момент проверки.
 3. Профильный канонический документ, указанный в `AGENTS.md`.
 4. Верхний актуальный блок `STATUS.md`.
-5. `SESSION_SUMMARY_*.md`, старые разделы `STATUS.md`, legacy-документы и
+5. `archive/sessions/SESSION_SUMMARY_*.md`, старые разделы `STATUS.md`, legacy-документы и
    комментарии — только история, пока не подтверждены кодом.
 
 Специальные tie-breaker'ы:

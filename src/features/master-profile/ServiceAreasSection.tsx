@@ -1,6 +1,6 @@
 // ServiceAreasSection — multi-select городов и районов где работает мастер.
 //
-// P1-3 (упрощ.) из research/MASTER_ACCOUNT_PLAN.md. Без сёл и без radius —
+// P1-3 (упрощ.) из archive/research/MASTER_ACCOUNT_PLAN.md. Без сёл и без radius —
 // мастер просто отмечает чипы городов и/или районов.
 //
 // Auto-save при каждом тапе chip (фидбэк user 2026-05-15: «2 кнопки

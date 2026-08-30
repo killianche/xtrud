@@ -354,7 +354,7 @@ CREATE INDEX order_status_log_order_id_idx ON public.order_status_log(order_id, 
 ### Часть 4 — Документация
 - Обновить `docs/order-states.md` (или DEPRECATED-стаб, указывающий на `lifecycle.md`).
 - Обновить `docs/chat-states.md` под `awaiting_confirmation`/`disputed`.
-- Записи в `STATUS.md` + `SESSION_SUMMARY_2026-05-16.md`.
+- Записи в `STATUS.md` + `archive/sessions/SESSION_SUMMARY_2026-05-16.md`.
 - Возможно, новый doc `docs/lifecycle-rpc-reference.md` со всеми signatures.
 
 ---

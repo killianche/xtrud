@@ -1,6 +1,6 @@
 # xtrud — Design system
 
-**Активен с 2026-05-13.** Базируется на Vercel design language (`getdesign@latest add vercel`) с тремя осознанными override'ами для consumer-marketplace, см. секцию «xtrud overrides» ниже. Старые системы (Cal.com-inspired) перенесены в `legacy/DESIGN_CALCOM.md` и `legacy/DESIGN_SYSTEM.md`.
+**Активен с 2026-05-13.** Базируется на Vercel design language (`getdesign@latest add vercel`) с тремя осознанными override'ами для consumer-marketplace, см. секцию «xtrud overrides» ниже. Старые системы (Cal.com-inspired) перенесены в `archive/legacy/DESIGN_CALCOM.md` и `archive/legacy/DESIGN_SYSTEM.md`.
 
 ## xtrud overrides (отступления от Vercel)
 

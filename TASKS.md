@@ -31,7 +31,7 @@
 
 ## ✅ Sprint P0 master-account (закрыт 2026-05-15)
 
-Все 9 P0-задач из [`research/MASTER_ACCOUNT_PLAN.md`](research/MASTER_ACCOUNT_PLAN.md) закрыты в одну сессию:
+Все 9 P0-задач из [`archive/research/MASTER_ACCOUNT_PLAN.md`](archive/research/MASTER_ACCOUNT_PLAN.md) закрыты в одну сессию:
 
 - [x] **P0-1** [`ec4be72`] — Унификация архитектуры цен на `master_services`
 - [x] **P0-2** [`34c6c9b`] — Связь `master_services` с категориями (l2_id + l3_id)
@@ -64,10 +64,10 @@
 - [ ] **P1-8** — Dual-role переключатель UX-ревизия: найти текущий switch client↔master, проверить что заметен и понятен.
 
 ### N-задачи (доработки master-главной из фидбека 2026-05-15)
-- [ ] **N1** — Убрать блок «Ваши категории» с master-главной (оставить только в профиле). См. [research/NEW_TASKS_MASTER_HOME.md](research/NEW_TASKS_MASTER_HOME.md).
+- [ ] **N1** — Убрать блок «Ваши категории» с master-главной (оставить только в профиле). См. [archive/research/NEW_TASKS_MASTER_HOME.md](archive/research/NEW_TASKS_MASTER_HOME.md).
 - [ ] **N2** — Убрать кнопку «+ Создать заказ» из master-режима (мастер не создаёт заказы).
 - [~] **N3** — «Поиск заказов» для мастера. **Сделано:** лента + multi-select L2 категорий + сортировка (новые/срочные) + defaults из master_categories + quick-select chips из профиля (2026-05-15). **Осталось:** фильтры по городу/району/бюджету/срочности.
-- [ ] **N4** — Спроектировать систему push-уведомлений (приложение + web): 7 событий мастера, native (FCM/APNs) + Web Push, quiet hours, preferences. Полный план в [research/NEW_TASKS_MASTER_HOME.md](research/NEW_TASKS_MASTER_HOME.md) §N4.
+- [ ] **N4** — Спроектировать систему push-уведомлений (приложение + web): 7 событий мастера, native (FCM/APNs) + Web Push, quiet hours, preferences. Полный план в [archive/research/NEW_TASKS_MASTER_HOME.md](archive/research/NEW_TASKS_MASTER_HOME.md) §N4.
 
 ### Ещё одна задача наполнения данных
 - [ ] **avg_check_rub** для остальных 239 L3 — сейчас заполнено 41 (Сантехника / Электрика / Уборка / Покраска / Плитка). Без этого hint «В среднем берут X ₽» не показывается для других категорий.

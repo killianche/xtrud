@@ -6,7 +6,7 @@
 // «Возможно, вы искали: *камера*».
 //
 // Эталон: convert-layout NPM (архивирован, но идея — 30 строк) +
-// research/SEARCH_AUDIT.md §4 «Раскладка-фикс на клиенте JS».
+// archive/research/SEARCH_AUDIT.md §4 «Раскладка-фикс на клиенте JS».
 
 const EN_TO_RU: Record<string, string> = {
   q: "й",

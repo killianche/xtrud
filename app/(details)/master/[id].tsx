@@ -43,7 +43,7 @@ import { Avatar, BottomSheet, Button, normalizeAvatarUrl, Skeleton } from "@/com
 import { openExternalUrl } from "@/lib/open-link";
 import { useAppWidth } from "@/lib/use-app-width";
 
-// PRICING_MODE_LABELS убран 2026-05-15 (P0-1 в research/MASTER_ACCOUNT_PLAN.md).
+// PRICING_MODE_LABELS убран 2026-05-15 (P0-1 в archive/research/MASTER_ACCOUNT_PLAN.md).
 // Цены — единственным источником master_services, отображаются через
 // <MasterServicesList />. Поле master_categories.pricing_mode помечено
 // DEPRECATED в миграции 0055.

@@ -89,7 +89,7 @@ Review Notes должны объяснять актуальный сценари
 Не копировать ответы из этого файла или старых релизов. Перед каждой подачей
 выполнить фактический inventory текущей сборки и заполнить актуальные
 questionnaire в App Store Connect по
-[`LAUNCH_CHECKLIST_STORES.md`](LAUNCH_CHECKLIST_STORES.md).
+[`archive/launch/LAUNCH_CHECKLIST_STORES.md`](archive/launch/LAUNCH_CHECKLIST_STORES.md).
 
 ## Финальная проверка карточки
 

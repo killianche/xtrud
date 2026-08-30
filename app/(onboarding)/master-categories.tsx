@@ -1,6 +1,6 @@
 // Master onboarding step: выбор L2-категорий.
 //
-// P0-3 (research/MASTER_ACCOUNT_PLAN.md): редизайн — раньше плоский
+// P0-3 (archive/research/MASTER_ACCOUNT_PLAN.md): редизайн — раньше плоский
 // chip-list из 32 опций без поиска и иерархии. Теперь:
 //   - sticky search input (чипы фильтруются по name_ru)
 //   - группировка по L1 (10 разделов × 64 L2 = читаемая иерархия)

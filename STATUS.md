@@ -338,7 +338,7 @@
   756 МБ; `node_modules` (685 МБ) сохранён, чтобы JS-разработка и проверки
   оставались готовы. Pods восстанавливаются `cd ios && pod install`, web export
   — `npm run web:build:production`/`web:build:preview`.
-- Полный отчёт: [`SESSION_SUMMARY_2026-08-24.md`](SESSION_SUMMARY_2026-08-24.md).
+- Полный отчёт: [`archive/sessions/SESSION_SUMMARY_2026-08-24.md`](archive/sessions/SESSION_SUMMARY_2026-08-24.md).
 
 ### Gate A Supabase Cloud — live read-only inventory 2026-08-24
 
@@ -508,7 +508,7 @@
   Подготовлен PII-safe read-only inventory, но production не тестировался и не
   менялся: сначала live read-only export + backup, затем forward-only security
   migration.
-- Полный отчёт сессии: [`SESSION_SUMMARY_2026-08-23.md`](SESSION_SUMMARY_2026-08-23.md).
+- Полный отчёт сессии: [`archive/sessions/SESSION_SUMMARY_2026-08-23.md`](archive/sessions/SESSION_SUMMARY_2026-08-23.md).
 
 ## Техобслуживание 2026-08-15 — очистка локальных артефактов
 
@@ -534,7 +534,7 @@
 3. Миграции не описывают реальную базу: 7 файлов-заглушек без кода, две функции существуют только в проде. **Базу нельзя воссоздать с нуля из репозитория.**
 4. Уведомления, соцграф и бригады — таблицы и функции есть, экранов нет; триггеры исправно пишут уведомления, которые никто не читает.
 5. Журнал ошибок `client_errors` завели 11 июня и с тех пор **ни разу не открывали** — там может лежать полтора месяца реальных сбоев у людей.
-6. Часть документации описывает продукт, которого нет (`LAUNCH_CHECKLIST_STORES.md`, `STORE_METADATA.md`, `TASKS.md`, хвост этого файла) — опасно при заполнении анкет Google Play.
+6. Часть документации описывает продукт, которого нет (`archive/launch/LAUNCH_CHECKLIST_STORES.md`, `STORE_METADATA.md`, `TASKS.md`, хвост этого файла) — опасно при заполнении анкет Google Play.
 
 **Новое правило работы:** крупная задача теперь **начинается** с подключения агентов-помощников — [`.claude/rules/agent-delegation.md`](.claude/rules/agent-delegation.md) (триггеры, каталог, параллельный веер, шаблон брифа). Запрошено владельцем 2026-07-28.
 
@@ -591,7 +591,7 @@
 13. **Push-уведомления отключены** в первой версии (не было ключа Apple). Для доски объявлений это прямо бьёт по скорости откликов.
 14. **Sentry без ключа** — половина системы наблюдения слепая, работает только собственный журнал.
 15. **Мусор в папке проекта:** 42 файла `.tmp_*.png` (~25 МБ) не покрыты `.gitignore` — любой `git add .` затащит их в историю; девять случайных фото в корне; `Заставка` со старым логотипом.
-16. **Устаревшая документация, опасная при заполнении анкет сторов:** `LAUNCH_CHECKLIST_STORES.md` и `STORE_METADATA.md` описывают чат, вход по SMS-коду и домен `xtrud.ru` — всего этого нет. Актуальные тексты витрины — только в `APP_STORE_LISTING.md`. `TASKS.md` заброшен с 15 мая (53 пункта, большинство — про удалённые функции). Хвост этого файла — блокеры от 11 мая, давно закрытые.
+16. **Устаревшая документация, опасная при заполнении анкет сторов:** `archive/launch/LAUNCH_CHECKLIST_STORES.md` и `STORE_METADATA.md` описывают чат, вход по SMS-коду и домен `xtrud.ru` — всего этого нет. Актуальные тексты витрины — только в `APP_STORE_LISTING.md`. `TASKS.md` заброшен с 15 мая (53 пункта, большинство — про удалённые функции). Хвост этого файла — блокеры от 11 мая, давно закрытые.
 17. **Сценарии Maestro про чат** (`06-chat`, `chat-smoke`, `full-cycle-smoke`) тестируют удалённую функцию.
 
 ### Здоровье кода на сегодня
@@ -1179,7 +1179,7 @@ tsc чисто, design-греп чисто.
 
 ## Предзапусковое ужесточение БД + чистка кода (2026-05-24)
 
-По итогам технического аудита (см. `PRE_LAUNCH_PLAN.md`) — всё, что можно сделать ДО подключения SMS-входа и до публикации в App Store. Принцип: «не ломать».
+По итогам технического аудита (см. `archive/launch/PRE_LAUNCH_PLAN.md`) — всё, что можно сделать ДО подключения SMS-входа и до публикации в App Store. Принцип: «не ломать».
 
 **Применено 4 миграции Supabase:**
 1. `revoke_anon_access_trigger_functions` — 10 trigger-функций (`_trg_*`, `trg_*`, `reset_verification_level_on_delete`, `sync_master_verification_level`) недоступны через REST анонам и authenticated. Postgres сам блокирует прямой вызов trigger-функций, REVOKE — defense in depth.
@@ -2145,7 +2145,7 @@ ResponseLimitBadge, для клиента пусто). Тап на бургер 
 7. **Inline hex → токены** — `#ffffff/#374151` в `role.tsx`, `#fff` в `phone.tsx` заменены на `useThemeColors(["on-primary","muted-soft"])`.
 8. **🚨 ENFORCEMENT дизайн-правил** — новый файл [`.claude/rules/design-enforcement.md`](.claude/rules/design-enforcement.md) (приоритет 0): 8 grep-чеков, обязательный preview-screenshot, чёрный список фраз. Дополнен `CLAUDE.md` новым критическим блоком. Триггер: каждая правка `app/**/*.tsx`, `src/components/**/*.tsx`, `src/features/**/*.tsx`.
 
-**RPI Research для verification:** GO verdict получен. [`rpi/master-passport-verification/RESEARCH.md`](rpi/master-passport-verification/research/RESEARCH.md) готов. `/rpi:plan` отложен до завершения pre-demo фиксов.
+**RPI Research для verification:** GO verdict получен. [`archive/rpi/master-passport-verification/RESEARCH.md`](archive/rpi/master-passport-verification/research/RESEARCH.md) готов. `/rpi:plan` отложен до завершения pre-demo фиксов.
 
 **Demo-master аккаунт для тестирования:** `+7 900 000-00-03` (Руслан Хамхоев), OTP любые 6 цифр.
 
@@ -2177,7 +2177,7 @@ ResponseLimitBadge, для клиента пусто). Тап на бургер 
    - `_redirects` — для Cloudflare Pages clean URLs.
    - `README.md` — инструкция деплоя.
 
-6. **[`LAUNCH_CHECKLIST_STORES.md`](LAUNCH_CHECKLIST_STORES.md)** — готовые ответы на 4 анкеты:
+6. **[`archive/launch/LAUNCH_CHECKLIST_STORES.md`](archive/launch/LAUNCH_CHECKLIST_STORES.md)** — готовые ответы на 4 анкеты:
    - Apple **Privacy Nutrition Labels** (Data Linked to User: phone/name/photos/location/user-content/passport/device-id, Tracking: No).
    - Google Play **Data Safety form** (encryption in transit: yes, deletion in app: yes).
    - **IARC** age rating (ожидаем 17+ из-за UGC + chat).
@@ -2196,7 +2196,7 @@ ResponseLimitBadge, для клиента пусто). Тап на бургер 
 
 ## Прежнее состояние (2026-05-19 ночь — launch sprint, 8 пунктов из 15)
 
-**Главное:** Закрыто 8 из 15 пунктов launch-плана по [`AUDIT_LAUNCH_FUNCTIONAL_2026-05-19.md`](AUDIT_LAUNCH_FUNCTIONAL_2026-05-19.md). Из них **3 оказались уже сделаны** (false-positive аудита: форма отзыва, ReportModal в `master/[id]`), **5 реально реализованы**. Детали — [`SESSION_SUMMARY_2026-05-19.md`](SESSION_SUMMARY_2026-05-19.md).
+**Главное:** Закрыто 8 из 15 пунктов launch-плана по [`archive/audits/AUDIT_LAUNCH_FUNCTIONAL_2026-05-19.md`](archive/audits/AUDIT_LAUNCH_FUNCTIONAL_2026-05-19.md). Из них **3 оказались уже сделаны** (false-positive аудита: форма отзыва, ReportModal в `master/[id]`), **5 реально реализованы**. Детали — [`archive/sessions/SESSION_SUMMARY_2026-05-19.md`](archive/sessions/SESSION_SUMMARY_2026-05-19.md).
 
 **Реально реализовано (новый код, миграции 0088→0091):**
 
@@ -2247,7 +2247,7 @@ ResponseLimitBadge, для клиента пусто). Тап на бургер 
 
 ## Прежнее состояние (2026-05-19 — функциональный аудит ролей клиент + мастер)
 
-**Главное:** Поверх инфра-аудита от 2026-05-18 проведён **функциональный аудит** — что не доделано в продукте для App Store с точки зрения **роли клиента** и **роли мастера** + готовность к Apple/Google review. 3 параллельных Explore-агента. Финальный отчёт → **[`AUDIT_LAUNCH_FUNCTIONAL_2026-05-19.md`](AUDIT_LAUNCH_FUNCTIONAL_2026-05-19.md)**.
+**Главное:** Поверх инфра-аудита от 2026-05-18 проведён **функциональный аудит** — что не доделано в продукте для App Store с точки зрения **роли клиента** и **роли мастера** + готовность к Apple/Google review. 3 параллельных Explore-агента. Финальный отчёт → **[`archive/audits/AUDIT_LAUNCH_FUNCTIONAL_2026-05-19.md`](archive/audits/AUDIT_LAUNCH_FUNCTIONAL_2026-05-19.md)**.
 
 **Оценка функциональной готовности по ролям:**
 - Клиент: **~70%** — нет формы отзыва, нет жалобы на мастера, нет избранного, нет удаления аккаунта, нет dispute UI.
@@ -2258,7 +2258,7 @@ ResponseLimitBadge, для клиента пусто). Тап на бургер 
 - **Спринт 1 (5д):** функциональные блокеры — форма отзыва, RPC `delete_my_account`, Report на мастера, шаги `master-areas` + `master-services` в онбординге.
 - **Спринт 2 (5д):** trust-блокеры — UI верификации паспорта, избранное, dispute UI, статистика мастера, ответ на отзыв, native-geolocation.
 - **Спринт 3 (4д):** App Store обвязка — `/legal/*`, скриншоты, описание, keywords, Data Safety/Privacy Labels, Age Rating, Support URL.
-- **Параллельно:** инфра из [`LAUNCH_READINESS_2026-05-18.md`](LAUNCH_READINESS_2026-05-18.md) (real OTP, push trigger, demo-isolation, eas init, KYC).
+- **Параллельно:** инфра из [`archive/launch/LAUNCH_READINESS_2026-05-18.md`](archive/launch/LAUNCH_READINESS_2026-05-18.md) (real OTP, push trigger, demo-isolation, eas init, KYC).
 
 **Календарно к публичной beta:** ~2026-06-15 (3 недели dev + 1 неделя внешних ожиданий: юрист, KYC, DNS).
 
@@ -2266,7 +2266,7 @@ ResponseLimitBadge, для клиента пусто). Тап на бургер 
 
 ## Прежнее состояние (2026-05-18 — launch-readiness аудит 5 параллельными агентами)
 
-**Главное:** Проведён комплексный аудит **готовности к публичному запуску** в 5 параллельных потоков (backend / frontend / E2E flow / production-infra / connect-the-dots). Все 5 отчётов в [`research/launch_audit_2026-05-18/`](research/launch_audit_2026-05-18/), финальный синтез + sprint-план — в **[`LAUNCH_READINESS_2026-05-18.md`](LAUNCH_READINESS_2026-05-18.md)**.
+**Главное:** Проведён комплексный аудит **готовности к публичному запуску** в 5 параллельных потоков (backend / frontend / E2E flow / production-infra / connect-the-dots). Все 5 отчётов в [`archive/research/launch_audit_2026-05-18/`](archive/research/launch_audit_2026-05-18/), финальный синтез + sprint-план — в **[`archive/launch/LAUNCH_READINESS_2026-05-18.md`](archive/launch/LAUNCH_READINESS_2026-05-18.md)**.
 
 **Сводная оценка готовности: ~50%** (Backend architectural 85%, Frontend 85%, Critical paths 75%, **Operational 15%, Legal 0%**, Connect-the-dots 90%).
 
@@ -2284,7 +2284,7 @@ ResponseLimitBadge, для клиента пусто). Тап на бургер 
 - **Неделя 3:** EAS / Store builds + домен xtrud.ru + TestFlight + Internal Testing + smoke-тест (P0 группа 8).
 - **Параллельно:** юрист (PP/ToS), KYC Apple+Google, РКН-уведомление.
 
-**Полный список P0 (24 пункта), P1 (~20), P2 (Phase 1 AI sprint 22-25)** — в [`LAUNCH_READINESS_2026-05-18.md`](LAUNCH_READINESS_2026-05-18.md).
+**Полный список P0 (24 пункта), P1 (~20), P2 (Phase 1 AI sprint 22-25)** — в [`archive/launch/LAUNCH_READINESS_2026-05-18.md`](archive/launch/LAUNCH_READINESS_2026-05-18.md).
 
 **Bottom line:** код-база **обгоняет инфра-обвязку** (редкий случай). Тормозит запуск не write-code work, а setup-and-paperwork (SMS-провайдер, FCM/APNs, legal, store-аккаунты, monitoring). При фокусе senior'а fulltime — **beta в Республике Ингушетия достижима к 2026-06-15**.
 
@@ -2327,7 +2327,7 @@ ResponseLimitBadge, для клиента пусто). Тап на бургер 
 
 ## Прежнее состояние (2026-05-16 ночь — комплексный аудит 4 параллельными агентами)
 
-**Главное:** Полный аудит проекта в 4 параллельных deep-dive'а: внутренний код-инвентарь (Explore agent), RU-конкуренты 2024-2026 (general-purpose), Global-конкуренты 2024-2026 (general-purpose), AI/modern-tech 2024-2026 (general-purpose). Синтез в `AUDIT_2026-05-16.md`.
+**Главное:** Полный аудит проекта в 4 параллельных deep-dive'а: внутренний код-инвентарь (Explore agent), RU-конкуренты 2024-2026 (general-purpose), Global-конкуренты 2024-2026 (general-purpose), AI/modern-tech 2024-2026 (general-purpose). Синтез в `archive/audits/AUDIT_2026-05-16.md`.
 
 **Ключевые выводы:**
 1. **Проект на ~75% MVP** — backend production-ready (80 миграций), frontend покрывает core flow (auth → onboarding → lifecycle 8 статусов → chats → reviews → mutual rating). Code clean (0 ts-ignore, 0 console.log).
@@ -2336,11 +2336,11 @@ ResponseLimitBadge, для клиента пусто). Тап на бургер 
 4. **Боль конкурентов = наша возможность:** Profi/Avito/YouDo массово теряют доверие исполнителей (фейковые заказы, удаление позитивных отзывов, блокировки 6-летних аккаунтов). Наш free-tier + прозрачность = острейший USP когда-либо.
 
 **Артефакты аудита:**
-- [`AUDIT_2026-05-16.md`](AUDIT_2026-05-16.md) — финальный синтез: что есть → чего нет → 35 фич с приоритезацией + Sprint 22-25 план
-- [`research/INTERNAL_CODE_AUDIT_2026-05-16.md`](research/INTERNAL_CODE_AUDIT_2026-05-16.md) — что реально в коде vs документации
-- [`research/RU_COMPETITORS_2026-05-16.md`](research/RU_COMPETITORS_2026-05-16.md) — Profi/Я.Услуги/Avito/YouDo/Юла/Workle с фокусом на 2024-2026 новости
-- [`research/GLOBAL_COMPETITORS_2026-05-16.md`](research/GLOBAL_COMPETITORS_2026-05-16.md) — 14 западных платформ
-- [`research/AI_MODERN_TECH_2026-05-16.md`](research/AI_MODERN_TECH_2026-05-16.md) — tech-stack рекомендации (Claude Haiku, Replicate, Sumsub, МТС Exolve, Telegram MA), цены, AI-bookings
+- [`archive/audits/AUDIT_2026-05-16.md`](archive/audits/AUDIT_2026-05-16.md) — финальный синтез: что есть → чего нет → 35 фич с приоритезацией + Sprint 22-25 план
+- [`archive/research/INTERNAL_CODE_AUDIT_2026-05-16.md`](archive/research/INTERNAL_CODE_AUDIT_2026-05-16.md) — что реально в коде vs документации
+- [`archive/research/RU_COMPETITORS_2026-05-16.md`](archive/research/RU_COMPETITORS_2026-05-16.md) — Profi/Я.Услуги/Avito/YouDo/Юла/Workle с фокусом на 2024-2026 новости
+- [`archive/research/GLOBAL_COMPETITORS_2026-05-16.md`](archive/research/GLOBAL_COMPETITORS_2026-05-16.md) — 14 западных платформ
+- [`archive/research/AI_MODERN_TECH_2026-05-16.md`](archive/research/AI_MODERN_TECH_2026-05-16.md) — tech-stack рекомендации (Claude Haiku, Replicate, Sumsub, МТС Exolve, Telegram MA), цены, AI-bookings
 
 **Phase 1 must-have (Sprint 22-25, ~8 недель):** master verification frontend, обязательный прайс-лист (drop «договорная» default), дашборд статистики мастеру, «Время первого ответа» бейдж + lead-decay, шаблоны быстрых ответов, Instant Match push, AI-генератор описания услуги (фото→текст+теги), AI-фильтр спам-откликов (embedding sim), OpenAI Moderation на UGC, public master pages с schema.org для SEO/Google AI, real OTP, AI-визард создания заявки (голос/текст→JSON), Telegram Mini App + @xtrudbot AI-агент. Бюджет AI-stack $50-150/мес.
 
@@ -2367,7 +2367,7 @@ ResponseLimitBadge, для клиента пусто). Тап на бургер 
 
 **+ master nav fix:** В WebShell для роли `master` отсутствовала ссылка «Поиск заказов» — на mobile эта кнопка живёт центральной в TabBar, на desktop её забыли вынести. Теперь WebShell для master: **Главная / Поиск заказов / Чаты** (вместо просто Главная / Чаты). Файл — [`src/components/WebShell.tsx`](src/components/WebShell.tsx). Verify: открыл `/orders/search` через клик в WebShell — лента заявок (`Покрасить стену`, `Замена смесителя` и т.д.) отрисовалась, подсветка активна.
 
-**+ search overhaul: prefix-match + debounce (миграция 0084 + 1 hook):** User: «у нас поиск кривой — рез не находит, а резк находит» / «почему такой ужасный поиск?» / «подключи агента». Спавнен research-агент (general-purpose) который изучил Yandex.Услуги, Profi.ru, Avito Услуги, Google, Thumbtack + 10 источников (Algolia, Meilisearch, Baymard, PG docs). Отчёт указал 4 root cause: (1) `websearch_to_tsquery` не делает prefix-расширение → стеммер требует полное слово, «рез» не достраивается до «резка»; (2) trigram threshold глобальный 0.3 проваливает короткие запросы; (3) source-веса нерасчленены: synonym weight=50 (0.5) проигрывает FTS=0.7 — ручной тезаурус бьётся автоматическим стеммером; (4) нет debounce → мерцание на каждое нажатие. Миграция [0084](supabase/migrations/0084_search_prefix_matching.sql) переписала RPC `search_categories`: построение tsquery с `:*` на последнем токене (`'рез'` → `'рез:*'`, ловит «резка»), dynamic trigram threshold (`length(v_q) <= 4 ? 0.18 : 0.3`), range-separated source: synonym [0.60..1.00], fts [0.30..0.60], trigram [0.00..0.30]. Sanitize-regex для безопасного `to_tsquery` cast + fallback на `plainto_tsquery`. Frontend: новый хук [`src/lib/use-debounced-value.ts`](src/lib/use-debounced-value.ts) (200ms — стандарт Algolia/Google), `/search.tsx` использует `debouncedQuery` вместо `trimmedQuery`. Verify: 14 ранее не работавших коротких запросов (рез, тех, обо, сан, лам, гип, кров, окн, нат, эле + обои, забор, крыша, ламинат) → все top-hit корректны. P1/P2 (browse popular+recent, did-you-mean Levenshtein, sectioned grouping) — отложены, спецификация в [SESSION_SUMMARY_2026-05-16.md](SESSION_SUMMARY_2026-05-16.md) § N+7.
+**+ search overhaul: prefix-match + debounce (миграция 0084 + 1 hook):** User: «у нас поиск кривой — рез не находит, а резк находит» / «почему такой ужасный поиск?» / «подключи агента». Спавнен research-агент (general-purpose) который изучил Yandex.Услуги, Profi.ru, Avito Услуги, Google, Thumbtack + 10 источников (Algolia, Meilisearch, Baymard, PG docs). Отчёт указал 4 root cause: (1) `websearch_to_tsquery` не делает prefix-расширение → стеммер требует полное слово, «рез» не достраивается до «резка»; (2) trigram threshold глобальный 0.3 проваливает короткие запросы; (3) source-веса нерасчленены: synonym weight=50 (0.5) проигрывает FTS=0.7 — ручной тезаурус бьётся автоматическим стеммером; (4) нет debounce → мерцание на каждое нажатие. Миграция [0084](supabase/migrations/0084_search_prefix_matching.sql) переписала RPC `search_categories`: построение tsquery с `:*` на последнем токене (`'рез'` → `'рез:*'`, ловит «резка»), dynamic trigram threshold (`length(v_q) <= 4 ? 0.18 : 0.3`), range-separated source: synonym [0.60..1.00], fts [0.30..0.60], trigram [0.00..0.30]. Sanitize-regex для безопасного `to_tsquery` cast + fallback на `plainto_tsquery`. Frontend: новый хук [`src/lib/use-debounced-value.ts`](src/lib/use-debounced-value.ts) (200ms — стандарт Algolia/Google), `/search.tsx` использует `debouncedQuery` вместо `trimmedQuery`. Verify: 14 ранее не работавших коротких запросов (рез, тех, обо, сан, лам, гип, кров, окн, нат, эле + обои, забор, крыша, ламинат) → все top-hit корректны. P1/P2 (browse popular+recent, did-you-mean Levenshtein, sectioned grouping) — отложены, спецификация в [SESSION_SUMMARY_2026-05-16.md](archive/sessions/SESSION_SUMMARY_2026-05-16.md) § N+7.
 
 **+ wallpaper L2 split (миграция 0083):** User: «почему нет Обои??» — после audit 0082 поиск «обои» возвращал L2 «Штукатурка, шпаклёвка, покраска» как top-hit с бейджем «Категория», но пользователь ждал буквальную категорию «Обои». Эталон Profi.ru/Avito Услуги — «Поклейка обоев» отдельная top-level category, не сабкатегория малярки. Миграция [0083](supabase/migrations/0083_split_wallpaper_l2.sql): создана новая L2 `wallpaper` (name_ru='Обои', icon=Paintbrush, sort_order=105), 8 wallpaper-* L3 перенесены из `painting` → `wallpaper` (wallpaper-paper, vinyl, paintable, fleece, photo, liquid, removal, repair), обои-themed synonyms remap'нуты (`обои`, `оклейка`, `переклеить`, `поклеить обои` + 7 новых: `поклейка`, `поклеить`, `наклеить обои`, `обойщик`, `фотообои`, `флизелин`, `флизелиновые`). `painting` сокращён в имени: «Штукатурка, шпаклёвка, покраска» → «Штукатурка и покраска» (обоев больше внутри нет). Frontend [src/lib/category-color-icons.ts](src/lib/category-color-icons.ts) — добавлен mapping `wallpaper: twemoji/scroll`. Verify в preview: поиск «обои» → top-hit L2 «Обои» (score 1.0) с бейджем «Категория» + 8 L3 ниже.
 
@@ -2744,7 +2744,7 @@ ResponseLimitBadge, для клиента пусто). Тап на бургер 
 
 ## Прежнее состояние (2026-05-15 ночь, P0 master-account + умный поиск)
 
-**Главное:** закрыто 9 из 9 P0-задач из [`research/MASTER_ACCOUNT_PLAN.md`](research/MASTER_ACCOUNT_PLAN.md). Master-аккаунт функционально доведён до уровня готовности «Sprint 1». Каждая задача отдельным коммитом.
+**Главное:** закрыто 9 из 9 P0-задач из [`archive/research/MASTER_ACCOUNT_PLAN.md`](archive/research/MASTER_ACCOUNT_PLAN.md). Master-аккаунт функционально доведён до уровня готовности «Sprint 1». Каждая задача отдельным коммитом.
 
 **Закрытые P0 (порядок исполнения):**
 
@@ -2792,7 +2792,7 @@ ResponseLimitBadge, для клиента пусто). Тап на бургер 
 - `src/lib/confirm.ts` — `confirmAsync()`.
 - `src/lib/nav-history.ts` — Zustand-стек pathname + `<NavHistoryTracker />`.
 - `src/features/auth/JitSignupSheet.tsx` — JIT-signup BottomSheet.
-- `SESSION_SUMMARY_2026-05-15.md`.
+- `archive/sessions/SESSION_SUMMARY_2026-05-15.md`.
 
 **Изменённые файлы:**
 - `src/lib/use-safe-back.ts` — переписан на nav-history.
@@ -2856,7 +2856,7 @@ ResponseLimitBadge, для клиента пусто). Тап на бургер 
 
 ## Старое состояние (2026-05-14 поздняя ночь, location-архитектура по образцу Ingush-Business)
 
-**Главное в этой сессии (см. подробно `SESSION_SUMMARY_2026-05-14.md` → секция «Поздняя ночь 2026-05-14 — Location system rewrite»):**
+**Главное в этой сессии (см. подробно `archive/sessions/SESSION_SUMMARY_2026-05-14.md` → секция «Поздняя ночь 2026-05-14 — Location system rewrite»):**
 
 - **Единый source-of-truth `src/lib/location-config.ts`** — содержит 8 поселений РИ (5 cities из БД + 3 крупных села-городка), 4 муниципальных района, 32 села, координаты для Haversine, helpers (`findDistrictByVillage`, `getNearestCity`, `getLocationLabel`), типы `LocationFilter` / `LocSet`. Подход скопирован из Ingush-Business `lib/config.ts`. Все потребители (CitySelector / LocationPicker / order-schema) импортируют отсюда.
 - **`useUserCity()` hook** в `src/lib/use-user-city.ts` — Zustand store + persist (`xtrud-city` v3) + init-цикл: AsyncStorage → web geolocation (`navigator.geolocation`, 5s timeout) → `getNearestCity` (threshold 30км) → `DEFAULT_CITY_ID="nazran"` fallback. Native — TODO `expo-location`.
@@ -2870,7 +2870,7 @@ ResponseLimitBadge, для клиента пусто). Тап на бургер 
 
 **Файлы сессии (location-architect):**
 - Новые: `src/lib/location-config.ts`, `src/lib/use-user-city.ts`, `src/components/ui/LocationSheet.tsx`, `src/components/ui/LocationFilterSheet.tsx`, `supabase/migrations/0050_cities_add_large_villages.sql`
-- Изменённые: `src/components/CitySelector.tsx` (переведён на useUserCity), `src/components/ui/index.ts` (экспорт 2 sheet'ов), `src/features/orders/order-schema.ts` (re-export'ы из location-config), `app/(tabs)/orders/index.tsx` (graceful fallback null city_id в 3 OrderRow + nullable city_id в NewOrdersTabProps), `docs/location-system.md`, `STATUS.md`, `TASKS.md`, `SESSION_SUMMARY_2026-05-14.md`
+- Изменённые: `src/components/CitySelector.tsx` (переведён на useUserCity), `src/components/ui/index.ts` (экспорт 2 sheet'ов), `src/features/orders/order-schema.ts` (re-export'ы из location-config), `app/(tabs)/orders/index.tsx` (graceful fallback null city_id в 3 OrderRow + nullable city_id в NewOrdersTabProps), `docs/location-system.md`, `STATUS.md`, `TASKS.md`, `archive/sessions/SESSION_SUMMARY_2026-05-14.md`
 
 **Верификация:** `tsc --noEmit` чисто, preview-eval подтверждает 8 cities в LocationPicker bottom-sheet'е (Магас / Назрань / Сунжа / Малгобек / Карабулак / Орджоникидзевская / Серноводская / Нестеровская). Dark mode корректно отрисован.
 
@@ -2878,7 +2878,7 @@ ResponseLimitBadge, для клиента пусто). Тап на бургер 
 
 ## Старое состояние (2026-05-14 ночь, perf-агент: skeletons + safe back-navigation)
 
-**Главное в этой сессии (см. подробно `SESSION_SUMMARY_2026-05-14.md` → раздел «Поздний вечер 2026-05-14 — perf-агент»):**
+**Главное в этой сессии (см. подробно `archive/sessions/SESSION_SUMMARY_2026-05-14.md` → раздел «Поздний вечер 2026-05-14 — perf-агент»):**
 
 - **Прогрессивная загрузка экранов с реальной структурой вместо пустых лоадеров.** Master detail больше не блокируется full-screen «Загружаем профиль…» — рендерится hero 4:5 skeleton + skeleton имени + 3 pill-skeletons, секции проявляются сверху вниз. Home/TopMasters рисует 4 mini-card skeleton'а вместо `null` (раньше секция «прыгала»). Orders index — все 4 `<ActivityIndicator />` заменены на `OrderRowsSkeleton` (chip + title + meta). Category page — row-skeletons формы реального `MasterRow`. MasterServicesList — 3 price-row skeleton'а.
 - **Skeleton базовый компонент** — `src/components/ui/Skeleton.tsx`. Animated.View opacity-pulse, `bg-canvas-soft-2` (auto dark mode). Anti-pattern: `<ActivityIndicator />` на пустом экране запрещён.
@@ -2893,7 +2893,7 @@ ResponseLimitBadge, для клиента пусто). Тап на бургер 
 
 ## Старое состояние (2026-05-14 поздно вечером, UX-полировка category + master)
 
-**Главное в этой сессии (см. подробно `SESSION_SUMMARY_2026-05-14.md`):**
+**Главное в этой сессии (см. подробно `archive/sessions/SESSION_SUMMARY_2026-05-14.md`):**
 
 - **Шрифты:** имя мастера в карточке 16 → **18px** (`text-body-lg`), цены в листинге 12 → **14px** mono (новый токен `text-mono-body` в `tailwind.config.ts`).
 - **DESIGN.md:** добавлена секция «Минимальные размеры шрифта» — шкала + 6 правил, anti-pattern `text-caption-xs` (10px) запрещён.
@@ -2906,7 +2906,7 @@ ResponseLimitBadge, для клиента пусто). Тап на бургер 
   - Gap chips → первая карточка: 44 → 20px (mt-4→0 + py-7→5).
   - **VK-style 5 миниатюр портфолио в каждой карточке** между прайсом и кнопками. На 5-й «+N» если фото больше. Тап → переход на профиль.
   - Контактные кнопки: ghost pills (bg-canvas-soft, h-10, без иконок, equal weight). Primary action — сама карточка. Паттерн TaskRabbit/Booksy/Yelp.
-- **`SESSION_SUMMARY_2026-05-14.md`** — полный отчёт сессии (38 закрытых пунктов, новые правила, новые компоненты, anti-patterns, открытые TODO).
+- **`archive/sessions/SESSION_SUMMARY_2026-05-14.md`** — полный отчёт сессии (38 закрытых пунктов, новые правила, новые компоненты, anti-patterns, открытые TODO).
 
 **Lazyweb использован для:** редизайна кнопок (TaskRabbit, Booksy, Yelp) и header+chips (Farfetch, Backmarket, Wander, Airbnb).
 
@@ -2915,7 +2915,7 @@ ResponseLimitBadge, для клиента пусто). Тап на бургер 
 - `tailwind.config.ts` — новый токен `mono-body: 14px / 20px lh`
 - `DESIGN.md` — секция «Минимальные размеры шрифта»
 - `CLAUDE.md` — 2 новых правила
-- `SESSION_SUMMARY_2026-05-14.md` — новый файл
+- `archive/sessions/SESSION_SUMMARY_2026-05-14.md` — новый файл
 
 ---
 
@@ -2973,7 +2973,7 @@ ResponseLimitBadge, для клиента пусто). Тап на бургер 
 ### Sprint J — что сделано
 
 #### Инфра / дизайн (фундамент)
-- **Vercel DESIGN.md активирован** через `npx getdesign@latest add vercel` (2026-05-13). 3 override'а под marketplace в шапке DESIGN.md: 12px card radius / mesh-gradient ограничен hero / mono-caption для метрик. Старые `DESIGN_CALCOM.md`, `DESIGN_SYSTEM.md`, `DESIGN_REFERENCE_CALCOM.md` → `legacy/`.
+- **Vercel DESIGN.md активирован** через `npx getdesign@latest add vercel` (2026-05-13). 3 override'а под marketplace в шапке DESIGN.md: 12px card radius / mesh-gradient ограничен hero / mono-caption для метрик. Старые `DESIGN_CALCOM.md`, `DESIGN_SYSTEM.md`, `DESIGN_REFERENCE_CALCOM.md` → `archive/legacy/`.
 - **colors.ts переписан** под Vercel: 46 light + 46 dark токенов. Compat aliases (`surface-2`, `muted`, `accent`, `hairline-soft`, `muted-soft`, `accent-soft`, `surface-1`, `surface-3`) оставлены для не-переписанных экранов; удалить после полного rewrite.
 - **scripts/generate-css-tokens.mjs** — генератор `global.css` из `colors.ts`. `npm run tokens` / `npm run tokens:check`. CSS-vars между маркерами `@generated:tokens-*`. Идемпотентно.
 - **Geist + Geist Mono** через jsdelivr-CDN в `global.css` (variable webfonts). AppText переписан под Geist на web + Inter fallback на native + новый `weight="mono"` для метрик «★ 4.9», «12 км», «от 2 500 ₽».
@@ -3032,7 +3032,7 @@ ResponseLimitBadge, для клиента пусто). Тап на бургер 
 
 ### История ключевых решений (2026-05-13)
 
-1. **Vercel DESIGN.md вместо Cal.com** — пользователь установил `npx getdesign@latest add vercel`. Cal.com отправлен в `legacy/`. Override'ы под consumer-marketplace в шапке нового DESIGN.md.
+1. **Vercel DESIGN.md вместо Cal.com** — пользователь установил `npx getdesign@latest add vercel`. Cal.com отправлен в `archive/legacy/`. Override'ы под consumer-marketplace в шапке нового DESIGN.md.
 2. **CSS-var через className вместо JS hex** — на web inline style `rgb(var(--x))` не работает (RNW не пробрасывает var). Решение: атомы используют NativeWind className → Tailwind генерирует CSS-классы → CSS-var резолвится из html.dark класса.
 3. **`web.output: single` вместо `static`** — для локалки. SPA-режим. Прод-деплой через `deploy/web.sh` НЕ затронут (он делает свой `expo export` без локального серва).
 4. **`type="module"` patch для web bundle** — обход SDK 54 бага с `import.meta` в classic script. Скрипт `scripts/build-web-local.mjs` автоматизирует.
@@ -3226,7 +3226,7 @@ Templates статичные, без user-defined. В будущем — `chat_t
 
 Проверки: `tsc --noEmit` ✅, `biome check` ✅, `vitest` 47/47 ✅.
 
-**Sprint 21 закрыт — UX/UI аудит с Lazyweb.** Сводный документ `AUDIT_2026-05-12.md` в корне репозитория + 6 deep-dive отчётов в `.claude/audit-2026-05-12/`.
+**Sprint 21 закрыт — UX/UI аудит с Lazyweb.** Сводный документ `archive/audits/AUDIT_2026-05-12.md` в корне репозитория + 6 deep-dive отчётов в `.claude/audit-2026-05-12/`.
 
 **Результат:** 113 находок (33 🔴 / 47 🟡 / 33 🟢) по 23 экранам, 37 Lazyweb-поисков, 100+ просмотренных скриншотов. Все рекомендации привязаны к 4 главным функциональным референсам (Profi.ru / Яндекс.Услуги / TaskRabbit / Thumbtack) и проходят через 6 дизайн-принципов из `PRODUCT_CONTEXT.md`.
 
@@ -3238,8 +3238,8 @@ Templates статичные, без user-defined. В будущем — `chat_t
 **Хронология Sprint 21:**
 - Подготовительная фаза: Lazyweb MCP подключён, `DESIGN.md` (Cal.com-inspired) поставлен через `npx getdesign@latest add cal`, `PRODUCT_CONTEXT.md` создан с 4 главными референсами + 6 принципами + scope guard, бриф `.claude/audit-2026-05-12/BRIEF.md` подготовлен.
 - Запуск 5 параллельных аудит-агентов (Auth+Onboarding, Discovery, Orders, Chats, Profile) — все 5 вернулись с deep-dive отчётами + executive summary. Каждый сделал 6-8 Lazyweb-поисков.
-- 6-й cross-cutting агент упал с `out of extra usage` (resets 18:30 МСК) — выполнен в main session: read 5 отчётов + DESIGN.md + colors.ts + grep по 26 файлам с хардкод-цветами + 3 Lazyweb-запроса. Это зафиксировано как дисклеймер в `AUDIT_2026-05-12.md`.
-- Итог сведён в `AUDIT_2026-05-12.md` (master-документ) и `ROADMAP_2026-05-12.md` (план внедрения).
+- 6-й cross-cutting агент упал с `out of extra usage` (resets 18:30 МСК) — выполнен в main session: read 5 отчётов + DESIGN.md + colors.ts + grep по 26 файлам с хардкод-цветами + 3 Lazyweb-запроса. Это зафиксировано как дисклеймер в `archive/audits/AUDIT_2026-05-12.md`.
+- Итог сведён в `archive/audits/AUDIT_2026-05-12.md` (master-документ) и `ROADMAP_2026-05-12.md` (план внедрения).
 
 ### 📋 План внедрения
 

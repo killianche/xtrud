@@ -6,7 +6,7 @@
 >
 > Если правишь схему — обнови этот файл в том же коммите.
 >
-> **Last update 2026-05-15:** добавлены P0-1..P0-NEW (миграции 0055–0063). Главные сдвиги: единый источник цен `master_services` (с FK на l2_id/l3_id и pricing_kind), pre-defined услуги с placeholder-ценами, daily response limit 5/день, фото в чате, умный поиск (FTS+pg_trgm+thesaurus). Подробнее в [`research/MASTER_ACCOUNT_PLAN.md`](research/MASTER_ACCOUNT_PLAN.md) и в STATUS.md секция «2026-05-15 ночь».
+> **Last update 2026-05-15:** добавлены P0-1..P0-NEW (миграции 0055–0063). Главные сдвиги: единый источник цен `master_services` (с FK на l2_id/l3_id и pricing_kind), pre-defined услуги с placeholder-ценами, daily response limit 5/день, фото в чате, умный поиск (FTS+pg_trgm+thesaurus). Подробнее в [`archive/research/MASTER_ACCOUNT_PLAN.md`](archive/research/MASTER_ACCOUNT_PLAN.md) и в STATUS.md секция «2026-05-15 ночь».
 
 ---
 

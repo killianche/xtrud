@@ -30,6 +30,7 @@
 | Web/mobile/backend и серверы | [`PROJECT_OPERATIONS.md`](PROJECT_OPERATIONS.md) |
 | Стек и внешние сервисы | [`docs/adr/0001-mobile-first-expo-and-beget-supabase.md`](docs/adr/0001-mobile-first-expo-and-beget-supabase.md), [`docs/EXTERNAL_DEPENDENCIES.md`](docs/EXTERNAL_DEPENDENCIES.md) |
 | Setup и команды | [`README.md`](README.md), [`package.json`](package.json) |
+| Что делаем дальше | [`TASKS.md`](TASKS.md) — актуальный план работ |
 
 Если исторический текст внутри документа противоречит более новому явно
 помеченному override или исполняемому коду, следуй порядку из

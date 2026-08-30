@@ -127,3 +127,56 @@ scripts/supabase/run-moderation-fixture.sh
 It runs three phases — ordering guard, forward/behaviour/rollback contract, and
 a negative-control sweep in which every mutation of the drafts must be caught by
 the assertions. A mutation that is not caught fails the run.
+
+## Publication limits and the picked master — gaps Р4 and Р1
+
+`0131_order_publish_limit.sql` / `0132_revert_order_publish_limit.sql` close gap
+Р4 ("нет серверного лимита на публикацию"): a client may hold at most **3**
+concurrently open tasks and create at most **5** new tasks per rolling 24 hours.
+Neither number is new — 3 is `MAX_ACTIVE_ORDERS` from
+`src/features/orders/order-publish-capacity.ts`, already rendered to the user by
+`ActiveOrdersLimitState`, and 5 is the daily budget the live function
+`check_daily_response_limit()` already applies to masters. The guard fires on
+every transition **into** `open`, not only on INSERT, because the live
+SECURITY DEFINER RPC `reopen_order` walks a closed task back into the feed with
+an UPDATE; and it takes a per-client advisory transaction lock before counting,
+which is the race `use-order-publish-capacity.ts` states it cannot close.
+
+`0133_order_picked_master.sql` / `0134_revert_order_picked_master.sql` close gap
+Р1 ("путь клиента обрывается на главном шаге"): while closing a task as
+`found_master`, the owner may name **which** responder they went with. No column
+is added — `orders.picked_master_id` and `orders.picked_at` already exist and the
+live CHECK constraint already permits them on a cancelled task. What is added is
+meaning: the value may only be set on a task being closed as `found_master`, only
+to a master who actually responded to that task, and only once; it is cleared
+only by re-opening the task. `0133` also replaces the live notification function
+so the chosen master gets one honest push instead of two saying the client
+cancelled, and it refuses to run unless the body it overwrites still hashes to
+the value read from production on 2026-08-30.
+
+Neither draft claims anything about reviews (gap Р2), about repeated re-opening
+of one task re-pinging that task's own former responders, or about response,
+profile or storage volume.
+
+**These two drafts are independent of each other and of `0126`/`0128`.** They add
+no policy, no column and no grant, and both rollbacks are pure drops plus one
+byte-verified function restore.
+
+Local contract run (a schema derived from the 2026-08-30 read-only production
+snapshot, not production approval):
+
+```sh
+scripts/supabase/run-limits-fixture.sh
+```
+
+It runs three phases — collision/ownership guards (each forward draft must
+refuse to overwrite a foreign object and each rollback must refuse to drop one),
+the forward/behaviour/rollback contract, and a 22-mutation negative-control
+sweep in which every mutation must be caught by the assertions.
+
+**Divergence found while building it.** The fixture reproduces live bodies, not
+migration files, and asserts their md5. That is how it was discovered that live
+`trg_notify_masters_on_new_order` is
+`supabase/migrations/0090_notify_masters_on_new_order.sql` with its inline
+comments stripped — i.e. the function was re-created outside the tracked chain.
+Copying the migration file makes the fixture fail.

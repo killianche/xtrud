@@ -88,3 +88,42 @@ Old clients encode “Вся Ингушетия” as `city_id IS NULL AND distr
 Draft `0121` preserves this through explicit `location_scope = 'region_wide'`.
 Its trigger derives `region_wide`, `city` or `district` when a legacy client
 omits the new field; new clients may explicitly send those scopes or `remote`.
+
+## Moderation drafts — gaps Р3 and Р5
+
+`0126_suspension_enforcement.sql` / `0127_revert_suspension_enforcement.sql`
+close gap Р3 ("приостановка не приостанавливает"): a non-active account can no
+longer create or edit orders, responses or reviews, and `public.users.status`
+and `public.users.is_admin` stop being client-writable. Enforcement is by
+trigger rather than by RLS, deliberately: the review path the product actually
+uses is the live RPC `submit_master_review`, which has no migration file, runs
+SECURITY DEFINER and is therefore not subject to `public.reviews` RLS at all.
+
+`0128_order_moderation.sql` / `0129_revert_order_moderation.sql` close gap Р5
+("жалоба на задание не имеет действий"): a moderator can hide and unhide a
+reported task through `public.admin_set_order_hidden`, and can read the subject
+of a report in any status. Hidden tasks leave every feed except the owner's and
+accept no new responses.
+
+**Ordering is enforced in SQL, not by convention.** `0128` aborts with
+`order_moderation_requires_is_admin_hardening_first` unless the `is_admin` lock
+from `0126` is already in place — every capability it adds is gated on
+`users.is_admin`, which is self-settable in the CURRENT state
+(`docs/ADMIN_PANEL.md` §2). `0127` refuses to run while `0128` is applied, and
+`0129` refuses to run while any task is still hidden, so a rollback can never
+silently republish moderated content.
+
+Neither draft claims catalogue/search visibility of a suspended master,
+`master_profiles` content, push, Realtime or storage. Neither can revoke an
+administrator flag that is already set: `0126` stops new self-promotion only, so
+promotion still requires a read-only inventory of live administrators first.
+
+Local contract run (synthetic schema only, not production approval):
+
+```sh
+scripts/supabase/run-moderation-fixture.sh
+```
+
+It runs three phases — ordering guard, forward/behaviour/rollback contract, and
+a negative-control sweep in which every mutation of the drafts must be caught by
+the assertions. A mutation that is not caught fails the run.

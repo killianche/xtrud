@@ -8,7 +8,6 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import "react-native-reanimated";
 import { AppErrorBoundary } from "@/components/AppErrorBoundary";
-import { PhoneFrame } from "@/components/PhoneFrame";
 import { needsMasterFinalization } from "@/features/auth/master-onboarding-recovery";
 import { isPublicDetailsRoute } from "@/features/auth/public-route-policy";
 import { useAuthSession } from "@/features/auth/use-auth-session";
@@ -238,22 +237,20 @@ export default function RootLayout() {
           <SafeAreaProvider>
             <AuthGate>
               <NavHistoryTracker />
-              <PhoneFrame>
-                <Stack
-                  screenOptions={{
-                    headerShown: false,
-                    animation: "slide_from_right",
-                    gestureEnabled: true,
-                    contentStyle: { backgroundColor: canvasColor },
-                  }}
-                >
-                  <Stack.Screen
-                    name="(tabs)"
-                    options={{ animation: "none", gestureEnabled: false }}
-                  />
-                  <Stack.Screen name="(onboarding)" options={{ gestureEnabled: false }} />
-                </Stack>
-              </PhoneFrame>
+              <Stack
+                screenOptions={{
+                  headerShown: false,
+                  animation: "slide_from_right",
+                  gestureEnabled: true,
+                  contentStyle: { backgroundColor: canvasColor },
+                }}
+              >
+                <Stack.Screen
+                  name="(tabs)"
+                  options={{ animation: "none", gestureEnabled: false }}
+                />
+                <Stack.Screen name="(onboarding)" options={{ gestureEnabled: false }} />
+              </Stack>
             </AuthGate>
             <StatusBar style="auto" />
           </SafeAreaProvider>

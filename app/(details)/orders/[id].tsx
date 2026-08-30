@@ -8,19 +8,16 @@ import {
   CheckCircle,
   Clock,
   DotsThree,
-  Flag,
   MapPin,
-  Pencil,
   Phone,
-  Prohibit,
   Star,
-  Trash,
   WhatsappLogo,
   X,
 } from "phosphor-react-native";
 import { useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import {
+  ActionSheetIOS,
   ActivityIndicator,
   Alert,
   KeyboardAvoidingView,
@@ -113,9 +110,9 @@ export default function OrderDetailScreen() {
   );
   const hasMyMasterResponse = !!myMasterResponseQ.data;
   const [reportOpen, setReportOpen] = useState(false);
-  const [menuOpen, setMenuOpen] = useState(false);
   // Шит выбора причины закрытия заказа («нашёл мастера» / «больше не нужно»).
   const [closeSheetOpen, setCloseSheetOpen] = useState(false);
+  const { colorScheme } = useColorScheme();
 
   // safeBack: на вебе orders/[id] и master/[id] живут в разных tab-стеках, поэтому
   // router.back() при cross-stack переходе срабатывает не туда. На web падаем
@@ -156,7 +153,6 @@ export default function OrderDetailScreen() {
   // (работает и на вебе, в отличие от Alert.alert). После удаления уходим назад.
   const handleDelete = async () => {
     if (!id || !userId) return;
-    setMenuOpen(false);
     const confirmed = await confirmAsync({
       title: "Удалить задание?",
       message:
@@ -182,7 +178,6 @@ export default function OrderDetailScreen() {
   // контакт мы остановить не можем (см. app/(details)/master/[id].tsx).
   const handleBlockClient = async () => {
     if (!order || blockUser.isPending) return;
-    setMenuOpen(false);
     const clientDisplay =
       [order.client?.first_name, order.client?.last_name].filter(Boolean).join(" ") || "Клиент";
     const confirmed = await confirmAsync({
@@ -209,10 +204,68 @@ export default function OrderDetailScreen() {
   // Открыть заново — возвращает заказ в ленту мастеров (+14 дней).
   const handleReopen = () => {
     if (!id || !userId) return;
-    setMenuOpen(false);
     reopenOrder.mutate(
       { orderId: id, userId },
       { onError: (e) => Alert.alert("Не удалось открыть заново", e.message) },
+    );
+  };
+
+  // Меню «Действия с заданием» — нативный ActionSheetIOS вместо самописной
+  // шторки (docs/IOS_FOUNDATION.md §2.8). Набор действий зависит от статуса
+  // (план §3 «состояние → действия»), условия гейтов не изменились:
+  //   open:               Редактировать, Закрыть задание
+  //   cancelled/expired:  Открыть заново (в окне 7 дней), Удалить
+  //   чужой заказ:        Заблокировать заказчика, Пожаловаться
+  //                       (UGC safety, App Store Guideline 1.2)
+  // Максимум 2 пункта видно одновременно в любой комбинации статуса/владения.
+  // Деструктивные помечены destructiveButtonIndex — систему красит сама.
+  const openActionMenu = () => {
+    if (!order) return;
+    const items: Array<{ label: string; destructive?: boolean; onPress: () => void }> = [];
+    if (isOwner && order.status === "open") {
+      items.push({
+        label: "Редактировать задание",
+        onPress: () => router.push(`/orders/edit/${id}` as never),
+      });
+      items.push({ label: "Закрыть задание", onPress: () => setCloseSheetOpen(true) });
+    }
+    if (isOwner && isClosedHistory && canReopen) {
+      items.push({ label: "Открыть заново", onPress: handleReopen });
+    }
+    if (isOwner && isClosedHistory) {
+      items.push({ label: "Удалить задание", destructive: true, onPress: handleDelete });
+    }
+    if (!isOwner) {
+      items.push({
+        label: "Заблокировать заказчика",
+        destructive: true,
+        onPress: handleBlockClient,
+      });
+      items.push({
+        label: "Пожаловаться на задание",
+        destructive: true,
+        onPress: () => setReportOpen(true),
+      });
+    }
+    if (items.length === 0) return;
+
+    const cancelButtonIndex = items.length;
+    const destructiveButtonIndex = items
+      .map((item, i) => (item.destructive ? i : -1))
+      .filter((i) => i >= 0);
+
+    ActionSheetIOS.showActionSheetWithOptions(
+      {
+        title: "Действия с заданием",
+        options: [...items.map((item) => item.label), "Отмена"],
+        cancelButtonIndex,
+        destructiveButtonIndex,
+        userInterfaceStyle: colorScheme,
+      },
+      (buttonIndex) => {
+        if (buttonIndex === cancelButtonIndex) return;
+        items[buttonIndex]?.onPress();
+      },
     );
   };
 
@@ -233,7 +286,7 @@ export default function OrderDetailScreen() {
           order && id && userId
             ? {
                 Icon: DotsThree,
-                onPress: () => setMenuOpen(true),
+                onPress: openActionMenu,
                 accessibilityLabel: "Действия с заданием",
               }
             : undefined
@@ -352,84 +405,6 @@ export default function OrderDetailScreen() {
         />
       )}
 
-      {/* Action menu — bottom-sheet с действиями по заказу. Заменяет россыпь
-          круглых icon-buttons в шапке, чтобы не путать с status-pill.
-          Набор действий зависит от статуса (план §3 «состояние → действия»):
-            open:               Редактировать, Закрыть заказ
-            cancelled/expired:  Открыть заново (в окне 7 дней), Удалить
-            чужой заказ:        Заблокировать заказчика, Пожаловаться
-                                (UGC safety, App Store Guideline 1.2) */}
-      {order && id && userId ? (
-        <BottomSheet open={menuOpen} onClose={() => setMenuOpen(false)} title="Действия с заданием">
-          {/* Группировка (план §3 «состояние → действия»): сначала
-              «безопасные» действия (редактировать / открыть заново / закрыть),
-              затем — после тонкого разделителя — необратимое «Удалить» красным.
-              Это паттерн iOS action-sheet: деструктив отделён и визуально
-              выделен, чтобы не нажать случайно. */}
-          <View className="gap-0.5 px-2 pb-2">
-            {isOwner && order.status === "open" ? (
-              <ActionMenuItem
-                icon={Pencil}
-                label="Редактировать задание"
-                onPress={() => {
-                  setMenuOpen(false);
-                  router.push(`/orders/edit/${id}` as never);
-                }}
-              />
-            ) : null}
-            {isOwner && order.status === "open" ? (
-              <ActionMenuItem
-                icon={CheckCircle}
-                label="Закрыть задание"
-                onPress={() => {
-                  setMenuOpen(false);
-                  setCloseSheetOpen(true);
-                }}
-              />
-            ) : null}
-            {isOwner && isClosedHistory && canReopen ? (
-              <ActionMenuItem
-                icon={ArrowCounterClockwise}
-                label="Открыть заново"
-                onPress={handleReopen}
-              />
-            ) : null}
-            {/* Разделитель перед деструктивным действием (только если оно есть). */}
-            {isOwner && isClosedHistory ? (
-              <View className="my-1.5 border-t border-hairline" />
-            ) : null}
-            {isOwner && isClosedHistory ? (
-              <ActionMenuItem
-                icon={Trash}
-                label="Удалить задание"
-                destructive
-                onPress={handleDelete}
-              />
-            ) : null}
-            {!isOwner ? (
-              <ActionMenuItem
-                icon={Prohibit}
-                label="Заблокировать заказчика"
-                destructive
-                onPress={handleBlockClient}
-                accessibilityHint="Скроет его заказы и отклики от вас и ваши от него"
-              />
-            ) : null}
-            {!isOwner ? (
-              <ActionMenuItem
-                icon={Flag}
-                label="Пожаловаться на задание"
-                destructive
-                onPress={() => {
-                  setMenuOpen(false);
-                  setReportOpen(true);
-                }}
-              />
-            ) : null}
-          </View>
-        </BottomSheet>
-      ) : null}
-
       {/* Шит выбора причины закрытия — две крупные кнопки «Нашёл мастера» /
           «Больше не нужно». Обе ведут в cancelled, но пишут разный
           cancel_reason (план §4). */}
@@ -442,80 +417,6 @@ export default function OrderDetailScreen() {
         />
       ) : null}
     </KeyboardAvoidingView>
-  );
-}
-
-interface ActionMenuItemProps {
-  icon: typeof Pencil;
-  label: string;
-  destructive?: boolean;
-  onPress: () => void;
-  /** IOS_FOUNDATION.md §7.2 — для действий с неочевидным последствием. */
-  accessibilityHint?: string;
-}
-
-function ActionMenuItem({
-  icon: Icon,
-  label,
-  destructive,
-  onPress,
-  accessibilityHint,
-}: ActionMenuItemProps) {
-  // BottomSheet рендерится в react-native-web Modal portal, CSS-vars
-  // `rgb(var(--X))` там не резолвятся. Получаем hex напрямую из палитры.
-  // ВАЖНО: на web используем DOM-тему (читает <html class>), а не системную
-  // через useColorScheme() — иначе при системной dark + ручной light в DOM
-  // (через ThemeSwitcher) цвета инвертируются и получается белый текст
-  // на белом canvas (баг-кейс «Редактировать заказ невидимо», 2026-05-19).
-  const isWeb = Platform.OS === "web";
-  const domScheme = useDomColorScheme();
-  const { colorScheme } = useColorScheme();
-  const palette = (isWeb ? domScheme : colorScheme) === "dark" ? darkColors : lightColors;
-  const tc = useThemeColors(["ink", "error"]);
-  const inkColor = isWeb ? palette.ink : tc.ink;
-  const errorColor = isWeb ? palette.error : tc.error;
-  const iconColor = destructive ? errorColor : inkColor;
-  const textColor = destructive ? errorColor : inkColor;
-  // Soft-bg для icon-square slot. Для destructive — error-soft (мягкий
-  // красный), для обычных — canvas-soft (нейтральный фон).
-  const slotBg = destructive
-    ? isWeb
-      ? palette["error-soft"]
-      : palette["error-soft"]
-    : isWeb
-      ? palette["canvas-soft"]
-      : palette["canvas-soft"];
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityHint={accessibilityHint}
-      onPress={onPress}
-      style={({ pressed }) => ({
-        opacity: pressed ? 0.7 : 1,
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 14,
-        borderRadius: 12,
-        paddingHorizontal: 12,
-        paddingVertical: 12,
-      })}
-    >
-      <View
-        style={{
-          height: 38,
-          width: 38,
-          alignItems: "center",
-          justifyContent: "center",
-          borderRadius: 10,
-          backgroundColor: slotBg,
-        }}
-      >
-        <Icon size={20} weight="bold" color={iconColor} />
-      </View>
-      <AppText weight="medium" style={{ color: textColor, fontSize: 16, lineHeight: 22 }}>
-        {label}
-      </AppText>
-    </Pressable>
   );
 }
 
@@ -801,7 +702,7 @@ function CloseReasonSheet({ open, pending, onClose, onPick }: CloseReasonSheetPr
 
 // CloseReasonOption — карточка-вариант причины закрытия. Рендерится в
 // BottomSheet (Modal-портал), где CSS-vars не резолвятся, поэтому цвета берём
-// hex'ом из палитры по DOM-теме (как ActionMenuItem).
+// hex'ом из палитры по DOM-теме.
 interface CloseReasonOptionProps {
   icon: typeof CheckCircle;
   title: string;

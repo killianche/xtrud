@@ -12,19 +12,13 @@
 
 import * as Haptics from "expo-haptics";
 import { useLocalSearchParams } from "expo-router";
-import {
-  CheckCircle,
-  DotsThreeVertical,
-  Flag,
-  Prohibit,
-  WarningCircle,
-} from "phosphor-react-native";
+import { CheckCircle, DotsThreeVertical, WarningCircle } from "phosphor-react-native";
 import { useMemo, useState } from "react";
-import { Alert, Pressable, ScrollView, View } from "react-native";
+import { ActionSheetIOS, Alert, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
 import { Avatar } from "@/components/Avatar";
-import { BottomSheet, ScreenHeader, Skeleton } from "@/components/ui";
+import { ScreenHeader, Skeleton } from "@/components/ui";
 import { useAuthSession } from "@/features/auth/use-auth-session";
 import { blockConfirmMessage } from "@/features/blocking/blocking-copy";
 import { blockingActionFailureMessage } from "@/features/blocking/blocking-error-message";
@@ -33,6 +27,7 @@ import { useClientPublicProfile } from "@/features/client-view/use-client-public
 import { ReviewsSection } from "@/features/master-view/ReviewsSection";
 import { useReviewsForTarget } from "@/features/master-view/use-master-public";
 import { ReportModal } from "@/features/reports/ReportModal";
+import { useColorScheme } from "@/hooks/use-color-scheme";
 import { usePullToRefresh } from "@/hooks/use-pull-to-refresh";
 import { confirmAsync } from "@/lib/confirm";
 import { pluralizeClosedOrders as pluralizeCompleted } from "@/lib/pluralize";
@@ -55,8 +50,8 @@ export default function ClientPublicScreen() {
   const isOwnProfile = !!clientId && clientId === currentUserId;
   const isAnon = !currentUserId;
   const blockUser = useBlockUser();
-  const [actionMenuOpen, setActionMenuOpen] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
+  const { colorScheme } = useColorScheme();
 
   const fullName = useMemo(() => {
     if (!profile.data?.user) return "";
@@ -69,7 +64,6 @@ export default function ClientPublicScreen() {
   // недоступны» — вне-приложенческий контакт мы остановить не можем.
   const handleBlock = async () => {
     if (!clientId || blockUser.isPending) return;
-    setActionMenuOpen(false);
     const confirmed = await confirmAsync({
       title: "Заблокировать пользователя?",
       message: blockConfirmMessage(fullName),
@@ -91,6 +85,32 @@ export default function ClientPublicScreen() {
     });
   };
 
+  // Меню «Действия» — нативный ActionSheetIOS вместо самописной шторки
+  // (docs/IOS_FOUNDATION.md §2.8: выбор из нескольких действий — action sheet).
+  // Максимум 2 пункта одновременно («Заблокировать» скрыт для анонима), оба —
+  // destructive (были окрашены в error и в BottomSheet-варианте). Цвета/иконки
+  // рисует система, отдельная раскраска пунктов больше не нужна.
+  const openActionMenu = () => {
+    const items: Array<{ label: string; onPress: () => void }> = [];
+    if (!isAnon) items.push({ label: "Заблокировать", onPress: handleBlock });
+    items.push({ label: "Пожаловаться", onPress: () => setReportOpen(true) });
+
+    const cancelButtonIndex = items.length;
+    ActionSheetIOS.showActionSheetWithOptions(
+      {
+        title: "Действия",
+        options: [...items.map((i) => i.label), "Отмена"],
+        cancelButtonIndex,
+        destructiveButtonIndex: items.map((_, i) => i),
+        userInterfaceStyle: colorScheme,
+      },
+      (buttonIndex) => {
+        if (buttonIndex === cancelButtonIndex) return;
+        items[buttonIndex]?.onPress();
+      },
+    );
+  };
+
   return (
     <View className="flex-1 bg-canvas" style={{ paddingTop: insets.top }}>
       {/* Стандартный ScreenHeader — height 64, h-12 back, без title (имя
@@ -108,7 +128,7 @@ export default function ClientPublicScreen() {
           !isOwnProfile && clientId
             ? {
                 Icon: DotsThreeVertical,
-                onPress: () => setActionMenuOpen(true),
+                onPress: openActionMenu,
                 accessibilityLabel: "Действия",
               }
             : undefined
@@ -207,66 +227,6 @@ export default function ClientPublicScreen() {
           </>
         )}
       </ScrollView>
-
-      {/* Action menu — overflow ⋮ из header. Тот же визуальный рецепт, что и
-          на master/[id].tsx: «Заблокировать» первым, разделитель, «Пожаловаться». */}
-      {!isOwnProfile ? (
-        <BottomSheet
-          open={actionMenuOpen}
-          onClose={() => setActionMenuOpen(false)}
-          title="Действия"
-        >
-          <View className="pb-2">
-            {!isAnon ? (
-              <>
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityHint="Скроет его заказы и отклики от вас и ваши от него"
-                  onPress={handleBlock}
-                  style={({ pressed }) => ({
-                    opacity: pressed ? 0.7 : 1,
-                    flexDirection: "row",
-                    alignItems: "center",
-                    gap: 12,
-                    paddingHorizontal: 20,
-                    paddingVertical: 14,
-                  })}
-                >
-                  <View className="h-9 w-9 items-center justify-center rounded-md bg-error-soft">
-                    <Prohibit size={18} weight="bold" color={tc.error} />
-                  </View>
-                  <AppText weight="semibold" className="text-body-md text-error">
-                    Заблокировать
-                  </AppText>
-                </Pressable>
-                <View className="mx-5 border-t border-hairline" />
-              </>
-            ) : null}
-            <Pressable
-              accessibilityRole="button"
-              onPress={() => {
-                setActionMenuOpen(false);
-                setReportOpen(true);
-              }}
-              style={({ pressed }) => ({
-                opacity: pressed ? 0.7 : 1,
-                flexDirection: "row",
-                alignItems: "center",
-                gap: 12,
-                paddingHorizontal: 20,
-                paddingVertical: 14,
-              })}
-            >
-              <View className="h-9 w-9 items-center justify-center rounded-md bg-error-soft">
-                <Flag size={18} weight="bold" color={tc.error} />
-              </View>
-              <AppText weight="semibold" className="text-body-md text-error">
-                Пожаловаться
-              </AppText>
-            </Pressable>
-          </View>
-        </BottomSheet>
-      ) : null}
 
       {!isOwnProfile && clientId ? (
         <ReportModal

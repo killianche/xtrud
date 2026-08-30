@@ -14,8 +14,6 @@
  *   - Кнопка-карандаш СПРАВА от заголовка крупнее (h-11 круг). Тап по ней или
  *     по заголовку → режим правки, где СРАЗУ редактируются название + описание
  *     + дата выполнения (раньше описание/дата прятались в отдельном шите за «⋮»).
- *   - «⋮» теперь открывает блок ТОЛЬКО с «Удалить работу» — никакого
- *     «Описание и дата» (оно переехало под карандаш).
  *   - «Добавить фото» — плитка «+» в КОНЦЕ сетки фото (1 тап → мульти-выбор →
  *     batch upload → привязка). Удаление фото — крестик на плитке.
  *
@@ -28,19 +26,11 @@
 
 import { Image } from "expo-image";
 import { useLocalSearchParams } from "expo-router";
-import {
-  CaretLeft,
-  DotsThreeVertical,
-  ImageSquare,
-  Pencil,
-  Plus,
-  Trash,
-} from "phosphor-react-native";
+import { CaretLeft, ImageSquare, Pencil, Plus, Trash } from "phosphor-react-native";
 import { useState } from "react";
 import { ActivityIndicator, Alert, Pressable, ScrollView, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
-import { BottomSheet } from "@/components/ui";
 import { useAuthSession } from "@/features/auth/use-auth-session";
 import { useAddPortfolioItem, useDeletePortfolioItem } from "@/features/profile/use-my-portfolio";
 import {
@@ -92,7 +82,6 @@ export default function OwnerCaseDetailScreen() {
   const updateCase = useUpdateCase(userId);
   const deleteCaseM = useDeleteCase(userId);
 
-  const [menuOpen, setMenuOpen] = useState(false);
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
 
   // Единый режим правки: название + описание + дата сразу (фидбэк владельца).
@@ -178,7 +167,6 @@ export default function OwnerCaseDetailScreen() {
   };
 
   const handleDeleteCase = async () => {
-    setMenuOpen(false);
     if (!caseId) return;
     const confirmed = await confirmAsync({
       title: "Удалить работу?",
@@ -254,12 +242,12 @@ export default function OwnerCaseDetailScreen() {
         </AppText>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Действия"
-          onPress={() => setMenuOpen(true)}
+          accessibilityLabel="Удалить работу"
+          onPress={handleDeleteCase}
           hitSlop={12}
           className="h-10 w-10 items-center justify-center rounded-full active:opacity-70"
         >
-          <DotsThreeVertical size={22} weight="bold" color={tc.ink} />
+          <Trash size={22} weight="bold" color={tc.error} />
         </Pressable>
       </View>
 
@@ -472,30 +460,6 @@ export default function OwnerCaseDetailScreen() {
           </View>
         ) : null}
       </ScrollView>
-
-      {/* «⋮» — блок только с удалением (правка названия/описания/даты переехала
-          под карандаш у заголовка, фидбэк владельца 2026-05-24). */}
-      <BottomSheet open={menuOpen} onClose={() => setMenuOpen(false)} title="Действия">
-        <View className="pb-2">
-          <Pressable
-            accessibilityRole="button"
-            onPress={handleDeleteCase}
-            style={({ pressed }) => ({
-              opacity: pressed ? 0.7 : 1,
-              flexDirection: "row",
-              alignItems: "center",
-              gap: 12,
-              paddingHorizontal: 20,
-              paddingVertical: 14,
-            })}
-          >
-            <Trash size={20} weight="bold" color={tc.error} />
-            <AppText weight="semibold" className="text-body-md text-error">
-              Удалить работу
-            </AppText>
-          </Pressable>
-        </View>
-      </BottomSheet>
     </View>
   );
 }

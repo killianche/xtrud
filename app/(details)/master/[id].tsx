@@ -24,13 +24,12 @@ import {
   Buildings,
   CaretLeft,
   DotsThreeVertical,
-  Flag,
-  Prohibit,
   Star,
   Users,
 } from "phosphor-react-native";
 import { useEffect, useState } from "react";
 import {
+  ActionSheetIOS,
   Alert,
   FlatList,
   Image,
@@ -42,10 +41,11 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
-import { Avatar, BottomSheet, Button, normalizeAvatarUrl, Skeleton } from "@/components/ui";
+import { Avatar, Button, normalizeAvatarUrl, Skeleton } from "@/components/ui";
 import { blockConfirmMessage } from "@/features/blocking/blocking-copy";
 import { blockingActionFailureMessage } from "@/features/blocking/blocking-error-message";
 import { useBlockUser } from "@/features/blocking/use-user-blocks";
+import { useColorScheme } from "@/hooks/use-color-scheme";
 import { confirmAsync } from "@/lib/confirm";
 import { openExternalUrl } from "@/lib/open-link";
 import { useAppWidth } from "@/lib/use-app-width";
@@ -133,9 +133,9 @@ export default function MasterPublicScreen() {
 
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const [reportOpen, setReportOpen] = useState(false);
-  const [actionMenuOpen, setActionMenuOpen] = useState(false);
   const [reviewSheetOpen, setReviewSheetOpen] = useState(false);
   const blockUser = useBlockUser();
+  const { colorScheme } = useColorScheme();
   // Отзыв, который мастер обжалует (#163). null → шит закрыт.
   const [reportReview, setReportReview] = useState<ReviewWithAuthor | null>(null);
 
@@ -161,7 +161,7 @@ export default function MasterPublicScreen() {
   // после получения `u?.avatar_url` из profile.data.
   const [heroFailed, setHeroFailed] = useState(false);
 
-  const tc = useThemeColors(["ink", "error", "accent", "on-dark"]);
+  const tc = useThemeColors(["ink", "accent", "on-dark"]);
 
   // Избранное. Для гостя/own-profile кнопка скрыта (rendering ниже).
   const isFavorite = useIsFavorite(!isAnon && !isOwnProfile ? (masterId ?? undefined) : undefined);
@@ -221,7 +221,6 @@ export default function MasterPublicScreen() {
   // мастера читается публично по RLS независимо от блокировки, src/lib/whatsapp.ts).
   const handleBlock = async () => {
     if (!masterId || blockUser.isPending) return;
-    setActionMenuOpen(false);
     const confirmed = await confirmAsync({
       title: "Заблокировать пользователя?",
       message: blockConfirmMessage(fullName),
@@ -241,6 +240,31 @@ export default function MasterPublicScreen() {
       },
       onError: (e) => Alert.alert("Не удалось заблокировать", blockingActionFailureMessage(e)),
     });
+  };
+
+  // Меню «Действия» — нативный ActionSheetIOS вместо самописной шторки
+  // (docs/IOS_FOUNDATION.md §2.8). Максимум 2 пункта одновременно
+  // («Заблокировать» скрыт для анонима), оба destructive (были окрашены в
+  // error в BottomSheet-варианте) — систему красит сама.
+  const openActionMenu = () => {
+    const items: Array<{ label: string; onPress: () => void }> = [];
+    if (!isAnon) items.push({ label: "Заблокировать", onPress: handleBlock });
+    items.push({ label: "Пожаловаться", onPress: () => setReportOpen(true) });
+
+    const cancelButtonIndex = items.length;
+    ActionSheetIOS.showActionSheetWithOptions(
+      {
+        title: "Действия",
+        options: [...items.map((i) => i.label), "Отмена"],
+        cancelButtonIndex,
+        destructiveButtonIndex: items.map((_, i) => i),
+        userInterfaceStyle: colorScheme,
+      },
+      (buttonIndex) => {
+        if (buttonIndex === cancelButtonIndex) return;
+        items[buttonIndex]?.onPress();
+      },
+    );
   };
 
   // Цельный skeleton всей страницы пока грузятся основные данные (профиль +
@@ -298,7 +322,7 @@ export default function MasterPublicScreen() {
               3. fallback на 16:9 аватар.
             Back и overflow (⋮) — overlay-кнопки поверх hero (фидбэк user
             2026-05-15: «верни как было — overlay, не отдельный canvas-header»).
-            Flag заменён на DotsThreeVertical → BottomSheet с «Пожаловаться». */}
+            Flag заменён на DotsThreeVertical → ActionSheetIOS с «Пожаловаться». */}
         {portfolio.isLoading || profile.isLoading ? (
           <View style={{ position: "relative" }}>
             <Skeleton
@@ -368,7 +392,7 @@ export default function MasterPublicScreen() {
                   <Pressable
                     accessibilityRole="button"
                     accessibilityLabel="Действия"
-                    onPress={() => setActionMenuOpen(true)}
+                    onPress={openActionMenu}
                     hitSlop={4}
                     className="h-9 w-9 items-center justify-center rounded-full bg-black/50 active:opacity-70"
                   >
@@ -437,7 +461,7 @@ export default function MasterPublicScreen() {
                   <Pressable
                     accessibilityRole="button"
                     accessibilityLabel="Действия"
-                    onPress={() => setActionMenuOpen(true)}
+                    onPress={openActionMenu}
                     hitSlop={4}
                     className="h-9 w-9 items-center justify-center rounded-full bg-black/50 active:opacity-70"
                   >
@@ -790,8 +814,8 @@ export default function MasterPublicScreen() {
             светиться внизу карточки. Wrench-divider убран — Vercel-стиль
             обходится без декоративных разделителей.
 
-            Источник: ⋮ DotsThreeVertical в hero header → BottomSheet «Действия»
-            → пункт «Этот мастер выполнил работу» (см. ниже actionMenu). */}
+            Источник: ⋮ DotsThreeVertical в hero header → ActionSheetIOS «Действия»
+            → пункт «Этот мастер выполнил работу» (см. openActionMenu). */}
       </ScrollView>
 
       {/* Sticky CTA убран — кнопки call/WhatsApp перенесены inline после bio. */}
@@ -826,71 +850,6 @@ export default function MasterPublicScreen() {
         review={reportReview}
         reporterId={currentUserId}
       />
-
-      {/* Action menu — overflow ⋮ из header. 2026-05-20 «classifieds»:
-          из меню убран пункт «Этот мастер выполнил мне работу» (ad-hoc
-          подтверждение оффлайн-работы) — он завязан на lifecycle, которого
-          в текущей модели больше нет. «Заблокировать» (только авторизованным)
-          и «Пожаловаться» — UGC safety, App Store Guideline 1.2. */}
-      {!isOwnProfile ? (
-        <BottomSheet
-          open={actionMenuOpen}
-          onClose={() => setActionMenuOpen(false)}
-          title="Действия"
-        >
-          <View className="pb-2">
-            {/* «Заблокировать» — только для авторизованных (гость не может
-                иметь blocker_id). Аноним видит один пункт «Пожаловаться». */}
-            {!isAnon ? (
-              <>
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityHint="Скроет его заказы и отклики от вас и ваши от него"
-                  onPress={handleBlock}
-                  style={({ pressed }) => ({
-                    opacity: pressed ? 0.7 : 1,
-                    flexDirection: "row",
-                    alignItems: "center",
-                    gap: 12,
-                    paddingHorizontal: 20,
-                    paddingVertical: 14,
-                  })}
-                >
-                  <View className="h-9 w-9 items-center justify-center rounded-md bg-error-soft">
-                    <Prohibit size={18} weight="bold" color={tc.error} />
-                  </View>
-                  <AppText weight="semibold" className="text-body-md text-error">
-                    Заблокировать
-                  </AppText>
-                </Pressable>
-                <View className="mx-5 border-t border-hairline" />
-              </>
-            ) : null}
-            <Pressable
-              accessibilityRole="button"
-              onPress={() => {
-                setActionMenuOpen(false);
-                setReportOpen(true);
-              }}
-              style={({ pressed }) => ({
-                opacity: pressed ? 0.7 : 1,
-                flexDirection: "row",
-                alignItems: "center",
-                gap: 12,
-                paddingHorizontal: 20,
-                paddingVertical: 14,
-              })}
-            >
-              <View className="h-9 w-9 items-center justify-center rounded-md bg-error-soft">
-                <Flag size={18} weight="bold" color={tc.error} />
-              </View>
-              <AppText weight="semibold" className="text-body-md text-error">
-                Пожаловаться
-              </AppText>
-            </Pressable>
-          </View>
-        </BottomSheet>
-      ) : null}
 
       {/* Report modal */}
       {!isOwnProfile && masterId ? (

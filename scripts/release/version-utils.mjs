@@ -20,3 +20,51 @@ export function compareMarketingVersions(left, right) {
   }
   return 0;
 }
+
+/**
+ * Проверяет номер сборки iOS против релизного ledger.
+ *
+ * App Store Connect отвергает повторную загрузку пары version+build, даже если
+ * сборка не дошла до продажи и лежит только в TestFlight. Поэтому опубликованного
+ * номера недостаточно: `latestUploadedBuildNumber` хранит наибольший уже
+ * загруженный build, и новый обязан быть строго больше.
+ *
+ * Найдено 2026-08-30 запросом к App Store Connect: build 12 (v1.0.2) был VALID в
+ * TestFlight, тогда как ledger содержал только latestPublishedBuildNumber = 11 —
+ * гейт этого не видел и пропустил бы повторную загрузку.
+ *
+ * @returns {string[]} список причин отказа; пустой массив означает, что номер годен.
+ */
+export function checkIosBuildNumber({ build, published, uploaded }) {
+  const failures = [];
+
+  if (!Number.isInteger(build) || build < 1) {
+    failures.push(
+      `iOS buildNumber должен быть положительным целым, получено ${JSON.stringify(build)}`,
+    );
+    return failures;
+  }
+
+  if (Number.isInteger(published) && build < published) {
+    failures.push(`iOS buildNumber ${build} меньше опубликованного ${published}`);
+  }
+
+  if (uploaded === undefined || uploaded === null) return failures;
+
+  if (!Number.isInteger(uploaded) || uploaded < 1) {
+    failures.push(
+      `latestUploadedBuildNumber должен быть положительным целым, получено ${JSON.stringify(uploaded)}`,
+    );
+    return failures;
+  }
+
+  if (Number.isInteger(published) && uploaded < published) {
+    failures.push(`latestUploadedBuildNumber ${uploaded} меньше опубликованного ${published}`);
+  } else if (build <= uploaded) {
+    failures.push(
+      `iOS buildNumber ${build} уже загружен в App Store Connect (наибольший загруженный — ${uploaded}); подними номер`,
+    );
+  }
+
+  return failures;
+}

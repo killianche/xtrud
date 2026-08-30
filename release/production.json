@@ -13,7 +13,8 @@
   "stores": {
     "ios": {
       "latestPublishedVersion": "1.0.1",
-      "latestPublishedBuildNumber": 11
+      "latestPublishedBuildNumber": 11,
+      "latestUploadedBuildNumber": 12
     },
     "android": {
       "latestPublishedVersionCode": null

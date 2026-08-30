@@ -10,7 +10,7 @@ import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { compareMarketingVersions } from "./version-utils.mjs";
+import { checkIosBuildNumber, compareMarketingVersions } from "./version-utils.mjs";
 
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(SCRIPT_DIR, "../..");
@@ -104,14 +104,22 @@ if (!Number.isInteger(publishedIosBuild) || publishedIosBuild < 1 || !publishedI
       `iOS marketing version ${app.expo?.version} меньше опубликованной ${publishedIosVersion}`,
     );
   }
-  if (iosBuild < publishedIosBuild) {
-    failures.push(`iOS buildNumber ${iosBuild} меньше опубликованного ${publishedIosBuild}`);
-  } else if (iosBuild === publishedIosBuild && app.expo?.version !== publishedIosVersion) {
+  if (iosBuild === publishedIosBuild && app.expo?.version !== publishedIosVersion) {
     failures.push(
       `iOS build ${iosBuild} уже опубликован с version=${publishedIosVersion}, получено ${app.expo?.version}`,
     );
   }
 }
+
+// App Store Connect отвергает повторную загрузку пары version+build, даже если
+// сборка лежит только в TestFlight. Логика и её тесты — в version-utils.mjs.
+failures.push(
+  ...checkIosBuildNumber({
+    build: iosBuild,
+    published: publishedIosBuild,
+    uploaded: release.stores?.ios?.latestUploadedBuildNumber,
+  }),
+);
 
 const androidVersionCode = app.expo?.android?.versionCode;
 if (!Number.isInteger(androidVersionCode) || androidVersionCode < 1) {

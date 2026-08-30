@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "capturedAt": "2026-08-30T18:21:13.915Z",
+  "capturedAt": "2026-08-30T20:13:04.804Z",
   "description": "Known historical migration debt. An allowlist entry records an existing defect; it does not declare the defect safe. New, changed, or resolved findings require explicit review.",
   "migrationHistory": {
     "supabase/migrations/0001_init.sql": "83b4e62d4e274bd0f4d0d407fd3eefd16633821c3f9afdf5c86aa9c730f636b2",
@@ -131,7 +131,8 @@
     "supabase/migrations/0117_resolve_login_email.sql": "3930a1b77d8f62794f039b5d812fb0034922b439317191ba332051ff1b5b948c",
     "supabase/migrations/0118_app_secrets.sql": "f7df69da9e89a8c62471cfc95ace57bce137c3caca03735df5a79b13c1b2ff7f",
     "supabase/migrations/0119_client_errors.sql": "5523c2f8a7aa18f5fc09ab26833ec13be3d496f9cc701430c1f460dd786c09b2",
-    "supabase/migrations/0130_guard_user_privilege_columns.sql": "b53c3c76282f7ff6e65960228b4198d912825409514713369fb9264d92e3a9d9"
+    "supabase/migrations/0130_guard_user_privilege_columns.sql": "b53c3c76282f7ff6e65960228b4198d912825409514713369fb9264d92e3a9d9",
+    "supabase/migrations/0131_revoke_demo_admin.sql": "d9aee838df3c1f89c04313806e3b37c54f8bd78ccb39c7eee61c6bd5c354e586"
   },
   "allowlist": [
     {

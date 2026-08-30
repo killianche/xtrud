@@ -7,11 +7,6 @@ export { Button, type ButtonProps, type ButtonSize, type ButtonVariant } from ".
 export { Card, type CardPadding, type CardProps, type CardVariant } from "./Card";
 export { Chip, type ChipProps, type ChipSize, type ChipVariant } from "./Chip";
 export { Input, type InputProps, type InputSize } from "./Input";
-export {
-  LocationFilterSheet,
-  type LocationFilterSheetProps,
-} from "./LocationFilterSheet";
-export { LocationSheet, type LocationSheetProps } from "./LocationSheet";
 export { type PickerOption, PickerSheet, type PickerSheetProps } from "./PickerSheet";
 export { ScreenHeader, type ScreenHeaderRightAction } from "./ScreenHeader";
 export { SearchBar, type SearchBarProps } from "./SearchBar";

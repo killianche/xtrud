@@ -1,0 +1,59 @@
+# Overlay for the exact docker tree pinned by .supabase-docker-tree.
+# Requires Docker Compose >= 2.24.4 for !override. Do not run alone: merge it
+# after the upstream docker/docker-compose.yml from .supabase-commit.
+
+services:
+  studio:
+    image: ${XTRUD_IMAGE_STUDIO:?set a digest-pinned image from image-digests.json}
+    platform: linux/${XTRUD_TARGET_ARCH:?set XTRUD_TARGET_ARCH}
+
+  api-gw:
+    image: ${XTRUD_IMAGE_API_GW:?set a digest-pinned image from image-digests.json}
+    platform: linux/${XTRUD_TARGET_ARCH:?set XTRUD_TARGET_ARCH}
+    ports: !override
+      - "127.0.0.1:${XTRUD_REHEARSAL_API_PORT:?set XTRUD_REHEARSAL_API_PORT}:8000/tcp"
+
+  auth:
+    image: ${XTRUD_IMAGE_AUTH:?set a digest-pinned image from image-digests.json}
+    platform: linux/${XTRUD_TARGET_ARCH:?set XTRUD_TARGET_ARCH}
+    environment:
+      GOTRUE_JWT_KEYS: ${JWT_KEYS:?set JWT_KEYS with the exact upstream utility}
+
+  rest:
+    image: ${XTRUD_IMAGE_REST:?set a digest-pinned image from image-digests.json}
+    platform: linux/${XTRUD_TARGET_ARCH:?set XTRUD_TARGET_ARCH}
+
+  realtime:
+    image: ${XTRUD_IMAGE_REALTIME:?set a digest-pinned image from image-digests.json}
+    platform: linux/${XTRUD_TARGET_ARCH:?set XTRUD_TARGET_ARCH}
+    environment:
+      API_JWT_JWKS: ${JWT_JWKS:?set JWT_JWKS with the exact upstream utility}
+
+  storage:
+    image: ${XTRUD_IMAGE_STORAGE:?set a digest-pinned image from image-digests.json}
+    platform: linux/${XTRUD_TARGET_ARCH:?set XTRUD_TARGET_ARCH}
+    environment:
+      JWT_JWKS: ${JWT_JWKS:?set JWT_JWKS with the exact upstream utility}
+
+  imgproxy:
+    image: ${XTRUD_IMAGE_IMGPROXY:?set a digest-pinned image from image-digests.json}
+    platform: linux/${XTRUD_TARGET_ARCH:?set XTRUD_TARGET_ARCH}
+
+  meta:
+    image: ${XTRUD_IMAGE_META:?set a digest-pinned image from image-digests.json}
+    platform: linux/${XTRUD_TARGET_ARCH:?set XTRUD_TARGET_ARCH}
+
+  functions:
+    image: ${XTRUD_IMAGE_FUNCTIONS:?set a digest-pinned image from image-digests.json}
+    platform: linux/${XTRUD_TARGET_ARCH:?set XTRUD_TARGET_ARCH}
+    environment:
+      SUPABASE_JWKS: ${JWT_JWKS:?set JWT_JWKS with the exact upstream utility}
+
+  db:
+    image: ${XTRUD_IMAGE_DB:?set a digest-pinned image from image-digests.json}
+    platform: linux/${XTRUD_TARGET_ARCH:?set XTRUD_TARGET_ARCH}
+
+  supavisor:
+    image: ${XTRUD_IMAGE_SUPAVISOR:?set a digest-pinned image from image-digests.json}
+    platform: linux/${XTRUD_TARGET_ARCH:?set XTRUD_TARGET_ARCH}
+    ports: !reset []

@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Поддержка — xtrud</title>
+    <meta
+      name="description"
+      content="Поддержка xtrud — задайте вопрос через Telegram или по электронной почте."
+    />
+    <meta name="theme-color" content="#0a0a0a" />
+    <link rel="icon" href="/favicon.ico" />
+    <style>
+      :root {
+        --canvas: #fafafa;
+        --ink: #0a0a0a;
+        --body: #404040;
+        --mute: #737373;
+        --hairline: #e5e5e5;
+        --canvas-soft: #f5f5f5;
+        --primary: #0a0a0a;
+        --on-primary: #ffffff;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --canvas: #0a0a0a;
+          --ink: #fafafa;
+          --body: #d4d4d4;
+          --mute: #a3a3a3;
+          --hairline: #262626;
+          --canvas-soft: #171717;
+          --primary: #fafafa;
+          --on-primary: #0a0a0a;
+        }
+      }
+      * { box-sizing: border-box; }
+      html, body { margin: 0; padding: 0; background: var(--canvas); color: var(--ink); font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; line-height: 1.55; -webkit-font-smoothing: antialiased; }
+      .container { max-width: 640px; margin: 0 auto; padding: 48px 24px 96px; }
+      .logo { font-weight: 700; font-size: 22px; letter-spacing: -0.02em; }
+      a.logo { color: var(--ink); text-decoration: none; }
+      h1 { margin: 56px 0 12px; font-size: 36px; line-height: 1.1; letter-spacing: -0.03em; font-weight: 700; }
+      p.lead { font-size: 17px; color: var(--body); margin: 0 0 32px; }
+      .channels { display: grid; gap: 12px; margin-top: 24px; }
+      .channel { display: flex; align-items: center; gap: 16px; padding: 20px; border: 1px solid var(--hairline); background: var(--canvas-soft); border-radius: 12px; color: var(--ink); text-decoration: none; transition: opacity .15s; }
+      .channel:active { opacity: 0.75; }
+      .channel-icon { width: 40px; height: 40px; border-radius: 999px; background: var(--ink); color: var(--on-primary); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 18px; }
+      .channel h3 { margin: 0 0 2px; font-size: 15px; font-weight: 600; }
+      .channel p { margin: 0; font-size: 13px; color: var(--mute); }
+      .links { display: flex; flex-wrap: wrap; gap: 24px; margin-top: 56px; padding-top: 32px; border-top: 1px solid var(--hairline); }
+      .links a { color: var(--ink); text-decoration: none; font-size: 14px; font-weight: 500; }
+      .links a:hover { text-decoration: underline; }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <a class="logo" href="/">xtrud</a>
+      <h1>Поддержка</h1>
+      <p class="lead">
+        Помогаем по любым вопросам, связанным с приложением: вход, удаление аккаунта,
+        жалобы, конфиденциальность данных. Отвечаем в течение 24 часов.
+      </p>
+
+      <div class="channels">
+        <a class="channel" href="https://t.me/xtrud_support" target="_blank" rel="noopener noreferrer">
+          <div class="channel-icon">TG</div>
+          <div>
+            <h3>Telegram</h3>
+            <p>@xtrud_support — быстрая помощь в чате</p>
+          </div>
+        </a>
+        <a class="channel" href="mailto:support@xtrud.ru">
+          <div class="channel-icon">✉</div>
+          <div>
+            <h3>Электронная почта</h3>
+            <p>support@xtrud.ru — для официальных запросов и юридических вопросов</p>
+          </div>
+        </a>
+      </div>
+
+      <nav class="links">
+        <a href="/">Главная</a>
+        <a href="/privacy">Политика конфиденциальности</a>
+        <a href="/terms">Условия использования</a>
+      </nav>
+    </div>
+  </body>
+</html>

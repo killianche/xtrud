@@ -1,0 +1,11 @@
+<svg width='48' height='48' viewBox='0 0 48 48' xmlns='http://www.w3.org/2000/svg'>
+<ellipse cx='24' cy='41.6' rx='13' ry='2.3' fill='#000000' opacity='0.10'/>
+<rect x='7' y='13' width='34' height='22' rx='4' fill='#cfd8e6'/>
+<rect x='9' y='15' width='30' height='18' rx='3' fill='#eaf1fb'/>
+<rect x='9' y='15' width='30' height='18' rx='3' fill='url(#tcG)'/>
+<circle cx='16' cy='24' r='2.6' fill='#ffd76a'/><circle cx='16' cy='24' r='1.1' fill='#fff3cf'/>
+<circle cx='24' cy='24' r='2.6' fill='#ffd76a'/><circle cx='24' cy='24' r='1.1' fill='#fff3cf'/>
+<circle cx='32' cy='24' r='2.6' fill='#ffd76a'/><circle cx='32' cy='24' r='1.1' fill='#fff3cf'/>
+<path d='M11 16 L20 16 L13 31 L9 31 z' fill='#ffffff' opacity='0.45'/>
+<defs><linearGradient id='tcG' x1='9' y1='15' x2='39' y2='33' gradientUnits='userSpaceOnUse'><stop offset='0' stop-color='#ffffff' stop-opacity='0.7'/><stop offset='1' stop-color='#cfe0f5' stop-opacity='0.2'/></linearGradient></defs>
+</svg>

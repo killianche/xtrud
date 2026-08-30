@@ -1,0 +1,46 @@
+# Зависимости
+node_modules/
+
+# Нативные каталоги генерируются из Expo config (docs/AGENT_WORKFLOW.md §4).
+# Они не являются источником истины: значения версий, entitlements и
+# Info.plist берутся из app.json и восстанавливаются `npx expo prebuild`.
+ios/
+android/
+
+# Сборки и кэш
+dist/
+.expo/
+web-build/
+*.tsbuildinfo
+
+# Expo / EAS
+.eas/
+
+# Логи
+*.log
+npm-debug.log*
+yarn-error.log*
+
+# Секреты и локальное окружение: никогда не коммитить (AGENTS.md)
+.env
+.env.*
+!.env.example
+*.pem
+*.p8
+*.p12
+*.key
+*.mobileprovision
+*.keystore
+google-services.json
+GoogleService-Info.plist
+
+# Локальные артефакты Supabase
+supabase/.temp/
+supabase/.branches/
+
+# ОС и редакторы
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp

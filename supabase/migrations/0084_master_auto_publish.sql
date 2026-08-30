@@ -1,0 +1,5 @@
+-- 0084_master_auto_publish.sql
+-- Автопубликация мастера: status='active', is_hidden_from_search=false
+-- срабатывает когда portfolio_items >= 5, master_categories >= 1,
+-- master_profiles.experience_years IS NOT NULL.
+-- См. try_publish_master() и три триггера в RPC.

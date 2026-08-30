@@ -1,0 +1,31 @@
+# Install only on the NEW backend VPS. The exact upstream Envoy gateway must be
+# bound to 127.0.0.1:8000 on the host; never publish Studio/Postgres directly.
+
+api.xtrud.pro {
+	encode zstd gzip
+
+	# Public application surface only. Both the exact path and its descendants
+	# are listed because Caddy `/prefix/*` does not match `/prefix` itself.
+	@public_api path \
+		/auth/v1 /auth/v1/* \
+		/rest/v1 /rest/v1/* \
+		/realtime/v1 /realtime/v1/* \
+		/storage/v1 /storage/v1/* \
+		/functions/v1 /functions/v1/* \
+		/graphql/v1 /graphql/v1/*
+
+	handle @public_api {
+		reverse_proxy 127.0.0.1:8000
+	}
+
+	# Fail closed for Studio, pg-meta, analytics and future upstream routes.
+	handle {
+		respond "Not Found" 404
+	}
+
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+	}
+}

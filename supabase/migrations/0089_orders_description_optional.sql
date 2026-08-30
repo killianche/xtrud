@@ -1,0 +1,3 @@
+-- 0089_orders_description_optional.sql
+-- orders.description: уберём min 10. NULL allowed, max 2000.
+-- В UI поле помечено «(необязательно)» — было рассогласование с БД.

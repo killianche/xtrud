@@ -1,0 +1,150 @@
+/*
+ * Шрифты — СИСТЕМНЫЙ ШРИФТ (с 2026-05-23, решение владельца «супер стандартный
+ * и везде быстро открывающийся»). Ноль загрузки → мгновенный рендер, без флэша
+ * и без внешнего CDN:
+ *   - iOS/macOS/Safari → SF Pro;  Windows → Segoe UI;  Android → Roboto.
+ * Раньше был Geist (Vercel) с подгрузкой с jsdelivr — он тормозил первый показ.
+ * Выбор шрифта по назначению — в src/components/AppText.tsx и tailwind.config.ts.
+ */
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * Дизайн-токены цветов как CSS-переменные.
+ * Формат "R G B" триплет нужен для Tailwind alpha-modifier: bg-canvas/50.
+ *
+ * Источник истины — src/lib/colors.ts.
+ * Блок между @generated:tokens-start и @generated:tokens-end
+ * генерируется автоматически: `npm run tokens`.
+ *
+ * НЕ редактируй :root и .dark вручную — правь colors.ts и перегенерируй.
+ * WCAG-фиксы фиксированы там же в комментариях к токенам.
+ */
+
+/* @generated:tokens-start */
+@layer base {
+  :root {
+    --canvas: 255 255 255;
+    --canvas-soft: 250 250 250;
+    --canvas-soft-2: 245 245 245;
+    --ink: 23 23 23;
+    --body: 77 77 77;
+    --mute: 136 136 136;
+    --hairline: 235 235 235;
+    --hairline-strong: 161 161 161;
+    --primary: 23 23 23;
+    --on-primary: 255 255 255;
+    --link: 0 112 243;
+    --link-deep: 7 97 209;
+    --link-bg-soft: 211 229 255;
+    --success: 16 185 129;
+    --success-soft: 209 250 229;
+    --warning: 245 166 35;
+    --warning-soft: 255 239 207;
+    --warning-deep: 171 87 10;
+    --error: 238 0 0;
+    --error-soft: 247 212 214;
+    --error-deep: 197 0 0;
+    --violet: 121 40 202;
+    --violet-soft: 216 204 241;
+    --violet-deep: 76 40 137;
+    --cyan: 80 227 194;
+    --cyan-soft: 170 255 236;
+    --cyan-deep: 41 188 155;
+    --highlight-pink: 255 0 128;
+    --highlight-magenta: 235 54 127;
+    --surface-dark: 10 10 10;
+    --on-dark: 255 255 255;
+    --on-dark-soft: 161 161 161;
+    --badge-orange: 251 146 60;
+    --badge-pink: 236 72 153;
+    --badge-violet: 139 92 246;
+    --badge-emerald: 52 211 153;
+    --badge-sky: 56 189 248;
+    --badge-amber: 251 191 36;
+    --surface-1: 250 250 250;
+    --surface-2: 245 245 245;
+    --surface-3: 235 235 235;
+    --hairline-soft: 245 245 245;
+    --muted: 136 136 136;
+    --muted-soft: 161 161 161;
+    --accent: 254 85 116;
+    --accent-soft: 255 228 234;
+  }
+
+  .dark:root,
+  :root.dark,
+  .dark {
+    --canvas: 10 10 10;
+    --canvas-soft: 22 22 22;
+    --canvas-soft-2: 34 34 34;
+    --ink: 250 250 250;
+    --body: 184 184 184;
+    --mute: 153 153 153;
+    --hairline: 51 51 51;
+    --hairline-strong: 82 82 82;
+    --primary: 250 250 250;
+    --on-primary: 10 10 10;
+    --link: 50 145 255;
+    --link-deep: 85 153 255;
+    --link-bg-soft: 26 58 92;
+    --success: 52 211 153;
+    --success-soft: 6 78 59;
+    --warning: 251 191 36;
+    --warning-soft: 120 53 15;
+    --warning-deep: 253 230 138;
+    --error: 239 68 68;
+    --error-soft: 127 29 29;
+    --error-deep: 252 165 165;
+    --violet: 167 139 250;
+    --violet-soft: 76 40 137;
+    --violet-deep: 221 214 254;
+    --cyan: 103 232 249;
+    --cyan-soft: 21 94 117;
+    --cyan-deep: 165 243 252;
+    --highlight-pink: 255 77 166;
+    --highlight-magenta: 244 114 182;
+    --surface-dark: 10 10 10;
+    --on-dark: 255 255 255;
+    --on-dark-soft: 161 161 161;
+    --badge-orange: 251 146 60;
+    --badge-pink: 236 72 153;
+    --badge-violet: 139 92 246;
+    --badge-emerald: 52 211 153;
+    --badge-sky: 56 189 248;
+    --badge-amber: 251 191 36;
+    --surface-1: 22 22 22;
+    --surface-2: 34 34 34;
+    --surface-3: 51 51 51;
+    --hairline-soft: 31 31 31;
+    --muted: 153 153 153;
+    --muted-soft: 82 82 82;
+    --accent: 255 107 135;
+    --accent-soft: 74 31 41;
+  }
+}
+/* @generated:tokens-end */
+
+@layer base {
+  /* Системный шрифт для всех веб-элементов вне AppText (инпуты, плейсхолдеры,
+     сырой DOM). SF Pro / Segoe / Roboto — у каждого устройства свой родной. */
+  html,
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  }
+
+  /* Крупные заголовки (класс font-display) — полужирный вес. */
+  .font-display {
+    font-weight: 600;
+  }
+
+  /* Шрифтовые CSS-переменные (web-only). */
+  :root {
+    --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --font-display: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --font-heading: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --font-mono: ui-monospace, "SFMono-Regular", "SF Mono", Menlo, Consolas, monospace;
+  }
+}

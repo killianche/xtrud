@@ -1,0 +1,83 @@
+{
+  "cli": {
+    "version": ">= 16.0.0",
+    "appVersionSource": "local"
+  },
+  "build": {
+    "base": {
+      "node": "20.19.4",
+      "env": {
+        "EXPO_PUBLIC_SUPABASE_URL": "https://wgeimsajvjkzrrnfrnkb.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "sb_publishable_C1FjIf3-lgzTAPr2B2Yjjg_wrOMje-O",
+        "SENTRY_DISABLE_AUTO_UPLOAD": "true"
+      }
+    },
+    "development": {
+      "extends": "base",
+      "developmentClient": true,
+      "distribution": "internal",
+      "channel": "development",
+      "env": {
+        "EXPO_PUBLIC_ENABLE_DEMO": "true",
+        "EXPO_PUBLIC_DEMO_MODE": "true"
+      },
+      "ios": {
+        "simulator": true,
+        "resourceClass": "m-medium"
+      },
+      "android": {
+        "buildType": "apk",
+        "resourceClass": "medium"
+      }
+    },
+    "development-device": {
+      "extends": "development",
+      "ios": {
+        "simulator": false,
+        "resourceClass": "m-medium"
+      }
+    },
+    "preview": {
+      "extends": "base",
+      "distribution": "internal",
+      "channel": "preview",
+      "env": {
+        "EXPO_PUBLIC_ENABLE_DEMO": "true",
+        "EXPO_PUBLIC_DEMO_MODE": "true"
+      },
+      "ios": {
+        "resourceClass": "m-medium"
+      },
+      "android": {
+        "buildType": "apk",
+        "resourceClass": "medium"
+      }
+    },
+    "production": {
+      "extends": "base",
+      "autoIncrement": false,
+      "env": {
+        "EXPO_PUBLIC_ENABLE_DEMO": "false",
+        "EXPO_PUBLIC_DEMO_MODE": "false"
+      },
+      "ios": {
+        "resourceClass": "m-medium"
+      },
+      "android": {
+        "buildType": "app-bundle",
+        "resourceClass": "medium"
+      }
+    }
+  },
+  "submit": {
+    "production": {
+      "ios": {
+        "ascApiKeyPath": "/Users/ruslancherbizhev/.expo-asc-keys/AuthKey_MFXS9GDD4X.p8",
+        "ascApiKeyId": "MFXS9GDD4X",
+        "ascApiKeyIssuerId": "6fc51340-af9d-4698-99ff-0c2b56adab1d",
+        "appleTeamId": "ZNK264PD9Y",
+        "ascAppId": "6776783761"
+      }
+    }
+  }
+}

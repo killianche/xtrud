@@ -1,0 +1,1097 @@
+/**
+ * Category detail — список мастеров в L2 категории.
+ *
+ * Vercel + TaskRabbit Select-a-Tasker:
+ *   - Top bar: back + city chip
+ *   - H1 категории + краткое описание + counter мастеров
+ *   - Список мастеров card-row: фото + имя + рейтинг + город + опыт
+ *   - Список услуг с avg ценой (compact rows, expandable accordion)
+ *
+ * Тап карточки мастера → /master/[id]
+ */
+
+import { useLocalSearchParams, useRouter } from "expo-router";
+import {
+  Briefcase,
+  Calendar,
+  CaretLeft,
+  ListChecks,
+  MapPin,
+  Star,
+  Users,
+} from "phosphor-react-native";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  Animated,
+  FlatList,
+  Image,
+  type NativeScrollEvent,
+  type NativeSyntheticEvent,
+  Platform,
+  Pressable,
+  ScrollView,
+  View,
+} from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { AppText } from "@/components/AppText";
+import { CITIES, type CityId } from "@/components/CitySelector";
+import { Avatar, type PickerOption, PickerSheet, Skeleton } from "@/components/ui";
+import { useCategoryDetail } from "@/features/categories/use-category-detail";
+import {
+  formatServicePrice,
+  useMasterServices,
+} from "@/features/master-services/use-master-services";
+import {
+  AVAILABILITY_DOT,
+  AVAILABILITY_SHORT,
+  effectiveStatus,
+  isAvailabilityVisible,
+} from "@/features/master-view/availability";
+import { type MasterInCategory, useMastersByL2 } from "@/features/master-view/use-masters-by-l2";
+import { useRecordMasterView } from "@/features/master-view/use-record-view";
+import { type PortfolioItem, useMasterPortfolio } from "@/features/profile/use-my-portfolio";
+import { usePullToRefresh } from "@/hooks/use-pull-to-refresh";
+import { getCategoryColorIconUrl } from "@/lib/category-color-icons";
+import { cdnImage } from "@/lib/image-cdn";
+import { pluralizeYears } from "@/lib/pluralize";
+import { useAppWidth } from "@/lib/use-app-width";
+import { useSafeBack } from "@/lib/use-safe-back";
+import { useThemeColors } from "@/lib/use-theme-color";
+
+/** Высота скрываемой шапки = back-row (64) + chip-row (52).
+ *  Back-row высокий, чтобы display-md заголовок (24px) и крупная back-кнопка
+ *  (48×48 тач-таргет, chevron 28) комфортно помещались — пользователь
+ *  жаловался что шапка «маленькая, мелкое написано» (2026-05-14).
+ *  Chip-row — h-10 чипы + py-1.5, без chevron-down (убран по фидбэку). */
+const HEADER_BAR_HEIGHT = 64;
+const CHIPS_BAR_HEIGHT = 52;
+const HIDEABLE_HEIGHT = HEADER_BAR_HEIGHT + CHIPS_BAR_HEIGHT;
+/** Расстояние от верха, ниже которого срабатывает auto-hide. До 40px от
+ *  верха шапка всегда видна — иначе пользователь не понимает где он. */
+const HIDE_THRESHOLD = 40;
+/** Минимальный delta-Y между событиями скролла, чтобы засчитать «жест»
+ *  направления (исключаем шум от тач-pad'а). */
+const DIRECTION_NOISE = 4;
+
+export default function CategoryDetailScreen() {
+  const insets = useSafeAreaInsets();
+  const router = useRouter();
+  const tc = useThemeColors(["accent", "canvas", "ink", "mute"]);
+  const { id } = useLocalSearchParams<{ id: string }>();
+  const categoryId = typeof id === "string" ? id : undefined;
+  const { data, error, isLoading: isCategoryLoading } = useCategoryDetail(categoryId);
+  const masters = useMastersByL2(categoryId ?? null);
+  const refresh = usePullToRefresh();
+  // safeBack: при заходе по deeplink/refresh уходим на home, не в браузерную
+  // историю до приложения.
+  const goBack = useSafeBack("/" as const);
+
+  // Desktop-web — отключаем auto-hide шапки. На большом экране хедер всегда
+  // sticky (WebShell + категория-row): пользователь хочет видеть фильтры
+  // постоянно (фидбэк user 2026-05-16). На mobile сохраняем hide-on-scroll
+  // (Telegram/iOS-style) — там экономия места критична.
+  const viewportWidth = useAppWidth();
+  const isDesktopWeb = Platform.OS === "web" && viewportWidth >= 768;
+
+  // Auto-hide header при скролле вниз / re-show при скролле вверх (Telegram/iOS-style).
+  // useNativeDriver: false — на web нет нативного драйвера, на iOS/Android тоже работает
+  // нормально для дешёвой translateY-анимации (200ms).
+  const translateY = useRef(new Animated.Value(0)).current;
+  const lastScrollY = useRef(0);
+  const headerVisible = useRef(true);
+
+  const handleScroll = useCallback(
+    (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+      if (isDesktopWeb) return; // hide-on-scroll отключён для desktop
+      const y = e.nativeEvent.contentOffset.y;
+      const dy = y - lastScrollY.current;
+      lastScrollY.current = y;
+      // У самого верха — всегда показывать, иначе пользователь не понимает контекст
+      if (y <= HIDE_THRESHOLD) {
+        if (!headerVisible.current) {
+          headerVisible.current = true;
+          Animated.timing(translateY, {
+            toValue: 0,
+            duration: 220,
+            useNativeDriver: false,
+          }).start();
+        }
+        return;
+      }
+      if (dy > DIRECTION_NOISE && headerVisible.current) {
+        headerVisible.current = false;
+        Animated.timing(translateY, {
+          toValue: -HIDEABLE_HEIGHT,
+          duration: 220,
+          useNativeDriver: false,
+        }).start();
+      } else if (dy < -DIRECTION_NOISE && !headerVisible.current) {
+        headerVisible.current = true;
+        Animated.timing(translateY, {
+          toValue: 0,
+          duration: 220,
+          useNativeDriver: false,
+        }).start();
+      }
+    },
+    [translateY, isDesktopWeb],
+  );
+
+  const categoryName = data?.category.name_ru ?? "Категория";
+  const services = data?.services ?? [];
+  const allMasters = masters.data ?? [];
+
+  // Filters state
+  type SortBy = "rating" | "experience" | "availability";
+  const [cityFilter, setCityFilter] = useState<CityId>("all");
+  const [l3Filter, setL3Filter] = useState<string | null>(null);
+  const [sortBy, setSortBy] = useState<SortBy>("rating");
+  const [openSheet, setOpenSheet] = useState<null | "city" | "l3" | "sort">(null);
+
+  // Apply filter + sort
+  const mastersList = useMemo(() => {
+    let list = [...allMasters];
+    if (cityFilter !== "all") {
+      list = list.filter((m) => m.user.city_id === cityFilter);
+    }
+    // L3 фильтр пока без эффекта — master_categories.l3_ids массив, требует
+    // отдельного запроса. TODO sprint 2: фильтровать через JOIN.
+    if (sortBy === "experience") {
+      list.sort((a, b) => (b.profile?.experience_years ?? 0) - (a.profile?.experience_years ?? 0));
+    } else if (sortBy === "availability") {
+      const order: Record<string, number> = {
+        today: 3,
+        this_week: 2,
+        next_week: 1,
+        unavailable: 0,
+      };
+      list.sort(
+        (a, b) =>
+          (order[b.profile?.availability_status ?? "unavailable"] ?? 0) -
+          (order[a.profile?.availability_status ?? "unavailable"] ?? 0),
+      );
+    }
+    // 'rating' — default уже отсортирован hook'ом
+    return list;
+  }, [allMasters, cityFilter, sortBy]);
+
+  const cityLabel = CITIES.find((c) => c.id === cityFilter)?.name ?? "Город";
+  const l3Label = l3Filter
+    ? (services.find((s) => s.id === l3Filter)?.name_ru ?? "Услуга")
+    : "Услуга";
+  const sortLabel =
+    sortBy === "rating" ? "По рейтингу" : sortBy === "experience" ? "По опыту" : "Свободные";
+
+  // Цельный скелет всего экрана пока грузятся данные категории И мастера.
+  // Раньше заголовок/чипы/список появлялись по отдельности — рвано (фидбэк
+  // владельца 2026-05-27: «открывается без заголовка, но пилюли загружены»).
+  // Теперь: открыл → скелет всей структуры → потом весь контент разом.
+  if (isCategoryLoading || masters.isLoading) {
+    return <CategorySkeleton insets={insets} goBack={goBack} />;
+  }
+
+  return (
+    <View className="flex-1 bg-canvas">
+      {/* Animated скрываемая шапка: position:absolute поверх ScrollView,
+          translateY=0 (видна) → -HIDEABLE_HEIGHT (скрыта). bg-canvas через
+          className (NativeWind) — inline `tc.canvas` иногда теряет CSS-vars
+          в Animated-portal на web и контент просвечивает (фидбэк user
+          2026-05-14). Дублируем bg на back-row и chip-row для надёжности. */}
+      <Animated.View
+        className="bg-canvas"
+        style={{
+          position: "absolute",
+          top: 0,
+          left: 0,
+          right: 0,
+          zIndex: 10,
+          paddingTop: insets.top,
+          transform: [{ translateY }],
+        }}
+        pointerEvents="box-none"
+      >
+        {/* Top bar: крупный back + название категории display-md (24px).
+            Размеры подняты по фидбэку user 2026-05-14 («стрелочка очень
+            маленькая, хедер тоже маленькая написано»). Back-кнопка 48×48
+            (h-12 w-12) — комфортный тач-таргет, chevron 28 strokeWidth 2.25
+            для большей контрастности. Title display-md weight=bold (700)
+            — Airbnb / Booking detail-pattern.
+
+            На desktop chips размещаются справа от заголовка в той же строке
+            (фидбэк user 2026-05-16: «чипы напротив сантехника на одном метре»).
+            На mobile chips остаются под заголовком — на узком экране одна
+            строка не вмещает back + title + 3 chip pill. */}
+        <View
+          className="flex-row items-center gap-2 px-3 bg-canvas"
+          style={{ height: HEADER_BAR_HEIGHT }}
+        >
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Назад"
+            onPress={goBack}
+            className="h-12 w-12 items-center justify-center rounded-full active:bg-canvas-soft text-ink"
+          >
+            <CaretLeft size={28} weight="fill" color="currentColor" />
+          </Pressable>
+          {/* Пока грузится — skeleton-полоска вместо текста, чтобы заголовок
+              не мигал «Категория» → «Сантехника» (фидбэк владельца 2026-05-27). */}
+          {isCategoryLoading || !data ? (
+            <View className="flex-1">
+              <Skeleton width={180} height={26} style={{ borderRadius: 6 }} />
+            </View>
+          ) : (
+            <AppText
+              weight="bold"
+              className="flex-1 text-display-md tracking-tight text-ink"
+              numberOfLines={1}
+            >
+              {categoryName}
+            </AppText>
+          )}
+          {isDesktopWeb ? (
+            <View className="flex-row items-center" style={{ gap: 6 }}>
+              <FilterChip
+                label={cityLabel}
+                icon={MapPin}
+                active={cityFilter !== "all"}
+                onPress={() => setOpenSheet("city")}
+              />
+              {services.length > 0 ? (
+                <FilterChip
+                  label={l3Label}
+                  icon={ListChecks}
+                  active={!!l3Filter}
+                  onPress={() => setOpenSheet("l3")}
+                />
+              ) : null}
+              <FilterChip
+                label={sortLabel}
+                icon={
+                  sortBy === "experience" ? Briefcase : sortBy === "availability" ? Calendar : Star
+                }
+                active={sortBy !== "rating"}
+                onPress={() => setOpenSheet("sort")}
+              />
+            </View>
+          ) : null}
+        </View>
+
+        {/* Quick filter chips — горизонтальный scroll. flexGrow:0 чтобы не
+            расползался по высоте (иначе схлопывается до ~12px). Tight
+            paddingHorizontal:12 — chips ближе к краю экрана как у Airbnb.
+            На desktop этот блок скрыт — chips перенесены в title-row выше. */}
+        {!isDesktopWeb ? (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            className="bg-canvas"
+            style={{ flexGrow: 0, flexShrink: 0, height: CHIPS_BAR_HEIGHT }}
+            contentContainerStyle={{
+              paddingHorizontal: 12,
+              paddingVertical: 6,
+              gap: 6,
+              alignItems: "center",
+            }}
+          >
+            <FilterChip
+              label={cityLabel}
+              icon={MapPin}
+              active={cityFilter !== "all"}
+              onPress={() => setOpenSheet("city")}
+            />
+            {/* Чип «Услуга» только если есть L3-подкатегории. */}
+            {services.length > 0 ? (
+              <FilterChip
+                label={l3Label}
+                icon={ListChecks}
+                active={!!l3Filter}
+                onPress={() => setOpenSheet("l3")}
+              />
+            ) : null}
+            <FilterChip
+              label={sortLabel}
+              // Иконка меняется с выбором сортировки — пользователь видит
+              // что именно активно (рейтинг ★ / опыт 💼 / готовность 📅).
+              icon={
+                sortBy === "experience" ? Briefcase : sortBy === "availability" ? Calendar : Star
+              }
+              active={sortBy !== "rating"}
+              onPress={() => setOpenSheet("sort")}
+            />
+          </ScrollView>
+        ) : null}
+      </Animated.View>
+
+      <ScrollView
+        contentContainerStyle={{
+          // Резервируем место под скрываемую шапку — иначе первый мастер
+          // уезжает под неё при первом рендере. На desktop chips inline
+          // c заголовком, поэтому только HEADER_BAR_HEIGHT.
+          paddingTop: insets.top + (isDesktopWeb ? HEADER_BAR_HEIGHT : HIDEABLE_HEIGHT),
+          paddingBottom: insets.bottom + 24,
+        }}
+        showsVerticalScrollIndicator={false}
+        refreshControl={refresh.control}
+        onScroll={handleScroll}
+        scrollEventThrottle={16}
+      >
+        {/* Список мастеров. Заголовок «Мастера» убран — header страницы
+            (имя категории «Сантехника») уже даёт контекст.
+            Карточки full-width (без mx, без border), между ними hairline-
+            разделитель — как в строгом feed-листе. mt-0 — chips сразу
+            переходят в первую карточку, gap создаётся только её внутренним
+            py-5 (≈ 2x сокращение от 16+28=44 до 0+20=20px по фидбэку user
+            2026-05-14). */}
+        <View>
+          {masters.isLoading ? (
+            // Skeleton повторяет форму MasterRow: avatar xl (96) + правая
+            // колонка с именем/мета/городом. Высота ≈ реальной карточки,
+            // чтобы при появлении данных layout не дёргался.
+            <View>
+              {[0, 1, 2].map((i, idx) => (
+                <View key={i}>
+                  {idx > 0 ? <View className="h-px bg-hairline mx-5" /> : null}
+                  <View className="px-5 py-5 flex-row gap-4">
+                    <Skeleton circle size={96} />
+                    <View className="flex-1">
+                      <Skeleton height={18} width="60%" className="rounded" />
+                      <Skeleton height={14} width="40%" className="mt-3 rounded" />
+                      <Skeleton height={14} width="30%" className="mt-2 rounded" />
+                      <Skeleton height={14} width="35%" className="mt-2 rounded" />
+                    </View>
+                  </View>
+                </View>
+              ))}
+            </View>
+          ) : mastersList.length === 0 ? (
+            <View className="items-center py-10 px-5">
+              <AppText weight="bold" className="text-title-lg text-ink text-center">
+                Пока нет мастеров в этой категории
+              </AppText>
+              <AppText className="mt-2 text-body-md text-mute text-center">
+                Опишите задачу — мастера откликнутся.
+              </AppText>
+            </View>
+          ) : (
+            <View>
+              {mastersList.map((m, idx) => (
+                <View key={m.user.id}>
+                  {idx > 0 ? <View className="h-px bg-hairline mx-5" /> : null}
+                  {/* Старая карточка с круглой аватаркой (откат от
+                      Wildberries-style 2026-05-14 по запросу user).
+                      Чтобы вернуть фото-pager — заменить <MasterRow>
+                      на <MasterRowGallery> (определение в этом же файле). */}
+                  <MasterRow
+                    master={m}
+                    onPress={() => router.push(`/master/${m.user.id}` as never)}
+                  />
+                </View>
+              ))}
+            </View>
+          )}
+        </View>
+
+        {/* «Типичные услуги» (L3 список с avg-чеком) убран по фидбэку user
+            2026-05-14: блок не нёс полезной информации, ценники почти все
+            «По договорённости» — выглядел шумно и пусто. L3-фильтр остался
+            через FilterChip «Услуга» сверху, ценовые ориентиры — в карточках
+            самих мастеров. */}
+
+        {error ? (
+          <View className="px-5 mt-6">
+            <AppText className="text-error text-body-sm">
+              Не удалось загрузить: {error.message}
+            </AppText>
+          </View>
+        ) : null}
+      </ScrollView>
+
+      {/* Filter pickers — full-screen, иконка-square + title + Check.
+          Универсальный PickerSheet (не BottomSheet) — без drag-handle,
+          с большим header'ом и accent-color для selected. */}
+      <PickerSheet
+        open={openSheet === "city"}
+        onClose={() => setOpenSheet(null)}
+        title="Город"
+        options={CITIES.map<PickerOption>((c) => ({
+          id: c.id,
+          title: c.name,
+          icon: <MapPin size={18} weight="bold" color={tc.ink} />,
+        }))}
+        selectedId={cityFilter}
+        onSelect={(id) => {
+          setCityFilter(id as CityId);
+          setOpenSheet(null);
+        }}
+      />
+
+      <PickerSheet
+        open={openSheet === "l3"}
+        onClose={() => setOpenSheet(null)}
+        title={categoryName}
+        options={[
+          {
+            id: "__all",
+            title: "Все услуги",
+            icon: <ListChecks size={18} weight="bold" color={tc.ink} />,
+          },
+          ...services.map<PickerOption>((s) => {
+            // Все L3-услуги одной L2 — рендерим цветную тематическую SVG-иконку
+            // родительской L2-категории (через Iconify CDN). Так sheet выглядит
+            // не «серым plain-листом», а живой и в стиле каталога.
+            // 290+ L3 — отдельный mapping не имеет смысла: визуальная связь с
+            // родительской категорией работает, и иконка узнаваема (окно/капля).
+            const colorUrl = getCategoryColorIconUrl(categoryId ?? null);
+            return {
+              id: s.id,
+              title: s.name_ru,
+              icon: colorUrl ? (
+                <Image source={{ uri: colorUrl }} style={{ width: 22, height: 22 }} />
+              ) : (
+                <ListChecks size={18} weight="bold" color={tc.mute} />
+              ),
+            };
+          }),
+        ]}
+        selectedId={l3Filter ?? "__all"}
+        onSelect={(id) => {
+          setL3Filter(id === "__all" ? null : id);
+          setOpenSheet(null);
+        }}
+        searchable={services.length >= 8}
+        searchPlaceholder="Например, замена смесителя"
+        resettable={!!l3Filter}
+        resetLabel="Сбросить"
+      />
+
+      <PickerSheet
+        open={openSheet === "sort"}
+        onClose={() => setOpenSheet(null)}
+        title="Сортировка"
+        options={[
+          {
+            id: "rating",
+            title: "По рейтингу",
+            subtitle: "Сначала с лучшими отзывами",
+            icon: <Star size={18} weight="bold" color={tc.ink} />,
+          },
+          {
+            id: "experience",
+            title: "По опыту",
+            subtitle: "Сначала самые опытные",
+            icon: <Briefcase size={18} weight="bold" color={tc.ink} />,
+          },
+          {
+            id: "availability",
+            title: "Свободные сначала",
+            subtitle: "Кто готов сегодня и на неделе",
+            icon: <Calendar size={18} weight="bold" color={tc.ink} />,
+          },
+        ]}
+        selectedId={sortBy}
+        onSelect={(id) => {
+          setSortBy(id as SortBy);
+          setOpenSheet(null);
+        }}
+      />
+    </View>
+  );
+}
+
+// ----------------------------------------------------------------------------
+// CategorySkeleton — цельный скелет экрана категории на время загрузки.
+// Повторяет структуру: header (back + заголовок) → чипы → список мастеров.
+// Показывается пока грузятся данные категории И мастера, потом весь контент
+// появляется разом. Фидбэк владельца 2026-05-27 «всё должно загружаться
+// равномерно, а не по кускам».
+// ----------------------------------------------------------------------------
+
+function CategorySkeleton({
+  insets,
+  goBack,
+}: {
+  insets: { top: number; bottom: number };
+  goBack: () => void;
+}) {
+  return (
+    <View className="flex-1 bg-canvas" style={{ paddingTop: insets.top }}>
+      <View className="flex-row items-center gap-2 px-3" style={{ height: HEADER_BAR_HEIGHT }}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Назад"
+          onPress={goBack}
+          className="h-12 w-12 items-center justify-center rounded-full active:bg-canvas-soft text-ink"
+        >
+          <CaretLeft size={28} weight="fill" color="currentColor" />
+        </Pressable>
+        <View className="flex-1">
+          <Skeleton width={190} height={26} style={{ borderRadius: 6 }} />
+        </View>
+      </View>
+
+      <View className="flex-row gap-2 px-4 pt-1">
+        <Skeleton width={132} height={40} style={{ borderRadius: 999 }} />
+        <Skeleton width={120} height={40} style={{ borderRadius: 999 }} />
+      </View>
+
+      <View className="px-5" style={{ marginTop: 28 }}>
+        {[0, 1, 2].map((i) => (
+          <View key={i} className="flex-row gap-3" style={{ marginTop: i === 0 ? 0 : 28 }}>
+            <Skeleton circle size={64} />
+            <View className="flex-1">
+              <Skeleton height={18} width="55%" style={{ borderRadius: 6 }} />
+              <View className="mt-2">
+                <Skeleton height={13} width="40%" style={{ borderRadius: 4 }} />
+              </View>
+              <View className="mt-3">
+                <Skeleton height={13} width="92%" style={{ borderRadius: 4 }} />
+              </View>
+              <View className="mt-1.5">
+                <Skeleton height={13} width="68%" style={{ borderRadius: 4 }} />
+              </View>
+            </View>
+          </View>
+        ))}
+      </View>
+    </View>
+  );
+}
+
+/** Chip-кнопка для quick filter bar.
+ *  Sublte filter-pill pattern «больших компаний» (Airbnb / Linear / Stripe):
+ *    - Inactive: thin hairline border, bg-canvas, text-body medium. Спокойный
+ *      элемент в общем поле, не оттягивает внимание.
+ *    - Active: bg-canvas-soft-2 (lightly filled), border-hairline-strong,
+ *      text-ink semibold. Сигнал «фильтр применён» — через тонкую разницу
+ *      bg + вес шрифта, без чёрного fill. Пользователь жаловался что прежняя
+ *      filled-ink версия «слишком яркая» (2026-05-14).
+ *  ChevronDown убран — pill-shape + tap делают affordance понятным сами.
+ *  Размер: h-10, px-4 — text-body-sm (14px) дышит. */
+function FilterChip({
+  label,
+  icon: Icon,
+  active,
+  onPress,
+}: {
+  label: string;
+  /** Иконка слева. Передаётся как компонент (`MapPin`, `Star` и т.п. из Phosphor). */
+  icon?: import("@/types/icon").IconComponent;
+  active: boolean;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      onPress={onPress}
+      className={`flex-row items-center gap-1.5 h-10 px-4 rounded-full active:opacity-70 ${
+        active
+          ? "bg-canvas-soft-2 border border-hairline-strong"
+          : "bg-canvas border border-hairline"
+      }`}
+    >
+      {Icon ? (
+        <Icon
+          size={15}
+          weight="bold"
+          color="currentColor"
+          className={active ? "text-ink" : "text-body"}
+        />
+      ) : null}
+      <AppText
+        weight={active ? "semibold" : "medium"}
+        className={`text-body-sm ${active ? "text-ink" : "text-body"}`}
+      >
+        {label}
+      </AppText>
+    </Pressable>
+  );
+}
+
+function MasterRow({ master, onPress }: { master: MasterInCategory; onPress: () => void }) {
+  const u = master.user;
+  // Размер мини-thumb адаптируется под ширину экрана, чтобы 5 фото всегда
+  // помещались в карточке. Card padding px-5 (40 total), gap-1.5 между
+  // фотками (4 × 6 = 24). Доступная ширина / 5, cap сверху 80px (на больших
+  // экранах не растягиваем). До 2026-05-27 было фиксированно 80×80, на
+  // iPhone SE / mini 5-я фотка уходила за край экрана.
+  const screenW = useAppWidth();
+  const thumbSize = Math.min(80, Math.max(48, Math.floor((screenW - 40 - 24) / 5)));
+  // Telemetry: impression при появлении row в списке категории. RPC сам
+  // дедупит за 24h, in-memory дедуп защищает от повторов в одной сессии.
+  const recordView = useRecordMasterView();
+  useEffect(() => {
+    if (u?.id) recordView(u.id, "impression");
+  }, [u?.id, recordView]);
+  const profile = master.profile;
+  const cityName = master.city?.name ?? null;
+  const fullName = [u.first_name, u.last_name].filter(Boolean).join(" ") || "Мастер";
+  // Услуги мастера — топ-3 по position. Сейчас не фильтруются по L2 (master_services
+  // не привязаны к категориям), но в scope категории показываем все его услуги
+  // как индикатор «вот за сколько он работает». Если данных нет — секция не рисуется.
+  const { data: services } = useMasterServices(u.id);
+  const topServices = (services ?? []).slice(0, 3);
+  // Портфолио — первые 5 фото для VK-style row под прайсом. Если фото больше
+  // 5 — на 5-м плашка «+N». Тап → переход на профиль (lightbox внутри). Так
+  // клиент видит реальные работы прямо в листинге, без перехода (фидбэк user
+  // 2026-05-14).
+  const { data: portfolioPhotos } = useMasterPortfolio(u.id);
+  const previewPhotos = (portfolioPhotos ?? []).slice(0, 5);
+  const portfolioOverflow = (portfolioPhotos?.length ?? 0) - 5;
+  const rating = profile?.rating_overall_avg ?? null;
+  const ratingCount = profile?.rating_overall_count ?? 0;
+  const experience = profile?.experience_years ?? null;
+  const accountType = profile?.account_type ?? null;
+  const teamSize = profile?.team_size ?? null;
+  const accountBadge =
+    accountType === "brigade"
+      ? `Бригада${teamSize ? ` · ${teamSize} чел.` : ""}`
+      : accountType === "company"
+        ? "Компания"
+        : null;
+
+  // Контактные кнопки удалены 2026-05-27. Карточка целиком ведёт на профиль.
+
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={fullName}
+      className="px-5 py-5 active:bg-canvas-soft-2"
+    >
+      {/* Header row: компактный avatar 64px + имя + meta. Паттерн TaskRabbit
+            «Select-a-Tasker»: маленькая аватарка слева, дальше плотная мета.
+            Фото-портфолио показываем ниже как proof-of-skill, не как hero.
+            Фидбэк user 2026-05-20: «слишком большое место для фото, аватар
+            96px — слишком крупно для карточки списка». */}
+      <View className="flex-row gap-3">
+        <Avatar url={u.avatar_url} name={fullName} seed={u.id} size="lg" />
+        <View className="flex-1">
+          {/* Имя + chip готовности (h-6, text-caption=12px) */}
+          <View className="flex-row items-center gap-2">
+            <AppText
+              weight="semibold"
+              className="text-ink text-body-lg flex-shrink"
+              numberOfLines={1}
+            >
+              {fullName}
+            </AppText>
+            {(() => {
+              const status = effectiveStatus(
+                profile?.availability_status ?? null,
+                profile?.availability_until ?? null,
+              );
+              if (!isAvailabilityVisible(status)) return null;
+              return (
+                <View
+                  className="flex-row items-center gap-1.5 h-6 px-2 rounded-full"
+                  style={{ backgroundColor: `${AVAILABILITY_DOT[status]}22` }}
+                >
+                  <View
+                    style={{
+                      width: 6,
+                      height: 6,
+                      borderRadius: 3,
+                      backgroundColor: AVAILABILITY_DOT[status],
+                    }}
+                  />
+                  <AppText
+                    weight="medium"
+                    className="text-caption"
+                    style={{ color: AVAILABILITY_DOT[status] }}
+                  >
+                    {AVAILABILITY_SHORT[status]}
+                  </AppText>
+                </View>
+              );
+            })()}
+          </View>
+
+          {/* Мета-строка. Фидбэк user 2026-05-20: «если отзывов нет —
+                ничего не показывать». Раньше выводилось «★ Без отзывов»
+                (паттерн Avito), что создавало визуальный шум и негативный
+                сигнал у новичков. Теперь rating-блок просто отсутствует
+                при ratingCount === 0 (паттерн Airbnb/Booking/TaskRabbit).
+                Опыт и город всегда видны если есть данные. */}
+          <View className="flex-row flex-wrap items-center gap-x-3 gap-y-1 mt-1.5">
+            {accountBadge ? (
+              <View className="flex-row items-center gap-1">
+                <Users size={13} weight="bold" color="currentColor" className="text-mute" />
+                <AppText className="text-mute text-caption">{accountBadge}</AppText>
+              </View>
+            ) : null}
+
+            {rating !== null && ratingCount > 0 ? (
+              <View className="flex-row items-center gap-1">
+                <Star size={13} weight="fill" color="currentColor" className="text-ink" />
+                <AppText weight="mono" className="text-ink text-mono-caption">
+                  {rating.toFixed(1)}
+                </AppText>
+                <AppText weight="mono" className="text-mute text-mono-caption">
+                  ({ratingCount})
+                </AppText>
+              </View>
+            ) : null}
+
+            {experience !== null && experience > 0 ? (
+              <View className="flex-row items-center gap-1">
+                <Briefcase size={13} weight="bold" color="currentColor" className="text-mute" />
+                <AppText className="text-mute text-caption">
+                  {pluralizeYears(experience)} опыта
+                </AppText>
+              </View>
+            ) : null}
+
+            {cityName ? (
+              <View className="flex-row items-center gap-1">
+                <MapPin size={13} weight="bold" color="currentColor" className="text-mute" />
+                <AppText className="text-mute text-caption">{cityName}</AppText>
+              </View>
+            ) : null}
+          </View>
+        </View>
+      </View>
+      {/* Bio — full-width, от левого края (не из правой колонки).
+            16px (body-md) — фидбэк user 2026-05-14 «14px мелко не читается». */}
+      {profile?.bio ? (
+        <AppText className="text-body text-body-md mt-3" numberOfLines={3}>
+          {profile.bio}
+        </AppText>
+      ) : null}
+      {/* Услуги мастера с ценами — топ-3. Формат «от X до Y ₽» / «X ₽».
+            Unit показываем только если значимый (м² / час / день) — для
+            per_task «за работу» опускаем (понятно по контексту).
+            Текст услуги body-sm (14px), цена mono-sm (~13px) — фидбэк user
+            2026-05-15 «сделай шрифт этого блока на три пикселя меньше».
+            Раньше body-md/mono-md (16px) был визуально равен bio и забирал
+            внимание. */}
+      {topServices.length > 0 ? (
+        <View className="mt-3 gap-1">
+          {topServices.map((s) => {
+            // formatServicePrice (helper из use-master-services) сам обрабатывает
+            // pricing_kind: 'quote' → «Договорная»; 'hourly' → «X ₽ / час»;
+            // 'fixed' → «X ₽ · за работу»; 'range' → «X–Y ₽ · за работу».
+            const priceText = formatServicePrice(s);
+            return (
+              <View key={s.id} className="flex-row items-center justify-between gap-2">
+                <AppText className="text-body text-body-sm flex-1" numberOfLines={1}>
+                  {s.title}
+                </AppText>
+                <AppText weight="mono" className="text-ink text-mono-sm">
+                  {priceText}
+                </AppText>
+              </View>
+            );
+          })}
+        </View>
+      ) : null}
+      {/* Превью портфолио — фиксированные 80×80 миниатюры в ряд.
+            Фидбэк user 2026-05-20: «слишком большое место для фото, пусть
+            будут нормальные миниатюры». Раньше было flex:1 + aspectRatio:1
+            — при 1-2 фото плашка растягивалась почти на полэкрана.
+            Теперь чёткий thumbnail-ряд (паттерн Profi.ru/YouDo: proof-of-skill
+            без претензии на hero). Если фото меньше 5 — пустые слоты не
+            показываются. */}
+      {previewPhotos.length > 0 ? (
+        <View className="mt-3 flex-row gap-1.5">
+          {previewPhotos.map((p, i) => {
+            const isLastSlot = i === 4 && portfolioOverflow > 0;
+            return (
+              <Pressable
+                key={p.id}
+                accessibilityRole="button"
+                accessibilityLabel={`Фото ${i + 1}`}
+                onPress={onPress}
+                style={{
+                  width: thumbSize,
+                  height: thumbSize,
+                  borderRadius: 8,
+                  overflow: "hidden",
+                  position: "relative",
+                }}
+                className="bg-canvas-soft active:opacity-70"
+              >
+                {/* Mini-thumb — намеренно очень низкое качество (q=40, без
+                      2x retina) для fast first paint в ленте. Полноразмерные
+                      фото открываются в профиле мастера / лайтбоксе. */}
+                <Image
+                  source={{ uri: cdnImage(p.url, { width: thumbSize, dpr: 1, quality: 40 }) }}
+                  style={{ width: "100%", height: "100%" }}
+                  resizeMode="cover"
+                />
+                {isLastSlot ? (
+                  <View className="absolute inset-0 items-center justify-center bg-black/55">
+                    <AppText weight="semibold" className="text-on-primary text-body-sm">
+                      +{portfolioOverflow}
+                    </AppText>
+                  </View>
+                ) : null}
+              </Pressable>
+            );
+          })}
+        </View>
+      ) : null}
+      {/* Кнопки «Позвонить» / «WhatsApp» удалены 2026-05-27 (решение
+            владельца). handleContact и так вёл на профиль (а не на phone://),
+            то есть кнопки были визуально дублем — карточка целиком Pressable
+            и ведёт туда же. Кроме того кнопки нарушали privacy-модель «номер
+            скрыт» (Apple ревьюер мог подумать, что номер раздаётся в ленте без
+            отклика). Реальные контакты с мастером — после создания заказа
+            и отклика, либо со страницы мастера через LoginWall. */}
+    </Pressable>
+  );
+}
+
+// ----------------------------------------------------------------------------
+// MasterRowGallery — Wildberries-style: вместо круглой аватарки слева
+// 4:5 swipable портфолио-pager. Текст и метаданные сдвинуты вправо. Тап на
+// pager → переход на /master/[id]. Свайп между фото — pagingEnabled.
+// Откат: в render заменить <MasterRowGallery> обратно на <MasterRow>.
+// ----------------------------------------------------------------------------
+
+const GALLERY_W = 140;
+const GALLERY_H = 140; // square (фидбэк user 2026-05-14)
+
+// biome-ignore lint/correctness/noUnusedVariables: alternate gallery card is intentionally retained until the upcoming catalog redesign decision
+function MasterRowGallery({ master, onPress }: { master: MasterInCategory; onPress: () => void }) {
+  const u = master.user;
+  const profile = master.profile;
+  const cityName = master.city?.name ?? null;
+  const fullName = [u.first_name, u.last_name].filter(Boolean).join(" ") || "Мастер";
+  const { data: services } = useMasterServices(u.id);
+  const { data: portfolioData } = useMasterPortfolio(u.id);
+  const photos = portfolioData ?? [];
+  const topServices = (services ?? []).slice(0, 3);
+  const rating = profile?.rating_overall_avg ?? null;
+  const ratingCount = profile?.rating_overall_count ?? 0;
+  const experience = profile?.experience_years ?? null;
+  const accountType = profile?.account_type ?? null;
+  const teamSize = profile?.team_size ?? null;
+  const accountBadge =
+    accountType === "brigade"
+      ? `Бригада${teamSize ? ` · ${teamSize} чел.` : ""}`
+      : accountType === "company"
+        ? "Компания"
+        : null;
+
+  // Контактные кнопки удалены 2026-05-27. Карточка целиком ведёт на профиль.
+
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={fullName}
+      className="px-5 py-5 active:bg-canvas-soft-2"
+    >
+      <View className="flex-row gap-3">
+        {/* LEFT: square 140x140 портфолио-pager или fallback на аватарку */}
+        <View style={{ width: GALLERY_W }}>
+          {photos.length > 0 ? (
+            <CompactPortfolioPager photos={photos} onPress={onPress} />
+          ) : (
+            <View
+              style={{
+                width: GALLERY_W,
+                height: GALLERY_H,
+                borderRadius: 12,
+                overflow: "hidden",
+              }}
+              className="bg-canvas-soft items-center justify-center"
+            >
+              <Avatar url={u.avatar_url} name={fullName} seed={u.id} size="xl" />
+            </View>
+          )}
+        </View>
+
+        {/* RIGHT: грамотный стек сверху-вниз. Hierarchy:
+              1. Имя (text-body-md semibold) — единственный анкор
+              2. Status chip (зелёный pill) — единственный яркий accent
+              3-6. Бригада / Рейтинг / Опыт / Город — единый mute-caption уровень
+                   с маленькой иконкой слева, gap-1 между ними.
+            Иерархия: один анкор → один accent → плотная мета-группа.
+            Без растяжения по высоте картинки (выглядело пусто).
+            mt-2 между «верхом» (имя+статус) и мета-группой даёт правильный воздух. */}
+        <View style={{ flex: 1 }}>
+          {/* Имя */}
+          <AppText weight="semibold" className="text-ink text-body-lg" numberOfLines={1}>
+            {fullName}
+          </AppText>
+
+          {/* Готовность */}
+          {(() => {
+            const status = effectiveStatus(
+              profile?.availability_status ?? null,
+              profile?.availability_until ?? null,
+            );
+            if (!isAvailabilityVisible(status)) return null;
+            return (
+              <View
+                className="flex-row items-center self-start gap-1 h-5 px-1.5 mt-2 rounded-full"
+                style={{ backgroundColor: `${AVAILABILITY_DOT[status]}22` }}
+              >
+                <View
+                  style={{
+                    width: 6,
+                    height: 6,
+                    borderRadius: 3,
+                    backgroundColor: AVAILABILITY_DOT[status],
+                  }}
+                />
+                <AppText
+                  weight="medium"
+                  className="text-caption"
+                  style={{ color: AVAILABILITY_DOT[status] }}
+                >
+                  {AVAILABILITY_SHORT[status]}
+                </AppText>
+              </View>
+            );
+          })()}
+
+          {/* Мета-группа: Бригада / Рейтинг / Опыт / Город — единый mute-caption */}
+          <View className="mt-2.5 gap-1">
+            {accountBadge ? (
+              <View className="flex-row items-center gap-1.5">
+                <Users size={12} weight="bold" color="currentColor" className="text-mute" />
+                <AppText className="text-mute text-caption" numberOfLines={1}>
+                  {accountBadge}
+                </AppText>
+              </View>
+            ) : null}
+
+            {rating !== null && ratingCount > 0 ? (
+              <View className="flex-row items-center gap-1.5">
+                <Star size={12} weight="fill" color="currentColor" className="text-ink" />
+                <AppText weight="mono" className="text-mute text-mono-caption">
+                  {rating.toFixed(1)} ({ratingCount})
+                </AppText>
+              </View>
+            ) : null}
+
+            {experience !== null && experience > 0 ? (
+              <View className="flex-row items-center gap-1.5">
+                <Briefcase size={12} weight="bold" color="currentColor" className="text-mute" />
+                <AppText className="text-mute text-caption">
+                  {pluralizeYears(experience)} опыта
+                </AppText>
+              </View>
+            ) : null}
+
+            {cityName ? (
+              <View className="flex-row items-center gap-1.5">
+                <MapPin size={12} weight="bold" color="currentColor" className="text-mute" />
+                <AppText className="text-mute text-caption" numberOfLines={1}>
+                  {cityName}
+                </AppText>
+              </View>
+            ) : null}
+          </View>
+        </View>
+      </View>
+
+      {/* Описание — снизу под row, full-width.
+          16px (body-md) — фидбэк user 2026-05-14 «14px мелко». */}
+      {profile?.bio ? (
+        <AppText className="text-body text-body-md mt-3" numberOfLines={3}>
+          {profile.bio}
+        </AppText>
+      ) : null}
+
+      {/* Топ-3 услуги с ценами — full-width под gallery+text.
+          Текст услуги body-md (16px), цена mono-md (16px). */}
+      {topServices.length > 0 ? (
+        <View className="mt-3 gap-1">
+          {topServices.map((s) => {
+            const priceText = formatServicePrice(s);
+            return (
+              <View key={s.id} className="flex-row items-center justify-between gap-2">
+                <AppText className="text-body text-body-md flex-1" numberOfLines={1}>
+                  {s.title}
+                </AppText>
+                <AppText weight="mono" className="text-ink text-mono-md">
+                  {priceText}
+                </AppText>
+              </View>
+            );
+          })}
+        </View>
+      ) : null}
+
+      {/* Кнопки «Позвонить» / «WhatsApp» удалены 2026-05-27 (см. MasterRow
+          выше — то же решение). Карточка целиком Pressable → /master/[id],
+          реальные контакты — через профиль после отклика на заказ. */}
+    </Pressable>
+  );
+}
+
+/** Компактный 4:5 swipable pager для inline-карточки.
+ *  Тап на любой slide → onPress (= переход на профиль мастера). */
+function CompactPortfolioPager({
+  photos,
+  onPress,
+}: {
+  photos: PortfolioItem[];
+  onPress: () => void;
+}) {
+  const [idx, setIdx] = useState(0);
+  const onScrollEnd = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const i = Math.round(e.nativeEvent.contentOffset.x / GALLERY_W);
+    if (i !== idx) setIdx(i);
+  };
+  return (
+    <View
+      className="bg-canvas-soft-2"
+      style={{
+        width: GALLERY_W,
+        height: GALLERY_H,
+        borderRadius: 12,
+        overflow: "hidden",
+      }}
+    >
+      <FlatList
+        data={photos}
+        horizontal
+        pagingEnabled
+        snapToInterval={GALLERY_W}
+        decelerationRate="fast"
+        showsHorizontalScrollIndicator={false}
+        onMomentumScrollEnd={onScrollEnd}
+        keyExtractor={(item) => item.id}
+        renderItem={({ item }) => (
+          <Pressable onPress={onPress} style={{ width: GALLERY_W, height: GALLERY_H }}>
+            <Image
+              source={{ uri: cdnImage(item.url, { width: GALLERY_W }) }}
+              style={{ width: "100%", height: "100%" }}
+              resizeMode="cover"
+            />
+          </Pressable>
+        )}
+      />
+      {photos.length > 1 ? (
+        <View
+          style={{
+            position: "absolute",
+            bottom: 8,
+            left: 0,
+            right: 0,
+            flexDirection: "row",
+            justifyContent: "center",
+            gap: 4,
+          }}
+          pointerEvents="none"
+        >
+          {photos.map((p, i) => (
+            <View
+              key={p.id}
+              style={{
+                width: i === idx ? 16 : 4,
+                height: 4,
+                borderRadius: 2,
+                backgroundColor: i === idx ? "#ffffff" : "rgba(255,255,255,0.5)",
+              }}
+            />
+          ))}
+        </View>
+      ) : null}
+    </View>
+  );
+}

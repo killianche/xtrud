@@ -1,0 +1,58 @@
+# Caddy блок для основного домена xtrud.pro (production, 2026-05-27).
+#
+# Раздаёт ту же статику /var/www/xtrud что и xtrud.alanbani.ru — два домена
+# параллельно. Когда убедимся что xtrud.pro стабилен (день-два), старый
+# xtrud.alanbani.ru можно отключить или сделать редиректом на xtrud.pro.
+#
+# Особенности относительно alanbani-блока:
+#   1. /.well-known/apple-app-site-association — Apple требует Content-Type:
+#      application/json, без расширения файла. Без этого Universal Links не
+#      работают (тап на ссылку https://xtrud.pro/master/123 в WhatsApp не
+#      откроет приложение).
+#   2. /privacy, /terms, /support, /account-deletion — публичные store/legal pages.
+#   3. www.xtrud.pro → редирект на apex.
+
+xtrud.pro {
+    encode gzip
+    header {
+        Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+        X-Content-Type-Options "nosniff"
+        Referrer-Policy "strict-origin-when-cross-origin"
+        -Server
+    }
+    root * /var/www/xtrud
+
+    # Apple AASA — must be served as application/json with no caching.
+    handle /.well-known/apple-app-site-association {
+        header Content-Type "application/json"
+        header Cache-Control "no-cache, must-revalidate"
+        file_server
+    }
+
+    # Публичные legal/support HTML, не SPA.
+    @legal path /privacy* /terms* /support* /account-deletion*
+    handle @legal {
+        header Cache-Control "public, max-age=3600"
+        file_server
+    }
+
+    # Immutable хешированные ассеты Expo.
+    @immutable path /_expo/* /assets/*
+    header @immutable Cache-Control "public, max-age=31536000, immutable"
+
+    # SPA-fallback: index.html и любые /route → no-cache.
+    @htmlLike not path /_expo/* /assets/* /.well-known/* /privacy* /terms* /support* /account-deletion*
+    header @htmlLike Cache-Control "no-cache, must-revalidate"
+
+    try_files {path} {path}.html {path}/index.html /index.html
+    file_server
+    log {
+        output file /var/log/caddy/xtrud-pro.log
+        format json
+    }
+}
+
+# www → apex redirect.
+www.xtrud.pro {
+    redir https://xtrud.pro{uri} 308
+}

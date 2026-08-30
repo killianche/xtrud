@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>xtrud · Детали заказа</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<style>
+  html, body { margin: 0; padding: 0; background: #0a0a0a; min-height: 100%; }
+  * { box-sizing: border-box; }
+  .stage { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px; }
+  .phone {
+    width: 402px; height: 874px; background: #FAFAFA;
+    border-radius: 48px; overflow: hidden; position: relative;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.4), 0 0 0 10px #1a1a1a, 0 0 0 12px #333;
+  }
+  .phone::before {
+    content: ""; position: absolute; top: 12px; left: 50%; transform: translateX(-50%);
+    width: 120px; height: 32px; background: #000; border-radius: 20px; z-index: 100;
+  }
+  .phone-inner { width: 100%; height: 100%; padding-top: 56px; position: relative; }
+  .scroll::-webkit-scrollbar { width: 0; height: 0; }
+  .response-light input::placeholder,
+  .response-light textarea::placeholder { color: #C7C7CC; opacity: 1; }
+</style>
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel">
+
+
+
+
+const { useState } = React;
+
+// ─────────────────────────────────────────────────────────────
+// Иконки — Gravity UI style
+// ─────────────────────────────────────────────────────────────
+const Icon = ({ size = 20, color = "currentColor", strokeWidth = 1.5, children, fill = "none" }) =>
+<svg width={size} height={size} viewBox="0 0 24 24" fill={fill} stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, display: "block" }}>
+    {children}
+  </svg>;
+
+
+const IconChevronLeft = (p) => <Icon {...p}><path d="M15 6l-6 6 6 6" /></Icon>;
+const IconMore = (p) => <Icon {...p}><circle cx="5" cy="12" r="1.3" fill="currentColor" /><circle cx="12" cy="12" r="1.3" fill="currentColor" /><circle cx="19" cy="12" r="1.3" fill="currentColor" /></Icon>;
+const IconBookmark = (p) => <Icon {...p}><path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2v16z" /></Icon>;
+const IconClock = (p) => <Icon {...p}><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></Icon>;
+const IconPin = (p) => <Icon {...p}><path d="M12 21s-7-7.5-7-12a7 7 0 1114 0c0 4.5-7 12-7 12z" /><circle cx="12" cy="9" r="2.5" /></Icon>;
+const IconCheck = (p) => <Icon {...p}><path d="M5 12l5 5L20 7" /></Icon>;
+const IconPlus = (p) => <Icon {...p}><path d="M12 5v14M5 12h14" /></Icon>;
+const IconClose = (p) => <Icon {...p}><path d="M6 6l12 12M18 6L6 18" /></Icon>;
+
+// ─────────────────────────────────────────────────────────────
+// Tokens
+// ─────────────────────────────────────────────────────────────
+const T = {
+  bg: "#FAFAFA",
+  surface: "#FFFFFF",
+  border: "#ECECEC",
+  borderStrong: "#E2E2E5",
+  text: "#0A0A0A",
+  muted: "#737373",
+  mutedLight: "#A3A3A3",
+  accent: "#5E6AD2",
+  accentBg: "#EEF2FF",
+  success: "#15803D",
+  successBg: "#F0FDF4",
+  successDot: "#22C55E",
+  danger: "#DC2626"
+};
+
+// ─────────────────────────────────────────────────────────────
+// Detail screen — упрощённая версия
+// ─────────────────────────────────────────────────────────────
+const OrderDetail = () => {
+  const [priceMode, setPriceMode] = useState("exact"); // "exact" | "negotiable"
+  const [price, setPrice] = useState("");
+  const [showComment, setShowComment] = useState(true);
+  const [comment, setComment] = useState("");
+  const [saved, setSaved] = useState(false);
+
+  const canSubmit = priceMode === "negotiable" || priceMode === "exact" && price.trim().length > 0;
+
+  const order = {
+    title: "Нужно проложить трубу",
+    description: "Нужно проложить трубу на мойку. Старая течёт, демонтировать и поставить новую с отсечным краном. Материалы могу купить сам, нужны руки.",
+    status: "Активна",
+    category: "Сантехника",
+    urgent: true,
+    location: "Назрань · Магас",
+    budgetCap: "до 35 000 ₽"
+  };
+
+  const formatPrice = (v) => v.replace(/\D/g, "").replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+
+  return (
+    <div style={{ width: "100%", height: "100%", background: T.bg, fontFamily: "'Inter', -apple-system, system-ui, sans-serif", color: T.text, display: "flex", flexDirection: "column", overflow: "hidden", position: "relative" }}>
+      {/* Sticky header */}
+      <div style={{ flexShrink: 0, padding: "10px 12px", background: "rgba(255,255,255,0.85)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)", borderBottom: "1px solid " + T.border, display: "flex", alignItems: "center", justifyContent: "space-between", zIndex: 10 }}>
+        <button style={{ width: 36, height: 36, borderRadius: 10, background: "#F4F4F5", border: "none", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
+          <IconChevronLeft size={18} color={T.text} strokeWidth={2} />
+        </button>
+        <div style={{ display: "flex", gap: 6 }}>
+          <button onClick={() => setSaved(!saved)} style={{ width: 36, height: 36, borderRadius: 10, background: saved ? T.text : "#F4F4F5", border: "none", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
+            <IconBookmark size={16} color={saved ? "#fff" : T.text} strokeWidth={1.8} fill={saved ? "#fff" : "none"} />
+          </button>
+          <button style={{ width: 36, height: 36, borderRadius: 10, background: "#F4F4F5", border: "none", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
+            <IconMore size={18} color={T.text} />
+          </button>
+        </div>
+      </div>
+
+      {/* Scrollable content */}
+      <div className="scroll" style={{ flex: 1, overflowY: "auto", paddingBottom: 100 }}>
+        {/* Hero block */}
+        <div style={{ background: T.surface, padding: "18px 20px 20px", borderBottom: "1px solid " + T.border }}>
+          {/* Status / category */}
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+            <div style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "3px 9px", background: T.successBg, color: T.success, borderRadius: 999, fontSize: 11, fontWeight: 600, letterSpacing: "0.02em" }}>
+              <span style={{ width: 6, height: 6, borderRadius: "50%", background: T.successDot, boxShadow: "0 0 0 3px rgba(34,197,94,0.18)" }}></span>
+              {order.status}
+            </div>
+            <div style={{ width: 3, height: 3, borderRadius: "50%", background: T.mutedLight }}></div>
+            <div style={{ fontSize: 12, color: T.muted, fontWeight: 500 }}>{order.category}</div>
+          </div>
+
+          {/* Title */}
+          <h1 style={{ fontSize: 26, fontWeight: 700, margin: 0, letterSpacing: "-0.025em", lineHeight: 1.2, color: T.text }}>{order.title}</h1>
+
+          {/* Meta line */}
+          <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 12, marginTop: 12, fontSize: 13, color: T.muted }}>
+            {order.urgent &&
+            <div style={{ display: "inline-flex", alignItems: "center", gap: 5, color: T.danger, fontWeight: 600 }}>
+                <IconClock size={13} color={T.danger} strokeWidth={2} /> Срочно
+              </div>
+            }
+            <div style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
+              <IconPin size={13} color={T.muted} strokeWidth={1.8} /> {order.location}
+            </div>
+          </div>
+
+          {/* Budget — крупно, без обёрток */}
+          <div style={{ marginTop: 18, paddingTop: 16, borderTop: "1px solid " + T.border }}>
+            <div style={{ fontSize: 11, color: T.muted, textTransform: "uppercase", letterSpacing: "0.08em", fontWeight: 600, marginBottom: 2 }}>Бюджет</div>
+            <div style={{ fontSize: 28, fontWeight: 700, letterSpacing: "-0.03em", lineHeight: 1.1, fontVariantNumeric: "tabular-nums" }}>{order.budgetCap}</div>
+          </div>
+        </div>
+
+        {/* Description — без заголовка */}
+        <div style={{ background: T.surface, padding: "18px 20px" }}>
+          <div style={{ fontSize: 15, lineHeight: 1.55, color: T.text }}>{order.description}</div>
+        </div>
+
+        {/* Section label */}
+        <div style={{ padding: "24px 20px 12px", display: "flex", alignItems: "center", gap: 10 }}>
+          <div style={{ fontSize: 11, color: T.muted, textTransform: "uppercase", letterSpacing: "0.1em", fontWeight: 600 }}>Ваш отклик</div>
+          <div style={{ flex: 1, height: 1, background: T.border }}></div>
+        </div>
+
+        {/* Response form — белый, структурный */}
+        <div className="response-light" style={{ background: T.surface, margin: "0 14px", borderRadius: 18, border: "1px solid " + T.border, overflow: "hidden" }}>
+          {/* Price section */}
+          <div style={{ padding: "22px 22px 18px" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+              <div style={{ fontSize: 13, fontWeight: 500, color: T.text }}>Ваша цена</div>
+              <div style={{ fontSize: 11, color: T.mutedLight, fontVariantNumeric: "tabular-nums" }}>бюджет до 35 000 ₽</div>
+            </div>
+
+            {/* Minimal price input — borderless с подчёркиванием */}
+            <label style={{
+              display: "flex", alignItems: "baseline", gap: 10,
+              paddingBottom: 12,
+              borderBottom: "1.5px solid " + (priceMode === "exact" ? T.muted : T.border),
+              transition: "border-color 0.15s ease",
+              cursor: "text"
+            }}>
+              <input
+                type="text"
+                inputMode="numeric"
+                value={price}
+                onChange={(e) => {setPrice(formatPrice(e.target.value));setPriceMode("exact");}}
+                onFocus={() => setPriceMode("exact")}
+                disabled={priceMode === "negotiable"}
+                placeholder={priceMode === "negotiable" ? "Договорная" : "20 000"}
+                style={{
+                  flex: 1, minWidth: 0,
+                  padding: "2px 0",
+                  border: "none",
+                  fontSize: 30,
+                  fontWeight: 700,
+                  fontFamily: "inherit",
+                  fontVariantNumeric: "tabular-nums",
+                  letterSpacing: "-0.03em",
+                  color: priceMode === "negotiable" ? T.mutedLight : T.text,
+                  outline: "none",
+                  background: "transparent"
+                }} />
+              <span style={{ fontSize: 22, color: priceMode === "negotiable" ? T.mutedLight : T.muted, fontWeight: 500 }}>₽</span>
+            </label>
+
+            {/* Segmented toggle */}
+            <div style={{ display: "flex", gap: 4, marginTop: 14, padding: 4, background: "#F4F4F6", borderRadius: 10 }}>
+              <button onClick={() => {setPriceMode("exact");}} style={{
+                flex: 1, padding: "8px 12px",
+                background: priceMode === "exact" ? T.surface : "transparent",
+                color: priceMode === "exact" ? T.text : T.muted,
+                border: "none",
+                borderRadius: 7, fontSize: 13, fontWeight: 500, fontFamily: "inherit", cursor: "pointer",
+                boxShadow: priceMode === "exact" ? "0 1px 2px rgba(15,23,42,0.06), 0 1px 3px rgba(15,23,42,0.04)" : "none",
+                transition: "all 0.15s ease"
+              }}>Точная цена</button>
+              <button onClick={() => {setPriceMode("negotiable");setPrice("");}} style={{
+                flex: 1, padding: "8px 12px",
+                background: priceMode === "negotiable" ? T.surface : "transparent",
+                color: priceMode === "negotiable" ? T.text : T.muted,
+                border: "none",
+                borderRadius: 7, fontSize: 13, fontWeight: 500, fontFamily: "inherit", cursor: "pointer",
+                boxShadow: priceMode === "negotiable" ? "0 1px 2px rgba(15,23,42,0.06), 0 1px 3px rgba(15,23,42,0.04)" : "none",
+                transition: "all 0.15s ease"
+              }}>Договорная</button>
+            </div>
+          </div>
+
+          {/* Divider */}
+          <div style={{ height: 1, background: T.border }}></div>
+
+          {/* Comment section */}
+          {/* Comment — всегда открыто, минималистично как поле цены */}
+          <div style={{ padding: "18px 22px 22px" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+              <div style={{ fontSize: 13, fontWeight: 500, color: T.text }}>Комментарий</div>
+              <div style={{ fontSize: 11, color: T.mutedLight }}>опционально</div>
+            </div>
+            <label style={{
+              display: "block",
+              paddingBottom: 10,
+              borderBottom: "1.5px solid " + (comment ? T.muted : T.border),
+              transition: "border-color 0.15s ease",
+              cursor: "text"
+            }}>
+              <textarea
+                value={comment}
+                onChange={(e) => setComment(e.target.value)}
+                placeholder="Готов взять, есть инструмент"
+                style={{
+                  width: "100%",
+                  minHeight: 56,
+                  padding: "4px 0",
+                  border: "none",
+                  fontSize: 16,
+                  fontFamily: "inherit",
+                  color: T.text,
+                  outline: "none",
+                  background: "transparent",
+                  resize: "none",
+                  lineHeight: 1.45,
+                  letterSpacing: "-0.005em"
+                }} />
+            </label>
+          </div>
+        </div>
+      </div>
+
+      {/* Sticky submit */}
+      <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "12px 16px 28px", background: "rgba(255,255,255,0.92)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)", borderTop: "1px solid " + T.border }}>
+        <button disabled={!canSubmit} style={{
+          width: "100%",
+          padding: "15px 16px",
+          background: canSubmit ? T.text : "#E5E5E5",
+          color: canSubmit ? "#fff" : "#A3A3A3",
+          border: "none",
+          borderRadius: 12,
+          fontSize: 15,
+          fontWeight: 600,
+          fontFamily: "inherit",
+          cursor: canSubmit ? "pointer" : "not-allowed",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: 8,
+          letterSpacing: "-0.005em",
+          transition: "background 0.15s ease"
+        }}>
+          {canSubmit && <IconCheck size={16} color="#fff" strokeWidth={2.4} />}
+          Откликнуться
+        </button>
+      </div>
+    </div>);
+
+};
+
+const App = () =>
+<div className="stage">
+    <div className="phone">
+      <div className="phone-inner">
+        <OrderDetail />
+      </div>
+    </div>
+  </div>;
+
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>

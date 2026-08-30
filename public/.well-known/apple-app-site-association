@@ -1,0 +1,12 @@
+{
+  "applinks": {
+    "details": [
+      {
+        "appIDs": ["ZNK264PD9Y.com.xtrud.app"],
+        "components": [
+          { "/": "*" }
+        ]
+      }
+    ]
+  }
+}

@@ -84,7 +84,7 @@ pg-meta, analytics и новые неизвестные upstream routes закр
 2. Работай с точной копией upstream `docker/`, не с веткой `master` и не с
    отдельно скачанным mutable `docker-compose.yml`.
    `scripts/supabase/prepare-exact-rehearsal.sh` делает fail-closed sparse
-   checkout во внешний `/private/tmp/xtrud-exact-stack.<id>` и сверяет оба pin.
+   checkout во внешний `/tmp/xtrud-exact-stack.<id>` и сверяет оба pin.
 3. Помести `docker-compose.rehearsal.yml` рядом с upstream compose, скопируй
    `rehearsal.env.example` во внешний mode-0600 `.env.rehearsal`, замени все
    placeholders свежими rehearsal-only значениями.
@@ -150,17 +150,17 @@ npm run supabase:restore-preflight:test
 bash -n scripts/supabase/prepare-exact-rehearsal.sh
 # Secret-free exact production snapshot; containers не запускаются:
 scripts/supabase/prepare-exact-stack.sh production \
-  /private/tmp/xtrud-exact-production.manual-check
+  /tmp/xtrud-exact-production.manual-check
 # На подготовленном snapshot до render/pull/start:
 node scripts/supabase/check-upstream-snapshot.mjs \
-  --snapshot /private/tmp/xtrud-exact-stack.manual-check
+  --snapshot /tmp/xtrud-exact-stack.manual-check
 # После создания private mode-0600 runtime env вне Git:
 node scripts/supabase/check-runtime-env.mjs \
   --env /absolute/private/runtime.env --mode rehearsal --arch arm64
 # Rendered JSON содержит secrets: mode 0600, не печатать, удалить сразу после:
 node scripts/supabase/check-rendered-rehearsal.mjs \
   --config /absolute/private/rendered-compose.json \
-  --snapshot /private/tmp/xtrud-exact-stack.manual-check --arch arm64
+  --snapshot /tmp/xtrud-exact-stack.manual-check --arch arm64
 bash -n scripts/supabase/collect-db-inventory.sh \
   scripts/supabase/create-encrypted-cloud-backup.sh \
   scripts/supabase/verify-encrypted-cloud-backup.sh \

@@ -8,6 +8,7 @@ import {
   mkdirSync,
   mkdtempSync,
   readFileSync,
+  realpathSync,
   rmSync,
   writeFileSync,
 } from "node:fs";
@@ -20,6 +21,8 @@ import { validateRuntimeEnv } from "./check-runtime-env.mjs";
 import { validateUpstreamSnapshot } from "./check-upstream-snapshot.mjs";
 
 const root = path.resolve(import.meta.dirname, "../..");
+// Реальный путь системного /tmp: /private/tmp на macOS, /tmp на Linux.
+const TMP_ROOT = realpathSync("/tmp");
 const infraRoot = path.join(root, "infra/supabase");
 const prepareScript = path.join(root, "scripts/supabase/prepare-exact-stack.sh");
 const lock = JSON.parse(readFileSync(path.join(infraRoot, "image-digests.json"), "utf8"));
@@ -513,19 +516,19 @@ test("generic prepare CLI validates profile, destination and Bash syntax before 
   assert.equal(spawnSync("bash", ["-n", prepareScript]).status, 0);
   assert.notEqual(spawnSync("bash", [prepareScript]).status, 0);
   assert.notEqual(
-    spawnSync("bash", [prepareScript, "unknown", "/private/tmp/xtrud-exact-production.bad"]).status,
+    spawnSync("bash", [prepareScript, "unknown", `${TMP_ROOT}/xtrud-exact-production.bad`]).status,
     0,
   );
   assert.notEqual(
-    spawnSync("bash", [prepareScript, "production", "/private/tmp/xtrud-exact-stack.bad"]).status,
+    spawnSync("bash", [prepareScript, "production", `${TMP_ROOT}/xtrud-exact-stack.bad`]).status,
     0,
   );
-  assert.equal(existsSync("/private/tmp/xtrud-exact-production.bad.partial"), false);
+  assert.equal(existsSync(`${TMP_ROOT}/xtrud-exact-production.bad.partial`), false);
 });
 
 test("generic prepare CLI assembles and validates a separate production snapshot", () =>
   withTempDirectory((directory) => {
-    const destination = `/private/tmp/xtrud-exact-production.${randomUUID()}`;
+    const destination = `${TMP_ROOT}/xtrud-exact-production.${randomUUID()}`;
     try {
       const result = spawnSync("bash", [prepareScript, "production", destination], {
         encoding: "utf8",

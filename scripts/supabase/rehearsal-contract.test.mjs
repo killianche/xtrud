@@ -8,6 +8,7 @@ import {
   mkdirSync,
   mkdtempSync,
   readFileSync,
+  realpathSync,
   rmSync,
   symlinkSync,
   unlinkSync,
@@ -26,6 +27,8 @@ import {
 } from "./check-upstream-snapshot.mjs";
 
 const root = path.resolve(import.meta.dirname, "../..");
+// Реальный путь системного /tmp: /private/tmp на macOS, /tmp на Linux.
+const TMP_ROOT = realpathSync("/tmp");
 const infraRoot = path.join(root, "infra/supabase");
 const prepareScript = path.join(root, "scripts/supabase/prepare-exact-rehearsal.sh");
 const lock = JSON.parse(readFileSync(path.join(infraRoot, "image-digests.json"), "utf8"));
@@ -741,7 +744,7 @@ test("bootstrap script has valid Bash syntax and prepares one dedicated external
     assert.equal(spawnSync("bash", ["-n", prepareScript]).status, 0);
     const { binDirectory, marker } = createFakeGit(directory);
     const env = createBootstrapEnvironment(directory, marker, binDirectory);
-    const destination = `/private/tmp/xtrud-exact-stack.${randomUUID()}`;
+    const destination = `${TMP_ROOT}/xtrud-exact-stack.${randomUUID()}`;
     try {
       const result = spawnSync("bash", [prepareScript, destination], {
         encoding: "utf8",
@@ -764,8 +767,8 @@ test("bootstrap rejects traversal and symlink-parent destinations before Git or 
     const { binDirectory, marker } = createFakeGit(directory);
     const env = createBootstrapEnvironment(directory, marker, binDirectory);
     const id = randomUUID();
-    const prefix = `/private/tmp/xtrud-exact-stack.${id}`;
-    const escaped = `/private/tmp/xtrud-escape.${id}`;
+    const prefix = `${TMP_ROOT}/xtrud-exact-stack.${id}`;
+    const escaped = `${TMP_ROOT}/xtrud-escape.${id}`;
     mkdirSync(prefix, { mode: 0o700 });
     try {
       const traversal = `${prefix}/../${path.basename(escaped)}`;
@@ -780,7 +783,7 @@ test("bootstrap rejects traversal and symlink-parent destinations before Git or 
       assert.equal(existsSync(`${escaped}.partial`), false);
       const realParent = path.join(directory, "real-parent");
       mkdirSync(realParent, { mode: 0o700 });
-      const linkedPrefix = `/private/tmp/xtrud-exact-stack.${randomUUID()}`;
+      const linkedPrefix = `${TMP_ROOT}/xtrud-exact-stack.${randomUUID()}`;
       symlinkSync(realParent, linkedPrefix);
       try {
         const linkedResult = spawnSync("bash", [prepareScript, `${linkedPrefix}/child`], {

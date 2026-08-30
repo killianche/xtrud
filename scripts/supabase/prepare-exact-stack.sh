@@ -15,7 +15,12 @@ fail() {
   exit 1
 }
 
-[[ "$#" -eq 2 ]] || fail "usage: $0 PROFILE /private/tmp/xtrud-exact-<profile>.<id>"
+# Разрешённый родитель — реальный путь системного каталога /tmp. На macOS он
+# резолвится в /private/tmp, на Linux остаётся /tmp. Сравнение ведётся уже
+# после `pwd -P`, поэтому traversal и symlink-родитель по-прежнему отклоняются.
+ALLOWED_PARENT="$(cd /tmp && pwd -P)"
+
+[[ "$#" -eq 2 ]] || fail "usage: $0 PROFILE $ALLOWED_PARENT/xtrud-exact-<profile>.<id>"
 [[ "$PROFILE" = "rehearsal" || "$PROFILE" = "production" ]] || \
   fail "profile must be rehearsal or production"
 [[ -n "$DESTINATION" ]] || fail "destination is required"
@@ -31,8 +36,8 @@ else
 fi
 [[ -d "$DESTINATION_PARENT" ]] || fail "destination parent must already exist"
 DESTINATION_PARENT="$(cd "$DESTINATION_PARENT" && pwd -P)"
-[[ "$DESTINATION_PARENT" = "/private/tmp" ]] || \
-  fail "destination parent must resolve exactly to /private/tmp"
+[[ "$DESTINATION_PARENT" = "$ALLOWED_PARENT" ]] || \
+  fail "destination parent must resolve exactly to $ALLOWED_PARENT"
 DESTINATION="$DESTINATION_PARENT/$DESTINATION_BASENAME"
 [[ ! -e "$DESTINATION" && ! -L "$DESTINATION" ]] || fail "destination already exists"
 

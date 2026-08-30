@@ -72,8 +72,8 @@
   "submit": {
     "production": {
       "ios": {
-        "ascApiKeyPath": "/Users/ruslancherbizhev/.expo-asc-keys/AuthKey_MFXS9GDD4X.p8",
-        "ascApiKeyId": "MFXS9GDD4X",
+        "ascApiKeyPath": "/root/.config/xtrud/AuthKey.p8",
+        "ascApiKeyId": "DVXRD7HJFY",
         "ascApiKeyIssuerId": "6fc51340-af9d-4698-99ff-0c2b56adab1d",
         "appleTeamId": "ZNK264PD9Y",
         "ascAppId": "6776783761"

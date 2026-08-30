@@ -6,14 +6,16 @@
 
 xtrud — мобильное приложение с общей Expo-кодовой базой. Разработка и первый
 production-релиз идут через iOS, потому что iOS уже опубликован и имеет рабочий
-release ledger. Android не форкается и не откладывается до конца: shared
-vertical slice обязан пройти Android preview/device smoke до заморозки iOS
-release candidate. Android production выпускается отдельной волной после
-стабилизации iOS.
+release ledger.
 
-Web сохраняется только как supporting surface: legal/support/account deletion,
-password recovery, AASA/universal links и лёгкие публичные маршруты. Он не
-является главным продуктом и не диктует мобильную навигацию.
+**Android заморожен** (DECISION владельца, 2026-08-30) до полного завершения
+iOS. Это отменяет прежнее правило про обязательный Android preview/device smoke
+до заморозки iOS release candidate — см. раздел 8.
+
+Web сокращён до supporting surface, необходимого для соответствия требованиям
+App Store: legal/support/account deletion, password recovery и
+AASA/universal links. Он не является продуктом и не диктует мобильную
+навигацию.
 
 ## 1. Проверенные факты
 
@@ -31,7 +33,11 @@ password recovery, AASA/universal links и лёгкие публичные ма�
   поэтому mobile development продолжается против Cloud, а backend changes
   остаются additive, backward-compatible и feature-off.
 
-## 2. Почему iOS-first, но не iOS-only
+## 2. Почему iOS-first
+
+> ⏸ Пункт 3 порядка ниже (ранний Android preview) приостановлен решением
+> владельца от 2026-08-30 — см. раздел 8.
+
 
 Одновременный store launch сейчас удвоит release и device QA в момент, когда
 основной flow меняется. Полностью отложенный Android создаст другой риск:
@@ -88,6 +94,9 @@ Platform-specific code допустим только как Adapter на реа�
 
 ### Android
 
+> ⏸ Заморожено с 2026-08-30 — см. раздел 8. Проверки ниже не выполняются и не
+> блокируют iOS-срез до снятия заморозки.
+
 - финальный manifest не содержит необоснованный `RECORD_AUDIO`;
 - edge-to-edge, system Back, keyboard/IME и photo picker;
 - cold/warm launch, Keystore/session и `content://` uploads;
@@ -130,3 +139,42 @@ maintenance или новый build.
 - **2026-08-25** — владелец закрепил приложение как главный продукт и разрешил
   выбрать порядок платформ. Совет продукта, разработки и дизайна единогласно
   выбрал iOS-first release с общей архитектурой и ранним Android preview.
+
+## 8. Заморозка Android
+
+> DECISION владельца, 2026-08-30. Отменяет требование Android preview/device
+> smoke из разделов выше до снятия заморозки.
+
+Продукт доводится до конца на iOS. Android не собирается, не проверяется и не
+выпускается, пока iOS не завершён.
+
+### Что это значит на практике
+
+- Android build, device QA и store submission не выполняются;
+- вертикальный срез не блокируется отсутствием Android-проверки;
+- в отчётах Android — не `UNKNOWN`, требующий проверки, а осознанно
+  замороженная платформа.
+
+### Что намеренно НЕ удалено
+
+Из `package.json` убраны только два скрипта: `android` и `store:check:android`.
+Конфигурация сохранена:
+
+| Что | Почему сохранено |
+|---|---|
+| блок `android` в `app.json` | `check-mobile-config.mjs` требует `android.package` и `blockedPermissions` с `RECORD_AUDIO`; `check-version-consistency.mjs` требует положительный `android.versionCode` |
+| профили `android` в `eas.json` | `check-mobile-config.mjs` требует `buildType: app-bundle` в production |
+| `stores.android` в `release/production.json` | ledger опубликованных номеров; разрыв связи build number ↔ Git SHA запрещён `docs/AGENT_WORKFLOW.md` §4 |
+| иконки `assets/images/android-*` | 98 KB, привязаны к `app.json` |
+
+Удаление этого потребовало бы переписать три release-гейта и два тестовых
+файла ради ~30 строк конфигурации — больше правок, чем экономии, и риск в
+release-контракте накануне iOS-релиза. Заморозка даёт тот же результат
+бесплатно.
+
+### Снятие заморозки
+
+Отдельной задачей: вернуть два npm-скрипта, выполнить preview build, пройти
+device QA на реальном устройстве, и только затем планировать store submission.
+Нативный каталог `android/` в репозитории отсутствует и генерируется
+`expo prebuild`.

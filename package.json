@@ -9,7 +9,6 @@
   },
   "scripts": {
     "start": "expo start",
-    "android": "expo run:android",
     "ios": "expo run:ios",
     "web": "expo start --web",
     "typecheck": "tsc --noEmit",
@@ -47,7 +46,6 @@
     "quality:check": "npm run governance:check && npm run supabase:integrity && npm run supabase:integrity:test && npm run supabase:backup-safety:test && npm run supabase:storage-backup:test && npm run supabase:security-hardening:test && npm run supabase:rehearsal-contract:test && npm run supabase:production-contract:test && npm run supabase:restore-preflight:test && npm run supabase:universal:draft:test && npm run catalog:test && npm run catalog:check && npm run security:audit:test && npm run release:contract:check && npm run release:contract:test && npm run release:legal:check && npm run release:legal:test && npm run release:version:test && npm run mobile:config:check && npm run mobile:config:test && npm run typecheck && npm run tokens:check && npx biome ci . && npm test && node scripts/release/check-version-consistency.mjs && node scripts/release/check-static-assets.mjs",
     "release:check": "npm run quality:check && npm run catalog:drift:check && npm run security:audit && npm run web:build:production",
     "store:check:ios": "npm run catalog:drift:check && node scripts/release/check-version-consistency.mjs --store-release ios",
-    "store:check:android": "node scripts/release/check-version-consistency.mjs --store-release android",
     "web:build": "WEB_BUILD_MODE=preview node scripts/build-web-local.mjs",
     "web:build:preview": "WEB_BUILD_MODE=preview node scripts/build-web-local.mjs",
     "web:build:production": "WEB_BUILD_MODE=production node scripts/build-web-local.mjs",

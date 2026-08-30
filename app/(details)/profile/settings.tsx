@@ -35,14 +35,12 @@ import {
   SignOut,
   Trash,
 } from "phosphor-react-native";
-import { useState } from "react";
-import { ActivityIndicator, Pressable, ScrollView, Switch, TextInput, View } from "react-native";
+import { ActivityIndicator, Pressable, ScrollView, Switch, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
 import { ThemeSwitcher } from "@/components/ThemeSwitcher";
-import { BottomSheet, ScreenHeader } from "@/components/ui";
+import { ScreenHeader } from "@/components/ui";
 import { useAuthSession } from "@/features/auth/use-auth-session";
-import { useDeleteMyAccount } from "@/features/auth/use-delete-account";
 import { useUserRecord } from "@/features/auth/use-user-record";
 import { useBlockedUsers } from "@/features/blocking/use-user-blocks";
 import {
@@ -66,7 +64,6 @@ export default function SettingsScreen() {
   const userId = session?.user?.id;
   const { data: user } = useUserRecord(userId);
   const goBack = useSafeBack("/(tabs)/profile" as const);
-  const [deleteSheetOpen, setDeleteSheetOpen] = useState(false);
 
   const isMaster = user?.is_master === true;
   // Блокировка пользователей доступна всем авторизованным (не только
@@ -132,7 +129,12 @@ export default function SettingsScreen() {
             label="Удалить аккаунт"
             destructive
             icon={Trash}
-            onPress={() => setDeleteSheetOpen(true)}
+            onPress={() =>
+              router.push({
+                pathname: "/profile/delete-account",
+                params: { isMaster: isMaster ? "true" : "false" },
+              } as never)
+            }
           />
         </Section>
 
@@ -164,168 +166,6 @@ export default function SettingsScreen() {
           />
         </Section>
       </ScrollView>
-
-      <DeleteAccountSheet
-        open={deleteSheetOpen}
-        isMaster={isMaster}
-        onClose={() => setDeleteSheetOpen(false)}
-        onDeleted={() => {
-          setDeleteSheetOpen(false);
-          router.replace("/(auth)/phone" as never);
-        }}
-      />
-    </View>
-  );
-}
-
-// ============================================================================
-// DeleteAccountSheet — двухступенчатое подтверждение удаления.
-// 1) Объяснение последствий + кнопка «Я понимаю».
-// 2) Поле ввода слова «УДАЛИТЬ» + кнопка submit.
-// Сделано как 2-step внутри одного sheet'а (не два отдельных alert'а),
-// чтобы пользователь видел список последствий в момент подтверждения.
-// ============================================================================
-
-interface DeleteAccountSheetProps {
-  open: boolean;
-  isMaster: boolean;
-  onClose: () => void;
-  onDeleted: () => void;
-}
-
-function DeleteAccountSheet({ open, isMaster, onClose, onDeleted }: DeleteAccountSheetProps) {
-  const [step, setStep] = useState<"warn" | "confirm">("warn");
-  const [confirmText, setConfirmText] = useState("");
-  const deleteAccount = useDeleteMyAccount();
-  const tc = useThemeColors(["error", "muted-soft"]);
-
-  const isBusy = deleteAccount.isPending;
-  const REQUIRED = "УДАЛИТЬ";
-  const canSubmit = step === "confirm" && confirmText.trim() === REQUIRED && !isBusy;
-
-  // Сброс состояния при закрытии sheet'а.
-  const handleClose = () => {
-    if (isBusy) return;
-    onClose();
-    // setTimeout чтобы шаг не «дёрнулся» во время анимации закрытия.
-    setTimeout(() => {
-      setStep("warn");
-      setConfirmText("");
-    }, 250);
-  };
-
-  const handleDelete = async () => {
-    if (!canSubmit) return;
-    try {
-      const result = await deleteAccount.mutateAsync();
-      if (result.ok || result.reason === "already_deleted") {
-        onDeleted();
-      }
-    } catch {
-      // Ошибка покажется через deleteAccount.error ниже
-    }
-  };
-
-  return (
-    <BottomSheet
-      open={open}
-      onClose={handleClose}
-      title={step === "warn" ? "Удалить аккаунт?" : "Подтвердите удаление"}
-    >
-      {step === "warn" ? (
-        <View>
-          <View className="rounded-lg border border-hairline bg-canvas-soft p-4">
-            <ConsequenceRow text="Профиль скроется от других пользователей." />
-            <ConsequenceRow text="Имя, телефон, фото и личные данные будут удалены." />
-            <ConsequenceRow text="Открытые заявки будут отменены, мастера и клиенты получат уведомления." />
-            {isMaster ? (
-              <>
-                <ConsequenceRow text="Категории, прайс-лист, портфолио и данные верификации будут удалены." />
-                <ConsequenceRow text="Активные заказы, где вы выбраны мастером, будут отменены." />
-              </>
-            ) : null}
-            <ConsequenceRow text="Чаты и отзывы останутся у второй стороны как «Удалённый пользователь»." />
-            <ConsequenceRow text="Восстановить аккаунт через этот номер будет невозможно." />
-          </View>
-
-          <View className="mt-5 gap-3">
-            <Pressable
-              accessibilityRole="button"
-              onPress={() => setStep("confirm")}
-              className="min-h-12 items-center justify-center rounded-md bg-error active:opacity-80"
-            >
-              <AppText weight="semibold" className="text-button text-on-primary">
-                Я понимаю, продолжить
-              </AppText>
-            </Pressable>
-            <Pressable
-              accessibilityRole="button"
-              onPress={handleClose}
-              className="min-h-12 items-center justify-center rounded-md border border-hairline active:opacity-70"
-            >
-              <AppText weight="semibold" className="text-button text-ink">
-                Отмена
-              </AppText>
-            </Pressable>
-          </View>
-        </View>
-      ) : (
-        <View>
-          <TextInput
-            value={confirmText}
-            onChangeText={setConfirmText}
-            placeholder={REQUIRED}
-            placeholderTextColor={tc["muted-soft"]}
-            autoCapitalize="characters"
-            autoCorrect={false}
-            maxLength={20}
-            editable={!isBusy}
-            className="min-h-12 rounded-md border border-hairline bg-canvas px-3 py-3 text-body-md text-ink"
-            accessibilityLabel="Поле подтверждения удаления"
-          />
-
-          {deleteAccount.error ? (
-            <AppText weight="medium" className="mt-3 text-caption text-error">
-              {deleteAccount.error.message}
-            </AppText>
-          ) : null}
-
-          <View className="mt-5 gap-3">
-            <Pressable
-              accessibilityRole="button"
-              disabled={!canSubmit}
-              onPress={handleDelete}
-              className={`h-12 items-center justify-center rounded-md ${
-                canSubmit ? "bg-error active:opacity-80" : "bg-surface-3"
-              }`}
-            >
-              <AppText weight="semibold" className="text-button text-on-primary">
-                {isBusy ? "Удаляем..." : "Удалить аккаунт"}
-              </AppText>
-            </Pressable>
-            <Pressable
-              accessibilityRole="button"
-              disabled={isBusy}
-              onPress={handleClose}
-              className="min-h-12 items-center justify-center rounded-md border border-hairline active:opacity-70"
-            >
-              <AppText weight="semibold" className="text-button text-ink">
-                Отмена
-              </AppText>
-            </Pressable>
-          </View>
-        </View>
-      )}
-    </BottomSheet>
-  );
-}
-
-function ConsequenceRow({ text }: { text: string }) {
-  const tc = useThemeColors(["error"]);
-  return (
-    <View className="flex-row gap-2 py-1.5">
-      <View className="mt-1.5 h-1 w-1 rounded-full" style={{ backgroundColor: tc.error }} />
-      <AppText className="flex-1 text-body-sm text-body">{text}</AppText>
     </View>
   );
 }

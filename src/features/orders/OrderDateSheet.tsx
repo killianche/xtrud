@@ -1,15 +1,20 @@
 /**
- * OrderDateSheet — выбор конкретной даты заказа («К дате»).
+ * OrderDateSheet — контент выбора конкретной даты заказа («К дате»).
  *
- * Открывается из формы заказа (OrderFormBody, блок «Сроки»), когда клиент
- * хочет указать точный день вместо относительного срока. Возвращает дату в
- * формате yyyy-mm-dd через onSelect; хранится в orders.preferred_date.
+ * Триггер — chip «К дате» в форме заказа (`OrderFormBody`, блок «Сроки»).
+ * Раньше был `BottomSheet` (самописный full-screen `<Modal>`); теперь —
+ * контент отдельного route-экрана `app/(details)/orders/date-select.tsx` с
+ * нативной iOS `formSheet`-модальностью (`docs/IOS_FOUNDATION.md` §2.4):
+ * выбор параметра/подтверждение → `formSheet`, а не самописный лист.
+ * Presentation/detents задаёт `Stack.Screen` route'а. Handshake результата —
+ * `useOrderDatePickerStore`, `OrderFormBody` слушает store и применяет выбор
+ * в react-hook-form (см. `LocationPicker.tsx` — тот же паттерн).
  *
  * Почему свой календарь на чистом RN, а не библиотека:
  *   - В проекте нет date-picker зависимостей и ставить их не нужно.
- *   - Нативный <DateTimePicker> выглядит по-разному на web/iOS/Android и не
+ *   - Нативный <DateTimePicker> выглядит по-разному на iOS/Android и не
  *     поддаётся Vercel-токенам (цвета системные). Свой компонент даёт единый
- *     вид во всех трёх средах и работает через NativeWind className.
+ *     вид и работает через NativeWind className.
  *   - Вся дата-логика — на голом JS (Date / Intl.DateTimeFormat ru-RU).
  *
  * UX-паттерн (Lazyweb: NHL / WeWork / Lumy single-day pickers):
@@ -20,22 +25,22 @@
  *     border-accent (отличимо от выбранного).
  *   - Быстрые пилюли «Сегодня» / «Завтра» (большинство «к дате» — ближайшие дни).
  *   - Один primary внизу — «Готово», активен только когда дата выбрана.
+ *   - Закрытие без «Готово» (X в header) = отмена, черновик не коммитится.
  */
 
-import { CaretLeft, CaretRight } from "phosphor-react-native";
-import { useEffect, useMemo, useState } from "react";
-import { Platform, Pressable, ScrollView, View } from "react-native";
+import { CaretLeft, CaretRight, X } from "phosphor-react-native";
+import { useMemo, useState } from "react";
+import { Pressable, ScrollView, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
-import { BottomSheet } from "@/components/ui/BottomSheet";
-import { useColorScheme, useDomColorScheme } from "@/hooks/use-color-scheme";
-import { darkColors, lightColors } from "@/lib/colors";
+import { useThemeColor, useThemeColors } from "@/lib/use-theme-color";
 
 export interface OrderDateSheetProps {
-  visible: boolean;
   /** Выбранная дата yyyy-mm-dd или null. */
   value: string | null;
-  /** Вернуть выбранную дату yyyy-mm-dd. */
+  /** Вернуть выбранную дату yyyy-mm-dd (тап «Готово»). */
   onSelect: (isoDate: string) => void;
+  /** Закрыть route без коммита (X в header, тоже вызывается после «Готово»). */
   onClose: () => void;
 }
 
@@ -84,15 +89,11 @@ function buildMonthCells(year: number, month: number): (Date | null)[] {
 // с лишним суффиксом «г.». Нужен формат «Май 2026».
 const monthNameFmt = new Intl.DateTimeFormat("ru-RU", { month: "long" });
 
-export function OrderDateSheet({ visible, value, onSelect, onClose }: OrderDateSheetProps) {
-  // Phosphor SVG-иконки красятся прокинутым цветом, не className. Внутри Modal
-  // портала RNW CSS-vars (`rgb(var(--ink))`) не резолвятся — поэтому берём
-  // готовый hex из палитры по фактической теме (как делает сам BottomSheet).
-  const isWeb = Platform.OS === "web";
-  const domScheme = useDomColorScheme();
-  const { colorScheme: nativeScheme } = useColorScheme();
-  const scheme = isWeb ? domScheme : nativeScheme;
-  const inkHex = (scheme === "dark" ? darkColors : lightColors).ink;
+export function OrderDateSheet({ value, onSelect, onClose }: OrderDateSheetProps) {
+  const insets = useSafeAreaInsets();
+  // Phosphor SVG-иконки красятся прокинутым цветом, не className.
+  const inkHex = useThemeColor("ink");
+  const tc = useThemeColors(["mute"]);
 
   const today = useMemo(() => startOfDay(new Date()), []);
   const tomorrow = useMemo(() => {
@@ -101,25 +102,15 @@ export function OrderDateSheet({ visible, value, onSelect, onClose }: OrderDateS
     return t;
   }, [today]);
 
-  // Выбранная дата — черновик внутри шита. Коммитится в форму только по «Готово»
-  // (тап по дню лишь подсвечивает). Закрытие через back-кнопку = отмена.
+  // Выбранная дата — черновик внутри route'а. Коммитится в форму только по
+  // «Готово» (тап по дню лишь подсвечивает). Закрытие без «Готово» = отмена.
+  // Route монтируется заново на каждое открытие — инициализация из `value`
+  // достаточна, отдельный reset-эффект (как было у `visible`-driven Modal) не нужен.
   const [selected, setSelected] = useState<Date | null>(value ? fromIso(value) : null);
   // Видимый месяц. Если дата выбрана — открываемся на её месяце, иначе на текущем.
   const initialMonth = value ? fromIso(value) : today;
   const [viewYear, setViewYear] = useState(initialMonth.getFullYear());
   const [viewMonth, setViewMonth] = useState(initialMonth.getMonth());
-
-  // При каждом открытии сбрасываем черновик к закоммиченному значению формы и
-  // прыгаем на его месяц. Иначе уйдёт рассинхрон: отменили выбор back-кнопкой,
-  // открыли снова — а внутри остался прошлый незакоммиченный день.
-  useEffect(() => {
-    if (!visible) return;
-    const base = value ? fromIso(value) : today;
-    setSelected(value ? fromIso(value) : null);
-    setViewYear(base.getFullYear());
-    setViewMonth(base.getMonth());
-    // today стабилен (useMemo []), value меняется при коммите — синк ровно когда нужно.
-  }, [visible, value, today]);
 
   const cells = useMemo(() => buildMonthCells(viewYear, viewMonth), [viewYear, viewMonth]);
 
@@ -172,7 +163,29 @@ export function OrderDateSheet({ visible, value, onSelect, onClose }: OrderDateS
   const isTomorrowQuick = selectedIso === toIso(tomorrow);
 
   return (
-    <BottomSheet open={visible} onClose={onClose} title="Выберите дату">
+    <View className="flex-1 bg-canvas">
+      {/* Header: title + close-X — тот же стиль, что у `PickerSheetPage`
+          (bold title слева, лёгкий X справа), для единого вида formSheet-контента. */}
+      <View className="flex-row items-center gap-3 px-5 py-3">
+        <AppText
+          weight="bold"
+          className="flex-1 text-display-sm tracking-tight text-ink"
+          numberOfLines={1}
+        >
+          Выберите дату
+        </AppText>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Закрыть"
+          onPress={onClose}
+          hitSlop={10}
+          className="h-9 w-9 items-center justify-center rounded-full active:bg-canvas-soft"
+        >
+          <X size={22} weight="bold" color={tc.mute} />
+        </Pressable>
+      </View>
+      <View className="h-px bg-hairline mx-4" />
+
       <ScrollView
         className="flex-1"
         contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 8 }}
@@ -266,7 +279,10 @@ export function OrderDateSheet({ visible, value, onSelect, onClose }: OrderDateS
       </ScrollView>
 
       {/* Один primary внизу — подтверждение выбора. Активен только при выбранной дате. */}
-      <View className="border-t border-hairline px-5 pt-3">
+      <View
+        className="border-t border-hairline px-5 pt-3"
+        style={{ paddingBottom: insets.bottom + 12 }}
+      >
         <Pressable
           accessibilityRole="button"
           disabled={!selected}
@@ -283,7 +299,7 @@ export function OrderDateSheet({ visible, value, onSelect, onClose }: OrderDateS
           </AppText>
         </Pressable>
       </View>
-    </BottomSheet>
+    </View>
   );
 }
 

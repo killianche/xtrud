@@ -46,6 +46,7 @@ import { XtrudWordmark } from "@/components/XtrudWordmark";
 import { useAuthSession } from "@/features/auth/use-auth-session";
 import { useUserRecord } from "@/features/auth/use-user-record";
 import { RoleSwitchPill } from "@/features/master-view/RoleSwitchPill";
+import { useReducedMotion } from "@/hooks/use-reduced-motion";
 import { useAppWidth } from "@/lib/use-app-width";
 import { useThemeColor } from "@/lib/use-theme-color";
 import { useUserCity } from "@/lib/use-user-city";
@@ -95,8 +96,19 @@ export function CinematicHero({ onCreateTask }: { onCreateTask: () => void }) {
     opacitiesRef.current = HERO_PHOTOS.map(() => new Animated.Value(0));
   }
   const opacities = opacitiesRef.current;
+  const reducedMotion = useReducedMotion();
 
   useEffect(() => {
+    // Автопрокрутка — декоративный слайд-шоу-эффект, при «Уменьшении движения»
+    // выключается целиком (design-quality.md §2): первое фото остаётся видно
+    // статично, без fade-in и без цикла crossfade (Apple Reduced Motion
+    // evaluation criteria прямо называет автовоспроизводящийся контент).
+    if (reducedMotion) {
+      // biome-ignore lint/style/noNonNullAssertion: HERO_PHOTOS не пуст, opacities той же длины
+      opacities[0]!.setValue(1);
+      return;
+    }
+
     let cancelled = false;
     let timeoutId: ReturnType<typeof setTimeout> | null = null;
     let currentIdx = 0;
@@ -138,7 +150,7 @@ export function CinematicHero({ onCreateTask }: { onCreateTask: () => void }) {
       cancelled = true;
       if (timeoutId !== null) clearTimeout(timeoutId);
     };
-  }, [opacities]);
+  }, [opacities, reducedMotion]);
 
   // Высота фото-блока: статус-бар + контентная зона (шапка + H1 + CTA).
   // Контентную зону держим ~ширине, с потолком для широких web-вьюпортов.

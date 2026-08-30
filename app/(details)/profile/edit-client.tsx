@@ -16,6 +16,7 @@
  *     почему кнопка неактивна («юзернейм не меняется»).
  */
 
+import { useRouter } from "expo-router";
 import { Camera } from "phosphor-react-native";
 import { useEffect, useState } from "react";
 import {
@@ -36,7 +37,6 @@ import { useAuthSession } from "@/features/auth/use-auth-session";
 import { useUserRecord } from "@/features/auth/use-user-record";
 import { setUsernameErrorMessage, useSetUsername } from "@/features/auth/use-username";
 import { formatPhoneMask } from "@/features/auth/validation";
-import { ChangePhoneSheet } from "@/features/profile/ChangePhoneSheet";
 import { useRemoveMyAvatar, useUpdateMyAvatar } from "@/features/profile/use-update-my-avatar";
 import { useUpdateMyProfile } from "@/features/profile/use-update-my-profile";
 import { useUserPrivate } from "@/features/profile/use-user-private";
@@ -47,6 +47,7 @@ import { useUnsavedChangesGuard } from "@/lib/use-unsaved-changes-guard";
 
 export default function EditClientScreen() {
   const insets = useSafeAreaInsets();
+  const router = useRouter();
   const { session } = useAuthSession();
   const userId = session?.user?.id;
   const { data: user } = useUserRecord(userId);
@@ -64,7 +65,6 @@ export default function EditClientScreen() {
   const [usernameValue, setUsernameValue] = useState("");
   const [usernameValid, setUsernameValid] = useState(true);
   const [didInit, setDidInit] = useState(false);
-  const [changePhoneOpen, setChangePhoneOpen] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
   // Один раз префиллим форму актуальными значениями после загрузки user.
@@ -326,7 +326,7 @@ export default function EditClientScreen() {
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="Сменить номер"
-              onPress={() => setChangePhoneOpen(true)}
+              onPress={() => router.push("/profile/change-phone" as never)}
               hitSlop={8}
               className="active:opacity-60"
             >
@@ -344,13 +344,6 @@ export default function EditClientScreen() {
             клиента не используется в продукте. Мастера прикрепляются к
             районам через master_service_areas. */}
       </ScrollView>
-
-      <ChangePhoneSheet
-        open={changePhoneOpen}
-        onClose={() => setChangePhoneOpen(false)}
-        userId={userId}
-        currentPhone={userPrivate?.phone ?? null}
-      />
     </KeyboardAvoidingView>
   );
 }

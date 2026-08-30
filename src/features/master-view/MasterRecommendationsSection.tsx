@@ -54,6 +54,7 @@ import { AppText } from "@/components/AppText";
 import { OrderRow } from "@/components/OrderRow";
 import { OrderRowsSkeleton } from "@/components/OrderRowsSkeleton";
 import { useMasterRecommendations } from "@/features/master-view/use-master-recommendations";
+import { useReducedMotion } from "@/hooks/use-reduced-motion";
 
 interface MasterRecommendationsSectionProps {
   userId: string;
@@ -73,10 +74,17 @@ export function MasterRecommendationsSection({ userId }: MasterRecommendationsSe
     { userId, filter: "all", max: MAX_ITEMS },
   );
 
-  // Animated fade-in (тот же паттерн, что в соседних секциях).
+  // Animated fade-in (тот же паттерн, что в соседних секциях). Декоративный
+  // переход — при «Уменьшении движения» список появляется сразу, без анимации
+  // (design-quality.md §2).
   const opacity = useRef(new Animated.Value(0)).current;
+  const reducedMotion = useReducedMotion();
   useEffect(() => {
     if (!isLoading && recommendations.length > 0) {
+      if (reducedMotion) {
+        opacity.setValue(1);
+        return;
+      }
       opacity.setValue(0);
       Animated.timing(opacity, {
         toValue: 1,
@@ -84,7 +92,7 @@ export function MasterRecommendationsSection({ userId }: MasterRecommendationsSe
         useNativeDriver: true,
       }).start();
     }
-  }, [isLoading, recommendations.length, opacity]);
+  }, [isLoading, recommendations.length, opacity, reducedMotion]);
 
   // Empty state — секция не рендерится.
   if (!hasCategories) return null;

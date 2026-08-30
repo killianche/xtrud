@@ -35,7 +35,8 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
 import { CITIES, type CityId } from "@/components/CitySelector";
-import { Avatar, type PickerOption, PickerSheet, Skeleton } from "@/components/ui";
+import { Avatar, Skeleton } from "@/components/ui";
+import { useCategoryFilterPickerStore } from "@/features/categories/category-filter-picker-store";
 import { useCategoryDetail } from "@/features/categories/use-category-detail";
 import {
   formatServicePrice,
@@ -51,12 +52,10 @@ import { type MasterInCategory, useMastersByL2 } from "@/features/master-view/us
 import { useRecordMasterView } from "@/features/master-view/use-record-view";
 import { type PortfolioItem, useMasterPortfolio } from "@/features/profile/use-my-portfolio";
 import { usePullToRefresh } from "@/hooks/use-pull-to-refresh";
-import { getCategoryColorIconUrl } from "@/lib/category-color-icons";
 import { cdnImage } from "@/lib/image-cdn";
 import { pluralizeYears } from "@/lib/pluralize";
 import { useAppWidth } from "@/lib/use-app-width";
 import { useSafeBack } from "@/lib/use-safe-back";
-import { useThemeColors } from "@/lib/use-theme-color";
 
 /** Высота скрываемой шапки = back-row (64) + chip-row (52).
  *  Back-row высокий, чтобы display-md заголовок (24px) и крупная back-кнопка
@@ -76,7 +75,6 @@ const DIRECTION_NOISE = 4;
 export default function CategoryDetailScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const tc = useThemeColors(["accent", "canvas", "ink", "mute"]);
   const { id } = useLocalSearchParams<{ id: string }>();
   const categoryId = typeof id === "string" ? id : undefined;
   const { data, error, isLoading: isCategoryLoading } = useCategoryDetail(categoryId);
@@ -146,7 +144,35 @@ export default function CategoryDetailScreen() {
   const [cityFilter, setCityFilter] = useState<CityId>("all");
   const [l3Filter, setL3Filter] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<SortBy>("rating");
-  const [openSheet, setOpenSheet] = useState<null | "city" | "l3" | "sort">(null);
+
+  // Город/услуга/сортировка теперь выбираются на отдельных route-экранах
+  // (`/category/{city,l3,sort}-select`, нативная formSheet-модальность вместо
+  // самописного `<Modal>`) — слушаем результат из транзитного store и
+  // применяем в local state. Паттерн 1-в-1 с
+  // `useOrderDraftStore.selectedLocation` / `LocationPicker.tsx`.
+  const sortResult = useCategoryFilterPickerStore((s) => s.sortResult);
+  const setSortResult = useCategoryFilterPickerStore((s) => s.setSortResult);
+  useEffect(() => {
+    if (!sortResult) return;
+    setSortBy(sortResult.value);
+    setSortResult(null);
+  }, [sortResult, setSortResult]);
+
+  const cityResult = useCategoryFilterPickerStore((s) => s.cityResult);
+  const setCityResult = useCategoryFilterPickerStore((s) => s.setCityResult);
+  useEffect(() => {
+    if (!cityResult) return;
+    setCityFilter(cityResult.value);
+    setCityResult(null);
+  }, [cityResult, setCityResult]);
+
+  const l3Result = useCategoryFilterPickerStore((s) => s.l3Result);
+  const setL3Result = useCategoryFilterPickerStore((s) => s.setL3Result);
+  useEffect(() => {
+    if (!l3Result) return;
+    setL3Filter(l3Result.value);
+    setL3Result(null);
+  }, [l3Result, setL3Result]);
 
   // Apply filter + sort
   const mastersList = useMemo(() => {
@@ -254,14 +280,24 @@ export default function CategoryDetailScreen() {
                 label={cityLabel}
                 icon={MapPin}
                 active={cityFilter !== "all"}
-                onPress={() => setOpenSheet("city")}
+                onPress={() =>
+                  router.push({
+                    pathname: "/category/city-select",
+                    params: { cityId: cityFilter },
+                  } as never)
+                }
               />
               {services.length > 0 ? (
                 <FilterChip
                   label={l3Label}
                   icon={ListChecks}
                   active={!!l3Filter}
-                  onPress={() => setOpenSheet("l3")}
+                  onPress={() =>
+                    router.push({
+                      pathname: "/category/l3-select",
+                      params: { categoryId, l3Filter: l3Filter ?? "" },
+                    } as never)
+                  }
                 />
               ) : null}
               <FilterChip
@@ -270,7 +306,12 @@ export default function CategoryDetailScreen() {
                   sortBy === "experience" ? Briefcase : sortBy === "availability" ? Calendar : Star
                 }
                 active={sortBy !== "rating"}
-                onPress={() => setOpenSheet("sort")}
+                onPress={() =>
+                  router.push({
+                    pathname: "/category/sort-select",
+                    params: { sortBy },
+                  } as never)
+                }
               />
             </View>
           ) : null}
@@ -297,7 +338,12 @@ export default function CategoryDetailScreen() {
               label={cityLabel}
               icon={MapPin}
               active={cityFilter !== "all"}
-              onPress={() => setOpenSheet("city")}
+              onPress={() =>
+                router.push({
+                  pathname: "/category/city-select",
+                  params: { cityId: cityFilter },
+                } as never)
+              }
             />
             {/* Чип «Услуга» только если есть L3-подкатегории. */}
             {services.length > 0 ? (
@@ -305,7 +351,12 @@ export default function CategoryDetailScreen() {
                 label={l3Label}
                 icon={ListChecks}
                 active={!!l3Filter}
-                onPress={() => setOpenSheet("l3")}
+                onPress={() =>
+                  router.push({
+                    pathname: "/category/l3-select",
+                    params: { categoryId, l3Filter: l3Filter ?? "" },
+                  } as never)
+                }
               />
             ) : null}
             <FilterChip
@@ -316,7 +367,12 @@ export default function CategoryDetailScreen() {
                 sortBy === "experience" ? Briefcase : sortBy === "availability" ? Calendar : Star
               }
               active={sortBy !== "rating"}
-              onPress={() => setOpenSheet("sort")}
+              onPress={() =>
+                router.push({
+                  pathname: "/category/sort-select",
+                  params: { sortBy },
+                } as never)
+              }
             />
           </ScrollView>
         ) : null}
@@ -405,95 +461,6 @@ export default function CategoryDetailScreen() {
           </View>
         ) : null}
       </ScrollView>
-
-      {/* Filter pickers — full-screen, иконка-square + title + Check.
-          Универсальный PickerSheet (не BottomSheet) — без drag-handle,
-          с большим header'ом и accent-color для selected. */}
-      <PickerSheet
-        open={openSheet === "city"}
-        onClose={() => setOpenSheet(null)}
-        title="Город"
-        options={CITIES.map<PickerOption>((c) => ({
-          id: c.id,
-          title: c.name,
-          icon: <MapPin size={18} weight="bold" color={tc.ink} />,
-        }))}
-        selectedId={cityFilter}
-        onSelect={(id) => {
-          setCityFilter(id as CityId);
-          setOpenSheet(null);
-        }}
-      />
-
-      <PickerSheet
-        open={openSheet === "l3"}
-        onClose={() => setOpenSheet(null)}
-        title={categoryName}
-        options={[
-          {
-            id: "__all",
-            title: "Все услуги",
-            icon: <ListChecks size={18} weight="bold" color={tc.ink} />,
-          },
-          ...services.map<PickerOption>((s) => {
-            // Все L3-услуги одной L2 — рендерим цветную тематическую SVG-иконку
-            // родительской L2-категории (через Iconify CDN). Так sheet выглядит
-            // не «серым plain-листом», а живой и в стиле каталога.
-            // 290+ L3 — отдельный mapping не имеет смысла: визуальная связь с
-            // родительской категорией работает, и иконка узнаваема (окно/капля).
-            const colorUrl = getCategoryColorIconUrl(categoryId ?? null);
-            return {
-              id: s.id,
-              title: s.name_ru,
-              icon: colorUrl ? (
-                <Image source={{ uri: colorUrl }} style={{ width: 22, height: 22 }} />
-              ) : (
-                <ListChecks size={18} weight="bold" color={tc.mute} />
-              ),
-            };
-          }),
-        ]}
-        selectedId={l3Filter ?? "__all"}
-        onSelect={(id) => {
-          setL3Filter(id === "__all" ? null : id);
-          setOpenSheet(null);
-        }}
-        searchable={services.length >= 8}
-        searchPlaceholder="Например, замена смесителя"
-        resettable={!!l3Filter}
-        resetLabel="Сбросить"
-      />
-
-      <PickerSheet
-        open={openSheet === "sort"}
-        onClose={() => setOpenSheet(null)}
-        title="Сортировка"
-        options={[
-          {
-            id: "rating",
-            title: "По рейтингу",
-            subtitle: "Сначала с лучшими отзывами",
-            icon: <Star size={18} weight="bold" color={tc.ink} />,
-          },
-          {
-            id: "experience",
-            title: "По опыту",
-            subtitle: "Сначала самые опытные",
-            icon: <Briefcase size={18} weight="bold" color={tc.ink} />,
-          },
-          {
-            id: "availability",
-            title: "Свободные сначала",
-            subtitle: "Кто готов сегодня и на неделе",
-            icon: <Calendar size={18} weight="bold" color={tc.ink} />,
-          },
-        ]}
-        selectedId={sortBy}
-        onSelect={(id) => {
-          setSortBy(id as SortBy);
-          setOpenSheet(null);
-        }}
-      />
     </View>
   );
 }

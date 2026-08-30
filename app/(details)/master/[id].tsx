@@ -15,7 +15,6 @@
  * Анон-friendly: контакт-кнопки открывают LoginWall на тапе если userId == null.
  */
 
-import * as Haptics from "expo-haptics";
 import { Image as ExpoImage } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -47,6 +46,7 @@ import { blockingActionFailureMessage } from "@/features/blocking/blocking-error
 import { useBlockUser } from "@/features/blocking/use-user-blocks";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { confirmAsync } from "@/lib/confirm";
+import { hapticImpact, hapticSuccess } from "@/lib/haptics";
 import { openExternalUrl } from "@/lib/open-link";
 import { useAppWidth } from "@/lib/use-app-width";
 
@@ -67,7 +67,6 @@ import {
 } from "@/features/master-view/availability";
 import { ReviewsSection } from "@/features/master-view/ReviewsSection";
 import {
-  type ReviewWithAuthor,
   useMasterCategoriesPublic,
   useMasterPhone,
   useMasterPublicProfile,
@@ -78,8 +77,6 @@ import { PortfolioLightbox } from "@/features/profile/PortfolioLightbox";
 import { type PortfolioItem, useMasterPortfolio } from "@/features/profile/use-my-portfolio";
 import { type CaseWithPreview, useMasterCases } from "@/features/profile/use-portfolio-cases";
 import { ReportModal } from "@/features/reports/ReportModal";
-import { MasterReviewSheet } from "@/features/reviews/MasterReviewSheet";
-import { ReportReviewSheet } from "@/features/reviews/ReportReviewSheet";
 import { useMyRecentReviewForMaster } from "@/features/reviews/use-reviews";
 import { usePullToRefresh } from "@/hooks/use-pull-to-refresh";
 import { getCategoryColorIconUrl } from "@/lib/category-color-icons";
@@ -133,11 +130,8 @@ export default function MasterPublicScreen() {
 
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const [reportOpen, setReportOpen] = useState(false);
-  const [reviewSheetOpen, setReviewSheetOpen] = useState(false);
   const blockUser = useBlockUser();
   const { colorScheme } = useColorScheme();
-  // Отзыв, который мастер обжалует (#163). null → шит закрыт.
-  const [reportReview, setReportReview] = useState<ReviewWithAuthor | null>(null);
 
   // CTA «Оставить отзыв». Кнопка видна всем (кроме владельца профиля и тех,
   // кто уже оставил отзыв за последние 30 дней). Аноним по тапу сначала идёт
@@ -147,13 +141,17 @@ export default function MasterPublicScreen() {
   const recentReview = useMyRecentReviewForMaster(masterId ?? undefined, currentUserId);
   const showReviewCta = !!masterId && !isOwnProfile && !recentReview.data;
 
-  // Тап «Оставить отзыв»: аноним → на вход; авторизованный → форма отзыва.
+  // Тап «Оставить отзыв»: аноним → на вход; авторизованный → форма отзыва
+  // (отдельный modal-route `/master/review` — нативная iOS модальность).
   const handleReviewPress = () => {
     if (!currentUserId) {
       router.push("/(auth)/phone" as never);
       return;
     }
-    setReviewSheetOpen(true);
+    router.push({
+      pathname: "/master/review",
+      params: { masterId: masterId ?? "", masterName: fullName ?? "Мастер" },
+    } as never);
   };
   // Safari-fallback: если avatar_url hero не загрузился (CORS / 404) —
   // переключаемся на инициалы через Avatar xl. Иначе пользователь
@@ -168,6 +166,10 @@ export default function MasterPublicScreen() {
   const toggleFavorite = useToggleFavorite();
   const handleToggleFavorite = () => {
     if (!masterId || isAnon || isOwnProfile) return;
+    // Импульс сразу на тапе (не ждём ответ сети) — так же, как лайк/букмарк
+    // в системных приложениях: тактильная реакция подтверждает жест, а не
+    // серверный результат (docs/IOS_FOUNDATION.md §5.5).
+    hapticImpact();
     toggleFavorite.mutate({ masterId, nextValue: !isFavorite.data });
   };
 
@@ -230,12 +232,8 @@ export default function MasterPublicScreen() {
     });
     if (!confirmed) return;
     blockUser.mutate(masterId, {
-      onSuccess: async () => {
-        try {
-          await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        } catch {
-          // haptics недоступны (Low Power Mode / симулятор и т.п.) — не блокирует успех
-        }
+      onSuccess: () => {
+        hapticSuccess();
         goBack();
       },
       onError: (e) => Alert.alert("Не удалось заблокировать", blockingActionFailureMessage(e)),
@@ -778,7 +776,17 @@ export default function MasterPublicScreen() {
               query={reviews}
               // Мастер на СВОЕЙ странице может обжаловать накрученный/
               // оскорбительный отзыв → жалоба уходит модератору (#163).
-              onReport={isOwnProfile ? (r) => setReportReview(r) : undefined}
+              // Отдельный modal-route `/master/report-review` (нативная iOS
+              // модальность) — передаём только id/text, а не весь объект.
+              onReport={
+                isOwnProfile
+                  ? (r) =>
+                      router.push({
+                        pathname: "/master/report-review",
+                        params: { reviewId: r.id, reviewText: r.text ?? "" },
+                      } as never)
+                  : undefined
+              }
             />
           );
         })()}
@@ -829,27 +837,6 @@ export default function MasterPublicScreen() {
           onClose={() => setLightboxIndex(null)}
         />
       ) : null}
-
-      {/* Freeform-отзыв на мастера. Открывается только для авторизованного
-          клиента у которого ещё нет отзыва за 30 дней (см. canLeaveReview). */}
-      {masterId && currentUserId ? (
-        <MasterReviewSheet
-          open={reviewSheetOpen}
-          onClose={() => setReviewSheetOpen(false)}
-          masterId={masterId}
-          authorId={currentUserId}
-          masterName={fullName ?? "Мастер"}
-        />
-      ) : null}
-
-      {/* Обжалование отзыва мастером (#163). Открывается из ReviewsSection
-          только на своей странице (onReport передаётся при isOwnProfile). */}
-      <ReportReviewSheet
-        open={reportReview !== null}
-        onClose={() => setReportReview(null)}
-        review={reportReview}
-        reporterId={currentUserId}
-      />
 
       {/* Report modal */}
       {!isOwnProfile && masterId ? (

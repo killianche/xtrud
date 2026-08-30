@@ -35,6 +35,7 @@ import { Briefcase, User } from "phosphor-react-native";
 import { Pressable, View } from "react-native";
 import { AppText } from "@/components/AppText";
 import { type ActiveRole, useSetActiveRole } from "@/features/auth/use-set-active-role";
+import { hapticSelection } from "@/lib/haptics";
 
 // Белый для иконок ПОВЕРХ фото. Константа (не литерал в JSX) — обходит
 // grep `color="#"` design-enforcement; это легальный photo-overlay §B case.
@@ -71,6 +72,8 @@ export function RoleSwitchPill({ userId, currentRole, isClient }: RoleSwitchPill
     if (setRole.isPending) return;
     const target: ActiveRole =
       role === currentRole ? (role === "client" ? "master" : "client") : role;
+    // Сегментированный переключатель — отклик как у смены таба, сразу на тапе.
+    hapticSelection();
     setRole.mutate({ userId, role: target });
   };
 

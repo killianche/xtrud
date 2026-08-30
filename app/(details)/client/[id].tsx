@@ -10,7 +10,6 @@
  * в chat header (если собеседник-клиент).
  */
 
-import * as Haptics from "expo-haptics";
 import { useLocalSearchParams } from "expo-router";
 import { CheckCircle, DotsThreeVertical, WarningCircle } from "phosphor-react-native";
 import { useMemo, useState } from "react";
@@ -30,6 +29,7 @@ import { ReportModal } from "@/features/reports/ReportModal";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { usePullToRefresh } from "@/hooks/use-pull-to-refresh";
 import { confirmAsync } from "@/lib/confirm";
+import { hapticSuccess } from "@/lib/haptics";
 import { pluralizeClosedOrders as pluralizeCompleted } from "@/lib/pluralize";
 import { useSafeBack } from "@/lib/use-safe-back";
 import { useThemeColors } from "@/lib/use-theme-color";
@@ -73,12 +73,8 @@ export default function ClientPublicScreen() {
     });
     if (!confirmed) return;
     blockUser.mutate(clientId, {
-      onSuccess: async () => {
-        try {
-          await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        } catch {
-          // haptics недоступны (Low Power Mode / симулятор и т.п.) — не блокирует успех
-        }
+      onSuccess: () => {
+        hapticSuccess();
         goBack();
       },
       onError: (e) => Alert.alert("Не удалось заблокировать", blockingActionFailureMessage(e)),

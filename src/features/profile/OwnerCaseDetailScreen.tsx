@@ -39,6 +39,7 @@ import {
   useUpdateCase,
 } from "@/features/profile/use-portfolio-cases";
 import { confirmAsync } from "@/lib/confirm";
+import { hapticError, hapticSuccess } from "@/lib/haptics";
 import { cdnBlur, cdnImage } from "@/lib/image-cdn";
 import {
   type PickedImage,
@@ -161,7 +162,17 @@ export default function OwnerCaseDetailScreen() {
       {
         text: "Удалить",
         style: "destructive",
-        onPress: () => deleteItem.mutate({ id, storagePath }),
+        onPress: () =>
+          deleteItem.mutate(
+            { id, storagePath },
+            {
+              onSuccess: () => hapticSuccess(),
+              onError: (e) => {
+                hapticError();
+                Alert.alert("Не удалось удалить", e.message);
+              },
+            },
+          ),
       },
     ]);
   };
@@ -177,8 +188,10 @@ export default function OwnerCaseDetailScreen() {
     if (!confirmed) return;
     try {
       await deleteCaseM.mutateAsync({ caseId });
+      hapticSuccess();
       goBack();
     } catch (e) {
+      hapticError();
       Alert.alert("Не удалось удалить", e instanceof Error ? e.message : String(e));
     }
   };

@@ -50,6 +50,7 @@ import {
   isHistoryResponse,
   useMyResponses,
 } from "@/features/orders/use-my-responses";
+import { useReducedMotion } from "@/hooks/use-reduced-motion";
 import { useSafeBack } from "@/lib/use-safe-back";
 import { useThemeColor } from "@/lib/use-theme-color";
 
@@ -78,10 +79,16 @@ export default function MyResponsesScreen() {
     });
   }, [myResponses]);
 
-  // Animated fade-in (UI_PATTERNS §3.7).
+  // Animated fade-in (UI_PATTERNS §3.7). Декоративный переход — при «Уменьшении
+  // движения» список появляется сразу, без анимации (design-quality.md §2).
   const opacity = useRef(new Animated.Value(0)).current;
+  const reducedMotion = useReducedMotion();
   useEffect(() => {
     if (!isLoading) {
+      if (reducedMotion) {
+        opacity.setValue(1);
+        return;
+      }
       opacity.setValue(0);
       Animated.timing(opacity, {
         toValue: 1,
@@ -89,7 +96,7 @@ export default function MyResponsesScreen() {
         useNativeDriver: true,
       }).start();
     }
-  }, [isLoading, opacity]);
+  }, [isLoading, opacity, reducedMotion]);
 
   return (
     <View className="flex-1 bg-canvas" style={{ paddingTop: insets.top }}>

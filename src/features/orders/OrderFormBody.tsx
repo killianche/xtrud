@@ -8,15 +8,16 @@
  * Owner-каждый screen решает что показывать выше и ниже формы + сам submit-логика.
  */
 
+import { useRouter } from "expo-router";
 import { CalendarBlank } from "phosphor-react-native";
-import { type ReactNode, useState } from "react";
+import { type ReactNode, useEffect } from "react";
 import type { Control, FieldErrors, FieldPath } from "react-hook-form";
-import { Controller } from "react-hook-form";
+import { Controller, useController } from "react-hook-form";
 import { Pressable, TextInput, View } from "react-native";
 import { AppText } from "@/components/AppText";
 import { CategoryPicker } from "@/components/CategoryPicker";
 import { LocationPicker } from "@/features/orders/LocationPicker";
-import { OrderDateSheet } from "@/features/orders/OrderDateSheet";
+import { useOrderDatePickerStore } from "@/features/orders/order-date-picker-store";
 import type { CreateOrderFormValues, OrderPriceKind } from "@/features/orders/order-schema";
 import {
   formatOrderTiming,
@@ -102,11 +103,28 @@ export function OrderFormBody({
   step,
   photosSlot,
 }: OrderFormBodyProps) {
+  const router = useRouter();
   const mutedSoftColor = useThemeColor("muted-soft");
   // Цвета иконки chip «К дате» — резолвленные токены (SVG красится не className).
   const { ink: inkColor } = useThemeColors(["ink"]);
-  // Видимость календаря «К дате».
-  const [dateSheetOpen, setDateSheetOpen] = useState(false);
+
+  // «К дате» теперь выбирается на отдельном route-экране
+  // (`/orders/date-select`, нативная formSheet-модальность) — слушаем
+  // результат из транзитного store и применяем в форму. Второй, top-level
+  // `useController` на то же поле "urgency" — react-hook-form поддерживает
+  // несколько независимых подписчиков одного поля; здесь он нужен, чтобы
+  // выставить urgency="by_date" из эффекта, а не из inline-Controller ниже
+  // (тот `onChange` доступен только внутри своего render-prop).
+  const { field: urgencyField } = useController({ control, name: "urgency" });
+  const dateResult = useOrderDatePickerStore((s) => s.result);
+  const setDateResult = useOrderDatePickerStore((s) => s.setResult);
+  useEffect(() => {
+    if (!dateResult) return;
+    urgencyField.onChange("by_date");
+    setPreferredDate(dateResult.value);
+    setDateResult(null);
+  }, [dateResult, urgencyField, setPreferredDate, setDateResult]);
+
   // Wizard 2 шага: step 1 = описание + категория на одном экране, step 2 = бюджет/город.
   const showContent = step === undefined || step === 1;
   const showCategory = step === undefined || step === 1;
@@ -301,7 +319,12 @@ export function OrderFormBody({
                       accessibilityState={{ checked: byDateSelected, disabled: isBusy }}
                       accessibilityLabel="Выбрать дату"
                       disabled={isBusy}
-                      onPress={() => setDateSheetOpen(true)}
+                      onPress={() =>
+                        router.push({
+                          pathname: "/orders/date-select",
+                          params: { value: preferredDate ?? "" },
+                        } as never)
+                      }
                       className={`h-11 flex-row items-center gap-1.5 rounded-pill border px-4 ${
                         byDateSelected
                           ? "border-accent bg-accent-soft"
@@ -330,17 +353,6 @@ export function OrderFormBody({
                       {errors.urgency.message}
                     </AppText>
                   ) : null}
-
-                  {/* Календарь «К дате». Выбор даты: ставим срок by_date + дату. */}
-                  <OrderDateSheet
-                    visible={dateSheetOpen}
-                    value={preferredDate}
-                    onClose={() => setDateSheetOpen(false)}
-                    onSelect={(iso) => {
-                      onChange("by_date");
-                      setPreferredDate(iso);
-                    }}
-                  />
                 </>
               );
             }}

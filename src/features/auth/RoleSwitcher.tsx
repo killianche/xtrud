@@ -18,6 +18,7 @@ import { Briefcase, User } from "phosphor-react-native";
 import { Pressable, View } from "react-native";
 import { AppText } from "@/components/AppText";
 import { type ActiveRole, useSetActiveRole } from "@/features/auth/use-set-active-role";
+import { hapticSelection } from "@/lib/haptics";
 import { useThemeColors } from "@/lib/use-theme-color";
 
 interface RoleSwitcherProps {
@@ -41,6 +42,8 @@ export function RoleSwitcher({ userId, currentRole, isMaster, isClient }: RoleSw
 
   const handleSwitch = (role: ActiveRole) => {
     if (role === currentRole || setRole.isPending) return;
+    // Сегментированный переключатель — отклик как у смены таба, сразу на тапе.
+    hapticSelection();
     setRole.mutate({ userId, role });
   };
 

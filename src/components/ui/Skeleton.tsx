@@ -18,6 +18,7 @@
 
 import { useEffect, useRef } from "react";
 import { Animated, type ViewStyle } from "react-native";
+import { useReducedMotion } from "@/hooks/use-reduced-motion";
 
 export interface SkeletonProps {
   /** Если задан — width в px. Иначе ширина наследуется от родителя (flex). */
@@ -36,8 +37,12 @@ export interface SkeletonProps {
 
 export function Skeleton({ width, height, circle = false, size, className, style }: SkeletonProps) {
   const opacity = useRef(new Animated.Value(0.55)).current;
+  const reducedMotion = useReducedMotion();
 
   useEffect(() => {
+    // Пульс — декоративный, при «Уменьшении движения» выключается целиком:
+    // форма skeleton'а остаётся видна статично, без loop (design-quality.md §2).
+    if (reducedMotion) return;
     const loop = Animated.loop(
       Animated.sequence([
         Animated.timing(opacity, {
@@ -54,7 +59,7 @@ export function Skeleton({ width, height, circle = false, size, className, style
     );
     loop.start();
     return () => loop.stop();
-  }, [opacity]);
+  }, [opacity, reducedMotion]);
 
   const diameter = circle ? (size ?? (typeof width === "number" ? width : 40)) : undefined;
 

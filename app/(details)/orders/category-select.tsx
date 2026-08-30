@@ -138,7 +138,7 @@ export default function CategorySelectScreen() {
     <View className="flex-1 bg-canvas" style={{ paddingTop: insets.top }}>
       {/* Стандартный ScreenHeader (height 64, h-12 back, display-md title)
           вместо самописного h-9 w-9 + отдельной H1 ниже. Унифицирует с
-          /orders/search, /profile/portfolio и т.п. */}
+          /find, /profile/portfolio и т.п. */}
       <ScreenHeader title="Выберите категорию" onBack={goBack} />
 
       {/* Typeahead инпут — крупный (h-16 + 20px шрифт), чтобы не было

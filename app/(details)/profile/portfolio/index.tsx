@@ -19,17 +19,11 @@
 
 import { useRouter } from "expo-router";
 import { CaretLeft, Image as ImageIcon, Plus } from "phosphor-react-native";
-import { useState } from "react";
-import { Alert, Image, Pressable, ScrollView, TextInput, View } from "react-native";
+import { Image, Pressable, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
-import { BottomSheet } from "@/components/ui";
 import { useAuthSession } from "@/features/auth/use-auth-session";
-import {
-  type CaseWithPreview,
-  useCreateCase,
-  useMasterCases,
-} from "@/features/profile/use-portfolio-cases";
+import { type CaseWithPreview, useMasterCases } from "@/features/profile/use-portfolio-cases";
 import { useAppWidth } from "@/lib/use-app-width";
 import { useSafeBack } from "@/lib/use-safe-back";
 import { useThemeColors } from "@/lib/use-theme-color";
@@ -43,9 +37,6 @@ export default function PortfolioCasesScreen() {
   const tc = useThemeColors(["ink", "mute", "muted-soft", "canvas-soft", "on-primary"]);
 
   const { data: cases = [], isLoading } = useMasterCases(userId);
-  const createCase = useCreateCase(userId);
-
-  const [createOpen, setCreateOpen] = useState(false);
 
   if (!userId) {
     return (
@@ -138,7 +129,7 @@ export default function PortfolioCasesScreen() {
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Новый кейс"
-          onPress={() => setCreateOpen(true)}
+          onPress={() => router.push("/profile/portfolio/create-case" as never)}
           className="flex-row items-center justify-center gap-2 min-h-12 rounded-lg bg-ink active:opacity-80"
         >
           <Plus size={18} weight="bold" color={tc["on-primary"]} />
@@ -147,26 +138,6 @@ export default function PortfolioCasesScreen() {
           </AppText>
         </Pressable>
       </View>
-
-      <CreateCaseSheet
-        open={createOpen}
-        onClose={() => setCreateOpen(false)}
-        onSubmit={async ({ title, description }) => {
-          try {
-            const created = await createCase.mutateAsync({
-              title,
-              description,
-              workDoneAt: null,
-            });
-            setCreateOpen(false);
-            // Сразу открываем созданный кейс — мастер хочет добавить фото.
-            router.push(`/profile/portfolio/${created.id}` as never);
-          } catch (e) {
-            Alert.alert("Не удалось создать кейс", e instanceof Error ? e.message : String(e));
-          }
-        }}
-        isPending={createCase.isPending}
-      />
     </View>
   );
 }
@@ -253,150 +224,5 @@ export function CaseCard({
         ) : null}
       </View>
     </Pressable>
-  );
-}
-
-// ============================================================================
-// CreateCaseSheet — full-screen форма создания кейса (внутри BottomSheet).
-//
-// Редизайн 2026-05-23 (фидбэк user «убери „когда выполнено“, сделай в
-// современном крутом стиле»). Lazyweb-референсы: Audible «New collection»
-// (плоские bold-лейблы + char-counter под полем, без иконок), Linear «New
-// issue» (типографика как герой, без декора), ChatGPT «New project»
-// (single primary pill + functional explainer), Depop «Sell an item»
-// (tall rounded inputs + sticky footer CTA).
-//
-// Решения:
-//   - Удалена секция «Когда выполнено» целиком (дата всегда уходит null,
-//     колонка work_done_at в БД остаётся для авто-кейсов).
-//   - Убраны иконки-лейблы полей и uppercase-эйбрау «О РАБОТЕ» — для двух
-//     полей это шум. Чистые bold-лейблы (Audible / Linear style).
-//   - Char-counter перенесён под каждое поле справа (Audible) — не теснит
-//     лейбл, считывается как «сколько осталось».
-//   - Горизонтальный padding px-5 (BottomSheet контент без default-padding).
-//   - Поля выше (h-13 / minHeight 128) + rounded-lg + крупный internal
-//     padding — premium-ощущение вместо «дёшево».
-//   - Один primary pill CTA + functional helper о следующем шаге (не
-//     декоративный подзаголовок — рассказывает что произойдёт дальше).
-// ============================================================================
-
-const MAX_TITLE_LEN = 120;
-const MAX_DESCRIPTION_LEN = 500;
-
-interface CreateCaseSheetProps {
-  open: boolean;
-  onClose: () => void;
-  onSubmit: (input: { title: string; description: string | null }) => void;
-  isPending: boolean;
-}
-
-export function CreateCaseSheet({ open, onClose, onSubmit, isPending }: CreateCaseSheetProps) {
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
-
-  const tc = useThemeColors(["mute", "muted-soft", "ink"]);
-
-  // Сброс полей при закрытии чтобы следующее открытие было чистым.
-  const handleClose = () => {
-    if (isPending) return;
-    setTitle("");
-    setDescription("");
-    onClose();
-  };
-
-  const trimmedTitle = title.trim();
-  const canSubmit = trimmedTitle.length >= 2 && !isPending;
-  const titleLen = title.length;
-  const descriptionLen = description.length;
-
-  return (
-    <BottomSheet open={open} onClose={handleClose} title="Новый кейс">
-      <View className="flex-1 px-5">
-        <View className="gap-8 pt-2">
-          {/* ============ Название ============ */}
-          <View>
-            <AppText weight="semibold" className="text-body-md text-ink">
-              Название
-            </AppText>
-            <TextInput
-              value={title}
-              onChangeText={(v) => setTitle(v.slice(0, MAX_TITLE_LEN))}
-              placeholder="Например, ремонт ванной с плиткой"
-              placeholderTextColor={tc.mute}
-              autoCapitalize="sentences"
-              autoFocus
-              maxLength={MAX_TITLE_LEN}
-              editable={!isPending}
-              className="mt-2.5 min-h-14 rounded-lg border border-hairline bg-canvas-soft px-4 text-body-md text-ink"
-            />
-            <AppText
-              weight="mono"
-              className={`mt-1.5 self-end text-mono-caption ${
-                titleLen > MAX_TITLE_LEN - 20 ? "text-warning" : "text-muted-soft"
-              }`}
-            >
-              {titleLen} / {MAX_TITLE_LEN}
-            </AppText>
-          </View>
-
-          {/* ============ Описание (не обязательно) ============ */}
-          <View>
-            <View className="flex-row items-baseline gap-1.5">
-              <AppText weight="semibold" className="text-body-md text-ink">
-                Описание
-              </AppText>
-              <AppText className="text-body-sm text-mute">не обязательно</AppText>
-            </View>
-            <TextInput
-              value={description}
-              onChangeText={(v) => setDescription(v.slice(0, MAX_DESCRIPTION_LEN))}
-              placeholder="Какие работы делали, какие материалы, что было сложного"
-              placeholderTextColor={tc.mute}
-              autoCapitalize="sentences"
-              multiline
-              maxLength={MAX_DESCRIPTION_LEN}
-              editable={!isPending}
-              className="mt-2.5 rounded-lg border border-hairline bg-canvas-soft px-4 py-3.5 text-body-md text-ink"
-              style={{ minHeight: 128, textAlignVertical: "top" }}
-            />
-            <AppText
-              weight="mono"
-              className={`mt-1.5 self-end text-mono-caption ${
-                descriptionLen > MAX_DESCRIPTION_LEN - 50 ? "text-warning" : "text-muted-soft"
-              }`}
-            >
-              {descriptionLen} / {MAX_DESCRIPTION_LEN}
-            </AppText>
-          </View>
-        </View>
-
-        {/* ============ Footer: один primary CTA + explainer о шаге ============ */}
-        <View className="mt-auto gap-3 pt-6">
-          <Pressable
-            accessibilityRole="button"
-            disabled={!canSubmit}
-            onPress={() =>
-              onSubmit({
-                title: trimmedTitle,
-                description: description.trim() || null,
-              })
-            }
-            className={`h-14 items-center justify-center rounded-full ${
-              canSubmit ? "bg-primary active:opacity-80" : "bg-surface-3"
-            }`}
-          >
-            <AppText
-              weight="semibold"
-              className={`text-button-lg ${canSubmit ? "text-on-primary" : "text-mute"}`}
-            >
-              {isPending ? "Создаём…" : "Создать кейс"}
-            </AppText>
-          </Pressable>
-          <AppText className="text-caption text-mute text-center">
-            На следующем шаге добавите фото работы.
-          </AppText>
-        </View>
-      </View>
-    </BottomSheet>
   );
 }

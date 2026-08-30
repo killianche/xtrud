@@ -9,7 +9,6 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
 import { ScreenHeader, Skeleton } from "@/components/ui";
 import { ORDER_CREATE_RETURN_TO } from "@/features/auth/auth-return";
-import { PublishAuthSheet } from "@/features/auth/PublishAuthSheet";
 import { useAuthSession } from "@/features/auth/use-auth-session";
 import { useUserRecord } from "@/features/auth/use-user-record";
 import { useVisibleCategories } from "@/features/categories/use-visible-categories";
@@ -44,6 +43,7 @@ import {
   validateOrderPublishLocation,
 } from "@/features/orders/validate-order-publish-category";
 import { useAuthReturnUrlStore } from "@/lib/auth-return-url-store";
+import { hapticError, hapticSuccess } from "@/lib/haptics";
 import { deleteFromBucket, uploadOrderPhotosBatch } from "@/lib/image-upload";
 import {
   canApplyInitialTaskExample,
@@ -113,7 +113,6 @@ export function NewOrderScreen({ screenPhase = "intent" }: NewOrderScreenProps) 
 
   const [publishedForUserId, setPublishedForUserId] = useState<string | null>(null);
   const [createdOrderId, setCreatedOrderId] = useState<string | null>(null);
-  const [authSheetOpen, setAuthSheetOpen] = useState(false);
   const [uploadingPhotos, setUploadingPhotos] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [photoError, setPhotoError] = useState<string | null>(null);
@@ -416,6 +415,7 @@ export function NewOrderScreen({ screenPhase = "intent" }: NewOrderScreenProps) 
       // From this line the task owns its uploaded photos. No later session/UI
       // failure may delete them or re-enable a second insert attempt.
       committed = true;
+      hapticSuccess();
       uploadedPaths = [];
       const newId =
         created && typeof created === "object" && "id" in created
@@ -449,6 +449,7 @@ export function NewOrderScreen({ screenPhase = "intent" }: NewOrderScreenProps) 
         return;
       }
       if (uploadedPaths.length > 0) await cleanupUploadedPhotos(uploadedPaths);
+      hapticError();
       setPublishError(
         error instanceof ActiveOrderLimitError
           ? `У вас уже ${error.limit} активных задания. Закройте одно, чтобы создать новое.`
@@ -462,7 +463,7 @@ export function NewOrderScreen({ screenPhase = "intent" }: NewOrderScreenProps) 
 
   const onSubmit = handleSubmit(async (_values) => {
     if (!userId) {
-      setAuthSheetOpen(true);
+      router.push({ pathname: "/orders/publish-auth" } as never);
       return;
     }
     await publishWithUser(userId);
@@ -800,8 +801,6 @@ export function NewOrderScreen({ screenPhase = "intent" }: NewOrderScreenProps) 
           </View>
         </>
       )}
-
-      <PublishAuthSheet open={authSheetOpen} onClose={() => setAuthSheetOpen(false)} />
     </KeyboardAvoidingView>
   );
 }

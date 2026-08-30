@@ -1,5 +1,4 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import * as Haptics from "expo-haptics";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import {
   ArrowCounterClockwise,
@@ -14,7 +13,7 @@ import {
   WhatsappLogo,
   X,
 } from "phosphor-react-native";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import {
   ActionSheetIOS,
@@ -31,7 +30,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
 import { Avatar } from "@/components/Avatar";
 import { OrderStatusBadge } from "@/components/OrderStatusBadge";
-import { BottomSheet, ScreenHeader, Skeleton } from "@/components/ui";
+import { ScreenHeader, Skeleton } from "@/components/ui";
 import { useAuthSession } from "@/features/auth/use-auth-session";
 import { useSetActiveRole } from "@/features/auth/use-set-active-role";
 import { useUserRecord } from "@/features/auth/use-user-record";
@@ -39,6 +38,7 @@ import { blockConfirmMessage, blockSuccessMessage } from "@/features/blocking/bl
 import { blockingActionFailureMessage } from "@/features/blocking/blocking-error-message";
 import { useBlockUser } from "@/features/blocking/use-user-blocks";
 import { useMasterPhone, useMasterPublicProfile } from "@/features/master-view/use-master-public";
+import { useCloseReasonPickerStore } from "@/features/orders/close-reason-picker-store";
 import { OrderPhotoCarousel } from "@/features/orders/OrderPhotoCarousel";
 import {
   formatOrderTiming,
@@ -65,10 +65,10 @@ import { isDailyLimitError, useResponseLimit } from "@/features/orders/use-respo
 import { useMarkResponsesViewed } from "@/features/orders/use-unread-responses";
 import { useWithdrawResponse } from "@/features/orders/use-withdraw-response";
 import { ReportModal } from "@/features/reports/ReportModal";
-import { useColorScheme, useDomColorScheme } from "@/hooks/use-color-scheme";
+import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useAuthReturnUrlStore } from "@/lib/auth-return-url-store";
-import { darkColors, lightColors } from "@/lib/colors";
 import { confirmAsync } from "@/lib/confirm";
+import { hapticError, hapticSelection, hapticSuccess } from "@/lib/haptics";
 import { openExternalUrl } from "@/lib/open-link";
 import { useSafeBack } from "@/lib/use-safe-back";
 import { useThemeColors } from "@/lib/use-theme-color";
@@ -111,7 +111,12 @@ export default function OrderDetailScreen() {
   const hasMyMasterResponse = !!myMasterResponseQ.data;
   const [reportOpen, setReportOpen] = useState(false);
   // Шит выбора причины закрытия заказа («нашёл мастера» / «больше не нужно»).
-  const [closeSheetOpen, setCloseSheetOpen] = useState(false);
+  // Выбор причины закрытия («нашёл мастера» / «больше не нужно») теперь на
+  // отдельном route-экране (`/orders/close-reason`, нативная formSheet-модальность
+  // — см. `docs/IOS_FOUNDATION.md` §2.4). Слушаем результат из транзитного
+  // store и выполняем саму мутацию закрытия здесь же (пикер о сети не знает).
+  const closeReasonResult = useCloseReasonPickerStore((s) => s.result);
+  const setCloseReasonResult = useCloseReasonPickerStore((s) => s.setResult);
   const { colorScheme } = useColorScheme();
 
   // safeBack: на вебе orders/[id] и master/[id] живут в разных tab-стеках, поэтому
@@ -139,15 +144,25 @@ export default function OrderDetailScreen() {
   const isClosedHistory = !!order && (order.status === "cancelled" || order.status === "expired");
   const canReopen = !!order && canReopenOrder(order.status, order.updated_at);
 
-  // Закрытие заказа с выбранной причиной. Вызывается из CloseReasonSheet.
-  const handleCloseWithReason = (reason: CancelReason) => {
-    if (!id || !userId) return;
-    setCloseSheetOpen(false);
-    cancelOrder.mutate(
-      { orderId: id, clientId: userId, reason },
-      { onError: (e) => Alert.alert("Не удалось закрыть", e.message) },
-    );
-  };
+  // Закрытие заказа с выбранной причиной. Вызывается из эффекта ниже, когда
+  // `/orders/close-reason` коммитит выбор в store. useCallback — иначе эффект
+  // ниже перезапускался бы на каждый рендер (функция не мемоизирована).
+  const handleCloseWithReason = useCallback(
+    (reason: CancelReason) => {
+      if (!id || !userId) return;
+      cancelOrder.mutate(
+        { orderId: id, clientId: userId, reason },
+        { onError: (e) => Alert.alert("Не удалось закрыть", e.message) },
+      );
+    },
+    [id, userId, cancelOrder],
+  );
+
+  useEffect(() => {
+    if (!closeReasonResult || closeReasonResult.orderId !== id) return;
+    handleCloseWithReason(closeReasonResult.reason);
+    setCloseReasonResult(null);
+  }, [closeReasonResult, id, setCloseReasonResult, handleCloseWithReason]);
 
   // Удаление заказа из «Истории». Подтверждение через confirmAsync
   // (работает и на вебе, в отличие от Alert.alert). После удаления уходим назад.
@@ -165,8 +180,14 @@ export default function OrderDetailScreen() {
     deleteOrder.mutate(
       { orderId: id, clientId: userId },
       {
-        onSuccess: () => goBack(),
-        onError: (e) => Alert.alert("Не удалось удалить", e.message),
+        onSuccess: () => {
+          hapticSuccess();
+          goBack();
+        },
+        onError: (e) => {
+          hapticError();
+          Alert.alert("Не удалось удалить", e.message);
+        },
       },
     );
   };
@@ -189,12 +210,8 @@ export default function OrderDetailScreen() {
     });
     if (!confirmed) return;
     blockUser.mutate(order.client_id, {
-      onSuccess: async () => {
-        try {
-          await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        } catch {
-          // haptics недоступны (Low Power Mode / симулятор и т.п.) — не блокирует успех
-        }
+      onSuccess: () => {
+        hapticSuccess();
         Alert.alert("Заказчик заблокирован", blockSuccessMessage());
       },
       onError: (e) => Alert.alert("Не удалось заблокировать", blockingActionFailureMessage(e)),
@@ -227,7 +244,11 @@ export default function OrderDetailScreen() {
         label: "Редактировать задание",
         onPress: () => router.push(`/orders/edit/${id}` as never),
       });
-      items.push({ label: "Закрыть задание", onPress: () => setCloseSheetOpen(true) });
+      items.push({
+        label: "Закрыть задание",
+        onPress: () =>
+          router.push({ pathname: "/orders/close-reason", params: { orderId: id } } as never),
+      });
     }
     if (isOwner && isClosedHistory && canReopen) {
       items.push({ label: "Открыть заново", onPress: handleReopen });
@@ -358,7 +379,9 @@ export default function OrderDetailScreen() {
             <CloseOrderHint
               order={order}
               orderId={id}
-              onCloseRequested={() => setCloseSheetOpen(true)}
+              onCloseRequested={() =>
+                router.push({ pathname: "/orders/close-reason", params: { orderId: id } } as never)
+              }
             />
           ) : null}
 
@@ -404,18 +427,6 @@ export default function OrderDetailScreen() {
           onClose={() => setReportOpen(false)}
         />
       )}
-
-      {/* Шит выбора причины закрытия — две крупные кнопки «Нашёл мастера» /
-          «Больше не нужно». Обе ведут в cancelled, но пишут разный
-          cancel_reason (план §4). */}
-      {order && id && userId ? (
-        <CloseReasonSheet
-          open={closeSheetOpen}
-          pending={cancelOrder.isPending}
-          onClose={() => setCloseSheetOpen(false)}
-          onPick={handleCloseWithReason}
-        />
-      ) : null}
     </KeyboardAvoidingView>
   );
 }
@@ -435,6 +446,9 @@ function MyResponseBadgeCTA({ userId }: { userId: string }) {
 
   const handlePress = () => {
     if (setActiveRole.isPending) return;
+    // Импульс на тапе, как у смены таба/сегмента — переключение роли ближе
+    // к выбору режима, чем к отдельной операции (docs/IOS_FOUNDATION.md §5.5).
+    hapticSelection();
     setActiveRole.mutate(
       { userId, role: "master" },
       {
@@ -494,6 +508,9 @@ function SwitchToMasterCTA({ userId }: { userId: string }) {
 
   const handlePress = () => {
     if (setActiveRole.isPending) return;
+    // Импульс на тапе, как у смены таба/сегмента — переключение роли ближе
+    // к выбору режима, чем к отдельной операции (docs/IOS_FOUNDATION.md §5.5).
+    hapticSelection();
     setActiveRole.mutate(
       { userId, role: "master" },
       {
@@ -640,133 +657,6 @@ function CloseOrderHint({ order, orderId, onCloseRequested }: CloseOrderHintProp
         </Pressable>
       </View>
     </View>
-  );
-}
-
-// ============================================================================
-// CloseReasonSheet — bottom-sheet выбора причины закрытия заказа.
-//
-// Две крупные кнопки (план §4):
-//   - «Я нашёл мастера»   → cancel_reason = 'found_master'   (успех)
-//   - «Больше не нужно»   → cancel_reason = 'no_longer_needed' (передумал)
-//
-// Обе ведут заказ в статус cancelled — разница только в сохранённой причине.
-// Это замена прежней путаницы «Закрыть» vs «Завершить»: один экран, понятный
-// выбор. Отзыв при «нашёл мастера» — отдельная задача (отложена владельцем).
-//
-// Заголовок-вопрос без подзаголовка (правило §G design-quality.md).
-// ============================================================================
-
-interface CloseReasonSheetProps {
-  open: boolean;
-  pending: boolean;
-  onClose: () => void;
-  onPick: (reason: CancelReason) => void;
-}
-
-function CloseReasonSheet({ open, pending, onClose, onPick }: CloseReasonSheetProps) {
-  return (
-    <BottomSheet open={open} onClose={onClose} title="Почему закрываете задание?">
-      {/* Два крупных варианта-карточки (Lazyweb: DoorDash refund-sheet, Linear
-          status-picker). Каждый — иконка в круге + заголовок + описание справа.
-          «Нашёл мастера» — позитивный исход (success-tint), «Больше не нужно» —
-          нейтральный. Оба → cancelled, разница в cancel_reason. */}
-      <View className="gap-2 px-5 pb-2">
-        <CloseReasonOption
-          icon={CheckCircle}
-          title="Я нашёл исполнителя"
-          description="Договорился с подрядчиком — задача закрыта успешно."
-          tone="success"
-          disabled={pending}
-          onPress={() => onPick("found_master")}
-        />
-        <CloseReasonOption
-          icon={X}
-          title="Больше не нужно"
-          description="Передумал или решил вопрос другим способом."
-          tone="neutral"
-          disabled={pending}
-          onPress={() => onPick("no_longer_needed")}
-        />
-
-        {/* Честное предупреждение о последствиях (паттерн Avito при снятии).
-            Это не subtitle под H1, а сноска внизу списка вариантов. */}
-        <AppText className="mt-2 text-caption text-mute" style={{ lineHeight: 18 }}>
-          Исполнители перестанут видеть задание и не смогут откликнуться. Контакты тех, кто уже
-          откликнулся, останутся у вас.
-        </AppText>
-      </View>
-    </BottomSheet>
-  );
-}
-
-// CloseReasonOption — карточка-вариант причины закрытия. Рендерится в
-// BottomSheet (Modal-портал), где CSS-vars не резолвятся, поэтому цвета берём
-// hex'ом из палитры по DOM-теме.
-interface CloseReasonOptionProps {
-  icon: typeof CheckCircle;
-  title: string;
-  description: string;
-  tone: "success" | "neutral";
-  disabled: boolean;
-  onPress: () => void;
-}
-
-function CloseReasonOption({
-  icon: Icon,
-  title,
-  description,
-  tone,
-  disabled,
-  onPress,
-}: CloseReasonOptionProps) {
-  const isWeb = Platform.OS === "web";
-  const domScheme = useDomColorScheme();
-  const { colorScheme } = useColorScheme();
-  const palette = (isWeb ? domScheme : colorScheme) === "dark" ? darkColors : lightColors;
-  const iconColor = tone === "success" ? palette.success : palette.ink;
-  const slotBg = tone === "success" ? palette["success-soft"] : palette["canvas-soft"];
-
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={title}
-      disabled={disabled}
-      onPress={onPress}
-      style={({ pressed }) => ({
-        opacity: pressed || disabled ? 0.7 : 1,
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 14,
-        borderRadius: 16,
-        borderWidth: 1,
-        borderColor: palette.hairline,
-        backgroundColor: palette.canvas,
-        paddingVertical: 14,
-        paddingHorizontal: 16,
-      })}
-    >
-      <View
-        style={{
-          height: 44,
-          width: 44,
-          alignItems: "center",
-          justifyContent: "center",
-          borderRadius: 12,
-          backgroundColor: slotBg,
-        }}
-      >
-        <Icon size={24} weight={tone === "success" ? "fill" : "bold"} color={iconColor} />
-      </View>
-      <View style={{ flex: 1, minWidth: 0 }}>
-        <AppText weight="semibold" style={{ color: palette.ink, fontSize: 16, lineHeight: 22 }}>
-          {title}
-        </AppText>
-        <AppText style={{ color: palette.mute, fontSize: 13, lineHeight: 18, marginTop: 2 }}>
-          {description}
-        </AppText>
-      </View>
-    </Pressable>
   );
 }
 
@@ -1464,8 +1354,10 @@ function MasterResponseSection({
         leadTime: values.leadTime,
         message: values.message,
       });
+      hapticSuccess();
     } catch (_e) {
-      // показывается через submitError
+      // текст ошибки — через submitError, haptic не единственный сигнал
+      hapticError();
     }
   });
 
@@ -1511,7 +1403,13 @@ function MasterResponseSection({
         cancelText: "Отмена",
       });
       if (!confirmed) return;
-      withdrawResponse.mutate({ responseId: myResponse.id, orderId, masterId });
+      withdrawResponse.mutate(
+        { responseId: myResponse.id, orderId, masterId },
+        {
+          onSuccess: () => hapticSuccess(),
+          onError: () => hapticError(),
+        },
+      );
     };
 
     // Минимализм 2026-05-16: убрана дублирующая строка «Клиент выбрал вас 🎉»

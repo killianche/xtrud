@@ -144,6 +144,7 @@ export default function SearchScreen() {
               accessibilityRole="button"
               accessibilityLabel="Очистить"
               onPress={() => setQuery("")}
+              hitSlop={8}
               style={{ position: "absolute", right: 0, top: 4, bottom: 4 }}
               className="h-9 w-9 items-center justify-center rounded-full active:opacity-60 text-mute"
             >

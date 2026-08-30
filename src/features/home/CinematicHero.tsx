@@ -241,7 +241,7 @@ export function CinematicHero({ onCreateTask }: { onCreateTask: () => void }) {
             // плашки в тёмной теме (фидбэк владельца 2026-05-27: поиск сливался с
             // тёмным hero, нужна обводка чтобы выделить). В light режиме граница
             // прозрачная — там работает обычная тень снизу.
-            className="mt-4 flex-row items-center gap-3 h-14 rounded-2xl bg-canvas px-5 border border-transparent dark:border-white/15 active:opacity-80"
+            className="mt-4 flex-row items-center gap-3 min-h-14 rounded-2xl bg-canvas px-5 border border-transparent dark:border-white/15 active:opacity-80"
             style={{
               boxShadow: Platform.OS === "web" ? "0 8px 24px rgba(0,0,0,0.18)" : undefined,
               ...(Platform.OS !== "web"

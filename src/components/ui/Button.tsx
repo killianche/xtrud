@@ -10,7 +10,14 @@
  *   - ghost       — без фона/border + ink
  *   - destructive — bg-error + white
  *
- * Размеры: sm 32 / md 40 (default) / lg 48
+ * Размеры: md 44 (default, минимум тач-цели) / lg 48
+ *
+ * `sm` (32 pt) убран: ни один вызов в коде им не пользовался, а 32 pt ниже
+ * минимума тач-цели 44 pt (`docs/IOS_FOUNDATION.md` §3.8) — тащить неиспользуемый
+ * размер, нарушающий планку, хуже, чем не иметь его вовсе.
+ *
+ * Высота — `minHeight`, не `height`: на крупных Dynamic Type текст внутри
+ * кнопки не обрезается, а кнопка растёт вместе с ним.
  *
  * Состояния: disabled (opacity 50), loading (ActivityIndicator), pressed (opacity 70)
  */
@@ -20,7 +27,7 @@ import { ActivityIndicator, Pressable, type PressableProps, View } from "react-n
 import { AppText } from "@/components/AppText";
 
 export type ButtonVariant = "primary" | "secondary" | "ghost" | "destructive";
-export type ButtonSize = "sm" | "md" | "lg";
+export type ButtonSize = "md" | "lg";
 
 export interface ButtonProps extends Omit<PressableProps, "style" | "children"> {
   children: ReactNode;
@@ -34,11 +41,10 @@ export interface ButtonProps extends Omit<PressableProps, "style" | "children"> 
 
 const SIZE_MAP: Record<
   ButtonSize,
-  { height: number; paddingX: number; textSize: 14 | 16; gap: number }
+  { minHeight: number; paddingX: number; textSize: 14 | 16; gap: number }
 > = {
-  sm: { height: 32, paddingX: 12, textSize: 14, gap: 6 },
-  md: { height: 40, paddingX: 16, textSize: 14, gap: 8 },
-  lg: { height: 48, paddingX: 20, textSize: 16, gap: 10 },
+  md: { minHeight: 44, paddingX: 16, textSize: 14, gap: 8 },
+  lg: { minHeight: 48, paddingX: 20, textSize: 16, gap: 10 },
 };
 
 const VARIANT_CLASS: Record<
@@ -104,7 +110,7 @@ export function Button({
       {...pressableProps}
       className={className}
       style={{
-        height: dims.height,
+        minHeight: dims.minHeight,
         paddingHorizontal: dims.paddingX,
         gap: dims.gap,
         borderWidth: vc.borderWidth,

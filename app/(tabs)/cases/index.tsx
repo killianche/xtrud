@@ -101,7 +101,7 @@ export default function CasesScreen() {
             accessibilityRole="button"
             accessibilityLabel="Войти по телефону"
             onPress={() => router.push("/(auth)/phone" as never)}
-            className="mt-6 flex-row items-center justify-center gap-2 h-12 px-6 rounded-md bg-primary active:opacity-80"
+            className="mt-6 flex-row items-center justify-center gap-2 min-h-12 px-6 rounded-md bg-primary active:opacity-80"
           >
             <SignIn size={18} weight="bold" color={tc["on-primary"]} />
             <AppText weight="semibold" className="text-button-lg text-on-primary">
@@ -266,7 +266,7 @@ export default function CasesScreen() {
               accessibilityRole="button"
               accessibilityLabel="Добавить работу"
               onPress={handleCreateWithPhotos}
-              className="flex-row items-center justify-center gap-2 h-12 rounded-md bg-primary active:opacity-80"
+              className="flex-row items-center justify-center gap-2 min-h-12 rounded-md bg-primary active:opacity-80"
             >
               <Plus size={20} weight="bold" color={tc["on-primary"]} />
               <AppText weight="semibold" className="text-button-lg text-on-primary">
@@ -496,7 +496,7 @@ function CasesEmptyState({
         accessibilityLabel="Добавить фото"
         onPress={onStart}
         disabled={busy}
-        className="mt-6 flex-row items-center justify-center gap-2 h-12 px-6 rounded-md bg-primary active:opacity-80"
+        className="mt-6 flex-row items-center justify-center gap-2 min-h-12 px-6 rounded-md bg-primary active:opacity-80"
       >
         <Plus size={20} weight="bold" color={onPrimaryColor} />
         <AppText weight="semibold" className="text-button-lg text-on-primary">

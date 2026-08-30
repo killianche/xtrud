@@ -62,7 +62,7 @@ export function EmptyState({
         <Pressable
           accessibilityRole="button"
           onPress={onCtaPress}
-          className="mt-5 h-11 items-center justify-center rounded-md bg-primary px-5 active:opacity-80"
+          className="mt-5 min-h-11 items-center justify-center rounded-md bg-primary px-5 active:opacity-80"
         >
           <AppText weight="semibold" className="text-button text-on-primary">
             {ctaLabel}

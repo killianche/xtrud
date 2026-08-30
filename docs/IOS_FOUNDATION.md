@@ -313,19 +313,18 @@ expo-router.
 2. **Нет `ios.privacyManifests` в `app.json`.** При добавлении любой новой
    native-зависимости (или при ужесточении проверки ASC) upload будет
    отклонён. Нужен явный агрегированный манифест.
-3. **`maxFontSizeMultiplier={1.3}` захардкожен в `AppText`** (`src/components/AppText.tsx:61`)
-   — то есть **на всём тексте приложения**, включая описания заданий, отзывы и
-   заголовки. Это ограничивает Dynamic Type ~130% при том, что iOS позволяет
-   свыше 200% на AX3 и свыше 300% на AX5 для body
-   ([Larger Text](https://developer.apple.com/help/app-store-connect/manage-app-accessibility/larger-text-evaluation-criteria/)).
-   Требуется: снять кап по умолчанию и оставить его только на бейджах/чипах/
-   метриках через явный проп.
-4. **Тач-цели ниже 44 pt.** `Button` `size="md"` (default) = 40 pt и `size="sm"` = 32 pt
-   (`src/components/ui/Button.tsx`, `SIZE_MAP`) — 9 использований в коде.
-   Плюс 15 вхождений `h-9 w-9` (36 pt) и 4 `h-8 w-8` (32 pt) без `hitSlop`,
-   в т.ч. 5 в `app/(details)/master/[id].tsx`, по 2 в
-   `src/components/ui/PickerSheet.tsx` и `src/features/master-services/MasterServicesSection.tsx`.
-   Это прямое нарушение §3.8 и собственного `CROSS_PLATFORM_RULES.md` §4.8.
+3. ~~**`maxFontSizeMultiplier={1.3}` захардкожен в `AppText`**~~ — **Устранено
+   2026-08-30**: кап снят в `src/components/AppText.tsx`, текст масштабируется
+   на всём диапазоне Dynamic Type; политика `maxFontSizeMultiplier` по слою
+   остаётся допустимой только для бейджей/чипов/счётчиков.
+4. ~~**Тач-цели ниже 44 pt.**~~ — **Устранено 2026-08-30**: `Button` `SIZE_MAP`
+   переведён на `minHeight`, размер `sm` (32 pt, 0 вызовов в коде) убран,
+   `md` поднят до 44 pt (`src/components/ui/Button.tsx`). Все интерактивные
+   `h-9 w-9`/`h-8 w-8` без `hitSlop` найдены заново (4 шт. — прежние 15/4
+   относились к коду, часть которого с тех пор удалена, включая
+   `MasterServicesSection`) и закрыты `hitSlop={8}`; остальные `h-9 w-9`/`h-8
+   w-8` уже имели достаточный `hitSlop` или были декоративными (не
+   интерактивными) элементами внутри более крупной touch-área.
 
 **P1 — заметная разница с нативным ощущением**
 
@@ -371,11 +370,11 @@ expo-router.
 
 **P2 — гигиена**
 
-15. `ScreenHeader` фиксирует `height: 64` (`src/components/ui/ScreenHeader.tsx`) —
-    фиксированная высота под текстом `text-display-md` (24 px) сломается при
-    AX-размерах после снятия капа из п.3.
-16. Иконочная кнопка `iconAction` в `ScreenHeader` — `h-10 w-10` (40 pt), тоже
-    ниже 44.
+15. ~~`ScreenHeader` фиксирует `height: 64`~~ — **Устранено 2026-08-30**:
+    `src/components/ui/ScreenHeader.tsx` использует `minHeight`, title растёт
+    на AX-размерах вместо обрезки.
+16. Иконочная кнопка `iconAction` в `ScreenHeader` — `h-10 w-10` (40 pt), но с
+    `hitSlop={8}` (реальная тач-цель 56 pt) — требованию §3.8 не противоречит.
 17. `32` вызова `Alert.alert` в коде при наличии общего адаптера
     `src/lib/confirm.ts` — часть из них, вероятно, обходит адаптер
     (`CROSS_PLATFORM_RULES.md` §3 прямо это запрещает). **UNKNOWN**: сколько

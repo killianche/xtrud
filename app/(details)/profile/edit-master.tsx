@@ -302,7 +302,7 @@ function EditMasterGuestState({ onLogin }: { onLogin: () => void }) {
         accessibilityRole="button"
         accessibilityLabel="Войти по телефону"
         onPress={onLogin}
-        className="mt-6 flex-row items-center justify-center gap-2 h-12 px-6 rounded-md bg-primary active:opacity-80"
+        className="mt-6 flex-row items-center justify-center gap-2 min-h-12 px-6 rounded-md bg-primary active:opacity-80"
       >
         <SignIn size={18} weight="bold" color={tc["on-primary"]} />
         <AppText weight="semibold" className="text-button-lg text-on-primary">

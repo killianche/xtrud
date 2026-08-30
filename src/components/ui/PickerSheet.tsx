@@ -198,7 +198,7 @@ export function PickerSheet({
         {/* MagnifyingGlass input (опц) */}
         {showSearch ? (
           <View className="px-4 pt-3 pb-1">
-            <View className="flex-row items-center gap-2 h-10 rounded-full bg-canvas-soft px-3.5">
+            <View className="flex-row items-center gap-2 min-h-10 rounded-full bg-canvas-soft px-3.5">
               <MagnifyingGlass size={16} weight="bold" color={muteColor} />
               <TextInput
                 value={query}

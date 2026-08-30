@@ -56,7 +56,7 @@ export function CitySelector() {
         accessibilityRole="button"
         accessibilityLabel={`Город: ${cityName}`}
         onPress={() => setOpen(true)}
-        className="h-11 flex-row items-center gap-1.5 rounded-pill border px-4 active:opacity-70 border-hairline bg-canvas hover:bg-surface-2"
+        className="min-h-11 flex-row items-center gap-1.5 rounded-pill border px-4 active:opacity-70 border-hairline bg-canvas hover:bg-surface-2"
       >
         <MapPin size={16} weight="bold" color={inkColor} />
         <AppText weight="semibold" className="text-button text-ink" numberOfLines={1}>

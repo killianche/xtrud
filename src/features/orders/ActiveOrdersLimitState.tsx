@@ -47,7 +47,7 @@ export function ActiveOrdersLimitState({
           accessibilityRole="button"
           accessibilityLabel="Перейти к моим заданиям"
           onPress={onOpenOrders}
-          className="h-14 items-center justify-center rounded-md bg-primary px-5 text-on-primary active:opacity-80"
+          className="min-h-14 items-center justify-center rounded-md bg-primary px-5 text-on-primary active:opacity-80"
         >
           <AppText weight="semibold" className="text-button-lg text-on-primary">
             Перейти к моим заданиям
@@ -57,7 +57,7 @@ export function ActiveOrdersLimitState({
           accessibilityRole="button"
           accessibilityLabel="Назад"
           onPress={onBack}
-          className="h-14 items-center justify-center rounded-md border border-hairline bg-canvas px-5 active:bg-canvas-soft"
+          className="min-h-14 items-center justify-center rounded-md border border-hairline bg-canvas px-5 active:bg-canvas-soft"
         >
           <AppText weight="semibold" className="text-button-lg text-ink">
             Назад

@@ -350,7 +350,7 @@ export default function OwnerCaseDetailScreen() {
                   accessibilityRole="button"
                   disabled={updateCase.isPending}
                   onPress={cancelEdit}
-                  className="h-12 flex-1 flex-row items-center justify-center rounded-md border border-hairline bg-canvas active:opacity-70"
+                  className="min-h-12 flex-1 flex-row items-center justify-center rounded-md border border-hairline bg-canvas active:opacity-70"
                 >
                   <AppText weight="semibold" className="text-button text-ink">
                     Отмена

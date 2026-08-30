@@ -252,7 +252,7 @@ function DeleteAccountSheet({ open, isMaster, onClose, onDeleted }: DeleteAccoun
             <Pressable
               accessibilityRole="button"
               onPress={() => setStep("confirm")}
-              className="h-12 items-center justify-center rounded-md bg-error active:opacity-80"
+              className="min-h-12 items-center justify-center rounded-md bg-error active:opacity-80"
             >
               <AppText weight="semibold" className="text-button text-on-primary">
                 Я понимаю, продолжить
@@ -261,7 +261,7 @@ function DeleteAccountSheet({ open, isMaster, onClose, onDeleted }: DeleteAccoun
             <Pressable
               accessibilityRole="button"
               onPress={handleClose}
-              className="h-12 items-center justify-center rounded-md border border-hairline active:opacity-70"
+              className="min-h-12 items-center justify-center rounded-md border border-hairline active:opacity-70"
             >
               <AppText weight="semibold" className="text-button text-ink">
                 Отмена
@@ -280,8 +280,7 @@ function DeleteAccountSheet({ open, isMaster, onClose, onDeleted }: DeleteAccoun
             autoCorrect={false}
             maxLength={20}
             editable={!isBusy}
-            maxFontSizeMultiplier={1.3}
-            className="h-12 rounded-md border border-hairline bg-canvas px-3 text-body-md text-ink"
+            className="min-h-12 rounded-md border border-hairline bg-canvas px-3 py-3 text-body-md text-ink"
             accessibilityLabel="Поле подтверждения удаления"
           />
 
@@ -308,7 +307,7 @@ function DeleteAccountSheet({ open, isMaster, onClose, onDeleted }: DeleteAccoun
               accessibilityRole="button"
               disabled={isBusy}
               onPress={handleClose}
-              className="h-12 items-center justify-center rounded-md border border-hairline active:opacity-70"
+              className="min-h-12 items-center justify-center rounded-md border border-hairline active:opacity-70"
             >
               <AppText weight="semibold" className="text-button text-ink">
                 Отмена

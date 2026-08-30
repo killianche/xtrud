@@ -91,7 +91,7 @@ export default function UsefulScreen() {
           <Pressable
             accessibilityRole="button"
             onPress={() => refetch()}
-            className="mt-3 h-10 items-center justify-center rounded-md border border-hairline px-4 active:opacity-70"
+            className="mt-3 min-h-11 items-center justify-center rounded-md border border-hairline px-4 active:opacity-70"
           >
             <AppText weight="medium" className="text-caption text-ink">
               Повторить

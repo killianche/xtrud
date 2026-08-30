@@ -105,7 +105,7 @@ export function ChangePhoneSheet({ open, onClose, userId, currentPhone }: Change
             inputMode="tel"
             autoFocus
             editable={!isBusy}
-            className="h-12 rounded-md border border-hairline bg-canvas px-3 text-body-md text-ink"
+            className="min-h-12 rounded-md border border-hairline bg-canvas px-3 text-body-md text-ink"
           />
         </View>
 

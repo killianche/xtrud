@@ -284,7 +284,7 @@ export default function OrderDetailScreen() {
             accessibilityLabel="Повторить загрузку задания"
             disabled={isRefetchingOrder}
             onPress={() => void refetchOrder()}
-            className="mt-4 h-11 self-start items-center justify-center rounded-md border border-hairline bg-canvas px-4 active:bg-canvas-soft"
+            className="mt-4 min-h-11 self-start items-center justify-center rounded-md border border-hairline bg-canvas px-4 active:bg-canvas-soft"
           >
             <AppText weight="semibold" className="text-button-sm text-ink">
               {isRefetchingOrder ? "Загружаем…" : "Повторить"}
@@ -565,7 +565,7 @@ function MyResponseBadgeCTA({ userId }: { userId: string }) {
         accessibilityLabel="Перейти к моему отклику, переключиться в режим исполнителя"
         onPress={handlePress}
         disabled={setActiveRole.isPending}
-        className="mt-4 h-12 flex-row items-center justify-center rounded-md border border-hairline bg-canvas active:opacity-70"
+        className="mt-4 min-h-12 flex-row items-center justify-center rounded-md border border-hairline bg-canvas active:opacity-70"
       >
         <AppText weight="semibold" className="text-button text-ink">
           {setActiveRole.isPending ? "Переключаем…" : "Перейти к отклику"}
@@ -676,7 +676,7 @@ function BecomeMasterCTA({ orderId }: { orderId: string }) {
         accessibilityRole="button"
         accessibilityLabel="Стать исполнителем и откликнуться"
         onPress={handlePress}
-        className="mt-4 h-12 flex-row items-center justify-center rounded-md bg-primary active:opacity-80 px-5"
+        className="mt-4 min-h-12 flex-row items-center justify-center rounded-md bg-primary active:opacity-80 px-5"
       >
         <AppText weight="semibold" className="text-button text-on-primary">
           Стать исполнителем и откликнуться
@@ -731,7 +731,7 @@ function CloseOrderHint({ order, orderId, onCloseRequested }: CloseOrderHintProp
           accessibilityRole="button"
           accessibilityLabel="Закрыть задание"
           onPress={onCloseRequested}
-          className="mt-3 h-11 self-start flex-row items-center justify-center px-4 rounded-full bg-primary active:opacity-80"
+          className="mt-3 min-h-11 self-start flex-row items-center justify-center px-4 rounded-full bg-primary active:opacity-80"
         >
           <AppText weight="semibold" className="text-button text-on-primary">
             Закрыть задание
@@ -1112,7 +1112,7 @@ function ClientResponsesSection({ orderId, order }: ClientResponsesSectionProps)
             accessibilityLabel="Повторить загрузку откликов"
             disabled={isRefetchingResponses}
             onPress={() => void refetchResponses()}
-            className="mt-3 h-11 self-start items-center justify-center rounded-md border border-hairline bg-canvas px-4 active:bg-canvas-soft"
+            className="mt-3 min-h-11 self-start items-center justify-center rounded-md border border-hairline bg-canvas px-4 active:bg-canvas-soft"
           >
             <AppText weight="semibold" className="text-button-sm text-ink">
               {isRefetchingResponses ? "Загружаем…" : "Повторить"}
@@ -1383,7 +1383,7 @@ function ClientMasterResponseCard({
                 accessibilityRole="button"
                 accessibilityLabel={`Показать контакты исполнителя ${masterName}`}
                 onPress={() => setContactsRequested(true)}
-                className="h-11 flex-1 flex-row items-center justify-center gap-1.5 rounded-pill bg-ink active:opacity-85"
+                className="min-h-11 flex-1 flex-row items-center justify-center gap-1.5 rounded-pill bg-ink active:opacity-85"
               >
                 <Phone size={16} weight="bold" color={tc["on-primary"]} />
                 <AppText weight="semibold" className="text-button-sm text-on-primary">
@@ -1398,7 +1398,7 @@ function ClientMasterResponseCard({
                 onPress={() => {
                   void Promise.all([masterPhone.refetch(), masterPublic.refetch()]);
                 }}
-                className="h-11 flex-1 flex-row items-center justify-center gap-1.5 rounded-pill border border-error bg-canvas active:bg-canvas-soft"
+                className="min-h-11 flex-1 flex-row items-center justify-center gap-1.5 rounded-pill border border-error bg-canvas active:bg-canvas-soft"
               >
                 {contactsLoading ? (
                   <ActivityIndicator size="small" color={tc.mute} />
@@ -1443,7 +1443,7 @@ function ClientMasterResponseCard({
                     accessibilityRole="button"
                     accessibilityLabel="Написать в WhatsApp"
                     onPress={onWhatsApp}
-                    className="h-11 flex-1 flex-row items-center justify-center gap-1.5 rounded-pill border border-hairline bg-canvas active:bg-canvas-soft"
+                    className="min-h-11 flex-1 flex-row items-center justify-center gap-1.5 rounded-pill border border-hairline bg-canvas active:bg-canvas-soft"
                   >
                     <WhatsappLogo size={16} weight="bold" color={tc.ink} />
                     <AppText weight="semibold" className="text-button-sm text-ink">
@@ -1459,7 +1459,7 @@ function ClientMasterResponseCard({
             accessibilityRole="button"
             accessibilityLabel={`Открыть профиль ${masterName}`}
             onPress={onProfile}
-            className="h-11 flex-row items-center justify-center gap-1.5 rounded-pill border border-hairline bg-canvas active:bg-canvas-soft"
+            className="min-h-11 flex-row items-center justify-center gap-1.5 rounded-pill border border-hairline bg-canvas active:bg-canvas-soft"
           >
             <CaretRight size={16} weight="bold" color={tc.ink} />
             <AppText weight="semibold" className="text-button-sm text-ink">
@@ -1658,7 +1658,7 @@ function MasterResponseSection({
             accessibilityLabel="Отозвать отклик"
             disabled={isBusyWithdraw}
             onPress={onWithdrawPress}
-            className="mt-3 h-12 flex-row items-center justify-center gap-2 rounded-xl border border-hairline bg-canvas active:bg-canvas-soft"
+            className="mt-3 min-h-12 flex-row items-center justify-center gap-2 rounded-xl border border-hairline bg-canvas active:bg-canvas-soft"
           >
             <X size={16} weight="bold" color={tc.ink} />
             <AppText weight="medium" className="text-button-sm text-ink">
@@ -1776,7 +1776,6 @@ function MasterResponseSection({
                       placeholderTextColor={tc["muted-soft"]}
                       keyboardType="number-pad"
                       inputMode="numeric"
-                      maxFontSizeMultiplier={1.3}
                       className={`flex-1 ${negotiable ? "text-muted-soft" : "text-ink"}`}
                       style={{
                         paddingVertical: 2,
@@ -1857,7 +1856,6 @@ function MasterResponseSection({
                   placeholder="Завтра / 2–3 дня / на следующей неделе"
                   placeholderTextColor={tc["muted-soft"]}
                   maxLength={100}
-                  maxFontSizeMultiplier={1.3}
                   className={`mt-2 border-b pb-2 text-body-md text-ink ${
                     value ? "border-hairline-strong" : "border-hairline"
                   }`}
@@ -1892,7 +1890,6 @@ function MasterResponseSection({
                   numberOfLines={4}
                   maxLength={1000}
                   textAlignVertical="top"
-                  maxFontSizeMultiplier={1.3}
                   className={`mt-2 min-h-24 border-b pb-2 text-body-md text-ink ${
                     errors.message
                       ? "border-error"

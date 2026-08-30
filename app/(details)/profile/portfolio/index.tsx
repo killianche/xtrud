@@ -139,7 +139,7 @@ export default function PortfolioCasesScreen() {
           accessibilityRole="button"
           accessibilityLabel="Новый кейс"
           onPress={() => setCreateOpen(true)}
-          className="flex-row items-center justify-center gap-2 h-12 rounded-lg bg-ink active:opacity-80"
+          className="flex-row items-center justify-center gap-2 min-h-12 rounded-lg bg-ink active:opacity-80"
         >
           <Plus size={18} weight="bold" color={tc["on-primary"]} />
           <AppText weight="semibold" className="text-body-md text-on-primary">
@@ -327,7 +327,7 @@ export function CreateCaseSheet({ open, onClose, onSubmit, isPending }: CreateCa
               autoFocus
               maxLength={MAX_TITLE_LEN}
               editable={!isPending}
-              className="mt-2.5 h-14 rounded-lg border border-hairline bg-canvas-soft px-4 text-body-md text-ink"
+              className="mt-2.5 min-h-14 rounded-lg border border-hairline bg-canvas-soft px-4 text-body-md text-ink"
             />
             <AppText
               weight="mono"

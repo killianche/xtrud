@@ -77,7 +77,7 @@ export default function AdminHubScreen() {
         <Pressable
           accessibilityRole="button"
           onPress={goBack}
-          className="mt-4 h-10 items-center justify-center rounded-md border border-hairline px-4 active:opacity-70"
+          className="mt-4 min-h-11 items-center justify-center rounded-md border border-hairline px-4 active:opacity-70"
         >
           <AppText weight="medium" className="text-caption text-ink">
             Назад

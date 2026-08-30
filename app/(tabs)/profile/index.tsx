@@ -422,7 +422,7 @@ export default function ProfileScreen() {
             <Pressable
               accessibilityRole="button"
               onPress={() => router.push("/admin" as never)}
-              className="h-12 flex-row items-center justify-center gap-2 rounded-md border border-hairline bg-canvas active:opacity-70"
+              className="min-h-12 flex-row items-center justify-center gap-2 rounded-md border border-hairline bg-canvas active:opacity-70"
             >
               <ShieldCheck size={18} weight="bold" color={themeColors.body} />
               <AppText weight="semibold" className="text-button text-body">
@@ -448,7 +448,7 @@ export default function ProfileScreen() {
                 });
                 if (ok) await signOut();
               }}
-              className="h-11 flex-row items-center justify-center gap-2 active:opacity-70"
+              className="min-h-11 flex-row items-center justify-center gap-2 active:opacity-70"
             >
               <SignOut size={16} weight="bold" color={themeColors.error} />
               <AppText weight="semibold" className="text-button text-error">
@@ -469,7 +469,7 @@ export default function ProfileScreen() {
                 });
                 if (ok) await signOut();
               }}
-              className="h-12 flex-row items-center justify-center gap-2 rounded-md border border-hairline bg-canvas active:opacity-70"
+              className="min-h-12 flex-row items-center justify-center gap-2 rounded-md border border-hairline bg-canvas active:opacity-70"
             >
               <SignOut size={18} weight="bold" color={themeColors.body} />
               <AppText weight="semibold" className="text-button text-body">
@@ -639,7 +639,7 @@ function GuestProfileScreen({ insets, themeColors, onLogin }: GuestProfileScreen
             <Pressable
               accessibilityRole="button"
               onPress={onLogin}
-              className="h-12 w-full flex-row items-center justify-center gap-2 rounded-pill bg-ink active:opacity-80"
+              className="min-h-12 w-full flex-row items-center justify-center gap-2 rounded-pill bg-ink active:opacity-80"
             >
               <SignIn size={16} weight="bold" color={themeColors["on-primary"]} />
               <AppText weight="semibold" className="text-button text-on-primary">

@@ -63,7 +63,7 @@ export function ReviewsSection({ title, emptyText, query, onReport }: ReviewsSec
           accessibilityRole="button"
           disabled={query.isFetchingNextPage}
           onPress={() => query.fetchNextPage()}
-          className="mt-4 h-11 flex-row items-center justify-center rounded-md border border-hairline active:opacity-70"
+          className="mt-4 min-h-11 flex-row items-center justify-center rounded-md border border-hairline active:opacity-70"
         >
           {query.isFetchingNextPage ? (
             <ActivityIndicator size="small" />

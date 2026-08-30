@@ -202,7 +202,7 @@ function EmptyActiveState({ accentColor, onPrimary, onFindOrders }: EmptyActiveS
       <Pressable
         accessibilityRole="button"
         onPress={onFindOrders}
-        className="mt-5 h-11 flex-row items-center gap-2 rounded-pill bg-primary px-5 active:opacity-80"
+        className="mt-5 min-h-11 flex-row items-center gap-2 rounded-pill bg-primary px-5 active:opacity-80"
       >
         <AppText weight="semibold" className="text-button text-on-primary">
           Найти заказ

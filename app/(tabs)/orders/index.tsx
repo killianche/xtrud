@@ -319,7 +319,7 @@ function EmptyState({ icon: Icon, title, hint, ctaLabel, onCta }: EmptyStateProp
         <Pressable
           accessibilityRole="button"
           onPress={onCta}
-          className="mt-6 h-11 flex-row items-center justify-center gap-2 rounded-md bg-primary px-5 active:opacity-80"
+          className="mt-6 min-h-11 flex-row items-center justify-center gap-2 rounded-md bg-primary px-5 active:opacity-80"
         >
           <Plus size={18} weight="bold" color="rgb(var(--on-primary))" />
           <AppText weight="semibold" className="text-button text-on-primary">
@@ -352,7 +352,7 @@ function OrdersErrorState({ message, onRetry }: { message: string; onRetry: () =
       <Pressable
         accessibilityRole="button"
         onPress={onRetry}
-        className="mt-6 h-11 flex-row items-center justify-center gap-2 rounded-md border border-hairline bg-canvas px-5 active:bg-canvas-soft"
+        className="mt-6 min-h-11 flex-row items-center justify-center gap-2 rounded-md border border-hairline bg-canvas px-5 active:bg-canvas-soft"
       >
         <ArrowClockwise size={18} weight="bold" color={tc.ink} />
         <AppText weight="semibold" className="text-button text-ink">

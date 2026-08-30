@@ -135,7 +135,7 @@ export default function MasterPhotoScreen() {
               disabled={isBusy}
               onPress={onFinalize}
               hitSlop={8}
-              className="h-10 items-center justify-center"
+              className="min-h-10 items-center justify-center"
             >
               <AppText weight="medium" className="text-body-md text-muted">
                 Пропустить

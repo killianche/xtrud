@@ -72,7 +72,7 @@ export class AppErrorBoundary extends Component<Props, State> {
           <Pressable
             accessibilityRole="button"
             onPress={this.reset}
-            className="mt-8 h-12 items-center justify-center rounded-md bg-primary px-6 active:opacity-80"
+            className="mt-8 min-h-12 items-center justify-center rounded-md bg-primary px-6 active:opacity-80"
           >
             <AppText weight="semibold" className="text-button text-on-primary">
               Перезагрузить

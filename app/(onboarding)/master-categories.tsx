@@ -155,7 +155,7 @@ export default function MasterCategoriesScreen() {
 
       {/* Sticky search + counter row */}
       <View className="px-6 pb-3">
-        <View className="flex-row items-center gap-2 rounded-md border border-hairline bg-canvas px-3 h-11">
+        <View className="flex-row items-center gap-2 rounded-md border border-hairline bg-canvas px-3 min-h-11">
           <MagnifyingGlass size={16} weight="bold" color={tc.mute} />
           <TextInput
             value={search}

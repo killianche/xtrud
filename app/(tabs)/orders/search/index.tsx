@@ -150,7 +150,7 @@ export default function OrdersSearchScreen() {
             accessibilityLabel="Повторить загрузку заданий"
             disabled={isRefetching}
             onPress={() => void refetch()}
-            className="mt-4 h-11 self-start items-center justify-center rounded-md border border-hairline bg-canvas px-4 active:bg-canvas-soft"
+            className="mt-4 min-h-11 self-start items-center justify-center rounded-md border border-hairline bg-canvas px-4 active:bg-canvas-soft"
           >
             <AppText weight="semibold" className="text-button-sm text-ink">
               {isRefetching ? "Загружаем…" : "Повторить"}
@@ -272,7 +272,7 @@ function EmptyState({ hasActiveFilters, onClearFilters, accentColor }: EmptyStat
           onPress={onClearFilters}
           accessibilityRole="button"
           hitSlop={8}
-          className="mt-4 h-11 flex-row items-center justify-center rounded-pill border border-hairline bg-canvas px-4 active:opacity-70"
+          className="mt-4 min-h-11 flex-row items-center justify-center rounded-pill border border-hairline bg-canvas px-4 active:opacity-70"
         >
           <AppText weight="semibold" className="text-button text-ink">
             Сбросить фильтры

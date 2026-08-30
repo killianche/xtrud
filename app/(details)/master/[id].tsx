@@ -355,6 +355,7 @@ export default function MasterPublicScreen() {
                       accessibilityLabel={isFavorite.data ? "Убрать из закладок" : "В закладки"}
                       onPress={handleToggleFavorite}
                       disabled={toggleFavorite.isPending}
+                      hitSlop={8}
                       className="h-9 w-9 items-center justify-center rounded-full bg-black/50 active:opacity-70"
                     >
                       <BookmarkSimple
@@ -423,6 +424,7 @@ export default function MasterPublicScreen() {
                       accessibilityLabel={isFavorite.data ? "Убрать из закладок" : "В закладки"}
                       onPress={handleToggleFavorite}
                       disabled={toggleFavorite.isPending}
+                      hitSlop={8}
                       className="h-9 w-9 items-center justify-center rounded-full bg-black/50 active:opacity-70"
                     >
                       <BookmarkSimple
@@ -602,7 +604,7 @@ export default function MasterPublicScreen() {
 
           {/* Inline contact actions — ghost equal-weight pills, единый стиль
               с category page MasterRow (фидбэк user 2026-05-14: «кнопки
-              делаем как там, на всём сайте»). bg-canvas-soft + h-10 + medium
+              делаем как там, на всём сайте»). bg-canvas-soft + min-h-11 (тач-цель 44 pt) + medium
               + без иконок (text-only) — minimal-shadcn-pattern. */}
           {!isOwnProfile && (
             <View className="flex-row gap-2 mt-5">
@@ -614,7 +616,7 @@ export default function MasterPublicScreen() {
                 accessibilityRole="button"
                 accessibilityLabel="Позвонить"
                 onPress={handleCall}
-                className="flex-1 items-center justify-center h-10 rounded-full bg-accent-soft active:opacity-80"
+                className="flex-1 items-center justify-center min-h-11 rounded-full bg-accent-soft active:opacity-80"
               >
                 <AppText weight="semibold" className="text-body-sm text-accent">
                   Позвонить
@@ -628,7 +630,7 @@ export default function MasterPublicScreen() {
                   accessibilityRole="button"
                   accessibilityLabel="Написать в WhatsApp"
                   onPress={handleWhatsApp}
-                  className="flex-1 items-center justify-center h-10 rounded-full bg-canvas-soft active:bg-canvas-soft-2"
+                  className="flex-1 items-center justify-center min-h-11 rounded-full bg-canvas-soft active:bg-canvas-soft-2"
                 >
                   <AppText weight="medium" className="text-body-sm text-ink">
                     WhatsApp
@@ -645,7 +647,7 @@ export default function MasterPublicScreen() {
                   accessibilityLabel={isFavorite.data ? "Убрать из закладок" : "В закладки"}
                   onPress={handleToggleFavorite}
                   disabled={toggleFavorite.isPending}
-                  className="items-center justify-center h-10 w-12 rounded-full bg-canvas-soft active:bg-canvas-soft-2"
+                  className="items-center justify-center min-h-11 w-12 rounded-full bg-canvas-soft active:bg-canvas-soft-2"
                 >
                   <BookmarkSimple
                     size={18}
@@ -768,7 +770,7 @@ export default function MasterPublicScreen() {
               accessibilityRole="button"
               accessibilityLabel="Оставить отзыв"
               onPress={handleReviewPress}
-              className="h-12 flex-row items-center justify-center rounded-md border border-hairline bg-canvas active:bg-canvas-soft"
+              className="min-h-12 flex-row items-center justify-center rounded-md border border-hairline bg-canvas active:bg-canvas-soft"
             >
               <AppText weight="semibold" className="text-button text-ink">
                 Оставить отзыв

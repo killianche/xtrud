@@ -109,7 +109,7 @@ export default function OrdersSearchFiltersScreen() {
             accessibilityRole="button"
             accessibilityLabel="Выбрать категории"
             onPress={() => router.push("/orders/search/category-select" as never)}
-            className="mt-3 flex-row items-center gap-3 rounded-md border border-hairline bg-canvas px-4 h-14 active:opacity-70"
+            className="mt-3 flex-row items-center gap-3 rounded-md border border-hairline bg-canvas px-4 min-h-14 active:opacity-70"
           >
             <View className="flex-1">
               {selectedL2Names ? (
@@ -168,7 +168,7 @@ export default function OrdersSearchFiltersScreen() {
             accessibilityRole="button"
             accessibilityLabel="Выбрать локацию"
             onPress={() => router.push("/orders/search/location-select" as never)}
-            className="mt-3 flex-row items-center gap-3 rounded-md border border-hairline bg-canvas px-4 h-14 active:opacity-70"
+            className="mt-3 flex-row items-center gap-3 rounded-md border border-hairline bg-canvas px-4 min-h-14 active:opacity-70"
           >
             <MapPin size={20} weight="bold" color={isAllLoc ? muteColor : inkColor} />
             <View className="flex-1">

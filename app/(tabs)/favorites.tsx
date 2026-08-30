@@ -167,7 +167,7 @@ function EmptyState({ onSearch }: { onSearch: () => void }) {
       <Pressable
         accessibilityRole="button"
         onPress={onSearch}
-        className="mt-6 h-12 flex-row items-center justify-center gap-2 rounded-md bg-primary px-5 active:opacity-80"
+        className="mt-6 min-h-12 flex-row items-center justify-center gap-2 rounded-md bg-primary px-5 active:opacity-80"
       >
         <MagnifyingGlass size={18} weight="bold" color={tc["on-primary"]} />
         <AppText weight="semibold" className="text-button text-on-primary">

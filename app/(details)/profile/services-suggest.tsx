@@ -402,7 +402,7 @@ export default function ServicesSuggestScreen() {
                             keyboardType="numeric"
                             placeholder="Цена"
                             placeholderTextColor={tc["muted-soft"]}
-                            className="flex-1 h-11 rounded-md border border-hairline bg-canvas px-3 text-body-md text-ink"
+                            className="flex-1 min-h-11 rounded-md border border-hairline bg-canvas px-3 text-body-md text-ink"
                             maxLength={7}
                           />
                           <AppText className="text-body-sm text-mute">₽</AppText>
@@ -497,7 +497,7 @@ function CustomServicePanel({
         <Pressable
           accessibilityRole="button"
           onPress={onToggle}
-          className="h-11 flex-row items-center justify-center gap-2 rounded-pill border border-hairline bg-canvas active:opacity-70"
+          className="min-h-11 flex-row items-center justify-center gap-2 rounded-pill border border-hairline bg-canvas active:opacity-70"
         >
           <Plus size={16} weight="bold" color={tc.ink} />
           <AppText weight="semibold" className="text-button text-ink">
@@ -543,7 +543,7 @@ function CustomServicePanel({
         placeholder="Например, замена бачка унитаза"
         placeholderTextColor={tc["muted-soft"]}
         maxLength={100}
-        className="mt-2 h-11 rounded-md border border-hairline bg-canvas px-3 text-body-md text-ink"
+        className="mt-2 min-h-11 rounded-md border border-hairline bg-canvas px-3 text-body-md text-ink"
         editable={!saving}
       />
 
@@ -580,7 +580,7 @@ function CustomServicePanel({
             placeholder="Цена"
             placeholderTextColor={tc["muted-soft"]}
             maxLength={7}
-            className="flex-1 h-11 rounded-md border border-hairline bg-canvas px-3 text-body-md text-ink"
+            className="flex-1 min-h-11 rounded-md border border-hairline bg-canvas px-3 text-body-md text-ink"
             editable={!saving}
           />
           <AppText className="text-body-sm text-mute">₽</AppText>

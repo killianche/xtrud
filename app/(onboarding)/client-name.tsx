@@ -119,7 +119,7 @@ export default function ClientNameScreen() {
             autoFocus
             returnKeyType="next"
             editable={!isBusy}
-            className="mt-2 h-12 rounded-md border border-hairline bg-canvas px-3 text-body-md text-ink"
+            className="mt-2 min-h-12 rounded-md border border-hairline bg-canvas px-3 text-body-md text-ink"
           />
         </View>
 

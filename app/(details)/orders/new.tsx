@@ -539,7 +539,7 @@ export function NewOrderScreen({ screenPhase = "intent" }: NewOrderScreenProps) 
             <Pressable
               accessibilityRole="button"
               onPress={() => router.replace(`/orders/${createdOrderId}` as never)}
-              className="h-14 items-center justify-center rounded-full bg-primary active:opacity-80"
+              className="min-h-14 items-center justify-center rounded-full bg-primary active:opacity-80"
             >
               <AppText weight="semibold" className="text-button-lg text-on-primary">
                 Открыть задание
@@ -583,7 +583,7 @@ export function NewOrderScreen({ screenPhase = "intent" }: NewOrderScreenProps) 
             accessibilityRole="button"
             accessibilityLabel="Повторить проверку категории"
             onPress={() => void categoriesQuery.refetch()}
-            className="mt-6 h-12 min-w-48 items-center justify-center rounded-md border border-hairline bg-canvas px-5 active:bg-canvas-soft"
+            className="mt-6 min-h-12 min-w-48 items-center justify-center rounded-md border border-hairline bg-canvas px-5 active:bg-canvas-soft"
           >
             <AppText weight="semibold" className="text-body-md text-ink">
               Повторить

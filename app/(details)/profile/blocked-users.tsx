@@ -55,7 +55,7 @@ export default function BlockedUsersScreen() {
             accessibilityLabel="Повторить загрузку списка заблокированных"
             disabled={blocked.isRefetching}
             onPress={() => void blocked.refetch()}
-            className="mt-4 h-11 items-center justify-center rounded-md border border-hairline bg-canvas px-4 active:bg-canvas-soft"
+            className="mt-4 min-h-11 items-center justify-center rounded-md border border-hairline bg-canvas px-4 active:bg-canvas-soft"
           >
             <AppText weight="semibold" className="text-button-sm text-ink">
               {blocked.isRefetching ? "Загружаем…" : "Повторить"}
@@ -137,7 +137,7 @@ function BlockedUserCard({ item, pending, onUnblock }: BlockedUserCardProps) {
         accessibilityHint="Вернёт вам его заказы, отклики и профиль"
         onPress={onUnblock}
         disabled={pending}
-        className="mt-3 h-11 self-start flex-row items-center justify-center rounded-pill border border-hairline px-4 active:bg-canvas-soft"
+        className="mt-3 min-h-11 self-start flex-row items-center justify-center rounded-pill border border-hairline px-4 active:bg-canvas-soft"
       >
         <AppText weight="semibold" className="text-button-sm text-ink">
           {pending ? "Разблокируем…" : "Разблокировать"}

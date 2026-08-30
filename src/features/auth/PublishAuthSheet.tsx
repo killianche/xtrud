@@ -60,7 +60,7 @@ export function PublishAuthSheet({ open, onClose }: PublishAuthSheetProps) {
             accessibilityRole="button"
             accessibilityLabel="Войти и вернуться к заданию"
             onPress={() => continueTo("/(auth)/phone")}
-            className="h-14 items-center justify-center rounded-pill bg-primary active:opacity-80"
+            className="min-h-14 items-center justify-center rounded-pill bg-primary active:opacity-80"
           >
             <AppText weight="semibold" className="text-button-lg text-on-primary">
               Войти
@@ -70,7 +70,7 @@ export function PublishAuthSheet({ open, onClose }: PublishAuthSheetProps) {
             accessibilityRole="button"
             accessibilityLabel="Создать аккаунт и вернуться к заданию"
             onPress={() => continueTo("/(auth)/register")}
-            className="h-14 items-center justify-center rounded-pill border border-hairline bg-canvas active:bg-canvas-soft"
+            className="min-h-14 items-center justify-center rounded-pill border border-hairline bg-canvas active:bg-canvas-soft"
           >
             <AppText weight="semibold" className="text-button-lg text-ink">
               Создать аккаунт

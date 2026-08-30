@@ -132,7 +132,7 @@ export default function FiltersCategorySelectScreen() {
 
       {/* Typeahead инпут — крупный (h-14, 18px). */}
       <View className="px-5 mt-2">
-        <View className="flex-row items-center gap-3 h-14 rounded-2xl bg-canvas-soft px-4">
+        <View className="flex-row items-center gap-3 min-h-14 rounded-2xl bg-canvas-soft px-4">
           <MagnifyingGlass size={20} weight="bold" color={muteColor} />
           <TextInput
             value={query}
@@ -153,6 +153,7 @@ export default function FiltersCategorySelectScreen() {
               accessibilityRole="button"
               accessibilityLabel="Очистить"
               onPress={() => setQuery("")}
+              hitSlop={8}
               className="h-9 w-9 items-center justify-center rounded-full active:opacity-60"
             >
               <X size={18} weight="bold" color={muteColor} />

@@ -15,13 +15,26 @@
 --
 -- ORDERING REQUIREMENT — this file refuses to run on its own
 --
--- Every capability below is gated on public.users.is_admin. That flag is
--- self-settable today: users_update_own (0001_init.sql:294) restricts the row
--- and not the column, and `authenticated` holds a table-wide UPDATE grant
+-- Every capability below is gated on public.users.is_admin. Until
+-- supabase/migrations/0130_guard_user_privilege_columns.sql that flag was
+-- self-settable: users_update_own (0001_init.sql:294) restricts the row and not
+-- the column, and `authenticated` holds a table-wide UPDATE grant
 -- (docs/ADMIN_PANEL.md §2, live audit 2026-08-26 in PROJECT_OPERATIONS.md §8).
--- Shipping a moderator capability on top of a self-service admin flag would be
--- a downgrade, not a fix. The preflight therefore ABORTS unless the is_admin
--- lock from 0126_suspension_enforcement.sql is already in place.
+-- 0130 closed it with the trigger users_guard_privilege_columns, verified
+-- read-only on production 2026-08-30. Shipping a moderator capability on top of
+-- a self-service admin flag would be a downgrade, not a fix, so the preflight
+-- ABORTS unless that applied lock is present and is the object 0130 installed.
+--
+-- This file does NOT depend on 0126_suspension_enforcement.sql. Suspension
+-- enforcement and order moderation are separate features that happen to share a
+-- moderator; either may be applied or rolled back without the other.
+--
+-- STILL BLOCKED BY A LIVE FACT, not by anything in this file: read-only
+-- inventory on 2026-08-30 found exactly ONE administrator in production, and it
+-- is the demo account (is_admin AND is_demo) whose password is in Git history
+-- (0104_admin_demo_account.sql). Every capability below would be exercisable by
+-- anyone who reads that. A real moderator account, and removal of admin from the
+-- demo account, is a PREREQUISITE for applying this migration.
 --
 -- WHAT THIS MIGRATION ADDS — one action, both directions
 --
@@ -135,8 +148,30 @@ BEGIN
   END IF;
 
   -- (2) HARDENING PRECONDITION. Refuse to grant moderators a new capability
-  -- while any authenticated user can make themselves a moderator.
-  IF to_regprocedure('public.guard_user_privilege_columns()') IS NULL
+  -- while any authenticated user can make themselves a moderator. The lock is
+  -- identified positively — right signature, returns trigger, SECURITY INVOKER,
+  -- owned by a non-API role, body mentions is_admin, reached by an enabled
+  -- trigger on public.users — so a foreign object that merely shares the name
+  -- cannot satisfy it.
+  IF to_regprocedure('public.guard_user_privilege_columns()') IS NULL THEN
+    RAISE EXCEPTION 'order_moderation_requires_is_admin_hardening_first'
+      USING ERRCODE = 'P0001',
+            HINT = 'Apply supabase/migrations/0130_guard_user_privilege_columns.sql first. Without it public.users.is_admin is self-settable and every capability in this migration is available to everyone.';
+  END IF;
+
+  IF EXISTS (
+       SELECT 1 FROM pg_proc AS function_row
+       WHERE function_row.oid = to_regprocedure('public.guard_user_privilege_columns()')
+         AND (function_row.prosecdef
+              OR function_row.prorettype <> 'pg_catalog.trigger'::regtype
+              OR pg_get_functiondef(function_row.oid) !~* '\mis_admin\M')
+     )
+     OR EXISTS (
+       SELECT 1 FROM pg_proc AS function_row
+       JOIN pg_roles AS owner_role ON owner_role.oid = function_row.proowner
+       WHERE function_row.oid = to_regprocedure('public.guard_user_privilege_columns()')
+         AND owner_role.rolname IN ('anon', 'authenticated', 'service_role', 'authenticator')
+     )
      OR NOT EXISTS (
        SELECT 1
        FROM pg_trigger AS trigger_row
@@ -146,11 +181,11 @@ BEGIN
          AND trigger_row.tgenabled <> 'D'
          AND schema_row.nspname = 'public'
          AND table_row.relname = 'users'
-         AND trigger_row.tgname = 'users_privilege_columns_guard'
+         AND trigger_row.tgfoid = to_regprocedure('public.guard_user_privilege_columns()')
      ) THEN
-    RAISE EXCEPTION 'order_moderation_requires_is_admin_hardening_first'
+    RAISE EXCEPTION 'order_moderation_foreign_privilege_guard_requires_live_audit'
       USING ERRCODE = 'P0001',
-            HINT = 'Apply 0126_suspension_enforcement.sql (or an equivalent reviewed lock on public.users.is_admin) first. Without it public.users.is_admin is self-settable and every capability in this migration is available to everyone.';
+            HINT = 'public.guard_user_privilege_columns() exists but is not the guard migration 0130 installed. Inventory the live object and decide explicitly.';
   END IF;
 
   -- (3) RLS must already be enabled on public.orders. A RESTRICTIVE policy on a

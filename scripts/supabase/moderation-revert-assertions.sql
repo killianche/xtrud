@@ -6,7 +6,9 @@
 --   1. is every object gone and is every pre-existing policy and row exactly as
 --      it was before the drafts;
 --   2. what does rolling back COST. A rollback that silently reopens the gap it
---      closed must say so out loud, not be discovered in production.
+--      closed must say so out loud, not be discovered in production — and it
+--      must reopen ONLY its own gap. The applied migration 0130 has to be
+--      standing, unchanged, on the other side of both rollbacks.
 
 \set ON_ERROR_STOP on
 
@@ -18,8 +20,17 @@ DO $objects_gone$
 BEGIN
   PERFORM public.fx_assert('0127: content guard function removed',
     to_regprocedure('public.guard_content_author_active()') IS NULL);
-  PERFORM public.fx_assert('0127: users privilege guard function removed',
-    to_regprocedure('public.guard_user_privilege_columns()') IS NULL);
+  PERFORM public.fx_assert('0127: users status guard function removed',
+    to_regprocedure('public.guard_user_status_column()') IS NULL);
+  -- THE ONE THING A ROLLBACK MUST NOT DO. guard_user_privilege_columns belongs
+  -- to the applied migration 0130. Removing it here would turn a rollback of a
+  -- moderation feature into a privilege escalation.
+  PERFORM public.fx_assert('0127: the applied is_admin guard SURVIVED the rollback',
+    to_regprocedure('public.guard_user_privilege_columns()') IS NOT NULL);
+  PERFORM public.fx_assert('0127: the applied trigger survived the rollback', EXISTS (
+    SELECT 1 FROM pg_trigger t JOIN pg_class c ON c.oid = t.tgrelid
+    WHERE c.relname = 'users' AND t.tgname = 'users_guard_privilege_columns'
+      AND NOT t.tgisinternal AND t.tgenabled <> 'D'));
   PERFORM public.fx_assert('0129: order moderation guard function removed',
     to_regprocedure('public.guard_order_moderation_columns()') IS NULL);
   PERFORM public.fx_assert('0129: response target guard function removed',
@@ -33,7 +44,7 @@ BEGIN
       AND tgname IN ('orders_author_active_guard',
                      'order_responses_author_active_guard',
                      'reviews_author_active_guard',
-                     'users_privilege_columns_guard',
+                     'users_guard_status_column',
                      'orders_moderation_columns_guard',
                      'order_responses_hidden_order_guard')));
 
@@ -159,13 +170,17 @@ SELECT public.fx_assert_allowed('AFTER ROLLBACK: a suspended user can publish ag
             'plumbing', 'Снова публикую', 'Текст')$$);
 SELECT public.fx_assert_allowed('AFTER ROLLBACK: a suspended user can lift its own suspension again',
   $$UPDATE public.users SET status = 'active' WHERE id = '30000000-0000-4000-8000-000000000003'$$);
-SELECT public.fx_assert_allowed('AFTER ROLLBACK: any user can promote itself to moderator again',
-  $$UPDATE public.users SET is_admin = true WHERE id = '30000000-0000-4000-8000-000000000003'$$);
+-- ...but privilege escalation stays closed, because that lock was never this
+-- draft's to remove. This is the assertion that separates "rollback of a
+-- feature" from "rollback of the security baseline".
+SELECT public.fx_assert_denied('AFTER ROLLBACK: self-promotion is still blocked by migration 0130',
+  $$UPDATE public.users SET is_admin = true WHERE id = '30000000-0000-4000-8000-000000000003'$$,
+  'users.is_admin is managed by the database owner only');
 RESET ROLE;
 SELECT set_config('request.jwt.claim.sub', '', false);
 
 DELETE FROM public.orders WHERE id = '44444444-0000-4000-8000-000000000044';
-UPDATE public.users SET status = 'suspended', is_admin = false
+UPDATE public.users SET status = 'suspended'
  WHERE id = '30000000-0000-4000-8000-000000000003';
 
 \echo 'REVERT OK: both rollbacks restore the baseline exactly — and reopen both gaps, as asserted'

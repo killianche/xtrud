@@ -28,8 +28,15 @@ BEGIN
     DROP TRIGGER orders_author_active_guard ON public.orders;
 
   -- 2. The status lock removed: the suspended user lifts their own suspension.
-  WHEN 'drop_users_privilege_trigger' THEN
-    DROP TRIGGER users_privilege_columns_guard ON public.users;
+  WHEN 'drop_users_status_trigger' THEN
+    DROP TRIGGER users_guard_status_column ON public.users;
+
+  -- 2b. The APPLIED 0130 lock removed. Not a mutation of this draft, but the
+  --     status lock leans on it: with is_admin self-settable again a suspended
+  --     user promotes itself and then clears its own suspension through the
+  --     moderator branch. The assertions must notice the dependency breaking.
+  WHEN 'drop_applied_0130_trigger' THEN
+    DROP TRIGGER users_guard_privilege_columns ON public.users;
 
   -- 3. INSERT blocked, UPDATE forgotten. This is the bypass class the blocking
   --    work proved on a real database, applied to suspension: the same text is
@@ -290,24 +297,37 @@ BEGIN
       FOR SELECT TO authenticated
       USING ((SELECT public.is_current_user_admin()) AND orders.status = 'open');
 
-  -- 19. The users guard keeps is_admin locked and forgets status, which is the
-  --     half that lets a suspended account lift its own suspension.
-  WHEN 'users_guard_forgets_status' THEN
+  -- 19. The status guard stops checking WHO is changing the status, so anyone
+  --     clears their own sanction. Signature, security mode and trigger are all
+  --     untouched, so only a behavioural assertion can see it.
+  WHEN 'status_guard_skips_admin_check' THEN
     EXECUTE $body$
-      CREATE OR REPLACE FUNCTION public.guard_user_privilege_columns()
+      CREATE OR REPLACE FUNCTION public.guard_user_status_column()
+      RETURNS trigger LANGUAGE plpgsql SECURITY INVOKER
+      SET search_path = public, pg_temp
+      AS $f$ BEGIN RETURN NEW; END $f$;
+    $body$;
+
+  -- 20. The escape hatch widened from "the database owner" to "anything that is
+  --     not anon". Under PostgREST current_user is 'authenticated', so every
+  --     signed-in user walks straight through. This is the most plausible
+  --     mistake in the whole file — it looks like the rule 0130 uses.
+  WHEN 'status_guard_escape_too_wide' THEN
+    EXECUTE $body$
+      CREATE OR REPLACE FUNCTION public.guard_user_status_column()
       RETURNS trigger LANGUAGE plpgsql SECURITY INVOKER
       SET search_path = public, pg_temp
       AS $f$
+      DECLARE v_actor_is_admin boolean;
       BEGIN
-        IF current_user NOT IN ('anon', 'authenticated') THEN RETURN NEW; END IF;
-        IF TG_OP = 'INSERT' THEN
-          NEW.is_admin := false;
-          NEW.status := 'active';
-          RETURN NEW;
-        END IF;
-        IF NEW.is_admin IS DISTINCT FROM OLD.is_admin THEN
-          RAISE EXCEPTION 'Права модератора выдаются только на сервере.'
-            USING ERRCODE = '42501', DETAIL = 'is_admin_is_server_managed';
+        IF current_user <> 'anon' THEN RETURN NEW; END IF;
+        IF NEW.status IS DISTINCT FROM OLD.status THEN
+          SELECT is_admin INTO v_actor_is_admin FROM public.users WHERE id = auth.uid();
+          IF COALESCE(v_actor_is_admin, false) IS NOT TRUE THEN
+            RAISE EXCEPTION 'Статус аккаунта меняет только модератор.'
+              USING ERRCODE = '42501',
+                    DETAIL = 'users.status is managed by moderators only';
+          END IF;
         END IF;
         RETURN NEW;
       END

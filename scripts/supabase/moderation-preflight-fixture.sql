@@ -9,10 +9,22 @@
 --
 -- What is reproduced deliberately, because the drafts depend on it:
 --
+--  * THE APPLIED MIGRATION 0130. supabase/migrations/0130_guard_user_privilege_columns.sql
+--    is in production: public.guard_user_privilege_columns() plus the trigger
+--    users_guard_privilege_columns, locking users.is_admin and users.is_demo.
+--    Its shape here is copied from the applied file and reconciled against a
+--    read-only inspection of production on 2026-08-30 (owner postgres,
+--    SECURITY INVOKER, proacl {postgres=X/postgres}, BEFORE UPDATE, enabled).
+--    Building the fixture WITHOUT it would prove compatibility with a world
+--    that no longer exists — the exact mistake this fixture caught last time.
+--    Set -v p0130=skip to model the pre-0130 world, or -v p0130=foreign to model
+--    an unrelated object squatting on the name; the runner uses both to prove
+--    that 0126 and 0128 refuse to run.
 --  * Supabase-style broad default privileges and table grants for the API
---    roles. This is the reason a suspended user can today lift their own
---    suspension: users_update_own restricts the ROW, the grant does not
---    restrict the COLUMN (docs/ADMIN_PANEL.md §2, PROJECT_OPERATIONS.md §8).
+--    roles. This is why users.status is still self-writable even after 0130:
+--    users_update_own restricts the ROW, the grant does not restrict the COLUMN
+--    (docs/ADMIN_PANEL.md §2, PROJECT_OPERATIONS.md §8). Verified live: anon,
+--    authenticated and service_role all hold UPDATE on users.status.
 --  * public.is_current_user_admin() SECURITY DEFINER, granted to authenticated
 --    and REVOKED from anon, exactly as 0030_admin_flag_and_policies.sql leaves
 --    it. The anon revoke is load-bearing: it is why 0128 needs two RESTRICTIVE
@@ -211,6 +223,68 @@ REVOKE EXECUTE ON FUNCTION public.is_current_user_admin() FROM anon;
 GRANT EXECUTE ON FUNCTION public.is_current_user_admin() TO authenticated;
 
 -- ---------------------------------------------------------------------------
+-- APPLIED MIGRATION 0130 — already in production
+-- ---------------------------------------------------------------------------
+-- Shape copied from supabase/migrations/0130_guard_user_privilege_columns.sql.
+-- The drafts must build on this, never recreate or replace it.
+
+\if :{?p0130}
+\else
+  \set p0130 applied
+\endif
+
+-- psql does not interpolate :variables inside dollar-quoted bodies, so the mode
+-- is handed to the server as a run-time parameter instead of being pasted in.
+SELECT set_config('fixture.p0130', :'p0130', false) AS fixture_mode;
+
+DO $p0130$
+BEGIN
+  IF current_setting('fixture.p0130', true) = 'applied' THEN
+    EXECUTE $ddl$
+      CREATE OR REPLACE FUNCTION public.guard_user_privilege_columns()
+      RETURNS trigger
+      LANGUAGE plpgsql
+      SECURITY INVOKER
+      SET search_path = public, pg_temp
+      AS $fn$
+      BEGIN
+        IF current_user = 'postgres' THEN
+          RETURN NEW;
+        END IF;
+        IF NEW.is_admin IS DISTINCT FROM OLD.is_admin THEN
+          RAISE EXCEPTION 'Изменение прав администратора запрещено'
+            USING ERRCODE = '42501',
+                  DETAIL = 'users.is_admin is managed by the database owner only';
+        END IF;
+        IF NEW.is_demo IS DISTINCT FROM OLD.is_demo THEN
+          RAISE EXCEPTION 'Изменение признака тестового аккаунта запрещено'
+            USING ERRCODE = '42501',
+                  DETAIL = 'users.is_demo is managed by the database owner only';
+        END IF;
+        RETURN NEW;
+      END
+      $fn$;
+    $ddl$;
+    EXECUTE 'REVOKE ALL ON FUNCTION public.guard_user_privilege_columns() FROM PUBLIC, anon, authenticated, service_role';
+    EXECUTE 'CREATE TRIGGER users_guard_privilege_columns BEFORE UPDATE ON public.users FOR EACH ROW EXECUTE FUNCTION public.guard_user_privilege_columns()';
+
+  ELSIF current_setting('fixture.p0130', true) = 'foreign' THEN
+    -- Same name, unrelated object: SECURITY DEFINER, no is_admin anywhere, and
+    -- no trigger on public.users. 0126 and 0128 must reject it by identity
+    -- rather than accept it because the name matched.
+    EXECUTE $ddl$
+      CREATE OR REPLACE FUNCTION public.guard_user_privilege_columns()
+      RETURNS trigger
+      LANGUAGE plpgsql
+      SECURITY DEFINER
+      SET search_path = public, pg_temp
+      AS $fn$ BEGIN RETURN NEW; END $fn$;
+    $ddl$;
+  END IF;
+END
+$p0130$;
+
+-- ---------------------------------------------------------------------------
 -- RLS baseline. Nothing below may be renamed or rewritten by the drafts.
 -- ---------------------------------------------------------------------------
 
@@ -221,8 +295,12 @@ ALTER TABLE public.reviews ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.reports ENABLE ROW LEVEL SECURITY;
 
 -- 0001_init.sql
-CREATE POLICY users_select_own ON public.users
-  FOR SELECT USING ((SELECT auth.uid()) = id);
+-- Live production has users_select_all USING (true), not the users_select_own
+-- of migration 0001. Verified read-only 2026-08-30. The status guard reads
+-- users.is_admin under the caller's own RLS, so modelling the real policy
+-- matters; a narrower model would hide a failure mode instead of testing it.
+CREATE POLICY users_select_all ON public.users
+  FOR SELECT USING (true);
 CREATE POLICY users_insert_own ON public.users
   FOR INSERT WITH CHECK ((SELECT auth.uid()) = id);
 CREATE POLICY users_update_own ON public.users
@@ -233,8 +311,6 @@ CREATE POLICY users_update_own ON public.users
 CREATE POLICY users_admin_update ON public.users
   FOR UPDATE USING (public.is_current_user_admin())
   WITH CHECK (public.is_current_user_admin());
-CREATE POLICY users_admin_select ON public.users
-  FOR SELECT USING (public.is_current_user_admin());
 
 -- 0076_lifecycle_rls.sql
 CREATE POLICY orders_read_open_or_own ON public.orders
@@ -618,7 +694,10 @@ BEGIN
   END IF;
 
   -- Р3 core: a suspended user can currently lift their own suspension, because
-  -- authenticated holds a table-wide UPDATE grant on public.users.
+  -- authenticated holds a table-wide UPDATE grant on public.users. Migration
+  -- 0130 neutralised the is_admin half with a trigger and deliberately left the
+  -- GRANT alone, so both column privileges are still present live (verified
+  -- read-only 2026-08-30) and the status half is still exploitable.
   SELECT has_column_privilege('authenticated', 'public.users', 'status', 'UPDATE')
      AND has_column_privilege('authenticated', 'public.users', 'is_admin', 'UPDATE')
   INTO v_ok;
@@ -628,29 +707,39 @@ BEGIN
 END
 $current_state_is_broken$;
 
--- The live, unguarded bypass, executed once so it is a demonstrated fact and
--- not a description. client_s suspends and un-suspends itself, and promotes
--- itself to moderator, through the ordinary PostgREST write path.
-SET ROLE authenticated;
-SELECT public.fx_become('30000000-0000-4000-8000-000000000003');
-SELECT public.fx_assert_allowed(
-  'BASELINE: a user can set their own status',
-  $$UPDATE public.users SET status = 'suspended' WHERE id = '30000000-0000-4000-8000-000000000003'$$
-);
-SELECT public.fx_assert_allowed(
-  'BASELINE: a suspended user can un-suspend itself',
-  $$UPDATE public.users SET status = 'active' WHERE id = '30000000-0000-4000-8000-000000000003'$$
-);
-SELECT public.fx_assert_allowed(
-  'BASELINE: a user can promote itself to moderator',
-  $$UPDATE public.users SET is_admin = true WHERE id = '30000000-0000-4000-8000-000000000003'$$
-);
-SELECT public.fx_assert_allowed(
-  'BASELINE: undo the self-promotion so the fixture starts clean',
-  $$UPDATE public.users SET is_admin = false WHERE id = '30000000-0000-4000-8000-000000000003'$$
-);
-RESET ROLE;
-SELECT set_config('request.jwt.claim.sub', '', false);
+-- The remaining bypass, executed once so it is a demonstrated fact and not a
+-- description: after migration 0130 a user can no longer promote itself, but it
+-- can still set and clear its own status. That gap is exactly what 0126 closes,
+-- and asserting it here means the "after" assertions are measuring a real change.
+DO $baseline_bypass$
+BEGIN
+  EXECUTE 'SET ROLE authenticated';
+  PERFORM public.fx_become('30000000-0000-4000-8000-000000000003');
+
+  PERFORM public.fx_assert_allowed(
+    'BASELINE: a user can set their own status',
+    $$UPDATE public.users SET status = 'suspended' WHERE id = '30000000-0000-4000-8000-000000000003'$$);
+  PERFORM public.fx_assert_allowed(
+    'BASELINE: a suspended user can un-suspend itself',
+    $$UPDATE public.users SET status = 'active' WHERE id = '30000000-0000-4000-8000-000000000003'$$);
+
+  IF current_setting('fixture.p0130', true) = 'applied' THEN
+    -- Already closed in production. If this ever starts passing, migration 0130
+    -- has been lost and the whole moderation stack is unsafe.
+    PERFORM public.fx_assert_denied(
+      'BASELINE: migration 0130 already blocks self-promotion',
+      $$UPDATE public.users SET is_admin = true WHERE id = '30000000-0000-4000-8000-000000000003'$$,
+      'users.is_admin is managed by the database owner only');
+    PERFORM public.fx_assert_denied(
+      'BASELINE: migration 0130 already blocks the demo flag',
+      $$UPDATE public.users SET is_demo = true WHERE id = '30000000-0000-4000-8000-000000000003'$$,
+      'users.is_demo is managed by the database owner only');
+  END IF;
+
+  EXECUTE 'RESET ROLE';
+  PERFORM set_config('request.jwt.claim.sub', '', false);
+END
+$baseline_bypass$;
 
 DO $baseline_sanity$
 DECLARE
@@ -675,4 +764,4 @@ BEGIN
 END
 $baseline_sanity$;
 
-\echo 'PREFLIGHT OK: current-state fixture built, baselines captured, both gaps demonstrated'
+\echo 'PREFLIGHT OK: fixture built for p0130 mode' :p0130 '— baselines captured, the remaining gap demonstrated'

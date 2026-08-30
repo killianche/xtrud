@@ -23,8 +23,16 @@ DO $structure$
 BEGIN
   PERFORM public.fx_assert('0126: content guard function exists',
     to_regprocedure('public.guard_content_author_active()') IS NOT NULL);
-  PERFORM public.fx_assert('0126: users privilege guard function exists',
-    to_regprocedure('public.guard_user_privilege_columns()') IS NOT NULL);
+  PERFORM public.fx_assert('0126: users status guard function exists',
+    to_regprocedure('public.guard_user_status_column()') IS NOT NULL);
+  -- The applied 0130 must still be standing and must still be ITS object.
+  PERFORM public.fx_assert('0130: the applied is_admin guard is untouched', EXISTS (
+    SELECT 1 FROM pg_proc
+    WHERE oid = to_regprocedure('public.guard_user_privilege_columns()')
+      AND NOT prosecdef
+      AND prorettype = 'pg_catalog.trigger'::regtype
+      AND pg_get_functiondef(oid) ~* '\mis_admin\M'
+      AND pg_get_functiondef(oid) ~* '\mis_demo\M'));
   PERFORM public.fx_assert('0128: order moderation guard function exists',
     to_regprocedure('public.guard_order_moderation_columns()') IS NOT NULL);
   PERFORM public.fx_assert('0128: response target guard function exists',
@@ -45,9 +53,13 @@ BEGIN
     SELECT 1 FROM pg_trigger t JOIN pg_class c ON c.oid = t.tgrelid
     WHERE c.relname = 'reviews' AND t.tgname = 'reviews_author_active_guard'
       AND NOT t.tgisinternal AND t.tgenabled <> 'D'));
-  PERFORM public.fx_assert('0126: users trigger attached and enabled', EXISTS (
+  PERFORM public.fx_assert('0126: users status trigger attached and enabled', EXISTS (
     SELECT 1 FROM pg_trigger t JOIN pg_class c ON c.oid = t.tgrelid
-    WHERE c.relname = 'users' AND t.tgname = 'users_privilege_columns_guard'
+    WHERE c.relname = 'users' AND t.tgname = 'users_guard_status_column'
+      AND NOT t.tgisinternal AND t.tgenabled <> 'D'));
+  PERFORM public.fx_assert('0130: the applied trigger is still attached and enabled', EXISTS (
+    SELECT 1 FROM pg_trigger t JOIN pg_class c ON c.oid = t.tgrelid
+    WHERE c.relname = 'users' AND t.tgname = 'users_guard_privilege_columns'
       AND NOT t.tgisinternal AND t.tgenabled <> 'D'));
   PERFORM public.fx_assert('0128: orders moderation trigger attached and enabled', EXISTS (
     SELECT 1 FROM pg_trigger t JOIN pg_class c ON c.oid = t.tgrelid
@@ -77,9 +89,9 @@ BEGIN
   -- The two role-sensitive guards MUST NOT be SECURITY DEFINER: inside a
   -- definer function current_user is the owner, and the "API client vs server
   -- path" distinction they are built on would silently always say "server".
-  PERFORM public.fx_assert('0126: users privilege guard is SECURITY INVOKER', EXISTS (
+  PERFORM public.fx_assert('0126: users status guard is SECURITY INVOKER', EXISTS (
     SELECT 1 FROM pg_proc
-    WHERE oid = to_regprocedure('public.guard_user_privilege_columns()')
+    WHERE oid = to_regprocedure('public.guard_user_status_column()')
       AND NOT prosecdef));
   PERFORM public.fx_assert('0128: order moderation guard is SECURITY INVOKER', EXISTS (
     SELECT 1 FROM pg_proc
@@ -93,10 +105,10 @@ BEGIN
     NOT has_function_privilege('anon', 'public.guard_content_author_active()', 'EXECUTE')
     AND NOT has_function_privilege('authenticated', 'public.guard_content_author_active()', 'EXECUTE')
     AND NOT has_function_privilege('service_role', 'public.guard_content_author_active()', 'EXECUTE'));
-  PERFORM public.fx_assert('no API role may execute the users privilege guard',
-    NOT has_function_privilege('anon', 'public.guard_user_privilege_columns()', 'EXECUTE')
-    AND NOT has_function_privilege('authenticated', 'public.guard_user_privilege_columns()', 'EXECUTE')
-    AND NOT has_function_privilege('service_role', 'public.guard_user_privilege_columns()', 'EXECUTE'));
+  PERFORM public.fx_assert('no API role may execute the users status guard',
+    NOT has_function_privilege('anon', 'public.guard_user_status_column()', 'EXECUTE')
+    AND NOT has_function_privilege('authenticated', 'public.guard_user_status_column()', 'EXECUTE')
+    AND NOT has_function_privilege('service_role', 'public.guard_user_status_column()', 'EXECUTE'));
   PERFORM public.fx_assert('no API role may execute the order moderation guard',
     NOT has_function_privilege('anon', 'public.guard_order_moderation_columns()', 'EXECUTE')
     AND NOT has_function_privilege('authenticated', 'public.guard_order_moderation_columns()', 'EXECUTE')
@@ -109,7 +121,7 @@ BEGIN
     SELECT bool_and(prorettype = 'pg_catalog.trigger'::regtype)
     FROM pg_proc WHERE oid IN (
       to_regprocedure('public.guard_content_author_active()'),
-      to_regprocedure('public.guard_user_privilege_columns()'),
+      to_regprocedure('public.guard_user_status_column()'),
       to_regprocedure('public.guard_order_moderation_columns()'),
       to_regprocedure('public.guard_response_target_not_hidden()'))));
 
@@ -276,11 +288,12 @@ SELECT public.fx_assert_allowed('moderator suspends a client',
 SELECT public.fx_assert_allowed('moderator suspends a master',
   $$UPDATE public.users SET status = 'suspended' WHERE id = '40000000-0000-4000-8000-000000000004'$$);
 
--- Even a moderator may not mint another moderator from the client. That is the
--- "один админ молча создаёт других" finding in docs/ADMIN_PANEL.md §2.
+-- Even a moderator may not mint another moderator from the client. That lock is
+-- migration 0130's, not this draft's; asserting it here proves the two guards
+-- coexist on the same table rather than one shadowing the other.
 SELECT public.fx_assert_denied('moderator cannot create another moderator from the app',
   $$UPDATE public.users SET is_admin = true WHERE id = '10000000-0000-4000-8000-000000000001'$$,
-  'is_admin_is_server_managed');
+  'users.is_admin is managed by the database owner only');
 RESET ROLE;
 SELECT set_config('request.jwt.claim.sub', '', false);
 
@@ -298,36 +311,57 @@ SET ROLE authenticated;
 SELECT public.fx_become('30000000-0000-4000-8000-000000000003');
 SELECT public.fx_assert_denied('a suspended user cannot un-suspend itself',
   $$UPDATE public.users SET status = 'active' WHERE id = '30000000-0000-4000-8000-000000000003'$$,
-  'user_status_is_moderator_managed');
+  'users.status is managed by moderators only');
+-- Provided by the applied 0130. Asserted here because the status lock LEANS on
+-- it: if self-promotion came back, a suspended user would promote itself and
+-- then clear its own suspension through the moderator branch above.
 SELECT public.fx_assert_denied('a suspended user cannot promote itself to moderator',
   $$UPDATE public.users SET is_admin = true WHERE id = '30000000-0000-4000-8000-000000000003'$$,
-  'is_admin_is_server_managed');
+  'users.is_admin is managed by the database owner only');
 -- The same write with no WHERE clause: an UPDATE that reads no column never
 -- evaluates a SELECT policy, so this path must be closed by the trigger and not
 -- by visibility.
 SELECT public.fx_assert_denied('a suspended user cannot un-suspend itself with an unqualified UPDATE',
   $$UPDATE public.users SET status = 'active'$$,
-  'user_status_is_moderator_managed');
--- users_insert_own lets a client create its own row. Creating it pre-promoted
--- would be a second way in, so the INSERT is normalised rather than refused —
--- refusing it would break account bootstrap for a real client.
-SELECT public.fx_become('99999999-0000-4000-8000-000000000099');
-SELECT public.fx_assert_allowed('a client may still insert its own users row',
-  $$INSERT INTO public.users (id, first_name, is_admin, status)
-    VALUES ('99999999-0000-4000-8000-000000000099', 'Подставной', true, 'suspended')$$);
+  'users.status is managed by moderators only');
+-- users_insert_own lets a client create its own row, and NEITHER guard covers
+-- INSERT: 0130 is BEFORE UPDATE only and this draft deliberately mirrors it.
+-- That is safe only because rows are created by the SECURITY DEFINER trigger
+-- handle_new_auth_user and there is no DELETE policy on public.users, so a
+-- client cannot drop its row and recreate it pre-cleared. Assert the premise
+-- rather than trusting it.
+-- NOTE: the DELETE grant is NOT what stops this. Verified read-only on
+-- production 2026-08-30: anon, authenticated and service_role all hold DELETE on
+-- public.users. The row survives only because RLS is enabled and there is no
+-- DELETE policy, so every delete is denied by default. Prove that behaviourally
+-- rather than by reading the grant, which points the other way.
+DO $insert_premise$
+BEGIN
+  PERFORM public.fx_assert('public.users has no DELETE policy',
+    NOT EXISTS (SELECT 1 FROM pg_policies
+                WHERE schemaname = 'public' AND tablename = 'users' AND cmd = 'DELETE'));
+  PERFORM public.fx_assert('row level security is enabled on public.users', EXISTS (
+    SELECT 1 FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+    WHERE n.nspname = 'public' AND c.relname = 'users' AND c.relrowsecurity));
+  PERFORM public.fx_assert('still exactly one moderator',
+    (SELECT count(*) FROM public.users WHERE is_admin) = 1);
+END
+$insert_premise$;
+
+SET ROLE authenticated;
+SELECT public.fx_become('30000000-0000-4000-8000-000000000003');
+SELECT public.fx_assert_allowed('a client DELETE of its own users row is silently a no-op, not a way to reset',
+  $$DELETE FROM public.users WHERE id = '30000000-0000-4000-8000-000000000003'$$);
 RESET ROLE;
 SELECT set_config('request.jwt.claim.sub', '', false);
 
-DO $insert_normalised$
+DO $row_survived$
 BEGIN
-  PERFORM public.fx_assert('a self-inserted row can never arrive pre-promoted or pre-cleared',
-    (SELECT NOT is_admin AND status = 'active' FROM public.users
-      WHERE id = '99999999-0000-4000-8000-000000000099'));
-  PERFORM public.fx_assert('still exactly one moderator',
-    (SELECT count(*) FROM public.users WHERE is_admin) = 1);
-  DELETE FROM public.users WHERE id = '99999999-0000-4000-8000-000000000099';
+  PERFORM public.fx_assert('the suspended row survived the delete attempt', EXISTS (
+    SELECT 1 FROM public.users
+    WHERE id = '30000000-0000-4000-8000-000000000003' AND status = 'suspended'));
 END
-$insert_normalised$;
+$row_survived$;
 
 -- D3. No new content from a suspended account, on every path there is.
 SET ROLE authenticated;

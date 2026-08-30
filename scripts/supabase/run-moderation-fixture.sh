@@ -12,7 +12,8 @@
 #   moderation-negative-controls.sql        proves the assertions can go red
 #
 # Three phases, all of which must pass:
-#   1. ordering — 0128 must REFUSE to apply without the is_admin lock from 0126;
+#   1. dependency — both drafts must REFUSE without the APPLIED migration 0130,
+#      and must reject a foreign object squatting on its name;
 #   2. contract — forward, assertions, both rollback guards, rollback assertions;
 #   3. negative controls — every mutation must be caught by the assertions.
 #
@@ -32,7 +33,8 @@ REQUIRE="${XTRUD_FIXTURE_REQUIRE:-0}"
 
 MUTATIONS=(
   drop_orders_content_trigger
-  drop_users_privilege_trigger
+  drop_users_status_trigger
+  drop_applied_0130_trigger
   content_guard_ignores_updates
   content_guard_only_banned
   content_guard_skips_definer_rpc
@@ -49,7 +51,8 @@ MUTATIONS=(
   moderation_column_guard_noop
   response_guard_noop
   admin_select_only_open
-  users_guard_forgets_status
+  status_guard_skips_admin_check
+  status_guard_escape_too_wide
 )
 
 banner() {
@@ -87,12 +90,14 @@ SERVER_VERSION="$(as_super "psql -p ${PORT} -d postgres -X -tAc 'SHOW server_ver
 
 STAGE="$(mktemp -d)"
 chmod 755 "$STAGE"
-DBS=()
+declare -a DBS=()
 
 cleanup() {
-  for db in "${DBS[@]:-}"; do
-    [ -n "$db" ] && as_super "dropdb -p ${PORT} --if-exists ${db}" >/dev/null 2>&1 || true
-  done
+  if [ "${#DBS[@]}" -gt 0 ]; then
+    for db in "${DBS[@]}"; do
+      as_super "dropdb -p ${PORT} --if-exists ${db}" >/dev/null 2>&1 || true
+    done
+  fi
   rm -rf "$STAGE"
 }
 trap cleanup EXIT
@@ -113,11 +118,15 @@ stage_file "supabase/migration-drafts/0129_revert_order_moderation.sql"       "0
 stage_file "scripts/supabase/moderation-revert-assertions.sql"        "07-revert-assertions.sql"
 stage_file "scripts/supabase/moderation-negative-controls.sql"        "08-mutation.sql"
 
+# Sets the global NEW_DB rather than echoing it. The previous version was called
+# as db="$(new_db x)", which runs the function inside a command substitution:
+# DBS+=("$db") then mutated a copy in a subshell and the parent array stayed
+# empty, so cleanup() dropped nothing and every phase-1/2 database leaked.
+NEW_DB=""
 new_db() {
-  local db="xtrud_moderation_$1_$$"
-  DBS+=("$db")
-  as_super "createdb -p ${PORT} ${db}"
-  echo "$db"
+  NEW_DB="xtrud_moderation_$1_$$"
+  DBS+=("$NEW_DB")
+  as_super "createdb -p ${PORT} ${NEW_DB}"
 }
 
 run_step() {
@@ -125,6 +134,13 @@ run_step() {
   echo
   echo "---- ${label} (${file}) ----"
   as_super "psql -p ${PORT} -d ${db} -X -v ON_ERROR_STOP=1 -f ${STAGE}/${file}"
+}
+
+run_step_var() {
+  local db="$1" label="$2" file="$3" var="$4"
+  echo
+  echo "---- ${label} (${file}, -v ${var}) ----"
+  as_super "psql -p ${PORT} -d ${db} -X -v ON_ERROR_STOP=1 -v ${var} -f ${STAGE}/${file}"
 }
 
 run_step_expect_fail() {
@@ -163,39 +179,48 @@ banner "moderation draft fixture (gaps Р3 and Р5)" \
 # ---------------------------------------------------------------------------
 # Phase 1 — ordering guard
 # ---------------------------------------------------------------------------
-banner "PHASE 1/3 — 0128 must refuse to run without the is_admin lock"
+banner "PHASE 1/3 — both drafts must refuse without the APPLIED migration 0130," \
+  "and must reject a foreign object that merely shares its name."
 
-DB_ORDER="$(new_db order)"
-run_step "$DB_ORDER" "preflight: current-state fixture" "01-preflight.sql"
-run_step_expect_fail "$DB_ORDER" "0128 without 0126" "03-forward-p5.sql" \
+# 1a. No is_admin lock at all: both drafts must refuse.
+new_db order_missing; DB_MISSING="$NEW_DB"
+run_step_var "$DB_MISSING" "preflight WITHOUT migration 0130" "01-preflight.sql" "p0130=skip"
+run_step_expect_fail "$DB_MISSING" "0126 without the applied 0130" "02-forward-p3.sql" \
+  "suspension_enforcement_requires_is_admin_guard"
+run_step_expect_fail "$DB_MISSING" "0128 without the applied 0130" "03-forward-p5.sql" \
   "order_moderation_requires_is_admin_hardening_first"
+
+# 1b. An unrelated object squatting on the name: existence is no longer proof.
+new_db order_foreign; DB_FOREIGN="$NEW_DB"
+run_step_var "$DB_FOREIGN" "preflight with a FOREIGN guard_user_privilege_columns" "01-preflight.sql" "p0130=foreign"
+run_step_expect_fail "$DB_FOREIGN" "0126 against a foreign object with the same name" "02-forward-p3.sql" \
+  "suspension_enforcement_foreign_privilege_guard_requires_live_audit"
+run_step_expect_fail "$DB_FOREIGN" "0128 against a foreign object with the same name" "03-forward-p5.sql" \
+  "order_moderation_foreign_privilege_guard_requires_live_audit"
 
 # ---------------------------------------------------------------------------
 # Phase 2 — the contract
 # ---------------------------------------------------------------------------
 banner "PHASE 2/3 — forward drafts, behaviour, rollback guards, rollback"
 
-DB_MAIN="$(new_db main)"
-run_step "$DB_MAIN" "1/9 preflight: current-state fixture"            "01-preflight.sql"
-run_step "$DB_MAIN" "2/9 forward draft 0126 (Р3 suspension)"          "02-forward-p3.sql"
-run_step "$DB_MAIN" "3/9 forward draft 0128 (Р5 order moderation)"    "03-forward-p5.sql"
-run_step "$DB_MAIN" "4/9 postflight: behaviour assertions"            "04-postflight.sql"
-
-run_step_expect_fail "$DB_MAIN" "5/9 rollback of 0126 while 0128 is applied" "05-revert-p3.sql" \
-  "suspension_revert_blocked_by_order_moderation"
+new_db main; DB_MAIN="$NEW_DB"
+run_step "$DB_MAIN" "1/8 preflight: current state, WITH migration 0130"  "01-preflight.sql"
+run_step "$DB_MAIN" "2/8 forward draft 0126 (Р3 suspension)"           "02-forward-p3.sql"
+run_step "$DB_MAIN" "3/8 forward draft 0128 (Р5 order moderation)"     "03-forward-p5.sql"
+run_step "$DB_MAIN" "4/8 postflight: behaviour assertions"             "04-postflight.sql"
 
 echo
-echo "---- 6/9 hide a task, then attempt the 0129 rollback ----"
+echo "---- 5/8 hide a task, then attempt the 0129 rollback ----"
 sql "$DB_MAIN" "UPDATE public.orders SET moderation_hidden_at = now() WHERE id = '70000000-0000-4000-8000-000000000007'"
 run_step_expect_fail "$DB_MAIN" "rollback of 0128 while a task is hidden" "06-revert-p5.sql" \
   "order_moderation_revert_would_republish_hidden_tasks"
 
 echo
-echo "---- 7/9 unhide, then roll back for real ----"
+echo "---- 5/8 unhide, then roll back for real ----"
 sql "$DB_MAIN" "UPDATE public.orders SET moderation_hidden_at = NULL, moderation_hidden_by = NULL"
-run_step "$DB_MAIN" "7/9 rollback draft 0129 (Р5)" "06-revert-p5.sql"
-run_step "$DB_MAIN" "8/9 rollback draft 0127 (Р3)" "05-revert-p3.sql"
-run_step "$DB_MAIN" "9/9 rollback equivalence assertions" "07-revert-assertions.sql"
+run_step "$DB_MAIN" "6/8 rollback draft 0129 (Р5)" "06-revert-p5.sql"
+run_step "$DB_MAIN" "7/8 rollback draft 0127 (Р3)" "05-revert-p3.sql"
+run_step "$DB_MAIN" "8/8 rollback equivalence assertions" "07-revert-assertions.sql"
 
 # ---------------------------------------------------------------------------
 # Phase 3 — negative controls
@@ -208,7 +233,7 @@ MISSED=0
 MISSED_NAMES=()
 
 for mutation in "${MUTATIONS[@]}"; do
-  db="$(new_db "neg")"
+  new_db "neg"; db="$NEW_DB"
   as_super "psql -p ${PORT} -d ${db} -X -q -v ON_ERROR_STOP=1 -f ${STAGE}/01-preflight.sql" >/dev/null
   as_super "psql -p ${PORT} -d ${db} -X -q -v ON_ERROR_STOP=1 -f ${STAGE}/02-forward-p3.sql" >/dev/null
   as_super "psql -p ${PORT} -d ${db} -X -q -v ON_ERROR_STOP=1 -f ${STAGE}/03-forward-p5.sql" >/dev/null

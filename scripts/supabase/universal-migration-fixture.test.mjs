@@ -5,6 +5,8 @@ import { dirname, resolve } from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 
+import { stripSqlComments } from "./check-migration-integrity.mjs";
+
 /**
  * Static fixture for the universal-board migration drafts.
  *
@@ -25,6 +27,16 @@ const taxonomyMigration = read(
 );
 const orderMigration = read("supabase/migration-drafts/0121_universal_order_contract.sql");
 const blockingMigration = read("supabase/migration-drafts/0122_user_blocking_contract.sql");
+const blockingCore = read("supabase/migration-drafts/0124_user_blocking_core.sql");
+const blockingRevert = read("supabase/migration-drafts/0125_revert_user_blocking_core.sql");
+const blockingPreflight = read("scripts/supabase/blocking-preflight-fixture.sql");
+const blockingPostflight = read("scripts/supabase/blocking-postflight-assertions.sql");
+const blockingRevertAssertions = read("scripts/supabase/blocking-revert-assertions.sql");
+const blockingRunner = read("scripts/supabase/run-blocking-fixture.sh");
+// Prose explains WHY the contact surface is excluded, so the exclusion itself
+// must be asserted against executable SQL only.
+const blockingCoreSql = stripSqlComments(blockingCore);
+const blockingRevertSql = stripSqlComments(blockingRevert);
 const promotionGate = read("scripts/supabase/universal-promotion-gate.sql");
 const canonicalSeed = read("supabase/seed/categories.sql");
 
@@ -404,6 +416,186 @@ test("blocking is owner-managed and composes restrictively with existing policie
     read("supabase/migration-drafts/README.md"),
     /does \*\*not\*\* claim complete blocking for profiles\/search,[\s\S]*push,[\s\S]*Realtime,[\s\S]*storage\/signed URLs[\s\S]*SECURITY DEFINER/,
   );
+});
+
+test("0124 is blocking only and never touches the master contact surface", () => {
+  assert.match(blockingCore, /DRAFT ONLY — DO NOT APPLY TO PRODUCTION/);
+  assert.throws(() => read("supabase/migrations/0124_user_blocking_core.sql"));
+  assert.throws(() => read("supabase/migrations/0125_revert_user_blocking_core.sql"));
+
+  // The whole point of splitting draft 0122: the published iOS 1.0.1 catalogue
+  // contact flow must not be part of a blocking migration.
+  for (const forbidden of [/get_master_phone/, /contact_phone/, /users_private/]) {
+    assert.doesNotMatch(blockingCoreSql, forbidden);
+    assert.doesNotMatch(blockingRevertSql, forbidden);
+  }
+  // Nor the unrelated UGC report-target change.
+  assert.doesNotMatch(blockingCoreSql, /report_target_type|ALTER TYPE/);
+  // And no dependency on a preceding compatibility phase.
+  assert.doesNotMatch(blockingCoreSql, /contact_visibility_phase_not_ready/);
+});
+
+test("0124 fails closed on every assumption it cannot verify locally", () => {
+  for (const guard of [
+    /user_blocking_schema_missing_requires_live_audit/,
+    /user_blocking_auth_uid_missing_requires_live_audit/,
+    /user_blocking_columns_require_live_audit/,
+    /user_blocking_requires_row_level_security_enabled_requires_live_audit/,
+    /user_blocking_permissive_baseline_missing_requires_live_audit/,
+    /user_blocking_object_name_collision_requires_live_audit/,
+    /user_blocking_definer_owner_must_not_be_api_role/,
+    /user_blocking_api_roles_missing_requires_live_audit/,
+  ]) {
+    assert.match(blockingCore, guard);
+  }
+
+  // A RESTRICTIVE policy on a table with RLS disabled is silently inert, so the
+  // relrowsecurity probe is not optional.
+  assert.match(blockingCore, /relrowsecurity/);
+  // Existing policies are inspected as metadata only, never by expression.
+  assert.doesNotMatch(blockingCoreSql, /pg_get_expr|polqual/);
+  // Objects are created with plain CREATE so a collision aborts instead of
+  // silently replacing an object this migration did not author.
+  assert.doesNotMatch(blockingCoreSql, /CREATE OR REPLACE FUNCTION/);
+  assert.doesNotMatch(blockingCoreSql, /CREATE TABLE IF NOT EXISTS/);
+  assert.doesNotMatch(blockingCoreSql, /DROP POLICY IF EXISTS/);
+  assert.ok(
+    blockingCore.indexOf("$guard$") < blockingCore.indexOf("CREATE TABLE public.user_blocks"),
+    "the preflight guard must run before any DDL",
+  );
+});
+
+test("0124 keeps the anonymous feed open and every other path fail-closed", () => {
+  // NULL = ANY (...) yields NULL and NOT NULL reads as deny, which would close
+  // the anonymous feed. Both the helper and the policies must default to an
+  // empty array. `= ANY ((SELECT fn()))` does not even compile.
+  assert.match(blockingCore, /COALESCE\(array_agg\(pairs\.counterpart\), ARRAY\[\]::uuid\[\]\)/);
+  const anyOperands = blockingCoreSql.match(
+    /= ANY \(\s*\n?\s*COALESCE\(\(SELECT public\.current_user_blocked_counterparties\(\)\), ARRAY\[\]::uuid\[\]\)/g,
+  );
+  assert.equal(anyOperands?.length, 5, "every ANY operand must be a COALESCE-guarded array");
+  assert.doesNotMatch(blockingCoreSql, /= ANY \(\(SELECT/);
+
+  assert.match(blockingCore, /\(SELECT auth\.uid\(\)\) IS NULL/);
+  assert.match(blockingCore, /WHEN auth\.uid\(\) IS NULL THEN false/);
+  assert.match(blockingCore, /WHEN p_other_id IS NULL THEN false/);
+
+  // The response policy must resolve the order owner through a definer helper,
+  // not through a sub-SELECT that runs under the caller's own RLS.
+  assert.match(blockingCore, /CREATE FUNCTION public\.order_client_id\(p_order_id uuid\)/);
+  assert.doesNotMatch(
+    blockingCoreSql,
+    /SELECT order_row\.client_id\s+FROM public\.orders AS order_row\s+WHERE order_row\.id = order_responses/,
+  );
+
+  // All three helpers, and only those three, are SECURITY DEFINER with row
+  // security off, and none of them keeps a default grant.
+  // Anchored to the definition line: stripSqlComments deliberately keeps the
+  // body of dollar-quoted blocks, so prose inside the guard still counts.
+  assert.equal((blockingCoreSql.match(/^SECURITY DEFINER$/gm) ?? []).length, 3);
+  assert.equal((blockingCoreSql.match(/SET row_security = off/g) ?? []).length, 3);
+  for (const helper of [
+    "public.current_user_blocked_counterparties()",
+    "public.current_user_can_interact_with(uuid)",
+    "public.order_client_id(uuid)",
+  ]) {
+    const escaped = helper.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    assert.match(
+      blockingCoreSql,
+      new RegExp(
+        `REVOKE ALL ON FUNCTION ${escaped}\\s*FROM PUBLIC, anon, authenticated, service_role;`,
+      ),
+    );
+  }
+  assert.match(
+    blockingCore,
+    /GRANT EXECUTE ON FUNCTION public\.order_client_id\(uuid\) TO authenticated;/,
+  );
+});
+
+test("0124 owns its grants and leaves the existing permissive policies alone", () => {
+  assert.match(blockingCore, /PRIMARY KEY \(blocker_id, blocked_id\)/);
+  assert.match(blockingCore, /CHECK \(blocker_id <> blocked_id\)/);
+  assert.match(
+    blockingCore,
+    /REVOKE ALL ON TABLE public\.user_blocks FROM PUBLIC, anon, authenticated, service_role;/,
+  );
+  assert.match(
+    blockingCore,
+    /GRANT SELECT, INSERT, DELETE ON TABLE public\.user_blocks TO authenticated;/,
+  );
+  // Immutable rows: no UPDATE grant and no UPDATE policy anywhere.
+  assert.doesNotMatch(blockingCoreSql, /FOR UPDATE/);
+  assert.doesNotMatch(blockingCoreSql, /GRANT[^;]*UPDATE[^;]*user_blocks/);
+
+  assert.equal((blockingCoreSql.match(/AS RESTRICTIVE/g) ?? []).length, 3);
+  assert.match(blockingCore, /FOR SELECT TO anon, authenticated/);
+  // A blocked user must not be able to enumerate who blocked them.
+  assert.doesNotMatch(blockingCoreSql, /USING \(\(SELECT auth\.uid\(\)\) = blocked_id\)/);
+});
+
+test("0125 reverts enforcement without destroying user safety choices", () => {
+  assert.match(blockingRevert, /DRAFT ONLY — DO NOT APPLY TO PRODUCTION/);
+  assert.match(blockingRevert, /DROP POLICY IF EXISTS orders_block_relation_restrictive/);
+  assert.match(
+    blockingRevert,
+    /DROP POLICY IF EXISTS order_responses_block_relation_select_restrictive/,
+  );
+  assert.match(
+    blockingRevert,
+    /DROP POLICY IF EXISTS order_responses_block_relation_insert_restrictive/,
+  );
+  assert.match(blockingRevert, /DROP FUNCTION IF EXISTS public\.order_client_id\(uuid\)/);
+  assert.match(
+    blockingRevert,
+    /DROP FUNCTION IF EXISTS public\.current_user_blocked_counterparties\(\)/,
+  );
+  // The block rows are user decisions about personal safety.
+  assert.doesNotMatch(blockingRevertSql, /DROP TABLE/);
+  assert.doesNotMatch(blockingRevertSql, /DELETE FROM public\.user_blocks/);
+  // Helpers are dropped after the policies that depend on them.
+  assert.ok(
+    blockingRevert.indexOf(
+      "DROP POLICY IF EXISTS order_responses_block_relation_insert_restrictive",
+    ) < blockingRevert.indexOf("DROP FUNCTION IF EXISTS public.order_client_id(uuid)"),
+  );
+});
+
+test("the executable blocking fixture models the CURRENT world and skips loudly", () => {
+  // Reproducing the published contact behaviour is the point: a fixture that
+  // modelled the post-contact phase would prove compatibility with a world
+  // that does not exist yet.
+  assert.match(blockingPreflight, /COALESCE\(pu\.contact_phone, upr\.phone\)/);
+  assert.match(
+    blockingPreflight,
+    /GRANT EXECUTE ON FUNCTION public\.get_master_phone\(uuid\) TO anon, authenticated;/,
+  );
+  assert.match(
+    blockingPreflight,
+    /ALTER DEFAULT PRIVILEGES IN SCHEMA public\s*\n?\s*GRANT ALL ON TABLES TO anon, authenticated, service_role;/,
+  );
+  assert.match(blockingPreflight, /CREATE POLICY orders_read_open_or_own/);
+  assert.match(blockingPreflight, /blocking_fixture_baseline_is_empty/);
+
+  // The compatibility proof for the published client.
+  assert.match(blockingPostflight, /blocking_migration_is_not_inert_with_empty_user_blocks/);
+  assert.match(blockingPostflight, /blocking_migration_rewrote_get_master_phone/);
+  assert.match(blockingPostflight, /blocking_service_role_inherited_default_privileges/);
+  assert.match(blockingPostflight, /blocking_is_not_symmetric_for_orders/);
+  assert.match(blockingPostflight, /blocking_is_not_symmetric_for_responses/);
+  assert.match(blockingPostflight, /blocking_changed_the_anonymous_feed/);
+  assert.match(blockingPostflight, /blocking_unrelated_block_leaked_into_own_response/);
+  assert.match(blockingPostflight, /blocking_policy_helper_is_not_folded_into_an_initplan/);
+  assert.match(blockingPostflight, /blocking_user_blocks_row_is_not_immutable/);
+
+  assert.match(blockingRevertAssertions, /blocking_revert_destroyed_user_safety_choices/);
+  assert.match(blockingRevertAssertions, /blocking_revert_did_not_restore_visibility/);
+
+  // A machine without PostgreSQL must say so loudly instead of passing.
+  assert.match(blockingRunner, /SKIP: the user-blocking fixture DID NOT RUN\./);
+  assert.match(blockingRunner, /this is NOT a pass/);
+  assert.match(blockingRunner, /XTRUD_FIXTURE_REQUIRE/);
+  assert.match(blockingRunner, /ON_ERROR_STOP=1/);
 });
 
 test("every historical migration through 0119 still matches the reviewed SHA baseline", () => {

@@ -2,7 +2,7 @@
 
 > Документ-план. **Ничего не реализовано** — это анализ + предложение модели + этапность.
 > Дата: 2026-05-21. Автор: роль продакт-менеджера.
-> Связано: `PRODUCT_CONTEXT.md`, `COMPETITOR_INSIGHTS.md`, `CATEGORIES_AND_PROFILES.md`, `docs/lifecycle.md`.
+> Связано: `PRODUCT_CONTEXT.md`, `COMPETITOR_INSIGHTS.md`, `CATEGORIES_AND_PROFILES.md`, `archive/legacy-docs/lifecycle.md`.
 
 ---
 

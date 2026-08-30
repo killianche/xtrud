@@ -6,7 +6,7 @@
 
 **Кому читать:** продакт (утвердить модель), дизайнер (бриф в §8), инженер (план в §7).
 
-**Связанные файлы:** `app/(tabs)/orders/index.tsx`, `app/(tabs)/orders/[id].tsx`, `src/features/orders/use-cancel-order.ts`, `src/components/OrderStatusBadge.tsx`, `docs/SIMPLE_FLOW.md`, `docs/lifecycle.md` (legacy).
+**Связанные файлы:** `app/(tabs)/orders/index.tsx`, `app/(tabs)/orders/[id].tsx`, `src/features/orders/use-cancel-order.ts`, `src/components/OrderStatusBadge.tsx`, `docs/SIMPLE_FLOW.md`, `archive/legacy-docs/lifecycle.md` (legacy).
 
 ---
 
@@ -41,7 +41,7 @@
 
 ## 2. Сверка `lifecycle.md` (legacy) против реальной модели
 
-`docs/lifecycle.md` описывает **сложную сделку-платформу** из 8 статусов, 15 переходов, споров, эскроу-подобного подтверждения, кармы и т.д. **Это устаревший документ.** Решение 2026-05-20 (`SIMPLE_FLOW.md`) откатило продукт к доске объявлений. Ниже — что из `lifecycle.md` мёртво в текущей модели.
+`archive/legacy-docs/lifecycle.md` описывает **сложную сделку-платформу** из 8 статусов, 15 переходов, споров, эскроу-подобного подтверждения, кармы и т.д. **Это устаревший документ.** Решение 2026-05-20 (`SIMPLE_FLOW.md`) откатило продукт к доске объявлений. Ниже — что из `lifecycle.md` мёртво в текущей модели.
 
 | Из `lifecycle.md` | Статус в classified-ads модели |
 |---|---|

@@ -147,3 +147,68 @@ Three phases: dependency guards (drafts refused without 0130 and against a
 foreign object of the same name), the forward/behaviour/rollback contract, and a
 negative-control sweep in which every mutation of the drafts must be caught by
 the assertions. A mutation that is not caught fails the run.
+
+## Закалка базы под веб-админку — черновики 0135–0142
+
+Шаг 1 из [`docs/ADMIN_PANEL.md`](../../docs/ADMIN_PANEL.md) §9: гранты, функция
+админской сессии, журнал и сужение админской политики. Четыре пары
+forward/revert, применяются в порядке номеров:
+
+| Черновик | Что делает | Откат |
+|---|---|---|
+| `0135_api_column_grants.sql` | колоночные гранты для `anon`/`authenticated` на `users`, `master_profiles`, `orders`, `order_responses`; `recalc_master_rating()` → `SECURITY DEFINER` | `0136` |
+| `0137_admin_session_function.sql` | `public.is_admin_session()` — админ читается из БД, `aal2` читается из `auth.sessions` | `0138` |
+| `0139_admin_actions_journal.sql` | неизменяемый журнал `public.admin_actions` и единственный путь записи `admin_log_action()` | `0140` |
+| `0141_narrow_admin_user_update.sql` | `users_admin_update` → `is_admin_session()` плюс триггер, ограничивающий админский путь одной колонкой `status` | `0142` |
+
+`0139` и `0141` зависят от `0137`, `0141` — ещё и от применённой
+`supabase/migrations/0130_guard_user_privilege_columns.sql`. Зависимости
+проверяются в SQL по форме объекта: чужой объект с тем же именем отвергается.
+
+### Свойство PostgreSQL, вокруг которого построена 0135
+
+`REVOKE UPDATE (колонка) ... FROM authenticated` **ничего не делает**, пока
+роли выдан табличный `UPDATE`: команда завершается успешно, без WARNING, а
+привилегия остаётся. Поэтому 0135 снимает привилегию на уровне таблицы и
+выдаёт обратно явный список колонок, а затем сама проверяет результат через
+`has_column_privilege` и падает, если ACL не совпал с намерением.
+
+Список разрешённых колонок шире, чем хочется, и это не небрежность: семь
+функций и триггеров объявлены `SECURITY INVOKER` и пишут привилегированные
+колонки правами вызывающего (`mark_feed_seen`, `complete_master_onboarding`,
+`finalize_master_onboarding`, `accept_response`, `mark_order_responses_viewed`,
+`update_order_responses_count`, `recalc_master_rating`). Каждая оставленная
+колонка помечена в 0135 именем функции, которая её удерживает.
+
+### Что блокирует применение прямо сейчас
+
+`0141` отказывается применяться: в production нет ни одного администратора с
+подтверждённым вторым фактором (`auth.mfa_factors`, `status = 'verified'` — 0
+строк на 2026-08-31). Без этого миграция заперла бы модерацию снаружи.
+Порядок из §10 (сначала веб-панель, потом урезание мобильной админки) она тоже
+не отменяет: после неё админка в приложении перестаёт менять статус.
+
+### Репетиция
+
+```sh
+scripts/supabase/run-hardening-fixture.sh
+```
+
+Четыре фазы: предусловия (черновики обязаны отказаться), контракт, **проверка
+того, что ассерты умеют краснеть** (тот же набор на незакалённой базе обязан
+упасть) и негативные контроли — 33 мутации, каждая обязана быть поймана.
+
+Фикстура намеренно воспроизводит живые гранты Supabase. Репетиция на схеме,
+снятой с `--no-privileges`, для этой работы бесполезна: там любое «нельзя»
+проходит потому, что права не выдавались, и результат ложно-зелёный. Скрипт
+отказывается работать со снимком без строк `GRANT`.
+
+С настоящим снимком схемы добавляется фаза 0 — применимость к живой схеме,
+совпадение списка колонок и точность отката:
+
+```sh
+pg_dump --schema-only -n public -n auth -f live.sql     # НЕ --no-privileges
+XTRUD_LIVE_SCHEMA_SQL=$PWD/live.sql scripts/supabase/run-hardening-fixture.sh
+```
+
+Фаза 0 не проверяет поведение: снимок схемы не содержит строк.

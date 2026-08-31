@@ -1,6 +1,6 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { usePreventRemove } from "@react-navigation/native";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
+import { usePreventRemove } from "expo-router/react-navigation";
 import { CheckCircle, PencilSimple, WarningCircle } from "phosphor-react-native";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";

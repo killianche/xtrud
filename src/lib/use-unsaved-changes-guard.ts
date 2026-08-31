@@ -1,4 +1,4 @@
-import { useNavigation, usePreventRemove } from "@react-navigation/native";
+import { useNavigation, usePreventRemove } from "expo-router/react-navigation";
 import { useCallback, useRef } from "react";
 import { confirmAsync } from "./confirm";
 

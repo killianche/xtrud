@@ -27,8 +27,8 @@
  * этот файл только рендерит то, что уже посчитано состоянием.
  */
 
-import type { BottomTabBarProps } from "@react-navigation/bottom-tabs";
 import { usePathname } from "expo-router";
+import type { BottomTabBarProps } from "expo-router/js-tabs";
 import { Platform, Pressable, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";

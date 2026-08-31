@@ -215,15 +215,24 @@ UI-референс, не более.
 
 Цель 56 отменена: там регрессия памяти, бьющая по приложениям с reanimated.
 
-- [ ] Baseline перед апгрейдом; swap в fstab
-- [ ] TypeScript отдельным коммитом
-- [ ] `expo@57` + `expo install --fix` + `expo-doctor`
-- [ ] Отвязка от `@react-navigation` — 4 файла, есть codemod. Риск: `tsc`
-      пройдёт, а `usePreventRemove` упадёт в рантайме и сломает защиту
-      несохранённой формы заказа
-- [ ] Убрать `newArchEnabled` из `app.json`, поднять buildNumber 12 → 13
-- [ ] `quality:check` + `ios:bundle:check`
-- 🔒 EAS preview-сборка и проверка на устройстве — нужен доступ к EAS
+- [x] Baseline перед апгрейдом; swap в fstab
+- [x] TypeScript отдельным шагом — `typescript ~6.0.3`, `@types/react ~19.2.2`
+      (версии из шаблона SDK 57); typecheck и biome прошли без правок кода
+- [x] `expo@57` + `expo install --fix` + `expo-doctor` — SDK 57.0.18,
+      RN 0.86.3, React 19.2.3; `@sentry/react-native` остался 8.24.0
+- [x] Отвязка от `@react-navigation` — 4 файла переведены официальным
+      `expo-codemod sdk-56-expo-router-react-navigation-replace`, пакеты
+      удалены из зависимостей. Рантайм-риск закрыт структурно: в дереве
+      ровно одна копия навигационного ядра
+      (`node_modules/expo-router/build/react-navigation/core`), в
+      `package-lock.json` `@react-navigation` не осталось вовсе
+- [x] Убрать `newArchEnabled` из `app.json`, поднять buildNumber 13 → 14.
+      Дополнительно удалён `android.edgeToEdgeEnabled` — в SDK 57 ключа больше
+      нет в схеме, `expo-doctor` падал на нём
+- [x] `quality:check` + `ios:bundle:check` — оба зелёные после последней правки
+- 🔒 EAS preview-сборка и проверка на устройстве — единственное, что
+      подтвердит нативную часть апгрейда (Sentry 8.24.0 на RN 0.86, detents,
+      haptics, Reduce Motion). Локальные гейты этого не доказывают
 
 ---
 

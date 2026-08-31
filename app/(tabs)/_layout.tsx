@@ -1,10 +1,11 @@
+import { Tabs } from "expo-router";
 import {
   DarkTheme,
   DefaultTheme,
   ThemeProvider as NavThemeProvider,
-} from "@react-navigation/native";
-import { Tabs } from "expo-router";
+} from "expo-router/react-navigation";
 import { ClipboardText, MagnifyingGlass, UserCircle } from "phosphor-react-native";
+import type { ColorValue } from "react-native";
 import { TabBar } from "@/components/TabBar";
 import { XtrudLogo } from "@/components/XtrudLogo";
 import { useAuthSession } from "@/features/auth/use-auth-session";
@@ -22,6 +23,19 @@ import { useThemeColors } from "@/lib/use-theme-color";
 function badgeLabel(n: number): string | undefined {
   if (n <= 0) return undefined;
   return n > 99 ? "99+" : String(n);
+}
+
+// Начиная с expo-router 57 `options.tabBarIcon` отдаёт `color` как `ColorValue`
+// (`string | OpaqueColorValue`), а не `string`
+// (node_modules/expo-router/build/react-navigation/bottom-tabs/types.d.ts).
+// Иконки — SVG (react-native-svg / Phosphor), их prop `color` принимает только
+// строку. Единственный источник значения — наш собственный `TabBar.tsx`, он
+// подставляет токен из `useThemeColors` (`Record<token, string>`); PlatformColor
+// и DynamicColorIOS в проекте не используются, поэтому строка приходит всегда.
+// `undefined` в невозможной ветке отдаёт компоненту его собственный цвет по
+// умолчанию — это безопаснее, чем приводить непрозрачное значение к строке.
+function iconColor(color: ColorValue): string | undefined {
+  return typeof color === "string" ? color : undefined;
 }
 
 export default function TabsLayout() {
@@ -90,7 +104,7 @@ export default function TabsLayout() {
           name="index"
           options={{
             title: "Главная",
-            tabBarIcon: ({ color }) => <XtrudLogo size={24} color={color} />,
+            tabBarIcon: ({ color }) => <XtrudLogo size={24} color={iconColor(color)} />,
           }}
         />
         {/* Tabs contain only root lists. Full-screen forms, pickers and detail
@@ -106,7 +120,11 @@ export default function TabsLayout() {
             title: "Найти задание",
             href: isMasterRole ? undefined : null,
             tabBarIcon: ({ color, focused }) => (
-              <MagnifyingGlass color={color} size={26} weight={focused ? "fill" : "bold"} />
+              <MagnifyingGlass
+                color={iconColor(color)}
+                size={26}
+                weight={focused ? "fill" : "bold"}
+              />
             ),
             tabBarBadge: findBadge,
             tabBarBadgeStyle: badgeStyle,
@@ -124,7 +142,11 @@ export default function TabsLayout() {
           options={{
             title: "Мои задания",
             tabBarIcon: ({ color, focused }) => (
-              <ClipboardText color={color} size={26} weight={focused ? "fill" : "bold"} />
+              <ClipboardText
+                color={iconColor(color)}
+                size={26}
+                weight={focused ? "fill" : "bold"}
+              />
             ),
             tabBarBadge: ordersBadge,
             tabBarBadgeStyle: badgeStyle,
@@ -143,7 +165,7 @@ export default function TabsLayout() {
           options={{
             title: "Профиль",
             tabBarIcon: ({ color, focused }) => (
-              <UserCircle color={color} size={26} weight={focused ? "fill" : "bold"} />
+              <UserCircle color={iconColor(color)} size={26} weight={focused ? "fill" : "bold"} />
             ),
           }}
         />

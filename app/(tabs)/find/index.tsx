@@ -1,17 +1,18 @@
-// /orders/search — лента открытых заданий для исполнителя.
+// /find — лента открытых заданий для исполнителя.
 //
-// В отличие от /orders → таб «Новые» (только моя категории), здесь
-// показываются ВСЕ open-orders сайта. Фильтры выбираются на отдельном
-// full-screen экране /orders/search/filters (не inline) — больше места,
-// лучше UX. State фильтров — в Zustand-сторе useOrdersSearchFiltersStore,
-// чтобы переживать переход на /filters и /category-select.
+// До 2026-08-30 жил как «Смотреть заказы» — псевдо-таб в центре TabBar,
+// физически под /orders/search. Стал полноценным 4-м табом мастера «Найти
+// задание» (редизайн главной + нижней навигации, фидбэк владельца): реальный
+// Tabs.Screen вместо кастомного Pressable, без ручного mutex-подсвечивания.
 //
-// **Это таб (центральная кнопка нижней панели для мастера),** не
-// detail-экран. Поэтому:
+// Показываются ВСЕ open-orders сайта. Фильтры выбираются на отдельном
+// full-screen экране /find/filters (не inline) — больше места, лучше UX.
+// State фильтров — в Zustand-сторе useOrdersSearchFiltersStore, чтобы
+// переживать переход на /filters и /category-select.
+//
+// **Это таб (4-й таб нижней панели для мастера),** не detail-экран. Поэтому:
 //   - НЕ скрываем TabBar (`useTabBarVisibility` НЕ вызываем).
 //   - НЕ показываем back-кнопку в хедере (`<ScreenHeader>` без `onBack`).
-//   - Подсветка таба «Поиск заказов» в TabBar — по pathname (см. TabBar.tsx).
-// Перемещение между табами — стандартным способом, через нижнее меню.
 //
 // **Стандарт хедера:** <ScreenHeader> (height 64, display-md title, h-12 back,
 // optional pill-action). См. UI_PATTERNS.md → раздел 3.1.
@@ -40,7 +41,7 @@ import { useMyResponses } from "@/features/orders/use-my-responses";
 import { useMarkFeedSeen } from "@/features/orders/use-unread-feed";
 import { useThemeColor } from "@/lib/use-theme-color";
 
-export default function OrdersSearchScreen() {
+export default function FindScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { session } = useAuthSession();
@@ -50,7 +51,7 @@ export default function OrdersSearchScreen() {
   // active_role нужен чтобы решить, показывать ли entry «Мои отклики».
   // Кнопка имеет смысл только для мастера: у клиента откликов не бывает.
 
-  // Фильтры — из Zustand-стора (общие с /orders/search/filters).
+  // Фильтры — из Zustand-стора (общие с /find/filters).
   // l1Id удалён 2026-05-15 (фидбэк user: убрать «Разделы» из фильтров,
   // оставить только L2 категории).
   const filters = useOrdersSearchFiltersStore();
@@ -72,7 +73,7 @@ export default function OrdersSearchScreen() {
 
   const effectiveL2Ids = l2Ids.length > 0 ? l2Ids : null;
 
-  // P1-3 (LAUNCH_READINESS): при заходе мастера в /orders/search сбрасываем
+  // P1-3 (LAUNCH_READINESS): при заходе мастера в /find сбрасываем
   // unread-badge на TabBar (RPC mark_feed_seen обновляет
   // users.feed_last_seen_at = now()). До этого badge только рос.
   const markSeen = useMarkFeedSeen(userId);
@@ -126,7 +127,7 @@ export default function OrdersSearchScreen() {
         rightAction={{
           label: hasActiveFilters ? `Фильтры · ${activeCount}` : "Фильтры",
           Icon: SlidersHorizontal,
-          onPress: () => router.push("/orders/search/filters" as never),
+          onPress: () => router.push("/find/filters" as never),
           active: hasActiveFilters,
         }}
       />
@@ -216,6 +217,11 @@ export default function OrdersSearchScreen() {
 // ============================================================================
 // EmptyState — hero-иллюстрация (tinted bg + декоративные фигуры + центр-иконка)
 // + заголовок + объяснение + CTA. Структура из UI_PATTERNS §3.5 + §3.8.
+//
+// Формулировка для «заданий вообще нет» (без активных фильтров) — единая с
+// блоком «Актуальные задания» на главной мастера (OpenOrdersHighlights):
+// один факт («открытых заданий сейчас 0») не должен иметь двух разных
+// текстов на разных экранах.
 // ============================================================================
 
 interface EmptyStateProps {
@@ -259,12 +265,12 @@ function EmptyState({ hasActiveFilters, onClearFilters, accentColor }: EmptyStat
       </View>
 
       <AppText weight="bold" className="mt-6 text-center text-title-lg text-ink">
-        {hasActiveFilters ? "Под фильтры ничего не нашлось" : "Открытых заданий пока нет"}
+        {hasActiveFilters ? "Под фильтры ничего не нашлось" : "Открытых заданий сейчас нет"}
       </AppText>
       <AppText className="mt-2 text-center text-body-sm text-muted">
         {hasActiveFilters
           ? "Попробуйте сбросить или изменить фильтры — в приложении есть и другие задания."
-          : "Скоро здесь появятся свежие задания клиентов. Загляните позже или расширьте категории в профиле."}
+          : "Задания клиентов появляются здесь по мере публикации. Загляните позже."}
       </AppText>
 
       {hasActiveFilters ? (

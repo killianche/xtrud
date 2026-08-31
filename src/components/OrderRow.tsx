@@ -308,6 +308,7 @@ export function OrderRow(props: OrderRowProps) {
                   accessibilityRole="button"
                   accessibilityLabel="Откликнуться на задание"
                   onPress={handleRespond}
+                  hitSlop={4}
                   className="flex-row items-center gap-1.5 self-end rounded-md bg-primary px-4 py-2 active:opacity-80"
                 >
                   <AppText weight="semibold" className="text-body-sm text-on-primary">

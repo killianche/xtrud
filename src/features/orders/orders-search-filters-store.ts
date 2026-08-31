@@ -1,7 +1,7 @@
-// Zustand-стор фильтров для глобального поиска заказов /orders/search.
+// Zustand-стор фильтров для глобального поиска заданий /find.
 //
-// Зачем: фильтры выбираются на отдельном экране /orders/search/filters,
-// а применяются на /orders/search. При переходе между экранами state
+// Зачем: фильтры выбираются на отдельном экране /find/filters,
+// а применяются на /find. При переходе между экранами state
 // нужно сохранять — local useState не подходит. Также удобно для back-nav:
 // возврат с filters восстанавливает уже выбранное.
 //
@@ -22,7 +22,7 @@ interface OrdersSearchFiltersState {
    * Фильтр по локации. cityId="" и district="" = «Вся Ингушетия» (без фильтра).
    * Иначе выбран ЛИБО город (cityId), ЛИБО район (district) — взаимоисключающе
    * (выбор одного сбрасывает другой через setLocation). Выбирается на экране
-   * /orders/search/location-select, применяется в ленте /orders/search.
+   * /find/location-select, применяется в ленте /find.
    */
   cityId: string;
   district: string;

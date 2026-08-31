@@ -1,4 +1,4 @@
-// /orders/search/filters — full-screen экран фильтров для глобального поиска заказов.
+// /find/filters — full-screen экран фильтров для глобального поиска заданий.
 //
 // Эталон UX (фидбек user 2026-05-15 + референс-скриншоты):
 //   - Полный экран (не expandable inline) — больше места, удобнее на mobile.
@@ -34,7 +34,7 @@ import { useThemeColor } from "@/lib/use-theme-color";
 export default function OrdersSearchFiltersScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const goBack = useSafeBack("/(tabs)/orders/search" as const);
+  const goBack = useSafeBack("/(tabs)/find" as const);
   const muteColor = useThemeColor("mute");
   const inkColor = useThemeColor("ink");
   const onPrimaryColor = useThemeColor("on-primary");
@@ -108,7 +108,7 @@ export default function OrdersSearchFiltersScreen() {
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Выбрать категории"
-            onPress={() => router.push("/orders/search/category-select" as never)}
+            onPress={() => router.push("/find/category-select" as never)}
             className="mt-3 flex-row items-center gap-3 rounded-md border border-hairline bg-canvas px-4 min-h-14 active:opacity-70"
           >
             <View className="flex-1">
@@ -157,7 +157,7 @@ export default function OrdersSearchFiltersScreen() {
         </View>
 
         {/* ЛОКАЦИЯ — кнопка-trigger в полную страницу выбора (как «Категория»).
-            Раньше города/районы были инлайн; вынесено на /search/location-select
+            Раньше города/районы были инлайн; вынесено на /find/location-select
             по фидбэку владельца 2026-05-24 («сделай локацию кнопкой как
             категорию»). Пусто = «Вся Ингушетия» (фильтр локации снят). */}
         <View className="mt-8 px-5">
@@ -167,7 +167,7 @@ export default function OrdersSearchFiltersScreen() {
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Выбрать локацию"
-            onPress={() => router.push("/orders/search/location-select" as never)}
+            onPress={() => router.push("/find/location-select" as never)}
             className="mt-3 flex-row items-center gap-3 rounded-md border border-hairline bg-canvas px-4 min-h-14 active:opacity-70"
           >
             <MapPin size={20} weight="bold" color={isAllLoc ? muteColor : inkColor} />

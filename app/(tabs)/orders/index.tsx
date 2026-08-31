@@ -1,7 +1,20 @@
 /**
- * /(tabs)/orders — «Мои заказы» клиента.
+ * /(tabs)/orders — «Мои задания». Корень одноимённого таба для ОБЕИХ ролей,
+ * содержимое разное:
+ *   - Клиент → ClientOrdersView: свои заказы (Активные/История).
+ *   - Мастер → MasterOrdersView: свои отклики (единый список, было
+ *     /orders/my-responses).
  *
- * 2 таба (2026-05-21, ORDER_LIFECYCLE_CLIENT_PLAN.md §6):
+ * История (2026-08-30, редизайн главной + нижней навигации). Раньше этот
+ * роут был мёртвым для мастера — просто редиректил на главную (фидбэк
+ * 2026-05-15: «/orders убран из мастер-таббара, мастерские заявки на
+ * dashboard»), а бейдж непрочитанного на этом мёртвом табе висел зря. Теперь
+ * «Мои задания» — настоящий 3-й/4-й таб обеих ролей, редирект убран, контент
+ * /orders/my-responses перенесён сюда как корень (без back-кнопки, с
+ * pull-to-refresh, которого там не было). Сам detail-роут
+ * /orders/my-responses удалён — входов на него больше нет.
+ *
+ * Клиентская часть — 2 таба (2026-05-21, ORDER_LIFECYCLE_CLIENT_PLAN.md §6):
  *   - Активные   — open
  *   - История    — cancelled, expired (+ legacy: completed, disputed,
  *                  in_progress, awaiting_confirmation, closed)
@@ -13,15 +26,14 @@
  * Why. Без accept-flow заказ из open идёт только в cancelled/expired.
  * Остальные статусы недостижимы в новом UI, но могут существовать в БД
  * для legacy-заказов — складываем их в «Историю».
- *
- * Master приходящий по прямому URL → редирект на главную (фидбэк 2026-05-15:
- * /orders убран из мастер-таббара, мастерские заявки на dashboard).
  */
 
 import { FlashList, type FlashListRef } from "@shopify/flash-list";
-import { Redirect, useLocalSearchParams, useRouter } from "expo-router";
+import { useLocalSearchParams, useNavigation, useRouter } from "expo-router";
 import {
   ArrowClockwise,
+  ArrowRight,
+  ChatCenteredText,
   ClipboardText,
   ClockCounterClockwise,
   Plus,
@@ -29,7 +41,7 @@ import {
 } from "phosphor-react-native";
 import type { RefObject } from "react";
 import { useEffect, useMemo, useRef } from "react";
-import { type FlatList, Pressable, View } from "react-native";
+import { Animated, type FlatList, Pressable, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
 import { OrderRow } from "@/components/OrderRow";
@@ -38,9 +50,15 @@ import { ScreenHeader } from "@/components/ui";
 import { useAuthSession } from "@/features/auth/use-auth-session";
 import { useUserRecord } from "@/features/auth/use-user-record";
 import { type OrderWithRefs, useMyOrders } from "@/features/orders/use-my-orders";
+import {
+  historyResponseStatusLabel,
+  isActiveResponse,
+  isHistoryResponse,
+  useMyResponses,
+} from "@/features/orders/use-my-responses";
 import { usePullToRefresh } from "@/hooks/use-pull-to-refresh";
 import { scrollViewToTop, useTabScrollResetCounter } from "@/lib/tab-scroll-reset";
-import { useThemeColors } from "@/lib/use-theme-color";
+import { useThemeColor, useThemeColors } from "@/lib/use-theme-color";
 import type { IconComponent } from "@/types/icon";
 
 type OrderTab = "active" | "done";
@@ -67,7 +85,7 @@ export default function OrdersScreen() {
   const activeRole = user?.active_role ?? "client";
 
   if (activeRole === "master") {
-    return <Redirect href="/(tabs)" />;
+    return <MasterOrdersView userId={userId} />;
   }
   return <ClientOrdersView userId={userId} />;
 }
@@ -119,7 +137,7 @@ function ClientOrdersView({ userId }: ClientOrdersViewProps) {
   return (
     <View className="flex-1 bg-canvas" style={{ paddingTop: insets.top }}>
       <ScreenHeader
-        title="Мои заказы"
+        title="Мои задания"
         rightAction={{
           label: "Создать",
           Icon: Plus,
@@ -177,20 +195,194 @@ function ClientOrdersView({ userId }: ClientOrdersViewProps) {
           ) : tab === "active" ? (
             <EmptyState
               icon={ClipboardText}
-              title="Активных заказов нет"
+              title="Активных заданий нет"
               hint="Опишите задачу — и мастера пришлют отклики с ценой и сроком."
-              ctaLabel="Разместить заказ"
+              ctaLabel="Разместить задание"
               onCta={() => router.push("/orders/new" as never)}
             />
           ) : (
             <EmptyState
               icon={ClockCounterClockwise}
               title="В истории пока пусто"
-              hint="Сюда переедут заказы, которые вы закрыли или которые истекли."
+              hint="Сюда переедут задания, которые вы закрыли или которые истекли."
             />
           )
         }
       />
+    </View>
+  );
+}
+
+// ============================================================================
+// MasterOrdersView — «Мои задания» мастера: единый список ВСЕХ его откликов
+// (активные + история), отсортированный по дате отклика (newest first).
+// Перенесено сюда из /orders/my-responses (2026-08-30) как корень таба:
+// без back-кнопки (это таб, не detail-экран) и с pull-to-refresh, которого
+// на отдельном экране не было.
+//
+// Единый список без заголовков-секций — по фидбэку владельца 2026-05-28:
+// «Убери активные/историю, просто сделай список по дате отклика». Для
+// history-откликов вместо «Вы откликнулись» показывается статус-override
+// (Завершён / Заказ закрыли / Истёк / Отклонён) — historyResponseStatusLabel,
+// единый источник истины в use-my-responses.ts.
+// ============================================================================
+
+interface MasterOrdersViewProps {
+  userId: string | undefined;
+}
+
+function MasterOrdersView({ userId }: MasterOrdersViewProps) {
+  const insets = useSafeAreaInsets();
+  const router = useRouter();
+  const navigation = useNavigation();
+  const accentColor = useThemeColor("accent");
+  const onPrimary = useThemeColor("on-primary");
+  const refresh = usePullToRefresh();
+
+  const { data: myResponses, isLoading } = useMyResponses(userId);
+  // Сортировка: сначала все активные (заказ ещё открыт) по дате отклика DESC,
+  // ниже все завершённые/отклонённые (история) тоже по дате отклика DESC.
+  const sortedResponses = useMemo(() => {
+    const items = myResponses ?? [];
+    return [...items].sort((a, b) => {
+      const aActive = isActiveResponse(a);
+      const bActive = isActiveResponse(b);
+      if (aActive !== bActive) return aActive ? -1 : 1;
+      return new Date(b.response.created_at).getTime() - new Date(a.response.created_at).getTime();
+    });
+  }, [myResponses]);
+
+  // Animated fade-in (UI_PATTERNS §3.7).
+  const opacity = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    if (!isLoading) {
+      opacity.setValue(0);
+      Animated.timing(opacity, {
+        toValue: 1,
+        duration: 280,
+        useNativeDriver: true,
+      }).start();
+    }
+  }, [isLoading, opacity]);
+
+  return (
+    <View className="flex-1 bg-canvas" style={{ paddingTop: insets.top }}>
+      <ScreenHeader title="Мои задания" />
+
+      <ScrollView
+        className="flex-1"
+        contentContainerStyle={{ paddingBottom: insets.bottom + 24 }}
+        refreshControl={refresh.control}
+      >
+        {isLoading ? (
+          <OrderRowsSkeleton count={5} />
+        ) : (
+          <Animated.View style={{ opacity }} className="pt-2">
+            {sortedResponses.length === 0 ? (
+              <EmptyActiveState
+                accentColor={accentColor}
+                onPrimary={onPrimary}
+                // Переключаем таб, а не пушим новый экран — «Найти задание»
+                // это соседний таб мастера (/find), не detail-роут.
+                onFindOrders={() => navigation.navigate("find" as never)}
+              />
+            ) : (
+              sortedResponses.map((r) => {
+                const isHistory = isHistoryResponse(r);
+                return (
+                  <OrderRow
+                    key={r.response.id}
+                    id={r.order.id}
+                    title={r.order.title}
+                    categoryName={r.order.l2?.name_ru ?? r.order.l2_id}
+                    categoryIcon={r.order.l2?.icon ?? null}
+                    categoryL2Id={r.order.l2_id}
+                    cityName={r.order.city?.name ?? r.order.city_id ?? "Вся Ингушетия"}
+                    district={r.order.district}
+                    urgency={r.order.urgency}
+                    preferredDate={r.order.preferred_date}
+                    responsesCount={r.order.responses_count}
+                    createdAt={r.response.created_at}
+                    status={r.order.status}
+                    variant="responded"
+                    showResponsesCount={false}
+                    alreadyResponded={!isHistory}
+                    budgetKind={r.order.budget_kind}
+                    budgetValue={r.order.budget_value}
+                    statusOverrideLabel={isHistory ? historyResponseStatusLabel(r) : undefined}
+                    onPress={() => router.push(`/orders/${r.order.id}` as never)}
+                  />
+                );
+              })
+            )}
+          </Animated.View>
+        )}
+      </ScrollView>
+    </View>
+  );
+}
+
+// ============================================================================
+// EmptyActiveState — hero-иллюстрация + CTA «Найти задание».
+// ============================================================================
+
+interface EmptyActiveStateProps {
+  accentColor: string;
+  onPrimary: string;
+  onFindOrders: () => void;
+}
+
+function EmptyActiveState({ accentColor, onPrimary, onFindOrders }: EmptyActiveStateProps) {
+  return (
+    <View className="mt-4 items-center px-6">
+      <View className="h-28 w-28 items-center justify-center rounded-2xl relative overflow-hidden bg-badge-amber">
+        <View
+          className="absolute rounded-full bg-canvas"
+          style={{ top: -16, left: -14, width: 52, height: 52, opacity: 0.35 }}
+        />
+        <View
+          className="absolute rounded-full bg-canvas"
+          style={{
+            bottom: -12,
+            right: -8,
+            width: 40,
+            height: 40,
+            opacity: 0.45,
+          }}
+        />
+        <View
+          className="absolute rounded-md bg-canvas"
+          style={{
+            top: 14,
+            right: 14,
+            width: 14,
+            height: 14,
+            opacity: 0.55,
+            transform: [{ rotate: "12deg" }],
+          }}
+        />
+        <View className="h-14 w-14 items-center justify-center rounded-full bg-canvas">
+          <ChatCenteredText size={26} weight="bold" color={accentColor} />
+        </View>
+      </View>
+
+      <AppText weight="bold" className="mt-5 text-center text-title-md text-ink">
+        Откликов пока нет
+      </AppText>
+      <AppText className="mt-2 text-center text-body-sm text-mute">
+        Найдите интересную заявку в поиске и отправьте отклик.
+      </AppText>
+
+      <Pressable
+        accessibilityRole="button"
+        onPress={onFindOrders}
+        className="mt-5 min-h-11 flex-row items-center gap-2 rounded-pill bg-primary px-5 active:opacity-80"
+      >
+        <AppText weight="semibold" className="text-button text-on-primary">
+          Найти задание
+        </AppText>
+        <ArrowRight size={16} weight="bold" color={onPrimary} />
+      </Pressable>
     </View>
   );
 }

@@ -4,7 +4,7 @@ import {
   ThemeProvider as NavThemeProvider,
 } from "@react-navigation/native";
 import { Tabs } from "expo-router";
-import { ClipboardText, ImageSquare, UserCircle } from "phosphor-react-native";
+import { ClipboardText, MagnifyingGlass, UserCircle } from "phosphor-react-native";
 import { TabBar } from "@/components/TabBar";
 import { XtrudLogo } from "@/components/XtrudLogo";
 import { useAuthSession } from "@/features/auth/use-auth-session";
@@ -53,7 +53,15 @@ export default function TabsLayout() {
     lastSeenAt: lastSeenFeedAt,
   });
 
-  const ordersBadge = badgeLabel(isClientRole ? unreadResponses : unreadFeed);
+  // «Мои задания» (orders) — бейдж только у клиента (непрочитанные отклики на
+  // его заказы). У мастера «Мои задания» — список собственных откликов, там
+  // непрочитанного не бывает.
+  const ordersBadge = isClientRole ? badgeLabel(unreadResponses) : undefined;
+  // «Найти задание» (find) — бейдж только у мастера (непрочитанные заявки в
+  // ленте по его категориям). Перенесён сюда с мёртвого редиректящего таба
+  // orders (2026-08-30): раньше висел там, хотя мастер видел заявки не на
+  // «Заказах», а в поиске.
+  const findBadge = isMasterRole ? badgeLabel(unreadFeed) : undefined;
 
   const tc = useThemeColors(["error", "canvas", "hairline", "ink"]);
   // Бейдж всегда на цветном фоне → текст фиксировано белый в обоих режимах.
@@ -88,10 +96,33 @@ export default function TabsLayout() {
         {/* Tabs contain only root lists. Full-screen forms, pickers and detail
             routes live in `app/(details)` so the root native Stack preserves
             the real caller and provides the standard iOS edge-swipe. */}
+        {/* «Найти задание» — только у мастера (клиент ничего не ищет и не
+            откликается, у него — href: null = вкладка скрыта). До 2026-08-30
+            жил как кастомный псевдо-таб «Смотреть заказы» в центре TabBar,
+            физически под /orders/search; теперь настоящий Tabs.Screen /find. */}
+        <Tabs.Screen
+          name="find"
+          options={{
+            title: "Найти задание",
+            href: isMasterRole ? undefined : null,
+            tabBarIcon: ({ color, focused }) => (
+              <MagnifyingGlass color={color} size={26} weight={focused ? "fill" : "bold"} />
+            ),
+            tabBarBadge: findBadge,
+            tabBarBadgeStyle: badgeStyle,
+          }}
+          listeners={({ navigation }) => ({
+            tabPress: (e) => {
+              // Сбрасываем стек find/ на корень — тот же паттерн, что у orders/cases.
+              e.preventDefault();
+              navigation.navigate("find", { screen: "index" } as never);
+            },
+          })}
+        />
         <Tabs.Screen
           name="orders"
           options={{
-            title: "Заказы",
+            title: "Мои задания",
             tabBarIcon: ({ color, focused }) => (
               <ClipboardText color={color} size={26} weight={focused ? "fill" : "bold"} />
             ),
@@ -100,32 +131,10 @@ export default function TabsLayout() {
           }}
           listeners={({ navigation }) => ({
             tabPress: (e) => {
-              // Сбрасываем стек orders/ на корень. Без этого тап «Заказы»
-              // на orders/category-select или orders/new оставлял текущий
-              // экран открытым.
+              // Сбрасываем стек orders/ на корень. Без этого тап «Мои задания»
+              // на вложенном экране оставлял текущий экран открытым.
               e.preventDefault();
               navigation.navigate("orders", { screen: "index" } as never);
-            },
-          })}
-        />
-        <Tabs.Screen
-          name="cases"
-          options={{
-            title: "Ваши работы",
-            // Только для мастера. У клиента — href: null = вкладка скрыта.
-            href: isMasterRole ? undefined : null,
-            // Иконка картинки — вкладка показывает фото работ (фидбэк user 2026-05-20).
-            tabBarIcon: ({ color, focused }) => (
-              <ImageSquare color={color} size={26} weight={focused ? "fill" : "bold"} />
-            ),
-          }}
-          listeners={({ navigation }) => ({
-            tabPress: (e) => {
-              // Тап «Ваши работы» когда уже внутри /cases/[caseId] → сброс на
-              // список работ (стандартный mobile-pattern). Без этого тап по
-              // активной вкладке оставлял открытой детальную работу.
-              e.preventDefault();
-              navigation.navigate("cases", { screen: "index" } as never);
             },
           })}
         />
@@ -141,10 +150,12 @@ export default function TabsLayout() {
         {/* Detail routes live in the root native Stack (`app/(details)`), not
           as hidden Tabs screens. This preserves the exact caller and enables
           the standard iOS edge-swipe back gesture. */}
-        {/* favorites — отдельный root-таб (не подпункт профиля). Скрыт из
-          автоматической нижней панели; кастомный TabBar рендерит для клиента
-          центральную кнопку «закладки», которая push'ит сюда. См. шапку
-          app/(tabs)/favorites/index.tsx о причине переноса. */}
+        {/* cases («Ваши работы») и favorites («Сохранённые мастера») —
+            всегда href: null, ни у одной роли не показываются в нижнем меню
+            (редизайн 2026-08-30: владелец назвал только 3-4 реальных таба,
+            портфолио и закладки переехали строками в /profile). Экраны и
+            маршруты остаются — Profile push'ит на них напрямую. */}
+        <Tabs.Screen name="cases" options={{ href: null }} />
         <Tabs.Screen name="favorites" options={{ href: null }} />
       </Tabs>
     </NavThemeProvider>

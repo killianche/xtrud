@@ -34,12 +34,12 @@
  */
 
 import { useRouter } from "expo-router";
-import { Plus } from "phosphor-react-native";
+import { MagnifyingGlass, Plus } from "phosphor-react-native";
 import { Pressable, View } from "react-native";
 import { AppText } from "@/components/AppText";
+import { Button } from "@/components/ui";
 import { useMyMasterCategories } from "@/features/master-categories/use-my-categories";
-import { MasterRecommendationsSection } from "@/features/master-view/MasterRecommendationsSection";
-import { MyResponsesEntry } from "@/features/master-view/MyResponsesEntry";
+import { OpenOrdersHighlights } from "@/features/master-view/OpenOrdersHighlights";
 import { useThemeColor } from "@/lib/use-theme-color";
 
 interface MasterHomeContentProps {
@@ -54,14 +54,32 @@ export function MasterHomeContent({ userId }: MasterHomeContentProps) {
   const hasCategories = (myCats?.length ?? 0) > 0;
 
   return (
-    // Главная мастера: pill-вход «Мои отклики (N)» + единая подборка
-    // «Подобрали для вас» (до 10 карточек) + callout если категории не выбраны.
-    // Кнопка откликов раньше жила в шапке /orders/search, перенесена сюда по
-    // фидбэку владельца 2026-05-28 (вечер): мастер на главной первым делом
-    // видит свой статус-оверview и сразу подборку новых заказов.
+    // Главная мастера после редизайна 2026-08-30: фото-герой (выше по дереву),
+    // «Актуальные задания» — честный срез открытых заданий из разных категорий,
+    // затем единственный призыв к действию, затем callout про категории.
+    //
+    // Убраны: pill «Мои отклики» (теперь отдельный таб «Мои задания») и
+    // «Подобрали для вас» (персонализация живёт фильтрами на табе «Найти
+    // задание»; при нуле открытых заданий подборка и так всегда была пуста).
     <View className="gap-6 pt-4">
-      <MyResponsesEntry userId={userId} />
-      <MasterRecommendationsSection userId={userId} />
+      <OpenOrdersHighlights userId={userId} />
+
+      {/* Единственное главное действие мастера на этом экране.
+          navigate, а не push: «Найти задание» — тот же таб, а не новый экран,
+          поэтому кнопка «назад» появляться не должна. */}
+      <View className="px-4">
+        <Button
+          variant="primary"
+          size="lg"
+          fullWidth
+          leftIcon={<MagnifyingGlass size={20} weight="bold" color={onPrimary} />}
+          accessibilityLabel="Найти задание для себя"
+          accessibilityHint="Откроет вкладку поиска заданий"
+          onPress={() => router.navigate("/(tabs)/find")}
+        >
+          Найти задание для себя
+        </Button>
+      </View>
 
       {/* Categories callout — единственный conditional блок. */}
       {!hasCategories ? (

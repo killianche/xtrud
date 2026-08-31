@@ -1,5 +1,5 @@
-// /orders/search/category-select — full-screen multi-select picker категорий
-// для фильтров глобального поиска заказов (/orders/search/filters).
+// /find/category-select — full-screen multi-select picker категорий
+// для фильтров глобального поиска заданий (/find/filters).
 //
 // Отличие от /orders/category-select (wizard-flow):
 //   - **Multi-select** (Set), не single-pick.
@@ -37,7 +37,7 @@ export default function FiltersCategorySelectScreen() {
   const inkColor = useThemeColor("ink");
   const muteColor = useThemeColor("mute");
   const onDarkColor = useThemeColor("on-dark");
-  const goBack = useSafeBack("/orders/search/filters" as const);
+  const goBack = useSafeBack("/find/filters" as const);
 
   // Скрываем TabBar — это full-screen detail-экран фильтров.
   const setTabBarHidden = useTabBarVisibility((s) => s.setHidden);

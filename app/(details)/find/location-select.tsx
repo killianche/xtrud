@@ -1,5 +1,5 @@
-// /orders/search/location-select — full-screen выбор локации для фильтра поиска
-// заказов. Открывается кнопкой-триггером с экрана /orders/search/filters.
+// /find/location-select — full-screen выбор локации для фильтра поиска
+// заданий. Открывается кнопкой-триггером с экрана /find/filters.
 //
 // Зачем отдельная страница (фидбэк владельца 2026-05-24): на экране фильтра
 // «Категория» открывается отдельной полной страницей (category-select), а
@@ -9,7 +9,7 @@
 // Ингушетия / город / район, без сёл — как было в фильтре), а на /filters
 // остаётся компактный триггер.
 //
-// Handshake (как у /orders/search/category-select): пишем ПРЯМО в общий Zustand
+// Handshake (как у /find/category-select): пишем ПРЯМО в общий Zustand
 // `useOrdersSearchFiltersStore` (он переживает навигацию). Выбор применяется
 // сразу; кнопка «Готово» и back из header просто возвращают на фильтры.
 //
@@ -41,7 +41,7 @@ const chipTextClass = (selected: boolean) =>
 
 export default function OrdersSearchLocationSelectScreen() {
   const insets = useSafeAreaInsets();
-  const goBack = useSafeBack("/orders/search/filters" as const);
+  const goBack = useSafeBack("/find/filters" as const);
   const tc = useThemeColors(["ink", "accent"]);
 
   const cityId = useOrdersSearchFiltersStore((s) => s.cityId);

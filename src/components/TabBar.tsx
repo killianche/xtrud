@@ -1,30 +1,34 @@
 /*
- * TabBar v4 — нижний таб-бар, 5 равноценных табов (без выделяющегося FAB).
+ * TabBar v5 — нижний таб-бар, только настоящие табы (редизайн 2026-08-30).
  *
  * Структура:
- *   [Главная] [Заказы] [Создать] [Чаты] [Профиль]
+ *   Мастер: [Главная] [Найти задание] [Мои задания] [Профиль]
+ *   Клиент: [Главная] [Мои задания] [Профиль]
  *
- * История: v3 был с круглым FAB primary в центре («приподнятая кнопка»).
- * Решение откатили (2026-05-14): FAB наезжал на sticky CTA на master detail
- * («Войти и написать»), и сама эстетика «жирного круга» противоречит Vercel-
- * минимализму. Сделали 5-й таб обычной иконкой Plus + подпись «Создать».
+ * История: v4 держал 4 настоящих таба + 1 кастомный псевдо-таб-Pressable в
+ * центре («Смотреть заказы» у мастера, «Закладки» у клиента) — тот
+ * рисовался вручную, не был реальным Tabs.Screen, и требовал ручного mutex
+ * (isSearchActive/isFavoritesActive), чтобы «Заказы» не подсвечивались
+ * одновременно с ним. Владелец 2026-08-30: «Найти задание» становится
+ * настоящим 4-м табом мастера (маршрут /find, бывший /orders/search),
+ * псевдо-таб убран целиком. «Ваши работы» (портфолио) и «Закладки»
+ * (сохранённые мастера) переехали строками в /profile — у обеих ролей
+ * остаётся ровно по 3-4 реальных таба, без ручных подсветок.
  *
  * Активный таб: accent (Vercel blue #0070f3) + filled icon (Phosphor weight="fill")
  *                + pill-подложка bg-accent-soft (мягко-синий) под иконкой.
- *                По прямой просьбе владельца 2026-05-27 (вечер) вернули синюю
- *                подсветку — даёт явный визуальный фокус на активном табе.
  * Неактивный:    mute + bold outline (Phosphor weight="bold").
  *
- * Icon set: Phosphor (2026-05-15) — заменил Lucide для большего «modern app»
- * feel + явная fill/outline разница active-state (паттерн Instagram/Threads/X
- * /Linear). Pill даёт chip-style focus-индикатор как в Material 3.
+ * Icon set: Phosphor — filled/outline разница active-state (паттерн
+ * Instagram/Threads/X/Linear). Pill даёт chip-style focus-индикатор как в
+ * Material 3.
  *
- * Таб «Создать» — обычный неактивный таб, тап → router.push('/orders/new').
+ * Иконки задаются в `app/(tabs)/_layout.tsx` через `options.tabBarIcon` —
+ * этот файл только рендерит то, что уже посчитано состоянием.
  */
 
 import type { BottomTabBarProps } from "@react-navigation/bottom-tabs";
-import { usePathname, useRouter } from "expo-router";
-import { BookmarkSimple, MagnifyingGlass } from "phosphor-react-native";
+import { usePathname } from "expo-router";
 import { Platform, Pressable, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
@@ -35,17 +39,16 @@ import { shouldHideTabBarForPath } from "@/lib/tabbar-route-policy";
 import { useTabBarVisibility } from "@/lib/tabbar-visibility";
 import { useThemeColors } from "@/lib/use-theme-color";
 
-// Порядок таб-роутов в навбаре. В центр между left/right вставляется
-// синтетический таб «Смотреть заказы» (не expo-router screen, просто Pressable
-// → /orders/search). Вкладка `cases` («Кейсы») показывается ТОЛЬКО мастеру
-// (фильтр isMasterRole в rightRoutes), у клиента её нет.
-const TAB_ORDER = ["index", "orders", "cases", "profile"] as const;
+// Порядок реальных таб-роутов в навбаре. `cases` и `favorites` в этот список
+// намеренно не входят — они всегда `href: null` (см. `(tabs)/_layout.tsx`) и
+// открываются строками из /profile, а не из нижнего меню.
+const MASTER_TAB_ORDER = ["index", "find", "orders", "profile"] as const;
+const CLIENT_TAB_ORDER = ["index", "orders", "profile"] as const;
 const TAB_HEIGHT = 52; // icon-only — ужали с 60 (был запас под текст-лейбл)
 const isWeb = Platform.OS === "web";
 
 export function TabBar({ state, descriptors, navigation }: BottomTabBarProps) {
   const insets = useSafeAreaInsets();
-  const router = useRouter();
   const pathname = usePathname();
   const tc = useThemeColors([
     "accent",
@@ -58,62 +61,25 @@ export function TabBar({ state, descriptors, navigation }: BottomTabBarProps) {
   ]);
   const tabBarHidden = useTabBarVisibility((s) => s.hidden);
 
-  // N2: кнопка «+ Создать заказ» — только для клиента. Мастер не создаёт
-  // заказы, ему нужны другие действия (поиск заявок). Скрываем «+» когда
-  // active_role='master'. Анонимы (нет user) — показываем «+» по умолчанию
-  // (анон создаёт заказ через JIT-signup).
   const { session } = useAuthSession();
   const { data: user } = useUserRecord(session?.user?.id);
   const isMasterRole = user?.active_role === "master";
-
-  // Подсветка средней «Поиск заказов» псевдо-таба для мастера: когда
-  // активный URL начинается с `/orders/search` (страница + её /filters
-  // подэкран), эта кнопка выглядит focused — ink цвет + stroke 2.25, как
-  // у настоящих табов. До этого фикса (2026-05-15) кнопка всегда была
-  // mute → user не понимал, что это сейчас активный экран.
-  const isSearchActive = pathname.startsWith("/orders/search");
-  // Аналогично для клиентского варианта центра — «Закладки» (избранные мастера).
-  // Активна на любой подстранице /favorites (сейчас просто index, но
-  // оставляю startsWith на будущее).
-  const isFavoritesActive = pathname.startsWith("/favorites");
 
   // Route policy is the source of truth: only actual tab roots show the bar.
   // The legacy owner flag remains as an additional lock during transitions.
   if (tabBarHidden || shouldHideTabBarForPath(pathname)) return null;
 
-  // Берём роуты в нужном порядке, отфильтрованные по существованию.
-  const orderedRoutes = TAB_ORDER.map((name) => state.routes.find((r) => r.name === name)).filter(
-    (r): r is NonNullable<typeof r> => Boolean(r),
-  );
-
-  // Левая часть: index + orders. Правая: chats + profile.
-  // Для мастера orders-таб скрыт — заявки переехали на главную (под
-  // «Готовы работать?»), второй таб дублировал бы тот же контент. См.
-  // фидбэк user 2026-05-15. Клиент видит «Мои заказы» как обычно.
-  const leftRoutes = orderedRoutes.filter(
-    (r) => r.name === "index" || (r.name === "orders" && !isMasterRole),
-  );
-  // Правая часть: «Кейсы» (только мастер — его портфолио работ) + «Профиль».
-  // У клиента вкладки «Кейсы» нет. Восстановлено 2026-05-22 (фидбэк user:
-  // «в нижнем меню у мастера должна быть кнопка Кейсы / Ваши работы»).
-  const rightRoutes = orderedRoutes.filter(
-    (r) => (r.name === "cases" && isMasterRole) || r.name === "profile",
-  );
+  const order = isMasterRole ? MASTER_TAB_ORDER : CLIENT_TAB_ORDER;
+  const visibleRoutes = order
+    .map((name) => state.routes.find((r) => r.name === name))
+    .filter((r): r is NonNullable<typeof r> => Boolean(r));
 
   const renderTab = (route: (typeof state.routes)[number]) => {
     const descriptor = descriptors[route.key];
     if (!descriptor) return null;
     const { options } = descriptor;
     const globalIndex = state.routes.findIndex((r) => r.key === route.key);
-    let isFocused = state.index === globalIndex;
-
-    // Взаимоисключение: когда мастер на /orders/search, expo-router считает
-    // активным таб `orders` (т.к. /orders/search живёт под `orders` родителем).
-    // Но визуально активна средняя «лупа» — поэтому таб «Заказы» в этом случае
-    // НЕ должен подсвечиваться, иначе обе кнопки горят одновременно.
-    if (route.name === "orders" && isSearchActive) {
-      isFocused = false;
-    }
+    const isFocused = state.index === globalIndex;
 
     const label = typeof options.title === "string" ? options.title : route.name;
     const badge = options.tabBarBadge;
@@ -199,7 +165,6 @@ export function TabBar({ state, descriptors, navigation }: BottomTabBarProps) {
 
   return (
     <View
-      // Контейнер overflow visible — FAB приподнят над линией навбара.
       className={isWeb ? "flex-row bg-canvas border-t border-hairline" : undefined}
       style={[
         {
@@ -222,80 +187,7 @@ export function TabBar({ state, descriptors, navigation }: BottomTabBarProps) {
         Platform.OS === "android" && { elevation: 8 },
       ]}
     >
-      {/* Левая часть. */}
-      {leftRoutes.map(renderTab)}
-
-      {/* Центральный псевдо-таб — РАЗНЫЙ для мастера и клиента:
-            • МАСТЕР: «🔍 Смотреть заказы» → /orders/search (лента открытых
-              заказов сайта). Mutex с табом «Заказы»: когда активен
-              /orders/search, expo-router считает фокус на родителе `orders` —
-              «Заказы» в этом случае не подсвечивается (см. isSearchActive).
-            • КЛИЕНТ: «🔖 Закладки» → /favorites (сохранённые мастера).
-              Фидбэк владельца 2026-05-27: клиенту лента чужих заказов не
-              нужна на видном месте, а быстрый доступ к избранным мастерам —
-              нужен. */}
-      {isMasterRole ? (
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Смотреть заказы"
-          accessibilityState={{ selected: isSearchActive }}
-          onPress={() => router.push("/orders/search" as never)}
-          className={isWeb ? (isSearchActive ? "text-accent" : "text-mute") : undefined}
-          style={{
-            flex: 1,
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
-          <View
-            style={{
-              paddingHorizontal: 14,
-              paddingVertical: 4,
-              borderRadius: 999,
-              backgroundColor: isSearchActive ? tc["accent-soft"] : "transparent",
-            }}
-            className={isWeb ? (isSearchActive ? "bg-accent-soft" : undefined) : undefined}
-          >
-            <MagnifyingGlass
-              size={26}
-              weight={isSearchActive ? "fill" : "bold"}
-              color={isWeb ? "currentColor" : isSearchActive ? tc.accent : tc.mute}
-            />
-          </View>
-        </Pressable>
-      ) : (
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Закладки"
-          accessibilityState={{ selected: isFavoritesActive }}
-          onPress={() => router.push("/favorites" as never)}
-          className={isWeb ? (isFavoritesActive ? "text-accent" : "text-mute") : undefined}
-          style={{
-            flex: 1,
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
-          <View
-            style={{
-              paddingHorizontal: 14,
-              paddingVertical: 4,
-              borderRadius: 999,
-              backgroundColor: isFavoritesActive ? tc["accent-soft"] : "transparent",
-            }}
-            className={isWeb ? (isFavoritesActive ? "bg-accent-soft" : undefined) : undefined}
-          >
-            <BookmarkSimple
-              size={26}
-              weight={isFavoritesActive ? "fill" : "bold"}
-              color={isWeb ? "currentColor" : isFavoritesActive ? tc.accent : tc.mute}
-            />
-          </View>
-        </Pressable>
-      )}
-
-      {/* Правая часть. */}
-      {rightRoutes.map(renderTab)}
+      {visibleRoutes.map(renderTab)}
     </View>
   );
 }

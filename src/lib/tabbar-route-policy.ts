@@ -1,11 +1,4 @@
-const TAB_ROOT_PATHS = new Set([
-  "/",
-  "/orders",
-  "/orders/search",
-  "/cases",
-  "/profile",
-  "/favorites",
-]);
+const TAB_ROOT_PATHS = new Set(["/", "/find", "/orders", "/cases", "/profile", "/favorites"]);
 
 function normalizePath(pathname: string): string {
   if (!pathname || pathname === "/") return "/";

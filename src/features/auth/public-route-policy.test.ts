@@ -7,7 +7,7 @@ describe("isPublicDetailsRoute", () => {
     expect(isPublicDetailsRoute(["(details)", "orders", "[id]"])).toBe(true);
     expect(isPublicDetailsRoute(["(details)", "orders", "new"])).toBe(true);
     expect(isPublicDetailsRoute(["(details)", "orders", "new", "details"])).toBe(true);
-    expect(isPublicDetailsRoute(["(details)", "orders", "search", "filters"])).toBe(true);
+    expect(isPublicDetailsRoute(["(details)", "find", "filters"])).toBe(true);
     expect(isPublicDetailsRoute(["(details)", "useful", "[slug]"])).toBe(true);
   });
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 /**
- * Fail-closed npm advisory gate for the Expo SDK 54 compatibility window.
+ * Fail-closed npm advisory gate for the Expo SDK compatibility window.
  * Package names and severities are insufficient: a new advisory can land in
  * an already allowlisted package, so exact sources, URLs and ranges are pinned.
  */
@@ -154,7 +154,7 @@ export function runCli() {
     return 1;
   }
   console.log(
-    `npm audit gate passed: ${result.activePackages.length} reviewed SDK 54 findings, 0 unexpected, review by ${baseline.reviewBy}.`,
+    `npm audit gate passed: ${result.activePackages.length} reviewed findings, 0 unexpected, review by ${baseline.reviewBy}.`,
   );
   if (result.resolvedPackages.length > 0) {
     console.log(`Resolved packages (remove on review): ${result.resolvedPackages.join(", ")}`);

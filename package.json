@@ -103,5 +103,10 @@
         "@sentry/react-native"
       ]
     }
+  },
+  "overrides": {
+    "xcode": {
+      "uuid": "^11.1.1"
+    }
   }
 }

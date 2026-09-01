@@ -171,13 +171,26 @@ export async function verifyOtpCode(
  * сразу входим по паролю → появляется сессия, и корневой AuthGate уводит в
  * онбординг/табы. Логика функции — supabase/functions/register-user/index.ts.
  */
+/**
+ * Адрес для auth.users, построенный из номера телефона.
+ *
+ * GoTrue требует email как первичный идентификатор, а форма регистрации его
+ * больше не спрашивает (DECISION владельца 2026-09-01). Поддомен phone.xtrud.pro
+ * выбран намеренно: формат валиден, домен наш, MX-записи у поддомена нет —
+ * то есть адрес заведомо не является доставляемым и не может случайно увести
+ * письмо постороннему человеку.
+ */
+function phoneToAuthEmail(phone: string): string {
+  const digits = phone.replace(/\D/g, "");
+  return `${digits}@phone.xtrud.pro`;
+}
+
 export async function registerWithCredentials(input: {
   phone: string;
-  email: string;
   password: string;
 }): Promise<{ ok: true; userId: string } | { ok: false; error: string }> {
-  const email = input.email.trim().toLowerCase();
   const phone = normalizePhone(input.phone);
+  const email = phoneToAuthEmail(phone);
 
   // 1. Создаём подтверждённый аккаунт на сервере.
   const { data, error } = await supabase.functions.invoke("register-user", {

@@ -133,8 +133,15 @@ export const loginFormSchema = z.object({
 export type LoginFormValues = z.infer<typeof loginFormSchema>;
 
 /**
- * Схема регистрации: номер (digits, ≥6) + почта + пароль (≥6).
- * Почта — для восстановления пароля и альтернативного входа.
+ * Схема регистрации: номер (digits, ≥6) + пароль (≥6).
+ *
+ * Почта из формы убрана (DECISION владельца 2026-09-01): на время закрытого
+ * теста регистрация должна занимать два поля. Адрес для auth.users строится
+ * из номера в registerWithCredentials и пользователю не показывается.
+ *
+ * Цена решения названа прямо: восстановление пароля письмом для таких
+ * аккаунтов не работает — почтового ящика у них нет. На время теста это
+ * приемлемо, база будет очищена перед боевым запуском.
  */
 export const registerFormSchema = z.object({
   phone: z
@@ -143,7 +150,6 @@ export const registerFormSchema = z.object({
     .refine((v) => digitsOnly(v).length >= 6, {
       message: "Введите корректный номер телефона",
     }),
-  email: z.string().min(1, "Введите почту").email("Некорректная почта"),
   password: z.string().min(6, "Минимум 6 символов"),
 });
 

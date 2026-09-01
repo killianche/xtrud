@@ -138,7 +138,7 @@ export default function RegisterScreen() {
     formState: { errors, isValid },
   } = useForm<RegisterFormValues>({
     resolver: zodResolver(registerFormSchema),
-    defaultValues: { phone: "", email: "", password: "" },
+    defaultValues: { phone: "", password: "" },
     mode: "onChange",
   });
 
@@ -148,7 +148,6 @@ export default function RegisterScreen() {
     try {
       const result = await register.mutateAsync({
         phone,
-        email: values.email.trim(),
         password: values.password,
       });
       await completeGuestDraftAuthJourney(draftJourney, result.userId);
@@ -227,40 +226,6 @@ export default function RegisterScreen() {
             {errors.phone && (
               <AppText weight="medium" className="mt-2 text-caption text-error">
                 {errors.phone.message}
-              </AppText>
-            )}
-          </View>
-
-          {/* Поле «Почта» */}
-          <View className="mt-6">
-            <AppText weight="medium" className="text-caption text-muted">
-              Почта
-            </AppText>
-            <Controller
-              control={control}
-              name="email"
-              render={({ field: { value, onChange, onBlur } }) => (
-                <TextInput
-                  value={value}
-                  onBlur={onBlur}
-                  onChangeText={onChange}
-                  placeholder="example@mail.ru"
-                  placeholderTextColor={tc["muted-soft"]}
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  autoComplete="email"
-                  inputMode="email"
-                  className={`mt-2 min-h-12 rounded-md border bg-canvas px-3 py-3 text-body-md text-ink ${
-                    errors.email ? "border-error" : "border-hairline focus:border-ink"
-                  }`}
-                  editable={!isBusy}
-                />
-              )}
-            />
-            {errors.email && (
-              <AppText weight="medium" className="mt-2 text-caption text-error">
-                {errors.email.message}
               </AppText>
             )}
           </View>

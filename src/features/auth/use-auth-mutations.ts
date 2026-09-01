@@ -25,11 +25,10 @@ import {
 
 export interface RegisterInput {
   phone: string;
-  email: string;
   password: string;
 }
 
-/** Регистрация: почта + пароль (auth) + телефон (профиль). */
+/** Регистрация: телефон + пароль. Адрес для auth строится из номера. */
 export function useRegister() {
   return useMutation({
     mutationFn: async (input: RegisterInput): Promise<{ ok: true; userId: string }> => {

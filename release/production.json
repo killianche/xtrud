@@ -6,9 +6,9 @@
     "clientKeySha256": "f27985c9df6713d01c50289d1431329a2ac17c4db7348eacdc733d34aa7c29bd"
   },
   "web": {
-    "sshHost": "root@62.113.106.30",
+    "sshHost": "root@217.114.8.196",
     "remoteDir": "/var/www/xtrud",
-    "domains": ["https://xtrud.pro", "https://xtrud.alanbani.ru"]
+    "domains": ["https://xtrud.pro"]
   },
   "stores": {
     "ios": {

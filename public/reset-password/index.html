@@ -15,7 +15,7 @@
     frame-ancestors в <meta> браузерами игнорируется: защиту от кликджекинга
     даёт заголовок веб-сервера, не эта страница.
   -->
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; base-uri 'none'; form-action 'none'; img-src 'self'; style-src 'self'; script-src 'self' 'unsafe-inline'; connect-src https://wgeimsajvjkzrrnfrnkb.supabase.co">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; base-uri 'none'; form-action 'none'; img-src 'self'; style-src 'self'; script-src 'self' 'unsafe-inline'; connect-src https://api.xtrud.pro">
   <link rel="stylesheet" href="/legal.css">
 </head>
 <body><main>
@@ -71,8 +71,8 @@
   // SUPABASE_URL с release/production.json → backend.url, а SHA-256 ключа —
   // с backend.clientKeySha256, поэтому рассинхрон ловится до релиза.
   // При переезде на Beget меняются оба файла одной правкой.
-  var SUPABASE_URL = "https://wgeimsajvjkzrrnfrnkb.supabase.co";
-  var SUPABASE_PUBLISHABLE_KEY = "sb_publishable_C1FjIf3-lgzTAPr2B2Yjjg_wrOMje-O";
+  var SUPABASE_URL = "https://api.xtrud.pro";
+  var SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzg4MTkxODU5LCJleHAiOjIxMDM1NTE4NTl9.ScG8zJBBJpfzoZuNzrfXud8KeMh4sW7ETWtvfJRW7Ak";
 
   var MIN_PASSWORD_LENGTH = 6;
 

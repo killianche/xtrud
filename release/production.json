@@ -1,9 +1,9 @@
 {
   "schemaVersion": 1,
   "backend": {
-    "phase": "supabase-cloud",
-    "url": "https://wgeimsajvjkzrrnfrnkb.supabase.co",
-    "clientKeySha256": "f27985c9df6713d01c50289d1431329a2ac17c4db7348eacdc733d34aa7c29bd"
+    "phase": "beget-transition",
+    "url": "https://api.xtrud.pro",
+    "clientKeySha256": "8975e14395127e7e0ad3365214903b9a3205a2b419c1173c41549afd90583feb"
   },
   "web": {
     "sshHost": "root@217.114.8.196",

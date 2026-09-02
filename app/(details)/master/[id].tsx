@@ -126,7 +126,16 @@ export default function MasterPublicScreen() {
   // на верхнем уровне: если у мастера нет ни одной услуги И ни одной
   // категории с bio — заголовок «Услуги» не должен висеть пустым.
   const masterServices = useMasterServices(masterId);
-  const refresh = usePullToRefresh();
+  // Обновляем только запросы этого экрана, а не всё смонтированное дерево.
+  const refresh = usePullToRefresh([
+    "master-public",
+    "master-categories-public",
+    "master-phone",
+    "reviews-for-target",
+    "master-services",
+    "portfolio",
+    "portfolio-cases",
+  ]);
 
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const [reportOpen, setReportOpen] = useState(false);

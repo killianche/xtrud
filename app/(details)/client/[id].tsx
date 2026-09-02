@@ -41,7 +41,7 @@ export default function ClientPublicScreen() {
 
   const profile = useClientPublicProfile(clientId);
   const reviews = useReviewsForTarget(clientId, "master_to_client");
-  const refresh = usePullToRefresh();
+  const refresh = usePullToRefresh(["client-public", "reviews-for-target"]);
   const tc = useThemeColors(["ink", "muted-soft", "error", "success", "warning"]);
   const goBack = useSafeBack("/" as const);
 

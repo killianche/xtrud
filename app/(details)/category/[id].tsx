@@ -79,7 +79,7 @@ export default function CategoryDetailScreen() {
   const categoryId = typeof id === "string" ? id : undefined;
   const { data, error, isLoading: isCategoryLoading } = useCategoryDetail(categoryId);
   const masters = useMastersByL2(categoryId ?? null);
-  const refresh = usePullToRefresh();
+  const refresh = usePullToRefresh(["masters-by-l2", "categories", "cities"]);
   // safeBack: при заходе по deeplink/refresh уходим на home, не в браузерную
   // историю до приложения.
   const goBack = useSafeBack("/" as const);
@@ -92,8 +92,13 @@ export default function CategoryDetailScreen() {
   const isDesktopWeb = Platform.OS === "web" && viewportWidth >= 768;
 
   // Auto-hide header при скролле вниз / re-show при скролле вверх (Telegram/iOS-style).
-  // useNativeDriver: false — на web нет нативного драйвера, на iOS/Android тоже работает
-  // нормально для дешёвой translateY-анимации (200ms).
+  //
+  // useNativeDriver: true. Прежнее обоснование «на web нет нативного драйвера»
+  // недействительно: web из проекта удалён на этапе 2, платформа только iOS.
+  // Это была единственная анимация в проекте на JS-драйвере, и висела она на
+  // onScroll самого тяжёлого невиртуализованного списка — то есть считалась в
+  // том же потоке, что и прокрутка. Остальные семь анимаций уже нативные.
+  // translateY нативный драйвер поддерживает.
   const translateY = useRef(new Animated.Value(0)).current;
   const lastScrollY = useRef(0);
   const headerVisible = useRef(true);
@@ -111,7 +116,7 @@ export default function CategoryDetailScreen() {
           Animated.timing(translateY, {
             toValue: 0,
             duration: 220,
-            useNativeDriver: false,
+            useNativeDriver: true,
           }).start();
         }
         return;
@@ -121,14 +126,14 @@ export default function CategoryDetailScreen() {
         Animated.timing(translateY, {
           toValue: -HIDEABLE_HEIGHT,
           duration: 220,
-          useNativeDriver: false,
+          useNativeDriver: true,
         }).start();
       } else if (dy < -DIRECTION_NOISE && !headerVisible.current) {
         headerVisible.current = true;
         Animated.timing(translateY, {
           toValue: 0,
           duration: 220,
-          useNativeDriver: false,
+          useNativeDriver: true,
         }).start();
       }
     },

@@ -47,7 +47,8 @@
     "release:check": "npm run quality:check && npm run catalog:drift:check && npm run security:audit && npm run ios:bundle:check",
     "store:check:ios": "npm run catalog:drift:check && node scripts/release/check-version-consistency.mjs --store-release ios",
     "ios:bundle:check": "node scripts/release/check-ios-bundle.mjs",
-    "smoke:flows": "node scripts/supabase/smoke-user-flows.mjs"
+    "smoke:flows": "node scripts/supabase/smoke-user-flows.mjs",
+    "release:asc:upload": "node scripts/release/asc-upload-build.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",

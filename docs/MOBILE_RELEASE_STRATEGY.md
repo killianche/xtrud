@@ -92,6 +92,21 @@ Platform-specific code допустим только как Adapter на реа�
 - Photos limited access, камера, upload, deep/recovery link;
 - `npm run store:check:ios` перед production build.
 
+### Если EAS Submit завис
+
+FACT (2026-09-02): четыре отправки EAS Submit простояли `IN_QUEUE` больше трёх
+часов при статусе Expo «Operational». Обход — официальный build-uploads API
+App Store Connect (API 4.1), целиком с VDS:
+
+1. скачать IPA сборки из EAS (`eas build:view <id> --json` → `artifacts.buildUrl`);
+2. `npm run release:asc:upload -- <путь к .ipa>` — версия и номер сборки берутся
+   из `app.json`, ключ API — из `/root/.config/xtrud/asc.json` вне репозитория;
+3. дождаться `COMPLETE`, затем `processingState: VALID` в App Store Connect;
+4. отменить зависшие отправки: `eas submit:cancel <id>`, иначе они позже зальют
+   устаревшие сборки.
+
+Transporter и altool не вариант: они требуют macOS, а Mac владельца не трогаем.
+
 ### Android
 
 > ⏸ Заморожено с 2026-08-30 — см. раздел 8. Проверки ниже не выполняются и не

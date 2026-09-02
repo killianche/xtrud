@@ -42,8 +42,6 @@ import {
   effectiveStatus,
   isAvailabilityVisible,
 } from "@/features/master-view/availability";
-// HowItWorks скрыт 2026-05-18 — компонент остался в src/features/home/.
-// import { HowItWorks } from "@/features/home/HowItWorks";
 import { MasterCinematicHero } from "@/features/master-view/MasterCinematicHero";
 import { MasterHomeContent } from "@/features/master-view/MasterHomeContent";
 import { useRecordMasterView } from "@/features/master-view/use-record-view";
@@ -229,10 +227,6 @@ function ClientHome({
           {/* Promo-баннеры партнёров (рекламные фото-баннеры 16:9). */}
           <PromoBannerCarousel />
           <TopMasters onMasterPress={onMasterPress} />
-          {/* HowItWorks скрыт по фидбэку user 2026-05-18 («не нужен»).
-              Компонент остался в `src/features/home/HowItWorks.tsx` если
-              вернёшь — можно раскомментировать.
-              <HowItWorks /> */}
           <View className="mt-10 px-5">
             <AppText weight="semibold" className="text-title-lg text-ink">
               Категории исполнителей

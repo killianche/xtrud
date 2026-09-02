@@ -13,7 +13,7 @@
  * базу править не нужно: фронт сам показывает инициалы.
  *
  * Используется в обоих <Avatar> компонентах и в местах с прямым <Image> для
- * аватара (favorites, master hero).
+ * аватара (master hero).
  */
 export function realAvatarUrl(url?: string | null): string | null {
   if (!url) return null;

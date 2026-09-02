@@ -18,14 +18,7 @@
 import { Image as ExpoImage } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import {
-  BookmarkSimple,
-  Buildings,
-  CaretLeft,
-  DotsThreeVertical,
-  Star,
-  Users,
-} from "phosphor-react-native";
+import { Buildings, CaretLeft, DotsThreeVertical, Star, Users } from "phosphor-react-native";
 import { useEffect, useState } from "react";
 import {
   ActionSheetIOS,
@@ -46,7 +39,7 @@ import { blockingActionFailureMessage } from "@/features/blocking/blocking-error
 import { useBlockUser } from "@/features/blocking/use-user-blocks";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { confirmAsync } from "@/lib/confirm";
-import { hapticImpact, hapticSuccess } from "@/lib/haptics";
+import { hapticSuccess } from "@/lib/haptics";
 import { openExternalUrl } from "@/lib/open-link";
 import { useAppWidth } from "@/lib/use-app-width";
 
@@ -56,7 +49,6 @@ import { useAppWidth } from "@/lib/use-app-width";
 // DEPRECATED в миграции 0055.
 
 import { useAuthSession } from "@/features/auth/use-auth-session";
-import { useIsFavorite, useToggleFavorite } from "@/features/favorites/use-favorites";
 import { MasterServicesList } from "@/features/master-services/MasterServicesList";
 import { useMasterServices } from "@/features/master-services/use-master-services";
 import {
@@ -171,16 +163,6 @@ export default function MasterPublicScreen() {
   const tc = useThemeColors(["ink", "accent", "on-dark"]);
 
   // Избранное. Для гостя/own-profile кнопка скрыта (rendering ниже).
-  const isFavorite = useIsFavorite(!isAnon && !isOwnProfile ? (masterId ?? undefined) : undefined);
-  const toggleFavorite = useToggleFavorite();
-  const handleToggleFavorite = () => {
-    if (!masterId || isAnon || isOwnProfile) return;
-    // Импульс сразу на тапе (не ждём ответ сети) — так же, как лайк/букмарк
-    // в системных приложениях: тактильная реакция подтверждает жест, а не
-    // серверный результат (docs/IOS_FOUNDATION.md §5.5).
-    hapticImpact();
-    toggleFavorite.mutate({ masterId, nextValue: !isFavorite.data });
-  };
 
   const u = profile.data?.user;
   const m = profile.data?.master;
@@ -380,22 +362,6 @@ export default function MasterPublicScreen() {
               </Pressable>
               {!isOwnProfile && (
                 <View className="flex-row items-center gap-2">
-                  {!isAnon ? (
-                    <Pressable
-                      accessibilityRole="button"
-                      accessibilityLabel={isFavorite.data ? "Убрать из закладок" : "В закладки"}
-                      onPress={handleToggleFavorite}
-                      disabled={toggleFavorite.isPending}
-                      hitSlop={8}
-                      className="h-9 w-9 items-center justify-center rounded-full bg-black/50 active:opacity-70"
-                    >
-                      <BookmarkSimple
-                        size={20}
-                        weight={isFavorite.data ? "fill" : "bold"}
-                        color={tc["on-dark"]}
-                      />
-                    </Pressable>
-                  ) : null}
                   <Pressable
                     accessibilityRole="button"
                     accessibilityLabel="Действия"
@@ -453,22 +419,6 @@ export default function MasterPublicScreen() {
               </Pressable>
               {!isOwnProfile && (
                 <View className="flex-row items-center gap-2">
-                  {!isAnon ? (
-                    <Pressable
-                      accessibilityRole="button"
-                      accessibilityLabel={isFavorite.data ? "Убрать из закладок" : "В закладки"}
-                      onPress={handleToggleFavorite}
-                      disabled={toggleFavorite.isPending}
-                      hitSlop={8}
-                      className="h-9 w-9 items-center justify-center rounded-full bg-black/50 active:opacity-70"
-                    >
-                      <BookmarkSimple
-                        size={20}
-                        weight={isFavorite.data ? "fill" : "bold"}
-                        color={tc["on-dark"]}
-                      />
-                    </Pressable>
-                  ) : null}
                   <Pressable
                     accessibilityRole="button"
                     accessibilityLabel="Действия"
@@ -670,25 +620,6 @@ export default function MasterPublicScreen() {
                   <AppText weight="medium" className="text-body-sm text-ink">
                     WhatsApp
                   </AppText>
-                </Pressable>
-              ) : null}
-              {/* Закладка — компактная квадратная кнопка рядом с контактами.
-                  Только для авторизованных (закладка требует аккаунта). В
-                  избранном — акцентная заливка. Дублирует кнопку из hero-overlay,
-                  но здесь она нагляднее в потоке (фидбэк владельца 2026-05-27). */}
-              {!isAnon ? (
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel={isFavorite.data ? "Убрать из закладок" : "В закладки"}
-                  onPress={handleToggleFavorite}
-                  disabled={toggleFavorite.isPending}
-                  className="items-center justify-center min-h-11 w-12 rounded-full bg-canvas-soft active:bg-canvas-soft-2"
-                >
-                  <BookmarkSimple
-                    size={18}
-                    weight={isFavorite.data ? "fill" : "bold"}
-                    color={isFavorite.data ? tc.accent : tc.ink}
-                  />
                 </Pressable>
               ) : null}
             </View>

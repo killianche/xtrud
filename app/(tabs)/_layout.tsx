@@ -174,13 +174,10 @@ export default function TabsLayout() {
         {/* Detail routes live in the root native Stack (`app/(details)`), not
           as hidden Tabs screens. This preserves the exact caller and enables
           the standard iOS edge-swipe back gesture. */}
-        {/* cases («Ваши работы») и favorites («Сохранённые мастера») —
-            всегда href: null, ни у одной роли не показываются в нижнем меню
-            (редизайн 2026-08-30: владелец назвал только 3-4 реальных таба,
-            портфолио и закладки переехали строками в /profile). Экраны и
-            маршруты остаются — Profile push'ит на них напрямую. */}
+        {/* cases («Ваши работы») — href: null, в нижнем меню не показывается;
+            Profile push'ит на него напрямую. «Сохранённые мастера» удалены
+            целиком 2026-09-02 (DECISION владельца). */}
         <Tabs.Screen name="cases" options={{ href: null }} />
-        <Tabs.Screen name="favorites" options={{ href: null }} />
       </Tabs>
     </NavThemeProvider>
   );

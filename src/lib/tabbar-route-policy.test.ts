@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { shouldHideTabBarForPath } from "./tabbar-route-policy";
 
 describe("tab bar route policy", () => {
-  it.each(["/", "/find", "/orders", "/orders/", "/cases", "/profile", "/favorites"])(
+  it.each(["/", "/find", "/orders", "/orders/", "/cases", "/profile"])(
     "keeps the tab bar on root %s",
     (path) => expect(shouldHideTabBarForPath(path)).toBe(false),
   );

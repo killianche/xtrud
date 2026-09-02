@@ -101,7 +101,7 @@ export function useBlockedUsers() {
  * фильтрации каталога, избранного и публичных профилей мастера/клиента
  * (app/(details)/master/[id].tsx, client/[id].tsx, use-master-public.ts,
  * use-client-public.ts, use-masters-by-l2.ts, use-top-masters.ts,
- * use-favorites.ts).
+ * use-portfolio-cases.ts).
  *
  * ОДНОСТОРОННИЙ набор, и это не исправить без нового серверного объекта.
  * RLS-политика `user_blocks_select_own` отдаёт только строки, где текущий

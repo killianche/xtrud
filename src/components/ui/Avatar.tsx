@@ -127,7 +127,7 @@ function extractInitials(name?: string | null): string {
 // seed-fallback), а не загруженное пользователем фото → возвращаем null, чтобы
 // <Avatar> показал ИНИЦИАЛЫ (решение владельца 2026-05-23, см. src/lib/avatar.ts).
 // Имя `normalizeAvatarUrl` сохранено для обратной совместимости импортов
-// (favorites, master/[id]) — делегирует в единый realAvatarUrl.
+// (master/[id]) — делегирует в единый realAvatarUrl.
 export const normalizeAvatarUrl = realAvatarUrl;
 
 function pickPaletteClass(seed: string): (typeof PALETTE_CLASSES)[number] {

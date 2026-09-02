@@ -47,14 +47,21 @@ function jwt() {
 async function api(path, init = {}) {
   const r = await fetch(`https://api.appstoreconnect.apple.com${path}`, {
     ...init,
-    headers: { Authorization: `Bearer ${jwt()}`, "Content-Type": "application/json", ...(init.headers ?? {}) },
+    headers: {
+      Authorization: `Bearer ${jwt()}`,
+      "Content-Type": "application/json",
+      ...(init.headers ?? {}),
+    },
   });
   const body = await r.json().catch(() => null);
   return { ok: r.ok, status: r.status, body };
 }
 
 function fail(step, r) {
-  console.error(`${step}: HTTP ${r.status}`, JSON.stringify(r.body?.errors ?? r.body).slice(0, 600));
+  console.error(
+    `${step}: HTTP ${r.status}`,
+    JSON.stringify(r.body?.errors ?? r.body).slice(0, 600),
+  );
   process.exit(1);
 }
 
@@ -68,7 +75,11 @@ let r = await api("/v1/buildUploads", {
   body: JSON.stringify({
     data: {
       type: "buildUploads",
-      attributes: { cfBundleShortVersionString: shortVersion, cfBundleVersion: buildNumber, platform: "IOS" },
+      attributes: {
+        cfBundleShortVersionString: shortVersion,
+        cfBundleVersion: buildNumber,
+        platform: "IOS",
+      },
       relationships: { app: { data: { type: "apps", id: cfg.appId } } },
     },
   }),
@@ -82,7 +93,12 @@ r = await api("/v1/buildUploadFiles", {
   body: JSON.stringify({
     data: {
       type: "buildUploadFiles",
-      attributes: { assetType: "ASSET", fileName: basename(ipaPath), fileSize: buf.length, uti: "com.apple.ipa" },
+      attributes: {
+        assetType: "ASSET",
+        fileName: basename(ipaPath),
+        fileSize: buf.length,
+        uti: "com.apple.ipa",
+      },
       relationships: { buildUpload: { data: { type: "buildUploads", id: uploadId } } },
     },
   }),
@@ -94,7 +110,11 @@ console.log(`файл зарезервирован: ${fileId}, частей: ${o
 
 for (const op of ops) {
   const headers = Object.fromEntries((op.requestHeaders ?? []).map((h) => [h.name, h.value]));
-  const res = await fetch(op.url, { method: op.method, headers, body: buf.subarray(op.offset, op.offset + op.length) });
+  const res = await fetch(op.url, {
+    method: op.method,
+    headers,
+    body: buf.subarray(op.offset, op.offset + op.length),
+  });
   console.log(`  часть ${op.partNumber ?? "?"}: ${op.offset}+${op.length} → ${res.status}`);
   if (!res.ok) {
     console.error(await res.text());
@@ -108,7 +128,10 @@ r = await api(`/v1/buildUploadFiles/${fileId}`, {
     data: {
       type: "buildUploadFiles",
       id: fileId,
-      attributes: { uploaded: true, sourceFileChecksums: { file: { algorithm: "MD5", hash: md5 } } },
+      attributes: {
+        uploaded: true,
+        sourceFileChecksums: { file: { algorithm: "MD5", hash: md5 } },
+      },
     },
   }),
 });
@@ -122,7 +145,9 @@ for (let i = 0; i < 90; i++) {
   for (const e of s.errors ?? []) console.error("   ошибка:", e.code, e.description);
   for (const w of s.warnings ?? []) console.log("   предупреждение:", w.code, w.description);
   if (s.state === "COMPLETE") {
-    console.log("сборка доставлена; дальше она обрабатывается в App Store Connect (processingState → VALID)");
+    console.log(
+      "сборка доставлена; дальше она обрабатывается в App Store Connect (processingState → VALID)",
+    );
     process.exit(0);
   }
   if (s.state === "FAILED") process.exit(1);

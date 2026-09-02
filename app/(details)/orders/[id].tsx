@@ -32,7 +32,6 @@ import { Avatar } from "@/components/Avatar";
 import { OrderStatusBadge } from "@/components/OrderStatusBadge";
 import { ScreenHeader, Skeleton } from "@/components/ui";
 import { useAuthSession } from "@/features/auth/use-auth-session";
-import { useSetActiveRole } from "@/features/auth/use-set-active-role";
 import { useUserRecord } from "@/features/auth/use-user-record";
 import { blockConfirmMessage, blockSuccessMessage } from "@/features/blocking/blocking-copy";
 import { blockingActionFailureMessage } from "@/features/blocking/blocking-error-message";
@@ -66,9 +65,8 @@ import { useMarkResponsesViewed } from "@/features/orders/use-unread-responses";
 import { useWithdrawResponse } from "@/features/orders/use-withdraw-response";
 import { ReportModal } from "@/features/reports/ReportModal";
 import { useColorScheme } from "@/hooks/use-color-scheme";
-import { useAuthReturnUrlStore } from "@/lib/auth-return-url-store";
 import { confirmAsync } from "@/lib/confirm";
-import { hapticError, hapticSelection, hapticSuccess } from "@/lib/haptics";
+import { hapticError, hapticSuccess } from "@/lib/haptics";
 import { openExternalUrl } from "@/lib/open-link";
 import { useSafeBack } from "@/lib/use-safe-back";
 import { useThemeColors } from "@/lib/use-theme-color";
@@ -95,7 +93,6 @@ export default function OrderDetailScreen() {
   } = useOrderDetail(id);
 
   const isOwner = !!userId && !!order && order.client_id === userId;
-  const isMasterRole = user?.active_role === "master";
 
   // Если dual-role-пользователь сейчас в client-режиме смотрит чужой заказ, на
   // который уже откликался КАК МАСТЕР — показываем «Вы откликнулись» badge с
@@ -103,12 +100,14 @@ export default function OrderDetailScreen() {
   // откликаться дважды на один и тот же заказ — фидбэк владельца 2026-05-27).
   // Запрашиваем только когда есть смысл (is_master + chase в client-режиме на
   // чужом заказе) — иначе тратили бы запрос на каждом просмотре.
-  const shouldCheckMyResponse = !!user?.is_master && !isMasterRole && !isOwner && !!userId && !!id;
+  // Проверяем свой отклик для любого вошедшего, а не только для «мастера в
+  // клиентском режиме»: режимов больше нет.
+  const shouldCheckMyResponse = !isOwner && !!userId && !!id;
   const myMasterResponseQ = useMyResponseForOrder(
     shouldCheckMyResponse ? id : undefined,
     shouldCheckMyResponse ? userId : undefined,
   );
-  const hasMyMasterResponse = !!myMasterResponseQ.data;
+  const _hasMyMasterResponse = !!myMasterResponseQ.data;
   const [reportOpen, setReportOpen] = useState(false);
   // Шит выбора причины закрытия заказа («нашёл мастера» / «больше не нужно»).
   // Выбор причины закрытия («нашёл мастера» / «больше не нужно») теперь на
@@ -386,7 +385,12 @@ export default function OrderDetailScreen() {
           ) : null}
 
           {isOwner && id && order && <ClientResponsesSection orderId={id} order={order} />}
-          {!isOwner && isMasterRole && userId && id && (
+          {/* Откликнуться может любой аккаунт, кроме автора задания
+              (DECISION владельца 2026-09-01). Раньше форма показывалась
+              только в «режиме мастера», и человеку приходилось сначала
+              переключаться — три разные карточки-подсказки ниже существовали
+              ровно ради этого перехода. */}
+          {!isOwner && userId && id && (
             <MasterResponseSection
               orderId={id}
               masterId={userId}
@@ -395,27 +399,6 @@ export default function OrderDetailScreen() {
               pickedMasterId={order.picked_master_id}
             />
           )}
-          {/* Sprint 2026-05-20: клиент-визитёр на чужом заказе.
-              Логика по ветвям:
-              - is_master=true (dual-role, сейчас в режиме клиента) → быстро
-                переключиться в master-режим и сразу увидеть MasterResponseSection.
-                Никакого онбординга, просто one-tap switch.
-              - is_master=false (чистый клиент) → CTA «Стать мастером»,
-                запоминаем return-URL, отправляем на онбординг мастера. После
-                finalize_master_onboarding() возврат на этот же заказ. */}
-          {!isOwner && !isMasterRole && id && order.status === "open" ? (
-            user?.is_master && userId ? (
-              hasMyMasterResponse ? (
-                // Уже откликался как мастер — не CTA, а статус с переходом к
-                // своему отклику (через переключение роли).
-                <MyResponseBadgeCTA userId={userId} />
-              ) : (
-                <SwitchToMasterCTA userId={userId} />
-              )
-            ) : (
-              <BecomeMasterCTA orderId={id} />
-            )
-          ) : null}
         </ScrollView>
       )}
 
@@ -432,178 +415,8 @@ export default function OrderDetailScreen() {
 }
 
 // ============================================================================
-// MyResponseBadgeCTA — карточка-статус для dual-role юзера, который СМОТРИТ
-// чужой заказ в client-режиме, но КАК МАСТЕР уже откликался на этот заказ.
-// Вместо приглашения «Откликнуться» показываем «Вы откликнулись» + кнопку
-// перейти к существующему отклику (one-tap переключение в master-режим →
-// MasterResponseSection автоматически появится с уже отправленным откликом).
-// Фидбэк владельца 2026-05-27: «как мастер я уже откликнулся, не надо звать
-// откликаться снова».
 // ============================================================================
-
-function MyResponseBadgeCTA({ userId }: { userId: string }) {
-  const setActiveRole = useSetActiveRole();
-
-  const handlePress = () => {
-    if (setActiveRole.isPending) return;
-    // Импульс на тапе, как у смены таба/сегмента — переключение роли ближе
-    // к выбору режима, чем к отдельной операции (docs/IOS_FOUNDATION.md §5.5).
-    hapticSelection();
-    setActiveRole.mutate(
-      { userId, role: "master" },
-      {
-        onError: (e) => {
-          Alert.alert(
-            "Не удалось переключить роль",
-            e instanceof Error ? e.message : "Попробуйте позже.",
-          );
-        },
-      },
-    );
-  };
-
-  return (
-    <View className="mt-8 mx-5 rounded-xl border border-hairline bg-canvas-soft p-5">
-      <View className="self-start rounded-pill bg-accent-soft px-3 py-1.5">
-        <AppText weight="semibold" className="text-caption text-accent">
-          Вы откликнулись
-        </AppText>
-      </View>
-      <AppText weight="semibold" className="mt-3 text-title-md text-ink">
-        Отклик уже отправлен
-      </AppText>
-      <AppText className="mt-2 text-body-sm text-mute">
-        Откройте свой отклик, чтобы посмотреть статус и продолжить общение с клиентом.
-      </AppText>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel="Перейти к моему отклику, переключиться в режим исполнителя"
-        onPress={handlePress}
-        disabled={setActiveRole.isPending}
-        className="mt-4 min-h-12 flex-row items-center justify-center rounded-md border border-hairline bg-canvas active:opacity-70"
-      >
-        <AppText weight="semibold" className="text-button text-ink">
-          {setActiveRole.isPending ? "Переключаем…" : "Перейти к отклику"}
-        </AppText>
-      </Pressable>
-    </View>
-  );
-}
-
 // ============================================================================
-// SwitchToMasterCTA — карточка для DUAL-ROLE юзера (is_master=true), который
-// сейчас в клиент-режиме (active_role='client') смотрит чужой заказ.
-//
-// Принципиально отличается от BecomeMasterCTA: онбординг проходить не нужно,
-// мастер-профиль уже есть. One-tap switch → активируется master-режим →
-// useUserRecord инвалидируется → MasterResponseSection появится автоматически
-// в том же рендере (страница останется на месте).
-//
-// Sprint 2026-05-20: «если он уже мастер, его переключают на мастер, ну и
-// откликаться может» — фидбэк юзера.
-// ============================================================================
-
-function SwitchToMasterCTA({ userId }: { userId: string }) {
-  const setActiveRole = useSetActiveRole();
-
-  const handlePress = () => {
-    if (setActiveRole.isPending) return;
-    // Импульс на тапе, как у смены таба/сегмента — переключение роли ближе
-    // к выбору режима, чем к отдельной операции (docs/IOS_FOUNDATION.md §5.5).
-    hapticSelection();
-    setActiveRole.mutate(
-      { userId, role: "master" },
-      {
-        onError: (e) => {
-          Alert.alert(
-            "Не удалось переключить роль",
-            e instanceof Error ? e.message : "Попробуйте позже.",
-          );
-        },
-      },
-    );
-  };
-
-  return (
-    <View className="mt-8 mx-5 rounded-xl border border-hairline bg-canvas-soft p-5">
-      <AppText weight="semibold" className="text-title-md text-ink">
-        Откликнуться на задание
-      </AppText>
-      <AppText className="mt-2 text-body-sm text-mute">
-        Переключим вас в режим исполнителя — после этого появится форма отклика.
-      </AppText>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel="Откликнуться, переключиться в режим исполнителя"
-        onPress={handlePress}
-        disabled={setActiveRole.isPending}
-        className={`mt-4 h-12 flex-row items-center justify-center rounded-md px-5 ${
-          setActiveRole.isPending ? "bg-surface-3" : "bg-primary active:opacity-80"
-        }`}
-      >
-        <AppText
-          weight="semibold"
-          className={`text-button ${setActiveRole.isPending ? "text-muted-soft" : "text-on-primary"}`}
-        >
-          {setActiveRole.isPending ? "Переключаем…" : "Откликнуться"}
-        </AppText>
-      </Pressable>
-    </View>
-  );
-}
-
-// ============================================================================
-// BecomeMasterCTA — карточка для клиента на чужом заказе
-// «Стать мастером и откликнуться». Запоминает return-URL и ведёт на onboarding.
-// ============================================================================
-
-function BecomeMasterCTA({ orderId }: { orderId: string }) {
-  const router = useRouter();
-  const { session } = useAuthSession();
-  const userId = session?.user?.id;
-
-  const handlePress = () => {
-    // Запоминаем куда вернуться после онбординга (consume в master-photo.tsx).
-    useAuthReturnUrlStore.getState().requestPerformerOnboarding(`/orders/${orderId}`);
-    if (!userId) {
-      // Гость — сначала вход/регистрация. Сохранённый performer-intent ведёт
-      // прямо в профиль исполнителя, не заставляя проходить клиентский wizard.
-      router.push("/(auth)/phone" as never);
-    } else {
-      // Залогинен как клиент → СРАЗУ на первый шаг мастер-онбординга, минуя
-      // экран выбора роли. Why: role.tsx редиректит на /(tabs) любого, у кого
-      // onboarding_completed_at уже заполнен (а у действующего клиента он
-      // заполнен) — поэтому через role путь «стать мастером» обрывался у
-      // существующих клиентов (баг 2026-05-21). master-profile/categories/photo
-      // guard'ов на onboarding_completed_at не имеют; финальный шаг
-      // finalize_master_onboarding ставит is_master+active_role=master и
-      // возвращает на заказ через returnUrl.
-      router.push("/(onboarding)/master-profile" as never);
-    }
-  };
-
-  return (
-    <View className="mt-8 mx-5 rounded-xl border border-hairline bg-canvas-soft p-5">
-      <AppText weight="semibold" className="text-title-md text-ink">
-        Хотите взять это задание?
-      </AppText>
-      <AppText className="mt-2 text-body-sm text-mute">
-        Создайте профиль исполнителя — мы вернём вас сюда после регистрации.
-      </AppText>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel="Стать исполнителем и откликнуться"
-        onPress={handlePress}
-        className="mt-4 min-h-12 flex-row items-center justify-center rounded-md bg-primary active:opacity-80 px-5"
-      >
-        <AppText weight="semibold" className="text-button text-on-primary">
-          Стать исполнителем и откликнуться
-        </AppText>
-      </Pressable>
-    </View>
-  );
-}
-
 // ============================================================================
 // CloseOrderHint — баннер «Нашли мастера? Закройте заказ».
 // Показывается клиенту-владельцу, когда:

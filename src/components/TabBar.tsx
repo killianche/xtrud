@@ -42,8 +42,10 @@ import { useThemeColors } from "@/lib/use-theme-color";
 // Порядок реальных таб-роутов в навбаре. `cases` и `favorites` в этот список
 // намеренно не входят — они всегда `href: null` (см. `(tabs)/_layout.tsx`) и
 // открываются строками из /profile, а не из нижнего меню.
-const MASTER_TAB_ORDER = ["index", "find", "orders", "profile"] as const;
-const CLIENT_TAB_ORDER = ["index", "orders", "profile"] as const;
+// Один набор вкладок на всех (DECISION владельца 2026-09-01). Раньше состав
+// зависел от active_role: клиент не видел вкладку «Найти задание» и, чтобы
+// откликнуться, должен был сначала переключить режим.
+const TAB_ORDER = ["index", "find", "orders", "profile"] as const;
 const TAB_HEIGHT = 52; // icon-only — ужали с 60 (был запас под текст-лейбл)
 const isWeb = Platform.OS === "web";
 
@@ -63,13 +65,13 @@ export function TabBar({ state, descriptors, navigation }: BottomTabBarProps) {
 
   const { session } = useAuthSession();
   const { data: user } = useUserRecord(session?.user?.id);
-  const isMasterRole = user?.active_role === "master";
+  const _isMasterRole = user?.active_role === "master";
 
   // Route policy is the source of truth: only actual tab roots show the bar.
   // The legacy owner flag remains as an additional lock during transitions.
   if (tabBarHidden || shouldHideTabBarForPath(pathname)) return null;
 
-  const order = isMasterRole ? MASTER_TAB_ORDER : CLIENT_TAB_ORDER;
+  const order = TAB_ORDER;
   const visibleRoutes = order
     .map((name) => state.routes.find((r) => r.name === name))
     .filter((r): r is NonNullable<typeof r> => Boolean(r));

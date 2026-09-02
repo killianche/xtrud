@@ -40,7 +40,7 @@ import {
   WarningCircle,
 } from "phosphor-react-native";
 import type { RefObject } from "react";
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Animated, type FlatList, Pressable, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
@@ -82,12 +82,75 @@ export default function OrdersScreen() {
   const { session } = useAuthSession();
   const userId = session?.user?.id;
   const { data: user } = useUserRecord(userId);
-  const activeRole = user?.active_role ?? "client";
+  // Раньше экран выбирался по active_role, и человек видел ровно половину
+  // своей жизни в приложении: выложивший задание не видел своих откликов, и
+  // наоборот. Переключиться можно было только сменой режима.
+  //
+  // Режимов больше нет (DECISION владельца 2026-09-01), поэтому оба списка
+  // живут на одном экране и переключаются сегментами. Это навигация внутри
+  // экрана, а не вопрос «кто вы сейчас».
+  //
+  // Отклики показываем первыми, только если своих заданий нет вовсе: у
+  // человека, который пришёл откликаться, пустой список заданий не должен
+  // быть первым, что он видит.
+  const { data: myOrders } = useMyOrders(userId);
+  const [tab, setTab] = useState<"orders" | "responses" | null>(null);
+  const resolved = tab ?? (myOrders && myOrders.length === 0 ? "responses" : "orders");
 
-  if (activeRole === "master") {
-    return <MasterOrdersView userId={userId} />;
-  }
-  return <ClientOrdersView userId={userId} />;
+  return (
+    <>
+      <OrdersSegments value={resolved} onChange={setTab} />
+      {resolved === "responses" ? (
+        <MasterOrdersView userId={userId} />
+      ) : (
+        <ClientOrdersView userId={userId} />
+      )}
+    </>
+  );
+}
+
+/** Сегменты «Мои задания» / «Мои отклики». */
+function OrdersSegments({
+  value,
+  onChange,
+}: {
+  value: "orders" | "responses";
+  onChange: (v: "orders" | "responses") => void;
+}) {
+  const insets = useSafeAreaInsets();
+  return (
+    <View className="bg-canvas px-5 pb-2" style={{ paddingTop: insets.top + 8 }}>
+      <View className="flex-row gap-1 rounded-lg bg-canvas-soft p-1">
+        {(
+          [
+            ["orders", "Мои задания"],
+            ["responses", "Мои отклики"],
+          ] as const
+        ).map(([key, label]) => {
+          const active = value === key;
+          return (
+            <Pressable
+              key={key}
+              accessibilityRole="button"
+              accessibilityLabel={label}
+              accessibilityState={{ selected: active }}
+              onPress={() => onChange(key)}
+              className={`min-h-11 flex-1 items-center justify-center rounded-md ${
+                active ? "bg-canvas" : ""
+              }`}
+            >
+              <AppText
+                weight={active ? "semibold" : "medium"}
+                className={`text-body-sm ${active ? "text-ink" : "text-mute"}`}
+              >
+                {label}
+              </AppText>
+            </Pressable>
+          );
+        })}
+      </View>
+    </View>
+  );
 }
 
 interface ClientOrdersViewProps {

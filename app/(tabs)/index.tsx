@@ -24,7 +24,7 @@ import { useRouter } from "expo-router";
 import { CaretRight, Drop, Lightning, Sparkle } from "phosphor-react-native";
 import type { RefObject } from "react";
 import { useEffect, useRef } from "react";
-import { Animated, FlatList, Pressable, ScrollView, View } from "react-native";
+import { Animated, FlatList, Pressable, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
 import { Avatar, Card, Skeleton } from "@/components/ui";
@@ -42,8 +42,6 @@ import {
   effectiveStatus,
   isAvailabilityVisible,
 } from "@/features/master-view/availability";
-import { MasterCinematicHero } from "@/features/master-view/MasterCinematicHero";
-import { MasterHomeContent } from "@/features/master-view/MasterHomeContent";
 import { useRecordMasterView } from "@/features/master-view/use-record-view";
 import { useTopMasters } from "@/features/master-view/use-top-masters";
 import { usePullToRefresh } from "@/hooks/use-pull-to-refresh";
@@ -60,17 +58,19 @@ export default function HomeTab() {
   const userId = session?.user?.id;
   const { data: user } = useUserRecord(userId);
 
-  const activeRole = user?.active_role ?? "client";
   const refresh = usePullToRefresh();
 
-  if (activeRole === "master" && userId) {
-    // Мастер: фото-герой (логотип + лимит откликов + город + приветствие +
-    // статистика поверх фото) от самого верха, затем контент на canvas.
-    // Контент мастера — фиксированный набор блоков (не растёт от данных),
-    // поэтому виртуализация ему не нужна (docs/IOS_FOUNDATION.md §6.1).
-    return <MasterHome userId={userId} insets={insets} refresh={refresh} />;
-  }
-
+  // Одна главная на всех. DECISION владельца 2026-09-01: есть аккаунт, с него
+  // можно выложить задание и откликнуться на чужое; отдельного «режима
+  // мастера» нет.
+  //
+  // Развилка по active_role была не просто дублированием экрана: чтобы
+  // откликнуться, человеку приходилось СНАЧАЛА переключить режим, иначе он не
+  // видел нужной кнопки. Это и была та тяжесть, которую владелец просил убрать.
+  //
+  // Экран мастера ничего уникального не терял: его лента открытых заданий —
+  // это блок «Актуальные задания», который есть здесь, а «Найти задание» —
+  // отдельная вкладка нижнего меню.
   return (
     <ClientHome
       userId={userId}
@@ -93,42 +93,6 @@ export default function HomeTab() {
 // ограничен ~10 карточками (см. её комментарий), не растёт от прокрутки
 // пользователя — обычный ScrollView, не FlashList.
 // ============================================================================
-
-interface MasterHomeProps {
-  userId: string;
-  insets: ReturnType<typeof useSafeAreaInsets>;
-  refresh: ReturnType<typeof usePullToRefresh>;
-}
-
-function MasterHome({ userId, insets, refresh }: MasterHomeProps) {
-  // Tap-on-active-tab → scroll to top (стандартный mobile-pattern).
-  // TabBar trigger'ит счётчик при тапе на focused-таб «Главная».
-  const scrollRef = useRef<ScrollView>(null);
-  const resetCounter = useTabScrollResetCounter("index");
-  useEffect(() => {
-    if (resetCounter > 0) scrollViewToTop(scrollRef);
-  }, [resetCounter]);
-
-  return (
-    <ScrollView
-      ref={scrollRef}
-      className="flex-1 bg-canvas"
-      contentContainerStyle={{
-        // Фото-hero идёт от самого верха экрана (под статус-бар), поэтому НЕ
-        // добавляем paddingTop — MasterCinematicHero сам учитывает inset.
-        paddingTop: 0,
-        paddingBottom: insets.bottom + 24,
-      }}
-      showsVerticalScrollIndicator={false}
-      refreshControl={refresh.control}
-    >
-      <MasterCinematicHero userId={userId} />
-      <View className="mt-3">
-        <MasterHomeContent userId={userId} />
-      </View>
-    </ScrollView>
-  );
-}
 
 // ============================================================================
 // Client home — Hero + Featured + Categories + Top masters.

@@ -42,40 +42,40 @@ export default function TabsLayout() {
   const { session } = useAuthSession();
   const userId = session?.user?.id;
   const { data: user } = useUserRecord(userId);
-  const isClientRole = (user?.active_role ?? "client") === "client";
-  const isMasterRole = !isClientRole;
+  // Роли больше нет (DECISION владельца 2026-09-01): счётчики считаются для
+  // всех, потому что один и тот же человек и выкладывает задания, и
+  // откликается на чужие. Раньше каждый счётчик был привязан к режиму, и
+  // человек в «режиме мастера» не видел, что на его собственное задание
+  // пришёл отклик.
+  //
+  // Цена названа честно: два запроса и две realtime-подписки на каждого
+  // вошедшего вместо одной. Это плата за то, что человек больше не пропускает
+  // половину того, что с ним происходит.
 
   // Отмечаем онлайн-активность (рейтинг мастеров, Этап 2). Троттл внутри хука.
   useTouchLastActive(!!userId);
 
-  useRealtimeMyResponses(isClientRole ? userId : null);
+  useRealtimeMyResponses(userId ?? null);
 
-  // Client-side: unread responses on my orders.
-  const { data: unreadResponses = 0 } = useUnreadResponsesCount(isClientRole ? userId : null);
+  // Непрочитанные отклики на мои задания.
+  const { data: unreadResponses = 0 } = useUnreadResponsesCount(userId ?? null);
 
-  // Master-side: unread feed orders by my L2 categories since last_seen_feed_at.
-  const { data: myCats } = useMyMasterCategories(isMasterRole ? userId : undefined);
+  // Непрочитанные задания в ленте по моим категориям, если они заданы.
+  const { data: myCats } = useMyMasterCategories(userId);
   const masterL2Ids = myCats?.map((c) => c.l2_id) ?? [];
   const lastSeenFeedAt = user?.last_seen_feed_at ?? null;
   useRealtimeFeed({
-    userId: isMasterRole ? userId : null,
+    userId: userId ?? null,
     l2Ids: masterL2Ids,
   });
   const { data: unreadFeed = 0 } = useUnreadFeedCount({
-    userId: isMasterRole ? userId : null,
+    userId: userId ?? null,
     l2Ids: masterL2Ids,
     lastSeenAt: lastSeenFeedAt,
   });
 
-  // «Мои задания» (orders) — бейдж только у клиента (непрочитанные отклики на
-  // его заказы). У мастера «Мои задания» — список собственных откликов, там
-  // непрочитанного не бывает.
-  const ordersBadge = isClientRole ? badgeLabel(unreadResponses) : undefined;
-  // «Найти задание» (find) — бейдж только у мастера (непрочитанные заявки в
-  // ленте по его категориям). Перенесён сюда с мёртвого редиректящего таба
-  // orders (2026-08-30): раньше висел там, хотя мастер видел заявки не на
-  // «Заказах», а в поиске.
-  const findBadge = isMasterRole ? badgeLabel(unreadFeed) : undefined;
+  const ordersBadge = badgeLabel(unreadResponses);
+  const findBadge = badgeLabel(unreadFeed);
 
   const tc = useThemeColors(["error", "canvas", "hairline", "ink"]);
   // Бейдж всегда на цветном фоне → текст фиксировано белый в обоих режимах.
@@ -118,7 +118,7 @@ export default function TabsLayout() {
           name="find"
           options={{
             title: "Найти задание",
-            href: isMasterRole ? undefined : null,
+            // Вкладка видна всем: откликнуться может любой аккаунт.
             tabBarIcon: ({ color, focused }) => (
               <MagnifyingGlass
                 color={iconColor(color)}

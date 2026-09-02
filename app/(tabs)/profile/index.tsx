@@ -33,7 +33,6 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
 import { Avatar } from "@/components/Avatar";
 import { ScreenHeader, Skeleton } from "@/components/ui";
-import { RoleSwitcher } from "@/features/auth/RoleSwitcher";
 import { useAuthSession } from "@/features/auth/use-auth-session";
 import { useUserRecord } from "@/features/auth/use-user-record";
 import { MasterPublishChecklist } from "@/features/master-view/MasterPublishChecklist";
@@ -175,7 +174,11 @@ export default function ProfileScreen() {
   // (наличие master-профиля в БД). Мастер, переключившийся на «Клиент»
   // через role-switcher, видит только client-секции; обратно — все
   // master-кнопки возвращаются (фидбек user 2026-05-16).
-  const isClient = user.active_role === "client";
+  // Разделы мастера показываются по заполненности профиля, а не по режиму:
+  // режимов больше нет (DECISION владельца 2026-09-01). Информация о себе —
+  // необязательное дополнение к аккаунту, и если человек её заполнил, он
+  // видит соответствующие разделы всегда.
+  const isClient = !user.is_master;
 
   return (
     <View className="flex-1 bg-canvas" style={{ paddingTop: insets.top }}>
@@ -265,14 +268,7 @@ export default function ProfileScreen() {
           {/* P1-8: переключатель ролей для dual-role users.
               Видим только если у пользователя is_master И is_client.
               Позиция identична в обоих режимах — не прыгает при switch. */}
-          <View className="mt-5 w-full max-w-xs">
-            <RoleSwitcher
-              userId={user.id}
-              currentRole={user.active_role}
-              isMaster={user.is_master}
-              isClient={user.is_client}
-            />
-          </View>
+          <View className="mt-5 w-full max-w-xs"></View>
 
           {/* «Стать мастером» перенесён ниже (под карточку «Редактировать
               профиль») и сделан тихой ghost-ссылкой — фидбэк владельца
@@ -321,7 +317,7 @@ export default function ProfileScreen() {
         {/* Master-only sections — видим только когда active_role='master'.
             Если мастер переключился на client-режим (role-switcher выше) —
             секции скрываются, остаётся client-edit. */}
-        {user.is_master && user.active_role === "master" && (
+        {user.is_master && (
           <>
             {/* Edit master profile shortcut */}
             <Pressable

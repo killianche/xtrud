@@ -45,7 +45,6 @@ import { type PickerOption, PickerSheet } from "@/components/ui";
 import { XtrudWordmark } from "@/components/XtrudWordmark";
 import { useAuthSession } from "@/features/auth/use-auth-session";
 import { useUserRecord } from "@/features/auth/use-user-record";
-import { RoleSwitchPill } from "@/features/master-view/RoleSwitchPill";
 import { useReducedMotion } from "@/hooks/use-reduced-motion";
 import { useAppWidth } from "@/lib/use-app-width";
 import { useThemeColor } from "@/lib/use-theme-color";
@@ -84,7 +83,7 @@ export function CinematicHero({ onCreateTask }: { onCreateTask: () => void }) {
   const { session } = useAuthSession();
   const currentUserId = session?.user?.id;
   const { data: currentUser } = useUserRecord(currentUserId);
-  const showRolePill = !!currentUser?.is_master && !!currentUserId;
+  const _showRolePill = !!currentUser?.is_master && !!currentUserId;
 
   // По одному Animated.Value на каждое фото. Все начинают с 0; первое
   // фото плавно появляется в эффекте ниже (fade-in 0→1 при монтировании
@@ -208,16 +207,10 @@ export function CinematicHero({ onCreateTask }: { onCreateTask: () => void }) {
 
         {/* ── Шапка поверх фото ──
             Ряд 1: логотип xtrud СЛЕВА | (опц.) pill «Клиент / Мастер» СПРАВА —
-            показывается только если у этого клиента есть мастер-аккаунт
-            (dual-role), тогда он может одним тапом переключиться на главную
-            мастера. У чистых клиентов справа пусто.
             Ряд 2: город под логотипом. */}
         <View className="absolute left-0 right-0 px-4" style={{ top: insets.top + 6 }}>
           <View className="flex-row items-center justify-between">
             <XtrudWordmark size={30} color={ON_PHOTO} />
-            {showRolePill && currentUserId ? (
-              <RoleSwitchPill userId={currentUserId} currentRole="client" isClient={true} />
-            ) : null}
           </View>
           <Pressable
             accessibilityRole="button"

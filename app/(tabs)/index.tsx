@@ -34,9 +34,9 @@ import {
   useVisibleCategories,
   type VisibleCategory,
 } from "@/features/categories/use-visible-categories";
+import { ActiveOrdersShowcase } from "@/features/home/ActiveOrdersShowcase";
 import { CinematicHero } from "@/features/home/CinematicHero";
 import { PromoBannerCarousel } from "@/features/home/PromoBannerCarousel";
-import { QuickServices } from "@/features/home/QuickServices";
 import {
   AVAILABILITY_DOT,
   effectiveStatus,
@@ -75,6 +75,7 @@ export default function HomeTab() {
 
   return (
     <ClientHome
+      userId={userId}
       insets={insets}
       refresh={refresh}
       onCategoryPress={(id) => router.push(`/category/${id}` as never)}
@@ -150,6 +151,7 @@ function MasterHome({ userId, insets, refresh }: MasterHomeProps) {
 // ============================================================================
 
 interface ClientHomeProps {
+  userId: string | undefined;
   insets: ReturnType<typeof useSafeAreaInsets>;
   refresh: ReturnType<typeof usePullToRefresh>;
   onCategoryPress: (id: string) => void;
@@ -166,6 +168,7 @@ const CATEGORY_SCREEN_PADDING = 20;
 const CATEGORY_CONTAINER_PADDING = CATEGORY_SCREEN_PADDING - CATEGORY_TILE_GUTTER;
 
 function ClientHome({
+  userId,
   insets,
   refresh,
   onCategoryPress,
@@ -219,7 +222,7 @@ function ClientHome({
       ListHeaderComponent={
         <View style={gridCancelStyle}>
           <CinematicHero onCreateTask={() => onDescribeTask()} />
-          <QuickServices onCreateTask={onDescribeTask} />
+          <ActiveOrdersShowcase userId={userId} />
           {/* Блок «Часто ищут» (FeaturedRequests) скрыт по фидбэку юзера 2026-05-21.
               Компонент сохранён ниже — вернуть можно раскомментировав строку:
               <FeaturedRequests onCategoryPress={onCategoryPress} /> */}

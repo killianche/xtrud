@@ -52,9 +52,29 @@ describe("responseFormSchema", () => {
     }
   });
 
-  it("rejects a message made only of whitespace", () => {
+  it("принимает отклик без сообщения", () => {
+    // DECISION владельца 2026-09-01: отклик — это «готов» плюс цена, срок и
+    // контакты. Раньше требовалось минимум 10 символов текста, и проверка
+    // держала именно тот контракт.
+    expect(responseFormSchema.safeParse({ ...validResponse, message: "" }).success).toBe(true);
+    expect(responseFormSchema.safeParse({ ...validResponse, message: "     " }).success).toBe(true);
+  });
+
+  it("не принимает отклик без срока", () => {
+    // Срок стал обязательным вместо текста: без него клиент не может выбрать
+    // между откликами, а «когда сможете» — половина решения.
+    const result = responseFormSchema.safeParse({ ...validResponse, leadTime: "" });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues).toContainEqual(expect.objectContaining({ path: ["leadTime"] }));
+    }
+  });
+
+  it("не принимает слишком длинное сообщение", () => {
+    // Верхняя граница осталась и в схеме, и в базе (миграция 0146):
+    // это защита от мегабайта текста, а не продуктовое требование.
     expect(
-      responseFormSchema.safeParse({ ...validResponse, message: "            " }).success,
+      responseFormSchema.safeParse({ ...validResponse, message: "x".repeat(1001) }).success,
     ).toBe(false);
   });
 

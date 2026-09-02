@@ -3,7 +3,11 @@ import { orderPriceKindOptions } from "@/features/orders/order-schema";
 
 export const responseFormSchema = z
   .object({
-    message: z.string().trim().min(10, "Минимум 10 символов").max(1000, "Максимум 1000 символов"),
+    // Текст необязателен (DECISION владельца 2026-09-01): отклик — это
+    // «я готов сделать» плюс цена, срок и контакты. Раньше требовалось
+    // минимум 10 символов, и это же ограничение стояло в базе; снято
+    // миграцией 0146, иначе форма упиралась бы в 400 при отправке.
+    message: z.string().trim().max(1000, "Максимум 1000 символов"),
     priceKind: z.enum(orderPriceKindOptions),
     priceValue: z
       .number()
@@ -11,7 +15,13 @@ export const responseFormSchema = z
       .nonnegative()
       .max(2_147_483_647, "Слишком большая сумма")
       .nullable(),
-    leadTime: z.string().max(100, "Максимум 100 символов"),
+    // Срок обязателен: без него клиент не может выбрать между откликами,
+    // а «когда сможете» — половина решения. Раньше поле было необязательным.
+    leadTime: z
+      .string()
+      .trim()
+      .min(1, "Укажите, когда сможете взяться")
+      .max(100, "Максимум 100 символов"),
   })
   .superRefine((values, context) => {
     if (values.priceKind !== "negotiable" && (!values.priceValue || values.priceValue <= 0)) {

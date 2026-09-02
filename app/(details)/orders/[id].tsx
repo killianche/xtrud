@@ -1049,7 +1049,17 @@ function ClientMasterResponseCard({
   rejected,
 }: ClientMasterResponseCardProps) {
   const router = useRouter();
-  const [contactsRequested, setContactsRequested] = useState(false);
+  // Контакты — ЧАСТЬ отклика, а не отдельное действие (DECISION владельца
+  // 2026-09-01): мастер отправляет «готов» с ценой, сроком и своими
+  // контактами, а клиент связывается сам через WhatsApp или звонок.
+  // Раньше здесь стояло false, и телефон подгружался только по нажатию
+  // «Показать контакты» — лишний шаг между клиентом и исполнителем.
+  //
+  // Цена: два запроса на карточку отклика вместо нуля. Измерено на живых
+  // данных — в среднем 1.5 отклика на задание, максимум 3, то есть до шести
+  // запросов на экран. Приемлемо; если откликов станет много, это надо будет
+  // заменить одним пакетным запросом, а не возвращать кнопку.
+  const [contactsRequested, setContactsRequested] = useState(true);
   const tc = useThemeColors(["ink", "mute", "warning", "on-primary"]);
 
   // Рейтинг мастера (общий) — чтобы клиент сравнивал мастеров не только по цене.
@@ -1398,7 +1408,11 @@ function MasterResponseSection({
       if (isBusyWithdraw) return;
       const confirmed = await confirmAsync({
         title: "Отозвать отклик?",
-        message: "Клиент получит уведомление. Восстановить отклик нельзя — можно создать новый.",
+        // Прежний текст обещал «можно создать новый». База это запрещает:
+        // UNIQUE(order_id, master_id) остаётся после отзыва, строка не
+        // удаляется, и форма больше не возвращается. Интерфейс не должен
+        // обещать того, чего продукт не делает.
+        message: "Клиент получит уведомление. Откликнуться на это задание снова будет нельзя.",
         confirmText: "Отозвать",
         cancelText: "Отмена",
       });
@@ -1675,15 +1689,15 @@ function MasterResponseSection({
             render={({ field: { value, onChange, onBlur } }) => (
               <View>
                 <AppText weight="medium" className="text-body-sm text-ink">
-                  Сообщение клиенту
+                  Сообщение клиенту — если хотите
                 </AppText>
                 <TextInput
                   accessibilityLabel="Сообщение заказчику"
-                  accessibilityHint="Минимум 10 символов"
+                  accessibilityHint="Необязательно, до 1000 символов"
                   value={value}
                   onBlur={onBlur}
                   onChangeText={onChange}
-                  placeholder="Здравствуйте, готов взять. Опыт в этой задаче…"
+                  placeholder="Например: делал такое, есть свой инструмент"
                   placeholderTextColor={tc["muted-soft"]}
                   multiline
                   numberOfLines={4}

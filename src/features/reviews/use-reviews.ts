@@ -139,8 +139,13 @@ export function useSubmitMasterReview(authorId: string | undefined) {
       });
       // Профиль мастера держит rating_overall_avg/count — инвалидируем,
       // чтобы шапка обновилась после успешной отправки.
-      queryClient.invalidateQueries({ queryKey: ["master-public-profile", targetId] });
-      queryClient.invalidateQueries({ queryKey: ["master-reviews", targetId] });
+      //
+      // Ключи были неверными: инвалидировались "master-public-profile" и
+      // "master-reviews", которых в коде НЕТ НИ ОДНОГО. То есть после отправки
+      // отзыва рейтинг в шапке и список отзывов не обновлялись вовсе.
+      // Настоящие ключи — use-master-public.ts:47 и :164.
+      queryClient.invalidateQueries({ queryKey: ["master-public", targetId] });
+      queryClient.invalidateQueries({ queryKey: ["reviews-for-target", targetId] });
     },
   });
 }

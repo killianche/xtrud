@@ -317,12 +317,6 @@ export default function ProfileScreen() {
         {/* Sprint 2026-05-20: показываем ТОЛЬКО когда мастер реально в master-режиме.
             Раньше условие user.is_master=true показывало карточку и в client-режиме
             у dual-role пользователей. */}
-        {user.is_master &&
-        user.active_role === "master" &&
-        publishProgress &&
-        !publishProgress.isReady ? (
-          <MasterPublishChecklist progress={publishProgress} />
-        ) : null}
 
         {/* Master-only sections — видим только когда active_role='master'.
             Если мастер переключился на client-режим (role-switcher выше) —
@@ -405,6 +399,22 @@ export default function ProfileScreen() {
             </Pressable>
           </>
         )}
+
+        {/* Подсказка о публикации профиля стоит ПОСЛЕ меню, а не над ним.
+            Её данные приходят отдельным запросом позже, чем запись
+            пользователя, — а над меню карточка вставлялась уже после того, как
+            меню отрисовано, и сдвигала его вниз. Это и была жалоба владельца
+            «меню появляется наверху, потом дёргается вниз».
+
+            Скелет-заглушку не делаем: карточка составная (заголовок, прогресс,
+            три ряда, сноска), и несовпадающий по высоте скелет дал бы тот же
+            рывок меньшего размера — в этом проекте такое уже случалось. */}
+        {user.is_master &&
+        user.active_role === "master" &&
+        publishProgress &&
+        !publishProgress.isReady ? (
+          <MasterPublishChecklist progress={publishProgress} />
+        ) : null}
 
         {/* Theme — единый segmented (3-button row) для клиента и мастера.
             Раньше у мастера был stacked 3-row ThemeSwitcher (огромный, занимал

@@ -5,7 +5,7 @@ import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 import { useEffect, useState } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
-import { SafeAreaProvider } from "react-native-safe-area-context";
+import { initialWindowMetrics, SafeAreaProvider } from "react-native-safe-area-context";
 import "react-native-reanimated";
 import { AppErrorBoundary } from "@/components/AppErrorBoundary";
 import { needsMasterFinalization } from "@/features/auth/master-onboarding-recovery";
@@ -234,7 +234,11 @@ export default function RootLayout() {
     <AppErrorBoundary>
       <GestureHandlerRootView style={{ flex: 1 }}>
         <QueryClientProvider client={queryClient}>
-          <SafeAreaProvider>
+          {/* initialMetrics обязателен: без него SafeAreaContext держит insets
+              равными null и НЕ РЕНДЕРИТ дерево вообще, пока не придёт нативное
+              событие вставок — это лишний пустой кадр на каждом холодном
+              старте. initialWindowMetrics доступен синхронно. */}
+          <SafeAreaProvider initialMetrics={initialWindowMetrics}>
             <AuthGate>
               <NavHistoryTracker />
               <Stack

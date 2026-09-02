@@ -99,7 +99,7 @@ export default function MasterPublicScreen() {
   // вытесняет всё ниже фолда. Lazyweb-паттерн (Airbnb/Booking listing detail)
   // — landscape 16:9 с потолком 520px. Mobile сохраняет портретные 4:5.
   const isDesktopHero = viewportWidth >= 768;
-  const heroAspect = isDesktopHero ? 16 / 9 : PORTFOLIO_RATIO;
+  const heroAspect = isDesktopHero ? HERO_RATIO : PORTFOLIO_RATIO;
 
   const { session } = useAuthSession();
   const currentUserId = session?.user?.id;
@@ -403,8 +403,12 @@ export default function MasterPublicScreen() {
         ) : (
           <View
             style={{
+              // heroAspect, а НЕ HERO_RATIO: скелет рисует шапку этой же
+              // пропорцией. Пока здесь стояло 16/9, а в скелете 4/5, экран
+              // после загрузки прыгал примерно на 270 точек — но только у
+              // мастеров БЕЗ портфолио, поэтому баг ловился не всегда.
               width: "100%",
-              aspectRatio: HERO_RATIO,
+              aspectRatio: heroAspect,
               position: "relative",
             }}
             className="bg-canvas-soft-2"

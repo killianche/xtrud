@@ -156,7 +156,11 @@ export function useSetAvailability() {
     onSuccess: () => {
       // Invalidate всё что показывает мастера-меня (топ-мастера, my-profile и т.п.)
       queryClient.invalidateQueries({ queryKey: ["top-masters"] });
-      queryClient.invalidateQueries({ queryKey: ["my-master-profile"] });
+      // Ключа "my-master-profile" в коде нет: своя строка master_profiles
+      // читается под ["master-profile", userId] (профиль и редактор профиля).
+      // Прежний вызов был холостым — статус доступности на своём профиле
+      // после переключения не обновлялся.
+      queryClient.invalidateQueries({ queryKey: ["master-profile"] });
       queryClient.invalidateQueries({ queryKey: ["master-public"] });
       queryClient.invalidateQueries({ queryKey: ["masters-by-l2"] });
     },

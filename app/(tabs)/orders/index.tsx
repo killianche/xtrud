@@ -1,7 +1,7 @@
 /**
  * /(tabs)/orders — «Мои задания». Корень одноимённого таба для ОБЕИХ ролей,
  * содержимое разное:
- *   - Клиент → ClientOrdersView: свои заказы (Активные/История).
+ *   - Задания → ClientOrdersView: свои задания одним списком, открытые сверху.
  *   - Мастер → MasterOrdersView: свои отклики (единый список, было
  *     /orders/my-responses).
  *
@@ -29,13 +29,12 @@
  */
 
 import { FlashList, type FlashListRef } from "@shopify/flash-list";
-import { useLocalSearchParams, useNavigation, useRouter } from "expo-router";
+import { useNavigation, useRouter } from "expo-router";
 import {
   ArrowClockwise,
   ArrowRight,
   ChatCenteredText,
   ClipboardText,
-  ClockCounterClockwise,
   Plus,
   WarningCircle,
 } from "phosphor-react-native";
@@ -48,7 +47,6 @@ import { OrderRow } from "@/components/OrderRow";
 import { OrderRowsSkeleton } from "@/components/OrderRowsSkeleton";
 import { ScreenHeader } from "@/components/ui";
 import { useAuthSession } from "@/features/auth/use-auth-session";
-import { useUserRecord } from "@/features/auth/use-user-record";
 import { type OrderWithRefs, useMyOrders } from "@/features/orders/use-my-orders";
 import {
   historyResponseStatusLabel,
@@ -61,27 +59,13 @@ import { scrollViewToTop, useTabScrollResetCounter } from "@/lib/tab-scroll-rese
 import { useThemeColor, useThemeColors } from "@/lib/use-theme-color";
 import type { IconComponent } from "@/types/icon";
 
-type OrderTab = "active" | "done";
-
 // Открытые — только open. В новой classified-ads модели заказ не идёт в
 // in_progress/awaiting_confirmation (нет accept-flow), а disputed недостижим.
 const ACTIVE_STATUSES = new Set<string>(["open"]);
-// Архив — cancelled / expired + любой legacy-статус (in_progress / completed
-// / awaiting_confirmation / disputed / closed остались в БД).
-const DONE_STATUSES = new Set<string>([
-  "cancelled",
-  "expired",
-  "completed",
-  "in_progress",
-  "awaiting_confirmation",
-  "disputed",
-  "closed",
-]);
 
 export default function OrdersScreen() {
   const { session } = useAuthSession();
   const userId = session?.user?.id;
-  const { data: user } = useUserRecord(userId);
   // Раньше экран выбирался по active_role, и человек видел ровно половину
   // своей жизни в приложении: выложивший задание не видел своих откликов, и
   // наоборот. Переключиться можно было только сменой режима.
@@ -169,16 +153,16 @@ function ClientOrdersView({ userId }: ClientOrdersViewProps) {
   // и локальный state сбросился бы на «Активные» (баг, фидбэк 2026-05-21).
   // URL-параметр живёт в навигационном состоянии и переживает возврат с детали —
   // вкладка восстанавливается сама. Дефолт (нет параметра) — «Активные».
-  const params = useLocalSearchParams<{ tab?: string }>();
-  const tab: OrderTab = params.tab === "done" ? "done" : "active";
-  const setTab = (next: OrderTab) => router.setParams({ tab: next });
-
-  const { activeOrders, doneOrders } = useMemo(() => {
+  // Один список вместо вкладок «Активные / История» (DECISION владельца
+  // 2026-09-02: «просто мои задания и отклики»). Открытые — сверху, закрытые
+  // и истёкшие — ниже: статус и так виден плашкой на каждой карточке, отдельная
+  // вкладка ради него только прятала половину списка. Список откликов мастера
+  // пришёл к тому же ещё 2026-05-28.
+  const allOrders = useMemo(() => {
     const list = orders ?? [];
-    return {
-      activeOrders: list.filter((o) => ACTIVE_STATUSES.has(o.status as string)),
-      doneOrders: list.filter((o) => DONE_STATUSES.has(o.status as string)),
-    };
+    const open = list.filter((o) => ACTIVE_STATUSES.has(o.status as string));
+    const rest = list.filter((o) => !ACTIVE_STATUSES.has(o.status as string));
+    return [...open, ...rest];
   }, [orders]);
 
   // Tap-on-active-tab → scroll to top. scrollViewToTop поддерживает
@@ -194,8 +178,7 @@ function ClientOrdersView({ userId }: ClientOrdersViewProps) {
   // Список текущего таба — виртуализуется через FlashList (личная история
   // заказов растёт со временем, порог ≤15 для plain ScrollView из
   // docs/IOS_FOUNDATION.md §6.1 не гарантирован).
-  const currentOrders = tab === "active" ? activeOrders : doneOrders;
-  const hasItems = !isLoading && !error && currentOrders.length > 0;
+  const hasItems = !isLoading && !error && allOrders.length > 0;
 
   return (
     <View className="flex-1 bg-canvas" style={{ paddingTop: insets.top }}>
@@ -208,18 +191,10 @@ function ClientOrdersView({ userId }: ClientOrdersViewProps) {
         }}
       />
 
-      <TabsBar
-        tab={tab}
-        onChange={setTab}
-        activeCount={activeOrders.length}
-        doneCount={doneOrders.length}
-      />
-
       <FlashList
         style={{ flex: 1 }}
         ref={listRef}
-        data={hasItems ? currentOrders : []}
-        extraData={tab}
+        data={hasItems ? allOrders : []}
         keyExtractor={(o) => o.id}
         contentContainerStyle={{ paddingBottom: insets.bottom + 100 }}
         showsVerticalScrollIndicator={false}
@@ -255,19 +230,13 @@ function ClientOrdersView({ userId }: ClientOrdersViewProps) {
             <OrderRowsSkeleton count={5} />
           ) : error ? (
             <OrdersErrorState message={error.message} onRetry={() => refetch()} />
-          ) : tab === "active" ? (
-            <EmptyState
-              icon={ClipboardText}
-              title="Активных заданий нет"
-              hint="Опишите задачу — и мастера пришлют отклики с ценой и сроком."
-              ctaLabel="Разместить задание"
-              onCta={() => router.push("/orders/new" as never)}
-            />
           ) : (
             <EmptyState
-              icon={ClockCounterClockwise}
-              title="В истории пока пусто"
-              hint="Сюда переедут задания, которые вы закрыли или которые истекли."
+              icon={ClipboardText}
+              title="Заданий пока нет"
+              hint="Опишите задачу — и исполнители пришлют отклики с ценой и сроком."
+              ctaLabel="Разместить задание"
+              onCta={() => router.push("/orders/new" as never)}
             />
           )
         }
@@ -451,86 +420,7 @@ function EmptyActiveState({ accentColor, onPrimary, onFindOrders }: EmptyActiveS
 }
 
 // ============================================================================
-// TabsBar — segmented control. Активный таб подчёркнут ink-линией.
-// ============================================================================
-
-interface TabsBarProps {
-  tab: OrderTab;
-  onChange: (next: OrderTab) => void;
-  activeCount: number;
-  doneCount: number;
-}
-
-function TabsBar({ tab, onChange, activeCount, doneCount }: TabsBarProps) {
-  // Sprint 2026-05-20: убран таб «Черновики» — клиент публикует заказ сразу,
-  // без сохранения промежуточного состояния. Закрыть/удалить заказ — на
-  // detail-экране /orders/[id].
-  // Sprint 2026-05-21: «Открытые/Архив» → «Активные/История» (план §6).
-  const items: Array<{ id: OrderTab; label: string; count: number }> = [
-    { id: "active", label: "Активные", count: activeCount },
-    { id: "done", label: "История", count: doneCount },
-  ];
-
-  return (
-    <View className="flex-row border-b border-hairline px-2">
-      {items.map((it) => {
-        const isActive = it.id === tab;
-        return (
-          <Pressable
-            key={it.id}
-            accessibilityRole="tab"
-            accessibilityState={{ selected: isActive }}
-            onPress={() => onChange(it.id)}
-            className="flex-1 items-center justify-center pt-3 active:opacity-70"
-          >
-            {/* Label + count в одном блоке — underline ровно под этим блоком,
-                а не во всю ширину таба (Linear-стиль segmented control). */}
-            <View className="items-center">
-              <View className="flex-row items-center gap-1.5 pb-2.5">
-                <AppText
-                  weight={isActive ? "semibold" : "medium"}
-                  className={`text-body-md ${isActive ? "text-ink" : "text-mute"}`}
-                >
-                  {it.label}
-                </AppText>
-                {it.count > 0 ? (
-                  <View
-                    className={`min-w-5 items-center justify-center rounded-full px-1.5 py-0.5 ${
-                      isActive ? "bg-ink" : "bg-surface-2"
-                    }`}
-                  >
-                    <AppText
-                      weight="mono"
-                      className={`text-mono-caption ${isActive ? "text-on-primary" : "text-mute"}`}
-                    >
-                      {it.count}
-                    </AppText>
-                  </View>
-                ) : null}
-              </View>
-              {/* Underline точно под label-блоком (full width блока). */}
-              <View
-                className={`h-0.5 w-full rounded-full ${isActive ? "bg-ink" : "bg-transparent"}`}
-              />
-            </View>
-          </Pressable>
-        );
-      })}
-    </View>
-  );
-}
-
-// OrdersList (был общий компонент для активных/завершённых через .map() в
-// ScrollView) удалён 2026-08-30 — рендер строк теперь через renderItem
-// FlashList в OrdersScreen (виртуализация личной истории заказов).
-
-// DraftsSection и formatRelative удалены 2026-05-20 — таб «Черновики» убран.
-// Авто-сохранение в форме создания заказа (orders/new.tsx) продолжает работать
-// через useOrderDraftStore, просто отдельный UI для просмотра drafts больше
-// не нужен.
-
-// ============================================================================
-// EmptyState — пустое состояние для табов «Активные» / «История».
+// EmptyState — пустое состояние списка заданий.
 //
 // Паттерн (Lazyweb: Farfetch / Adidas Confirmed / Alibaba / Cava): иконка-
 // иллюстрация в мягком круге + короткий заголовок + одна поясняющая строка +

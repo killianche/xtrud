@@ -33,6 +33,7 @@ import { OrderStatusBadge } from "@/components/OrderStatusBadge";
 import { ScreenHeader, Skeleton } from "@/components/ui";
 import { useAuthSession } from "@/features/auth/use-auth-session";
 import { useUserRecord } from "@/features/auth/use-user-record";
+import { digitsOnly, normalizePhone } from "@/features/auth/validation";
 import { blockConfirmMessage, blockSuccessMessage } from "@/features/blocking/blocking-copy";
 import { blockingActionFailureMessage } from "@/features/blocking/blocking-error-message";
 import { useBlockUser } from "@/features/blocking/use-user-blocks";
@@ -70,7 +71,7 @@ import { hapticError, hapticSuccess } from "@/lib/haptics";
 import { openExternalUrl } from "@/lib/open-link";
 import { useSafeBack } from "@/lib/use-safe-back";
 import { useThemeColors } from "@/lib/use-theme-color";
-import { resolveWhatsappDigits } from "@/lib/whatsapp";
+import { normalizeWhatsappDigits, resolveWhatsappDigits } from "@/lib/whatsapp";
 import type { Database, Tables } from "@/types/database";
 
 // ============================================================================
@@ -83,7 +84,6 @@ export default function OrderDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { session } = useAuthSession();
   const userId = session?.user?.id;
-  const { data: user } = useUserRecord(userId);
   const {
     data: order,
     isLoading,
@@ -872,7 +872,13 @@ function ClientMasterResponseCard({
   // данных — в среднем 1.5 отклика на задание, максимум 3, то есть до шести
   // запросов на экран. Приемлемо; если откликов станет много, это надо будет
   // заменить одним пакетным запросом, а не возвращать кнопку.
-  const [contactsRequested, setContactsRequested] = useState(true);
+  // Контакты живут в самом отклике с миграции 0147. Профиль через RPC
+  // дёргаем только для старых откликов, у которых в строке контактов нет —
+  // так на новых карточках вообще нет лишних запросов.
+  const rowPhone = response.contact_phone?.trim() || null;
+  const rowWa = response.whatsapp_phone?.trim() || null;
+  const rowHasContacts = Boolean(rowPhone || rowWa);
+  const [contactsRequested, setContactsRequested] = useState(!rowHasContacts);
   const tc = useThemeColors(["ink", "mute", "warning", "on-primary"]);
 
   // Рейтинг мастера (общий) — чтобы клиент сравнивал мастеров не только по цене.
@@ -888,15 +894,19 @@ function ClientMasterResponseCard({
   // WhatsApp (master_profiles) — публично читаемо по RLS.
   const masterPublic = useMasterPublicProfile(contactsRequested ? response.master_id : undefined);
 
-  const phoneRaw = masterPhone.data ?? null;
+  const phoneRaw = rowHasContacts ? rowPhone : (masterPhone.data ?? null);
   const phoneTel = phoneRaw?.replace(/[^\d+]/g, "") ?? null;
-  const phoneWa = resolveWhatsappDigits({
-    whatsappPhone: masterPublic.data?.master?.whatsapp_phone,
-    whatsappSameAsPhone: masterPublic.data?.master?.whatsapp_same_as_phone,
-    masterPhone: phoneRaw,
-  });
-  const contactsError = masterPhone.error ?? masterPublic.error;
-  const contactsLoading = masterPhone.isFetching || masterPublic.isFetching;
+  const phoneWa = rowHasContacts
+    ? normalizeWhatsappDigits(rowWa)
+    : resolveWhatsappDigits({
+        whatsappPhone: masterPublic.data?.master?.whatsapp_phone,
+        whatsappSameAsPhone: masterPublic.data?.master?.whatsapp_same_as_phone,
+        masterPhone: phoneRaw,
+      });
+  const contactsError = rowHasContacts ? null : (masterPhone.error ?? masterPublic.error);
+  const contactsLoading = rowHasContacts
+    ? false
+    : masterPhone.isFetching || masterPublic.isFetching;
 
   const masterName =
     [response.master?.first_name, response.master?.last_name].filter(Boolean).join(" ") ||
@@ -1147,6 +1157,8 @@ function MasterResponseSection({
     control,
     handleSubmit,
     watch,
+    setValue,
+    getValues,
     formState: { errors, isValid },
   } = useForm<ResponseFormValues>({
     resolver: zodResolver(responseFormSchema),
@@ -1155,9 +1167,27 @@ function MasterResponseSection({
       priceKind: "negotiable",
       priceValue: null,
       leadTime: "",
+      contactPhone: "",
+      whatsappPhone: "",
     },
     mode: "onChange",
   });
+
+  // Контакты подставляем из профиля, если они там есть, — человеку остаётся
+  // только подтвердить. Подставляем один раз и только в пустое поле: то, что
+  // он уже начал вводить, не затираем.
+  const { data: me } = useUserRecord(masterId);
+  const myPublic = useMasterPublicProfile(masterId);
+  useEffect(() => {
+    const phone = me?.contact_phone?.trim();
+    if (phone && !getValues("contactPhone")) {
+      setValue("contactPhone", phone, { shouldValidate: true });
+    }
+    const wa = myPublic.data?.master?.whatsapp_phone?.trim();
+    if (wa && !getValues("whatsappPhone")) {
+      setValue("whatsappPhone", wa, { shouldValidate: true });
+    }
+  }, [me?.contact_phone, myPublic.data?.master?.whatsapp_phone, getValues, setValue]);
 
   const priceKind = watch("priceKind");
   const isBusy = submitResponse.isPending;
@@ -1176,6 +1206,12 @@ function MasterResponseSection({
         priceValue: values.priceValue,
         leadTime: values.leadTime,
         message: values.message,
+        contactPhone:
+          digitsOnly(values.contactPhone).length >= 10 ? normalizePhone(values.contactPhone) : null,
+        whatsappPhone:
+          digitsOnly(values.whatsappPhone).length >= 10
+            ? normalizePhone(values.whatsappPhone)
+            : null,
       });
       hapticSuccess();
     } catch (_e) {
@@ -1463,7 +1499,7 @@ function MasterResponseSection({
 
         <View className="h-px bg-hairline" />
 
-        {/* Срок (опц.) */}
+        {/* Срок — обязателен с 2026-09-01 */}
         <View className="p-5">
           <Controller
             control={control}
@@ -1471,11 +1507,11 @@ function MasterResponseSection({
             render={({ field: { value, onChange, onBlur } }) => (
               <View>
                 <AppText weight="medium" className="text-body-sm text-ink">
-                  Срок <AppText className="text-caption text-muted-soft">(опционально)</AppText>
+                  Когда сможете взяться
                 </AppText>
                 <TextInput
                   accessibilityLabel="Срок выполнения"
-                  accessibilityHint="Необязательное поле"
+                  accessibilityHint="Обязательное поле"
                   value={value}
                   onBlur={onBlur}
                   onChangeText={onChange}
@@ -1487,6 +1523,87 @@ function MasterResponseSection({
                   }`}
                   editable={!isBusy}
                 />
+              </View>
+            )}
+          />
+        </View>
+
+        <View className="h-px bg-hairline" />
+
+        {/* Контакты — уходят вместе с откликом (DECISION владельца 2026-09-02).
+            Каждый по желанию, но хотя бы один обязателен: клиенту нужно
+            куда-то написать. Подставляются из профиля, если там есть. */}
+        <View className="p-5 gap-4">
+          <Controller
+            control={control}
+            name="contactPhone"
+            render={({ field: { value, onChange, onBlur } }) => (
+              <View>
+                <AppText weight="medium" className="text-body-sm text-ink">
+                  Телефон для связи
+                </AppText>
+                <TextInput
+                  accessibilityLabel="Телефон для связи"
+                  accessibilityHint="Нужен телефон или WhatsApp, хотя бы один"
+                  value={value}
+                  onBlur={onBlur}
+                  onChangeText={onChange}
+                  placeholder="+7 928 000-00-00"
+                  placeholderTextColor={tc["muted-soft"]}
+                  keyboardType="phone-pad"
+                  autoComplete="tel"
+                  textContentType="telephoneNumber"
+                  maxLength={32}
+                  className={`mt-2 border-b pb-2 text-body-md text-ink ${
+                    errors.contactPhone
+                      ? "border-error"
+                      : value
+                        ? "border-hairline-strong"
+                        : "border-hairline"
+                  }`}
+                  editable={!isBusy}
+                />
+                {errors.contactPhone ? (
+                  <AppText weight="medium" className="mt-2 text-caption text-error">
+                    {errors.contactPhone.message}
+                  </AppText>
+                ) : null}
+              </View>
+            )}
+          />
+          <Controller
+            control={control}
+            name="whatsappPhone"
+            render={({ field: { value, onChange, onBlur } }) => (
+              <View>
+                <AppText weight="medium" className="text-body-sm text-ink">
+                  WhatsApp
+                </AppText>
+                <TextInput
+                  accessibilityLabel="Номер WhatsApp"
+                  accessibilityHint="Нужен телефон или WhatsApp, хотя бы один"
+                  value={value}
+                  onBlur={onBlur}
+                  onChangeText={onChange}
+                  placeholder="Если отличается от телефона"
+                  placeholderTextColor={tc["muted-soft"]}
+                  keyboardType="phone-pad"
+                  autoComplete="tel"
+                  maxLength={32}
+                  className={`mt-2 border-b pb-2 text-body-md text-ink ${
+                    errors.whatsappPhone
+                      ? "border-error"
+                      : value
+                        ? "border-hairline-strong"
+                        : "border-hairline"
+                  }`}
+                  editable={!isBusy}
+                />
+                {errors.whatsappPhone ? (
+                  <AppText weight="medium" className="mt-2 text-caption text-error">
+                    {errors.whatsappPhone.message}
+                  </AppText>
+                ) : null}
               </View>
             )}
           />

@@ -118,6 +118,8 @@ export function useMyResponses(userId: string | undefined) {
             price_value: r.price_value,
             lead_time: r.lead_time,
             message: r.message,
+            contact_phone: r.contact_phone,
+            whatsapp_phone: r.whatsapp_phone,
             status: r.status,
             created_at: r.created_at,
             updated_at: r.updated_at,

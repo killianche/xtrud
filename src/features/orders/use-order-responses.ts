@@ -85,6 +85,10 @@ export interface SubmitResponseInput {
   priceValue: number | null;
   leadTime: string;
   message: string;
+  /** Контакты, которые откликнувшийся оставил С ЭТИМ откликом. Хотя бы один
+   *  обязателен — проверяется схемой формы и ограничением в базе (0147). */
+  contactPhone: string | null;
+  whatsappPhone: string | null;
 }
 
 export function useSubmitResponse() {
@@ -99,7 +103,11 @@ export function useSubmitResponse() {
         price_kind: input.priceKind,
         price_value: input.priceKind === "negotiable" ? null : input.priceValue,
         lead_time: input.leadTime || null,
-        message: input.message,
+        // Текст необязателен с 0146; пустую строку храним как NULL, чтобы
+        // карточка не рисовала пустой блок сообщения.
+        message: input.message.trim() || null,
+        contact_phone: input.contactPhone,
+        whatsapp_phone: input.whatsappPhone,
       };
       const { error } = await supabase.from("order_responses").insert(payload);
       if (error) throw error;

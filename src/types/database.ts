@@ -752,12 +752,14 @@ export type Database = {
       }
       order_responses: {
         Row: {
+          contact_phone: string | null
+          whatsapp_phone: string | null
           created_at: string
           id: string
           l2_id: string
           lead_time: string | null
           master_id: string
-          message: string
+          message: string | null
           order_id: string
           price_kind: Database["public"]["Enums"]["order_price_kind"]
           price_value: number | null
@@ -765,12 +767,14 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          contact_phone?: string | null
+          whatsapp_phone?: string | null
           created_at?: string
           id?: string
           l2_id: string
           lead_time?: string | null
           master_id: string
-          message: string
+          message?: string | null
           order_id: string
           price_kind?: Database["public"]["Enums"]["order_price_kind"]
           price_value?: number | null
@@ -778,12 +782,14 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          contact_phone?: string | null
+          whatsapp_phone?: string | null
           created_at?: string
           id?: string
           l2_id?: string
           lead_time?: string | null
           master_id?: string
-          message?: string
+          message?: string | null
           order_id?: string
           price_kind?: Database["public"]["Enums"]["order_price_kind"]
           price_value?: number | null

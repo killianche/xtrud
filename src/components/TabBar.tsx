@@ -45,7 +45,10 @@ import { useThemeColors } from "@/lib/use-theme-color";
 // Один набор вкладок на всех (DECISION владельца 2026-09-01). Раньше состав
 // зависел от active_role: клиент не видел вкладку «Найти задание» и, чтобы
 // откликнуться, должен был сначала переключить режим.
-const TAB_ORDER = ["index", "find", "orders", "profile"] as const;
+// Профиль перенесён в правый верхний угол главной (DECISION владельца
+// 2026-09-02): внизу остаются три действия — главная, найти задание,
+// мои задания.
+const TAB_ORDER = ["index", "find", "orders"] as const;
 const TAB_HEIGHT = 52; // icon-only — ужали с 60 (был запас под текст-лейбл)
 const isWeb = Platform.OS === "web";
 

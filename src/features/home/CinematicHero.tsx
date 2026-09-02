@@ -35,11 +35,13 @@
 
 import { Image as ExpoImage } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
-import { CaretDown, MapPin, Plus } from "phosphor-react-native";
+import { useRouter } from "expo-router";
+import { CaretDown, MapPin, Plus, User as UserIcon } from "phosphor-react-native";
 import { useEffect, useRef, useState } from "react";
 import { Animated, Easing, Platform, Pressable, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
+import { Avatar } from "@/components/Avatar";
 import { CITIES } from "@/components/CitySelector";
 import { type PickerOption, PickerSheet } from "@/components/ui";
 import { XtrudWordmark } from "@/components/XtrudWordmark";
@@ -80,6 +82,7 @@ export function CinematicHero({ onCreateTask }: { onCreateTask: () => void }) {
   // тот же что на главной мастера (фидбэк владельца 2026-05-27 — «добавь pill
   // также и на клиентский экран если клиент имеет аккаунт мастера»). Если
   // мастер-аккаунта нет — pill не рендерится (нечего переключать).
+  const router = useRouter();
   const { session } = useAuthSession();
   const currentUserId = session?.user?.id;
   const { data: currentUser } = useUserRecord(currentUserId);
@@ -206,11 +209,37 @@ export function CinematicHero({ onCreateTask }: { onCreateTask: () => void }) {
         />
 
         {/* ── Шапка поверх фото ──
-            Ряд 1: логотип xtrud СЛЕВА | (опц.) pill «Клиент / Мастер» СПРАВА —
+            Ряд 1: логотип слева, профиль справа. Профиль перенесён сюда из
+            нижнего меню (DECISION владельца 2026-09-02): внизу остаются три
+            действия — главная, найти задание, мои задания.
             Ряд 2: город под логотипом. */}
         <View className="absolute left-0 right-0 px-4" style={{ top: insets.top + 6 }}>
           <View className="flex-row items-center justify-between">
             <XtrudWordmark size={30} color={ON_PHOTO} />
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={currentUserId ? "Профиль" : "Войти"}
+              accessibilityHint={currentUserId ? "Откроет ваш профиль" : "Откроет экран входа"}
+              onPress={() => router.push((currentUserId ? "/profile" : "/(auth)/phone") as never)}
+              hitSlop={8}
+              className="active:opacity-70"
+            >
+              {currentUserId ? (
+                <Avatar
+                  url={currentUser?.avatar_url ?? null}
+                  name={currentUser?.first_name ?? null}
+                  seed={currentUserId}
+                  size="sm"
+                />
+              ) : (
+                // Без входа аватара нет — показываем нейтральный значок, а не
+                // выдуманные инициалы (src/lib/avatar.ts: только реальное фото
+                // либо инициалы, генераторы-заглушки запрещены).
+                <View className="h-9 w-9 items-center justify-center rounded-full bg-white/20">
+                  <UserIcon size={18} weight="bold" color={ON_PHOTO} />
+                </View>
+              )}
+            </Pressable>
           </View>
           <Pressable
             accessibilityRole="button"

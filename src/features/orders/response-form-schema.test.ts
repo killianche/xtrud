@@ -3,6 +3,8 @@ import { responseFormSchema } from "./response-form-schema";
 
 const validResponse = {
   leadTime: "2 дня",
+  contactPhone: "+7 928 111-22-33",
+  whatsappPhone: "",
   message: "Здравствуйте, готов выполнить это задание.",
   priceKind: "fixed" as const,
   priceValue: 5_000,
@@ -82,5 +84,37 @@ describe("responseFormSchema", () => {
     expect(
       responseFormSchema.safeParse({ ...validResponse, priceValue: 2_147_483_648 }).success,
     ).toBe(false);
+  });
+
+  it("не принимает отклик без единого контакта", () => {
+    // Клиенту нужно куда-то написать: хотя бы телефон или WhatsApp.
+    const r = responseFormSchema.safeParse({
+      ...validResponse,
+      contactPhone: "",
+      whatsappPhone: "",
+    });
+    expect(r.success).toBe(false);
+    if (!r.success) {
+      expect(r.error.issues).toContainEqual(expect.objectContaining({ path: ["contactPhone"] }));
+    }
+  });
+
+  it("принимает отклик только с WhatsApp", () => {
+    expect(
+      responseFormSchema.safeParse({
+        ...validResponse,
+        contactPhone: "",
+        whatsappPhone: "+7 928 000-00-00",
+      }).success,
+    ).toBe(true);
+  });
+
+  it("не принимает обрывок номера как контакт", () => {
+    const r = responseFormSchema.safeParse({
+      ...validResponse,
+      contactPhone: "+7 9",
+      whatsappPhone: "",
+    });
+    expect(r.success).toBe(false);
   });
 });

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { digitsOnly } from "@/features/auth/validation";
 import { orderPriceKindOptions } from "@/features/orders/order-schema";
 
 export const responseFormSchema = z
@@ -22,8 +23,37 @@ export const responseFormSchema = z
       .trim()
       .min(1, "Укажите, когда сможете взяться")
       .max(100, "Максимум 100 символов"),
+    // Контакты уходят вместе с откликом (DECISION владельца 2026-09-02).
+    // Каждый по желанию, но хотя бы один обязателен — иначе клиенту некуда
+    // написать. То же правило стоит в базе (0147), здесь оно только для
+    // понятной ошибки до отправки.
+    contactPhone: z.string().trim().max(32, "Слишком длинный номер"),
+    whatsappPhone: z.string().trim().max(32, "Слишком длинный номер"),
   })
   .superRefine((values, context) => {
+    const hasPhone = digitsOnly(values.contactPhone).length >= 10;
+    const hasWa = digitsOnly(values.whatsappPhone).length >= 10;
+    if (!hasPhone && !hasWa) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Оставьте телефон или WhatsApp — клиенту нужно куда-то написать",
+        path: ["contactPhone"],
+      });
+    }
+    if (values.contactPhone.length > 0 && !hasPhone) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Введите корректный номер",
+        path: ["contactPhone"],
+      });
+    }
+    if (values.whatsappPhone.length > 0 && !hasWa) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Введите корректный номер",
+        path: ["whatsappPhone"],
+      });
+    }
     if (values.priceKind !== "negotiable" && (!values.priceValue || values.priceValue <= 0)) {
       context.addIssue({
         code: z.ZodIssueCode.custom,

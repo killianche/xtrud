@@ -164,6 +164,8 @@ export default function TabsLayout() {
           name="profile"
           options={{
             title: "Профиль",
+            // Не в нижнем меню: вход через аватар в правом верхнем углу главной.
+            href: null,
             tabBarIcon: ({ color, focused }) => (
               <UserCircle color={iconColor(color)} size={26} weight={focused ? "fill" : "bold"} />
             ),

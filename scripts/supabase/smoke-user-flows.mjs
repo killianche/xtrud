@@ -187,6 +187,65 @@ async function main() {
     report("профиль мастера приходит одним запросом", false, "мастеров в базе нет");
   }
 
+  // ---- Отклик: готов + цена + срок + контакты --------------------------------
+  console.log("\nОтклик");
+  const openOrder = await call(
+    `/rest/v1/orders?select=id,l2_id&status=eq.open&client_id=neq.${uid}&limit=1`,
+    { token },
+  );
+  const target = Array.isArray(openOrder.body) ? openOrder.body[0] : null;
+  if (target) {
+    const base = {
+      order_id: target.id,
+      master_id: uid,
+      l2_id: target.l2_id,
+      price_kind: "up_to",
+      price_value: 1500,
+      lead_time: "завтра",
+    };
+    const noContacts = await call("/rest/v1/order_responses", {
+      token,
+      method: "POST",
+      body: base,
+    });
+    report(
+      "отклик без контактов отвергается базой",
+      noContacts.status === 400,
+      `код ${noContacts.status}`,
+    );
+
+    const withPhone = await call("/rest/v1/order_responses", {
+      token,
+      method: "POST",
+      headers: { Prefer: "return=representation" },
+      body: { ...base, contact_phone: "+79280001122" },
+    });
+    const row = Array.isArray(withPhone.body) ? withPhone.body[0] : null;
+    report(
+      "отклик с телефоном и без текста принят",
+      withPhone.status === 201,
+      `код ${withPhone.status}`,
+    );
+    report(
+      "контакт сохранён в самом отклике",
+      row?.contact_phone === "+79280001122" && row?.message === null,
+      JSON.stringify({ contact_phone: row?.contact_phone, message: row?.message }),
+    );
+
+    const again = await call("/rest/v1/order_responses", {
+      token,
+      method: "POST",
+      body: { ...base, contact_phone: "+79280001122" },
+    });
+    report(
+      "второй отклик на то же задание невозможен",
+      again.status === 409 || again.status === 400,
+      `код ${again.status}`,
+    );
+  } else {
+    report("отклик с телефоном и без текста принят", false, "нет чужого открытого задания");
+  }
+
   // ---- Блокировка ----------------------------------------------------------
   console.log("\nБлокировка");
   if (masterId) {

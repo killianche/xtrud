@@ -12,16 +12,10 @@ import { useLocalSearchParams, useNavigation, useRouter } from "expo-router";
 import { CaretLeft, Check, Eye, EyeSlash } from "phosphor-react-native";
 import { useCallback, useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
-import {
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  TextInput,
-  View,
-} from "react-native";
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
+import { Button, Input } from "@/components/ui";
 import { ORDER_CREATE_RETURN_TO, parseAuthReturnTo } from "@/features/auth/auth-return";
 import {
   type Country,
@@ -82,7 +76,7 @@ export default function RegisterScreen() {
   const [showPassword, setShowPassword] = useState(false);
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [country, setCountry] = useState<Country>(DEFAULT_COUNTRY);
-  const tc = useThemeColors(["muted-soft", "ink", "mute", "on-primary"]);
+  const tc = useThemeColors(["ink", "mute", "on-accent"]);
   const safeGoBack = useSafeBack("/(auth)/phone" as const);
 
   const abandonDraftJourney = useCallback((shouldAbandon: boolean) => {
@@ -190,93 +184,81 @@ export default function RegisterScreen() {
           >
             <CaretLeft size={28} weight="bold" color={tc.ink} />
           </Pressable>
-          <AppText weight="bold" className="mt-6 text-display-md tracking-tight text-ink">
+          {/* Стандарт auth-экранов 2026-09-02 — см. app/(auth)/phone.tsx. */}
+          <AppText weight="bold" className="mt-6 text-display-lg text-ink">
             Создать аккаунт
           </AppText>
 
-          {/* Поле «Номер телефона» */}
-          <View className="mt-10">
-            <AppText weight="medium" className="text-caption text-muted">
+          <View className="mt-8">
+            <AppText weight="semibold" className="mb-2 text-body-md text-ink">
               Номер телефона
             </AppText>
-            <View className="mt-2 flex-row gap-2">
+            <View className="flex-row items-start gap-2">
               <CountryCodeSelect selected={country} onSelect={setCountry} disabled={isBusy} />
-              <Controller
-                control={control}
-                name="phone"
-                render={({ field: { value, onChange, onBlur } }) => (
-                  <TextInput
-                    value={value}
-                    onBlur={onBlur}
-                    onChangeText={(raw) => onChange(formatPhoneByCountry(digitsOnly(raw), country))}
-                    placeholder={country.dial === "7" ? "999 123-45-67" : "цифры номера"}
-                    placeholderTextColor={tc["muted-soft"]}
-                    keyboardType="phone-pad"
-                    autoComplete="tel-national"
-                    textContentType="telephoneNumber"
-                    inputMode="tel"
-                    className={`min-h-12 flex-1 rounded-md border bg-canvas px-3 py-3 text-body-md text-ink ${
-                      errors.phone ? "border-error" : "border-hairline focus:border-ink"
-                    }`}
-                    editable={!isBusy}
-                  />
-                )}
-              />
+              <View className="flex-1">
+                <Controller
+                  control={control}
+                  name="phone"
+                  render={({ field: { value, onChange, onBlur } }) => (
+                    <Input
+                      size="lg"
+                      value={value}
+                      onBlur={onBlur}
+                      onChangeText={(raw) =>
+                        onChange(formatPhoneByCountry(digitsOnly(raw), country))
+                      }
+                      placeholder={country.dial === "7" ? "999 123-45-67" : "цифры номера"}
+                      keyboardType="phone-pad"
+                      autoComplete="tel-national"
+                      textContentType="telephoneNumber"
+                      inputMode="tel"
+                      editable={!isBusy}
+                      error={errors.phone?.message}
+                    />
+                  )}
+                />
+              </View>
             </View>
-            {errors.phone && (
-              <AppText weight="medium" className="mt-2 text-caption text-error">
-                {errors.phone.message}
-              </AppText>
-            )}
           </View>
 
-          {/* Поле «Пароль» с показать/скрыть. Лейбл «Минимум 6 символов» —
-              лейбл ПОЛЯ (не subtitle под H1), правило §G не нарушается. */}
-          <View className="mt-6">
-            <AppText weight="medium" className="text-caption text-muted">
-              Пароль · минимум 6 символов
-            </AppText>
-            <View className="mt-2 flex-row items-center">
-              <Controller
-                control={control}
-                name="password"
-                render={({ field: { value, onChange, onBlur } }) => (
-                  <TextInput
-                    value={value}
-                    onBlur={onBlur}
-                    onChangeText={onChange}
-                    placeholder="Придумайте пароль"
-                    placeholderTextColor={tc["muted-soft"]}
-                    secureTextEntry={!showPassword}
-                    autoCapitalize="none"
-                    autoCorrect={false}
-                    autoComplete="new-password"
-                    className={`min-h-12 flex-1 rounded-md border bg-canvas py-3 pl-3 pr-11 text-body-md text-ink ${
-                      errors.password ? "border-error" : "border-hairline focus:border-ink"
-                    }`}
-                    editable={!isBusy}
-                  />
-                )}
-              />
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={showPassword ? "Скрыть пароль" : "Показать пароль"}
-                onPress={() => setShowPassword((v) => !v)}
-                hitSlop={8}
-                className="absolute inset-y-0 right-0 w-11 items-center justify-center"
-              >
-                {showPassword ? (
-                  <EyeSlash size={20} weight="bold" color={tc.mute} />
-                ) : (
-                  <Eye size={20} weight="bold" color={tc.mute} />
-                )}
-              </Pressable>
-            </View>
-            {errors.password && (
-              <AppText weight="medium" className="mt-2 text-caption text-error">
-                {errors.password.message}
-              </AppText>
-            )}
+          {/* «Минимум 6 символов» — лейбл ПОЛЯ (не subtitle под H1), §G не
+              нарушается. */}
+          <View className="mt-5">
+            <Controller
+              control={control}
+              name="password"
+              render={({ field: { value, onChange, onBlur } }) => (
+                <Input
+                  size="lg"
+                  label="Пароль · минимум 6 символов"
+                  value={value}
+                  onBlur={onBlur}
+                  onChangeText={onChange}
+                  placeholder="Придумайте пароль"
+                  secureTextEntry={!showPassword}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  autoComplete="new-password"
+                  editable={!isBusy}
+                  error={errors.password?.message}
+                  rightIcon={
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel={showPassword ? "Скрыть пароль" : "Показать пароль"}
+                      onPress={() => setShowPassword((v) => !v)}
+                      hitSlop={12}
+                      className="h-11 w-11 items-center justify-center"
+                    >
+                      {showPassword ? (
+                        <EyeSlash size={22} weight="bold" color={tc.mute} />
+                      ) : (
+                        <Eye size={22} weight="bold" color={tc.mute} />
+                      )}
+                    </Pressable>
+                  }
+                />
+              )}
+            />
           </View>
 
           {/* Согласие с условиями (active opt-in) — гейтит кнопку. */}
@@ -285,65 +267,75 @@ export default function RegisterScreen() {
             accessibilityState={{ checked: acceptedTerms }}
             accessibilityLabel="Я согласен с условиями использования и политикой конфиденциальности"
             onPress={() => setAcceptedTerms((v) => !v)}
-            className="mt-6 flex-row items-start gap-3 active:opacity-70"
+            className="mt-6 min-h-11 flex-row items-start gap-3 active:opacity-70"
             hitSlop={4}
           >
             <View
-              className={`mt-0.5 h-5 w-5 items-center justify-center rounded border-2 ${
-                acceptedTerms ? "border-primary bg-primary" : "border-hairline bg-canvas"
+              className={`mt-0.5 h-6 w-6 items-center justify-center rounded-md border-2 ${
+                acceptedTerms ? "border-accent bg-accent" : "border-hairline-strong bg-canvas-soft"
               }`}
             >
-              {acceptedTerms ? <Check size={14} weight="bold" color={tc["on-primary"]} /> : null}
+              {acceptedTerms ? <Check size={16} weight="bold" color={tc["on-accent"]} /> : null}
             </View>
-            <View className="flex-1 flex-row flex-wrap">
-              <AppText className="text-caption text-body">Я согласен с </AppText>
-              <AppText
-                weight="medium"
-                className="text-caption text-ink underline"
-                onPress={isBusy ? undefined : () => router.push("/legal/terms" as never)}
+            {/* Ссылки — Pressable с ролью link и вертикальным hitSlop: строка
+                текста 24 pt, зона касания добирается до 44 pt (QA 2026-09-02). */}
+            <View className="flex-1 flex-row flex-wrap items-center">
+              <AppText className="text-body-md text-body">Я согласен с </AppText>
+              <Pressable
+                accessibilityRole="link"
+                accessibilityLabel="Условия использования"
+                disabled={isBusy}
+                hitSlop={{ top: 10, bottom: 10, left: 4, right: 4 }}
+                onPress={() => router.push("/legal/terms" as never)}
               >
-                Условиями использования
-              </AppText>
-              <AppText className="text-caption text-body"> и </AppText>
-              <AppText
-                weight="medium"
-                className="text-caption text-ink underline"
-                onPress={isBusy ? undefined : () => router.push("/legal/privacy" as never)}
+                <AppText weight="semibold" className="text-body-md text-accent">
+                  Условиями использования
+                </AppText>
+              </Pressable>
+              <AppText className="text-body-md text-body"> и </AppText>
+              <Pressable
+                accessibilityRole="link"
+                accessibilityLabel="Политика конфиденциальности"
+                disabled={isBusy}
+                hitSlop={{ top: 10, bottom: 10, left: 4, right: 4 }}
+                onPress={() => router.push("/legal/privacy" as never)}
               >
-                Политикой конфиденциальности
-              </AppText>
-              <AppText className="text-caption text-body">.</AppText>
+                <AppText weight="semibold" className="text-body-md text-accent">
+                  Политикой конфиденциальности
+                </AppText>
+              </Pressable>
+              <AppText className="text-body-md text-body">.</AppText>
             </View>
           </Pressable>
 
           {serverError && (
-            <AppText
-              accessibilityRole="alert"
-              accessibilityLiveRegion="polite"
-              weight="medium"
-              className="mt-4 text-caption text-error"
-            >
-              {serverError}
-            </AppText>
+            <View className="mt-4 rounded-xl bg-error-soft px-4 py-3">
+              <AppText
+                accessibilityRole="alert"
+                accessibilityLiveRegion="polite"
+                weight="medium"
+                className="text-body-md text-error-deep"
+              >
+                {serverError}
+              </AppText>
+            </View>
           )}
         </View>
 
         <View className="px-6 pb-8 pt-8">
-          <Pressable
-            accessibilityRole="button"
+          <Button
+            variant="accent"
+            size="lg"
+            fullWidth
             disabled={!canSubmit}
+            loading={isBusy}
             onPress={onSubmit}
-            className={`h-12 items-center justify-center rounded-md ${
-              canSubmit ? "bg-primary active:opacity-80" : "bg-surface-3"
-            }`}
           >
-            <AppText weight="semibold" className="text-button text-on-primary">
-              {isBusy ? "Создаём аккаунт…" : "Зарегистрироваться"}
-            </AppText>
-          </Pressable>
+            Зарегистрироваться
+          </Button>
 
           <View className="mt-6 flex-row items-center justify-center">
-            <AppText className="text-body-sm text-body">Уже есть аккаунт? </AppText>
+            <AppText className="text-body-md text-body">Уже есть аккаунт? </AppText>
             <Pressable
               accessibilityRole="button"
               disabled={isBusy}
@@ -366,10 +358,10 @@ export default function RegisterScreen() {
                     : ("/(auth)/phone" as never),
                 );
               }}
-              hitSlop={6}
-              className={isBusy ? "opacity-30" : "active:opacity-70"}
+              hitSlop={8}
+              className={`min-h-11 justify-center ${isBusy ? "opacity-30" : "active:opacity-70"}`}
             >
-              <AppText weight="semibold" className="text-body-sm text-ink underline">
+              <AppText weight="semibold" className="text-body-md text-accent">
                 Войти
               </AppText>
             </Pressable>

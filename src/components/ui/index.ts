@@ -1,5 +1,5 @@
 // Barrel-export для UI atom-компонентов.
-// Импортировать через: import { Button, Input, Card, Chip, Avatar, SearchBar } from "@/components/ui";
+// Импортировать через: import { Button, Input, Card, Chip, Avatar } from "@/components/ui";
 
 export { Avatar, type AvatarSize, normalizeAvatarUrl } from "./Avatar";
 export { Button, type ButtonProps, type ButtonSize, type ButtonVariant } from "./Button";
@@ -9,5 +9,4 @@ export { Input, type InputProps, type InputSize } from "./Input";
 export { type PickerOption, PickerSheet, type PickerSheetProps } from "./PickerSheet";
 export { PickerSheetPage, type PickerSheetPageProps } from "./PickerSheetPage";
 export { ScreenHeader, type ScreenHeaderRightAction } from "./ScreenHeader";
-export { SearchBar, type SearchBarProps } from "./SearchBar";
 export { Skeleton, type SkeletonProps } from "./Skeleton";

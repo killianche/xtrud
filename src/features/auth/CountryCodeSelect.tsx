@@ -105,19 +105,22 @@ export function CountryCodeSelect({ selected, onSelect, disabled }: CountryCodeS
       // (app/(auth)/register.tsx), у которого больше нет
       // maxFontSizeMultiplier — обе фиксированные высоты должны расти
       // синхронно на AX-размерах, иначе ряд разъедется.
-      className={`min-h-12 flex-row items-center gap-2 rounded-md border border-hairline bg-canvas px-3 py-3 ${
-        disabled ? "opacity-50" : "active:bg-canvas-soft"
+      // Вид — как у Input size="lg" (стандарт auth-форм 2026-09-02): та же
+      // высота 54, заливка canvas-soft, рамка 1.5 hairline-strong, радиус xl.
+      className={`flex-row items-center gap-2 rounded-xl border-hairline-strong bg-canvas-soft px-3 ${
+        disabled ? "opacity-50" : "active:bg-canvas-soft-2"
       }`}
+      style={{ minHeight: 54, borderWidth: 1.5 }}
     >
       <Image
         source={{ uri: flagUrl(selected.code) }}
         style={{ width: 22, height: 16, borderRadius: 2 }}
         contentFit="cover"
       />
-      <AppText weight="semibold" className="text-body-md text-ink">
+      <AppText weight="semibold" className="text-body-lg text-ink">
         +{selected.dial}
       </AppText>
-      <CaretDown size={14} weight="bold" color={tc.mute} />
+      <CaretDown size={16} weight="bold" color={tc.mute} />
     </Pressable>
   );
 }

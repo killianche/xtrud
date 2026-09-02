@@ -59,37 +59,37 @@ export function ActiveOrdersShowcase({ userId }: { userId: string | undefined })
   return (
     <View className="mt-10">
       <View className="flex-row items-end justify-between px-5">
-        <AppText weight="bold" className="text-title-lg text-ink">
+        <AppText weight="bold" className="text-display-sm text-ink">
           Актуальные задания
         </AppText>
         {items.length > 0 ? (
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Показать все задания"
-            hitSlop={8}
+            hitSlop={12}
             onPress={() => router.navigate("/(tabs)/find")}
           >
-            <AppText weight="medium" className="text-body-sm text-accent">
+            <AppText weight="semibold" className="text-body-md text-accent">
               Все
             </AppText>
           </Pressable>
         ) : null}
       </View>
 
-      <AppText className="mt-1 px-5 text-body-sm text-mute">Что сейчас ищут люди рядом</AppText>
+      <AppText className="mt-1 px-5 text-body-md text-mute">Что сейчас ищут люди рядом</AppText>
 
-      <View className="mt-3">
+      <View className="mt-4">
         {isLoading ? (
           <OrderRowsSkeleton count={3} />
         ) : items.length === 0 ? (
-          <View className="mx-5 items-center rounded-2xl border border-hairline bg-canvas-soft px-5 py-8">
-            <View className="h-14 w-14 items-center justify-center rounded-full bg-canvas">
-              <Tray size={26} weight="bold" color={accentColor} />
+          <View className="mx-4 items-center rounded-2xl border border-hairline bg-canvas-soft px-5 py-8">
+            <View className="h-16 w-16 items-center justify-center rounded-full bg-canvas">
+              <Tray size={30} weight="bold" color={accentColor} />
             </View>
-            <AppText weight="bold" className="mt-4 text-center text-title-md text-ink">
+            <AppText weight="bold" className="mt-4 text-center text-title-lg text-ink">
               Пока заданий нет
             </AppText>
-            <AppText className="mt-2 text-center text-body-sm text-mute">
+            <AppText className="mt-2 text-center text-body-md text-body">
               Ваше может стать первым — опишите задачу, и исполнители увидят её.
             </AppText>
           </View>

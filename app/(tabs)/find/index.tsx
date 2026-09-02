@@ -142,18 +142,18 @@ export default function FindScreen() {
         </View>
       ) : error ? (
         <View className="flex-1 px-6 pt-6">
-          <AppText weight="semibold" className="text-body-md text-ink">
+          <AppText weight="bold" className="text-title-lg text-ink">
             Не удалось загрузить задания
           </AppText>
-          <AppText className="mt-1 text-body-sm text-mute">{error.message}</AppText>
+          <AppText className="mt-1 text-body-md text-body">{error.message}</AppText>
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Повторить загрузку заданий"
             disabled={isRefetching}
             onPress={() => void refetch()}
-            className="mt-4 min-h-11 self-start items-center justify-center rounded-md border border-hairline bg-canvas px-4 active:bg-canvas-soft"
+            className="mt-5 min-h-12 self-start items-center justify-center rounded-pill border border-hairline bg-canvas px-5 active:bg-canvas-soft"
           >
-            <AppText weight="semibold" className="text-button-sm text-ink">
+            <AppText weight="semibold" className="text-body-md text-ink">
               {isRefetching ? "Загружаем…" : "Повторить"}
             </AppText>
           </Pressable>
@@ -172,7 +172,7 @@ export default function FindScreen() {
             keyExtractor={(order) => order.id}
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
-            contentContainerStyle={{ paddingTop: 8, paddingBottom: insets.bottom + 24 }}
+            contentContainerStyle={{ paddingTop: 4, paddingBottom: insets.bottom + 24 }}
             renderItem={({ item: o }) => (
               <OrderRow
                 id={o.id}
@@ -264,13 +264,13 @@ function EmptyState({ hasActiveFilters, onClearFilters, accentColor }: EmptyStat
         </View>
       </View>
 
-      <AppText weight="bold" className="mt-6 text-center text-title-lg text-ink">
+      <AppText weight="bold" className="mt-6 text-center text-display-sm text-ink">
         {hasActiveFilters ? "Под фильтры ничего не нашлось" : "Открытых заданий сейчас нет"}
       </AppText>
-      <AppText className="mt-2 text-center text-body-sm text-muted">
+      <AppText className="mt-2 text-center text-body-md text-body">
         {hasActiveFilters
           ? "Попробуйте сбросить или изменить фильтры — в приложении есть и другие задания."
-          : "Задания клиентов появляются здесь по мере публикации. Загляните позже."}
+          : "Задания появляются здесь по мере публикации. Загляните позже."}
       </AppText>
 
       {hasActiveFilters ? (
@@ -278,9 +278,9 @@ function EmptyState({ hasActiveFilters, onClearFilters, accentColor }: EmptyStat
           onPress={onClearFilters}
           accessibilityRole="button"
           hitSlop={8}
-          className="mt-4 min-h-11 flex-row items-center justify-center rounded-pill border border-hairline bg-canvas px-4 active:opacity-70"
+          className="mt-6 min-h-12 flex-row items-center justify-center rounded-pill border border-hairline bg-canvas px-5 active:opacity-70"
         >
-          <AppText weight="semibold" className="text-button text-ink">
+          <AppText weight="semibold" className="text-body-md text-ink">
             Сбросить фильтры
           </AppText>
         </Pressable>

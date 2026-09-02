@@ -11,16 +11,10 @@ import { useLocalSearchParams, useNavigation, useRouter } from "expo-router";
 import { CaretLeft, Eye, EyeSlash } from "phosphor-react-native";
 import { useCallback, useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
-import {
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  TextInput,
-  View,
-} from "react-native";
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
+import { Button, Input } from "@/components/ui";
 import { ORDER_CREATE_RETURN_TO, parseAuthReturnTo } from "@/features/auth/auth-return";
 import { useLogin } from "@/features/auth/use-auth-mutations";
 import { type LoginFormValues, loginFormSchema } from "@/features/auth/validation";
@@ -50,7 +44,7 @@ export default function LoginScreen() {
   const login = useLogin();
   const [serverError, setServerError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
-  const tc = useThemeColors(["muted-soft", "ink", "mute"]);
+  const tc = useThemeColors(["ink", "mute"]);
   const safeGoBack = useSafeBack("/" as const);
 
   const abandonDraftJourney = useCallback((shouldAbandon: boolean) => {
@@ -157,92 +151,76 @@ export default function LoginScreen() {
           >
             <CaretLeft size={28} weight="bold" color={tc.ink} />
           </Pressable>
-          <AppText weight="bold" className="mt-6 text-display-md tracking-tight text-ink">
+          {/* Стандарт auth-экранов 2026-09-02 (DECISION владельца: «всё
+              бело-белое, непонятно, что где нажимать»): крупный заголовок,
+              поля Input с заливкой и акцентной рамкой в фокусе, одна
+              акцентная кнопка, ссылки в акценте. */}
+          <AppText weight="bold" className="mt-6 text-display-lg text-ink">
             Вход в xtrud
           </AppText>
 
-          {/* Поле «Почта или телефон» */}
-          <View className="mt-10">
-            <AppText weight="medium" className="text-caption text-muted">
-              Почта или телефон
-            </AppText>
+          <View className="mt-8">
             <Controller
               control={control}
               name="login"
               render={({ field: { value, onChange, onBlur } }) => (
-                <TextInput
+                <Input
+                  size="lg"
+                  label="Телефон или почта"
                   value={value}
                   onBlur={onBlur}
                   onChangeText={onChange}
-                  placeholder="example@mail.ru или +7 999…"
-                  placeholderTextColor={tc["muted-soft"]}
+                  placeholder="+7 999 123-45-67"
                   autoCapitalize="none"
                   autoCorrect={false}
                   autoComplete="username"
-                  // Поле принимает И почту, И телефон — даём обычную клавиатуру
+                  // Поле принимает И телефон, И почту — обычная клавиатура
                   // (inputMode="email" прятал цифры и затруднял ввод номера).
                   inputMode="text"
-                  className={`mt-2 min-h-12 rounded-md border bg-canvas px-3 py-3 text-body-md text-ink ${
-                    errors.login ? "border-error" : "border-hairline focus:border-ink"
-                  }`}
                   editable={!isBusy}
+                  error={errors.login?.message}
                 />
               )}
             />
-            {errors.login && (
-              <AppText weight="medium" className="mt-2 text-caption text-error">
-                {errors.login.message}
-              </AppText>
-            )}
           </View>
 
-          {/* Поле «Пароль» с показать/скрыть */}
-          <View className="mt-6">
-            <AppText weight="medium" className="text-caption text-muted">
-              Пароль
-            </AppText>
-            <View className="mt-2 flex-row items-center">
-              <Controller
-                control={control}
-                name="password"
-                render={({ field: { value, onChange, onBlur } }) => (
-                  <TextInput
-                    value={value}
-                    onBlur={onBlur}
-                    onChangeText={onChange}
-                    placeholder="Ваш пароль"
-                    placeholderTextColor={tc["muted-soft"]}
-                    secureTextEntry={!showPassword}
-                    autoCapitalize="none"
-                    autoCorrect={false}
-                    autoComplete="current-password"
-                    className={`min-h-12 flex-1 rounded-md border bg-canvas py-3 pl-3 pr-11 text-body-md text-ink ${
-                      errors.password ? "border-error" : "border-hairline focus:border-ink"
-                    }`}
-                    editable={!isBusy}
-                    onSubmitEditing={onSubmit}
-                  />
-                )}
-              />
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={showPassword ? "Скрыть пароль" : "Показать пароль"}
-                onPress={() => setShowPassword((v) => !v)}
-                hitSlop={8}
-                className="absolute inset-y-0 right-0 w-11 items-center justify-center"
-              >
-                {showPassword ? (
-                  <EyeSlash size={20} weight="bold" color={tc.mute} />
-                ) : (
-                  <Eye size={20} weight="bold" color={tc.mute} />
-                )}
-              </Pressable>
-            </View>
-            {errors.password && (
-              <AppText weight="medium" className="mt-2 text-caption text-error">
-                {errors.password.message}
-              </AppText>
-            )}
+          <View className="mt-5">
+            <Controller
+              control={control}
+              name="password"
+              render={({ field: { value, onChange, onBlur } }) => (
+                <Input
+                  size="lg"
+                  label="Пароль"
+                  value={value}
+                  onBlur={onBlur}
+                  onChangeText={onChange}
+                  placeholder="Ваш пароль"
+                  secureTextEntry={!showPassword}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  autoComplete="current-password"
+                  editable={!isBusy}
+                  onSubmitEditing={onSubmit}
+                  error={errors.password?.message}
+                  rightIcon={
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel={showPassword ? "Скрыть пароль" : "Показать пароль"}
+                      onPress={() => setShowPassword((v) => !v)}
+                      hitSlop={12}
+                      className="h-11 w-11 items-center justify-center"
+                    >
+                      {showPassword ? (
+                        <EyeSlash size={22} weight="bold" color={tc.mute} />
+                      ) : (
+                        <Eye size={22} weight="bold" color={tc.mute} />
+                      )}
+                    </Pressable>
+                  }
+                />
+              )}
+            />
 
             <Pressable
               accessibilityRole="button"
@@ -251,43 +229,43 @@ export default function LoginScreen() {
                 abandonDraftJourney(true);
                 router.push("/(auth)/forgot-password" as never);
               }}
-              hitSlop={6}
-              className={`mt-3 self-start ${isBusy ? "opacity-30" : "active:opacity-70"}`}
+              hitSlop={8}
+              className={`mt-3 min-h-11 justify-center self-start ${isBusy ? "opacity-30" : "active:opacity-70"}`}
             >
-              <AppText weight="medium" className="text-caption text-ink underline">
+              <AppText weight="semibold" className="text-body-md text-accent">
                 Забыли пароль?
               </AppText>
             </Pressable>
 
             {serverError && (
-              <AppText
-                accessibilityRole="alert"
-                accessibilityLiveRegion="polite"
-                weight="medium"
-                className="mt-4 text-caption text-error"
-              >
-                {serverError}
-              </AppText>
+              <View className="mt-4 rounded-xl bg-error-soft px-4 py-3">
+                <AppText
+                  accessibilityRole="alert"
+                  accessibilityLiveRegion="polite"
+                  weight="medium"
+                  className="text-body-md text-error-deep"
+                >
+                  {serverError}
+                </AppText>
+              </View>
             )}
           </View>
         </View>
 
         <View className="px-6 pb-8 pt-8">
-          <Pressable
-            accessibilityRole="button"
-            disabled={!isValid || isBusy}
+          <Button
+            variant="accent"
+            size="lg"
+            fullWidth
+            disabled={!isValid}
+            loading={isBusy}
             onPress={onSubmit}
-            className={`h-12 items-center justify-center rounded-md ${
-              isValid && !isBusy ? "bg-primary active:opacity-80" : "bg-surface-3"
-            }`}
           >
-            <AppText weight="semibold" className="text-button text-on-primary">
-              {isBusy ? "Входим…" : "Войти"}
-            </AppText>
-          </Pressable>
+            Войти
+          </Button>
 
           <View className="mt-6 flex-row items-center justify-center">
-            <AppText className="text-body-sm text-body">Нет аккаунта? </AppText>
+            <AppText className="text-body-md text-body">Нет аккаунта? </AppText>
             <Pressable
               accessibilityRole="button"
               disabled={isBusy}
@@ -305,10 +283,10 @@ export default function LoginScreen() {
                     : ("/(auth)/register" as never),
                 );
               }}
-              hitSlop={6}
-              className={isBusy ? "opacity-30" : "active:opacity-70"}
+              hitSlop={8}
+              className={`min-h-11 justify-center ${isBusy ? "opacity-30" : "active:opacity-70"}`}
             >
-              <AppText weight="semibold" className="text-body-sm text-ink underline">
+              <AppText weight="semibold" className="text-body-md text-accent">
                 Зарегистрироваться
               </AppText>
             </Pressable>

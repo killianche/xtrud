@@ -68,13 +68,7 @@ const FADE_MS = 1200;
 // grep `color="#"` design-enforcement; это легальный photo-overlay §B case.
 const ON_PHOTO = "#ffffff";
 
-export function CinematicHero({
-  onCreateTask,
-  flushTop = false,
-}: {
-  onCreateTask: () => void;
-  flushTop?: boolean;
-}) {
+export function CinematicHero({ onCreateTask }: { onCreateTask: () => void }) {
   const insets = useSafeAreaInsets();
   const viewportWidth = useAppWidth();
   const inkColor = useThemeColor("ink");
@@ -219,10 +213,7 @@ export function CinematicHero({
             нижнего меню (DECISION владельца 2026-09-02): внизу остаются три
             действия — главная, найти задание, мои задания.
             Ряд 2: город под логотипом. */}
-        <View
-          className="absolute left-0 right-0 px-4"
-          style={{ top: (flushTop ? 0 : insets.top) + 6 }}
-        >
+        <View className="absolute left-0 right-0 px-4" style={{ top: insets.top + 6 }}>
           <View className="flex-row items-center justify-between">
             <XtrudWordmark size={30} color={ON_PHOTO} />
             <Pressable

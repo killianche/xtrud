@@ -40,12 +40,15 @@ export interface ButtonProps extends Omit<PressableProps, "style" | "children"> 
   fullWidth?: boolean;
 }
 
+// lg — главное действие экрана (формы входа, пустые состояния): 52 pt и 17 px,
+// как у системных кнопок iOS в формах. DECISION владельца 2026-09-02: «шрифты
+// слишком мелкие» — 14 px в главной кнопке читалось как второстепенное.
 const SIZE_MAP: Record<
   ButtonSize,
-  { minHeight: number; paddingX: number; textSize: 14 | 16; gap: number }
+  { minHeight: number; paddingX: number; textSize: number; gap: number }
 > = {
-  md: { minHeight: 44, paddingX: 16, textSize: 14, gap: 8 },
-  lg: { minHeight: 48, paddingX: 20, textSize: 16, gap: 10 },
+  md: { minHeight: 44, paddingX: 16, textSize: 15, gap: 8 },
+  lg: { minHeight: 52, paddingX: 20, textSize: 17, gap: 10 },
 };
 
 const VARIANT_CLASS: Record<
@@ -77,12 +80,15 @@ const VARIANT_CLASS: Record<
   // Фирменный акцент как главное действие экрана. DECISION владельца
   // 2026-09-02 по экрану задания: «кнопка цветнее». Пилот — экран задания;
   // если приживётся, станет стандартом (см. DESIGN.md, раздел про акцент).
+  // Текст — токен on-accent (тёмный в обеих темах): белый на акценте даёт
+  // 3.1:1 / 2.7:1 и не проходит AA, тёмный — 6.4:1 / 7.3:1 (DESIGN.md,
+  // решение 2026-09-02).
   accent: {
     bg: "bg-accent",
-    text: "text-on-dark",
+    text: "text-on-accent",
     border: "",
     borderWidth: 0,
-    iconText: "text-on-dark",
+    iconText: "text-on-accent",
   },
 };
 
@@ -135,9 +141,9 @@ export function Button({
         <>
           {leftIcon ? <View className={vc.iconText}>{leftIcon}</View> : null}
           <AppText
-            weight="medium"
+            weight="semibold"
             className={vc.text}
-            style={{ fontSize: dims.textSize, lineHeight: dims.textSize === 14 ? 20 : 24 }}
+            style={{ fontSize: dims.textSize, lineHeight: dims.textSize + 7 }}
           >
             {children as string}
           </AppText>

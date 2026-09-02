@@ -123,22 +123,26 @@ export function ScreenHeader({
           accessibilityRole="button"
           accessibilityLabel={rightAction.accessibilityLabel ?? rightAction.label}
           onPress={rightAction.onPress}
-          className={`h-11 flex-row items-center gap-1.5 rounded-pill border px-4 active:opacity-70 ${
+          // min-h, не h: на крупных accessibility-размерах текст растёт, а
+          // пилюля растёт вместе с ним (та же логика, что у заголовка выше).
+          className={`min-h-11 flex-row items-center gap-1.5 rounded-pill border px-4 py-2 active:opacity-70 ${
             rightAction.active
               ? "border-accent bg-accent-soft"
               : "border-hairline bg-canvas hover:bg-surface-2"
           }`}
         >
+          {/* 18 px иконка и 16 px текст: 14 px «Фильтры» владелец назвал
+              слишком мелким (DECISION 2026-09-02, единый стандарт). */}
           {rightAction.Icon ? (
             <rightAction.Icon
-              size={16}
+              size={18}
               weight="bold"
               color={rightAction.active ? accentColor : inkColor}
             />
           ) : null}
           <AppText
             weight="semibold"
-            className={`text-button ${rightAction.active ? "text-accent" : "text-ink"}`}
+            className={`text-body-md ${rightAction.active ? "text-accent" : "text-ink"}`}
           >
             {rightAction.label}
           </AppText>

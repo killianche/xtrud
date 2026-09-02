@@ -1,163 +1,177 @@
 /**
- * /(tabs)/orders — «Мои задания». Корень одноимённого таба для ОБЕИХ ролей,
- * содержимое разное:
- *   - Задания → ClientOrdersView: свои задания одним списком, открытые сверху.
- *   - Мастер → MasterOrdersView: свои отклики (единый список, было
- *     /orders/my-responses).
+ * /(tabs)/orders — «Мои задания»: всё, что человек делает в xtrud, на одном
+ * экране. Два сегмента:
+ *   - Задания — что я выложил (открытые сверху, закрытые ниже);
+ *   - Отклики — на что я откликнулся (активные сверху, история ниже), в
+ *     карточке видно, что я предложил: цену и срок.
  *
- * История (2026-08-30, редизайн главной + нижней навигации). Раньше этот
- * роут был мёртвым для мастера — просто редиректил на главную (фидбэк
- * 2026-05-15: «/orders убран из мастер-таббара, мастерские заявки на
- * dashboard»), а бейдж непрочитанного на этом мёртвом табе висел зря. Теперь
- * «Мои задания» — настоящий 3-й/4-й таб обеих ролей, редирект убран, контент
- * /orders/my-responses перенесён сюда как корень (без back-кнопки, с
- * pull-to-refresh, которого там не было). Сам detail-роут
- * /orders/my-responses удалён — входов на него больше нет.
+ * Редизайн 2026-09-02 (DECISION владельца по скриншоту сборки 20: «тут прям
+ * полный редизайн нужен… и UX, и UI»). Что было не так: сегменты сверху и под
+ * ними второй заголовок «Мои задания» с тем же словом; пустое состояние в
+ * серой гамме с чёрной кнопкой; мелкий текст. Что стало: один заголовок и
+ * одно главное действие экрана — создать задание (акцентная круглая кнопка,
+ * `design-quality.md` §1.1 «одно главное действие»); сегменты крупные, со
+ * счётчиками из данных; списки — карточки OrderRow (единый стиль всех лент);
+ * пустые состояния с акцентной кнопкой.
  *
- * Клиентская часть — 2 таба (2026-05-21, ORDER_LIFECYCLE_CLIENT_PLAN.md §6):
- *   - Активные   — open
- *   - История    — cancelled, expired (+ legacy: completed, disputed,
- *                  in_progress, awaiting_confirmation, closed)
- *
- * Переименование «Открытые/Архив» → «Активные/История» (план §6): «архив»
- * звучит как «спрятано навсегда», тогда как это обычная лента прошлых заказов,
- * по которым ещё можно посмотреть отклики, удалить или открыть заново.
- *
- * Why. Без accept-flow заказ из open идёт только в cancelled/expired.
- * Остальные статусы недостижимы в новом UI, но могут существовать в БД
- * для legacy-заказов — складываем их в «Историю».
+ * История: до 2026-09-01 экран выбирался по active_role, и человек видел
+ * ровно половину своей жизни в приложении. Режимов больше нет.
  */
 
 import { FlashList, type FlashListRef } from "@shopify/flash-list";
 import { useNavigation, useRouter } from "expo-router";
 import {
   ArrowClockwise,
-  ArrowRight,
   ChatCenteredText,
   ClipboardText,
+  MagnifyingGlass,
   Plus,
   WarningCircle,
 } from "phosphor-react-native";
 import type { RefObject } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Animated, type FlatList, Pressable, ScrollView, View } from "react-native";
+import { Animated, type FlatList, Pressable, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
 import { OrderRow } from "@/components/OrderRow";
 import { OrderRowsSkeleton } from "@/components/OrderRowsSkeleton";
-import { ScreenHeader } from "@/components/ui";
+import { Button } from "@/components/ui";
 import { useAuthSession } from "@/features/auth/use-auth-session";
 import { type OrderWithRefs, useMyOrders } from "@/features/orders/use-my-orders";
 import {
   historyResponseStatusLabel,
   isActiveResponse,
   isHistoryResponse,
+  type MyResponseWithOrder,
   useMyResponses,
 } from "@/features/orders/use-my-responses";
 import { usePullToRefresh } from "@/hooks/use-pull-to-refresh";
 import { scrollViewToTop, useTabScrollResetCounter } from "@/lib/tab-scroll-reset";
-import { useThemeColor, useThemeColors } from "@/lib/use-theme-color";
+import { useThemeColors } from "@/lib/use-theme-color";
 import type { IconComponent } from "@/types/icon";
 
-// Открытые — только open. В новой classified-ads модели заказ не идёт в
+type Segment = "orders" | "responses";
+
+// Открытые — только open. В classified-ads модели задание не идёт в
 // in_progress/awaiting_confirmation (нет accept-flow), а disputed недостижим.
 const ACTIVE_STATUSES = new Set<string>(["open"]);
 
 export default function OrdersScreen() {
+  const insets = useSafeAreaInsets();
+  const router = useRouter();
+  const tc = useThemeColors(["on-accent"]);
   const { session } = useAuthSession();
   const userId = session?.user?.id;
-  // Раньше экран выбирался по active_role, и человек видел ровно половину
-  // своей жизни в приложении: выложивший задание не видел своих откликов, и
-  // наоборот. Переключиться можно было только сменой режима.
-  //
-  // Режимов больше нет (DECISION владельца 2026-09-01), поэтому оба списка
-  // живут на одном экране и переключаются сегментами. Это навигация внутри
-  // экрана, а не вопрос «кто вы сейчас».
-  //
+
+  const { data: myOrders } = useMyOrders(userId);
+  const { data: myResponses } = useMyResponses(userId);
+
   // Отклики показываем первыми, только если своих заданий нет вовсе: у
   // человека, который пришёл откликаться, пустой список заданий не должен
-  // быть первым, что он видит.
-  const { data: myOrders } = useMyOrders(userId);
-  const [tab, setTab] = useState<"orders" | "responses" | null>(null);
-  const resolved = tab ?? (myOrders && myOrders.length === 0 ? "responses" : "orders");
+  // быть первым, что он видит. Выбор делается ОДИН раз, когда оба списка
+  // загрузились, и дальше не пересчитывается — иначе фоновое обновление
+  // данных (pull-to-refresh, инвалидация кэша) переключало бы сегмент под
+  // рукой у пользователя (QA 2026-09-02).
+  const [tab, setTab] = useState<Segment | null>(null);
+  useEffect(() => {
+    if (tab !== null || myOrders === undefined || myResponses === undefined) return;
+    setTab(myOrders.length === 0 && myResponses.length > 0 ? "responses" : "orders");
+  }, [tab, myOrders, myResponses]);
+  const resolved: Segment = tab ?? "orders";
 
   return (
-    <>
-      <OrdersSegments value={resolved} onChange={setTab} />
-      {resolved === "responses" ? (
-        <MasterOrdersView userId={userId} />
-      ) : (
-        <ClientOrdersView userId={userId} />
-      )}
-    </>
-  );
-}
-
-/** Сегменты «Мои задания» / «Мои отклики». */
-function OrdersSegments({
-  value,
-  onChange,
-}: {
-  value: "orders" | "responses";
-  onChange: (v: "orders" | "responses") => void;
-}) {
-  const insets = useSafeAreaInsets();
-  return (
-    <View className="bg-canvas px-5 pb-2" style={{ paddingTop: insets.top + 8 }}>
-      <View className="flex-row gap-1 rounded-lg bg-canvas-soft p-1">
-        {(
-          [
-            ["orders", "Мои задания"],
-            ["responses", "Мои отклики"],
-          ] as const
-        ).map(([key, label]) => {
-          const active = value === key;
-          return (
-            <Pressable
-              key={key}
-              accessibilityRole="button"
-              accessibilityLabel={label}
-              accessibilityState={{ selected: active }}
-              onPress={() => onChange(key)}
-              className={`min-h-11 flex-1 items-center justify-center rounded-md ${
-                active ? "bg-canvas" : ""
-              }`}
-            >
-              <AppText
-                weight={active ? "semibold" : "medium"}
-                className={`text-body-sm ${active ? "text-ink" : "text-mute"}`}
-              >
-                {label}
-              </AppText>
-            </Pressable>
-          );
-        })}
+    <View className="flex-1 bg-canvas" style={{ paddingTop: insets.top }}>
+      {/* Заголовок + единственное главное действие экрана. */}
+      <View className="flex-row items-center justify-between px-5 pt-2">
+        <AppText weight="bold" className="text-display-lg text-ink">
+          Мои задания
+        </AppText>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Создать задание"
+          onPress={() => router.push("/orders/new" as never)}
+          className="h-12 w-12 items-center justify-center rounded-full bg-accent active:opacity-85"
+        >
+          <Plus size={24} weight="bold" color={tc["on-accent"]} />
+        </Pressable>
       </View>
+
+      <Segments
+        value={resolved}
+        onChange={setTab}
+        ordersCount={myOrders?.length ?? null}
+        responsesCount={myResponses?.length ?? null}
+      />
+
+      {resolved === "responses" ? (
+        <ResponsesList userId={userId} />
+      ) : (
+        <OrdersList userId={userId} />
+      )}
     </View>
   );
 }
 
-interface ClientOrdersViewProps {
-  userId: string | undefined;
+// ============================================================================
+// Segments — «Задания N» / «Отклики N». Счётчики — из данных, пока данных
+// нет — без числа (не показываем «0», которого не знаем).
+// ============================================================================
+
+function Segments({
+  value,
+  onChange,
+  ordersCount,
+  responsesCount,
+}: {
+  value: Segment;
+  onChange: (v: Segment) => void;
+  ordersCount: number | null;
+  responsesCount: number | null;
+}) {
+  const items: Array<[Segment, string, number | null]> = [
+    ["orders", "Задания", ordersCount],
+    ["responses", "Отклики", responsesCount],
+  ];
+  return (
+    <View className="mx-4 mt-4 flex-row rounded-xl bg-canvas-soft p-1">
+      {items.map(([key, label, count]) => {
+        const active = value === key;
+        const title = count != null && count > 0 ? `${label} · ${count}` : label;
+        return (
+          <Pressable
+            key={key}
+            accessibilityRole="tab"
+            accessibilityLabel={title}
+            accessibilityState={{ selected: active }}
+            onPress={() => onChange(key)}
+            className={`min-h-12 flex-1 items-center justify-center rounded-lg ${
+              active ? "border border-hairline bg-canvas" : ""
+            }`}
+          >
+            <AppText
+              weight="semibold"
+              className={`text-body-md ${active ? "text-ink" : "text-mute"}`}
+            >
+              {title}
+            </AppText>
+          </Pressable>
+        );
+      })}
+    </View>
+  );
 }
 
-function ClientOrdersView({ userId }: ClientOrdersViewProps) {
+// ============================================================================
+// OrdersList — мои задания: открытые сверху, закрытые ниже. Статус виден
+// плашкой на карточке, отдельная вкладка «История» только прятала бы список.
+// ============================================================================
+
+function OrdersList({ userId }: { userId: string | undefined }) {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { data: orders, isLoading, error, refetch } = useMyOrders(userId);
   const refresh = usePullToRefresh();
 
-  // Выбранный таб хранится в URL-параметре (?tab=active|done), а НЕ в локальном
-  // useState. Почему: раздел заказов — это стопка экранов (Stack). Когда клиент
-  // открывает заказ из «Истории» и жмёт «назад», экран списка может пересоздаться
-  // и локальный state сбросился бы на «Активные» (баг, фидбэк 2026-05-21).
-  // URL-параметр живёт в навигационном состоянии и переживает возврат с детали —
-  // вкладка восстанавливается сама. Дефолт (нет параметра) — «Активные».
-  // Один список вместо вкладок «Активные / История» (DECISION владельца
-  // 2026-09-02: «просто мои задания и отклики»). Открытые — сверху, закрытые
-  // и истёкшие — ниже: статус и так виден плашкой на каждой карточке, отдельная
-  // вкладка ради него только прятала половину списка. Список откликов мастера
-  // пришёл к тому же ещё 2026-05-28.
   const allOrders = useMemo(() => {
     const list = orders ?? [];
     const open = list.filter((o) => ACTIVE_STATUSES.has(o.status as string));
@@ -165,8 +179,7 @@ function ClientOrdersView({ userId }: ClientOrdersViewProps) {
     return [...open, ...rest];
   }, [orders]);
 
-  // Tap-on-active-tab → scroll to top. scrollViewToTop поддерживает
-  // FlatList/FlashList-рефы через scrollToOffset — см. src/lib/tab-scroll-reset.ts.
+  // Tap-on-active-tab → scroll to top (src/lib/tab-scroll-reset.ts).
   const listRef = useRef<FlashListRef<OrderWithRefs>>(null);
   const resetCounter = useTabScrollResetCounter("orders");
   useEffect(() => {
@@ -175,106 +188,73 @@ function ClientOrdersView({ userId }: ClientOrdersViewProps) {
     }
   }, [resetCounter]);
 
-  // Список текущего таба — виртуализуется через FlashList (личная история
-  // заказов растёт со временем, порог ≤15 для plain ScrollView из
-  // docs/IOS_FOUNDATION.md §6.1 не гарантирован).
   const hasItems = !isLoading && !error && allOrders.length > 0;
 
   return (
-    <View className="flex-1 bg-canvas" style={{ paddingTop: insets.top }}>
-      <ScreenHeader
-        title="Мои задания"
-        rightAction={{
-          label: "Создать",
-          Icon: Plus,
-          onPress: () => router.push("/orders/new" as never),
-        }}
-      />
-
-      <FlashList
-        style={{ flex: 1 }}
-        ref={listRef}
-        data={hasItems ? allOrders : []}
-        keyExtractor={(o) => o.id}
-        contentContainerStyle={{ paddingBottom: insets.bottom + 100 }}
-        showsVerticalScrollIndicator={false}
-        refreshControl={refresh.control}
-        // Реальные строки начинаются с отступа mt-4 (16px) — как раньше у
-        // OrdersList. Skeleton/ошибка/empty несут собственный отступ и в
-        // этом спейсере не нуждаются.
-        ListHeaderComponent={hasItems ? <View style={{ height: 16 }} /> : null}
-        renderItem={({ item: o }) => (
-          <OrderRow
-            id={o.id}
-            title={o.title}
-            categoryName={o.l2?.name_ru ?? o.l2_id}
-            categoryIcon={o.l2?.icon ?? null}
-            categoryL2Id={o.l2_id}
-            cityName={o.city?.name ?? o.city_id ?? "Вся Ингушетия"}
-            district={o.district}
-            urgency={o.urgency}
-            preferredDate={o.preferred_date}
-            responsesCount={o.responses_count}
-            createdAt={o.created_at}
-            status={o.status}
-            budgetKind={o.budget_kind}
-            budgetValue={o.budget_value}
-            coverUrl={o.photo_urls?.[0] ?? null}
-            photosCount={o.photo_urls?.length ?? 0}
-            onPress={() => router.push(`/orders/${o.id}` as never)}
+    <FlashList
+      style={{ flex: 1 }}
+      ref={listRef}
+      data={hasItems ? allOrders : []}
+      keyExtractor={(o) => o.id}
+      contentContainerStyle={{ paddingTop: 16, paddingBottom: insets.bottom + 100 }}
+      showsVerticalScrollIndicator={false}
+      refreshControl={refresh.control}
+      renderItem={({ item: o }) => (
+        <OrderRow
+          id={o.id}
+          title={o.title}
+          categoryName={o.l2?.name_ru ?? o.l2_id}
+          categoryIcon={o.l2?.icon ?? null}
+          categoryL2Id={o.l2_id}
+          cityName={o.city?.name ?? o.city_id ?? "Вся Ингушетия"}
+          district={o.district}
+          urgency={o.urgency}
+          preferredDate={o.preferred_date}
+          responsesCount={o.responses_count}
+          createdAt={o.created_at}
+          status={o.status}
+          budgetKind={o.budget_kind}
+          budgetValue={o.budget_value}
+          coverUrl={o.photo_urls?.[0] ?? null}
+          photosCount={o.photo_urls?.length ?? 0}
+          onPress={() => router.push(`/orders/${o.id}` as never)}
+        />
+      )}
+      ListEmptyComponent={
+        isLoading ? (
+          <OrderRowsSkeleton count={4} />
+        ) : error ? (
+          <ErrorState message={error.message} onRetry={() => refetch()} />
+        ) : (
+          <EmptyState
+            icon={ClipboardText}
+            title="Заданий пока нет"
+            hint="Опишите задачу — исполнители пришлют отклики с ценой и сроком."
+            ctaLabel="Разместить задание"
+            ctaIcon={Plus}
+            onCta={() => router.push("/orders/new" as never)}
           />
-        )}
-        ListEmptyComponent={
-          isLoading ? (
-            // Loading — скелетоны по форме OrderRow, не голый спиннер (§5).
-            <OrderRowsSkeleton count={5} />
-          ) : error ? (
-            <OrdersErrorState message={error.message} onRetry={() => refetch()} />
-          ) : (
-            <EmptyState
-              icon={ClipboardText}
-              title="Заданий пока нет"
-              hint="Опишите задачу — и исполнители пришлют отклики с ценой и сроком."
-              ctaLabel="Разместить задание"
-              onCta={() => router.push("/orders/new" as never)}
-            />
-          )
-        }
-      />
-    </View>
+        )
+      }
+    />
   );
 }
 
 // ============================================================================
-// MasterOrdersView — «Мои задания» мастера: единый список ВСЕХ его откликов
-// (активные + история), отсортированный по дате отклика (newest first).
-// Перенесено сюда из /orders/my-responses (2026-08-30) как корень таба:
-// без back-кнопки (это таб, не detail-экран) и с pull-to-refresh, которого
-// на отдельном экране не было.
-//
-// Единый список без заголовков-секций — по фидбэку владельца 2026-05-28:
-// «Убери активные/историю, просто сделай список по дате отклика». Для
-// history-откликов вместо «Вы откликнулись» показывается статус-override
-// (Завершён / Заказ закрыли / Истёк / Отклонён) — historyResponseStatusLabel,
-// единый источник истины в use-my-responses.ts.
+// ResponsesList — мои отклики: активные (задание ещё открыто) сверху по дате
+// отклика, история ниже. В карточке — что я предложил (цена · срок); для
+// истории — итог (Завершено / Закрыто / Истекло / Отклонён / Отозван), единый
+// источник — historyResponseStatusLabel.
 // ============================================================================
 
-interface MasterOrdersViewProps {
-  userId: string | undefined;
-}
-
-function MasterOrdersView({ userId }: MasterOrdersViewProps) {
+function ResponsesList({ userId }: { userId: string | undefined }) {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const navigation = useNavigation();
-  const accentColor = useThemeColor("accent");
-  const onPrimary = useThemeColor("on-primary");
   const refresh = usePullToRefresh();
+  const { data: myResponses, isLoading, error, refetch } = useMyResponses(userId);
 
-  const { data: myResponses, isLoading } = useMyResponses(userId);
-  // Сортировка: сначала все активные (заказ ещё открыт) по дате отклика DESC,
-  // ниже все завершённые/отклонённые (история) тоже по дате отклика DESC.
-  const sortedResponses = useMemo(() => {
+  const sorted = useMemo(() => {
     const items = myResponses ?? [];
     return [...items].sort((a, b) => {
       const aActive = isActiveResponse(a);
@@ -284,217 +264,160 @@ function MasterOrdersView({ userId }: MasterOrdersViewProps) {
     });
   }, [myResponses]);
 
-  // Animated fade-in (UI_PATTERNS §3.7).
+  // Fade-in списка после скелетона (UI_PATTERNS §3.7).
   const opacity = useRef(new Animated.Value(0)).current;
   useEffect(() => {
     if (!isLoading) {
       opacity.setValue(0);
-      Animated.timing(opacity, {
-        toValue: 1,
-        duration: 280,
-        useNativeDriver: true,
-      }).start();
+      Animated.timing(opacity, { toValue: 1, duration: 280, useNativeDriver: true }).start();
     }
   }, [isLoading, opacity]);
 
-  return (
-    <View className="flex-1 bg-canvas" style={{ paddingTop: insets.top }}>
-      <ScreenHeader title="Мои задания" />
+  // Tap-on-active-tab → scroll to top — как и у списка заданий.
+  const listRef = useRef<FlashListRef<MyResponseWithOrder>>(null);
+  const resetCounter = useTabScrollResetCounter("orders");
+  useEffect(() => {
+    if (resetCounter > 0) {
+      scrollViewToTop(listRef as unknown as RefObject<FlatList | null>);
+    }
+  }, [resetCounter]);
 
-      <ScrollView
-        className="flex-1"
-        contentContainerStyle={{ paddingBottom: insets.bottom + 24 }}
+  const hasItems = !isLoading && !error && sorted.length > 0;
+
+  return (
+    <Animated.View style={{ flex: 1, opacity: isLoading ? 1 : opacity }}>
+      <FlashList
+        style={{ flex: 1 }}
+        ref={listRef}
+        data={hasItems ? sorted : []}
+        keyExtractor={(r: MyResponseWithOrder) => r.response.id}
+        contentContainerStyle={{ paddingTop: 16, paddingBottom: insets.bottom + 100 }}
+        showsVerticalScrollIndicator={false}
         refreshControl={refresh.control}
-      >
-        {isLoading ? (
-          <OrderRowsSkeleton count={5} />
-        ) : (
-          <Animated.View style={{ opacity }} className="pt-2">
-            {sortedResponses.length === 0 ? (
-              <EmptyActiveState
-                accentColor={accentColor}
-                onPrimary={onPrimary}
-                // Переключаем таб, а не пушим новый экран — «Найти задание»
-                // это соседний таб мастера (/find), не detail-роут.
-                onFindOrders={() => navigation.navigate("find" as never)}
-              />
-            ) : (
-              sortedResponses.map((r) => {
-                const isHistory = isHistoryResponse(r);
-                return (
-                  <OrderRow
-                    key={r.response.id}
-                    id={r.order.id}
-                    title={r.order.title}
-                    categoryName={r.order.l2?.name_ru ?? r.order.l2_id}
-                    categoryIcon={r.order.l2?.icon ?? null}
-                    categoryL2Id={r.order.l2_id}
-                    cityName={r.order.city?.name ?? r.order.city_id ?? "Вся Ингушетия"}
-                    district={r.order.district}
-                    urgency={r.order.urgency}
-                    preferredDate={r.order.preferred_date}
-                    responsesCount={r.order.responses_count}
-                    createdAt={r.response.created_at}
-                    status={r.order.status}
-                    variant="responded"
-                    showResponsesCount={false}
-                    alreadyResponded={!isHistory}
-                    budgetKind={r.order.budget_kind}
-                    budgetValue={r.order.budget_value}
-                    statusOverrideLabel={isHistory ? historyResponseStatusLabel(r) : undefined}
-                    onPress={() => router.push(`/orders/${r.order.id}` as never)}
-                  />
-                );
-              })
-            )}
-          </Animated.View>
-        )}
-      </ScrollView>
-    </View>
+        renderItem={({ item: r }) => {
+          const isHistory = isHistoryResponse(r);
+          return (
+            <OrderRow
+              id={r.order.id}
+              title={r.order.title}
+              categoryName={r.order.l2?.name_ru ?? r.order.l2_id}
+              categoryIcon={r.order.l2?.icon ?? null}
+              categoryL2Id={r.order.l2_id}
+              cityName={r.order.city?.name ?? r.order.city_id ?? "Вся Ингушетия"}
+              district={r.order.district}
+              urgency={r.order.urgency}
+              preferredDate={r.order.preferred_date}
+              responsesCount={r.order.responses_count}
+              createdAt={r.response.created_at}
+              status={r.order.status}
+              variant="responded"
+              showResponsesCount={false}
+              budgetKind={r.order.budget_kind}
+              budgetValue={r.order.budget_value}
+              statusOverrideLabel={isHistory ? historyResponseStatusLabel(r) : undefined}
+              myResponse={{
+                priceKind: r.response.price_kind,
+                priceValue: r.response.price_value,
+                leadTime: r.response.lead_time,
+              }}
+              onPress={() => router.push(`/orders/${r.order.id}` as never)}
+            />
+          );
+        }}
+        ListEmptyComponent={
+          isLoading ? (
+            <OrderRowsSkeleton count={4} />
+          ) : error ? (
+            <ErrorState message={error.message} onRetry={() => refetch()} />
+          ) : (
+            <EmptyState
+              icon={ChatCenteredText}
+              title="Откликов пока нет"
+              hint="Найдите подходящее задание и предложите свою цену и срок."
+              ctaLabel="Найти задание"
+              ctaIcon={MagnifyingGlass}
+              // Переключаем таб, а не пушим экран: «Найти задание» — соседняя
+              // вкладка нижнего меню, не detail-роут.
+              onCta={() => navigation.navigate("find" as never)}
+            />
+          )
+        }
+      />
+    </Animated.View>
   );
 }
 
 // ============================================================================
-// EmptyActiveState — hero-иллюстрация + CTA «Найти задание».
+// EmptyState — иконка в мягком акцентном круге + заголовок + одна строка +
+// одна акцентная кнопка. hint под заголовком — часть empty-паттерна.
 // ============================================================================
 
-interface EmptyActiveStateProps {
-  accentColor: string;
-  onPrimary: string;
-  onFindOrders: () => void;
-}
-
-function EmptyActiveState({ accentColor, onPrimary, onFindOrders }: EmptyActiveStateProps) {
-  return (
-    <View className="mt-4 items-center px-6">
-      <View className="h-28 w-28 items-center justify-center rounded-2xl relative overflow-hidden bg-badge-amber">
-        <View
-          className="absolute rounded-full bg-canvas"
-          style={{ top: -16, left: -14, width: 52, height: 52, opacity: 0.35 }}
-        />
-        <View
-          className="absolute rounded-full bg-canvas"
-          style={{
-            bottom: -12,
-            right: -8,
-            width: 40,
-            height: 40,
-            opacity: 0.45,
-          }}
-        />
-        <View
-          className="absolute rounded-md bg-canvas"
-          style={{
-            top: 14,
-            right: 14,
-            width: 14,
-            height: 14,
-            opacity: 0.55,
-            transform: [{ rotate: "12deg" }],
-          }}
-        />
-        <View className="h-14 w-14 items-center justify-center rounded-full bg-canvas">
-          <ChatCenteredText size={26} weight="bold" color={accentColor} />
-        </View>
-      </View>
-
-      <AppText weight="bold" className="mt-5 text-center text-title-md text-ink">
-        Откликов пока нет
-      </AppText>
-      <AppText className="mt-2 text-center text-body-sm text-mute">
-        Найдите интересную заявку в поиске и отправьте отклик.
-      </AppText>
-
-      <Pressable
-        accessibilityRole="button"
-        onPress={onFindOrders}
-        className="mt-5 min-h-11 flex-row items-center gap-2 rounded-pill bg-primary px-5 active:opacity-80"
-      >
-        <AppText weight="semibold" className="text-button text-on-primary">
-          Найти задание
-        </AppText>
-        <ArrowRight size={16} weight="bold" color={onPrimary} />
-      </Pressable>
-    </View>
-  );
-}
-
-// ============================================================================
-// EmptyState — пустое состояние списка заданий.
-//
-// Паттерн (Lazyweb: Farfetch / Adidas Confirmed / Alibaba / Cava): иконка-
-// иллюстрация в мягком круге + короткий заголовок + одна поясняющая строка +
-// опц. один primary CTA. Никогда не «голый текст по центру».
-//
-// hint под title здесь — часть empty-паттерна (разрешено правилами §G /
-// design-enforcement, в отличие от subtitle под H1 на экранах).
-// ============================================================================
-
-interface EmptyStateProps {
+function EmptyState({
+  icon: Icon,
+  title,
+  hint,
+  ctaLabel,
+  ctaIcon: CtaIcon,
+  onCta,
+}: {
   icon: IconComponent;
   title: string;
   hint: string;
-  ctaLabel?: string;
-  onCta?: () => void;
-}
-
-function EmptyState({ icon: Icon, title, hint, ctaLabel, onCta }: EmptyStateProps) {
-  const tc = useThemeColors(["mute"]);
+  ctaLabel: string;
+  ctaIcon: IconComponent;
+  onCta: () => void;
+}) {
+  const tc = useThemeColors(["accent", "on-accent"]);
   return (
-    <View className="mt-20 items-center px-10">
-      <View className="h-16 w-16 items-center justify-center rounded-full bg-surface-2">
-        <Icon size={30} weight="bold" color={tc.mute} />
+    <View className="mt-16 items-center px-8">
+      <View className="h-20 w-20 items-center justify-center rounded-full bg-accent-soft">
+        <Icon size={36} weight="bold" color={tc.accent} />
       </View>
-      <AppText weight="bold" className="mt-5 text-center text-title-lg text-ink">
+      <AppText weight="bold" className="mt-6 text-center text-display-sm text-ink">
         {title}
       </AppText>
-      <AppText className="mt-2 text-center text-body-md text-muted" style={{ lineHeight: 22 }}>
-        {hint}
-      </AppText>
-      {ctaLabel && onCta ? (
-        <Pressable
-          accessibilityRole="button"
+      <AppText className="mt-2 text-center text-body-md text-body">{hint}</AppText>
+      <View className="mt-8 self-stretch">
+        <Button
+          variant="accent"
+          size="lg"
+          fullWidth
           onPress={onCta}
-          className="mt-6 min-h-11 flex-row items-center justify-center gap-2 rounded-md bg-primary px-5 active:opacity-80"
+          leftIcon={<CtaIcon size={20} weight="bold" color={tc["on-accent"]} />}
         >
-          <Plus size={18} weight="bold" color="rgb(var(--on-primary))" />
-          <AppText weight="semibold" className="text-button text-on-primary">
-            {ctaLabel}
-          </AppText>
-        </Pressable>
-      ) : null}
+          {ctaLabel}
+        </Button>
+      </View>
     </View>
   );
 }
 
 // ============================================================================
-// OrdersErrorState — ошибка загрузки списка заказов.
-// Иконка + понятный текст + кнопка «Повторить» (§5 error-state).
+// ErrorState — не удалось загрузить: иконка + текст + «Повторить».
 // ============================================================================
 
-function OrdersErrorState({ message, onRetry }: { message: string; onRetry: () => void }) {
+function ErrorState({ message, onRetry }: { message: string; onRetry: () => void }) {
   const tc = useThemeColors(["mute", "ink"]);
   return (
-    <View className="mt-20 items-center px-10">
-      <View className="h-16 w-16 items-center justify-center rounded-full bg-surface-2">
-        <WarningCircle size={30} weight="bold" color={tc.mute} />
+    <View className="mt-16 items-center px-8">
+      <View className="h-20 w-20 items-center justify-center rounded-full bg-surface-2">
+        <WarningCircle size={36} weight="bold" color={tc.mute} />
       </View>
-      <AppText weight="bold" className="mt-5 text-center text-title-lg text-ink">
+      <AppText weight="bold" className="mt-6 text-center text-display-sm text-ink">
         Не удалось загрузить
       </AppText>
-      <AppText className="mt-2 text-center text-body-md text-muted" style={{ lineHeight: 22 }}>
-        {message}
-      </AppText>
-      <Pressable
-        accessibilityRole="button"
-        onPress={onRetry}
-        className="mt-6 min-h-11 flex-row items-center justify-center gap-2 rounded-md border border-hairline bg-canvas px-5 active:bg-canvas-soft"
-      >
-        <ArrowClockwise size={18} weight="bold" color={tc.ink} />
-        <AppText weight="semibold" className="text-button text-ink">
+      <AppText className="mt-2 text-center text-body-md text-body">{message}</AppText>
+      <View className="mt-8 self-stretch">
+        <Button
+          variant="secondary"
+          size="lg"
+          fullWidth
+          onPress={onRetry}
+          leftIcon={<ArrowClockwise size={20} weight="bold" color={tc.ink} />}
+        >
           Повторить
-        </AppText>
-      </Pressable>
+        </Button>
+      </View>
     </View>
   );
 }

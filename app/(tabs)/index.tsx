@@ -29,7 +29,6 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
 import { Avatar, Card, Skeleton } from "@/components/ui";
 import { useAuthSession } from "@/features/auth/use-auth-session";
-import { useUserRecord } from "@/features/auth/use-user-record";
 import {
   useVisibleCategories,
   type VisibleCategory,
@@ -37,7 +36,6 @@ import {
 import { ActiveOrdersShowcase } from "@/features/home/ActiveOrdersShowcase";
 import { CategoryCollections } from "@/features/home/CategoryCollections";
 import { CinematicHero } from "@/features/home/CinematicHero";
-import { HomeSearchField } from "@/features/home/HomeSearchField";
 import { PromoBannerCarousel } from "@/features/home/PromoBannerCarousel";
 import {
   AVAILABILITY_DOT,
@@ -58,7 +56,6 @@ export default function HomeTab() {
   const router = useRouter();
   const { session } = useAuthSession();
   const userId = session?.user?.id;
-  const { data: user } = useUserRecord(userId);
 
   const refresh = usePullToRefresh();
 
@@ -168,10 +165,10 @@ function ClientHome({
   const gridCancelStyle = isGrid ? { marginHorizontal: -CATEGORY_CONTAINER_PADDING } : undefined;
 
   return (
-    // Поле поиска — вне списка, поэтому закреплено сверху по построению
-    // (образец владельца 2026-09-02). Ниже — прокручиваемая главная.
+    // Закреплённого поля поиска над главной нет: DECISION владельца
+    // 2026-09-02 (вечер) — «полоску „что нужно сделать“ полностью убрать».
+    // Фото-герой идёт от самого верха экрана.
     <View style={{ flex: 1, backgroundColor: canvasBg }}>
-      <HomeSearchField />
       <FlashList
         style={{ flex: 1, backgroundColor: canvasBg }}
         ref={listRef}
@@ -189,9 +186,7 @@ function ClientHome({
         }}
         ListHeaderComponent={
           <View style={gridCancelStyle}>
-            {/* flushTop: над героем теперь поле поиска со своим отступом под
-              статус-бар, второй отступ внутри героя дал бы двойной зазор. */}
-            <CinematicHero onCreateTask={() => onDescribeTask()} flushTop />
+            <CinematicHero onCreateTask={() => onDescribeTask()} />
             <ActiveOrdersShowcase userId={userId} />
             <CategoryCollections />
             {/* Блок «Часто ищут» (FeaturedRequests) скрыт по фидбэку юзера 2026-05-21.
@@ -201,7 +196,7 @@ function ClientHome({
             <PromoBannerCarousel />
             <TopMasters onMasterPress={onMasterPress} />
             <View className="mt-10 px-5">
-              <AppText weight="semibold" className="text-title-lg text-ink">
+              <AppText weight="bold" className="text-display-sm text-ink">
                 Категории исполнителей
               </AppText>
             </View>
@@ -406,10 +401,10 @@ function TopMasters({ onMasterPress }: { onMasterPress: (id: string) => void }) 
   return (
     <View className="mt-10">
       <View className="px-5">
-        <AppText weight="semibold" className="text-title-lg text-ink">
+        <AppText weight="bold" className="text-display-sm text-ink">
           Исполнители рядом
         </AppText>
-        <AppText className="mt-1 text-body-sm text-mute">По рейтингу и отзывам</AppText>
+        <AppText className="mt-1 text-body-md text-mute">По рейтингу и отзывам</AppText>
       </View>
 
       {isLoading ? (
@@ -633,14 +628,14 @@ function CategoryItem({ category, isGrid, isLast, onPress }: CategoryItemProps) 
       onPress={onPress}
       accessibilityRole="button"
       accessibilityLabel={category.name_ru}
-      className={`flex-row items-center gap-3 px-5 py-3 active:bg-canvas-soft-2 ${
+      className={`flex-row items-center gap-4 px-5 py-3.5 active:bg-canvas-soft-2 ${
         isLast ? "" : "border-b border-hairline"
       }`}
     >
-      <View className="h-10 w-10 items-center justify-center rounded-full bg-canvas-soft text-ink">
+      <View className="h-11 w-11 items-center justify-center rounded-xl bg-canvas-soft text-ink">
         {iconNode}
       </View>
-      <AppText weight="semibold" className="flex-1 text-body-md text-ink">
+      <AppText weight="semibold" className="flex-1 text-body-lg text-ink">
         {category.name_ru}
       </AppText>
       <View className="text-mute">

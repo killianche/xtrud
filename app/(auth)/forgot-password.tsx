@@ -10,16 +10,10 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { CaretLeft, EnvelopeSimple } from "phosphor-react-native";
 import { useState } from "react";
 import { Controller, useForm } from "react-hook-form";
-import {
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  TextInput,
-  View,
-} from "react-native";
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
+import { Button, Input } from "@/components/ui";
 import { useRequestReset } from "@/features/auth/use-auth-mutations";
 import { type ForgotPasswordValues, forgotPasswordSchema } from "@/features/auth/validation";
 import { useBackGestureLock } from "@/lib/use-back-gesture-lock";
@@ -31,7 +25,7 @@ export default function ForgotPasswordScreen() {
   const requestReset = useRequestReset();
   const [serverError, setServerError] = useState<string | null>(null);
   const [sentTo, setSentTo] = useState<string | null>(null);
-  const tc = useThemeColors(["muted-soft", "ink", "accent"]);
+  const tc = useThemeColors(["ink", "accent"]);
   const goBack = useSafeBack("/(auth)/phone" as const);
 
   const {
@@ -72,27 +66,20 @@ export default function ForgotPasswordScreen() {
         {sentTo ? (
           // ── Success-состояние: письмо отправлено ──────────────────────────
           <View className="flex-1 items-center justify-center px-6">
-            <View className="h-16 w-16 items-center justify-center rounded-full bg-accent-soft">
-              <EnvelopeSimple size={32} weight="fill" color={tc.accent} />
+            <View className="h-20 w-20 items-center justify-center rounded-full bg-accent-soft">
+              <EnvelopeSimple size={36} weight="fill" color={tc.accent} />
             </View>
-            <AppText
-              weight="bold"
-              className="mt-6 text-center text-display-md tracking-tight text-ink"
-            >
+            <AppText weight="bold" className="mt-6 text-center text-display-md text-ink">
               Письмо отправлено
             </AppText>
-            <AppText className="mt-3 max-w-[300px] text-center text-body-md text-body">
+            <AppText className="mt-3 max-w-[320px] text-center text-body-md text-body">
               Откройте ссылку из письма на {sentTo}, чтобы задать новый пароль.
             </AppText>
-            <Pressable
-              accessibilityRole="button"
-              onPress={goBack}
-              className="mt-10 min-h-12 w-full items-center justify-center rounded-md bg-primary active:opacity-80"
-            >
-              <AppText weight="semibold" className="text-button text-on-primary">
+            <View className="mt-10 self-stretch">
+              <Button variant="accent" size="lg" fullWidth onPress={goBack}>
                 Вернуться ко входу
-              </AppText>
-            </Pressable>
+              </Button>
+            </View>
           </View>
         ) : (
           // ── Форма: ввод почты ─────────────────────────────────────────────
@@ -109,63 +96,59 @@ export default function ForgotPasswordScreen() {
               >
                 <CaretLeft size={28} weight="bold" color={tc.ink} />
               </Pressable>
-              <AppText weight="bold" className="mt-6 text-display-md tracking-tight text-ink">
+              <AppText weight="bold" className="mt-6 text-display-lg text-ink">
                 Восстановление пароля
               </AppText>
 
-              <View className="mt-10">
-                <AppText weight="medium" className="text-caption text-muted">
-                  Почта
-                </AppText>
+              <View className="mt-8">
                 <Controller
                   control={control}
                   name="email"
                   render={({ field: { value, onChange, onBlur } }) => (
-                    <TextInput
+                    <Input
+                      size="lg"
+                      label="Почта"
                       value={value}
                       onBlur={onBlur}
                       onChangeText={onChange}
                       placeholder="example@mail.ru"
-                      placeholderTextColor={tc["muted-soft"]}
                       keyboardType="email-address"
                       autoCapitalize="none"
                       autoCorrect={false}
                       autoComplete="email"
                       inputMode="email"
-                      className={`mt-2 min-h-12 rounded-md border bg-canvas px-3 py-3 text-body-md text-ink ${
-                        errors.email ? "border-error" : "border-hairline focus:border-ink"
-                      }`}
                       editable={!isBusy}
                       onSubmitEditing={onSubmit}
+                      error={errors.email?.message}
                     />
                   )}
                 />
-                {errors.email && (
-                  <AppText weight="medium" className="mt-2 text-caption text-error">
-                    {errors.email.message}
-                  </AppText>
-                )}
                 {serverError && (
-                  <AppText weight="medium" className="mt-2 text-caption text-error">
-                    {serverError}
-                  </AppText>
+                  <View className="mt-4 rounded-xl bg-error-soft px-4 py-3">
+                    <AppText
+                      accessibilityRole="alert"
+                      accessibilityLiveRegion="polite"
+                      weight="medium"
+                      className="text-body-md text-error-deep"
+                    >
+                      {serverError}
+                    </AppText>
+                  </View>
                 )}
               </View>
             </View>
 
             <View className="px-6 pb-8 pt-8">
-              <Pressable
-                accessibilityRole="button"
-                disabled={!isValid || isBusy}
+              <Button
+                variant="accent"
+                size="lg"
+                fullWidth
+                disabled={!isValid}
+                loading={isBusy}
                 onPress={onSubmit}
-                className={`h-12 items-center justify-center rounded-md ${
-                  isValid && !isBusy ? "bg-primary active:opacity-80" : "bg-surface-3"
-                }`}
               >
-                <AppText weight="semibold" className="text-button text-on-primary">
-                  {isBusy ? "Отправляем…" : "Отправить ссылку"}
-                </AppText>
-              </Pressable>
+                Отправить ссылку
+              </Button>
             </View>
           </>
         )}

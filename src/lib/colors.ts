@@ -77,6 +77,10 @@ export const lightColors = {
   // link остаётся отдельным синим токеном для текстовых гиперссылок.
   accent: "#fe5574", // бренд розово-красный
   "accent-soft": "#ffe4ea", // бледно-розовый фон для chip/badge
+  // Текст на акцентной заливке. Тёмный в ОБЕИХ темах: белый на #fe5574 даёт
+  // 3.1:1, на тёмном #ff6b87 — 2.7:1, оба ниже AA 4.5 для текста кнопки;
+  // тёмный — 6.4:1 и 7.3:1. Доступность выше вкуса (design-quality.md §4).
+  "on-accent": "#0a0a0a",
 } as const;
 
 export const darkColors = {
@@ -146,6 +150,7 @@ export const darkColors = {
   // Фирменный accent на тёмном — чуть светлее для AA-контраста на canvas #0a.
   accent: "#ff6b87",
   "accent-soft": "#4a1f29", // тёмно-розовый приглушённый фон
+  "on-accent": "#0a0a0a", // см. светлую тему: тёмный текст на акценте в обеих
 } as const;
 
 export type ColorToken = keyof typeof lightColors;

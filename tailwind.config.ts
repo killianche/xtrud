@@ -83,6 +83,7 @@ const config: Config = {
         "muted-soft": "rgb(var(--muted-soft) / <alpha-value>)",
         accent: "rgb(var(--accent) / <alpha-value>)",
         "accent-soft": "rgb(var(--accent-soft) / <alpha-value>)",
+        "on-accent": "rgb(var(--on-accent) / <alpha-value>)",
       },
       fontSize: {
         // Шкала из Vercel DESIGN.md (typography:) + наши title-* (Vercel этих не имеет).

@@ -10,6 +10,8 @@ import {
   MapPin,
   Phone,
   Star,
+  Users,
+  Wallet,
   WhatsappLogo,
   X,
 } from "phosphor-react-native";
@@ -501,9 +503,7 @@ function OrderInfoBlock({ order, isOwner }: OrderInfoBlockProps) {
 
   return (
     <View className="px-5 pt-2">
-      {/* Status + Category — статус слева (главный сигнал состояния заказа),
-          категория мутным chip рядом. Раньше status сидел в header — там
-          он сливался с back-button и иконкой действий. */}
+      {/* Статус + категория. */}
       <View className="flex-row items-center gap-2">
         <OrderStatusBadge status={order.status} size="md" />
         <AppText className="text-caption text-mute">·</AppText>
@@ -512,79 +512,94 @@ function OrderInfoBlock({ order, isOwner }: OrderInfoBlockProps) {
         </AppText>
       </View>
 
-      {/* Display-заголовок — теперь живёт в body (а не в ScreenHeader),
-          выбор user 2026-05-15. Hero-стиль entity-page. */}
       <AppText weight="display" className="mt-3 text-display-md tracking-tight text-ink">
         {order.title}
       </AppText>
 
-      {/* Meta row — срочность + локация. Срочный заказ выделен красным. */}
-      <View className="mt-3 flex-row flex-wrap items-center gap-x-3 gap-y-1">
-        <View className="flex-row items-center gap-1.5">
-          <Clock size={13} weight="bold" color={isUrgent ? tc.error : tc.mute} />
-          <AppText
-            weight={isUrgent ? "semibold" : "regular"}
-            className={`text-body-sm ${isUrgent ? "text-error-deep" : "text-mute"}`}
-          >
-            {formatOrderTiming(order.urgency, order.preferred_date)}
-          </AppText>
-        </View>
-        <AppText className="text-caption text-muted-soft">·</AppText>
-        <View className="flex-row items-center gap-1.5">
-          <MapPin size={13} weight="bold" color={tc.mute} />
-          <AppText className="text-body-sm text-mute">
-            {order.city?.name ?? order.city_id}
-            {order.district ? ` · ${order.district}` : ""}
-          </AppText>
-        </View>
-      </View>
+      {/* Редизайн 2026-09-02 по образцу владельца: информация не серым, а
+          читаемым цветом; микроиконки; жирные заголовки секций; всё стопкой
+          друг под другом, а не разбросано. Каждая секция — заголовок + тело. */}
 
-      {/* Бюджет — крупный блок с подписью и линией сверху (Linear-референс). */}
+      {/* Бюджет */}
       {budgetText ? (
-        <View className="mt-5 border-t border-hairline pt-4">
-          <AppText className="text-caption uppercase tracking-wide text-mute">Бюджет</AppText>
-          <AppText
-            weight={isNegotiable ? "semibold" : "mono"}
-            className="mt-1 text-display-md text-ink tracking-tight"
-          >
-            {isNegotiable ? "Цена договорная" : budgetText}
+        <View className="mt-6">
+          <AppText weight="bold" className="text-title-md text-ink">
+            Бюджет
+          </AppText>
+          <View className="mt-2 flex-row items-center gap-2">
+            <Wallet size={18} weight="bold" color={tc.ink} />
+            <AppText
+              weight={isNegotiable ? "semibold" : "mono"}
+              className="text-display-md text-ink tracking-tight"
+            >
+              {isNegotiable ? "Договорная" : budgetText}
+            </AppText>
+          </View>
+        </View>
+      ) : null}
+
+      {/* Описание */}
+      {order.description ? (
+        <View className="mt-6">
+          <AppText weight="bold" className="text-title-md text-ink">
+            Описание
+          </AppText>
+          <AppText className="mt-2 text-body-md text-ink" style={{ lineHeight: 24 }}>
+            {order.description}
           </AppText>
         </View>
       ) : null}
 
-      {/* Description — body-md ink, плотный текст. */}
-      {order.description ? (
-        <AppText className="mt-5 text-body-md text-body" style={{ lineHeight: 24 }}>
-          {order.description}
-        </AppText>
-      ) : null}
-
-      {/* Фото заказа — карусель 4:3 после описания (дизайн-спека §4).
-          Full-bleed: вырываемся из px-5 родителя через -mx-5. Нет фото →
-          OrderPhotoCarousel возвращает null, секции не видно. */}
       {order.photo_urls && order.photo_urls.length > 0 ? (
-        <View className="mt-6 -mx-5">
+        <View className="mt-5 -mx-5">
           <OrderPhotoCarousel urls={order.photo_urls} />
         </View>
       ) : null}
 
-      {/* Заказчик — ПРОСТО ИМЯ (решение владельца 2026-05-24): не кнопка, без
-          перехода в профиль и без рейтинга. Показываем contact_name (имя,
-          которое клиент указал в заказе) → иначе регистрационное имя. Аватар —
-          инициалы по показываемому имени (фото аккаунта не раскрываем). Видно
-          только мастеру: клиент-владелец и так знает, что заказ его. */}
-      {!isOwner ? (
-        <View className="mt-6 flex-row items-center gap-3 rounded-xl border border-hairline bg-canvas-soft p-3">
-          <Avatar url={null} name={contactDisplay} seed={contactDisplay} size="md" />
-          <View className="flex-1 min-w-0">
+      {/* Детали — список «иконка + факт», всё в ink. Только то, что есть в
+          данных: срочность/дата, место, число откликов. Ничего не выдумываем
+          (design-quality.md §5). */}
+      <View className="mt-6">
+        <AppText weight="bold" className="text-title-md text-ink">
+          Детали
+        </AppText>
+        <View className="mt-2 gap-3">
+          <View className="flex-row items-center gap-3">
+            <Clock size={18} weight="bold" color={isUrgent ? tc.error : tc.ink} />
             <AppText
-              weight="medium"
-              className="text-caption text-mute uppercase tracking-wider"
-              style={{ letterSpacing: 0.5 }}
+              weight={isUrgent ? "semibold" : "medium"}
+              className={`flex-1 text-body-md ${isUrgent ? "text-error-deep" : "text-ink"}`}
             >
-              Заказчик
+              {formatOrderTiming(order.urgency, order.preferred_date)}
             </AppText>
-            <AppText weight="semibold" className="mt-0.5 text-body-md text-ink" numberOfLines={1}>
+          </View>
+          <View className="flex-row items-center gap-3">
+            <MapPin size={18} weight="bold" color={tc.ink} />
+            <AppText weight="medium" className="flex-1 text-body-md text-ink">
+              {order.city?.name ?? order.city_id}
+              {order.district ? `, ${order.district}` : ""}
+            </AppText>
+          </View>
+          <View className="flex-row items-center gap-3">
+            <Users size={18} weight="bold" color={tc.ink} />
+            <AppText weight="medium" className="flex-1 text-body-md text-ink">
+              {order.responses_count === 0
+                ? "Откликов пока нет"
+                : `Откликов: ${order.responses_count}`}
+            </AppText>
+          </View>
+        </View>
+      </View>
+
+      {/* Заказчик — просто имя (решение владельца 2026-05-24). */}
+      {!isOwner ? (
+        <View className="mt-6">
+          <AppText weight="bold" className="text-title-md text-ink">
+            Заказчик
+          </AppText>
+          <View className="mt-2 flex-row items-center gap-3 rounded-xl border border-hairline bg-canvas-soft p-3">
+            <Avatar url={null} name={contactDisplay} seed={contactDisplay} size="md" />
+            <AppText weight="semibold" className="flex-1 text-body-md text-ink" numberOfLines={1}>
               {contactDisplay}
             </AppText>
           </View>
@@ -1148,7 +1163,7 @@ function MasterResponseSection({
   // P0-5: дневной лимит откликов (5/день). Не блокируем UI, но блокируем
   // submit + показываем понятное сообщение если лимит исчерпан.
   const { data: responseLimit } = useResponseLimit();
-  const tc = useThemeColors(["muted-soft", "mute", "ink", "error", "on-primary"]);
+  const tc = useThemeColors(["muted-soft", "mute", "ink", "error", "on-primary", "on-accent"]);
 
   const isPickedMaster = pickedMasterId === masterId;
   const orderClosed = orderStatus !== "open";
@@ -1683,21 +1698,23 @@ function MasterResponseSection({
         </AppText>
       )}
 
-      {/* Кнопка отклика — full-width чёрная с галочкой (Linear). */}
+      {/* Кнопка отклика — акцентная (DECISION владельца 2026-09-02 «кнопка
+          цветнее»). Текст тёмный, а не белый: белый на акценте не проходит
+          AA (3.1:1 / 2.7:1), тёмный — 6.4:1 / 7.3:1. Токен on-accent. */}
       <Pressable
         accessibilityRole="button"
         accessibilityLabel="Отправить отклик"
-        accessibilityHint="Сообщение и условия будут отправлены заказчику"
+        accessibilityHint="Цена, срок и контакты будут отправлены заказчику"
         disabled={!canSubmit}
         onPress={onSubmit}
         className={`mt-4 h-12 flex-row items-center justify-center gap-2 rounded-xl ${
-          canSubmit ? "bg-primary active:opacity-80" : "bg-surface-3"
+          canSubmit ? "bg-accent active:opacity-85" : "bg-surface-3"
         }`}
       >
-        {canSubmit ? <Check size={18} weight="bold" color={tc["on-primary"]} /> : null}
+        {canSubmit ? <Check size={18} weight="bold" color={tc["on-accent"]} /> : null}
         <AppText
           weight="semibold"
-          className={`text-button ${canSubmit ? "text-on-primary" : "text-muted-soft"}`}
+          className={`text-button ${canSubmit ? "text-on-accent" : "text-muted-soft"}`}
         >
           {limitReached ? "Лимит исчерпан" : isBusy ? "Отправляем…" : "Откликнуться"}
         </AppText>

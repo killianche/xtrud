@@ -6,6 +6,7 @@
  *
  * Варианты:
  *   - primary     — bg-primary + on-primary (чёрный CTA в light, белый в dark)
+ *   - accent      — bg-accent + белый текст (фирменный розово-красный, пилот на экране задания)
  *   - secondary   — bg-canvas + border-hairline + ink
  *   - ghost       — без фона/border + ink
  *   - destructive — bg-error + white
@@ -26,7 +27,7 @@ import type { ReactNode } from "react";
 import { ActivityIndicator, Pressable, type PressableProps, View } from "react-native";
 import { AppText } from "@/components/AppText";
 
-export type ButtonVariant = "primary" | "secondary" | "ghost" | "destructive";
+export type ButtonVariant = "primary" | "secondary" | "ghost" | "destructive" | "accent";
 export type ButtonSize = "md" | "lg";
 
 export interface ButtonProps extends Omit<PressableProps, "style" | "children"> {
@@ -68,6 +69,16 @@ const VARIANT_CLASS: Record<
   ghost: { bg: "", text: "text-ink", border: "", borderWidth: 0, iconText: "text-ink" },
   destructive: {
     bg: "bg-error",
+    text: "text-on-dark",
+    border: "",
+    borderWidth: 0,
+    iconText: "text-on-dark",
+  },
+  // Фирменный акцент как главное действие экрана. DECISION владельца
+  // 2026-09-02 по экрану задания: «кнопка цветнее». Пилот — экран задания;
+  // если приживётся, станет стандартом (см. DESIGN.md, раздел про акцент).
+  accent: {
+    bg: "bg-accent",
     text: "text-on-dark",
     border: "",
     borderWidth: 0,

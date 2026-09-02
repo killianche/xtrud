@@ -941,3 +941,27 @@ The brand uses STACKED shadows — multiple small offsets layered to fake natura
 - Don't promote the geometric sans to weight 700. The brand's display ceiling is 600.
 - Don't pair the marketing 100-px pill CTA shape with the 6-px nav radius on the same screen — pick a scale and stay there.
 - Don't set body paragraphs in the mono face. The mono is for code + technical labels only.
+
+## Решение владельца 2026-09-02 — акцент как главное действие, пилот
+
+> DECISION. Переопределяет строку «везде ещё — чёрный/белый» из таблицы выше
+> для экранов, переведённых на новый стандарт. Пилот — экран задания.
+
+- Главное действие экрана — фирменный акцент `accent`, не чёрный `primary`.
+  Вариант кнопки `accent` в `src/components/ui/Button.tsx`.
+- Текст на акценте — токен `on-accent` (тёмный в обеих темах). Белый на
+  `#fe5574` даёт 3.1:1, на тёмном `#ff6b87` — 2.7:1, оба ниже AA 4.5 для
+  текста кнопки; тёмный — 6.4:1 и 7.3:1. Доступность выше вкуса
+  (`.claude/rules/design-quality.md` §4).
+- Информация на экране — читаемым `ink`, не `mute`; рядом микроиконка;
+  секции с жирным заголовком, стопкой друг под другом. Образец — экран
+  исполнителя Thumbtack (скриншот владельца).
+- Главная: закреплённое поле поиска сверху, ряд чипов разделов (активный —
+  в акценте), под ним строки категорий «плитка с иконкой + жирное название».
+  Обложек-фото у категорий нет — плитка с иконкой на `accent-soft`, без
+  подставных картинок.
+- Нижнее меню — нативное (`NativeTabs` из expo-router): на iOS 26 это
+  Liquid Glass, ниже — системная панель. Самописная панель убрана
+  (`docs/IOS_FOUNDATION.md`: нативный механизм вместо своего).
+- Если пилот принят владельцем — этот раздел становится стандартом для
+  остальных экранов. До этого другие экраны не переводить.

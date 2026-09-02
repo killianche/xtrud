@@ -35,7 +35,9 @@ import {
   type VisibleCategory,
 } from "@/features/categories/use-visible-categories";
 import { ActiveOrdersShowcase } from "@/features/home/ActiveOrdersShowcase";
+import { CategoryCollections } from "@/features/home/CategoryCollections";
 import { CinematicHero } from "@/features/home/CinematicHero";
+import { HomeSearchField } from "@/features/home/HomeSearchField";
 import { PromoBannerCarousel } from "@/features/home/PromoBannerCarousel";
 import {
   AVAILABILITY_DOT,
@@ -166,63 +168,71 @@ function ClientHome({
   const gridCancelStyle = isGrid ? { marginHorizontal: -CATEGORY_CONTAINER_PADDING } : undefined;
 
   return (
-    <FlashList
-      style={{ flex: 1, backgroundColor: canvasBg }}
-      ref={listRef}
-      data={listData}
-      keyExtractor={(c) => c.id}
-      numColumns={columns}
-      extraData={isGrid}
-      showsVerticalScrollIndicator={false}
-      refreshControl={refresh.control}
-      contentContainerStyle={{
-        // Фото-hero идёт от самого верха экрана (под статус-бар), поэтому НЕ
-        // добавляем paddingTop — CinematicHero сам учитывает inset.
-        paddingHorizontal: isGrid ? CATEGORY_CONTAINER_PADDING : 0,
-        paddingBottom: insets.bottom + 24,
-      }}
-      ListHeaderComponent={
-        <View style={gridCancelStyle}>
-          <CinematicHero onCreateTask={() => onDescribeTask()} />
-          <ActiveOrdersShowcase userId={userId} />
-          {/* Блок «Часто ищут» (FeaturedRequests) скрыт по фидбэку юзера 2026-05-21.
+    // Поле поиска — вне списка, поэтому закреплено сверху по построению
+    // (образец владельца 2026-09-02). Ниже — прокручиваемая главная.
+    <View style={{ flex: 1, backgroundColor: canvasBg }}>
+      <HomeSearchField />
+      <FlashList
+        style={{ flex: 1, backgroundColor: canvasBg }}
+        ref={listRef}
+        data={listData}
+        keyExtractor={(c) => c.id}
+        numColumns={columns}
+        extraData={isGrid}
+        showsVerticalScrollIndicator={false}
+        refreshControl={refresh.control}
+        contentContainerStyle={{
+          // Фото-hero идёт от самого верха экрана (под статус-бар), поэтому НЕ
+          // добавляем paddingTop — CinematicHero сам учитывает inset.
+          paddingHorizontal: isGrid ? CATEGORY_CONTAINER_PADDING : 0,
+          paddingBottom: insets.bottom + 24,
+        }}
+        ListHeaderComponent={
+          <View style={gridCancelStyle}>
+            {/* flushTop: над героем теперь поле поиска со своим отступом под
+              статус-бар, второй отступ внутри героя дал бы двойной зазор. */}
+            <CinematicHero onCreateTask={() => onDescribeTask()} flushTop />
+            <ActiveOrdersShowcase userId={userId} />
+            <CategoryCollections />
+            {/* Блок «Часто ищут» (FeaturedRequests) скрыт по фидбэку юзера 2026-05-21.
               Компонент сохранён ниже — вернуть можно раскомментировав строку:
               <FeaturedRequests onCategoryPress={onCategoryPress} /> */}
-          {/* Promo-баннеры партнёров (рекламные фото-баннеры 16:9). */}
-          <PromoBannerCarousel />
-          <TopMasters onMasterPress={onMasterPress} />
-          <View className="mt-10 px-5">
-            <AppText weight="semibold" className="text-title-lg text-ink">
-              Категории исполнителей
-            </AppText>
+            {/* Promo-баннеры партнёров (рекламные фото-баннеры 16:9). */}
+            <PromoBannerCarousel />
+            <TopMasters onMasterPress={onMasterPress} />
+            <View className="mt-10 px-5">
+              <AppText weight="semibold" className="text-title-lg text-ink">
+                Категории исполнителей
+              </AppText>
+            </View>
+            <View style={{ height: 16 }} />
           </View>
-          <View style={{ height: 16 }} />
-        </View>
-      }
-      renderItem={({ item, index }) => (
-        <CategoryItem
-          category={item}
-          isGrid={isGrid}
-          isLast={index === listData.length - 1}
-          onPress={() => onCategoryPress(item.id)}
-        />
-      )}
-      ListEmptyComponent={
-        isLoading ? (
-          <CategoriesSkeleton style={gridCancelStyle} />
-        ) : error ? (
-          <View className="px-5" style={gridCancelStyle}>
-            <AppText className="text-body-sm text-error">Не удалось загрузить категории.</AppText>
-          </View>
-        ) : (
-          <View className="px-5" style={gridCancelStyle}>
-            <AppText className="text-body-sm text-mute">
-              Категории услуг ещё не настроены. Свяжитесь с поддержкой.
-            </AppText>
-          </View>
-        )
-      }
-    />
+        }
+        renderItem={({ item, index }) => (
+          <CategoryItem
+            category={item}
+            isGrid={isGrid}
+            isLast={index === listData.length - 1}
+            onPress={() => onCategoryPress(item.id)}
+          />
+        )}
+        ListEmptyComponent={
+          isLoading ? (
+            <CategoriesSkeleton style={gridCancelStyle} />
+          ) : error ? (
+            <View className="px-5" style={gridCancelStyle}>
+              <AppText className="text-body-sm text-error">Не удалось загрузить категории.</AppText>
+            </View>
+          ) : (
+            <View className="px-5" style={gridCancelStyle}>
+              <AppText className="text-body-sm text-mute">
+                Категории услуг ещё не настроены. Свяжитесь с поддержкой.
+              </AppText>
+            </View>
+          )
+        }
+      />
+    </View>
   );
 }
 

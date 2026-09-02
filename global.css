@@ -72,6 +72,7 @@
     --muted-soft: 161 161 161;
     --accent: 254 85 116;
     --accent-soft: 255 228 234;
+    --on-accent: 10 10 10;
   }
 
   .dark:root,
@@ -123,6 +124,7 @@
     --muted-soft: 82 82 82;
     --accent: 255 107 135;
     --accent-soft: 74 31 41;
+    --on-accent: 10 10 10;
   }
 }
 /* @generated:tokens-end */

@@ -39,43 +39,40 @@ export type MasterPublicProfile = {
     | "whatsapp_phone"
     | "whatsapp_same_as_phone"
   > | null;
-  city: { id: string; name: string } | null;
 };
 
 export function useMasterPublicProfile(masterId: string | null | undefined) {
   const query = useQuery<MasterPublicProfile | null>({
     queryKey: ["master-public", masterId],
+    // Один запрос вместо трёх последовательных. Раньше здесь шли подряд
+    // users → master_profiles → cities, то есть три обращения к серверу друг
+    // за другом, и весь экран мастера стоял под скелетом до последнего из них.
+    // PostgREST умеет вложенную выборку по внешнему ключу — берём всё разом.
+    //
+    // Запрос города убран целиком: поле city не читает ни один из трёх
+    // потребителей хука (экран мастера, экран заказа, экран кейса), а город
+    // мастера на карточке намеренно не показывается. Третий round-trip делался
+    // впустую.
     queryFn: async () => {
       if (!masterId) return null;
 
-      const { data: userData, error: userErr } = await supabase
+      const { data, error } = await supabase
         .from("users")
-        .select("id, first_name, last_name, avatar_url, city_id, district, is_master")
+        .select(
+          "id, first_name, last_name, avatar_url, city_id, district, is_master, master:master_profiles!master_profiles_user_id_fkey(bio, experience_years, rating_overall_avg, rating_overall_count, closed_deals, languages, status, account_type, team_size, availability_status, availability_until, whatsapp_phone, whatsapp_same_as_phone)",
+        )
         .eq("id", masterId)
         .maybeSingle();
-      if (userErr) throw userErr;
-      if (!userData) return null;
+      if (error) throw error;
+      if (!data) return null;
 
-      const { data: masterData, error: masterErr } = await supabase
-        .from("master_profiles")
-        .select(
-          "bio, experience_years, rating_overall_avg, rating_overall_count, closed_deals, languages, status, account_type, team_size, availability_status, availability_until, whatsapp_phone, whatsapp_same_as_phone",
-        )
-        .eq("user_id", masterId)
-        .maybeSingle();
-      if (masterErr) throw masterErr;
+      // Вложенная выборка по связи «один к одному» приходит объектом либо
+      // массивом в зависимости от того, как PostgREST вывел кардинальность.
+      // Приводим к одной форме, чтобы потребители не гадали.
+      const { master: rawMaster, ...user } = data as typeof data & { master: unknown };
+      const master = Array.isArray(rawMaster) ? (rawMaster[0] ?? null) : (rawMaster ?? null);
 
-      let city: { id: string; name: string } | null = null;
-      if (userData.city_id) {
-        const { data: cityData } = await supabase
-          .from("cities")
-          .select("id, name")
-          .eq("id", userData.city_id)
-          .maybeSingle();
-        if (cityData) city = cityData;
-      }
-
-      return { user: userData, master: masterData, city };
+      return { user, master } as MasterPublicProfile;
     },
     enabled: !!masterId,
     staleTime: 60_000,

@@ -1440,39 +1440,6 @@ export type Database = {
           },
         ]
       }
-      user_favorites: {
-        Row: {
-          created_at: string
-          master_id: string
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          master_id: string
-          user_id: string
-        }
-        Update: {
-          created_at?: string
-          master_id?: string
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "user_favorites_master_id_fkey"
-            columns: ["master_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "user_favorites_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       users: {
         Row: {
           active_role: Database["public"]["Enums"]["user_active_role"]

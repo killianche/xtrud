@@ -81,32 +81,6 @@ FROM auth.users;
 - Не выдавать новый пароль по номеру, который прислали в переписке, без
   второй проверки.
 
-## Потерян второй фактор администратора
-
-Вход в админку требует одноразовый код из приложения-аутентификатора. Если
-телефон потерян, снять привязку можно только с сервера — иначе владелец
-заперт снаружи.
-
-```bash
-ssh xtrud-beget
-docker exec -it supabase-db psql -U postgres -d postgres
-```
-
-```sql
--- Посмотреть привязки администратора
-SELECT f.id, f.friendly_name, f.status, f.created_at
-  FROM auth.mfa_factors f
-  JOIN auth.users u ON u.id = f.user_id
- WHERE u.email = 'admin@xtrud.pro';
-
--- Снять их все: при следующем входе панель предложит привязать заново
-DELETE FROM auth.mfa_factors f
- USING auth.users u
- WHERE f.user_id = u.id AND u.email = 'admin@xtrud.pro';
-```
-
-После удаления войдите в панель — она сама покажет новый QR-код.
-
 ## Когда это перестанет масштабироваться
 
 Ручной способ рассчитан на десятки пользователей. Признак, что пора делать

@@ -19,7 +19,7 @@ export async function getClient(): Promise<SupabaseClient> {
 export interface Metrics {
   users_total: number;
   users_suspended: number;
-  users_blocked: number;
+  users_banned: number;
   masters_total: number;
   orders_open: number;
   orders_total: number;

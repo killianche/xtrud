@@ -70,8 +70,8 @@ export function Dashboard() {
             <Metric label="Откликов" value={metrics.responses_total} />
             <Metric
               label="Санкции"
-              value={metrics.users_suspended + metrics.users_blocked}
-              hint={`${metrics.users_suspended} приостановлено, ${metrics.users_blocked} заблокировано`}
+              value={metrics.users_suspended + metrics.users_banned}
+              hint={`${metrics.users_suspended} приостановлено, ${metrics.users_banned} заблокировано`}
             />
           </div>
         </div>

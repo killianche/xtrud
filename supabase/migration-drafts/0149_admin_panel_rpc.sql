@@ -35,12 +35,12 @@ BEGIN
   RETURN jsonb_build_object(
     'users_total',      (SELECT count(*) FROM public.users WHERE status <> 'deleted'),
     'users_suspended',  (SELECT count(*) FROM public.users WHERE status = 'suspended'),
-    'users_blocked',    (SELECT count(*) FROM public.users WHERE status = 'blocked'),
+    'users_banned',     (SELECT count(*) FROM public.users WHERE status = 'banned'),
     'masters_total',    (SELECT count(*) FROM public.users WHERE is_master AND status <> 'deleted'),
     'orders_open',      (SELECT count(*) FROM public.orders WHERE status = 'open'),
     'orders_total',     (SELECT count(*) FROM public.orders),
     'responses_total',  (SELECT count(*) FROM public.order_responses),
-    'reports_open',     (SELECT count(*) FROM public.reports WHERE status = 'open'),
+    'reports_open',     (SELECT count(*) FROM public.reports WHERE status = 'pending'),
     'signups_7d',       (SELECT count(*) FROM public.users WHERE created_at > now() - interval '7 days')
   );
 END;

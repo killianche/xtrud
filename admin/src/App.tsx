@@ -7,11 +7,10 @@ import { api, getClient } from "./lib/api";
 import { Dashboard } from "./pages/Dashboard";
 import { Journal } from "./pages/Journal";
 import { Login } from "./pages/Login";
-import { TwoFactor } from "./pages/TwoFactor";
 import { UserCard } from "./pages/UserCard";
 import { Users } from "./pages/Users";
 
-type Session = "loading" | "anonymous" | "needs-2fa" | "not-admin" | "admin";
+type Session = "loading" | "anonymous" | "not-admin" | "admin";
 
 function useHashRoute(): [string, (next: string) => void] {
   const [route, setRoute] = useState(() => window.location.hash.slice(1) || "/");
@@ -31,11 +30,12 @@ export function App() {
   const [route, navigate] = useHashRoute();
 
   // Признак админа проверяем вызовом admin_metrics: сервер ответит forbidden,
-  // если прав нет. Так право читается из базы, а не из токена.
+  // если прав нет. Так право читается из базы, а не из токена, и снятие прав
+  // действует сразу.
   //
-  // Отдельно смотрим уровень сессии: is_admin_session() требует aal2, то есть
-  // подтверждения вторым фактором. Пока его нет, панель показывает экран
-  // второго фактора, а не «нет прав» — иначе владелец не понял бы, что делать.
+  // Второго фактора нет: DECISION владельца 2026-09-03 «убери второй фактор,
+  // просто по логину и паролю» (миграция 0150). Значит пароль администратора —
+  // единственная преграда к персональным данным и смене чужих паролей.
   const check = useCallback(async () => {
     const supabase = await getClient();
     const { data } = await supabase.auth.getSession();
@@ -46,12 +46,9 @@ export function App() {
     try {
       await api.metrics();
       setSession("admin");
-      return;
     } catch {
-      // Ниже разбираемся, чего не хватает: второго фактора или самих прав.
+      setSession("not-admin");
     }
-    const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
-    setSession(aal?.currentLevel === "aal2" ? "not-admin" : "needs-2fa");
   }, []);
 
   useEffect(() => {
@@ -75,10 +72,6 @@ export function App() {
 
   if (session === "anonymous") {
     return <Login onSignedIn={() => void check()} />;
-  }
-
-  if (session === "needs-2fa") {
-    return <TwoFactor onVerified={() => void check()} onSignOut={signOut} />;
   }
 
   if (session === "not-admin") {

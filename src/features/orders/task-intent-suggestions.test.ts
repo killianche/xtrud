@@ -161,10 +161,58 @@ describe("buildTaskIntentSuggestions", () => {
       source: "trigram",
     };
 
+    // Слабое совпадение не становится готовой подсказкой: заголовок задания
+    // и категорию по опечатке подставлять нельзя.
     expect(buildTaskIntentSuggestions("что-то хитрое с проводами", [weakHit], categories)).toEqual(
       [],
     );
-    expect(buildTaskIntentCategoryCandidates([weakHit], categories)).toEqual([]);
+  });
+
+  it("предлагает совпадение по опечатке, если ничего лучше не нашлось", () => {
+    // DECISION владельца 2026-09-03: «поиск не показывает нормальные
+    // результаты». Раньше совпадение только по триграммам отбрасывалось, и
+    // экран говорил «точной подсказки не нашли», хотя категория была найдена.
+    // Теперь это явный кандидат с тапом, а не тупик.
+    const typoHit: SearchHit = {
+      kind: "l3",
+      id: "outlet-install",
+      l2_id: "electrical",
+      name_ru: "Установка розетки",
+      score: 0.24,
+      source: "trigram",
+    };
+
+    expect(buildTaskIntentCategoryCandidates([typoHit], categories)).toEqual([
+      {
+        key: "category:electrical",
+        l2Id: "electrical",
+        categoryName: "Электрика",
+        matchedServiceName: "Установка розетки",
+      },
+    ]);
+  });
+
+  it("смысловые совпадения вытесняют совпадения по опечатке", () => {
+    const typoHit: SearchHit = {
+      kind: "l3",
+      id: "outlet-install",
+      l2_id: "electrical",
+      name_ru: "Установка розетки",
+      score: 0.24,
+      source: "trigram",
+    };
+    const lexicalHit: SearchHit = {
+      kind: "l3",
+      id: "wallpaper-vinyl",
+      l2_id: "wallpaper",
+      name_ru: "Поклейка виниловых обоев",
+      score: 0.5,
+      source: "fts",
+    };
+
+    expect(
+      buildTaskIntentCategoryCandidates([typoHit, lexicalHit], categories).map((item) => item.l2Id),
+    ).toEqual(["wallpaper"]);
   });
 
   it("keeps a weak lexical hit as an explicit category candidate", () => {
@@ -215,7 +263,7 @@ describe("buildTaskIntentSuggestions", () => {
     ).toEqual(["windows-doors", "wallpaper"]);
   });
 
-  it("deduplicates low-confidence candidates and limits them to three categories", () => {
+  it("deduplicates low-confidence candidates and respects the display limit", () => {
     const candidateHits: SearchHit[] = [
       { ...windowFilmHit, score: 0.55, source: "fts" },
       { ...windowFilmHit, id: "window-film-2", score: 0.5, source: "fts" },

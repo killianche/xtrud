@@ -31,6 +31,7 @@ import { AppText } from "@/components/AppText";
 import type { OrderStatusValue } from "@/components/OrderStatusBadge";
 import { formatOrderTiming, formatPrice } from "@/features/orders/order-schema";
 import type { OrderPriceKind, OrderUrgency } from "@/features/orders/use-create-order";
+import { getCategoryColorIconUrl } from "@/lib/category-color-icons";
 import { getCategoryIcon } from "@/lib/category-icons";
 import { cdnBlur, cdnImage } from "@/lib/image-cdn";
 import { useThemeColors } from "@/lib/use-theme-color";
@@ -126,6 +127,7 @@ export function OrderRow(props: OrderRowProps) {
   };
 
   const Icon = getCategoryIcon(props.categoryIcon);
+  const colorIconUrl = getCategoryColorIconUrl(props.categoryL2Id);
   const overrideLabel = props.statusOverrideLabel?.trim() || null;
   const dimmedLabel = overrideLabel ?? (props.status ? DIMMED_STATUS[props.status] : undefined);
   const isDimmed = !!dimmedLabel;
@@ -168,10 +170,23 @@ export function OrderRow(props: OrderRowProps) {
       className="mx-4 mb-3 rounded-2xl border border-hairline bg-canvas p-4 active:bg-canvas-soft"
       style={isDimmed ? { opacity: 0.65 } : undefined}
     >
-      {/* Шапка: плитка категории + категория + время публикации. */}
+      {/* Шапка: плитка категории + категория + время публикации.
+          Иконка — цветная из каталога (тот же механизм, что на экране «Все
+          категории»), с запасным моно-вариантом. До 2026-09-03 во всех
+          карточках была одинаковая розовая моно-иконка, и лента выглядела
+          однообразной: категории не различались с одного взгляда. */}
       <View className="flex-row items-center gap-3">
         <View className="h-11 w-11 items-center justify-center rounded-xl bg-accent-soft">
-          <Icon size={22} weight="bold" color={tc.accent} />
+          {colorIconUrl ? (
+            <ExpoImage
+              source={{ uri: colorIconUrl }}
+              style={{ width: 24, height: 24 }}
+              contentFit="contain"
+              cachePolicy="memory-disk"
+            />
+          ) : (
+            <Icon size={22} weight="bold" color={tc.accent} />
+          )}
         </View>
         <AppText
           weight="semibold"

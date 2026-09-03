@@ -128,30 +128,48 @@ export function buildTaskIntentSuggestions(
 export function buildTaskIntentCategoryCandidates(
   hits: readonly SearchHit[],
   categories: readonly IntentCategory[],
-  limit = 3,
+  limit = 8,
 ): TaskIntentCategoryCandidate[] {
   if (limit <= 0) return [];
   const allowedCategoryNames = new Map(
     categories.map((category) => [category.id, category.name_ru]),
   );
-  const candidates: TaskIntentCategoryCandidate[] = [];
-  const seen = new Set<string>();
 
-  for (const hit of hits) {
-    // Trigram-only hits are typo candidates, not semantic evidence. Without a
-    // calibrated relevance set they can produce unrelated categories, so the
-    // safe fallback is the full manual catalogue.
-    if (hit.source.split(",").every((source) => source === "trigram")) continue;
-    const categoryName = allowedCategoryNames.get(hit.l2_id);
-    if (!categoryName || seen.has(hit.l2_id)) continue;
-    seen.add(hit.l2_id);
-    candidates.push({
-      key: `category:${hit.l2_id}`,
-      l2Id: hit.l2_id,
-      categoryName,
-      matchedServiceName: hit.name_ru,
-    });
-    if (candidates.length >= limit) break;
+  const isTrigramOnly = (hit: SearchHit) =>
+    hit.source.split(",").every((source) => source === "trigram");
+
+  // Смысловые совпадения идут первыми. Совпадения только по триграммам —
+  // кандидаты «на опечатку»: они слабее, поэтому показываются лишь тогда,
+  // когда ничего лучше нет.
+  //
+  // Раньше они отбрасывались совсем, и при опечатке экран говорил «точной
+  // подсказки не нашли», хотя подходящая категория была найдена. Именно это
+  // владелец описал как «поиск не показывает нормальные результаты»
+  // (DECISION 2026-09-03). Категория по-прежнему не назначается сама:
+  // требуется явный тап, а в строке видно, на что похоже совпадение.
+  const collect = (source: readonly SearchHit[], into: TaskIntentCategoryCandidate[]) => {
+    const seen = new Set(into.map((candidate) => candidate.l2Id));
+    for (const hit of source) {
+      const categoryName = allowedCategoryNames.get(hit.l2_id);
+      if (!categoryName || seen.has(hit.l2_id)) continue;
+      seen.add(hit.l2_id);
+      into.push({
+        key: `category:${hit.l2_id}`,
+        l2Id: hit.l2_id,
+        categoryName,
+        matchedServiceName: hit.name_ru,
+      });
+      if (into.length >= limit) break;
+    }
+  };
+
+  const candidates: TaskIntentCategoryCandidate[] = [];
+  collect(
+    hits.filter((hit) => !isTrigramOnly(hit)),
+    candidates,
+  );
+  if (candidates.length === 0) {
+    collect(hits.filter(isTrigramOnly), candidates);
   }
 
   return candidates;

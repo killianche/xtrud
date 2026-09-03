@@ -1,9 +1,11 @@
+import { Image as ExpoImage } from "expo-image";
 import { useRouter } from "expo-router";
 import { MagnifyingGlass, Tag, WarningCircle, X } from "phosphor-react-native";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Pressable, TextInput, View } from "react-native";
 import { AppText } from "@/components/AppText";
 import { Skeleton } from "@/components/ui";
+import { useRecentSearches } from "@/features/categories/use-recent-searches";
 import { useSearchCategories } from "@/features/categories/use-search-categories";
 import { useVisibleCategories } from "@/features/categories/use-visible-categories";
 import {
@@ -12,6 +14,8 @@ import {
   changedTaskIntentDraft,
   resolveTaskIntentQuery,
 } from "@/features/orders/task-intent-suggestions";
+import { getCategoryColorIconUrl } from "@/lib/category-color-icons";
+import { getCategoryIcon } from "@/lib/category-icons";
 import { useOrderDraftStore } from "@/lib/order-draft-store";
 import { useDebouncedValue } from "@/lib/use-debounced-value";
 import { useThemeColors } from "@/lib/use-theme-color";
@@ -30,6 +34,8 @@ interface TaskIntentStepProps {
 
 const MIN_TITLE_LENGTH = 5;
 const MAX_TITLE_LENGTH = 120;
+/** Сколько категорий показываем на старте — дальше «Все категории». */
+const START_CATEGORIES = 8;
 const SKELETON_KEYS = [
   "intent-skeleton-1",
   "intent-skeleton-2",
@@ -60,6 +66,7 @@ export function TaskIntentStep({
   const tc = useThemeColors(["accent", "error", "ink", "mute"]);
 
   const categoriesQuery = useVisibleCategories();
+  const { recent, push: pushRecent, clear: clearRecent } = useRecentSearches();
   const normalizedQuery = normalizeTitle(query);
   const debouncedQuery = useDebouncedValue(normalizedQuery, 250);
   const search = useSearchCategories(debouncedQuery, 12);
@@ -97,6 +104,21 @@ export function TaskIntentStep({
     [categoriesQuery.data, isDebounced, search.data?.hits, suggestions.length],
   );
 
+  /** Первые категории каталога — стартовые варианты на пустом вводе. */
+  const startCategories = useMemo(
+    () => (categoriesQuery.data ?? []).slice(0, START_CATEGORIES),
+    [categoriesQuery.data],
+  );
+
+  /** Подставить готовую формулировку в поле и показать по ней подсказки. */
+  const applyQuery = (value: string) => {
+    if (isBusy) return;
+    setQuery(value);
+    setSelectionError(null);
+    setDraft(changedTaskIntentDraft(value));
+    inputRef.current?.focus();
+  };
+
   const showSearchResults = () => {
     if (isBusy) return;
     setSelectionError(null);
@@ -129,6 +151,9 @@ export function TaskIntentStep({
       return;
     }
     setSelectionError(null);
+    // В «недавние» пишем только подтверждённую формулировку, а не каждое
+    // нажатие клавиши: история должна быть короткой и осмысленной.
+    pushRecent(title);
     onConfirm({ title, l2Id });
   };
 
@@ -170,12 +195,16 @@ export function TaskIntentStep({
         </View>
       ) : null}
 
+      {/* Поле — по стандарту auth-форм (src/components/ui/Input.tsx): заливка
+          canvas-soft и рамка 1.5, чтобы поле читалось как поле. Отдельный
+          компонент здесь не подходит: нужны лупа слева и очистка справа. */}
       <View
-        className={`mt-6 min-h-14 flex-row items-center gap-3 rounded-lg border bg-canvas px-4 ${
+        className={`mt-6 min-h-14 flex-row items-center gap-3 rounded-xl bg-canvas-soft px-4 ${
           selectionError && normalizedQuery.length < MIN_TITLE_LENGTH
             ? "border-error"
-            : "border-hairline"
+            : "border-hairline-strong"
         }`}
+        style={{ borderWidth: 1.5 }}
       >
         <MagnifyingGlass size={22} weight="bold" color={tc.mute} />
         <TextInput
@@ -199,7 +228,7 @@ export function TaskIntentStep({
           placeholderTextColor={tc.mute}
           returnKeyType="search"
           value={query}
-          className="min-h-12 flex-1 py-3 text-body-md text-ink"
+          className="min-h-12 flex-1 py-3 text-body-lg text-ink"
         />
         {query.length > 0 ? (
           <Pressable
@@ -224,7 +253,7 @@ export function TaskIntentStep({
         <AppText
           accessibilityLiveRegion="polite"
           weight="medium"
-          className="mt-2 text-caption text-error"
+          className="mt-2 text-body-sm text-error"
         >
           {titleError}
         </AppText>
@@ -244,20 +273,86 @@ export function TaskIntentStep({
           <AppText weight="semibold" className="text-body-sm text-ink">
             Используется сохранённый каталог
           </AppText>
-          <AppText className="mt-1 text-caption text-body">
+          <AppText className="mt-1 text-body-sm text-body">
             Черновик можно заполнить без сети. Перед публикацией категория будет проверена.
           </AppText>
         </View>
       ) : null}
 
       {normalizedQuery.length < 2 ? (
-        <View className="mt-10 items-center px-4">
-          <View className="h-12 w-12 items-center justify-center rounded-full bg-canvas-soft-2">
-            <MagnifyingGlass size={24} weight="bold" color={tc.mute} />
+        // Стартовый экран вместо пустоты с лупой (DECISION владельца
+        // 2026-09-03: «супер плохо… пустота, неудобно»). Показываем то, что
+        // реально есть: недавние формулировки этого устройства и категории
+        // каталога. Тап подставляет текст в поле — подсказки появляются
+        // сразу, но категория без явного подтверждения не назначается.
+        <View className="mt-6">
+          {recent.length > 0 ? (
+            <View className="mb-7">
+              <View className="flex-row items-center justify-between">
+                <AppText weight="semibold" className="text-body-sm uppercase text-muted">
+                  Недавние
+                </AppText>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Очистить недавние запросы"
+                  disabled={isBusy}
+                  hitSlop={12}
+                  onPress={clearRecent}
+                  className="min-h-11 justify-center active:opacity-70"
+                >
+                  <AppText weight="semibold" className="text-body-md text-accent">
+                    Очистить
+                  </AppText>
+                </Pressable>
+              </View>
+              <View className="mt-3 flex-row flex-wrap gap-2">
+                {recent.map((item) => (
+                  <Pressable
+                    key={item}
+                    accessibilityRole="button"
+                    accessibilityLabel={item}
+                    disabled={isBusy}
+                    onPress={() => applyQuery(item)}
+                    className="min-h-11 justify-center rounded-pill border border-hairline bg-canvas px-4 active:bg-canvas-soft"
+                  >
+                    <AppText weight="medium" className="text-body-md text-ink" numberOfLines={1}>
+                      {item}
+                    </AppText>
+                  </Pressable>
+                ))}
+              </View>
+            </View>
+          ) : null}
+
+          {/* Каталог доступен и без сети (встроенная копия), поэтому список
+              почти всегда непустой. Заголовок без списка не показываем. */}
+          {startCategories.length > 0 ? (
+            <>
+              <AppText weight="semibold" className="text-body-sm uppercase text-muted">
+                Категории
+              </AppText>
+              <View className="mt-2">
+                {startCategories.map((category) => (
+                  <CategoryRow
+                    key={category.id}
+                    accentColor={tc.accent}
+                    disabled={isBusy}
+                    iconKey={category.icon}
+                    l2Id={category.id}
+                    name={category.name_ru}
+                    onPress={() => applyQuery(category.name_ru)}
+                  />
+                ))}
+              </View>
+            </>
+          ) : null}
+          <View className="mt-4">
+            <ManualFallbackButton
+              disabled={isBusy}
+              label="Все категории"
+              onPress={enterManualMode}
+            />
           </View>
-          <AppText weight="semibold" className="mt-4 text-center text-title-md text-ink">
-            Начните с действия
-          </AppText>
         </View>
       ) : hasLoadingState ? (
         <View
@@ -305,17 +400,40 @@ export function TaskIntentStep({
           </View>
         </View>
       ) : hasNoResults ? (
-        <View className="mt-10 items-center px-4">
-          <View className="h-12 w-12 items-center justify-center rounded-full bg-canvas-soft-2">
-            <Tag size={24} weight="bold" color={tc.mute} />
-          </View>
-          <AppText weight="semibold" className="mt-4 text-center text-title-md text-ink">
+        // Тупика быть не должно: даже когда совпадений нет, под сообщением
+        // остаются категории, с которых можно начать (DECISION 2026-09-03).
+        <View className="mt-8">
+          <AppText weight="bold" className="text-title-lg text-ink">
             Точной подсказки не нашли
           </AppText>
-          <View className="mt-5 w-full">
+          <AppText className="mt-1 text-body-md text-body">
+            Опишите задачу другими словами или выберите категорию.
+          </AppText>
+
+          {startCategories.length > 0 ? (
+            <>
+              <AppText weight="semibold" className="mt-7 text-body-sm uppercase text-muted">
+                Категории
+              </AppText>
+              <View className="mt-2">
+                {startCategories.map((category) => (
+                  <CategoryRow
+                    key={category.id}
+                    accentColor={tc.accent}
+                    disabled={isBusy}
+                    iconKey={category.icon}
+                    l2Id={category.id}
+                    name={category.name_ru}
+                    onPress={() => applyQuery(category.name_ru)}
+                  />
+                ))}
+              </View>
+            </>
+          ) : null}
+          <View className="mt-4">
             <ManualFallbackButton
               disabled={isBusy}
-              label="Выбрать категорию"
+              label="Все категории"
               onPress={enterManualMode}
             />
           </View>
@@ -342,7 +460,7 @@ export function TaskIntentStep({
                   <AppText weight="semibold" className="text-body-md text-ink" numberOfLines={2}>
                     {suggestion.title}
                   </AppText>
-                  <AppText className="mt-0.5 text-caption text-mute" numberOfLines={1}>
+                  <AppText className="mt-0.5 text-body-sm text-mute" numberOfLines={1}>
                     {suggestion.categoryName}
                   </AppText>
                 </View>
@@ -387,7 +505,7 @@ export function TaskIntentStep({
                     {candidate.categoryName}
                   </AppText>
                   {candidate.matchedServiceName !== candidate.categoryName ? (
-                    <AppText className="mt-0.5 text-caption text-mute" numberOfLines={1}>
+                    <AppText className="mt-0.5 text-body-sm text-mute" numberOfLines={1}>
                       Похоже на: {candidate.matchedServiceName}
                     </AppText>
                   ) : null}
@@ -406,6 +524,58 @@ export function TaskIntentStep({
         </View>
       )}
     </View>
+  );
+}
+
+/**
+ * Строка категории на стартовом экране. Иконка — цветная из каталога (тот же
+ * механизм, что на экране «Все категории»), с запасным моно-вариантом: так
+ * категории различаются с одного взгляда, а не выглядят одинаковыми плитками.
+ */
+function CategoryRow({
+  accentColor,
+  disabled,
+  iconKey,
+  l2Id,
+  name,
+  onPress,
+}: {
+  accentColor: string;
+  disabled?: boolean;
+  iconKey: string | null;
+  l2Id: string;
+  name: string;
+  onPress: () => void;
+}) {
+  const colorUrl = getCategoryColorIconUrl(l2Id);
+  const Icon = getCategoryIcon(iconKey);
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={name}
+      accessibilityState={{ disabled }}
+      disabled={disabled}
+      onPress={onPress}
+      className={`min-h-16 flex-row items-center gap-3 border-b border-hairline py-3 active:bg-canvas-soft ${
+        disabled ? "opacity-50" : ""
+      }`}
+    >
+      <View className="h-11 w-11 items-center justify-center rounded-xl bg-accent-soft">
+        {colorUrl ? (
+          <ExpoImage
+            source={{ uri: colorUrl }}
+            style={{ width: 24, height: 24 }}
+            contentFit="contain"
+            cachePolicy="memory-disk"
+          />
+        ) : (
+          <Icon size={22} weight="bold" color={accentColor} />
+        )}
+      </View>
+      <AppText weight="semibold" className="min-w-0 flex-1 text-body-lg text-ink" numberOfLines={1}>
+        {name}
+      </AppText>
+    </Pressable>
   );
 }
 

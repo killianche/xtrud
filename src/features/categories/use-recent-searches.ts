@@ -1,69 +1,66 @@
 /**
- * useRecentSearches — история поисковых запросов в localStorage.
+ * useRecentSearches — недавние запросы при создании задания.
  *
- * Фидбэк user 2026-05-18 (research): «recent searches на пустой input».
- * Хранится локально (per-device), без БД — privacy + offline-friendly.
+ * Фидбэк владельца 2026-05-18 и повторно 2026-09-03: на пустом экране создания
+ * задания нужны «недавние», а не пустота с лупой.
  *
- * API:
- *   const { recent, push, clear } = useRecentSearches();
- *   // recent: ["обои", "электрик"] (most recent first, max 10)
+ * Хранится только на устройстве (privacy + работает без сети), максимум 10
+ * записей. Пишем ПОДТВЕРЖДЁННЫЕ формулировки — то, что человек реально выбрал,
+ * а не каждую букву ввода.
  *
- * Хранение: localStorage на web, in-memory на native (полноценный
- * AsyncStorage — отдельным спринтом, чтобы не тащить зависимость без нужды).
+ * История: раньше хранилище было `window.localStorage` напрямую и на native
+ * возвращало пустой массив всегда — то есть на iOS, единственной активной
+ * платформе, функция не работала вообще. Теперь используется общий адаптер
+ * `src/lib/storage.ts` (SecureStore на native, localStorage на web).
+ *
+ * Разбор и слияние записей живут в `recent-searches.ts` — там они без
+ * react-native-зависимостей и покрыты тестами.
  */
 
-import { useCallback, useEffect, useState } from "react";
-import { Platform } from "react-native";
-
-const STORAGE_KEY = "xtrud-search-recent";
-const MAX_RECENT = 10;
-const MIN_LEN = 2;
-
-function readStorage(): string[] {
-  if (Platform.OS !== "web") return [];
-  try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return [];
-    return parsed
-      .filter((s): s is string => typeof s === "string" && s.length >= MIN_LEN)
-      .slice(0, MAX_RECENT);
-  } catch {
-    return [];
-  }
-}
-
-function writeStorage(items: string[]): void {
-  if (Platform.OS !== "web") return;
-  try {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
-  } catch {
-    // quota / SSR — игнорируем
-  }
-}
+import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  mergeRecentSearch,
+  parseRecentSearches,
+  RECENT_SEARCHES_KEY,
+} from "@/features/categories/recent-searches";
+import { storage } from "@/lib/storage";
 
 export function useRecentSearches() {
   const [recent, setRecent] = useState<string[]>([]);
+  // Хранилище асинхронное: держим последнее значение, чтобы запись не зависела
+  // от того, успел ли отработать setState.
+  const latest = useRef<string[]>([]);
 
   useEffect(() => {
-    setRecent(readStorage());
+    let cancelled = false;
+    void storage
+      .getItem(RECENT_SEARCHES_KEY)
+      .then((raw) => {
+        if (cancelled) return;
+        const items = parseRecentSearches(raw);
+        latest.current = items;
+        setRecent(items);
+      })
+      .catch(() => {
+        // Недоступное хранилище — не повод ломать экран: просто нет истории.
+      });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const push = useCallback((query: string) => {
-    const trimmed = query.trim().toLowerCase();
-    if (trimmed.length < MIN_LEN) return;
-    setRecent((prev) => {
-      const filtered = prev.filter((q) => q.toLowerCase() !== trimmed);
-      const next = [trimmed, ...filtered].slice(0, MAX_RECENT);
-      writeStorage(next);
-      return next;
-    });
+    const next = mergeRecentSearch(latest.current, query);
+    if (next.length === latest.current.length && next[0] === latest.current[0]) return;
+    latest.current = next;
+    setRecent(next);
+    void storage.setItem(RECENT_SEARCHES_KEY, JSON.stringify(next)).catch(() => {});
   }, []);
 
   const clear = useCallback(() => {
+    latest.current = [];
     setRecent([]);
-    writeStorage([]);
+    void storage.removeItem(RECENT_SEARCHES_KEY).catch(() => {});
   }, []);
 
   return { recent, push, clear };

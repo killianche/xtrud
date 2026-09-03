@@ -5,6 +5,11 @@
 //
 // Текст «Откройте ссылку из письма на {email}…» — это объясняющий текст
 // success-состояния, НЕ subtitle под H1 (правило §G не нарушается).
+//
+// Телефонные аккаунты (регистрация с 2026-09-01) почты не имеют: адрес для
+// входа строится как `<цифры>@phone.xtrud.pro`, письма туда не доходят. Для
+// них на экране есть врезка со ссылкой на поддержку — восстановление вручную
+// (DECISION владельца 2026-09-03).
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { CaretLeft, EnvelopeSimple } from "phosphor-react-native";
@@ -16,9 +21,14 @@ import { AppText } from "@/components/AppText";
 import { Button, Input } from "@/components/ui";
 import { useRequestReset } from "@/features/auth/use-auth-mutations";
 import { type ForgotPasswordValues, forgotPasswordSchema } from "@/features/auth/validation";
+import { openExternalUrl } from "@/lib/open-link";
 import { useBackGestureLock } from "@/lib/use-back-gesture-lock";
 import { useSafeBack } from "@/lib/use-safe-back";
 import { useThemeColors } from "@/lib/use-theme-color";
+
+// Email для связи мы принципиально не публикуем — только Telegram
+// (то же правило, что в app/(details)/profile/settings.tsx).
+const SUPPORT_TELEGRAM = "https://t.me/xtrud_support";
 
 export default function ForgotPasswordScreen() {
   const insets = useSafeAreaInsets();
@@ -135,6 +145,35 @@ export default function ForgotPasswordScreen() {
                     </AppText>
                   </View>
                 )}
+
+                {/* Регистрация идёт по номеру телефона, и адрес для входа
+                    строится синтетически: `<цифры>@phone.xtrud.pro`. Такого
+                    почтового ящика не существует, письмо туда уйдёт в никуда.
+                    Молчать об этом нельзя — человек будет ждать письма и
+                    останется без аккаунта (design-quality §5: интерфейс не
+                    утверждает того, чего нет).
+
+                    DECISION владельца 2026-09-03: восстановление для таких
+                    аккаунтов — вручную через поддержку. Отсюда и эта врезка. */}
+                <View className="mt-8 rounded-xl border border-hairline bg-canvas-soft p-4">
+                  <AppText weight="bold" className="text-title-md text-ink">
+                    Регистрировались по номеру телефона?
+                  </AppText>
+                  <AppText className="mt-2 text-body-md text-body">
+                    Тогда почты у аккаунта нет и письмо не придёт. Напишите нам — вернём доступ.
+                  </AppText>
+                  <View className="mt-4">
+                    <Button
+                      variant="secondary"
+                      size="lg"
+                      fullWidth
+                      disabled={isBusy}
+                      onPress={() => openExternalUrl(SUPPORT_TELEGRAM)}
+                    >
+                      Написать в поддержку
+                    </Button>
+                  </View>
+                </View>
               </View>
             </View>
 

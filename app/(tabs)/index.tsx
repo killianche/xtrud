@@ -23,7 +23,7 @@ import { Image as ExpoImage } from "expo-image";
 import { useRouter } from "expo-router";
 import { CaretRight, Drop, Lightning, Sparkle } from "phosphor-react-native";
 import type { RefObject } from "react";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Animated, FlatList, Pressable, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
@@ -36,6 +36,10 @@ import {
 import { ActiveOrdersShowcase } from "@/features/home/ActiveOrdersShowcase";
 import { CategoryCollections } from "@/features/home/CategoryCollections";
 import { CinematicHero } from "@/features/home/CinematicHero";
+import {
+  HOME_STATUS_BAR_COVER_OFFSET,
+  HomeStatusBarCover,
+} from "@/features/home/HomeStatusBarCover";
 import { PromoBannerCarousel } from "@/features/home/PromoBannerCarousel";
 import {
   AVAILABILITY_DOT,
@@ -157,6 +161,8 @@ function ClientHome({
     }
   }, [resetCounter]);
 
+  const [statusBarCovered, setStatusBarCovered] = useState(false);
+
   const ready = !isLoading && !error && !!categories;
   const listData = ready ? categories : [];
   // На grid-раскладке контейнер даёт -6px компенсацию (см. CATEGORY_CONTAINER_PADDING) —
@@ -178,6 +184,16 @@ function ClientHome({
         extraData={isGrid}
         showsVerticalScrollIndicator={false}
         refreshControl={refresh.control}
+        // Строка состояния: пока виден герой, её защищает собственный тёмный
+        // градиент фото; как только герой уходит вверх — включаем непрозрачную
+        // полосу, иначе контент наезжает на время и батарею (DECISION владельца
+        // 2026-09-03). setState вызывается только на смене состояния, не на
+        // каждом кадре: React гасит повтор с тем же значением.
+        scrollEventThrottle={32}
+        onScroll={(event) => {
+          const next = event.nativeEvent.contentOffset.y > HOME_STATUS_BAR_COVER_OFFSET;
+          setStatusBarCovered((prev) => (prev === next ? prev : next));
+        }}
         contentContainerStyle={{
           // Фото-hero идёт от самого верха экрана (под статус-бар), поэтому НЕ
           // добавляем paddingTop — CinematicHero сам учитывает inset.
@@ -227,6 +243,7 @@ function ClientHome({
           )
         }
       />
+      <HomeStatusBarCover visible={statusBarCovered} />
     </View>
   );
 }

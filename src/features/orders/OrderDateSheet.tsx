@@ -254,8 +254,11 @@ export function OrderDateSheet({ value, onSelect, onClose }: OrderDateSheetProps
                   <AppText
                     weight={isSelected || isToday ? "semibold" : "medium"}
                     className={`text-body-md ${
+                      // На акцентной заливке — токен on-accent (белый в обеих
+                      // темах). on-primary в тёмной теме чёрный: цифра
+                      // выбранного дня оказывалась чёрной на розовом.
                       isSelected
-                        ? "text-on-primary"
+                        ? "text-on-accent"
                         : isPast
                           ? "text-muted-soft"
                           : isToday

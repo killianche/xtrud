@@ -36,7 +36,9 @@ export default function FiltersCategorySelectScreen() {
   const insets = useSafeAreaInsets();
   const inkColor = useThemeColor("ink");
   const muteColor = useThemeColor("mute");
-  const onDarkColor = useThemeColor("on-dark");
+  // Галочка на акцентной заливке — токен on-accent (единое правило для
+  // содержимого на розовом фоне).
+  const onAccentColor = useThemeColor("on-accent");
   const goBack = useSafeBack("/find/filters" as const);
 
   // Скрываем TabBar — это full-screen detail-экран фильтров.
@@ -244,7 +246,7 @@ export default function FiltersCategorySelectScreen() {
                     isSelected ? "border-accent bg-accent" : "border-hairline bg-canvas"
                   }`}
                 >
-                  {isSelected ? <Check size={16} weight="bold" color={onDarkColor} /> : null}
+                  {isSelected ? <Check size={16} weight="bold" color={onAccentColor} /> : null}
                 </View>
               </Pressable>
             );

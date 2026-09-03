@@ -1699,8 +1699,8 @@ function MasterResponseSection({
       )}
 
       {/* Кнопка отклика — акцентная (DECISION владельца 2026-09-02 «кнопка
-          цветнее»). Текст тёмный, а не белый: белый на акценте не проходит
-          AA (3.1:1 / 2.7:1), тёмный — 6.4:1 / 7.3:1. Токен on-accent. */}
+          цветнее»), контент белый через токен on-accent (DECISION 2026-09-03).
+          Цена по контрасту — в src/lib/colors.ts. */}
       <Pressable
         accessibilityRole="button"
         accessibilityLabel="Отправить отклик"

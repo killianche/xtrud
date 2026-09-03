@@ -37,7 +37,9 @@ export default function OrdersSearchFiltersScreen() {
   const goBack = useSafeBack("/(tabs)/find" as const);
   const muteColor = useThemeColor("mute");
   const inkColor = useThemeColor("ink");
-  const onPrimaryColor = useThemeColor("on-primary");
+  // Галочка лежит на акцентной заливке → токен on-accent (белый в обеих
+  // темах). on-primary в тёмной теме чёрный и терялся на розовом кружке.
+  const onAccentColor = useThemeColor("on-accent");
 
   // Скрываем TabBar — full-screen фильтры.
   const setTabBarHidden = useTabBarVisibility((s) => s.setHidden);
@@ -146,7 +148,7 @@ export default function OrdersSearchFiltersScreen() {
                       name={cat.name_ru}
                       selected={selected}
                       onPress={() => toggleL2(cat.id)}
-                      selectedIconColor={onPrimaryColor}
+                      selectedIconColor={onAccentColor}
                       fallbackIconColor={muteColor}
                     />
                   );

@@ -105,6 +105,13 @@ export default function TabsLayout() {
           {findBadge ? <NativeTabs.Trigger.Badge>{findBadge}</NativeTabs.Trigger.Badge> : null}
         </NativeTabs.Trigger>
 
+        {/* Каталог людей. Открыт всем, включая гостя: посмотреть, кто есть в
+            республике, можно до регистрации — как и ленту заданий. */}
+        <NativeTabs.Trigger name="specialists">
+          <NativeTabs.Trigger.Icon sf={{ default: "person.2", selected: "person.2.fill" }} />
+          <NativeTabs.Trigger.Label>Специалисты</NativeTabs.Trigger.Label>
+        </NativeTabs.Trigger>
+
         <NativeTabs.Trigger name="orders">
           <NativeTabs.Trigger.Icon
             sf={{ default: "checkmark.circle", selected: "checkmark.circle.fill" }}

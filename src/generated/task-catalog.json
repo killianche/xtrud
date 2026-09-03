@@ -409,6 +409,34 @@
       "is_active": true
     },
     {
+      "id": "appliance-install",
+      "l2_id": "appliance-repair",
+      "name_ru": "Установка бытовой техники",
+      "sort_order": 50,
+      "is_active": true
+    },
+    {
+      "id": "washing-machine-repair",
+      "l2_id": "appliance-repair",
+      "name_ru": "Ремонт стиральных машин",
+      "sort_order": 51,
+      "is_active": true
+    },
+    {
+      "id": "fridge-repair",
+      "l2_id": "appliance-repair",
+      "name_ru": "Ремонт холодильников",
+      "sort_order": 52,
+      "is_active": true
+    },
+    {
+      "id": "dishwasher-repair",
+      "l2_id": "appliance-repair",
+      "name_ru": "Ремонт посудомоечных машин",
+      "sort_order": 53,
+      "is_active": true
+    },
+    {
       "id": "appl-tv",
       "l2_id": "appliance-repair",
       "name_ru": "Телевизор",
@@ -990,6 +1018,13 @@
       "is_active": true
     },
     {
+      "id": "electric-meter-install",
+      "l2_id": "electrical",
+      "name_ru": "Установка электросчётчика",
+      "sort_order": 50,
+      "is_active": true
+    },
+    {
       "id": "lighting-install",
       "l2_id": "electrical",
       "name_ru": "Установка люстры / светильника",
@@ -1340,6 +1375,27 @@
       "is_active": true
     },
     {
+      "id": "furniture-assembly-home",
+      "l2_id": "handyman",
+      "name_ru": "Сборка мебели",
+      "sort_order": 50,
+      "is_active": true
+    },
+    {
+      "id": "tv-mount",
+      "l2_id": "handyman",
+      "name_ru": "Повесить телевизор",
+      "sort_order": 51,
+      "is_active": true
+    },
+    {
+      "id": "curtain-mount",
+      "l2_id": "handyman",
+      "name_ru": "Повесить карниз и шторы",
+      "sort_order": 52,
+      "is_active": true
+    },
+    {
       "id": "small-electrical",
       "l2_id": "handyman",
       "name_ru": "Мелкая электрика",
@@ -1557,6 +1613,13 @@
       "is_active": true
     },
     {
+      "id": "lock-open",
+      "l2_id": "locks-security",
+      "name_ru": "Вскрытие замка",
+      "sort_order": 50,
+      "is_active": true
+    },
+    {
       "id": "alarm-install",
       "l2_id": "locks-security",
       "name_ru": "Монтаж сигнализации",
@@ -1645,6 +1708,13 @@
       "l2_id": "movers",
       "name_ru": "Сборка-разборка при переезде",
       "sort_order": 40,
+      "is_active": true
+    },
+    {
+      "id": "garbage-removal",
+      "l2_id": "movers",
+      "name_ru": "Вывоз мусора",
+      "sort_order": 50,
       "is_active": true
     },
     {
@@ -1809,10 +1879,24 @@
       "is_active": true
     },
     {
+      "id": "water-meter-check",
+      "l2_id": "plumbing",
+      "name_ru": "Поверка счётчиков воды",
+      "sort_order": 50,
+      "is_active": true
+    },
+    {
       "id": "sink-install",
       "l2_id": "plumbing",
       "name_ru": "Установка раковины / мойки",
       "sort_order": 50,
+      "is_active": true
+    },
+    {
+      "id": "water-meter-install",
+      "l2_id": "plumbing",
+      "name_ru": "Установка счётчиков воды",
+      "sort_order": 51,
       "is_active": true
     },
     {
@@ -4099,5 +4183,5 @@
       "weight": 100
     }
   ],
-  "content_sha256": "4f858a77badaeb9c77ae853d49da7e7e8ee9220b8872ddc4fb3a76e048711267"
+  "content_sha256": "f46fa8e95e9850964871dd45665c4d3cdef0bb034b56f700c7c5694a8d515a30"
 }

@@ -1710,6 +1710,31 @@ export type Database = {
           source: string
         }[]
       }
+      search_masters: {
+        Args: {
+          p_city_id?: string | null
+          p_hide_demo?: boolean
+          p_l2_id?: string | null
+          p_limit?: number
+          p_offset?: number
+          p_query?: string | null
+        }
+        Returns: {
+          avatar_url: string | null
+          bio: string | null
+          categories: string[]
+          city_id: string | null
+          city_name: string | null
+          closed_deals: number | null
+          district: string | null
+          experience_years: number | null
+          first_name: string | null
+          last_name: string | null
+          rating_avg: number | null
+          rating_count: number | null
+          user_id: string
+        }[]
+      }
       set_availability: {
         Args: { p_status: Database["public"]["Enums"]["availability_status"] }
         Returns: string

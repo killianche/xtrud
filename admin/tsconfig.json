@@ -13,7 +13,8 @@
     "skipLibCheck": true,
     "resolveJsonModule": true,
     "isolatedModules": true,
-    "verbatimModuleSyntax": true
+    "verbatimModuleSyntax": true,
+    "types": ["vite/client"]
   },
   "include": ["src", "vite.config.ts"]
 }

@@ -17,7 +17,9 @@ let cached: AdminConfig | null = null;
 export async function loadConfig(): Promise<AdminConfig> {
   if (cached) return cached;
 
-  const response = await fetch("/config.json", { cache: "no-store" });
+  // Путь относительно базы: панель может стоять и в корне домена, и в
+  // подкаталоге /admin/ — адрес настроек не должен от этого ломаться.
+  const response = await fetch(`${import.meta.env.BASE_URL}config.json`, { cache: "no-store" });
   if (!response.ok) {
     throw new Error("Не найден /config.json. Панель не знает адрес API — проверьте выкладку.");
   }

@@ -12,7 +12,7 @@ import {
   fullName,
   SkeletonRows,
 } from "../components/ui";
-import { api, type UserCard as UserCardData } from "../lib/api";
+import { api, type UserCard as UserCardData, type UserStatus } from "../lib/api";
 
 function Row({ label, value }: { label: string; value: string }) {
   return (
@@ -97,6 +97,127 @@ function PasswordForm({ userId, onDone }: { userId: string; onDone: () => void }
   );
 }
 
+/** Санкции. Снятие — такое же простое действие, как наказание: иначе
+ *  ошибочная блокировка живёт вечно. Причина обязательна во всех случаях. */
+function Sanctions({
+  userId,
+  status,
+  isAdmin,
+  onDone,
+}: {
+  userId: string;
+  status: string;
+  isAdmin: boolean;
+  onDone: () => void;
+}) {
+  const [reason, setReason] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [done, setDone] = useState<string | null>(null);
+
+  const run = async (action: () => Promise<unknown>, label: string) => {
+    if (busy) return;
+    if (reason.trim().length < 3) {
+      setError("Сначала напишите причину — она попадёт в журнал.");
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    setDone(null);
+    try {
+      await action();
+      setDone(label);
+      setReason("");
+      onDone();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Не удалось выполнить действие.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const setStatus = (next: UserStatus, label: string) =>
+    run(() => api.setUserStatus(userId, next, reason.trim()), label);
+
+  if (isAdmin) {
+    return (
+      <div className="stack">
+        <p className="mono-eyebrow">Санкции</p>
+        <p className="body-md text-mute">
+          К администратору неприменимы: панель закрылась бы сама за собой.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="stack">
+      <p className="mono-eyebrow">Санкции</p>
+      <p className="body-md text-mute">
+        Каждое действие требует причины и попадает в журнал. Приостановка и блокировка различаются
+        только тяжестью — обе снимаются кнопкой «Снять санкцию».
+      </p>
+      <input
+        className="input"
+        value={reason}
+        onChange={(e) => setReason(e.target.value)}
+        placeholder="Причина — попадёт в журнал"
+        disabled={busy}
+      />
+      {error ? (
+        <div className="banner-error body-md" role="alert">
+          {error}
+        </div>
+      ) : null}
+      {done ? (
+        <div className="banner-ok body-md" role="status">
+          {done}
+        </div>
+      ) : null}
+      <div className="row" style={{ flexWrap: "wrap" }}>
+        <button
+          type="button"
+          className="btn btn-ghost"
+          disabled={busy}
+          onClick={() => run(() => api.warnUser(userId, reason.trim()), "Предупреждение записано")}
+        >
+          Предупредить
+        </button>
+        {status !== "suspended" ? (
+          <button
+            type="button"
+            className="btn btn-ghost"
+            disabled={busy}
+            onClick={() => setStatus("suspended", "Доступ приостановлен")}
+          >
+            Приостановить
+          </button>
+        ) : null}
+        {status !== "banned" ? (
+          <button
+            type="button"
+            className="btn btn-danger"
+            disabled={busy}
+            onClick={() => setStatus("banned", "Пользователь заблокирован")}
+          >
+            Заблокировать
+          </button>
+        ) : null}
+        {status !== "active" ? (
+          <button
+            type="button"
+            className="btn btn-primary"
+            disabled={busy}
+            onClick={() => setStatus("active", "Санкция снята")}
+          >
+            Снять санкцию
+          </button>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
 export function UserCard({ userId, onBack }: { userId: string; onBack: () => void }) {
   const [card, setCard] = useState<UserCardData | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -147,8 +268,18 @@ export function UserCard({ userId, onBack }: { userId: string; onBack: () => voi
           <Row label="Последний вход" value={formatDate(user.last_sign_in_at)} />
         </div>
 
-        <div className="card">
-          <PasswordForm userId={user.id} onDone={load} />
+        <div className="stack">
+          <div className="card">
+            <PasswordForm userId={user.id} onDone={load} />
+          </div>
+          <div className="card">
+            <Sanctions
+              userId={user.id}
+              status={user.status}
+              isAdmin={user.is_admin}
+              onDone={load}
+            />
+          </div>
         </div>
       </div>
 

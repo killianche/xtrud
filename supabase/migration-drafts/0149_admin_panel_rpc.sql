@@ -152,7 +152,7 @@ BEGIN
            ), '[]'::jsonb),
            'reviews', coalesce((
              SELECT jsonb_agg(jsonb_build_object(
-                      'id', rv.id, 'rating', rv.rating_overall,
+                      'id', rv.id, 'rating', rv.rating,
                       'status', rv.status::text, 'created_at', rv.created_at)
                     ORDER BY rv.created_at DESC)
                FROM (SELECT * FROM public.reviews WHERE target_id = u.id

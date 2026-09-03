@@ -7,6 +7,7 @@ import { api, getClient } from "./lib/api";
 import { Dashboard } from "./pages/Dashboard";
 import { Journal } from "./pages/Journal";
 import { Login } from "./pages/Login";
+import { Reports } from "./pages/Reports";
 import { UserCard } from "./pages/UserCard";
 import { Users } from "./pages/Users";
 
@@ -91,9 +92,11 @@ export function App() {
   const userMatch = /^\/users\/(.+)$/.exec(route);
   const section = route.startsWith("/users")
     ? "users"
-    : route.startsWith("/journal")
-      ? "journal"
-      : "overview";
+    : route.startsWith("/reports")
+      ? "reports"
+      : route.startsWith("/journal")
+        ? "journal"
+        : "overview";
 
   return (
     <>
@@ -119,6 +122,14 @@ export function App() {
           <button
             type="button"
             className="nav-link"
+            aria-current={section === "reports" ? "page" : undefined}
+            onClick={() => navigate("/reports")}
+          >
+            Жалобы
+          </button>
+          <button
+            type="button"
+            className="nav-link"
             aria-current={section === "journal" ? "page" : undefined}
             onClick={() => navigate("/journal")}
           >
@@ -136,6 +147,8 @@ export function App() {
           <UserCard userId={userMatch[1]} onBack={() => navigate("/users")} />
         ) : section === "users" ? (
           <Users onOpen={(id) => navigate(`/users/${id}`)} />
+        ) : section === "reports" ? (
+          <Reports />
         ) : section === "journal" ? (
           <Journal />
         ) : (

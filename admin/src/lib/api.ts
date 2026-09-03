@@ -62,6 +62,24 @@ export interface UserCard {
   reviews: Array<{ id: string; rating: number | null; status: string; created_at: string }>;
 }
 
+export interface ReportRow {
+  id: string;
+  created_at: string;
+  status: string;
+  reason: string;
+  description: string | null;
+  target_type: string;
+  target_id: string;
+  target_label: string | null;
+  target_user_id: string | null;
+  reporter_id: string;
+  reporter_label: string | null;
+  reports_on_target: number;
+  reports_by_reporter: number;
+}
+
+export type UserStatus = "active" | "suspended" | "banned";
+
 export interface ActionRow {
   id: string;
   performed_at: string;
@@ -85,6 +103,12 @@ function describe(error: { message?: string; code?: string } | null): string {
   }
   if (message.includes("password_too_short")) return "Пароль короче шести символов.";
   if (message.includes("reason_required")) return "Укажите причину — она попадёт в журнал.";
+  if (message.includes("cannot_sanction_admin")) {
+    return "Администратора нельзя наказать: панель закрылась бы сама за собой.";
+  }
+  if (message.includes("user_deleted")) return "Аккаунт удалён — санкции к нему неприменимы.";
+  if (message.includes("report_not_found")) return "Жалоба не найдена.";
+  if (message.includes("bad_status")) return "Недопустимое состояние.";
   if (!message) return "Не удалось выполнить запрос.";
   return "Сервис не ответил. Попробуйте ещё раз.";
 }
@@ -110,6 +134,31 @@ export const api = {
       p_user_id: userId,
       p_new_password: password,
       p_reason: reason,
+    }),
+  listReports: (status: string | null, limit = 50, offset = 0) =>
+    rpc<ReportRow[]>("admin_list_reports", {
+      p_status: status,
+      p_limit: limit,
+      p_offset: offset,
+    }),
+  resolveReport: (reportId: string, status: string, note: string) =>
+    rpc<{ ok: boolean }>("admin_resolve_report", {
+      p_report_id: reportId,
+      p_status: status,
+      p_note: note,
+    }),
+  setUserStatus: (userId: string, status: UserStatus, reason: string, reportId?: string) =>
+    rpc<{ ok: boolean; from: string; to: string }>("admin_set_user_status", {
+      p_user_id: userId,
+      p_status: status,
+      p_reason: reason,
+      p_report_id: reportId ?? null,
+    }),
+  warnUser: (userId: string, reason: string, reportId?: string) =>
+    rpc<{ ok: boolean }>("admin_warn_user", {
+      p_user_id: userId,
+      p_reason: reason,
+      p_report_id: reportId ?? null,
     }),
   listActions: (limit = 50, offset = 0) =>
     rpc<ActionRow[]>("admin_list_actions", { p_limit: limit, p_offset: offset }),

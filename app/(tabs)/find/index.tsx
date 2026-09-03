@@ -39,6 +39,7 @@ import {
 import { useAllOpenOrders } from "@/features/orders/use-all-open-orders";
 import { useMyResponses } from "@/features/orders/use-my-responses";
 import { useMarkFeedSeen } from "@/features/orders/use-unread-feed";
+import { describeQueryError } from "@/lib/describe-query-error";
 import { useThemeColor } from "@/lib/use-theme-color";
 
 export default function FindScreen() {
@@ -142,10 +143,14 @@ export default function FindScreen() {
         </View>
       ) : error ? (
         <View className="flex-1 px-6 pt-6">
+          {/* Показываем человеческий текст, а не `error.message`: там
+              техническая строка вроде «FetchError: …» (DECISION 2026-09-03). */}
           <AppText weight="bold" className="text-title-lg text-ink">
-            Не удалось загрузить задания
+            {describeQueryError(error).title}
           </AppText>
-          <AppText className="mt-1 text-body-md text-body">{error.message}</AppText>
+          <AppText className="mt-1 text-body-md text-body">
+            {describeQueryError(error).hint}
+          </AppText>
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Повторить загрузку заданий"

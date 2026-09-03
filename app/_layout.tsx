@@ -17,6 +17,7 @@ import { useRegisterPushToken } from "@/features/notifications/use-register-push
 import { useAuthReturnUrlStore } from "@/lib/auth-return-url-store";
 import { installGlobalErrorHandlers } from "@/lib/error-reporting";
 import { NavHistoryTracker } from "@/lib/nav-history";
+import { isNetworkTransportError } from "@/lib/network-transport-error";
 import { initSentry } from "@/lib/sentry";
 import { useThemeColor } from "@/lib/use-theme-color";
 
@@ -211,7 +212,12 @@ export default function RootLayout() {
           queries: {
             staleTime: 30_000,
             gcTime: 5 * 60_000,
-            retry: 2,
+            // Транспортный сбой (нет сети, сервер молчит и запрос отвалился по
+            // таймауту) повторять бессмысленно: связи не будет и через 20 с, а
+            // человек всё это время смотрит на скелетон. Такой сбой показываем
+            // сразу — экран покажет «нет связи» с кнопкой «Повторить».
+            // Ошибки сервера (5xx, разрыв) по-прежнему повторяем дважды.
+            retry: (failureCount, error) => !isNetworkTransportError(error) && failureCount < 2,
             retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 10_000),
             refetchOnWindowFocus: false,
             refetchOnReconnect: true,

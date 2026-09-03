@@ -37,20 +37,23 @@ export function CategoryCollections() {
   const activeId = selectedId ?? sections[0]?.id ?? null;
 
   const rows = useMemo(() => {
-    if (!activeId) return [];
-    const list = (l2 ?? []).filter((c) => c.l1_id === activeId);
+    // Разделы (L1) грузятся отдельным запросом и офлайн-копии не имеют. Если
+    // их нет, блок не пропадает: показываем категории общим списком без ряда
+    // чипов. Сами категории приходят из встроенного каталога и доступны без
+    // сети (DECISION владельца 2026-09-03: «покажи их даже без сети»).
+    const list = activeId ? (l2 ?? []).filter((c) => c.l1_id === activeId) : (l2 ?? []);
     // Отмеченные как featured — первыми, остальные по порядку каталога.
     return [...list]
       .sort((a, b) => Number(b.is_featured) - Number(a.is_featured))
       .slice(0, MAX_ROWS);
   }, [l2, activeId]);
 
-  // Загрузка — скелет по форме блока, а не пустота (design-quality §3):
-  // иначе секция появляется рывком после ответа сети (QA 2026-09-02).
-  // Ошибка сети — блок вторичен, красную плашку на главной не показываем
-  // (то же решение, что у «Актуальных заданий»).
-  if (l1Loading || l2Loading) return <CategoryCollectionsSkeleton />;
-  if (sections.length === 0 || rows.length === 0) return null;
+  // Скелет — только пока грузятся сами категории. Ждать ещё и разделы
+  // незачем: без них блок остаётся рабочим, а лишнее ожидание — это тот
+  // самый «вечный скелетон», на который жаловался владелец.
+  if (l2Loading) return <CategoryCollectionsSkeleton />;
+  if (rows.length === 0) return null;
+  const showSectionChips = sections.length > 0 && !l1Loading;
 
   return (
     <View className="mt-8">
@@ -58,34 +61,36 @@ export function CategoryCollections() {
         Что нужно сделать
       </AppText>
 
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={{ paddingHorizontal: 20, gap: 8, paddingTop: 12 }}
-      >
-        {sections.map((s) => {
-          const active = s.id === activeId;
-          return (
-            <Pressable
-              key={s.id}
-              accessibilityRole="button"
-              accessibilityState={{ selected: active }}
-              accessibilityLabel={s.name_ru}
-              onPress={() => setSelectedId(s.id)}
-              className={`min-h-11 flex-row items-center rounded-pill border px-4 ${
-                active ? "border-accent bg-accent" : "border-hairline bg-canvas"
-              } active:opacity-80`}
-            >
-              <AppText
-                weight="semibold"
-                className={`text-body-md ${active ? "text-on-accent" : "text-ink"}`}
+      {showSectionChips ? (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{ paddingHorizontal: 20, gap: 8, paddingTop: 12 }}
+        >
+          {sections.map((s) => {
+            const active = s.id === activeId;
+            return (
+              <Pressable
+                key={s.id}
+                accessibilityRole="button"
+                accessibilityState={{ selected: active }}
+                accessibilityLabel={s.name_ru}
+                onPress={() => setSelectedId(s.id)}
+                className={`min-h-11 flex-row items-center rounded-pill border px-4 ${
+                  active ? "border-accent bg-accent" : "border-hairline bg-canvas"
+                } active:opacity-80`}
               >
-                {s.name_ru}
-              </AppText>
-            </Pressable>
-          );
-        })}
-      </ScrollView>
+                <AppText
+                  weight="semibold"
+                  className={`text-body-md ${active ? "text-on-accent" : "text-ink"}`}
+                >
+                  {s.name_ru}
+                </AppText>
+              </Pressable>
+            );
+          })}
+        </ScrollView>
+      ) : null}
 
       <View className="mt-2">
         {rows.map((c) => {
@@ -128,7 +133,6 @@ function CategoryCollectionsSkeleton() {
       </View>
       <View className="mt-2">
         {[0, 1, 2, 3].map((i) => (
-          // biome-ignore lint/suspicious/noArrayIndexKey: stable position-based key
           <View key={i} className="flex-row items-center gap-4 px-5 py-3">
             <Skeleton width={64} height={64} className="rounded-2xl" />
             <Skeleton width="50%" height={18} className="rounded" />

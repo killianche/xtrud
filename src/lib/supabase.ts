@@ -15,6 +15,7 @@ import { createClient } from "@supabase/supabase-js";
 import { AppState, Platform } from "react-native";
 import type { Database } from "@/types/database";
 import { env } from "./env";
+import { createTimeoutFetch } from "./fetch-with-timeout";
 import { largeSecureStorage } from "./storage";
 
 const isWeb = Platform.OS === "web";
@@ -30,6 +31,9 @@ export const supabase = createClient<Database>(
       detectSessionInUrl: isWeb,
       flowType: "pkce",
     },
+    // Таймаут на КАЖДЫЙ запрос (данные и авторизация). Без него молчащая сеть
+    // оставляла экран в вечной загрузке — см. src/lib/fetch-with-timeout.ts.
+    global: { fetch: createTimeoutFetch() },
   },
 );
 

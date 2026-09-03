@@ -9,14 +9,16 @@
 // данными (.claude/rules/design-quality.md §5).
 
 import { useRouter } from "expo-router";
-import { Tray } from "phosphor-react-native";
+import { CloudSlash, Tray } from "phosphor-react-native";
 import { useMemo } from "react";
 import { Pressable, View } from "react-native";
 import { AppText } from "@/components/AppText";
 import { OrderRow } from "@/components/OrderRow";
 import { OrderRowsSkeleton } from "@/components/OrderRowsSkeleton";
+import { Button } from "@/components/ui";
 import { useAllOpenOrders } from "@/features/orders/use-all-open-orders";
 import type { OrderWithRefs } from "@/features/orders/use-my-orders";
+import { describeQueryError } from "@/lib/describe-query-error";
 import { useThemeColor } from "@/lib/use-theme-color";
 
 const MAX_ITEMS = 4;
@@ -41,7 +43,13 @@ export function ActiveOrdersShowcase({ userId }: { userId: string | undefined })
   const router = useRouter();
   const accentColor = useThemeColor("accent");
 
-  const { data: feed, isLoading, error } = useAllOpenOrders({ userId, l2Ids: null });
+  const {
+    data: feed,
+    isLoading,
+    error,
+    refetch,
+    isRefetching,
+  } = useAllOpenOrders({ userId, l2Ids: null });
 
   const items = useMemo(
     () =>
@@ -52,9 +60,11 @@ export function ActiveOrdersShowcase({ userId }: { userId: string | undefined })
     [feed],
   );
 
-  // Ошибку не показываем баннером: блок вторичен по отношению к созданию
-  // задания, и красная плашка на главной пугает сильнее, чем помогает.
-  if (error) return null;
+  // Ошибку теперь показываем — но спокойно, без красной плашки. Раньше блок
+  // просто исчезал (`return null`), и владелец видел пустое место без
+  // объяснения; до этого — вечный скелетон. DECISION владельца 2026-09-03:
+  // «если ошибка — понятный retry, не серые полоски».
+  const errorText = error ? describeQueryError(error) : null;
 
   return (
     <View className="mt-10">
@@ -81,6 +91,27 @@ export function ActiveOrdersShowcase({ userId }: { userId: string | undefined })
       <View className="mt-4">
         {isLoading ? (
           <OrderRowsSkeleton count={3} />
+        ) : errorText ? (
+          <View className="mx-4 items-center rounded-2xl border border-hairline bg-canvas-soft px-5 py-8">
+            <View className="h-16 w-16 items-center justify-center rounded-full bg-canvas">
+              <CloudSlash size={30} weight="bold" color={accentColor} />
+            </View>
+            <AppText weight="bold" className="mt-4 text-center text-title-lg text-ink">
+              {errorText.title}
+            </AppText>
+            <AppText className="mt-2 text-center text-body-md text-body">{errorText.hint}</AppText>
+            <View className="mt-5 self-stretch">
+              <Button
+                variant="secondary"
+                size="lg"
+                fullWidth
+                loading={isRefetching}
+                onPress={() => void refetch()}
+              >
+                Повторить
+              </Button>
+            </View>
+          </View>
         ) : items.length === 0 ? (
           <View className="mx-4 items-center rounded-2xl border border-hairline bg-canvas-soft px-5 py-8">
             <View className="h-16 w-16 items-center justify-center rounded-full bg-canvas">

@@ -1,11 +1,19 @@
-// Экран РЕГИСТРАЦИИ (route /(auth)/register). Модель с 2026-06-05: номер
-// телефона (CountryCodeSelect + маска) + почта (для восстановления пароля) +
-// пароль. Согласие с условиями обязательно (active opt-in) — гейтит кнопку.
+// Экран РЕГИСТРАЦИИ (route /(auth)/register).
 //
-// Полный E.164-номер собирается на submit: `+${country.dial}${digits}`.
-// После обычной регистрации AuthGate уводит в onboarding. Если регистрация
-// начата из формы задания, return-intent остаётся до завершения обязательного
-// onboarding и потребляется там ровно один раз.
+// «Тестовая регистрация» — DECISION владельца 2026-09-03: имя, фамилия, номер
+// телефона и пароль. Ни SMS, ни почты, ни подтверждения: нажал «Создать
+// аккаунт» — аккаунт есть. Подтверждение номера по SMS вернём отдельным
+// этапом, когда будет провайдер.
+//
+// Номер — единственный формат: код страны зафиксирован на +7 и не
+// выбирается, в поле ровно 10 цифр. Раньше здесь был CountryCodeSelect, и
+// один и тот же человек мог зарегистрироваться как 8928… , а войти как
+// 7928…. Ввод нормализуется на каждый символ (normalizeRuPhoneDigits), а
+// сервер ищет аккаунт по последним 10 цифрам (RPC resolve_login_email) —
+// форматы совпадают с обеих сторон.
+//
+// Имя с фамилией пишутся сразу после входа, там же закрывается онбординг:
+// отдельного экрана «как вас зовут» после регистрации больше нет.
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useLocalSearchParams, useNavigation, useRouter } from "expo-router";
@@ -17,14 +25,9 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
 import { Button, Input } from "@/components/ui";
 import { ORDER_CREATE_RETURN_TO, parseAuthReturnTo } from "@/features/auth/auth-return";
-import {
-  type Country,
-  CountryCodeSelect,
-  DEFAULT_COUNTRY,
-} from "@/features/auth/CountryCodeSelect";
 import { useRegister } from "@/features/auth/use-auth-mutations";
 import {
-  digitsOnly,
+  normalizeRuPhoneDigits,
   type RegisterFormValues,
   registerFormSchema,
 } from "@/features/auth/validation";
@@ -40,19 +43,16 @@ import { useBackGestureLock } from "@/lib/use-back-gesture-lock";
 import { useSafeBack } from "@/lib/use-safe-back";
 import { useThemeColors } from "@/lib/use-theme-color";
 
-/** Форматирование цифр в маску для конкретной страны.
- *  Для +7 (РФ/КЗ) — `XXX XXX-XX-XX`. Для остальных — группы по 3. */
-function formatPhoneByCountry(digits: string, country: Country): string {
-  const d = digits.slice(0, country.digitsLength);
-  if (country.dial === "7") {
-    let result = "";
-    if (d.length > 0) result += d.slice(0, 3);
-    if (d.length > 3) result += ` ${d.slice(3, 6)}`;
-    if (d.length > 6) result += `-${d.slice(6, 8)}`;
-    if (d.length > 8) result += `-${d.slice(8, 10)}`;
-    return result;
-  }
-  return d.match(/.{1,3}/g)?.join(" ") ?? d;
+/** Показываем 10 цифр как `XXX XXX-XX-XX`. В форме при этом хранятся ровно
+ *  цифры — маска только для чтения глазами. */
+function formatRuPhone(digits: string): string {
+  const d = digits.slice(0, 10);
+  let result = "";
+  if (d.length > 0) result += d.slice(0, 3);
+  if (d.length > 3) result += ` ${d.slice(3, 6)}`;
+  if (d.length > 6) result += `-${d.slice(6, 8)}`;
+  if (d.length > 8) result += `-${d.slice(8, 10)}`;
+  return result;
 }
 
 export default function RegisterScreen() {
@@ -75,7 +75,6 @@ export default function RegisterScreen() {
   const [serverError, setServerError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [acceptedTerms, setAcceptedTerms] = useState(false);
-  const [country, setCountry] = useState<Country>(DEFAULT_COUNTRY);
   const tc = useThemeColors(["ink", "mute", "on-accent"]);
   const safeGoBack = useSafeBack("/(auth)/phone" as const);
 
@@ -132,17 +131,20 @@ export default function RegisterScreen() {
     formState: { errors, isValid },
   } = useForm<RegisterFormValues>({
     resolver: zodResolver(registerFormSchema),
-    defaultValues: { phone: "", password: "" },
+    defaultValues: { firstName: "", lastName: "", phone: "", password: "" },
     mode: "onChange",
   });
 
   const onSubmit = handleSubmit(async (values) => {
-    const phone = `+${country.dial}${digitsOnly(values.phone)}`;
+    // Номер всегда российский и всегда в одном виде: +7 и десять цифр.
+    const phone = `+7${normalizeRuPhoneDigits(values.phone)}`;
     setServerError(null);
     try {
       const result = await register.mutateAsync({
         phone,
         password: values.password,
+        firstName: values.firstName,
+        lastName: values.lastName,
       });
       await completeGuestDraftAuthJourney(draftJourney, result.userId);
       if (useAuthReturnUrlStore.getState().peekReturnUrl()) {
@@ -150,8 +152,10 @@ export default function RegisterScreen() {
           // AuthGate owns performer routing after the session/user row settles.
           return;
         }
-        router.replace("/(onboarding)/client-name" as never);
       }
+      // Имя и онбординг закрыты внутри регистрации, поэтому идём сразу в
+      // приложение. Возврат к черновику задания, если он был, сделает AuthGate.
+      router.replace("/(tabs)" as never);
     } catch (e) {
       setServerError(e instanceof Error ? e.message : "Не удалось создать аккаунт");
     }
@@ -189,12 +193,67 @@ export default function RegisterScreen() {
             Создать аккаунт
           </AppText>
 
-          <View className="mt-8">
+          <View className="mt-8 flex-row gap-3">
+            <View className="flex-1">
+              <Controller
+                control={control}
+                name="firstName"
+                render={({ field: { value, onChange, onBlur } }) => (
+                  <Input
+                    size="lg"
+                    label="Имя"
+                    value={value}
+                    onBlur={onBlur}
+                    onChangeText={onChange}
+                    placeholder="Руслан"
+                    autoCapitalize="words"
+                    autoComplete="given-name"
+                    textContentType="givenName"
+                    editable={!isBusy}
+                    error={errors.firstName?.message}
+                  />
+                )}
+              />
+            </View>
+            <View className="flex-1">
+              <Controller
+                control={control}
+                name="lastName"
+                render={({ field: { value, onChange, onBlur } }) => (
+                  <Input
+                    size="lg"
+                    label="Фамилия"
+                    value={value}
+                    onBlur={onBlur}
+                    onChangeText={onChange}
+                    placeholder="Чербижев"
+                    autoCapitalize="words"
+                    autoComplete="family-name"
+                    textContentType="familyName"
+                    editable={!isBusy}
+                    error={errors.lastName?.message}
+                  />
+                )}
+              />
+            </View>
+          </View>
+
+          {/* Номер — единственный формат: +7 и десять цифр. Код страны не
+              выбирается и не вводится, поэтому «8» и «7» в начале больше не
+              создают два разных аккаунта (DECISION владельца 2026-09-03). */}
+          <View className="mt-5">
             <AppText weight="semibold" className="mb-2 text-body-md text-ink">
               Номер телефона
             </AppText>
             <View className="flex-row items-start gap-2">
-              <CountryCodeSelect selected={country} onSelect={setCountry} disabled={isBusy} />
+              <View
+                className="flex-row items-center rounded-xl border-hairline-strong bg-canvas-soft px-4"
+                style={{ minHeight: 54, borderWidth: 1.5 }}
+              >
+                <AppText weight="semibold" className="text-body-lg text-ink">
+                  +7
+                </AppText>
+              </View>
               <View className="flex-1">
                 <Controller
                   control={control}
@@ -202,12 +261,12 @@ export default function RegisterScreen() {
                   render={({ field: { value, onChange, onBlur } }) => (
                     <Input
                       size="lg"
-                      value={value}
+                      value={formatRuPhone(value)}
                       onBlur={onBlur}
-                      onChangeText={(raw) =>
-                        onChange(formatPhoneByCountry(digitsOnly(raw), country))
-                      }
-                      placeholder={country.dial === "7" ? "999 123-45-67" : "цифры номера"}
+                      // Нормализуем на каждый ввод: вставка «8 928…» или
+                      // «+7 928…» из буфера превращается в те же 10 цифр.
+                      onChangeText={(raw) => onChange(normalizeRuPhoneDigits(raw))}
+                      placeholder="928 123-45-67"
                       keyboardType="phone-pad"
                       autoComplete="tel-national"
                       textContentType="telephoneNumber"

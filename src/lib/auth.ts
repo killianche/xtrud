@@ -188,6 +188,8 @@ function phoneToAuthEmail(phone: string): string {
 export async function registerWithCredentials(input: {
   phone: string;
   password: string;
+  firstName: string;
+  lastName: string;
 }): Promise<{ ok: true; userId: string } | { ok: false; error: string }> {
   const phone = normalizePhone(input.phone);
   const email = phoneToAuthEmail(phone);
@@ -219,6 +221,28 @@ export async function registerWithCredentials(input: {
       error: "Аккаунт создан, но войти не удалось. Попробуйте войти вручную.",
     };
   }
+
+  // 3. Имя и фамилия — из той же формы, отдельного шага «как вас зовут» больше
+  // нет (DECISION владельца 2026-09-03: «пишет имя, логин и пароль, нажимает
+  // создать аккаунт, и аккаунт создается»). Здесь же закрываем онбординг,
+  // иначе AuthGate уведёт человека на экран имени сразу после регистрации.
+  //
+  // Юзернейм не спрашиваем: колонка необязательная, а на профиле он
+  // показывается только когда задан.
+  const { error: profileErr } = await supabase
+    .from("users")
+    .update({
+      first_name: input.firstName.trim(),
+      last_name: input.lastName.trim(),
+      onboarding_completed_at: new Date().toISOString(),
+    })
+    .eq("id", signInData.user.id);
+  if (profileErr) {
+    // Аккаунт уже создан и сессия есть — терять их из-за имени нельзя.
+    // Человек попадёт на экран имени и заполнит его вручную.
+    console.warn("[auth] профиль после регистрации не заполнен:", profileErr.message);
+  }
+
   return { ok: true, userId: signInData.user.id };
 }
 

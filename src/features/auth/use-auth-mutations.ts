@@ -26,6 +26,8 @@ import {
 export interface RegisterInput {
   phone: string;
   password: string;
+  firstName: string;
+  lastName: string;
 }
 
 /** Регистрация: телефон + пароль. Адрес для auth строится из номера. */

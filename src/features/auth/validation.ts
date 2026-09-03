@@ -144,14 +144,48 @@ export type LoginFormValues = z.infer<typeof loginFormSchema>;
  * приемлемо, база будет очищена перед боевым запуском.
  */
 export const registerFormSchema = z.object({
+  firstName: z
+    .string()
+    .trim()
+    .min(2, "Введите имя")
+    .max(60, "Слишком длинное имя")
+    .refine((v) => !/\d/.test(v), { message: "Имя не содержит цифр" }),
+  lastName: z
+    .string()
+    .trim()
+    .min(2, "Введите фамилию")
+    .max(60, "Слишком длинная фамилия")
+    .refine((v) => !/\d/.test(v), { message: "Фамилия не содержит цифр" }),
+  // Ровно 10 цифр без кода страны: номер вводится в единственном формате
+  // +7 XXX XXX-XX-XX (DECISION владельца 2026-09-03 — «чтобы не было такого,
+  // что один раз написал 8, другой раз 7»). Ввод сам срезает лишние 7/8 в
+  // начале, см. normalizeRuPhoneDigits.
   phone: z
     .string()
     .min(1, "Введите номер телефона")
-    .refine((v) => digitsOnly(v).length >= 6, {
-      message: "Введите корректный номер телефона",
+    .refine((v) => digitsOnly(v).length === 10, {
+      message: "Номер из 10 цифр после +7",
     }),
   password: z.string().min(6, "Минимум 6 символов"),
 });
+
+/**
+ * Приводит любой ввод российского номера к 10 цифрам без кода страны.
+ *
+ * `8 928 123-45-67`, `+7 928 123-45-67`, `7928…`, `928…` — всё это один и тот
+ * же номер, и человек не должен думать, в каком виде его писать. На сервере
+ * поиск аккаунта тоже идёт по последним 10 цифрам (RPC resolve_login_email),
+ * поэтому форматы совпадают с обеих сторон.
+ */
+export function normalizeRuPhoneDigits(input: string): string {
+  const digits = digitsOnly(input);
+  // 11 цифр, начинается с 7 или 8 — это код страны, снимаем его.
+  if (digits.length === 11 && (digits[0] === "7" || digits[0] === "8")) return digits.slice(1);
+  // Длиннее — берём последние 10: так переживаем вставку из буфера с +7 и
+  // прочими префиксами.
+  if (digits.length > 11) return digits.slice(-10);
+  return digits.slice(0, 10);
+}
 
 export type RegisterFormValues = z.infer<typeof registerFormSchema>;
 

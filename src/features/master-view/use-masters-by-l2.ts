@@ -20,6 +20,9 @@ import type { Tables } from "@/types/database";
 
 export type MasterInCategory = {
   master_id: string;
+  /** Услуги (L3), которые мастер отметил у себя в этой категории.
+   *  Нужны фильтру «Услуга» на экране категории. */
+  l3_ids: string[];
   user: Pick<
     Tables<"users">,
     "id" | "first_name" | "last_name" | "avatar_url" | "city_id" | "district"
@@ -44,6 +47,7 @@ export type MasterInCategory = {
 
 type Row = {
   master_id: string;
+  l3_ids: string[];
   user: Pick<
     Tables<"users">,
     "id" | "first_name" | "last_name" | "avatar_url" | "city_id" | "district"
@@ -100,6 +104,7 @@ export function useMastersByL2(l2Id: string | null | undefined) {
         .select(
           `
           master_id,
+          l3_ids,
           profile:master_profiles!master_categories_master_id_fkey (
             rating_overall_avg, rating_overall_count, closed_deals, experience_years, bio,
             account_type, team_size, availability_status, availability_until,
@@ -137,6 +142,7 @@ export function useMastersByL2(l2Id: string | null | undefined) {
       // работал с прежним shape).
       type NestedRow = {
         master_id: string;
+        l3_ids: string[] | null;
         profile:
           | (Omit<NonNullable<Row["profile"]>, never> & {
               user: Row["user"];
@@ -145,6 +151,7 @@ export function useMastersByL2(l2Id: string | null | undefined) {
       };
       const rows: Row[] = (filtered as unknown as NestedRow[]).map((r) => ({
         master_id: r.master_id,
+        l3_ids: r.l3_ids ?? [],
         user: r.profile?.user ?? null,
         profile: r.profile
           ? {
@@ -185,6 +192,7 @@ export function useMastersByL2(l2Id: string | null | undefined) {
         seen.add(r.master_id);
         list.push({
           master_id: r.master_id,
+          l3_ids: r.l3_ids,
           user: r.user,
           profile: r.profile,
           city: r.user.city_id ? (citiesMap.get(r.user.city_id) ?? null) : null,

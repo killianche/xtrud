@@ -186,8 +186,14 @@ export default function CategoryDetailScreen() {
     if (cityFilter !== "all") {
       list = list.filter((m) => m.user.city_id === cityFilter);
     }
-    // L3 фильтр пока без эффекта — master_categories.l3_ids массив, требует
-    // отдельного запроса. TODO sprint 2: фильтровать через JOIN.
+    // Фильтр по услуге. Раньше кнопка «Услуга» ничего не делала: выбор
+    // применялся к пустоте, потому что список не знал услуг мастера. Теперь
+    // l3_ids приходят вместе со списком, и фильтр работает без лишнего
+    // запроса. Управляющий элемент, который ничего не меняет, — дефект
+    // (.claude/rules/design-quality.md §1.1).
+    if (l3Filter) {
+      list = list.filter((m) => m.l3_ids.includes(l3Filter));
+    }
     if (sortBy === "experience") {
       list.sort((a, b) => (b.profile?.experience_years ?? 0) - (a.profile?.experience_years ?? 0));
     } else if (sortBy === "availability") {
@@ -205,7 +211,7 @@ export default function CategoryDetailScreen() {
     }
     // 'rating' — default уже отсортирован hook'ом
     return list;
-  }, [allMasters, cityFilter, sortBy]);
+  }, [allMasters, cityFilter, sortBy, l3Filter]);
 
   // Услуги и портфолио для всех видимых карточек забираем двумя запросами и
   // кладём в кэш по ключам одиночных хуков. Без этого каждая карточка ходила

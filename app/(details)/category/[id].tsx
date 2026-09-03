@@ -48,6 +48,7 @@ import {
   effectiveStatus,
   isAvailabilityVisible,
 } from "@/features/master-view/availability";
+import { useCategoryMasterDetails } from "@/features/master-view/use-category-master-details";
 import { type MasterInCategory, useMastersByL2 } from "@/features/master-view/use-masters-by-l2";
 import { useRecordMasterView } from "@/features/master-view/use-record-view";
 import { type PortfolioItem, useMasterPortfolio } from "@/features/profile/use-my-portfolio";
@@ -205,6 +206,13 @@ export default function CategoryDetailScreen() {
     // 'rating' — default уже отсортирован hook'ом
     return list;
   }, [allMasters, cityFilter, sortBy]);
+
+  // Услуги и портфолио для всех видимых карточек забираем двумя запросами и
+  // кладём в кэш по ключам одиночных хуков. Без этого каждая карточка ходила
+  // в сеть сама: 20 мастеров давали 40 лишних запросов, и экран открывался
+  // тем медленнее, чем больше в категории людей.
+  const visibleMasterIds = useMemo(() => mastersList.map((m) => m.user.id), [mastersList]);
+  useCategoryMasterDetails(visibleMasterIds);
 
   const cityLabel = CITIES.find((c) => c.id === cityFilter)?.name ?? "Город";
   const l3Label = l3Filter

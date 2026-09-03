@@ -1,0 +1,25 @@
+{
+  "name": "xtrud-admin",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Веб-админка xtrud — статический SPA без секретов (docs/ADMIN_PANEL.md)",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "typecheck": "tsc --noEmit",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.105.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "@vitejs/plugin-react": "^4.3.4",
+    "typescript": "~5.9.2",
+    "vite": "^6.0.7"
+  }
+}

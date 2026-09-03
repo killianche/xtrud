@@ -16,5 +16,5 @@
     "nativewind-env.d.ts",
     "svg.d.ts"
   ],
-  "exclude": ["node_modules", "supabase/functions"]
+  "exclude": ["node_modules", "supabase/functions", "admin"]
 }

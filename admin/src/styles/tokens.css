@@ -1,0 +1,170 @@
+/*
+ * Дизайн-система админки — Geist (образец владельца 2026-09-03).
+ *
+ * Правило системы: почти белый лист и почти чёрные чернила, больше ничего не
+ * соревнуется. Цвет допускается только акцентом ссылки и в единственном
+ * градиенте на экране входа. Глубина — линия в 1px, а не тень.
+ *
+ * Это НЕ палитра мобильного приложения: там фирменный розовый и свои токены.
+ * Админка — внутренний инструмент, у неё язык документации, а не витрины.
+ */
+
+:root {
+  /* Поверхности */
+  --canvas: #fafafa;
+  --canvas-elevated: #ffffff;
+  --hairline-soft: #f2f2f2;
+
+  /* Текст: сознательная лестница от чернил к самому тихому */
+  --ink: #171717;
+  --body: #4d4d4d;
+  --mute: #8f8f8f;
+  --faint: #a1a1a1;
+  --on-primary: #ffffff;
+
+  /* Границы — рабочая лошадь системы */
+  --hairline: #ebebeb;
+
+  /* Акцент */
+  --link: #0070f3;
+  --link-deep: #0761d1;
+  --link-soft: #d3e5ff;
+
+  /* Смысловые */
+  --error: #ee0000;
+  --error-deep: #c50000;
+  --error-soft: #ffe6e6;
+  --warning: #f5a623;
+  --warning-soft: #fff4e0;
+  --warning-deep: #a35200;
+  --success: #0070f3;
+
+  /* Фирменные градиенты Vercel — только для декора на входе */
+  --gradient-develop-start: #007cf0;
+  --gradient-develop-end: #00dfd8;
+  --gradient-preview-start: #7928ca;
+  --gradient-preview-end: #ff0080;
+  --gradient-ship-start: #ff4d4d;
+  --gradient-ship-end: #f9cb28;
+
+  /* Шаг 4px */
+  --space-xxs: 4px;
+  --space-xs: 8px;
+  --space-sm: 12px;
+  --space-md: 16px;
+  --space-lg: 24px;
+  --space-xl: 32px;
+  --space-2xl: 40px;
+  --space-3xl: 64px;
+  --space-4xl: 96px;
+
+  /* Радиусы: 6px для рабочих элементов, 12–16px для карточек, пилюли для CTA */
+  --radius-sm: 6px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-pill: 100px;
+  --radius-full: 9999px;
+
+  /* Глубина: сначала линия, тень — в крайнем случае */
+  --shadow-whisper: 0 1px 1px rgba(0, 0, 0, 0.04);
+  --shadow-floating: 0 2px 2px rgba(0, 0, 0, 0.04), 0 8px 16px -4px rgba(0, 0, 0, 0.08);
+
+  --font-sans: "Geist", Inter, -apple-system, BlinkMacSystemFont, Arial, sans-serif;
+  --font-mono: "Geist Mono", "JetBrains Mono", "SFMono-Regular", Menlo, monospace;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--canvas);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 20px;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Заголовки: чем крупнее, тем плотнее межбуквенное — это и есть характер Geist */
+.display-xl {
+  font-size: 48px;
+  line-height: 48px;
+  font-weight: 600;
+  letter-spacing: -2.4px;
+  margin: 0;
+}
+.heading-lg {
+  font-size: 32px;
+  line-height: 40px;
+  font-weight: 600;
+  letter-spacing: -1.28px;
+  margin: 0;
+}
+.heading-md {
+  font-size: 20px;
+  line-height: 28px;
+  font-weight: 600;
+  letter-spacing: -0.4px;
+  margin: 0;
+}
+.label-sm {
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 500;
+  letter-spacing: -0.28px;
+}
+/* Мелкая заглавная надпись моноширинным — как заголовок в техническом описании */
+.mono-eyebrow {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 500;
+  text-transform: uppercase;
+  color: var(--mute);
+  margin: 0;
+}
+.body-lg {
+  font-size: 16px;
+  line-height: 24px;
+}
+.body-md {
+  font-size: 14px;
+  line-height: 20px;
+}
+.body-sm {
+  font-size: 12px;
+  line-height: 16px;
+}
+.mono {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.text-body {
+  color: var(--body);
+}
+.text-mute {
+  color: var(--mute);
+}
+.text-faint {
+  color: var(--faint);
+}
+.text-error {
+  color: var(--error);
+}
+
+:focus-visible {
+  outline: 2px solid var(--link);
+  outline-offset: 2px;
+}

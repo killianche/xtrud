@@ -1,0 +1,366 @@
+/* Компоненты админки. Все размеры и цвета — только из tokens.css. */
+
+/* ── Кнопки ────────────────────────────────────────────────────────────────
+   Две формы по назначению: тугой квадрат 6px для рабочих элементов панели,
+   пилюля — для единственного главного действия на экране входа. Смешивать их
+   в одном контексте нельзя. */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-xs);
+  min-height: 40px;
+  padding: 0 var(--space-sm);
+  border-radius: var(--radius-sm);
+  border: 1px solid transparent;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 20px;
+  cursor: pointer;
+  transition: opacity 0.12s ease, background-color 0.12s ease;
+}
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.btn-primary {
+  background: var(--ink);
+  color: var(--on-primary);
+}
+.btn-primary:hover:not(:disabled) {
+  background: #000000;
+}
+.btn-ghost {
+  background: var(--canvas-elevated);
+  color: var(--ink);
+  border-color: var(--hairline);
+}
+.btn-ghost:hover:not(:disabled) {
+  background: var(--hairline-soft);
+}
+.btn-danger {
+  background: var(--canvas-elevated);
+  color: var(--error);
+  border-color: var(--hairline);
+}
+.btn-danger:hover:not(:disabled) {
+  background: var(--error-soft);
+}
+.btn-pill {
+  border-radius: var(--radius-pill);
+  min-height: 48px;
+  padding: 0 var(--space-lg);
+  font-size: 16px;
+}
+
+/* ── Поля ─────────────────────────────────────────────────────────────────── */
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+.field-label {
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 20px;
+  letter-spacing: -0.28px;
+  color: var(--ink);
+}
+.input {
+  width: 100%;
+  min-height: 40px;
+  padding: var(--space-xs) var(--space-sm);
+  background: var(--canvas-elevated);
+  color: var(--ink);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-sm);
+  font-family: inherit;
+  font-size: 14px;
+  line-height: 20px;
+}
+.input::placeholder {
+  color: var(--faint);
+}
+.input:focus {
+  outline: none;
+  border-color: var(--ink);
+}
+.input-error {
+  border-color: var(--error);
+}
+
+/* ── Карточки ─────────────────────────────────────────────────────────────── */
+.card {
+  background: var(--canvas-elevated);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-md);
+  padding: var(--space-lg);
+}
+.card-lg {
+  border-radius: var(--radius-lg);
+  padding: var(--space-xl);
+}
+.card-floating {
+  box-shadow: var(--shadow-floating);
+}
+
+/* ── Оболочка ─────────────────────────────────────────────────────────────── */
+.nav-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-lg);
+  height: 56px;
+  padding: 0 var(--space-lg);
+  background: var(--canvas);
+  border-bottom: 1px solid var(--hairline);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+.nav-wordmark {
+  font-weight: 600;
+  font-size: 16px;
+  letter-spacing: -0.4px;
+  color: var(--ink);
+}
+.nav-links {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xxs);
+}
+.nav-link {
+  padding: var(--space-xs) var(--space-sm);
+  border-radius: var(--radius-full);
+  color: var(--body);
+  background: none;
+  border: none;
+  font-family: inherit;
+  font-size: 14px;
+  cursor: pointer;
+}
+.nav-link:hover {
+  background: var(--hairline-soft);
+  color: var(--ink);
+}
+.nav-link[aria-current="page"] {
+  color: var(--ink);
+  font-weight: 500;
+  background: var(--hairline-soft);
+}
+.nav-spacer {
+  flex: 1;
+}
+
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: var(--space-xl) var(--space-lg) var(--space-4xl);
+}
+.page-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-md);
+  margin-bottom: var(--space-lg);
+}
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+.row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+/* ── Сетки ────────────────────────────────────────────────────────────────── */
+.grid-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-md);
+}
+.grid-two {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-md);
+}
+@media (max-width: 1024px) {
+  .grid-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 640px) {
+  .grid-metrics,
+  .grid-two {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .container {
+    padding: var(--space-lg) var(--space-md) var(--space-3xl);
+  }
+}
+
+.metric-value {
+  font-size: 32px;
+  line-height: 40px;
+  font-weight: 600;
+  letter-spacing: -1.28px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Таблица ──────────────────────────────────────────────────────────────── */
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--canvas-elevated);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+.table th {
+  text-align: left;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 500;
+  text-transform: uppercase;
+  color: var(--mute);
+  padding: var(--space-sm) var(--space-md);
+  border-bottom: 1px solid var(--hairline);
+  white-space: nowrap;
+}
+.table td {
+  padding: var(--space-sm) var(--space-md);
+  border-bottom: 1px solid var(--hairline);
+  color: var(--body);
+  vertical-align: middle;
+}
+.table tbody tr:last-child td {
+  border-bottom: none;
+}
+.table tbody tr.clickable {
+  cursor: pointer;
+}
+.table tbody tr.clickable:hover {
+  background: var(--hairline-soft);
+}
+.table-wrap {
+  overflow-x: auto;
+}
+.cell-ink {
+  color: var(--ink);
+  font-weight: 500;
+}
+.cell-mono {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--body);
+  white-space: nowrap;
+}
+
+/* ── Значки состояния ─────────────────────────────────────────────────────── */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xxs);
+  padding: 2px var(--space-xs);
+  border-radius: var(--radius-full);
+  border: 1px solid var(--hairline);
+  background: var(--canvas-elevated);
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--body);
+  white-space: nowrap;
+}
+.badge-active {
+  color: var(--link-deep);
+  border-color: var(--link-soft);
+  background: var(--link-soft);
+}
+.badge-warn {
+  color: var(--warning-deep);
+  border-color: var(--warning-soft);
+  background: var(--warning-soft);
+}
+.badge-error {
+  color: var(--error-deep);
+  border-color: var(--error-soft);
+  background: var(--error-soft);
+}
+
+/* ── Состояния экрана ─────────────────────────────────────────────────────── */
+.state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-xs);
+  padding: var(--space-3xl) var(--space-lg);
+  text-align: center;
+  color: var(--mute);
+}
+.skeleton {
+  background: var(--hairline-soft);
+  border-radius: var(--radius-sm);
+  animation: pulse 1.2s ease-in-out infinite;
+}
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.55;
+  }
+}
+.banner-error {
+  padding: var(--space-sm) var(--space-md);
+  border: 1px solid var(--error-soft);
+  background: var(--error-soft);
+  border-radius: var(--radius-sm);
+  color: var(--error-deep);
+}
+.banner-ok {
+  padding: var(--space-sm) var(--space-md);
+  border: 1px solid var(--link-soft);
+  background: var(--link-soft);
+  border-radius: var(--radius-sm);
+  color: var(--link-deep);
+}
+
+/* ── Экран входа ──────────────────────────────────────────────────────────
+   Единственное место, где системе разрешён цвет: мягкое многоточечное
+   свечение фирменных градиентов за карточкой входа. */
+.login-page {
+  min-height: 100%;
+  display: grid;
+  place-items: center;
+  padding: var(--space-lg);
+  position: relative;
+  overflow: hidden;
+}
+.login-mesh {
+  position: absolute;
+  inset: -20% -10% auto -10%;
+  height: 60vh;
+  filter: blur(90px);
+  opacity: 0.28;
+  pointer-events: none;
+  background:
+    radial-gradient(40% 60% at 15% 40%, var(--gradient-develop-end) 0%, transparent 70%),
+    radial-gradient(35% 55% at 40% 20%, var(--gradient-develop-start) 0%, transparent 70%),
+    radial-gradient(40% 60% at 65% 45%, var(--gradient-preview-start) 0%, transparent 70%),
+    radial-gradient(35% 50% at 85% 25%, var(--gradient-preview-end) 0%, transparent 70%),
+    radial-gradient(30% 45% at 95% 60%, var(--gradient-ship-end) 0%, transparent 70%);
+}
+.login-card {
+  position: relative;
+  width: 100%;
+  max-width: 400px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton {
+    animation: none;
+  }
+}

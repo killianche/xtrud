@@ -17,3 +17,14 @@ export function pluralRu(count: number, one: string, few: string, many: string):
 export function responsesLabel(count: number): string {
   return `${count} ${pluralRu(count, "отклик", "отклика", "откликов")}`;
 }
+
+/** «12 специалистов» — сколько людей в категории.
+ *
+ *  Слово «мастер» из интерфейса убрано (DECISION владельца 2026-09-04:
+ *  «тут мастеров написано — это надо исправить»). В нижнем меню вкладка
+ *  называется «Специалисты», и экран категории обязан говорить так же:
+ *  два слова про одно и то же — это два разных представления о продукте
+ *  у человека, который им пользуется. */
+export function specialistsLabel(count: number): string {
+  return `${count} ${pluralRu(count, "специалист", "специалиста", "специалистов")}`;
+}

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { pluralRu, responsesLabel } from "./plural-ru";
+import { pluralRu, responsesLabel, specialistsLabel } from "./plural-ru";
 
 describe("responsesLabel", () => {
   it("склоняет единицу", () => {
@@ -33,5 +33,19 @@ describe("responsesLabel", () => {
     expect(pluralRu(1, "задание", "задания", "заданий")).toBe("задание");
     expect(pluralRu(3, "задание", "задания", "заданий")).toBe("задания");
     expect(pluralRu(12, "задание", "задания", "заданий")).toBe("заданий");
+  });
+});
+
+describe("specialistsLabel", () => {
+  it("склоняет счётчик специалистов", () => {
+    expect(specialistsLabel(1)).toBe("1 специалист");
+    expect(specialistsLabel(3)).toBe("3 специалиста");
+    expect(specialistsLabel(7)).toBe("7 специалистов");
+  });
+
+  it("держит исключение 11–14", () => {
+    expect(specialistsLabel(11)).toBe("11 специалистов");
+    expect(specialistsLabel(14)).toBe("14 специалистов");
+    expect(specialistsLabel(21)).toBe("21 специалист");
   });
 });

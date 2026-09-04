@@ -15,6 +15,11 @@
 // Поле поиска — общий `SearchField` (правила Apple HIG). Своего поля у экрана
 // больше нет: разбор 2026-09-04 показал, что именно самодельное поле давало
 // съехавший текст и крестик не на месте.
+//
+// Поиск закреплён сверху в материале Liquid Glass (DECISION владельца
+// 2026-09-04), а крупный заголовок уезжает под него вместе со списком — как в
+// поиске App Store. Стекло здесь уместно ровно потому, что под панелью
+// действительно что-то движется.
 
 import { FlashList } from "@shopify/flash-list";
 import { useRouter } from "expo-router";
@@ -23,7 +28,7 @@ import { useState } from "react";
 import { Pressable, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
-import { Avatar, SearchField } from "@/components/ui";
+import { Avatar, GlassSurface, LIQUID_GLASS, SearchField } from "@/components/ui";
 import {
   type MasterSearchResult,
   useSearchMasters,
@@ -110,6 +115,9 @@ export default function SpecialistsScreen() {
   const router = useRouter();
   const tc = useThemeColors(["accent"]);
   const [query, setQuery] = useState("");
+  // Высота закреплённой панели меряется, а не угадывается: при крупном
+  // системном шрифте поле выше, и список обязан начинаться под ним.
+  const [searchBarHeight, setSearchBarHeight] = useState(72);
   // Поиск не дёргает сервер на каждую букву, но и не заставляет ждать:
   // 250 мс — та же задержка, что на первом шаге создания задания.
   const debounced = useDebouncedValue(query.trim(), 250);
@@ -118,28 +126,24 @@ export default function SpecialistsScreen() {
   const list = data ?? [];
 
   return (
-    <View className="flex-1 bg-surface-page" style={{ paddingTop: insets.top }}>
-      <View className="px-5 pt-2">
-        <AppText weight="bold" className="text-display-lg text-ink">
-          Специалисты
-        </AppText>
-      </View>
-
-      <View className="px-4 pt-4 pb-2">
-        <SearchField
-          value={query}
-          onChangeText={setQuery}
-          placeholder="Имя или услуга — например, электрик"
-          accessibilityLabel="Поиск специалистов"
-        />
-      </View>
-
+    <View className="flex-1 bg-surface-page">
       <FlashList
         data={list}
         keyExtractor={(m) => m.user_id}
-        contentContainerStyle={{ paddingTop: 8, paddingBottom: insets.bottom + 100 }}
+        contentContainerStyle={{
+          paddingTop: insets.top + searchBarHeight + 8,
+          paddingBottom: insets.bottom + 100,
+        }}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
+        ListHeaderComponent={
+          <View className="px-5 pb-4">
+            <AppText weight="bold" className="text-display-lg text-ink">
+              Специалисты
+            </AppText>
+          </View>
+        }
         renderItem={({ item }) => (
           <MasterCard
             master={item}
@@ -160,6 +164,34 @@ export default function SpecialistsScreen() {
           )
         }
       />
+
+      <GlassSurface
+        style={{
+          position: "absolute",
+          top: 0,
+          left: 0,
+          right: 0,
+          zIndex: 10,
+          paddingTop: insets.top,
+        }}
+        fallbackClassName="bg-canvas"
+      >
+        <View
+          className="px-4 pt-2 pb-3"
+          onLayout={(e) => {
+            const h = Math.round(e.nativeEvent.layout.height);
+            setSearchBarHeight((prev) => (prev === h ? prev : h));
+          }}
+        >
+          <SearchField
+            value={query}
+            onChangeText={setQuery}
+            placeholder="Имя или услуга — например, электрик"
+            accessibilityLabel="Поиск специалистов"
+          />
+        </View>
+        {LIQUID_GLASS ? null : <View className="h-px bg-hairline" />}
+      </GlassSurface>
     </View>
   );
 }

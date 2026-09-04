@@ -34,7 +34,6 @@ import {
   type VisibleCategory,
 } from "@/features/categories/use-visible-categories";
 import { ActiveOrdersShowcase } from "@/features/home/ActiveOrdersShowcase";
-import { CategoryCollections } from "@/features/home/CategoryCollections";
 import { CinematicHero } from "@/features/home/CinematicHero";
 import {
   HOME_STATUS_BAR_COVER_OFFSET,
@@ -205,7 +204,6 @@ function ClientHome({
           <View style={gridCancelStyle}>
             <CinematicHero onCreateTask={() => onDescribeTask()} />
             <ActiveOrdersShowcase userId={userId} />
-            <CategoryCollections />
             {/* Блок «Часто ищут» (FeaturedRequests) скрыт по фидбэку юзера 2026-05-21.
               Компонент сохранён ниже — вернуть можно раскомментировав строку:
               <FeaturedRequests onCategoryPress={onCategoryPress} /> */}

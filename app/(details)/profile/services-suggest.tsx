@@ -402,7 +402,7 @@ export default function ServicesSuggestScreen() {
                             keyboardType="numeric"
                             placeholder="Цена"
                             placeholderTextColor={tc["muted-soft"]}
-                            className="flex-1 min-h-11 rounded-md border border-hairline bg-canvas px-3 text-body-md text-ink"
+                            className="flex-1 min-h-11 rounded-md border border-hairline bg-canvas px-3 text-field-md text-ink"
                             maxLength={7}
                           />
                           <AppText className="text-body-sm text-mute">₽</AppText>
@@ -543,7 +543,7 @@ function CustomServicePanel({
         placeholder="Например, замена бачка унитаза"
         placeholderTextColor={tc["muted-soft"]}
         maxLength={100}
-        className="mt-2 min-h-11 rounded-md border border-hairline bg-canvas px-3 text-body-md text-ink"
+        className="mt-2 min-h-11 rounded-md border border-hairline bg-canvas px-3 text-field-md text-ink"
         editable={!saving}
       />
 
@@ -580,7 +580,7 @@ function CustomServicePanel({
             placeholder="Цена"
             placeholderTextColor={tc["muted-soft"]}
             maxLength={7}
-            className="flex-1 min-h-11 rounded-md border border-hairline bg-canvas px-3 text-body-md text-ink"
+            className="flex-1 min-h-11 rounded-md border border-hairline bg-canvas px-3 text-field-md text-ink"
             editable={!saving}
           />
           <AppText className="text-body-sm text-mute">₽</AppText>

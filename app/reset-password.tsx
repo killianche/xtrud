@@ -244,7 +244,7 @@ export default function ResetPasswordScreen() {
                         autoCapitalize="none"
                         autoCorrect={false}
                         autoComplete="new-password"
-                        className={`min-h-12 flex-1 rounded-md border bg-canvas py-3 pl-3 pr-11 text-body-md text-ink ${
+                        className={`min-h-12 flex-1 rounded-md border bg-canvas py-3 pl-3 pr-11 text-field-md text-ink ${
                           errors.password ? "border-error" : "border-hairline focus:border-ink"
                         }`}
                         editable={!isBusy}
@@ -291,7 +291,7 @@ export default function ResetPasswordScreen() {
                       autoCapitalize="none"
                       autoCorrect={false}
                       autoComplete="new-password"
-                      className={`mt-2 min-h-12 rounded-md border bg-canvas px-3 py-3 text-body-md text-ink ${
+                      className={`mt-2 min-h-12 rounded-md border bg-canvas px-3 py-3 text-field-md text-ink ${
                         errors.confirm ? "border-error" : "border-hairline focus:border-ink"
                       }`}
                       editable={!isBusy}

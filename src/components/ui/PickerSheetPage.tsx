@@ -37,14 +37,15 @@
  *   />
  */
 
-import { Check, MagnifyingGlass, X } from "phosphor-react-native";
+import { Check, X } from "phosphor-react-native";
 import { useMemo, useState } from "react";
-import { Pressable, ScrollView, TextInput, View } from "react-native";
+import { Pressable, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
 import type { PickerOption } from "@/components/ui/PickerSheet";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { useThemeColor } from "@/lib/use-theme-color";
+import { SearchField } from "./SearchField";
 
 /** Кол-во skeleton-строк в loading-состоянии — совпадает с типичной высотой
  *  видимой части списка, не всей длиной (список может быть на сотни строк,
@@ -248,30 +249,17 @@ export function PickerSheetPage({
       {/* Hairline divider под header */}
       <View className="h-px bg-hairline mx-4" />
 
-      {/* MagnifyingGlass input (опц) */}
+      {/* Поиск внутри шторки — общий SearchField (правила Apple HIG).
+          Своё поле было ниже минимальной тач-цели (40 pt) и со своим
+          крестиком. */}
       {showSearch ? (
         <View className="px-4 pt-3 pb-1">
-          <View className="flex-row items-center gap-2 min-h-10 rounded-full bg-canvas-soft px-3.5">
-            <MagnifyingGlass size={16} weight="bold" color={muteColor} />
-            <TextInput
-              value={query}
-              onChangeText={setQuery}
-              placeholder={searchPlaceholder}
-              placeholderTextColor={muteColor}
-              className="flex-1 text-body-md text-ink"
-            />
-            {query ? (
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Очистить"
-                onPress={() => setQuery("")}
-                hitSlop={6}
-                className="active:opacity-50"
-              >
-                <X size={14} weight="bold" color={muteColor} />
-              </Pressable>
-            ) : null}
-          </View>
+          <SearchField
+            value={query}
+            onChangeText={setQuery}
+            placeholder={searchPlaceholder}
+            showCancel={false}
+          />
         </View>
       ) : null}
 

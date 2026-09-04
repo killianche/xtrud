@@ -16,12 +16,12 @@
 //   - Sticky footer с большой Button size="lg".
 
 import { useFocusEffect } from "expo-router";
-import { Check, MagnifyingGlass, Sparkle, X } from "phosphor-react-native";
+import { Check, Sparkle } from "phosphor-react-native";
 import { useCallback, useMemo, useState } from "react";
-import { Image, Pressable, ScrollView, TextInput, View } from "react-native";
+import { Image, Pressable, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
-import { Button, ScreenHeader } from "@/components/ui";
+import { Button, ScreenHeader, SearchField } from "@/components/ui";
 import { useSearchCategories } from "@/features/categories/use-search-categories";
 import { useVisibleCategories } from "@/features/categories/use-visible-categories";
 import { useOrdersSearchFiltersStore } from "@/features/orders/orders-search-filters-store";
@@ -35,7 +35,6 @@ import { useThemeColor } from "@/lib/use-theme-color";
 export default function FiltersCategorySelectScreen() {
   const insets = useSafeAreaInsets();
   const inkColor = useThemeColor("ink");
-  const muteColor = useThemeColor("mute");
   // Галочка на акцентной заливке — токен on-accent (единое правило для
   // содержимого на розовом фоне).
   const onAccentColor = useThemeColor("on-accent");
@@ -132,36 +131,16 @@ export default function FiltersCategorySelectScreen() {
         }
       />
 
-      {/* Typeahead инпут — крупный (h-14, 18px). */}
+      {/* Поле поиска — общий SearchField (правила Apple HIG). Подсказка
+          объясняет, что искать: «Найти категорию» ничего не сообщало. */}
       <View className="px-5 mt-2">
-        <View className="flex-row items-center gap-3 min-h-14 rounded-2xl bg-canvas-soft px-4">
-          <MagnifyingGlass size={20} weight="bold" color={muteColor} />
-          <TextInput
-            value={query}
-            onChangeText={setQuery}
-            placeholder="Найти категорию"
-            placeholderTextColor={muteColor}
-            className="flex-1 text-ink"
-            style={{
-              fontFamily:
-                '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
-              fontSize: 18,
-              fontWeight: "500",
-              paddingVertical: 0,
-            }}
-          />
-          {query.length > 0 ? (
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Очистить"
-              onPress={() => setQuery("")}
-              hitSlop={8}
-              className="h-9 w-9 items-center justify-center rounded-full active:opacity-60"
-            >
-              <X size={18} weight="bold" color={muteColor} />
-            </Pressable>
-          ) : null}
-        </View>
+        <SearchField
+          value={query}
+          onChangeText={setQuery}
+          placeholder="Например, сантехник, обои или уборка"
+          accessibilityLabel="Поиск категории"
+          showCancel={false}
+        />
       </View>
 
       {/* Раскладка-fix баннер */}

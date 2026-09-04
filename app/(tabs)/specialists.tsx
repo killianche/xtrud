@@ -11,15 +11,19 @@
 //
 // Экран открывается витриной по рейтингу, а не пустотой: пустой запрос —
 // это тоже запрос (§1.2).
+//
+// Поле поиска — общий `SearchField` (правила Apple HIG). Своего поля у экрана
+// больше нет: разбор 2026-09-04 показал, что именно самодельное поле давало
+// съехавший текст и крестик не на месте.
 
 import { FlashList } from "@shopify/flash-list";
 import { useRouter } from "expo-router";
-import { MagnifyingGlass, Star, UsersThree, X } from "phosphor-react-native";
+import { Star, UsersThree } from "phosphor-react-native";
 import { useState } from "react";
-import { Pressable, TextInput, View } from "react-native";
+import { Pressable, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
-import { Avatar } from "@/components/ui";
+import { Avatar, SearchField } from "@/components/ui";
 import {
   type MasterSearchResult,
   useSearchMasters,
@@ -104,7 +108,7 @@ function MasterCard({ master, onPress }: { master: MasterSearchResult; onPress: 
 export default function SpecialistsScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const tc = useThemeColors(["mute", "ink", "accent"]);
+  const tc = useThemeColors(["accent"]);
   const [query, setQuery] = useState("");
   // Поиск не дёргает сервер на каждую букву, но и не заставляет ждать:
   // 250 мс — та же задержка, что на первом шаге создания задания.
@@ -122,34 +126,12 @@ export default function SpecialistsScreen() {
       </View>
 
       <View className="px-4 pt-4 pb-2">
-        <View
-          className="min-h-14 flex-row items-center gap-3 rounded-xl border-hairline-strong bg-canvas-soft px-4"
-          style={{ borderWidth: 1.5 }}
-        >
-          <MagnifyingGlass size={20} weight="bold" color={tc.mute} />
-          <TextInput
-            accessibilityLabel="Поиск специалистов"
-            value={query}
-            onChangeText={setQuery}
-            placeholder="Имя или услуга — например, электрик"
-            placeholderTextColor={tc.mute}
-            autoCapitalize="none"
-            autoCorrect={false}
-            returnKeyType="search"
-            className="min-h-12 flex-1 py-3 text-body-lg text-ink"
-          />
-          {query.length > 0 ? (
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Очистить поиск"
-              hitSlop={10}
-              onPress={() => setQuery("")}
-              className="h-11 w-11 items-center justify-center rounded-full active:bg-canvas-soft-2"
-            >
-              <X size={20} weight="bold" color={tc.mute} />
-            </Pressable>
-          ) : null}
-        </View>
+        <SearchField
+          value={query}
+          onChangeText={setQuery}
+          placeholder="Имя или услуга — например, электрик"
+          accessibilityLabel="Поиск специалистов"
+        />
       </View>
 
       <FlashList

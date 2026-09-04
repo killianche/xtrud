@@ -399,7 +399,7 @@ function NakedInput({
       placeholderTextColor={tc["muted-soft"]}
       autoCapitalize={autoCapitalize}
       maxLength={maxLength}
-      className="text-body-md text-ink"
+      className="text-field-md text-ink"
       style={
         // web-only: убираем синий focus outline у нативного <input>
         { color: tc.ink, outlineWidth: 0, outlineStyle: "none", paddingVertical: 4 } as object

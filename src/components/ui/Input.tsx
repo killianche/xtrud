@@ -18,11 +18,33 @@
  *
  * Состояния: default / focused / error / disabled. Слоты: leftIcon,
  * rightIcon (может быть Pressable — «показать пароль»), label, hint, error.
+ *
+ * Правила Apple, которым поле обязано следовать (HIG «Text fields», разбор
+ * 2026-09-04 по жалобе владельца «криво вписывается, не центрировано»):
+ *
+ *  1. Поле однострочное фиксированной высоты со скруглением, текст в нём
+ *     центрирован по вертикали. У нас он центрирован не был — из-за
+ *     `lineHeight`. На iOS `lineHeight` у TextInput кладётся в
+ *     `paragraphStyle.maximumLineHeight` UITextField, и весь свободный запас
+ *     уходит НАД строкой: текст съезжает вниз и выглядит криво
+ *     (facebook/react-native#39145, #28012, #33986). Поэтому на native
+ *     `lineHeight` не задаётся вовсе: высоту строки считает системный шрифт,
+ *     а по центру ставит контейнер. На web `lineHeight` безвреден и нужен.
+ *  2. Клавиатура соответствует содержимому — задаётся вызывающим кодом через
+ *     `keyboardType`/`textContentType`.
+ *  3. Тёмная клавиатура в тёмной теме: `keyboardAppearance` следует за темой,
+ *     иначе на чёрном экране выезжает белая панель.
+ *  4. Кнопка очистки в правом конце поля — системная (`clearButtonMode`), а не
+ *     нарисованная нами. Включается сама там, где правый слот свободен и поле
+ *     не парольное.
+ *  5. Ведущий край поля говорит о назначении (leftIcon), задний — про
+ *     дополнительные действия (rightIcon). Это уже соблюдалось.
  */
 
 import { forwardRef, type ReactNode, useState } from "react";
 import { Platform, TextInput, type TextInputProps, View } from "react-native";
 import { AppText } from "@/components/AppText";
+import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useThemeColors } from "@/lib/use-theme-color";
 
 export type InputSize = "md" | "lg";
@@ -63,8 +85,16 @@ export const Input = forwardRef<TextInput, InputProps>(function Input(
 ) {
   const dims = SIZE_MAP[size];
   const tc = useThemeColors(["muted-soft", "accent", "ink"]);
+  const { colorScheme } = useColorScheme();
   const [focused, setFocused] = useState(false);
   const hasError = !!error;
+
+  // Правило 4: системная кнопка очистки там, где правый край свободен.
+  // У парольного поля справа «показать пароль», у многострочного очистка
+  // ломает разметку — там её нет.
+  const clearButtonMode =
+    props.clearButtonMode ??
+    (rightIcon || props.secureTextEntry || props.multiline ? "never" : "while-editing");
 
   const borderClass = hasError
     ? "border-error"
@@ -99,6 +129,8 @@ export const Input = forwardRef<TextInput, InputProps>(function Input(
           placeholderTextColor={tc["muted-soft"]}
           selectionColor={tc.accent}
           cursorColor={tc.accent}
+          keyboardAppearance={colorScheme === "dark" ? "dark" : "light"}
+          clearButtonMode={clearButtonMode}
           {...props}
           onFocus={(e) => {
             setFocused(true);
@@ -111,9 +143,14 @@ export const Input = forwardRef<TextInput, InputProps>(function Input(
           className="flex-1 text-ink"
           style={{
             fontSize: dims.textSize,
-            lineHeight: dims.textSize + 6,
+            // Правило 1: lineHeight только на web. На native он смещает текст
+            // вниз внутри поля — ровно то, что владелец увидел на скриншоте.
+            ...(Platform.OS === "web" ? { lineHeight: dims.textSize + 6 } : {}),
             color: tc.ink,
-            paddingVertical: 12,
+            // Многострочному полю нужен собственный отступ; однострочное
+            // центрирует контейнер (items-center), и лишний padding только
+            // мешает при крупном системном шрифте.
+            paddingVertical: props.multiline ? 12 : 0,
             ...(Platform.OS === "web" ? { fontFamily: WEB_SANS } : {}),
             // outlineStyle: убираем focus-ring на web — рамку рисует контейнер.
             ...({ outlineStyle: "none" } as object),

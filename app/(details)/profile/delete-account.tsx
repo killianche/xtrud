@@ -155,7 +155,7 @@ export default function DeleteAccountScreen() {
                 maxLength={20}
                 editable={!isBusy}
                 autoFocus
-                className="min-h-12 rounded-md border border-hairline bg-canvas px-3 py-3 text-body-md text-ink"
+                className="min-h-12 rounded-md border border-hairline bg-canvas px-3 py-3 text-field-md text-ink"
                 accessibilityLabel="Поле подтверждения удаления"
               />
 

@@ -119,7 +119,7 @@ export function UsernameField({
               spellCheck={false}
               returnKeyType="done"
               editable={editable}
-              className="ml-0.5 flex-1 text-body-md text-ink"
+              className="ml-0.5 flex-1 text-field-md text-ink"
               style={
                 {
                   color: tc.ink,
@@ -166,7 +166,7 @@ export function UsernameField({
           spellCheck={false}
           returnKeyType="done"
           editable={editable}
-          className="ml-1 min-h-12 flex-1 py-3 text-body-md text-ink"
+          className="ml-1 min-h-12 flex-1 py-3 text-field-md text-ink"
         />
         {statusIcon}
       </View>

@@ -1533,7 +1533,7 @@ function MasterResponseSection({
                   placeholder="Завтра / 2–3 дня / на следующей неделе"
                   placeholderTextColor={tc["muted-soft"]}
                   maxLength={100}
-                  className={`mt-2 border-b pb-2 text-body-md text-ink ${
+                  className={`mt-2 border-b pb-2 text-field-md text-ink ${
                     value ? "border-hairline-strong" : "border-hairline"
                   }`}
                   editable={!isBusy}
@@ -1569,7 +1569,7 @@ function MasterResponseSection({
                   autoComplete="tel"
                   textContentType="telephoneNumber"
                   maxLength={32}
-                  className={`mt-2 border-b pb-2 text-body-md text-ink ${
+                  className={`mt-2 border-b pb-2 text-field-md text-ink ${
                     errors.contactPhone
                       ? "border-error"
                       : value
@@ -1605,7 +1605,7 @@ function MasterResponseSection({
                   keyboardType="phone-pad"
                   autoComplete="tel"
                   maxLength={32}
-                  className={`mt-2 border-b pb-2 text-body-md text-ink ${
+                  className={`mt-2 border-b pb-2 text-field-md text-ink ${
                     errors.whatsappPhone
                       ? "border-error"
                       : value

@@ -19,12 +19,12 @@
 
 import { Image } from "expo-image";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { MagnifyingGlass, Sparkle, Tag, WarningCircle, X } from "phosphor-react-native";
+import { Sparkle, Tag, WarningCircle } from "phosphor-react-native";
 import { useMemo, useRef, useState } from "react";
-import { Pressable, ScrollView, TextInput, View } from "react-native";
+import { Pressable, ScrollView, type TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
-import { ScreenHeader, Skeleton } from "@/components/ui";
+import { ScreenHeader, SearchField, Skeleton } from "@/components/ui";
 import { useSearchCategories } from "@/features/categories/use-search-categories";
 import { useVisibleCategories } from "@/features/categories/use-visible-categories";
 import { getCategoryColorIconUrl } from "@/lib/category-color-icons";
@@ -141,46 +141,20 @@ export default function CategorySelectScreen() {
           /find, /profile/portfolio и т.п. */}
       <ScreenHeader title="Выберите категорию" onBack={goBack} />
 
-      {/* Typeahead инпут — крупный (h-16 + 20px шрифт), чтобы не было
-          ощущения «инпут размером с шрифт». */}
+      {/* Поле поиска — общий SearchField (правила Apple HIG «Search fields»).
+          Раньше здесь было своё поле: чужой размер, свой крестик и никакой
+          тёмной клавиатуры. */}
       <View className="px-5 mt-5">
-        {/* min-h, не h: строка растёт вместе с текстом инпута — Dynamic Type
-            больше не ограничен искусственным капом (docs/IOS_FOUNDATION.md §3.4). */}
-        <View className="flex-row items-center gap-3 min-h-16 rounded-2xl bg-canvas-soft px-4 py-5">
-          <View className="text-mute">
-            <MagnifyingGlass size={22} weight="bold" color="currentColor" />
-          </View>
-          <TextInput
-            ref={inputRef}
-            autoFocus
-            value={query}
-            onChangeText={setQuery}
-            onSubmitEditing={showSearchResults}
-            placeholder="Например, окна, обои или уборка"
-            accessibilityLabel="Поиск категории"
-            placeholderTextColor={tc.mute}
-            returnKeyType="search"
-            className="flex-1 text-ink"
-            style={{
-              fontFamily:
-                '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
-              fontSize: 20,
-              fontWeight: "500",
-              paddingVertical: 0,
-            }}
-          />
-          {query.length > 0 && (
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Очистить"
-              hitSlop={6}
-              onPress={() => setQuery("")}
-              className="h-12 w-12 items-center justify-center rounded-full active:opacity-60"
-            >
-              <X size={24} weight="bold" color={tc.mute} />
-            </Pressable>
-          )}
-        </View>
+        <SearchField
+          ref={inputRef}
+          autoFocus
+          value={query}
+          onChangeText={setQuery}
+          onSubmitEditing={showSearchResults}
+          placeholder="Например, окна, обои или уборка"
+          accessibilityLabel="Поиск категории"
+          showCancel={false}
+        />
       </View>
 
       {/* P0-NEW баннер «Возможно, вы искали ...» — когда исходный запрос дал

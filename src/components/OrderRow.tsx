@@ -2,30 +2,41 @@
 // «Найти задание», «Мои задания», «Мои отклики», «Актуальные задания» на
 // главной, история откликов, админ-рейтинги. Меняется здесь — меняется везде.
 //
-// Стандарт 2026-09-02 (DECISION владельца по скриншотам сборки 20: «шрифты
-// слишком мелкие, один общий стиль, как у референса»). Образец — карточка
-// исполнителя Thumbtack: карточка с рамкой, жирный заголовок, факты стопкой
-// строками «микроиконка + читаемый текст», цена крупно.
+// ─────────────────────────────────────────────────────────────────────────
+// Дизайн 2026-09-04, сделан с нуля.
 //
-// Что изменилось против строки-ряда 2026-05-24 (Linear-style) и почему:
-//   - карточка с рамкой и радиусом вместо full-bleed строки с линией снизу —
-//     у референса каждая сущность — отдельный объект, это читается с первого
-//     взгляда и не сливается в таблицу;
-//   - минимальный текст 14 px (категория, время), основной — 16, заголовок и
-//     цена — 18; 12 px в карточке больше нет;
-//   - срок и место — строки с иконкой в `ink`, а не серая мелочь; срочность
-//     не теряется: «Срочно» окрашено в error;
-//   - блок «БЮДЖЕТ / до 2 500 ₽» с капсом и пунктиром заменён строкой
-//     «до 2 500 ₽ · бюджет», как «$150 Starting price» у образца.
+// DECISION владельца по скриншотам сборки 26: «карточка — иконка стоит, потом
+// серым написано „Сантехника“ — некрасиво. Большой блок выделяется под словом.
+// Надо, чтобы карточка выглядела укомплектованной, не огромной, но при этом
+// супер-дизайн. Сделай с нуля, а не переделывай то, что имеется. Референс —
+// Thumbtack».
 //
-// Что по-прежнему НЕ показываем (указания владельца): счётчик откликов,
-// порядковый номер, придуманные метрики. Всё — из данных задания.
+// Что взято из референса (скриншоты Thumbtack, 2026-09-04):
+//   - строка сущности держится на типографике, а не на плашках: жирный
+//     заголовок и ОДНА строка фактов под ним;
+//   - иконки живут в строке текста, в размер текста, без подложек — так
+//     нарисованы звёзды рейтинга и кубок «698 hires»;
+//   - число, ради которого человек смотрит карточку, набрано крупно и стоит
+//     отдельно от мелочей.
+//
+// Что из-за этого выброшено против версии 2026-09-02:
+//   - плитка 44×44 с розовой заливкой под иконку категории. Она весила больше,
+//     чем сама категория, и создавала тот самый «большой блок». Осталась
+//     цветная иконка 20 px прямо в строке — цвет категорий сохранён, вес ушёл;
+//   - две отдельные строки «часы + срок» и «булавка + место». Это два тяжёлых
+//     ряда ради двух коротких фактов. Стало одной строкой фактов через «·»;
+//   - слово «бюджет» рядом с ценой: «до 2 500 ₽» объясняет себя само;
+//   - внутренние разделители везде, кроме подвала с откликами, — там линия
+//     отделяет чужое действие от описания задания.
+//
+// Что по-прежнему НЕ показываем (указания владельца): порядковый номер,
+// придуманные метрики. Всё — из данных задания.
 //
 // Цвета — только токены (NativeWind className + useThemeColors для иконок),
 // поэтому обе темы корректны.
 
 import { Image as ExpoImage } from "expo-image";
-import { ArrowRight, ChatCenteredText, Clock, MapPin } from "phosphor-react-native";
+import { ArrowRight, ChatCenteredText } from "phosphor-react-native";
 import { type GestureResponderEvent, Pressable, View } from "react-native";
 import { AppText } from "@/components/AppText";
 import type { OrderStatusValue } from "@/components/OrderStatusBadge";
@@ -122,13 +133,9 @@ const DIMMED_STATUS: Partial<Record<OrderStatusValue, string>> = {
   expired: "Истекло",
 };
 
-// Мягкая тень карточки. DECISION владельца 2026-09-04: «карточка обведена, но
-// линия не видна» — на белом фоне рамка #ebebeb давала контраст 8% и на свету
-// исчезала. Теперь карточка стоит на чуть более тёмной поверхности и слегка
-// приподнята: так её край читается, как в референсе.
-//
-// Значения нарочно скромные: тень обозначает край, а не рисует объём
-// (design-quality §1.1 — «убрать лучше, чем добавить»).
+// Мягкая тень карточки: край читается без опоры на линию (DECISION владельца
+// 2026-09-04 — «карточка обведена, но линия не видна»). Значения нарочно
+// скромные: тень обозначает край, а не рисует объём.
 const CARD_SHADOW = {
   shadowColor: "#000000",
   shadowOpacity: 0.05,
@@ -136,6 +143,10 @@ const CARD_SHADOW = {
   shadowOffset: { width: 0, height: 2 },
   elevation: 2,
 } as const;
+
+/** Размер миниатюры задания. 68 — как аватар исполнителя у референса: видно,
+ *  что на фото, и не отбирает ширину у заголовка. */
+const THUMB = 68;
 
 export function OrderRow(props: OrderRowProps) {
   const tc = useThemeColors(["ink", "mute", "accent", "error", "on-accent"]);
@@ -171,6 +182,7 @@ export function OrderRow(props: OrderRowProps) {
         .filter(Boolean)
         .join(" · ")
     : null;
+  const hasFooter = props.showResponsesCount || !!myResponseLabel;
 
   const ariaLabel = [
     props.title,
@@ -190,67 +202,132 @@ export function OrderRow(props: OrderRowProps) {
       accessibilityRole="button"
       accessibilityLabel={ariaLabel}
       onPress={props.onPress}
-      className="mx-4 mb-3 rounded-2xl border border-hairline bg-surface-card p-4 active:opacity-90"
+      className="mx-4 mb-3 overflow-hidden rounded-2xl border border-hairline bg-surface-card active:opacity-90"
       style={[CARD_SHADOW, isDimmed ? { opacity: 0.65 } : null]}
     >
-      {/* Шапка: плитка категории + категория + время публикации.
-          Иконка — цветная из каталога (тот же механизм, что на экране «Все
-          категории»), с запасным моно-вариантом. До 2026-09-03 во всех
-          карточках была одинаковая розовая моно-иконка, и лента выглядела
-          однообразной: категории не различались с одного взгляда. */}
-      <View className="flex-row items-center gap-3">
-        <View className="h-11 w-11 items-center justify-center rounded-xl bg-accent-soft">
+      <View className="p-4">
+        {/* Строка категории. Иконка — в размер текста и без подложки: цвет
+            категории сохранён, а плитка, из-за которой карточка выглядела
+            блочной, убрана. Справа — возраст задания. */}
+        <View className="flex-row items-center gap-2">
           {colorIconUrl ? (
             <ExpoImage
               source={{ uri: colorIconUrl }}
-              style={{ width: 24, height: 24 }}
+              style={{ width: 20, height: 20 }}
               contentFit="contain"
               cachePolicy="memory-disk"
             />
           ) : (
-            <Icon size={22} weight="bold" color={tc.accent} />
+            <Icon size={18} weight="bold" color={tc.accent} />
+          )}
+          <AppText
+            weight="semibold"
+            className="min-w-0 flex-1 text-body-sm text-body"
+            numberOfLines={1}
+          >
+            {props.categoryName}
+          </AppText>
+          {dimmedLabel ? (
+            <View className="rounded-pill bg-surface-2 px-2.5 py-1">
+              <AppText weight="semibold" className="text-body-sm text-mute">
+                {dimmedLabel}
+              </AppText>
+            </View>
+          ) : (
+            <AppText weight="mono" className="text-mono-body text-mute">
+              {timeAgoShort(props.createdAt)}
+            </AppText>
           )}
         </View>
-        <AppText
-          weight="semibold"
-          className="min-w-0 flex-1 text-body-sm text-mute"
-          numberOfLines={1}
-        >
-          {props.categoryName}
-        </AppText>
-        <AppText weight="mono" className="text-mono-body text-mute">
-          {timeAgoShort(props.createdAt)}
-        </AppText>
-      </View>
 
-      {/* Заголовок (+ миниатюра фото справа, если есть). */}
-      <View className="mt-3 flex-row items-start gap-3">
-        <View className="min-w-0 flex-1">
-          <AppText weight="bold" className="text-title-lg text-ink" numberOfLines={2}>
-            {props.title}
-          </AppText>
-          {props.description && props.description.trim().length > 0 ? (
-            <AppText className="mt-1 text-body-md text-body" numberOfLines={2}>
-              {props.description}
+        {/* Заголовок и описание. Заголовок — самое крупное в карточке: именно
+            по нему решают, открывать задание или нет. */}
+        <View className="mt-2.5 flex-row items-start gap-3">
+          <View className="min-w-0 flex-1">
+            <AppText weight="bold" className="text-display-sm text-ink" numberOfLines={2}>
+              {props.title}
             </AppText>
+            {props.description?.trim() ? (
+              <AppText className="mt-1 text-body-md text-body" numberOfLines={2}>
+                {props.description.trim()}
+              </AppText>
+            ) : null}
+          </View>
+          {props.coverUrl ? (
+            <View
+              className="overflow-hidden rounded-xl bg-canvas-soft-2"
+              style={{ width: THUMB, height: THUMB }}
+            >
+              <ExpoImage
+                source={{ uri: cdnImage(props.coverUrl, { width: THUMB * 2 }) }}
+                placeholder={{ uri: cdnBlur(props.coverUrl) }}
+                style={{ width: THUMB, height: THUMB }}
+                contentFit="cover"
+                cachePolicy="memory-disk"
+              />
+              {props.photosCount && props.photosCount > 1 ? (
+                <View className="absolute bottom-1 right-1 rounded-md bg-black/60 px-1.5">
+                  <AppText weight="mono" className="text-mono-caption text-on-dark">
+                    +{props.photosCount - 1}
+                  </AppText>
+                </View>
+              ) : null}
+            </View>
           ) : null}
         </View>
-        {props.coverUrl ? (
-          <View
-            className="overflow-hidden rounded-xl bg-canvas-soft-2"
-            style={{ width: 56, height: 56 }}
+
+        {/* Одна строка фактов вместо двух рядов с иконками. Срочность — не
+            иконка, а слово в цвете ошибки: она и должна бросаться в глаза. */}
+        <View className="mt-3 flex-row flex-wrap items-center gap-x-1.5">
+          <AppText
+            weight={isUrgent ? "semibold" : "medium"}
+            className={`text-body-md ${isUrgent ? "text-error" : "text-body"}`}
           >
-            <ExpoImage
-              source={{ uri: cdnImage(props.coverUrl, { width: 112 }) }}
-              placeholder={{ uri: cdnBlur(props.coverUrl) }}
-              style={{ width: 56, height: 56 }}
-              contentFit="cover"
-              cachePolicy="memory-disk"
-            />
-            {props.photosCount && props.photosCount > 1 ? (
-              <View className="absolute bottom-1 right-1 rounded-md bg-black/60 px-1.5">
-                <AppText weight="mono" className="text-mono-caption text-on-dark">
-                  +{props.photosCount - 1}
+            {timingLabel}
+          </AppText>
+          <AppText className="text-body-md text-mute">·</AppText>
+          <AppText
+            weight="medium"
+            className="min-w-0 flex-1 text-body-md text-mute"
+            numberOfLines={1}
+          >
+            {locationLabel}
+          </AppText>
+        </View>
+
+        {/* Цена и действие. Число — крупно: ради него мастер и смотрит ленту. */}
+        {priceLabel || showButton || props.alreadyResponded ? (
+          <View className="mt-3 flex-row items-center justify-between gap-3">
+            {priceLabel ? (
+              <AppText
+                weight={isNegotiable ? "semibold" : "bold"}
+                className={`min-w-0 flex-1 ${
+                  isNegotiable ? "text-title-md text-mute" : "text-display-sm text-ink"
+                }`}
+                numberOfLines={1}
+              >
+                {priceLabel}
+              </AppText>
+            ) : (
+              <View className="flex-1" />
+            )}
+            {showButton ? (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Откликнуться на задание"
+                onPress={handleRespond}
+                hitSlop={4}
+                className="min-h-11 flex-row items-center gap-1.5 rounded-pill bg-accent px-4 active:opacity-85"
+              >
+                <AppText weight="semibold" className="text-body-md text-on-accent">
+                  Откликнуться
+                </AppText>
+                <ArrowRight size={16} weight="bold" color={tc["on-accent"]} />
+              </Pressable>
+            ) : props.alreadyResponded && !myResponseLabel ? (
+              <View className="rounded-pill bg-accent-soft px-3 py-1.5">
+                <AppText weight="semibold" className="text-body-sm text-accent">
+                  Вы откликнулись
                 </AppText>
               </View>
             ) : null}
@@ -258,109 +335,48 @@ export function OrderRow(props: OrderRowProps) {
         ) : null}
       </View>
 
-      {/* Факты стопкой: срок (или статус закрытого задания) и место. */}
-      <View className="mt-3 gap-2">
-        {dimmedLabel ? (
-          <View className="self-start rounded-pill bg-surface-2 px-3 py-1.5">
-            <AppText weight="semibold" className="text-body-sm text-mute">
-              {dimmedLabel}
-            </AppText>
-          </View>
-        ) : (
-          <View className="flex-row items-center gap-2">
-            <Clock size={18} weight="bold" color={isUrgent ? tc.error : tc.ink} />
-            <AppText
-              weight="medium"
-              className={`min-w-0 flex-1 text-body-md ${isUrgent ? "text-error" : "text-ink"}`}
-              numberOfLines={1}
-            >
-              {timingLabel}
-            </AppText>
-          </View>
-        )}
-        <View className="flex-row items-center gap-2">
-          <MapPin size={18} weight="bold" color={tc.ink} />
-          <AppText
-            weight="medium"
-            className="min-w-0 flex-1 text-body-md text-ink"
-            numberOfLines={1}
-          >
-            {locationLabel}
-          </AppText>
-        </View>
-      </View>
-
-      {/* Сколько откликов пришло на моё задание. Для клиента это главный
-          вопрос к собственному заданию, поэтому строка идёт до цены. */}
-      {props.showResponsesCount ? (
-        <View className="mt-3 flex-row items-center gap-2">
-          <ChatCenteredText size={18} weight="bold" color={hasResponses ? tc.accent : tc.mute} />
-          <AppText
-            weight={hasResponses ? "semibold" : "medium"}
-            className={`text-body-md ${hasResponses ? "text-accent" : "text-mute"}`}
-          >
-            {hasResponses ? responsesLabel(props.responsesCount) : "Откликов пока нет"}
-          </AppText>
-        </View>
-      ) : null}
-
-      {/* Подвал: цена крупно + справа кнопка/чип отклика. */}
-      {priceLabel || showButton || props.alreadyResponded ? (
-        <View className="mt-4 flex-row items-center justify-between gap-3">
-          {priceLabel ? (
-            <View className="min-w-0 flex-1 flex-row flex-wrap items-baseline gap-x-2">
+      {/* Подвал. Здесь живёт всё, что относится не к описанию задания, а к
+          отклику на него, поэтому он отделён линией и лежит на своей
+          поверхности. */}
+      {hasFooter ? (
+        <View className="border-hairline border-t bg-surface-page px-4 py-3">
+          {props.showResponsesCount ? (
+            <View className="flex-row items-center gap-2">
+              <ChatCenteredText
+                size={18}
+                weight="bold"
+                color={hasResponses ? tc.accent : tc.mute}
+              />
               <AppText
-                weight={isNegotiable ? "semibold" : "bold"}
-                className={isNegotiable ? "text-title-md text-ink" : "text-title-lg text-ink"}
-                numberOfLines={1}
+                weight={hasResponses ? "semibold" : "medium"}
+                className={`min-w-0 flex-1 text-body-md ${
+                  hasResponses ? "text-accent" : "text-mute"
+                }`}
               >
-                {priceLabel}
+                {hasResponses ? responsesLabel(props.responsesCount) : "Откликов пока нет"}
               </AppText>
-              {!isNegotiable ? <AppText className="text-body-sm text-mute">бюджет</AppText> : null}
-            </View>
-          ) : (
-            <View className="flex-1" />
-          )}
-          {showButton ? (
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Откликнуться на задание"
-              onPress={handleRespond}
-              hitSlop={4}
-              className="min-h-11 flex-row items-center gap-1.5 rounded-pill bg-accent px-4 active:opacity-85"
-            >
-              <AppText weight="semibold" className="text-body-md text-on-accent">
-                Откликнуться
-              </AppText>
-              <ArrowRight size={16} weight="bold" color={tc["on-accent"]} />
-            </Pressable>
-          ) : props.alreadyResponded && !myResponseLabel ? (
-            <View className="rounded-pill bg-accent-soft px-3 py-1.5">
-              <AppText weight="semibold" className="text-body-sm text-accent">
-                Вы откликнулись
-              </AppText>
+              {hasResponses ? <ArrowRight size={16} weight="bold" color={tc.accent} /> : null}
             </View>
           ) : null}
-        </View>
-      ) : null}
 
-      {/* Мой отклик («Мои отклики»): что я предложил. */}
-      {myResponseLabel ? (
-        <View className="mt-3 rounded-xl bg-accent-soft px-3 py-2.5">
-          <View className="flex-row items-center gap-2">
-            <ChatCenteredText size={18} weight="bold" color={tc.accent} />
-            <AppText
-              weight="semibold"
-              className="min-w-0 flex-1 text-body-md text-ink"
-              numberOfLines={1}
-            >
-              Ваш отклик: {myResponseLabel}
-            </AppText>
-          </View>
-          {props.myResponse?.message?.trim() ? (
-            <AppText className="mt-1.5 text-body-md text-body" numberOfLines={3}>
-              {props.myResponse.message.trim()}
-            </AppText>
+          {myResponseLabel ? (
+            <>
+              <View className="flex-row items-center gap-2">
+                <ChatCenteredText size={18} weight="bold" color={tc.accent} />
+                <AppText
+                  weight="semibold"
+                  className="min-w-0 flex-1 text-body-md text-ink"
+                  numberOfLines={1}
+                >
+                  Ваш отклик: {myResponseLabel}
+                </AppText>
+              </View>
+              {props.myResponse?.message?.trim() ? (
+                <AppText className="mt-1.5 text-body-md text-body" numberOfLines={3}>
+                  {props.myResponse.message.trim()}
+                </AppText>
+              ) : null}
+            </>
           ) : null}
         </View>
       ) : null}

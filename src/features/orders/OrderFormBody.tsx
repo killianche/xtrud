@@ -474,7 +474,7 @@ function TextField(props: TextFieldProps) {
             placeholder={props.placeholder}
             placeholderTextColor={mutedSoftColor}
             autoCapitalize={props.autoCapitalize ?? "none"}
-            className={`mt-2 min-h-14 rounded-lg border bg-canvas px-4 py-4 text-body-md text-ink ${
+            className={`mt-2 min-h-14 rounded-lg border bg-canvas px-4 py-4 text-field-md text-ink ${
               props.error ? "border-error" : "border-hairline"
             }`}
             editable={!props.disabled}
@@ -522,7 +522,7 @@ function NumberField(props: NumberFieldProps) {
             placeholderTextColor={mutedSoftColor}
             keyboardType="number-pad"
             inputMode="numeric"
-            className={`mt-2 min-h-14 rounded-lg border bg-canvas px-4 py-4 text-body-md text-ink ${
+            className={`mt-2 min-h-14 rounded-lg border bg-canvas px-4 py-4 text-field-md text-ink ${
               props.error ? "border-error" : "border-hairline"
             }`}
             editable={!props.disabled}

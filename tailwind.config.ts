@@ -99,6 +99,17 @@ const config: Config = {
         "title-lg": ["18px", { lineHeight: "24px", letterSpacing: "-0.3px" }],
         "title-md": ["16px", { lineHeight: "22px" }],
 
+        // field-* — шрифт ПОЛЯ ВВОДА. Отличается от body-* ровно одним: у него
+        // нет lineHeight. Так и должно быть: на iOS lineHeight у TextInput
+        // ложится в paragraphStyle.maximumLineHeight, весь запас высоты уходит
+        // НАД строкой, и текст в поле стоит ниже центра — владелец увидел это
+        // на экране «Специалисты» 2026-09-04 («криво вписывается, не
+        // центрировано»). Высоту строки в поле считает системный шрифт, а по
+        // центру ставит контейнер.
+        // Многострочному полю lineHeight, наоборот, нужен — там остаётся body-*.
+        "field-lg": "18px",
+        "field-md": "16px",
+
         "body-lg": ["18px", "28px"],
         "body-md": ["16px", "24px"],
         "body-sm": ["14px", { lineHeight: "20px", letterSpacing: "-0.28px" }],

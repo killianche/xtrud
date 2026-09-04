@@ -9,4 +9,5 @@ export { Input, type InputProps, type InputSize } from "./Input";
 export { type PickerOption, PickerSheet, type PickerSheetProps } from "./PickerSheet";
 export { PickerSheetPage, type PickerSheetPageProps } from "./PickerSheetPage";
 export { ScreenHeader, type ScreenHeaderRightAction } from "./ScreenHeader";
+export { SearchField, type SearchFieldProps } from "./SearchField";
 export { Skeleton, type SkeletonProps } from "./Skeleton";

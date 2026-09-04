@@ -163,7 +163,7 @@ function ContactPhoneSection({ control, errors, isBusy }: ContactPhoneSectionPro
               keyboardType="phone-pad"
               inputMode="tel"
               maxLength={20}
-              className={`min-h-12 rounded-md border bg-canvas px-3 py-3 text-body-md text-ink ${
+              className={`min-h-12 rounded-md border bg-canvas px-3 py-3 text-field-md text-ink ${
                 errors.contactPhone ? "border-error" : "border-hairline"
               }`}
               editable={!isBusy}
@@ -221,7 +221,7 @@ function WhatsappSection({ control, errors, isBusy }: WhatsappSectionProps) {
               keyboardType="phone-pad"
               inputMode="tel"
               maxLength={20}
-              className={`min-h-12 rounded-md border bg-canvas px-3 py-3 text-body-md text-ink ${
+              className={`min-h-12 rounded-md border bg-canvas px-3 py-3 text-field-md text-ink ${
                 errors.whatsappPhone ? "border-error" : "border-hairline"
               }`}
               editable={!isBusy}
@@ -278,7 +278,7 @@ function FormField(props: FormFieldProps) {
             placeholder={props.placeholder}
             placeholderTextColor={mutedSoftColor}
             autoCapitalize={props.autoCapitalize ?? "none"}
-            className={`mt-2 min-h-12 rounded-md border bg-canvas px-3 py-3 text-body-md text-ink ${
+            className={`mt-2 min-h-12 rounded-md border bg-canvas px-3 py-3 text-field-md text-ink ${
               props.error ? "border-error" : "border-hairline"
             }`}
             editable={!props.disabled}
@@ -325,7 +325,7 @@ function NumberField(props: NumberFieldProps) {
             placeholderTextColor={mutedSoftColor}
             keyboardType="number-pad"
             inputMode="numeric"
-            className={`mt-2 min-h-12 rounded-md border bg-canvas px-3 py-3 text-body-md text-ink ${
+            className={`mt-2 min-h-12 rounded-md border bg-canvas px-3 py-3 text-field-md text-ink ${
               props.error ? "border-error" : "border-hairline"
             }`}
             editable={!props.disabled}

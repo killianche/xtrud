@@ -113,7 +113,7 @@ export default function CreateCaseScreen() {
                 autoFocus
                 maxLength={MAX_TITLE_LEN}
                 editable={!createCase.isPending}
-                className="mt-2.5 min-h-14 rounded-lg border border-hairline bg-canvas-soft px-4 text-body-md text-ink"
+                className="mt-2.5 min-h-14 rounded-lg border border-hairline bg-canvas-soft px-4 text-field-md text-ink"
               />
               <AppText
                 weight="mono"

@@ -1,10 +1,10 @@
 import { Image as ExpoImage } from "expo-image";
 import { useRouter } from "expo-router";
-import { MagnifyingGlass, Tag, WarningCircle, X } from "phosphor-react-native";
+import { Tag, WarningCircle } from "phosphor-react-native";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Pressable, TextInput, View } from "react-native";
+import { Pressable, type TextInput, View } from "react-native";
 import { AppText } from "@/components/AppText";
-import { Skeleton } from "@/components/ui";
+import { SearchField, Skeleton } from "@/components/ui";
 import { useRecentSearches } from "@/features/categories/use-recent-searches";
 import { useSearchCategories } from "@/features/categories/use-search-categories";
 import { useVisibleCategories } from "@/features/categories/use-visible-categories";
@@ -195,19 +195,11 @@ export function TaskIntentStep({
         </View>
       ) : null}
 
-      {/* Поле — по стандарту auth-форм (src/components/ui/Input.tsx): заливка
-          canvas-soft и рамка 1.5, чтобы поле читалось как поле. Отдельный
-          компонент здесь не подходит: нужны лупа слева и очистка справа. */}
-      <View
-        className={`mt-6 min-h-14 flex-row items-center gap-3 rounded-xl bg-canvas-soft px-4 ${
-          selectionError && normalizedQuery.length < MIN_TITLE_LENGTH
-            ? "border-error"
-            : "border-hairline-strong"
-        }`}
-        style={{ borderWidth: 1.5 }}
-      >
-        <MagnifyingGlass size={22} weight="bold" color={tc.mute} />
-        <TextInput
+      {/* Поле — общий SearchField: лупа слева, системная очистка справа и
+          правила Apple HIG. Своя версия этого поля жила здесь до 2026-09-04 и
+          повторяла ошибку с `lineHeight` (текст съезжал вниз). */}
+      <View className="mt-6">
+        <SearchField
           ref={inputRef}
           accessibilityLabel="Что нужно сделать"
           autoFocus
@@ -215,6 +207,7 @@ export function TaskIntentStep({
           autoCorrect
           editable={!isBusy}
           maxLength={MAX_TITLE_LENGTH}
+          invalid={!!selectionError && normalizedQuery.length < MIN_TITLE_LENGTH}
           onChangeText={(value) => {
             setQuery(value);
             setSelectionError(null);
@@ -225,28 +218,9 @@ export function TaskIntentStep({
           }}
           onSubmitEditing={showSearchResults}
           placeholder="Например, поклеить обои или убрать двор"
-          placeholderTextColor={tc.mute}
-          returnKeyType="search"
           value={query}
-          className="min-h-12 flex-1 py-3 text-body-lg text-ink"
+          showCancel={false}
         />
-        {query.length > 0 ? (
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Очистить описание задачи"
-            disabled={isBusy}
-            hitSlop={6}
-            onPress={() => {
-              setQuery("");
-              setSelectionError(null);
-              setDraft(changedTaskIntentDraft(""));
-              inputRef.current?.focus();
-            }}
-            className="h-11 w-11 items-center justify-center rounded-full active:bg-canvas-soft-2"
-          >
-            <X size={20} weight="bold" color={tc.mute} />
-          </Pressable>
-        ) : null}
       </View>
 
       {titleError ? (

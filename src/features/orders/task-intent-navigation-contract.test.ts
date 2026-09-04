@@ -10,6 +10,13 @@ const categoryPickerSource = readFileSync(
   resolve(process.cwd(), "app/(details)/orders/category-select.tsx"),
   "utf8",
 );
+// 2026-09-04: клавишу «Поиск» задаёт общий SearchField, а не каждый экран
+// отдельно (правила Apple HIG, см. src/components/ui/SearchField.tsx).
+// Контракт от этого не исчез — он просто переехал, поэтому проверяем его там.
+const searchFieldSource = readFileSync(
+  resolve(process.cwd(), "src/components/ui/SearchField.tsx"),
+  "utf8",
+);
 
 describe("task intent navigation contract", () => {
   it("gives the iOS search key an explicit non-selecting action", () => {
@@ -31,7 +38,7 @@ describe("task intent navigation contract", () => {
   });
 
   it("makes the category search key reveal live results without changing the task draft", () => {
-    expect(categoryPickerSource).toContain('returnKeyType="search"');
+    expect(searchFieldSource).toContain('returnKeyType="search"');
     expect(categoryPickerSource).toContain("onSubmitEditing={showSearchResults}");
     expect(categoryPickerSource).toMatch(
       /const showSearchResults = \(\) => \{[\s\S]*?inputRef\.current\?\.blur\(\);[\s\S]*?\};/,

@@ -291,7 +291,7 @@ export default function OwnerCaseDetailScreen() {
                   autoFocus
                   maxLength={120}
                   editable={!updateCase.isPending}
-                  className="rounded-md border border-hairline bg-canvas px-3 py-3 text-body-md text-ink"
+                  className="rounded-md border border-hairline bg-canvas px-3 py-3 text-field-md text-ink"
                 />
               </View>
 

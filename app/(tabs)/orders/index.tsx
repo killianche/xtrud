@@ -1,9 +1,14 @@
 /**
  * /(tabs)/orders — «Мои задания»: всё, что человек делает в xtrud, на одном
- * экране. Два сегмента:
- *   - Задания — что я выложил (открытые сверху, закрытые ниже);
- *   - Отклики — на что я откликнулся (активные сверху, история ниже), в
- *     карточке видно, что я предложил: цену и срок.
+ * экране. Деление — по роли в сделке (DECISION владельца 2026-09-04):
+ *   - Как клиент — задания, которые я выложил, и сколько откликов пришло;
+ *   - Как мастер — задания, на которые я откликнулся, с моей ценой, сроком
+ *     и текстом, который я написал заказчику.
+ *
+ * Прежние ярлыки «Задания» и «Отклики» описывали объекты, а не роль, и
+ * человеку приходилось догадываться, чьи это отклики — его или на его
+ * задание. Роли аккаунта здесь по-прежнему нет: это два взгляда на свою же
+ * работу, переключать «режим» не нужно (решение 2026-09-01 в силе).
  *
  * Редизайн 2026-09-02 (DECISION владельца по скриншоту сборки 20: «тут прям
  * полный редизайн нужен… и UX, и UI»). Что было не так: сегменты сверху и под
@@ -129,8 +134,8 @@ function Segments({
   responsesCount: number | null;
 }) {
   const items: Array<[Segment, string, number | null]> = [
-    ["orders", "Задания", ordersCount],
-    ["responses", "Отклики", responsesCount],
+    ["orders", "Как клиент", ordersCount],
+    ["responses", "Как мастер", responsesCount],
   ];
   return (
     <View className="mx-4 mt-4 flex-row rounded-xl bg-canvas-soft p-1">
@@ -211,6 +216,7 @@ function OrdersList({ userId }: { userId: string | undefined }) {
           urgency={o.urgency}
           preferredDate={o.preferred_date}
           responsesCount={o.responses_count}
+          showResponsesCount
           createdAt={o.created_at}
           status={o.status}
           budgetKind={o.budget_kind}
@@ -228,7 +234,7 @@ function OrdersList({ userId }: { userId: string | undefined }) {
         ) : (
           <EmptyState
             icon={ClipboardText}
-            title="Заданий пока нет"
+            title="Вы ещё не выкладывали задания"
             hint="Опишите задачу — исполнители пришлют отклики с ценой и сроком."
             ctaLabel="Разместить задание"
             ctaIcon={Plus}
@@ -319,6 +325,7 @@ function ResponsesList({ userId }: { userId: string | undefined }) {
                 priceKind: r.response.price_kind,
                 priceValue: r.response.price_value,
                 leadTime: r.response.lead_time,
+                message: r.response.message,
               }}
               onPress={() => router.push(`/orders/${r.order.id}` as never)}
             />
@@ -332,7 +339,7 @@ function ResponsesList({ userId }: { userId: string | undefined }) {
           ) : (
             <EmptyState
               icon={ChatCenteredText}
-              title="Откликов пока нет"
+              title="Вы ещё никому не откликались"
               hint="Найдите подходящее задание и предложите свою цену и срок."
               ctaLabel="Найти задание"
               ctaIcon={MagnifyingGlass}

@@ -30,6 +30,7 @@ import { type GestureResponderEvent, Pressable, View } from "react-native";
 import { AppText } from "@/components/AppText";
 import type { OrderStatusValue } from "@/components/OrderStatusBadge";
 import { formatOrderTiming, formatPrice } from "@/features/orders/order-schema";
+import { responsesLabel } from "@/features/orders/plural-ru";
 import type { OrderPriceKind, OrderUrgency } from "@/features/orders/use-create-order";
 import { getCategoryColorIconUrl } from "@/lib/category-color-icons";
 import { getCategoryIcon } from "@/lib/category-icons";
@@ -46,6 +47,9 @@ export interface OrderRowMyResponse {
   priceKind: OrderPriceKind;
   priceValue: number | null;
   leadTime: string | null;
+  /** Что человек написал заказчику. DECISION владельца 2026-09-04:
+   *  «мои отклики — где я откликался и что я там писал». */
+  message?: string | null;
 }
 
 export interface OrderRowProps {
@@ -66,7 +70,10 @@ export interface OrderRowProps {
   status?: OrderStatusValue;
   onPress?: () => void;
   variant?: OrderRowVariant;
-  /** @deprecated «Отклики» убраны из карточки 2026-05-24 по указанию владельца. */
+  /** Показать «3 отклика» в подвале. Включается только для СВОИХ заданий на
+   *  вкладке «Как клиент»: в чужой ленте счётчик убран ещё 2026-05-24, там он
+   *  ничего не решает, а на своём задании это главный вопрос — откликнулся
+   *  кто-нибудь или нет (DECISION владельца 2026-09-04). */
   showResponsesCount?: boolean;
   /** Способ задания бюджета. Если не передан — строка цены скрыта. */
   budgetKind?: OrderPriceKind | null;
@@ -154,6 +161,7 @@ export function OrderRow(props: OrderRowProps) {
   const priceLabel = props.budgetKind
     ? formatPrice(props.budgetKind, props.budgetValue ?? null)
     : null;
+  const hasResponses = props.responsesCount > 0;
   const isNegotiable = props.budgetKind === "negotiable" || props.budgetValue == null;
   const myResponseLabel = props.myResponse
     ? [
@@ -282,6 +290,20 @@ export function OrderRow(props: OrderRowProps) {
         </View>
       </View>
 
+      {/* Сколько откликов пришло на моё задание. Для клиента это главный
+          вопрос к собственному заданию, поэтому строка идёт до цены. */}
+      {props.showResponsesCount ? (
+        <View className="mt-3 flex-row items-center gap-2">
+          <ChatCenteredText size={18} weight="bold" color={hasResponses ? tc.accent : tc.mute} />
+          <AppText
+            weight={hasResponses ? "semibold" : "medium"}
+            className={`text-body-md ${hasResponses ? "text-accent" : "text-mute"}`}
+          >
+            {hasResponses ? responsesLabel(props.responsesCount) : "Откликов пока нет"}
+          </AppText>
+        </View>
+      ) : null}
+
       {/* Подвал: цена крупно + справа кнопка/чип отклика. */}
       {priceLabel || showButton || props.alreadyResponded ? (
         <View className="mt-4 flex-row items-center justify-between gap-3">
@@ -324,15 +346,22 @@ export function OrderRow(props: OrderRowProps) {
 
       {/* Мой отклик («Мои отклики»): что я предложил. */}
       {myResponseLabel ? (
-        <View className="mt-3 flex-row items-center gap-2 rounded-xl bg-accent-soft px-3 py-2.5">
-          <ChatCenteredText size={18} weight="bold" color={tc.accent} />
-          <AppText
-            weight="semibold"
-            className="min-w-0 flex-1 text-body-md text-ink"
-            numberOfLines={1}
-          >
-            Ваш отклик: {myResponseLabel}
-          </AppText>
+        <View className="mt-3 rounded-xl bg-accent-soft px-3 py-2.5">
+          <View className="flex-row items-center gap-2">
+            <ChatCenteredText size={18} weight="bold" color={tc.accent} />
+            <AppText
+              weight="semibold"
+              className="min-w-0 flex-1 text-body-md text-ink"
+              numberOfLines={1}
+            >
+              Ваш отклик: {myResponseLabel}
+            </AppText>
+          </View>
+          {props.myResponse?.message?.trim() ? (
+            <AppText className="mt-1.5 text-body-md text-body" numberOfLines={3}>
+              {props.myResponse.message.trim()}
+            </AppText>
+          ) : null}
         </View>
       ) : null}
     </Pressable>

@@ -115,6 +115,21 @@ const DIMMED_STATUS: Partial<Record<OrderStatusValue, string>> = {
   expired: "Истекло",
 };
 
+// Мягкая тень карточки. DECISION владельца 2026-09-04: «карточка обведена, но
+// линия не видна» — на белом фоне рамка #ebebeb давала контраст 8% и на свету
+// исчезала. Теперь карточка стоит на чуть более тёмной поверхности и слегка
+// приподнята: так её край читается, как в референсе.
+//
+// Значения нарочно скромные: тень обозначает край, а не рисует объём
+// (design-quality §1.1 — «убрать лучше, чем добавить»).
+const CARD_SHADOW = {
+  shadowColor: "#000000",
+  shadowOpacity: 0.05,
+  shadowRadius: 8,
+  shadowOffset: { width: 0, height: 2 },
+  elevation: 2,
+} as const;
+
 export function OrderRow(props: OrderRowProps) {
   const tc = useThemeColors(["ink", "mute", "accent", "error", "on-accent"]);
 
@@ -167,8 +182,8 @@ export function OrderRow(props: OrderRowProps) {
       accessibilityRole="button"
       accessibilityLabel={ariaLabel}
       onPress={props.onPress}
-      className="mx-4 mb-3 rounded-2xl border border-hairline bg-canvas p-4 active:bg-canvas-soft"
-      style={isDimmed ? { opacity: 0.65 } : undefined}
+      className="mx-4 mb-3 rounded-2xl border border-hairline bg-surface-card p-4 active:opacity-90"
+      style={[CARD_SHADOW, isDimmed ? { opacity: 0.65 } : null]}
     >
       {/* Шапка: плитка категории + категория + время публикации.
           Иконка — цветная из каталога (тот же механизм, что на экране «Все
@@ -269,7 +284,7 @@ export function OrderRow(props: OrderRowProps) {
 
       {/* Подвал: цена крупно + справа кнопка/чип отклика. */}
       {priceLabel || showButton || props.alreadyResponded ? (
-        <View className="mt-4 flex-row items-center justify-between gap-3 border-t border-hairline pt-3">
+        <View className="mt-4 flex-row items-center justify-between gap-3">
           {priceLabel ? (
             <View className="min-w-0 flex-1 flex-row flex-wrap items-baseline gap-x-2">
               <AppText

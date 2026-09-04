@@ -28,6 +28,15 @@ import { describeQueryError } from "@/lib/describe-query-error";
 import { useDebouncedValue } from "@/lib/use-debounced-value";
 import { useThemeColors } from "@/lib/use-theme-color";
 
+/** Та же тень, что у карточки задания: край читается без опоры на линию. */
+const CARD_SHADOW = {
+  shadowColor: "#000000",
+  shadowOpacity: 0.05,
+  shadowRadius: 8,
+  shadowOffset: { width: 0, height: 2 },
+  elevation: 2,
+} as const;
+
 function fullName(first: string | null, last: string | null): string {
   const name = [first, last].filter(Boolean).join(" ").trim();
   return name.length > 0 ? name : "Специалист";
@@ -46,7 +55,8 @@ function MasterCard({ master, onPress }: { master: MasterSearchResult; onPress: 
       accessibilityRole="button"
       accessibilityLabel={`${name}. ${master.categories.join(", ")}`}
       onPress={onPress}
-      className="mx-4 mb-3 rounded-2xl border border-hairline bg-canvas p-4 active:bg-canvas-soft"
+      className="mx-4 mb-3 rounded-2xl border border-hairline bg-surface-card p-4 active:opacity-90"
+      style={CARD_SHADOW}
     >
       <View className="flex-row items-center gap-3">
         <Avatar url={master.avatar_url} name={name} seed={name} size="md" />
@@ -104,7 +114,7 @@ export default function SpecialistsScreen() {
   const list = data ?? [];
 
   return (
-    <View className="flex-1 bg-canvas" style={{ paddingTop: insets.top }}>
+    <View className="flex-1 bg-surface-page" style={{ paddingTop: insets.top }}>
       <View className="px-5 pt-2">
         <AppText weight="bold" className="text-display-lg text-ink">
           Специалисты
@@ -176,7 +186,7 @@ function SpecialistsSkeleton() {
   return (
     <View className="pt-1">
       {[0, 1, 2, 3].map((i) => (
-        <View key={i} className="mx-4 mb-3 rounded-2xl border border-hairline bg-canvas p-4">
+        <View key={i} className="mx-4 mb-3 rounded-2xl border border-hairline bg-surface-card p-4">
           <View className="flex-row items-center gap-3">
             <View className="h-12 w-12 rounded-full bg-canvas-soft-2" />
             <View className="flex-1 gap-2">

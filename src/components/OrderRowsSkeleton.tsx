@@ -16,7 +16,7 @@ export function OrderRowsSkeleton({ count = 4 }: { count?: number }) {
     <View className="pt-1">
       {Array.from({ length: count }).map((_, i) => (
         // biome-ignore lint/suspicious/noArrayIndexKey: stable position-based key
-        <View key={i} className="mx-4 mb-3 rounded-2xl border border-hairline bg-canvas p-4">
+        <View key={i} className="mx-4 mb-3 rounded-2xl border border-hairline bg-surface-card p-4">
           <View className="flex-row items-center gap-3">
             <Skeleton width={44} height={44} className="rounded-xl" />
             <Skeleton width="40%" height={14} className="rounded" />

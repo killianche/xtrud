@@ -80,7 +80,7 @@ export default function OrdersScreen() {
   const resolved: Segment = tab ?? "orders";
 
   return (
-    <View className="flex-1 bg-canvas" style={{ paddingTop: insets.top }}>
+    <View className="flex-1 bg-surface-page" style={{ paddingTop: insets.top }}>
       {/* Заголовок + единственное главное действие экрана. */}
       <View className="flex-row items-center justify-between px-5 pt-2">
         <AppText weight="bold" className="text-display-lg text-ink">

@@ -142,7 +142,8 @@ function ClientHome({
 }: ClientHomeProps) {
   const { data: categories, isLoading, error } = useVisibleCategories();
   const width = useAppWidth();
-  const canvasBg = useThemeColor("canvas");
+  // Фон страницы чуть темнее карточек — см. src/lib/colors.ts, surface-page.
+  const canvasBg = useThemeColor("surface-page");
   // На desktop колонок 2-3 (Lazyweb-паттерн: afterpay/people/zara — категории
   // в marketplace на широком вьюпорте подаются grid'ом, не длинной колонкой
   // ~30+ строк). Mobile остаётся 1 столбец — там grid 2x проигрывает list-view

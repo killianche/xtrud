@@ -122,7 +122,7 @@ export default function FindScreen() {
   }, [isLoading, error, displayedOrders.length, opacity]);
 
   return (
-    <View className="flex-1 bg-canvas" style={{ paddingTop: insets.top }}>
+    <View className="flex-1 bg-surface-page" style={{ paddingTop: insets.top }}>
       <ScreenHeader
         title="Задания"
         rightAction={{

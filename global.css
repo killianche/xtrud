@@ -29,6 +29,8 @@
     --canvas: 255 255 255;
     --canvas-soft: 250 250 250;
     --canvas-soft-2: 245 245 245;
+    --surface-page: 250 250 250;
+    --surface-card: 255 255 255;
     --ink: 23 23 23;
     --body: 77 77 77;
     --mute: 136 136 136;
@@ -81,6 +83,8 @@
     --canvas: 10 10 10;
     --canvas-soft: 22 22 22;
     --canvas-soft-2: 34 34 34;
+    --surface-page: 10 10 10;
+    --surface-card: 22 22 22;
     --ink: 250 250 250;
     --body: 184 184 184;
     --mute: 153 153 153;

@@ -92,8 +92,8 @@ export function ActiveOrdersShowcase({ userId }: { userId: string | undefined })
         {isLoading ? (
           <OrderRowsSkeleton count={3} />
         ) : errorText ? (
-          <View className="mx-4 items-center rounded-2xl border border-hairline bg-canvas-soft px-5 py-8">
-            <View className="h-16 w-16 items-center justify-center rounded-full bg-canvas">
+          <View className="mx-4 items-center rounded-2xl border border-hairline bg-surface-card px-5 py-8">
+            <View className="h-16 w-16 items-center justify-center rounded-full bg-accent-soft">
               <CloudSlash size={30} weight="bold" color={accentColor} />
             </View>
             <AppText weight="bold" className="mt-4 text-center text-title-lg text-ink">
@@ -113,8 +113,8 @@ export function ActiveOrdersShowcase({ userId }: { userId: string | undefined })
             </View>
           </View>
         ) : items.length === 0 ? (
-          <View className="mx-4 items-center rounded-2xl border border-hairline bg-canvas-soft px-5 py-8">
-            <View className="h-16 w-16 items-center justify-center rounded-full bg-canvas">
+          <View className="mx-4 items-center rounded-2xl border border-hairline bg-surface-card px-5 py-8">
+            <View className="h-16 w-16 items-center justify-center rounded-full bg-accent-soft">
               <Tray size={30} weight="bold" color={accentColor} />
             </View>
             <AppText weight="bold" className="mt-4 text-center text-title-lg text-ink">

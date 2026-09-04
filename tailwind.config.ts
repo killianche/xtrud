@@ -28,6 +28,8 @@ const config: Config = {
         canvas: "rgb(var(--canvas) / <alpha-value>)",
         "canvas-soft": "rgb(var(--canvas-soft) / <alpha-value>)",
         "canvas-soft-2": "rgb(var(--canvas-soft-2) / <alpha-value>)",
+        "surface-page": "rgb(var(--surface-page) / <alpha-value>)",
+        "surface-card": "rgb(var(--surface-card) / <alpha-value>)",
         ink: "rgb(var(--ink) / <alpha-value>)",
         body: "rgb(var(--body) / <alpha-value>)",
         mute: "rgb(var(--mute) / <alpha-value>)",

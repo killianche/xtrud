@@ -7,11 +7,13 @@
  * - useRealtimeMyResponses: подписка на INSERT order_responses → invalidate count.
  */
 
+import type { RealtimeChannel } from "@supabase/supabase-js";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
 import { unreadResponsesKey } from "@/features/orders/unread-feed-helpers";
 import { myOrdersKey } from "@/features/orders/use-my-orders";
 import { orderDetailKey } from "@/features/orders/use-order-detail";
+import { uniqueRealtimeTopic } from "@/lib/realtime-topic";
 import { supabase } from "@/lib/supabase";
 
 export { unreadResponsesKey };
@@ -71,17 +73,34 @@ export function useRealtimeMyResponses(userId: string | null | undefined) {
   const qc = useQueryClient();
   useEffect(() => {
     if (!userId) return;
-    const channel = supabase
-      .channel(`my-responses:${userId}`)
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "order_responses" }, () =>
-        qc.invalidateQueries({ queryKey: unreadResponsesKey(userId) }),
-      )
-      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "order_responses" }, () =>
-        qc.invalidateQueries({ queryKey: unreadResponsesKey(userId) }),
-      )
-      .subscribe();
+    // Имя канала уникальное: `supabase.channel()` возвращает УЖЕ существующий
+    // канал при совпадении имени, а `removeChannel` асинхронный — при
+    // повторном запуске эффекта обработчик вешался на подписанный канал и
+    // библиотека бросала исключение. См. src/lib/realtime-topic.ts.
+    let channel: RealtimeChannel;
+    try {
+      channel = supabase
+        .channel(uniqueRealtimeTopic(`my-responses:${userId}`))
+        .on(
+          "postgres_changes",
+          { event: "INSERT", schema: "public", table: "order_responses" },
+          () => qc.invalidateQueries({ queryKey: unreadResponsesKey(userId) }),
+        )
+        .on(
+          "postgres_changes",
+          { event: "UPDATE", schema: "public", table: "order_responses" },
+          () => qc.invalidateQueries({ queryKey: unreadResponsesKey(userId) }),
+        )
+        .subscribe();
+    } catch (e) {
+      // Живое обновление счётчика — удобство, а не работа приложения. Если
+      // подписка не встала, экран обязан продолжать работать: данные всё
+      // равно обновятся при следующем открытии и по pull-to-refresh.
+      console.warn("[realtime] подписка my-responses не создана:", e);
+      return;
+    }
     return () => {
-      supabase.removeChannel(channel);
+      void supabase.removeChannel(channel);
     };
   }, [userId, qc]);
 }

@@ -34,6 +34,7 @@ import {
   useSearchMasters,
 } from "@/features/master-view/use-search-masters";
 import { describeQueryError } from "@/lib/describe-query-error";
+import { useTabBarSpace } from "@/lib/tab-bar-space";
 import { useDebouncedValue } from "@/lib/use-debounced-value";
 import { useThemeColors } from "@/lib/use-theme-color";
 
@@ -112,6 +113,7 @@ function MasterCard({ master, onPress }: { master: MasterSearchResult; onPress: 
 
 export default function SpecialistsScreen() {
   const insets = useSafeAreaInsets();
+  const tabBarSpace = useTabBarSpace();
   const router = useRouter();
   const tc = useThemeColors(["accent"]);
   const [query, setQuery] = useState("");
@@ -132,7 +134,7 @@ export default function SpecialistsScreen() {
         keyExtractor={(m) => m.user_id}
         contentContainerStyle={{
           paddingTop: insets.top + searchBarHeight + 8,
-          paddingBottom: insets.bottom + 100,
+          paddingBottom: tabBarSpace,
         }}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"

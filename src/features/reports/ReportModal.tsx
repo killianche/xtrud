@@ -33,6 +33,7 @@ import {
   reasonsFor,
   useCreateReport,
 } from "@/features/reports/use-create-report";
+import { describeServerError } from "@/lib/describe-server-error";
 import { useThemeColor } from "@/lib/use-theme-color";
 
 interface ReportModalProps {
@@ -159,7 +160,10 @@ export function ReportModal({ visible, targetType, targetId, onClose }: ReportMo
 
               {submit.error && (
                 <AppText weight="medium" className="mt-2 text-caption text-error">
-                  {submit.error.message}
+                  {describeServerError(
+                    submit.error,
+                    "Не удалось отправить жалобу. Попробуйте ещё раз.",
+                  )}
                 </AppText>
               )}
 

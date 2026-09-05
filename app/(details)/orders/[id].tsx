@@ -69,6 +69,7 @@ import { useWithdrawResponse } from "@/features/orders/use-withdraw-response";
 import { ReportModal } from "@/features/reports/ReportModal";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { confirmAsync } from "@/lib/confirm";
+import { describeServerError } from "@/lib/describe-server-error";
 import { hapticError, hapticSuccess } from "@/lib/haptics";
 import { openExternalUrl } from "@/lib/open-link";
 import { useSafeBack } from "@/lib/use-safe-back";
@@ -725,7 +726,9 @@ function ClientResponsesSection({ orderId, order }: ClientResponsesSectionProps)
           <AppText weight="semibold" className="text-body-sm text-ink">
             Не удалось загрузить отклики
           </AppText>
-          <AppText className="mt-1 text-caption text-error">{error.message}</AppText>
+          <AppText className="mt-1 text-body-sm text-error">
+            {describeServerError(error, "Не удалось отправить отклик. Попробуйте ещё раз.")}
+          </AppText>
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Повторить загрузку откликов"
@@ -1345,7 +1348,10 @@ function MasterResponseSection({
         ) : null}
         {withdrawResponse.error && (
           <AppText weight="medium" className="mt-2 text-caption text-error">
-            {withdrawResponse.error.message}
+            {describeServerError(
+              withdrawResponse.error,
+              "Не удалось отозвать отклик. Попробуйте ещё раз.",
+            )}
           </AppText>
         )}
       </View>

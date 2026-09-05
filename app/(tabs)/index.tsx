@@ -25,7 +25,6 @@ import { CaretRight, Drop, Lightning, Sparkle } from "phosphor-react-native";
 import type { RefObject } from "react";
 import { useEffect, useRef, useState } from "react";
 import { Animated, FlatList, Pressable, View } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
 import { Avatar, Card, Skeleton } from "@/components/ui";
 import { useAuthSession } from "@/features/auth/use-auth-session";
@@ -50,12 +49,12 @@ import { useTopMasters } from "@/features/master-view/use-top-masters";
 import { usePullToRefresh } from "@/hooks/use-pull-to-refresh";
 import { getCategoryColorIconUrl } from "@/lib/category-color-icons";
 import { getCategoryIcon } from "@/lib/category-icons";
+import { useTabBarSpace } from "@/lib/tab-bar-space";
 import { scrollViewToTop, useTabScrollResetCounter } from "@/lib/tab-scroll-reset";
 import { useAppWidth } from "@/lib/use-app-width";
 import { useThemeColor } from "@/lib/use-theme-color";
 
 export default function HomeTab() {
-  const insets = useSafeAreaInsets();
   const router = useRouter();
   const { session } = useAuthSession();
   const userId = session?.user?.id;
@@ -76,7 +75,6 @@ export default function HomeTab() {
   return (
     <ClientHome
       userId={userId}
-      insets={insets}
       refresh={refresh}
       onCategoryPress={(id) => router.push(`/category/${id}` as never)}
       onMasterPress={(id) => router.push(`/master/${id}` as never)}
@@ -116,7 +114,6 @@ export default function HomeTab() {
 
 interface ClientHomeProps {
   userId: string | undefined;
-  insets: ReturnType<typeof useSafeAreaInsets>;
   refresh: ReturnType<typeof usePullToRefresh>;
   onCategoryPress: (id: string) => void;
   onMasterPress: (id: string) => void;
@@ -133,12 +130,12 @@ const CATEGORY_CONTAINER_PADDING = CATEGORY_SCREEN_PADDING - CATEGORY_TILE_GUTTE
 
 function ClientHome({
   userId,
-  insets,
   refresh,
   onCategoryPress,
   onMasterPress,
   onDescribeTask,
 }: ClientHomeProps) {
+  const tabBarSpace = useTabBarSpace();
   const { data: categories, isLoading, error } = useVisibleCategories();
   const width = useAppWidth();
   // Фон страницы чуть темнее карточек — см. src/lib/colors.ts, surface-page.
@@ -198,7 +195,7 @@ function ClientHome({
           // Фото-hero идёт от самого верха экрана (под статус-бар), поэтому НЕ
           // добавляем paddingTop — CinematicHero сам учитывает inset.
           paddingHorizontal: isGrid ? CATEGORY_CONTAINER_PADDING : 0,
-          paddingBottom: insets.bottom + 24,
+          paddingBottom: tabBarSpace,
         }}
         ListHeaderComponent={
           <View style={gridCancelStyle}>

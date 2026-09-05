@@ -50,6 +50,7 @@ import {
 } from "@/features/profile/use-portfolio-cases";
 import { cdnBlur, cdnImage } from "@/lib/image-cdn";
 import { type PickedImage, pickMultipleImages, uploadPortfolioBatch } from "@/lib/image-upload";
+import { useTabBarSpace } from "@/lib/tab-bar-space";
 import { useAppWidth } from "@/lib/use-app-width";
 import { useThemeColors } from "@/lib/use-theme-color";
 
@@ -65,6 +66,7 @@ const DEFAULT_CASE_TITLE = "Без имени";
 
 export default function CasesScreen() {
   const insets = useSafeAreaInsets();
+  const tabBarSpace = useTabBarSpace();
   const router = useRouter();
   const { session } = useAuthSession();
   const userId = session?.user?.id ?? null;
@@ -225,7 +227,7 @@ export default function CasesScreen() {
           // компенсирует внешние 16px через CASES_CONTAINER_PADDING.
           paddingHorizontal: CASES_CONTAINER_PADDING,
           paddingTop: 16,
-          paddingBottom: insets.bottom + 96,
+          paddingBottom: tabBarSpace,
         }}
         showsVerticalScrollIndicator={false}
         renderItem={({ item }) => (

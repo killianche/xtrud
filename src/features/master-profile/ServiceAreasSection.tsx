@@ -16,6 +16,7 @@ import {
   useMasterServiceAreas,
   useSetMasterServiceAreas,
 } from "@/features/master-profile/use-service-areas";
+import { describeServerError } from "@/lib/describe-server-error";
 import { DISTRICTS, PICKER_CITIES } from "@/lib/location-config";
 import { useThemeColor } from "@/lib/use-theme-color";
 
@@ -226,7 +227,7 @@ export function ServiceAreasSection({ masterId }: ServiceAreasSectionProps) {
 
       {setAreas.error ? (
         <AppText weight="medium" className="mt-3 text-caption text-error">
-          Не удалось сохранить. {setAreas.error.message}
+          {describeServerError(setAreas.error, "Не удалось сохранить. Попробуйте ещё раз.")}
         </AppText>
       ) : null}
     </View>

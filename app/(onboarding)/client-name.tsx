@@ -28,6 +28,7 @@ import { useCompleteOnboarding } from "@/features/auth/use-complete-onboarding";
 import { useExitOnboarding } from "@/features/auth/use-exit-onboarding";
 import { setUsernameErrorMessage, useSetUsername } from "@/features/auth/use-username";
 import { useAuthReturnUrlStore } from "@/lib/auth-return-url-store";
+import { describeServerError } from "@/lib/describe-server-error";
 import { supabase } from "@/lib/supabase";
 
 export default function ClientNameScreen() {
@@ -48,7 +49,9 @@ export default function ClientNameScreen() {
   const canSubmit = nameValid && usernameValid && !!userId;
   const isBusy = completeOnboarding.isPending || setUsernameMut.isPending;
   const error = setUsernameMut.error
-    ? setUsernameErrorMessage(setUsernameMut.error.message)
+    ? setUsernameErrorMessage(
+        describeServerError(setUsernameMut.error, "Не удалось сохранить имя. Попробуйте ещё раз."),
+      )
     : completeOnboarding.error?.message;
 
   const handleExit = async () => {

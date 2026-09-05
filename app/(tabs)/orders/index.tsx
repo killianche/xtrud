@@ -51,6 +51,7 @@ import {
   useMyResponses,
 } from "@/features/orders/use-my-responses";
 import { usePullToRefresh } from "@/hooks/use-pull-to-refresh";
+import { useTabBarSpace } from "@/lib/tab-bar-space";
 import { scrollViewToTop, useTabScrollResetCounter } from "@/lib/tab-scroll-reset";
 import { useThemeColors } from "@/lib/use-theme-color";
 import type { IconComponent } from "@/types/icon";
@@ -172,7 +173,7 @@ function Segments({
 // ============================================================================
 
 function OrdersList({ userId }: { userId: string | undefined }) {
-  const insets = useSafeAreaInsets();
+  const tabBarSpace = useTabBarSpace();
   const router = useRouter();
   const { data: orders, isLoading, error, refetch } = useMyOrders(userId);
   const refresh = usePullToRefresh();
@@ -201,7 +202,7 @@ function OrdersList({ userId }: { userId: string | undefined }) {
       ref={listRef}
       data={hasItems ? allOrders : []}
       keyExtractor={(o) => o.id}
-      contentContainerStyle={{ paddingTop: 16, paddingBottom: insets.bottom + 100 }}
+      contentContainerStyle={{ paddingTop: 16, paddingBottom: tabBarSpace }}
       showsVerticalScrollIndicator={false}
       refreshControl={refresh.control}
       renderItem={({ item: o }) => (
@@ -254,7 +255,7 @@ function OrdersList({ userId }: { userId: string | undefined }) {
 // ============================================================================
 
 function ResponsesList({ userId }: { userId: string | undefined }) {
-  const insets = useSafeAreaInsets();
+  const tabBarSpace = useTabBarSpace();
   const router = useRouter();
   const navigation = useNavigation();
   const refresh = usePullToRefresh();
@@ -297,7 +298,7 @@ function ResponsesList({ userId }: { userId: string | undefined }) {
         ref={listRef}
         data={hasItems ? sorted : []}
         keyExtractor={(r: MyResponseWithOrder) => r.response.id}
-        contentContainerStyle={{ paddingTop: 16, paddingBottom: insets.bottom + 100 }}
+        contentContainerStyle={{ paddingTop: 16, paddingBottom: tabBarSpace }}
         showsVerticalScrollIndicator={false}
         refreshControl={refresh.control}
         renderItem={({ item: r }) => {

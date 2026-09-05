@@ -40,10 +40,12 @@ import { useAllOpenOrders } from "@/features/orders/use-all-open-orders";
 import { useMyResponses } from "@/features/orders/use-my-responses";
 import { useMarkFeedSeen } from "@/features/orders/use-unread-feed";
 import { describeQueryError } from "@/lib/describe-query-error";
+import { useTabBarSpace } from "@/lib/tab-bar-space";
 import { useThemeColor } from "@/lib/use-theme-color";
 
 export default function FindScreen() {
   const insets = useSafeAreaInsets();
+  const tabBarSpace = useTabBarSpace();
   const router = useRouter();
   const { session } = useAuthSession();
   const userId = session?.user?.id;
@@ -177,7 +179,7 @@ export default function FindScreen() {
             keyExtractor={(order) => order.id}
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
-            contentContainerStyle={{ paddingTop: 4, paddingBottom: insets.bottom + 24 }}
+            contentContainerStyle={{ paddingTop: 4, paddingBottom: tabBarSpace }}
             renderItem={({ item: o }) => (
               <OrderRow
                 id={o.id}

@@ -37,6 +37,7 @@ import { KeyboardAvoidingView, Platform, Pressable, TextInput, View } from "reac
 import { AppText } from "@/components/AppText";
 import { useDeleteMyAccount } from "@/features/auth/use-delete-account";
 import { signOut } from "@/lib/auth";
+import { describeServerError } from "@/lib/describe-server-error";
 import { useThemeColors } from "@/lib/use-theme-color";
 
 function ConsequenceRow({ text }: { text: string }) {
@@ -161,7 +162,10 @@ export default function DeleteAccountScreen() {
 
               {deleteAccount.error ? (
                 <AppText weight="medium" className="mt-3 text-caption text-error">
-                  {deleteAccount.error.message}
+                  {describeServerError(
+                    deleteAccount.error,
+                    "Не удалось удалить аккаунт. Попробуйте ещё раз.",
+                  )}
                 </AppText>
               ) : null}
 

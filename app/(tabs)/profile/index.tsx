@@ -44,6 +44,7 @@ import { useColorScheme } from "@/hooks/use-color-scheme";
 import { signOut } from "@/lib/auth";
 import { confirmAsync } from "@/lib/confirm";
 import { supabase } from "@/lib/supabase";
+import { useTabBarSpace } from "@/lib/tab-bar-space";
 import { scrollViewToTop, useTabScrollResetCounter } from "@/lib/tab-scroll-reset";
 import type { ThemePreference } from "@/lib/theme";
 import { useThemeColors } from "@/lib/use-theme-color";
@@ -51,6 +52,7 @@ import type { Tables } from "@/types/database";
 
 export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
+  const tabBarSpace = useTabBarSpace();
   const router = useRouter();
   const { session, status: authStatus } = useAuthSession();
   const userId = session?.user?.id;
@@ -197,7 +199,7 @@ export default function ProfileScreen() {
 
       <ScrollView
         ref={profileScrollRef}
-        contentContainerStyle={{ paddingBottom: insets.bottom + 32 }}
+        contentContainerStyle={{ paddingBottom: tabBarSpace }}
         showsVerticalScrollIndicator={false}
       >
         {/* HERO — единый layout для client/master/guest (2026-05-27).
@@ -609,11 +611,13 @@ interface GuestProfileScreenProps {
 }
 
 function GuestProfileScreen({ insets, themeColors, onLogin }: GuestProfileScreenProps) {
+  const tabBarSpace = useTabBarSpace();
+
   return (
     <View className="flex-1 bg-canvas" style={{ paddingTop: insets.top }}>
       <ScreenHeader title="Профиль" />
       <ScrollView
-        contentContainerStyle={{ paddingBottom: insets.bottom + 32 }}
+        contentContainerStyle={{ paddingBottom: tabBarSpace }}
         showsVerticalScrollIndicator={false}
       >
         {/* HERO — тот же layout что для client/master (см. ProfileScreen).

@@ -4,6 +4,7 @@ import {
   ThemeProvider as NavThemeProvider,
 } from "expo-router/react-navigation";
 import { NativeTabs } from "expo-router/unstable-native-tabs";
+import { LIQUID_GLASS } from "@/components/ui/GlassSurface";
 import { useAuthSession } from "@/features/auth/use-auth-session";
 import { useTouchLastActive } from "@/features/auth/use-touch-last-active";
 import { useUserRecord } from "@/features/auth/use-user-record";
@@ -82,12 +83,24 @@ export default function TabsLayout() {
   // системная панель. Самописная панель (TabBar.tsx) убрана: правило
   // docs/IOS_FOUNDATION.md — родной механизм вместо своего.
   //
+  // disableTransparentOnScrollEdge — исправление 2026-09-05 по скриншоту
+  // владельца: «если iOS не последняя, происходит слияние в нижнем меню».
+  // С iOS 15 UITabBar становится ПРОЗРАЧНОЙ, когда список докручен до края, —
+  // и текст последней карточки читается прямо сквозь панель. На iOS 26 её
+  // место занимает Liquid Glass, поэтому там этого не видно. Флаг оставляет
+  // панели её материал и на старых версиях.
+  //
+  // Место под панель списки резервируют через useTabBarSpace
+  // (src/lib/tab-bar-space.ts) — раньше каждый экран угадывал сам, и в ленте
+  // не хватало ровно строки текста.
+  //
   // Тап по активной вкладке сбрасывает её стек на корень средствами
   // NativeTabs (disablePopToTop=false по умолчанию) — прежние listeners не
   // нужны. Иконки — SF Symbols, цвет выбранной — фирменный акцент.
   return (
     <NavThemeProvider value={navTheme}>
       <NativeTabs
+        disableTransparentOnScrollEdge={!LIQUID_GLASS}
         tintColor={tc.accent}
         iconColor={{ default: tc.mute, selected: tc.accent }}
         badgeBackgroundColor={tc.error}

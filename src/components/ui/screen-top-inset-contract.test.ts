@@ -26,6 +26,7 @@ const INSET_AWARE_WRAPPERS = [
   "LegalScreen",
   "NewOrderScreen",
   "<PublishAuthSheet",
+  "<RespondAuthSheet",
   "<OrderDateSheet",
   "<PickerSheetPage",
 ];

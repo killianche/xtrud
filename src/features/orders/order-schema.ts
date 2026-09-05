@@ -6,6 +6,7 @@
 // re-export'ы под старыми именами для обратной совместимости импортов.
 
 import { z } from "zod";
+import { digitsOnly } from "@/features/auth/validation";
 import {
   findDistrictByVillage as _findDistrictByVillage,
   ALL_INGUSHETIA_CITY_ID,
@@ -124,6 +125,11 @@ export const createOrderSchema = z
     // профиля заказчика. Пустая строка допустима (тогда покажем имя из
     // регистрации). Телефон НЕ собираем — модель «номер скрыт» не меняется.
     contactName: z.string().max(80, "Максимум 80 символов"),
+    // Телефон и WhatsApp — по желанию (DECISION владельца 2026-09-06). Можно
+    // указать не тот номер, что в аккаунте. Пустая строка — не указывать.
+    // Заполненный номер должен быть номером — проверка в superRefine.
+    contactPhone: z.string().trim().max(32, "Слишком длинный номер"),
+    whatsappPhone: z.string().trim().max(32, "Слишком длинный номер"),
     // description — необязательное. Пустая строка допустима.
     description: z.string().max(2000, "Максимум 2000 символов"),
     // cityId: либо id города из таблицы cities, либо "all" для «Вся Ингушетия»
@@ -145,6 +151,20 @@ export const createOrderSchema = z
     preferredDate: z.string().nullable(),
   })
   .superRefine((val, ctx) => {
+    if (val.contactPhone.length > 0 && digitsOnly(val.contactPhone).length < 10) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["contactPhone"],
+        message: "Введите корректный номер",
+      });
+    }
+    if (val.whatsappPhone.length > 0 && digitsOnly(val.whatsappPhone).length < 10) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["whatsappPhone"],
+        message: "Введите корректный номер",
+      });
+    }
     // Локация обязательна — должен быть либо город (включая "all"=Вся
     // Ингушетия), либо район. LocationPicker делает их взаимоисключающими.
     if (!val.cityId && !val.district) {

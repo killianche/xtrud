@@ -77,6 +77,8 @@ export default function EditOrderScreen() {
       l2Id: "",
       title: "",
       contactName: "",
+      contactPhone: "",
+      whatsappPhone: "",
       description: "",
       cityId: "",
       district: "",
@@ -95,6 +97,8 @@ export default function EditOrderScreen() {
       l2Id: order.l2_id,
       title: order.title,
       contactName: order.contact_name ?? "",
+      contactPhone: order.contact_phone ?? "",
+      whatsappPhone: order.whatsapp_phone ?? "",
       // description в БД nullable (миграция 0090) — в форме это пустая строка.
       description: order.description ?? "",
       // city_id=null означает «Вся Ингушетия» — конвертируем обратно в "all" UI-значение
@@ -163,6 +167,8 @@ export default function EditOrderScreen() {
         l2Id: values.l2Id,
         title: values.title,
         contactName: values.contactName,
+        contactPhone: values.contactPhone,
+        whatsappPhone: values.whatsappPhone,
         description: values.description,
         cityId: values.cityId,
         district: values.district,

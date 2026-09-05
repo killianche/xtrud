@@ -2,6 +2,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import {
   ArrowCounterClockwise,
+  ArrowRight,
   CaretRight,
   Check,
   CheckCircle,
@@ -68,6 +69,7 @@ import { useMarkResponsesViewed } from "@/features/orders/use-unread-responses";
 import { useWithdrawResponse } from "@/features/orders/use-withdraw-response";
 import { ReportModal } from "@/features/reports/ReportModal";
 import { useColorScheme } from "@/hooks/use-color-scheme";
+import { useAuthReturnUrlStore } from "@/lib/auth-return-url-store";
 import { confirmAsync } from "@/lib/confirm";
 import { describeServerError } from "@/lib/describe-server-error";
 import { hapticError, hapticSuccess } from "@/lib/haptics";
@@ -125,6 +127,16 @@ export default function OrderDetailScreen() {
   // router.back() при cross-stack переходе срабатывает не туда. На web падаем
   // на window.history.back(), на native — обычный back с fallback'ом на список заказов.
   const goBack = useSafeBack("/(tabs)/orders" as const);
+
+  // Гость нажал «Откликнуться», зарегистрировался и вернулся сюда: снимаем
+  // одноразовый return-intent, чтобы он не сработал где-нибудь ещё. Форма
+  // отклика для вошедшего уже на экране — больше ничего делать не нужно.
+  useEffect(() => {
+    if (!userId || !id) return;
+    if (useAuthReturnUrlStore.getState().peekReturnUrl() === `/orders/${id}`) {
+      useAuthReturnUrlStore.getState().consumeReturnUrl();
+    }
+  }, [userId, id]);
 
   // Sprint 12.3 — при open order detail (если owner) помечаем отклики просмотренными.
   const markResponsesViewed = useMarkResponsesViewed(userId);
@@ -393,6 +405,15 @@ export default function OrderDetailScreen() {
               только в «режиме мастера», и человеку приходилось сначала
               переключаться — три разные карточки-подсказки ниже существовали
               ровно ради этого перехода. */}
+          {/* Гость видит ту же кнопку, что и вошедший (DECISION владельца
+              2026-09-06): по нажатию — вход/регистрация и возврат сюда. */}
+          {!userId && id && order.status === "open" ? (
+            <GuestRespondCta
+              onPress={() =>
+                router.push({ pathname: "/orders/respond-auth", params: { orderId: id } } as never)
+              }
+            />
+          ) : null}
           {!isOwner && userId && id && (
             <MasterResponseSection
               orderId={id}
@@ -604,8 +625,78 @@ function OrderInfoBlock({ order, isOwner }: OrderInfoBlockProps) {
               {contactDisplay}
             </AppText>
           </View>
+          {/* Контакты, которые заказчик сам оставил в задании (0159). Нет —
+              значит связь через отклик, как и раньше. */}
+          {order.contact_phone || order.whatsapp_phone ? (
+            <View className="mt-2 flex-row gap-2">
+              {order.contact_phone ? (
+                <Pressable
+                  accessibilityRole="link"
+                  accessibilityLabel={`Позвонить ${order.contact_phone}`}
+                  onPress={() => openExternalUrl(`tel:${order.contact_phone}`)}
+                  className="min-h-11 flex-1 flex-row items-center justify-center gap-2 rounded-pill border border-hairline bg-canvas active:bg-canvas-soft"
+                >
+                  <Phone size={18} weight="bold" color={tc.ink} />
+                  <AppText weight="semibold" className="text-body-md text-ink">
+                    Позвонить
+                  </AppText>
+                </Pressable>
+              ) : null}
+              {order.whatsapp_phone ? (
+                <Pressable
+                  accessibilityRole="link"
+                  accessibilityLabel="Написать в WhatsApp"
+                  onPress={() =>
+                    openExternalUrl(
+                      `https://wa.me/${normalizeWhatsappDigits(order.whatsapp_phone)}`,
+                    )
+                  }
+                  className="min-h-11 flex-1 flex-row items-center justify-center gap-2 rounded-pill border border-hairline bg-canvas active:bg-canvas-soft"
+                >
+                  <WhatsappLogo size={18} weight="bold" color={tc.ink} />
+                  <AppText weight="semibold" className="text-body-md text-ink">
+                    WhatsApp
+                  </AppText>
+                </Pressable>
+              ) : null}
+            </View>
+          ) : null}
         </View>
       ) : null}
+    </View>
+  );
+}
+
+/** Кнопка отклика для гостя — та же по виду, что у вошедшего, но ведёт в
+ *  auth-wall. Человек не должен искать, где регистрироваться. */
+function GuestRespondCta({ onPress }: { onPress: () => void }) {
+  const tc = useThemeColors(["on-accent"]);
+  return (
+    <View className="mt-10 px-5">
+      <View className="flex-row items-center gap-3">
+        <AppText
+          weight="medium"
+          className="text-caption uppercase text-mute"
+          style={{ letterSpacing: 1 }}
+        >
+          Ваш отклик
+        </AppText>
+        <View className="h-px flex-1 bg-hairline" />
+      </View>
+      <AppText className="mt-3 text-body-md text-body">
+        Предложите цену и срок — заказчик увидит ваш отклик и свяжется с вами.
+      </AppText>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Откликнуться на задание"
+        onPress={onPress}
+        className="mt-4 min-h-14 flex-row items-center justify-center gap-2 rounded-pill bg-accent active:opacity-85"
+      >
+        <AppText weight="semibold" className="text-button-lg text-on-accent">
+          Откликнуться
+        </AppText>
+        <ArrowRight size={18} weight="bold" color={tc["on-accent"]} />
+      </Pressable>
     </View>
   );
 }

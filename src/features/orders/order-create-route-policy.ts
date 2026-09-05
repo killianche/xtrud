@@ -1,5 +1,17 @@
+/**
+ * Шаги создания задания — настоящие маршруты Stack (DECISION владельца
+ * 2026-09-06: «переделай создание задания с нуля, как у TaskRabbit и iOS»).
+ * Один вопрос на экран; «назад» и свайп от края — один POP, черновик жив.
+ */
+export type OrderCreatePhase = "intent" | "details" | "where" | "when" | "budget" | "review";
+
+/** Любой шаг после «что нужно сделать» требует подтверждённой категории. */
+export function isOrderDetailsPhase(phase: OrderCreatePhase): boolean {
+  return phase !== "intent";
+}
+
 export interface InvalidOrderDetailsRedirectInput {
-  screenPhase: "intent" | "details";
+  screenPhase: OrderCreatePhase;
   draftUiReady: boolean;
   categoriesReady: boolean;
   hasSelectedCategory: boolean;
@@ -21,7 +33,7 @@ export function shouldRedirectInvalidOrderDetails({
   isPublished,
 }: InvalidOrderDetailsRedirectInput): boolean {
   return (
-    screenPhase === "details" &&
+    isOrderDetailsPhase(screenPhase) &&
     draftUiReady &&
     categoriesReady &&
     !hasSelectedCategory &&
@@ -31,7 +43,7 @@ export function shouldRedirectInvalidOrderDetails({
 }
 
 export interface OrderDraftAutoResumeInput {
-  screenPhase: "intent" | "details";
+  screenPhase: OrderCreatePhase;
   editIntentRequested: boolean;
   draftUiReady: boolean;
   ownerAlreadyHandled: boolean;

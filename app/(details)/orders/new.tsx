@@ -1,13 +1,14 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { usePreventRemove } from "expo-router/react-navigation";
-import { CheckCircle, PencilSimple, WarningCircle } from "phosphor-react-native";
+import { CaretLeft, CaretRight, CheckCircle, WarningCircle } from "phosphor-react-native";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
-import { ScreenHeader, Skeleton } from "@/components/ui";
+import { OnboardingProgress } from "@/components/OnboardingProgress";
+import { Button, ScreenHeader, Skeleton } from "@/components/ui";
 import { ORDER_CREATE_RETURN_TO } from "@/features/auth/auth-return";
 import { useAuthSession } from "@/features/auth/use-auth-session";
 import { useUserRecord } from "@/features/auth/use-user-record";
@@ -17,6 +18,8 @@ import { ActiveOrdersLimitState } from "@/features/orders/ActiveOrdersLimitState
 import { OrderFormBody } from "@/features/orders/OrderFormBody";
 import { OrderPhotosPicker } from "@/features/orders/OrderPhotosPicker";
 import {
+  isOrderDetailsPhase,
+  type OrderCreatePhase,
   shouldAutoResumeOrderDraft,
   shouldRedirectInvalidOrderDetails,
 } from "@/features/orders/order-create-route-policy";
@@ -30,7 +33,12 @@ import {
   isOrderPublishSuccessVisible,
   resolveCommittedOrderPublishOwner,
 } from "@/features/orders/order-publish-owner";
-import { type CreateOrderFormValues, createOrderSchema } from "@/features/orders/order-schema";
+import {
+  type CreateOrderFormValues,
+  createOrderSchema,
+  formatOrderTiming,
+  formatPrice,
+} from "@/features/orders/order-schema";
 import { TaskIntentStep } from "@/features/orders/TaskIntentStep";
 import { taskDetailsPrompt } from "@/features/orders/task-details-prompt";
 import { useCreateOrder } from "@/features/orders/use-create-order";
@@ -43,7 +51,7 @@ import {
   validateOrderPublishLocation,
 } from "@/features/orders/validate-order-publish-category";
 import { useAuthReturnUrlStore } from "@/lib/auth-return-url-store";
-import { hapticError, hapticSuccess } from "@/lib/haptics";
+import { hapticError, hapticSelection, hapticSuccess } from "@/lib/haptics";
 import { deleteFromBucket, uploadOrderPhotosBatch } from "@/lib/image-upload";
 import {
   canApplyInitialTaskExample,
@@ -64,8 +72,25 @@ import { useThemeColors } from "@/lib/use-theme-color";
 // fields stay on one compact scroll screen. Auth never publishes automatically.
 
 interface NewOrderScreenProps {
-  screenPhase?: "intent" | "details";
+  screenPhase?: OrderCreatePhase;
 }
+
+/** Порядок шагов после «что нужно сделать». Каждый — свой маршрут. */
+const STEP_ORDER: readonly Exclude<OrderCreatePhase, "intent">[] = [
+  "details",
+  "where",
+  "when",
+  "budget",
+  "review",
+];
+
+const STEP_ROUTE: Record<Exclude<OrderCreatePhase, "intent">, string> = {
+  details: "/orders/new/details",
+  where: "/orders/new/where",
+  when: "/orders/new/when",
+  budget: "/orders/new/budget",
+  review: "/orders/new/review",
+};
 
 export function NewOrderScreen({ screenPhase = "intent" }: NewOrderScreenProps) {
   const insets = useSafeAreaInsets();
@@ -99,7 +124,7 @@ export function NewOrderScreen({ screenPhase = "intent" }: NewOrderScreenProps) 
   const { data: cities } = useCities();
   const createOrder = useCreateOrder();
   const publishCapacity = useOrderPublishCapacity(userId);
-  const tc = useThemeColors(["on-primary", "success", "accent", "error"]);
+  const tc = useThemeColors(["on-primary", "success", "accent", "error", "ink", "mute"]);
   // safeBack: при deeplink/refresh уходим на /orders, а не в пустоту.
   const goBack = useSafeBack("/(tabs)/orders" as const);
   const goBackToIntent = useSafeBack({
@@ -171,6 +196,8 @@ export function NewOrderScreen({ screenPhase = "intent" }: NewOrderScreenProps) 
       l2Id: draft.l2Id ?? "",
       title: draft.title ?? "",
       contactName: draft.contactName ?? "",
+      contactPhone: draft.contactPhone ?? "",
+      whatsappPhone: draft.whatsappPhone ?? "",
       description: draft.description ?? "",
       cityId: draft.cityId ?? "",
       district: draft.district ?? "",
@@ -185,6 +212,16 @@ export function NewOrderScreen({ screenPhase = "intent" }: NewOrderScreenProps) 
     },
     mode: "onChange",
   });
+
+  // Телефон для связи подставляем из аккаунта, если он там есть, — человеку
+  // остаётся подтвердить или заменить. Один раз и только в пустое поле: то,
+  // что он уже ввёл, не затираем (DECISION владельца 2026-09-06).
+  useEffect(() => {
+    const phone = user?.contact_phone?.trim();
+    if (phone && !getValues("contactPhone")) {
+      setValue("contactPhone", phone, { shouldValidate: false });
+    }
+  }, [user?.contact_phone, getValues, setValue]);
 
   // Auth owner может смениться, пока экран уже смонтирован. Reset выполняется
   // до новой watch-подписки, чтобы значения аккаунта A не записались в snapshot B.
@@ -215,6 +252,8 @@ export function NewOrderScreen({ screenPhase = "intent" }: NewOrderScreenProps) 
             : (restored.l2Id ?? ""),
       title: resolveInitialOrderDraftText(restored.title, routeExample, 80),
       contactName: restored.contactName ?? "",
+      contactPhone: restored.contactPhone ?? "",
+      whatsappPhone: restored.whatsappPhone ?? "",
       description: resolveInitialOrderDraftText(restored.description, routeExample, 2000),
       cityId: restored.cityId ?? "",
       district: restored.district ?? "",
@@ -342,7 +381,7 @@ export function NewOrderScreen({ screenPhase = "intent" }: NewOrderScreenProps) 
     let committed = false;
     try {
       if (!categories?.some((category) => category.id === values.l2Id)) {
-        if (screenPhase === "details") goBackToIntent();
+        if (isOrderDetailsPhase(screenPhase)) goBackToIntent();
         setPublishError("Выберите актуальную категорию задания.");
         return;
       }
@@ -360,7 +399,7 @@ export function NewOrderScreen({ screenPhase = "intent" }: NewOrderScreenProps) 
       ]);
       if (!publishCategoryIsCurrent) {
         setValue("l2Id", "", { shouldValidate: true, shouldDirty: true });
-        if (screenPhase === "details") goBackToIntent();
+        if (isOrderDetailsPhase(screenPhase)) goBackToIntent();
         setPublishError("Категория изменилась. Выберите актуальную категорию задания.");
         return;
       }
@@ -403,6 +442,8 @@ export function NewOrderScreen({ screenPhase = "intent" }: NewOrderScreenProps) 
         l2Id: values.l2Id,
         title: values.title,
         contactName: values.contactName,
+        contactPhone: values.contactPhone,
+        whatsappPhone: values.whatsappPhone,
         description: values.description,
         cityId: values.cityId,
         district: values.district,
@@ -472,7 +513,8 @@ export function NewOrderScreen({ screenPhase = "intent" }: NewOrderScreenProps) 
   const handlePublish = () => void onSubmit();
 
   const isBusy = publishing || createOrder.isPending || uploadingPhotos;
-  const showDetails = screenPhase === "details" && !!selectedCategory;
+  const inDetails = isOrderDetailsPhase(screenPhase);
+  const showDetails = inDetails && !!selectedCategory;
   const published = isOrderPublishSuccessVisible(publishedForUserId, userId);
   const activeLimitTerminal =
     !published && !!userId && !!publishCapacity.data && !publishCapacity.data.canPublish;
@@ -484,6 +526,37 @@ export function NewOrderScreen({ screenPhase = "intent" }: NewOrderScreenProps) 
     (createOrder.error instanceof ActiveOrderLimitError
       ? `У вас уже ${createOrder.error.limit} активных задания. Закройте одно, чтобы создать новое.`
       : createOrder.error?.message);
+
+  // ==========================================================================
+  // Пошаговый flow (DECISION владельца 2026-09-06: «создание задания — с нуля,
+  // по образцу TaskRabbit и iOS»).
+  //
+  // Что взято у TaskRabbit: один вопрос на экран и строгий порядок —
+  // что → подробности → где → когда → бюджет → проверка. У Apple («Entering
+  // data»): выбор вместо ввода, где можно; разумные значения по умолчанию;
+  // кнопка «Далее» включается только когда шаг заполнен; проверка сразу.
+  //
+  // Каждый шаг — настоящий маршрут Stack, поэтому «назад» и свайп от края
+  // делают один POP, а черновик живёт в store и переживает выход.
+  // ==========================================================================
+  const stepIndex = inDetails ? STEP_ORDER.indexOf(screenPhase as (typeof STEP_ORDER)[number]) : -1;
+  const values = watch();
+  const stepValid: Record<(typeof STEP_ORDER)[number], boolean> = {
+    details: true,
+    where: !!values.cityId || !!values.district,
+    when: values.urgency !== null && (values.urgency !== "by_date" || !!values.preferredDate),
+    budget:
+      values.budgetKind !== null &&
+      (values.budgetKind === "negotiable" || (values.budgetValue ?? 0) > 0),
+    review: isValid && !!cities && !!selectedCategory,
+  };
+  const goNext = () => {
+    const next = stepIndex >= 0 ? STEP_ORDER[stepIndex + 1] : undefined;
+    if (!next) return;
+    hapticSelection();
+    router.push(STEP_ROUTE[next] as never);
+  };
+  const goToStep = (phase: (typeof STEP_ORDER)[number]) => router.push(STEP_ROUTE[phase] as never);
 
   if (!draftUiReady) {
     return (
@@ -514,9 +587,6 @@ export function NewOrderScreen({ screenPhase = "intent" }: NewOrderScreenProps) 
     );
   }
 
-  // ============================================================================
-  // Success screen после публикации.
-  // ============================================================================
   if (published) {
     return (
       <View
@@ -524,49 +594,42 @@ export function NewOrderScreen({ screenPhase = "intent" }: NewOrderScreenProps) 
         style={{ paddingTop: insets.top, paddingBottom: insets.bottom }}
       >
         <View className="items-center">
-          <View className="h-16 w-16 items-center justify-center rounded-full bg-success-soft">
-            <CheckCircle size={36} weight="bold" color={tc.success} />
+          <View className="h-20 w-20 items-center justify-center rounded-full bg-success-soft">
+            <CheckCircle size={40} weight="fill" color={tc.success} />
           </View>
-          <AppText weight="bold" className="mt-6 text-center text-display-sm text-ink">
+          <AppText weight="bold" className="mt-6 text-center text-display-md text-ink">
             Задание опубликовано
           </AppText>
-          <AppText className="mt-3 text-center text-body-md text-muted">
-            Отклики появятся в разделе «Мои задания».
+          <AppText className="mt-3 text-center text-body-md text-body">
+            Исполнители увидят его в ленте. Отклики появятся в «Моих заданиях» — мы сообщим.
           </AppText>
         </View>
 
         <View className="mt-10 w-full gap-3">
           {createdOrderId ? (
-            <Pressable
-              accessibilityRole="button"
+            <Button
+              variant="accent"
+              size="lg"
+              fullWidth
               onPress={() => router.replace(`/orders/${createdOrderId}` as never)}
-              className="min-h-14 items-center justify-center rounded-full bg-primary active:opacity-80"
             >
-              <AppText weight="semibold" className="text-button-lg text-on-primary">
-                Открыть задание
-              </AppText>
-            </Pressable>
+              Открыть задание
+            </Button>
           ) : null}
-          <Pressable
-            accessibilityRole="button"
+          <Button
+            variant={createdOrderId ? "secondary" : "accent"}
+            size="lg"
+            fullWidth
             onPress={() => router.replace("/(tabs)/orders" as never)}
-            className={`h-14 items-center justify-center rounded-full ${
-              createdOrderId ? "border border-hairline bg-canvas" : "bg-primary"
-            }`}
           >
-            <AppText
-              weight="semibold"
-              className={`text-button-lg ${createdOrderId ? "text-ink" : "text-on-primary"}`}
-            >
-              К моим заданиям
-            </AppText>
-          </Pressable>
+            К моим заданиям
+          </Button>
         </View>
       </View>
     );
   }
 
-  if (screenPhase === "details" && categoriesQuery.isError) {
+  if (inDetails && categoriesQuery.isError) {
     return (
       <View className="flex-1 bg-canvas" style={{ paddingTop: insets.top }}>
         <ScreenHeader title="Создать задание" onBack={goBackToIntent} />
@@ -580,22 +643,20 @@ export function NewOrderScreen({ screenPhase = "intent" }: NewOrderScreenProps) 
           <AppText className="mt-2 text-center text-body-sm text-mute">
             Черновик сохранён. Повторите проверку или вернитесь к названию задания.
           </AppText>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Повторить проверку категории"
+          <Button
+            variant="secondary"
+            size="lg"
             onPress={() => void categoriesQuery.refetch()}
-            className="mt-6 min-h-12 min-w-48 items-center justify-center rounded-md border border-hairline bg-canvas px-5 active:bg-canvas-soft"
+            className="mt-6"
           >
-            <AppText weight="semibold" className="text-body-md text-ink">
-              Повторить
-            </AppText>
-          </Pressable>
+            Повторить
+          </Button>
         </View>
       </View>
     );
   }
 
-  if (screenPhase === "details" && !selectedCategory) {
+  if (inDetails && !selectedCategory) {
     return (
       <View className="flex-1 bg-canvas" style={{ paddingTop: insets.top }}>
         <ScreenHeader title="Создать задание" onBack={goBackToIntent} backDisabled={isBusy} />
@@ -608,29 +669,23 @@ export function NewOrderScreen({ screenPhase = "intent" }: NewOrderScreenProps) 
     );
   }
 
-  // ============================================================================
-  // Adaptive create flow.
-  // ============================================================================
-
-  const canSubmit = isValid && !!cities && !!selectedCategory;
-
-  return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
-      className="flex-1 bg-canvas"
-      style={{ paddingTop: insets.top }}
-    >
-      {/* Стандартный <ScreenHeader title="Новое задание" /> — единый header
-          для всех full-screen экранов (см. DESIGN.md §UI patterns 1).
-          Раньше был ad-hoc header (h-9 back-кнопка + дублирующий mono-eyebrow
-          в hero) — фидбек user 2026-05-16 «у нас есть стандарт, применить». */}
-      <ScreenHeader
-        title="Создать задание"
-        onBack={showDetails ? goBackToIntent : goBack}
-        backDisabled={isBusy}
-      />
-
-      {!showDetails ? (
+  // --------------------------------------------------------------------------
+  // Шаг 1 — «Что нужно сделать?» (свой экран с поиском и подсказками).
+  // --------------------------------------------------------------------------
+  if (!showDetails) {
+    return (
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        className="flex-1 bg-canvas"
+        style={{ paddingTop: insets.top }}
+      >
+        <StepHeader
+          onBack={goBack}
+          backDisabled={isBusy}
+          step={1}
+          total={STEP_ORDER.length + 1}
+          inkColor={tc.ink}
+        />
         <ScrollView
           className="flex-1"
           contentContainerStyle={{ paddingBottom: insets.bottom + 28 }}
@@ -645,163 +700,336 @@ export function NewOrderScreen({ screenPhase = "intent" }: NewOrderScreenProps) 
               setPublishError(null);
               setValue("title", title, { shouldValidate: true, shouldDirty: true });
               setValue("l2Id", l2Id, { shouldValidate: true, shouldDirty: true });
+              hapticSelection();
               router.push("/orders/new/details" as never);
             }}
           />
         </ScrollView>
-      ) : (
-        <>
-          <ScrollView
-            ref={scrollRef}
-            onScroll={onFormScroll}
-            scrollEventThrottle={16}
-            className="flex-1"
-            contentContainerStyle={{ paddingBottom: 28 }}
-            keyboardShouldPersistTaps="handled"
-            showsVerticalScrollIndicator={false}
-          >
-            <View className="px-6 pt-3 pb-7">
-              <View className="rounded-lg border border-hairline bg-canvas-soft px-4 py-4">
-                <View className="flex-row items-start gap-3">
-                  <View className="min-w-0 flex-1">
-                    <AppText weight="semibold" className="text-body-md text-ink">
-                      {selectedTitle}
-                    </AppText>
-                    <AppText className="mt-1 text-caption text-mute">
-                      {selectedCategory?.name_ru ?? "Категория выбрана"}
-                    </AppText>
-                  </View>
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel="Изменить название или категорию"
-                    onPress={goBackToIntent}
-                    className="h-11 w-11 items-center justify-center rounded-full active:bg-canvas-soft-2"
-                  >
-                    <PencilSimple size={20} weight="bold" color={tc.accent} />
-                  </Pressable>
-                </View>
-              </View>
-            </View>
+      </KeyboardAvoidingView>
+    );
+  }
 
-            {userId && publishCapacity.isError ? (
-              <View
-                accessibilityLiveRegion="polite"
-                className="mx-6 mb-6 rounded-lg border border-warning bg-warning-soft px-4 py-4"
-              >
-                <AppText weight="semibold" className="text-body-sm text-ink">
-                  Не удалось проверить лимит заданий
-                </AppText>
-                <AppText className="mt-1 text-caption text-body">
-                  Черновик можно заполнить. Перед публикацией проверим ещё раз.
-                </AppText>
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel="Повторить проверку лимита заданий"
-                  onPress={() => void publishCapacity.refetch()}
-                  className="mt-2 min-h-11 self-start justify-center"
-                >
-                  <AppText weight="semibold" className="text-body-sm text-ink underline">
-                    Повторить
-                  </AppText>
-                </Pressable>
-              </View>
-            ) : null}
+  // --------------------------------------------------------------------------
+  // Шаги 2–6 — один вопрос на экран.
+  // --------------------------------------------------------------------------
+  const phase = screenPhase as (typeof STEP_ORDER)[number];
+  const question: Record<(typeof STEP_ORDER)[number], { title: string; hint: string }> = {
+    details: {
+      title: "Расскажите подробнее",
+      hint: "Объём, особенности, что уже есть. Фото помогут оценить работу точнее.",
+    },
+    where: { title: "Где это?", hint: "Город или район — исполнители ищут задания рядом." },
+    when: { title: "Когда нужно?", hint: "Срок помогает исполнителям понять, успеют ли они." },
+    budget: {
+      title: "Какой бюджет?",
+      hint: "Можно указать сумму или оставить договорную — откликнутся с ценой.",
+    },
+    review: {
+      title: "Проверьте задание",
+      hint: "Так его увидят исполнители. Всё можно поправить.",
+    },
+  };
+  const isLast = phase === "review";
+  const canProceed = isLast ? stepValid.review && !!categories : stepValid[phase];
+  const ctaLabel = isLast
+    ? uploadingPhotos
+      ? "Загружаем фото…"
+      : createOrder.isPending
+        ? "Публикуем…"
+        : publishing
+          ? "Проверяем…"
+          : "Опубликовать бесплатно"
+    : "Далее";
 
-            <OrderFormBody
-              control={control}
-              errors={errors}
-              budgetKind={budgetKind}
-              preferredDate={watch("preferredDate")}
-              setPreferredDate={(d) => setValue("preferredDate", d, { shouldValidate: true })}
-              isBusy={isBusy}
-              categories={categories}
-              cities={cities}
-              hideTitleField
-              hideCategoryField
-              detailsPlaceholder={taskDetailsPrompt(selectedL2Id)}
-              photosSlot={
-                <>
-                  {photos.length === 0 && photoSlots.length > 0 ? (
-                    <View
-                      accessibilityLiveRegion="polite"
-                      className="mx-6 mt-6 rounded-lg border border-warning bg-warning-soft px-4 py-4"
-                    >
-                      <AppText weight="semibold" className="text-body-sm text-ink">
-                        Фото нужно добавить снова
-                      </AppText>
-                      <AppText className="mt-1 text-caption text-body">
-                        После перезапуска приложения локальные фото не хранятся. Поля задания
-                        сохранены.
-                      </AppText>
-                      <Pressable
-                        accessibilityRole="button"
-                        onPress={discardPhotoSlots}
-                        className="mt-2 min-h-11 self-start justify-center"
-                      >
-                        <AppText weight="semibold" className="text-body-sm text-ink underline">
-                          Продолжить без фото
-                        </AppText>
-                      </Pressable>
-                    </View>
-                  ) : null}
-                  <OrderPhotosPicker photos={photos} onChange={setPhotos} disabled={isBusy} />
-                </>
-              }
-            />
+  return (
+    <KeyboardAvoidingView
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
+      className="flex-1 bg-canvas"
+      style={{ paddingTop: insets.top }}
+    >
+      <StepHeader
+        onBack={phase === "details" ? goBackToIntent : () => router.back()}
+        backDisabled={isBusy}
+        step={stepIndex + 2}
+        total={STEP_ORDER.length + 1}
+        inkColor={tc.ink}
+      />
 
-            {submitError && (
-              <View className="mt-6 px-6">
-                <AppText
-                  accessibilityRole="alert"
-                  accessibilityLiveRegion="polite"
-                  weight="medium"
-                  className="text-caption text-error"
-                >
-                  Не удалось опубликовать задание. {submitError}
-                </AppText>
-              </View>
-            )}
-          </ScrollView>
+      <ScrollView
+        ref={phase === "details" ? scrollRef : undefined}
+        onScroll={phase === "details" ? onFormScroll : undefined}
+        scrollEventThrottle={16}
+        className="flex-1"
+        contentContainerStyle={{ paddingBottom: 28 }}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
+        <View className="px-6 pt-2 pb-5">
+          <AppText weight="bold" className="text-display-md text-ink">
+            {question[phase].title}
+          </AppText>
+          <AppText className="mt-2 text-body-md text-body">{question[phase].hint}</AppText>
+        </View>
 
-          {/* Sticky bottom CTA bar (Airbnb / depop / google-maps паттерн): главная
-          кнопка всегда на виду в нижней панели с hairline-разделителем сверху,
-          а не теряется в конце прокрутки. Один conversion target. */}
+        {userId && publishCapacity.isError ? (
           <View
-            className="border-t border-hairline bg-canvas px-6 pt-3"
-            style={{ paddingBottom: insets.bottom + 12 }}
+            accessibilityLiveRegion="polite"
+            className="mx-6 mb-6 rounded-lg border border-warning bg-warning-soft px-4 py-4"
           >
+            <AppText weight="semibold" className="text-body-sm text-ink">
+              Не удалось проверить лимит заданий
+            </AppText>
+            <AppText className="mt-1 text-caption text-body">
+              Черновик можно заполнить. Перед публикацией проверим ещё раз.
+            </AppText>
             <Pressable
               accessibilityRole="button"
-              // Гостю кнопка тоже доступна — на нажатие открывается auth sheet.
-              // Disabled остаётся только когда форма невалидна или категории ещё грузятся.
-              disabled={!canSubmit || isBusy || !categories}
-              accessibilityState={{ disabled: !canSubmit || isBusy || !categories }}
-              onPress={handlePublish}
-              className={`h-14 items-center justify-center rounded-full ${
-                canSubmit && !isBusy && categories
-                  ? "bg-primary active:opacity-80"
-                  : "bg-canvas-soft-2"
-              }`}
+              accessibilityLabel="Повторить проверку лимита заданий"
+              onPress={() => void publishCapacity.refetch()}
+              className="mt-2 min-h-11 self-start justify-center"
             >
-              <AppText
-                weight="semibold"
-                className={`text-button-lg ${
-                  canSubmit && !isBusy && categories ? "text-on-primary" : "text-mute"
-                }`}
-              >
-                {uploadingPhotos
-                  ? "Загружаем фото…"
-                  : createOrder.isPending
-                    ? "Публикуем…"
-                    : publishing
-                      ? "Проверяем…"
-                      : "Опубликовать бесплатно"}
+              <AppText weight="semibold" className="text-body-sm text-ink underline">
+                Повторить
               </AppText>
             </Pressable>
           </View>
-        </>
-      )}
+        ) : null}
+
+        {isLast ? (
+          <ReviewSummary
+            title={selectedTitle}
+            categoryName={selectedCategory?.name_ru ?? ""}
+            description={values.description}
+            photosCount={photos.length}
+            locationLabel={
+              [
+                values.cityId === "all"
+                  ? "Вся Ингушетия"
+                  : cities?.find((c) => c.id === values.cityId)?.name,
+                values.district,
+              ]
+                .filter(Boolean)
+                .join(" · ") || "Не указано"
+            }
+            timingLabel={
+              values.urgency
+                ? formatOrderTiming(values.urgency, values.preferredDate)
+                : "Не указано"
+            }
+            budgetLabel={
+              values.budgetKind
+                ? formatPrice(values.budgetKind, values.budgetValue ?? null)
+                : "Не указано"
+            }
+            onEditIntent={goBackToIntent}
+            onEdit={goToStep}
+            inkColor={tc.ink}
+            muteColor={tc.mute}
+          />
+        ) : null}
+
+        <OrderFormBody
+          control={control}
+          errors={errors}
+          budgetKind={budgetKind}
+          preferredDate={watch("preferredDate")}
+          setPreferredDate={(d) => setValue("preferredDate", d, { shouldValidate: true })}
+          isBusy={isBusy}
+          categories={categories}
+          cities={cities}
+          hideTitleField
+          hideCategoryField
+          detailsPlaceholder={taskDetailsPrompt(selectedL2Id)}
+          sections={
+            phase === "details"
+              ? ["description", "photos"]
+              : phase === "where"
+                ? ["location"]
+                : phase === "when"
+                  ? ["timing"]
+                  : phase === "budget"
+                    ? ["budget"]
+                    : ["contacts"]
+          }
+          photosSlot={
+            phase === "details" ? (
+              <>
+                {photos.length === 0 && photoSlots.length > 0 ? (
+                  <View
+                    accessibilityLiveRegion="polite"
+                    className="mx-6 mt-6 rounded-lg border border-warning bg-warning-soft px-4 py-4"
+                  >
+                    <AppText weight="semibold" className="text-body-sm text-ink">
+                      Фото нужно добавить снова
+                    </AppText>
+                    <AppText className="mt-1 text-caption text-body">
+                      После перезапуска приложения локальные фото не хранятся. Поля задания
+                      сохранены.
+                    </AppText>
+                    <Pressable
+                      accessibilityRole="button"
+                      onPress={discardPhotoSlots}
+                      className="mt-2 min-h-11 self-start justify-center"
+                    >
+                      <AppText weight="semibold" className="text-body-sm text-ink underline">
+                        Продолжить без фото
+                      </AppText>
+                    </Pressable>
+                  </View>
+                ) : null}
+                <OrderPhotosPicker photos={photos} onChange={setPhotos} disabled={isBusy} />
+              </>
+            ) : undefined
+          }
+        />
+
+        {isLast && submitError ? (
+          <View className="mt-6 px-6">
+            <AppText
+              accessibilityRole="alert"
+              accessibilityLiveRegion="polite"
+              weight="medium"
+              className="text-body-sm text-error"
+            >
+              Не удалось опубликовать задание. {submitError}
+            </AppText>
+          </View>
+        ) : null}
+      </ScrollView>
+
+      {/* Главная кнопка шага — всегда внизу, в зоне большого пальца. Включается
+          только когда шаг заполнен (Apple, «Entering data»). */}
+      <View
+        className="border-t border-hairline bg-canvas px-6 pt-3"
+        style={{ paddingBottom: insets.bottom + 12 }}
+      >
+        <Button
+          variant="accent"
+          size="lg"
+          fullWidth
+          disabled={!canProceed || isBusy}
+          loading={isLast && isBusy}
+          onPress={isLast ? handlePublish : goNext}
+          accessibilityLabel={ctaLabel}
+        >
+          {ctaLabel}
+        </Button>
+      </View>
     </KeyboardAvoidingView>
+  );
+}
+
+/** Шапка шага: «назад» и полоса прогресса. Заголовок-вопрос живёт в
+ *  содержимом — крупно, как у iOS. */
+function StepHeader({
+  onBack,
+  backDisabled,
+  step,
+  total,
+  inkColor,
+}: {
+  onBack: () => void;
+  backDisabled: boolean;
+  step: number;
+  total: number;
+  inkColor: string;
+}) {
+  return (
+    <View className="pb-2">
+      <View className="flex-row items-center px-2" style={{ height: 44 }}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Назад"
+          accessibilityState={{ disabled: backDisabled }}
+          disabled={backDisabled}
+          onPress={onBack}
+          hitSlop={6}
+          className={`h-11 w-11 items-center justify-center rounded-full active:opacity-50 ${
+            backDisabled ? "opacity-40" : ""
+          }`}
+        >
+          <CaretLeft size={22} weight="bold" color={inkColor} />
+        </Pressable>
+        <View className="min-w-0 flex-1 items-center">
+          <AppText weight="semibold" className="text-ios-title text-ink">
+            Новое задание
+          </AppText>
+        </View>
+        <View className="w-11" />
+      </View>
+      <OnboardingProgress step={step} total={total} />
+    </View>
+  );
+}
+
+/** Сводка на последнем шаге: каждая строка ведёт на свой шаг. */
+function ReviewSummary({
+  title,
+  categoryName,
+  description,
+  photosCount,
+  locationLabel,
+  timingLabel,
+  budgetLabel,
+  onEditIntent,
+  onEdit,
+  inkColor,
+  muteColor,
+}: {
+  title: string;
+  categoryName: string;
+  description: string;
+  photosCount: number;
+  locationLabel: string;
+  timingLabel: string;
+  budgetLabel: string;
+  onEditIntent: () => void;
+  onEdit: (phase: "details" | "where" | "when" | "budget") => void;
+  inkColor: string;
+  muteColor: string;
+}) {
+  const rows: Array<{ key: string; label: string; value: string; onPress: () => void }> = [
+    { key: "intent", label: categoryName, value: title, onPress: onEditIntent },
+    {
+      key: "details",
+      label: "Подробности",
+      value:
+        [description.trim() || null, photosCount > 0 ? `${photosCount} фото` : null]
+          .filter(Boolean)
+          .join(" · ") || "Без описания",
+      onPress: () => onEdit("details"),
+    },
+    { key: "where", label: "Где", value: locationLabel, onPress: () => onEdit("where") },
+    { key: "when", label: "Когда", value: timingLabel, onPress: () => onEdit("when") },
+    { key: "budget", label: "Бюджет", value: budgetLabel, onPress: () => onEdit("budget") },
+  ];
+  return (
+    <View className="mx-6 mb-8 overflow-hidden rounded-2xl border border-hairline bg-surface-card">
+      {rows.map((row, index) => (
+        <Pressable
+          key={row.key}
+          accessibilityRole="button"
+          accessibilityLabel={`${row.label}: ${row.value}. Изменить`}
+          onPress={row.onPress}
+          className={`flex-row items-center gap-3 px-4 py-3.5 active:bg-canvas-soft ${
+            index > 0 ? "border-t border-hairline" : ""
+          }`}
+        >
+          <View className="min-w-0 flex-1">
+            <AppText className="text-body-sm text-mute">{row.label}</AppText>
+            <AppText
+              weight={row.key === "intent" ? "bold" : "medium"}
+              className={`mt-0.5 ${row.key === "intent" ? "text-title-lg" : "text-body-md"} text-ink`}
+              numberOfLines={2}
+            >
+              {row.value}
+            </AppText>
+          </View>
+          <CaretRight size={18} weight="bold" color={muteColor} />
+        </Pressable>
+      ))}
+      <View className="hidden" style={{ borderColor: inkColor }} />
+    </View>
   );
 }
 

@@ -86,7 +86,21 @@ interface OrderFormBodyProps {
    * Если не задан — рендерим все секции (для edit-экрана).
    */
   step?: 1 | 2 | 3;
+  /**
+   * Пошаговый режим создания (2026-09-06): какие блоки рисовать на этом шаге.
+   * Если не задан — полная форма (экран редактирования).
+   */
+  sections?: readonly OrderFormSection[];
 }
+
+export type OrderFormSection =
+  | "description"
+  | "photos"
+  | "category"
+  | "location"
+  | "timing"
+  | "budget"
+  | "contacts";
 
 export function OrderFormBody({
   control,
@@ -101,6 +115,7 @@ export function OrderFormBody({
   hideCategoryField = false,
   detailsPlaceholder = "Что важно знать исполнителю — объём, особенности и что уже есть…",
   step,
+  sections,
   photosSlot,
 }: OrderFormBodyProps) {
   const router = useRouter();
@@ -125,10 +140,17 @@ export function OrderFormBody({
     setDateResult(null);
   }, [dateResult, urgencyField, setPreferredDate, setDateResult]);
 
-  // Wizard 2 шага: step 1 = описание + категория на одном экране, step 2 = бюджет/город.
-  const showContent = step === undefined || step === 1;
-  const showCategory = step === undefined || step === 1;
-  const showBudgetCity = step === undefined || step === 2;
+  // Пошаговый режим: набор секций задаёт экран шага. Без него — старая
+  // логика (полная форма или двухшаговый wizard).
+  const has = (section: OrderFormSection) => !sections || sections.includes(section);
+  const showContent = sections ? has("description") : step === undefined || step === 1;
+  const showPhotos = sections ? has("photos") : showContent;
+  const showCategory = sections ? has("category") : step === undefined || step === 1;
+  const showLocation = sections ? has("location") : step === undefined || step === 2;
+  const showTiming = sections ? has("timing") : step === undefined || step === 2;
+  const showBudget = sections ? has("budget") : step === undefined || step === 2;
+  const showContacts = sections ? has("contacts") : step === undefined || step === 2;
+  const stepMode = !!sections;
   return (
     <>
       {/* Title + Description — Шаг 1 (новый: сначала «что нужно сделать») */}
@@ -147,7 +169,7 @@ export function OrderFormBody({
       )}
 
       {showContent && (
-        <View className="mt-6 px-6">
+        <View className={stepMode ? "px-6" : "mt-6 px-6"}>
           <Controller
             control={control}
             name="description"
@@ -191,12 +213,12 @@ export function OrderFormBody({
 
       {/* Фото заказа — после описания (визуальное продолжение «что нужно»).
           Слот передаётся только из new.tsx (см. photosSlot). */}
-      {showContent && photosSlot ? photosSlot : null}
+      {showPhotos && photosSlot ? photosSlot : null}
 
       {/* Группа-разделитель: «о задаче» ↑ | «категория и место» ↓.
           Full-bleed hairline (Airbnb/depop section grouping). Только в полной
           форме (new/edit), в wizard-режиме секции и так на разных шагах. */}
-      {step === undefined ? <View className="mt-8 h-px bg-hairline" /> : null}
+      {step === undefined && !stepMode ? <View className="mt-8 h-px bg-hairline" /> : null}
 
       {/* Категория — Шаг 1 (CategoryPicker — compact selector + bottom-sheet
           с typeahead). 2-col grid плиток выглядел перегружено для 32 категорий.
@@ -229,11 +251,13 @@ export function OrderFormBody({
       {/* Локация — единый иерархический picker (город + район + село)
           в bottom-sheet. Заменил две плоские chip-row секции (Город / Район).
           Подход взят из Ingush-Business `LocationSheet`. */}
-      {showBudgetCity && (
+      {showLocation && (
         <View className={showContent ? "mt-6 px-6" : "px-6"}>
-          <AppText weight="semibold" className="text-body-sm text-ink">
-            Где находится задача
-          </AppText>
+          {stepMode ? null : (
+            <AppText weight="semibold" className="text-body-sm text-ink">
+              Где находится задача
+            </AppText>
+          )}
           <Controller
             control={control}
             name="cityId"
@@ -261,17 +285,19 @@ export function OrderFormBody({
       )}
 
       {/* Группа-разделитель: «категория и место» ↑ | «сроки и бюджет» ↓. */}
-      {step === undefined ? <View className="mt-8 h-px bg-hairline" /> : null}
+      {step === undefined && !stepMode ? <View className="mt-8 h-px bg-hairline" /> : null}
 
       {/* Сроки — Шаг 2. Короткий заголовок «Сроки» по фидбэку user 2026-05-14
           (длинное «Готовность мастера взяться за работу» избыточно: chips
           «Срочно / На неделе / В этом месяце / Не срочно» сами достаточно
           самообъясняющие). */}
-      {showBudgetCity && (
-        <View className="mt-6 px-6">
-          <AppText weight="semibold" className="text-body-sm text-ink">
-            Сроки
-          </AppText>
+      {showTiming && (
+        <View className={stepMode ? "px-6" : "mt-6 px-6"}>
+          {stepMode ? null : (
+            <AppText weight="semibold" className="text-body-sm text-ink">
+              Сроки
+            </AppText>
+          )}
           <Controller
             control={control}
             name="urgency"
@@ -363,11 +389,13 @@ export function OrderFormBody({
       {/* Бюджет — 4 chip-варианта + одно числовое поле. Раньше был «Диапазон»
           с двумя полями (от/до) — выпилили по фидбэку user 2026-05-15
           «убрать диапазоны из всех заказов». См. order-schema.ts. */}
-      {showBudgetCity && (
-        <View className="mt-6 px-6">
-          <AppText weight="semibold" className="text-body-sm text-ink">
-            Бюджет
-          </AppText>
+      {showBudget && (
+        <View className={stepMode ? "px-6" : "mt-6 px-6"}>
+          {stepMode ? null : (
+            <AppText weight="semibold" className="text-body-sm text-ink">
+              Бюджет
+            </AppText>
+          )}
           <Controller
             control={control}
             name="budgetKind"
@@ -420,16 +448,42 @@ export function OrderFormBody({
           из профиля; можно изменить на любое (заказ от другого имени) или стереть.
           Если пусто — на заказе покажется имя из профиля (фолбэк в orders/[id].tsx).
           Телефон НЕ собираем — модель «номер скрыт» не меняется. */}
-      {showBudgetCity && (
-        <View className="mt-6 px-6">
+      {showContacts && (
+        <View className={stepMode ? "gap-5 px-6" : "mt-6 gap-5 px-6"}>
           <TextField
             label="Отображаемое имя"
-            placeholder="Как вас называть в заказе"
+            placeholder="Как вас называть в задании"
             control={control}
             name="contactName"
             error={errors.contactName?.message}
             disabled={isBusy}
             autoCapitalize="words"
+            textContentType="name"
+          />
+          {/* Контакты по желанию (DECISION владельца 2026-09-06). Можно оставить
+              не тот номер, что в аккаунте. Если поле пустое — исполнители
+              свяжутся через отклик, как и раньше. */}
+          <TextField
+            label="Телефон для связи"
+            placeholder="+7 900 000-00-00"
+            control={control}
+            name="contactPhone"
+            error={errors.contactPhone?.message}
+            disabled={isBusy}
+            keyboardType="phone-pad"
+            textContentType="telephoneNumber"
+            hint="По желанию. Увидят только те, кто откликнется."
+          />
+          <TextField
+            label="WhatsApp"
+            placeholder="+7 900 000-00-00"
+            control={control}
+            name="whatsappPhone"
+            error={errors.whatsappPhone?.message}
+            disabled={isBusy}
+            keyboardType="phone-pad"
+            textContentType="telephoneNumber"
+            hint="По желанию, если отличается от телефона."
           />
         </View>
       )}
@@ -441,7 +495,7 @@ export function OrderFormBody({
 
 type StringFieldName = Extract<
   FieldPath<CreateOrderFormValues>,
-  "title" | "description" | "district" | "contactName"
+  "title" | "description" | "district" | "contactName" | "contactPhone" | "whatsappPhone"
 >;
 type NumberFieldName = Extract<FieldPath<CreateOrderFormValues>, "budgetValue">;
 
@@ -453,6 +507,9 @@ interface TextFieldProps {
   error: string | undefined;
   disabled?: boolean;
   autoCapitalize?: "none" | "sentences" | "words";
+  keyboardType?: "default" | "phone-pad";
+  textContentType?: "telephoneNumber" | "name" | "none";
+  hint?: string;
 }
 
 function TextField(props: TextFieldProps) {
@@ -474,16 +531,21 @@ function TextField(props: TextFieldProps) {
             placeholder={props.placeholder}
             placeholderTextColor={mutedSoftColor}
             autoCapitalize={props.autoCapitalize ?? "none"}
+            keyboardType={props.keyboardType ?? "default"}
+            textContentType={props.textContentType ?? "none"}
+            autoCorrect={props.keyboardType !== "phone-pad"}
             className={`mt-2 min-h-14 rounded-lg border bg-canvas px-4 py-4 text-field-md text-ink ${
               props.error ? "border-error" : "border-hairline"
             }`}
             editable={!props.disabled}
           />
-          {props.error && (
-            <AppText weight="medium" className="mt-2 text-caption text-error">
+          {props.error ? (
+            <AppText weight="medium" className="mt-2 text-body-sm text-error">
               {props.error}
             </AppText>
-          )}
+          ) : props.hint ? (
+            <AppText className="mt-2 text-body-sm text-mute">{props.hint}</AppText>
+          ) : null}
         </View>
       )}
     />
@@ -497,6 +559,7 @@ interface NumberFieldProps {
   name: NumberFieldName;
   error: string | undefined;
   disabled?: boolean;
+  hint?: string;
 }
 
 function NumberField(props: NumberFieldProps) {
@@ -527,11 +590,13 @@ function NumberField(props: NumberFieldProps) {
             }`}
             editable={!props.disabled}
           />
-          {props.error && (
-            <AppText weight="medium" className="mt-2 text-caption text-error">
+          {props.error ? (
+            <AppText weight="medium" className="mt-2 text-body-sm text-error">
               {props.error}
             </AppText>
-          )}
+          ) : props.hint ? (
+            <AppText className="mt-2 text-body-sm text-mute">{props.hint}</AppText>
+          ) : null}
         </View>
       )}
     />

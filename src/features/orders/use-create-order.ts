@@ -2,6 +2,7 @@
 // RLS orders_insert_own проверит auth.uid() = client_id.
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { digitsOnly, normalizePhone } from "@/features/auth/validation";
 import {
   ActiveOrderLimitError,
   getOrderPublishCapacity,
@@ -15,6 +16,12 @@ import {
 import { supabase } from "@/lib/supabase";
 import type { Database, Enums } from "@/types/database";
 
+/** Номер в хранимом виде (+7XXXXXXXXXX) или NULL, если поле пустое. */
+function toStoredPhone(raw: string | undefined): string | null {
+  const value = raw?.trim() ?? "";
+  return digitsOnly(value).length >= 10 ? normalizePhone(value) : null;
+}
+
 export type OrderUrgency = Enums<"order_urgency">;
 /** Тип цены — fixed | from | up_to | negotiable. Заменил OrderBudgetMode
  *  с устаревшим диапазоном (миграция 0068). */
@@ -27,6 +34,9 @@ export interface CreateOrderInput {
   /** Необязательное контактное имя, которое мастер увидит в заказе вместо
    *  профиля заказчика. Пусто → NULL → покажем регистрационное имя. */
   contactName?: string;
+  /** Телефон/WhatsApp для связи по заданию — по желанию. Пусто → NULL. */
+  contactPhone?: string;
+  whatsappPhone?: string;
   description: string;
   cityId: string;
   district: string;
@@ -63,6 +73,8 @@ export function useCreateOrder() {
         title: input.title,
         // Пустое имя → NULL (при просмотре заказа покажем регистрационное).
         contact_name: trimmedName.length === 0 ? null : trimmedName,
+        contact_phone: toStoredPhone(input.contactPhone),
+        whatsapp_phone: toStoredPhone(input.whatsappPhone),
         description: trimmedDesc.length === 0 ? null : trimmedDesc,
         // city_id = NULL когда:
         //   - выбрана «Вся Ингушетия» (миграция 0045 сделала city_id nullable);

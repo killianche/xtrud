@@ -4,11 +4,18 @@
 // status='open' (после принятия отклика заказ заморожен по бизнес-логике).
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { digitsOnly, normalizePhone } from "@/features/auth/validation";
 import { ALL_INGUSHETIA_CITY } from "@/features/orders/order-schema";
 import { myOrdersKey } from "@/features/orders/use-my-orders";
 import { orderDetailKey } from "@/features/orders/use-order-detail";
 import { supabase } from "@/lib/supabase";
 import type { Database } from "@/types/database";
+
+/** Номер в хранимом виде (+7XXXXXXXXXX) или NULL, если поле пустое. */
+function toStoredPhone(raw: string | undefined): string | null {
+  const value = raw?.trim() ?? "";
+  return digitsOnly(value).length >= 10 ? normalizePhone(value) : null;
+}
 
 export interface UpdateOrderInput {
   orderId: string;
@@ -18,6 +25,9 @@ export interface UpdateOrderInput {
   /** Необязательное контактное имя (мастер видит его вместо профиля заказчика).
    *  Пусто → NULL. */
   contactName?: string;
+  /** Телефон/WhatsApp для связи по заданию — по желанию. Пусто → NULL. */
+  contactPhone?: string;
+  whatsappPhone?: string;
   description: string;
   cityId: string;
   district: string;
@@ -52,6 +62,8 @@ export function useUpdateOrder() {
         l2_id: input.l2Id,
         title: input.title,
         contact_name: trimmedName.length === 0 ? null : trimmedName,
+        contact_phone: toStoredPhone(input.contactPhone),
+        whatsapp_phone: toStoredPhone(input.whatsappPhone),
         description: trimmedDesc.length === 0 ? null : trimmedDesc,
         city_id: input.cityId === ALL_INGUSHETIA_CITY || !input.cityId ? null : input.cityId,
         district: input.district || null,

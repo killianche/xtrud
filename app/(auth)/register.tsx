@@ -147,9 +147,17 @@ export default function RegisterScreen() {
         lastName: values.lastName,
       });
       await completeGuestDraftAuthJourney(draftJourney, result.userId);
-      if (useAuthReturnUrlStore.getState().peekReturnUrl()) {
+      const returnUrl = useAuthReturnUrlStore.getState().peekReturnUrl();
+      if (returnUrl) {
         if (useAuthReturnUrlStore.getState().isPerformerOnboardingRequested()) {
           // AuthGate owns performer routing after the session/user row settles.
+          return;
+        }
+        // Гость пришёл откликнуться на задание (DECISION владельца 2026-09-06):
+        // после регистрации — обратно к нему, а не на главную. Intent не
+        // consume здесь: его одноразово снимет сам экран задания.
+        if (returnUrl !== ORDER_CREATE_RETURN_TO) {
+          router.replace(returnUrl as never);
           return;
         }
       }

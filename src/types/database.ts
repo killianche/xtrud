@@ -884,6 +884,7 @@ export type Database = {
           completion_kind: string | null
           contact_mode: Database["public"]["Enums"]["order_contact_mode"]
           contact_name: string | null
+          contact_phone: string | null
           created_at: string
           created_via: Database["public"]["Enums"]["order_created_via"]
           description: string | null
@@ -910,6 +911,7 @@ export type Database = {
           title: string
           updated_at: string
           urgency: Database["public"]["Enums"]["order_urgency"]
+          whatsapp_phone: string | null
         }
         Insert: {
           awaiting_confirmation_until?: string | null
@@ -923,6 +925,7 @@ export type Database = {
           completion_kind?: string | null
           contact_mode?: Database["public"]["Enums"]["order_contact_mode"]
           contact_name?: string | null
+          contact_phone?: string | null
           created_at?: string
           created_via?: Database["public"]["Enums"]["order_created_via"]
           description?: string | null
@@ -949,6 +952,7 @@ export type Database = {
           title: string
           updated_at?: string
           urgency?: Database["public"]["Enums"]["order_urgency"]
+          whatsapp_phone?: string | null
         }
         Update: {
           awaiting_confirmation_until?: string | null
@@ -962,6 +966,7 @@ export type Database = {
           completion_kind?: string | null
           contact_mode?: Database["public"]["Enums"]["order_contact_mode"]
           contact_name?: string | null
+          contact_phone?: string | null
           created_at?: string
           created_via?: Database["public"]["Enums"]["order_created_via"]
           description?: string | null
@@ -988,6 +993,7 @@ export type Database = {
           title?: string
           updated_at?: string
           urgency?: Database["public"]["Enums"]["order_urgency"]
+          whatsapp_phone?: string | null
         }
         Relationships: [
           {

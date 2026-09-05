@@ -12,9 +12,9 @@
   },
   "stores": {
     "ios": {
-      "latestPublishedVersion": "1.0.1",
-      "latestPublishedBuildNumber": 11,
-      "latestUploadedBuildNumber": 13
+      "latestPublishedVersion": "1.0.2",
+      "latestPublishedBuildNumber": 21,
+      "latestUploadedBuildNumber": 27
     },
     "android": {
       "latestPublishedVersionCode": null

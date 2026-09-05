@@ -1,8 +1,14 @@
 import { describe, expect, it } from "vitest";
 import {
   type BundledVisibleCategory,
+  getBundledSections,
   loadVisibleTaskCatalogWithFallback,
 } from "@/features/categories/bundled-task-catalog";
+
+// Какие разделы показываются, решает база; в бандле лежат только активные
+// (см. src/lib/product-scope.ts). Категория не может ссылаться на раздел,
+// которого в бандле нет.
+const sectionIds = new Set(getBundledSections().map((section) => section.id));
 
 const category: BundledVisibleCategory = {
   id: "wallpaper",
@@ -38,12 +44,7 @@ describe("loadVisibleTaskCatalogWithFallback", () => {
     expect(result.source).toBe("bundle");
     expect(result.items.some((item) => item.id === "wallpaper")).toBe(true);
     expect(
-      result.items.every(
-        (item) =>
-          item.is_active &&
-          item.is_visible &&
-          ["construction", "home-services"].includes(item.l1_id),
-      ),
+      result.items.every((item) => item.is_active && item.is_visible && sectionIds.has(item.l1_id)),
     ).toBe(true);
   });
 });

@@ -74,11 +74,17 @@ expo-router.
      `[0.5, 1]`), `sheetGrabberVisible: true`, `sheetCornerRadius`;
    - продолжение текущего flow → обычный push.
    Full-screen `<Modal>` из RN допустим только для lightbox/фото-просмотра.
-5. **Заголовки.** Для списочных корневых экранов предпочтителен нативный header
-   с `headerLargeTitle` + `contentInsetAdjustmentBehavior="automatic"` на
-   ScrollView/FlashList. Кастомный `ScreenHeader` остаётся стандартом для detail-
-   экранов (`UI_PATTERNS.md`), но не должен подменять native header там, где
-   нужен collapse и корректный `largeTitle → title` переход.
+5. **Заголовки.** Стандарт с 2026-09-06 — `src/components/ui/LargeTitle.tsx`:
+   крупный заголовок 34/41 в содержимом, компактный 17/22 в закреплённой
+   стеклянной строке навигации при прокрутке, действия справа текстом в
+   акценте или иконкой в круге. Это воспроизводит поведение `headerLargeTitle`
+   там, где нативный header недоступен из-за кастомных панелей под ним
+   (поиск, фильтры, сегменты). `ScreenHeader` остаётся для detail-экранов с
+   кнопкой «назад» и коротким заголовком.
+5a. **Отступ от чёлки.** Каждый маршрут в `app/` учитывает `insets.top` сам или
+   через компонент, который это делает (`LargeTitle`, `PickerSheetPage`,
+   шторки). Правило закреплено тестом
+   `src/components/ui/screen-top-inset-contract.test.ts`.
 6. **Поиск.** Поисковый UI на экране, где поиск — основной режим, реализуется
    `headerSearchBarOptions` (native `UISearchController`), а не кастомным
    `TextInput` в контенте. Кастомный `SearchBar` допустим как inline-фильтр

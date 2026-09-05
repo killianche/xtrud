@@ -20,9 +20,8 @@
  *   ?l2=<id>  — какую L2 открыть сразу. Если нет — chip-row из my-categories.
  */
 
-import { Image } from "expo-image";
 import { useLocalSearchParams } from "expo-router";
-import { CaretLeft, Check, Plus, X } from "phosphor-react-native";
+import { CaretLeft, Check, ListChecks, Plus, X } from "phosphor-react-native";
 import { useMemo, useState } from "react";
 import { Pressable, ScrollView, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -38,7 +37,6 @@ import {
   type ServicePricingKind,
   useUpsertMasterService,
 } from "@/features/master-services/use-master-services";
-import { getCategoryColorIconUrl } from "@/lib/category-color-icons";
 import { useSafeBack } from "@/lib/use-safe-back";
 import { useThemeColors } from "@/lib/use-theme-color";
 
@@ -83,8 +81,6 @@ export default function ServicesSuggestScreen() {
   const [customValue, setCustomValue] = useState("");
   const [customSaving, setCustomSaving] = useState(false);
   const [customSavedTitle, setCustomSavedTitle] = useState<string | null>(null);
-
-  const colorUrl = getCategoryColorIconUrl(resolvedL2);
 
   const selectedCount = selection.size;
   const items = useMemo(() => l3s.data ?? [], [l3s.data]);
@@ -337,14 +333,7 @@ export default function ServicesSuggestScreen() {
                   >
                     {/* Иконка категории L2 (общая для всех L3 этой L2) */}
                     <View className="h-10 w-10 items-center justify-center rounded-full bg-canvas-soft">
-                      {colorUrl ? (
-                        <Image
-                          source={{ uri: colorUrl }}
-                          style={{ width: 22, height: 22 }}
-                          contentFit="contain"
-                          cachePolicy="memory-disk"
-                        />
-                      ) : null}
+                      <ListChecks size={20} weight="bold" color={tc.accent} />
                     </View>
 
                     <View className="flex-1">

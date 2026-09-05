@@ -1,9 +1,17 @@
 import taskCatalogJson from "@/generated/task-catalog.json";
 import { flipLayout, looksLikeWrongLayout } from "@/lib/keyboard-layout";
 import { isNetworkTransportError } from "@/lib/network-transport-error";
-import { filterL2ByScope } from "@/lib/product-scope";
+import { filterL2BySections } from "@/lib/product-scope";
 
 export type CategoryDataSource = "backend" | "bundle";
+
+export interface BundledSection {
+  id: string;
+  name_ru: string;
+  icon: string;
+  sort_order: number;
+  is_active: boolean;
+}
 
 export interface BundledVisibleCategory {
   id: string;
@@ -32,8 +40,10 @@ interface BundledTerm {
 }
 
 interface BundledTaskCatalog {
-  schema_version: 1;
+  schema_version: 2;
   content_sha256: string;
+  /** Разделы каталога (L1) — крупные группы на главной. */
+  sections: BundledSection[];
   categories: BundledVisibleCategory[];
   services: BundledService[];
   terms: BundledTerm[];
@@ -94,9 +104,14 @@ function containsWholeTerm(candidate: string, query: string): boolean {
   );
 }
 
+export function getBundledSections(): BundledSection[] {
+  return taskCatalog.sections.filter((section) => section.is_active);
+}
+
 export function getBundledVisibleCategories(): BundledVisibleCategory[] {
-  return filterL2ByScope(
+  return filterL2BySections(
     taskCatalog.categories.filter((category) => category.is_active && category.is_visible),
+    taskCatalog.sections,
   );
 }
 

@@ -14,7 +14,7 @@
 import { useFocusEffect, useRouter } from "expo-router";
 import { CaretDown, Check, MapPin, Tag } from "phosphor-react-native";
 import { useCallback, useMemo } from "react";
-import { Image, Pressable, ScrollView, View } from "react-native";
+import { Pressable, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
 import { Button, ScreenHeader } from "@/components/ui";
@@ -26,7 +26,6 @@ import {
   countActiveFilters,
   useOrdersSearchFiltersStore,
 } from "@/features/orders/orders-search-filters-store";
-import { getCategoryColorIconUrl } from "@/lib/category-color-icons";
 import { useTabBarVisibility } from "@/lib/tabbar-visibility";
 import { useSafeBack } from "@/lib/use-safe-back";
 import { useThemeColor } from "@/lib/use-theme-color";
@@ -239,23 +238,18 @@ interface ProfileCategoryChipProps {
 }
 
 /**
- * Chip быстрого выбора категории из профиля мастера.
- * - selected → accent-soft фон + Check-иконка слева
- * - !selected → canvas + hairline border + цветная Iconify-иконка категории
- *
- * Иконка категории намеренно цветная (twemoji/fluent-color через
- * getCategoryColorIconUrl) — это user-friendly «узнаваемые шорткаты»,
- * не нейтральный фильтр. См. docs/ICONS.md.
+ * Чип быстрого выбора категории из профиля мастера.
+ * - выбран → accent-soft фон + галочка слева
+ * - не выбран → canvas + волосяная рамка + иконка Tag (один набор иконок на
+ *   всё приложение — Phosphor; цветные CDN-иконки убраны 2026-09-06).
  */
 function ProfileCategoryChip({
-  l2Id,
   name,
   selected,
   onPress,
   selectedIconColor,
   fallbackIconColor,
 }: ProfileCategoryChipProps) {
-  const colorIconUrl = getCategoryColorIconUrl(l2Id);
   return (
     <Pressable
       accessibilityRole="checkbox"
@@ -270,8 +264,6 @@ function ProfileCategoryChip({
         <View className="h-6 w-6 items-center justify-center rounded-full bg-accent">
           <Check size={14} weight="bold" color={selectedIconColor} />
         </View>
-      ) : colorIconUrl ? (
-        <Image source={{ uri: colorIconUrl }} style={{ width: 20, height: 20 }} />
       ) : (
         <Tag size={20} weight="bold" color={fallbackIconColor} />
       )}

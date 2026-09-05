@@ -36,6 +36,7 @@ import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { X } from "phosphor-react-native";
 import { useState } from "react";
 import { Alert, KeyboardAvoidingView, Platform, Pressable, TextInput, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
 import { useAuthSession } from "@/features/auth/use-auth-session";
 import {
@@ -49,6 +50,7 @@ import { useThemeColor, useThemeColors } from "@/lib/use-theme-color";
 const REVIEW_REASONS: ReportReason[] = reasonsFor("review");
 
 export default function ReportReviewScreen() {
+  const insets = useSafeAreaInsets();
   const router = useRouter();
   const params = useLocalSearchParams<{ reviewId?: string; reviewText?: string }>();
   const reviewId = typeof params.reviewId === "string" ? params.reviewId : undefined;
@@ -92,6 +94,10 @@ export default function ReportReviewScreen() {
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : undefined}
         className="flex-1 bg-canvas"
+        // Отступ от чёлки обязателен на каждом экране (DECISION владельца
+        // 2026-09-06). Внутри системной модалки inset маленький, на полном
+        // экране — высота статус-бара; в обоих случаях заголовок не под часами.
+        style={{ paddingTop: insets.top }}
       >
         <View className="flex-row items-center gap-3 px-5 py-3">
           <AppText weight="bold" className="flex-1 text-display-sm tracking-tight text-ink">

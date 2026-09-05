@@ -7,6 +7,13 @@ export { Card, type CardPadding, type CardProps, type CardVariant } from "./Card
 export { Chip, type ChipProps, type ChipSize, type ChipVariant } from "./Chip";
 export { GlassSurface, type GlassSurfaceProps, LIQUID_GLASS } from "./GlassSurface";
 export { Input, type InputProps, type InputSize } from "./Input";
+export {
+  type LargeTitleAction,
+  LargeTitleBar,
+  LargeTitleBlock,
+  NAV_ROW_HEIGHT,
+  useLargeTitle,
+} from "./LargeTitle";
 export { type PickerOption, PickerSheet, type PickerSheetProps } from "./PickerSheet";
 export { PickerSheetPage, type PickerSheetPageProps } from "./PickerSheetPage";
 export { ScreenHeader, type ScreenHeaderRightAction } from "./ScreenHeader";

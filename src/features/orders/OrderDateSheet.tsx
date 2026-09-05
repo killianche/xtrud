@@ -163,7 +163,7 @@ export function OrderDateSheet({ value, onSelect, onClose }: OrderDateSheetProps
   const isTomorrowQuick = selectedIso === toIso(tomorrow);
 
   return (
-    <View className="flex-1 bg-canvas">
+    <View className="flex-1 bg-canvas" style={{ paddingTop: insets.top }}>
       {/* Header: title + close-X — тот же стиль, что у `PickerSheetPage`
           (bold title слева, лёгкий X справа), для единого вида formSheet-контента. */}
       <View className="flex-row items-center gap-3 px-5 py-3">

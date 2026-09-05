@@ -17,7 +17,6 @@
  * /orders/new слушает store и применяет выбор в react-hook-form.
  */
 
-import { Image } from "expo-image";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Sparkle, Tag, WarningCircle } from "phosphor-react-native";
 import { useMemo, useRef, useState } from "react";
@@ -27,7 +26,6 @@ import { AppText } from "@/components/AppText";
 import { ScreenHeader, SearchField, Skeleton } from "@/components/ui";
 import { useSearchCategories } from "@/features/categories/use-search-categories";
 import { useVisibleCategories } from "@/features/categories/use-visible-categories";
-import { getCategoryColorIconUrl } from "@/lib/category-color-icons";
 import { getCategoryIcon } from "@/lib/category-icons";
 import { highlightMatch } from "@/lib/highlight-match";
 import { useOrderDraftStore } from "@/lib/order-draft-store";
@@ -244,7 +242,6 @@ export default function CategorySelectScreen() {
             // Цветная Iconify-иконка (mapping в src/lib/category-color-icons.ts,
             // docs/ICONS.md). Если категория не в маппинге — fallback на
             // моно-Lucide из категорийных данных.
-            const colorUrl = getCategoryColorIconUrl(row.l2_id);
             const Icon = getCategoryIcon(row.icon);
             // Highlight только когда query реально ввели (browse — без подсветки).
             const segments = isSearching ? highlightMatch(row.name_ru, query) : null;
@@ -257,16 +254,7 @@ export default function CategorySelectScreen() {
                 className="flex-row items-center gap-3 px-5 py-3 active:bg-canvas-soft-2"
               >
                 <View className="h-10 w-10 items-center justify-center rounded-full bg-canvas-soft text-ink shrink-0">
-                  {colorUrl ? (
-                    <Image
-                      source={{ uri: colorUrl }}
-                      style={{ width: 24, height: 24 }}
-                      contentFit="contain"
-                      cachePolicy="memory-disk"
-                    />
-                  ) : (
-                    <Icon size={20} weight="bold" color="currentColor" />
-                  )}
+                  {<Icon size={20} weight="bold" color="currentColor" />}
                 </View>
                 <View className="flex-1">
                   <AppText className="text-body-md text-ink" numberOfLines={1}>

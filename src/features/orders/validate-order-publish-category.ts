@@ -1,10 +1,12 @@
 import { ALL_INGUSHETIA_CITY_ID, isDistrictName, isVillageName } from "@/lib/location-config";
-import { isL1InScope } from "@/lib/product-scope";
 import { supabase } from "@/lib/supabase";
 
 export interface PublishCategoryRecord {
   id: string;
   l1_id: string;
+  /** Раздел категории включён в базе (`categories_l1.is_active`). Списка
+   *  разделов в коде больше нет — см. src/lib/product-scope.ts. */
+  l1_active: boolean;
 }
 
 export type PublishCategoryLookup = (l2Id: string) => Promise<PublishCategoryRecord | null>;
@@ -18,14 +20,15 @@ export type PublishCityLookup = (cityId: string) => Promise<PublishCityRecord | 
 async function lookupCurrentPublishCategory(l2Id: string): Promise<PublishCategoryRecord | null> {
   const { data, error } = await supabase
     .from("categories_l2")
-    .select("id,l1_id")
+    .select("id,l1_id,l1:categories_l1!inner(is_active)")
     .eq("id", l2Id)
     .eq("is_visible", true)
     .eq("is_active", true)
     .maybeSingle();
 
   if (error) throw error;
-  return data;
+  if (!data) return null;
+  return { id: data.id, l1_id: data.l1_id, l1_active: data.l1.is_active };
 }
 
 async function lookupCurrentPublishCity(cityId: string): Promise<PublishCityRecord | null> {
@@ -51,7 +54,7 @@ export async function validateOrderPublishCategory(
 ): Promise<boolean> {
   if (!l2Id.trim()) return false;
   const category = await lookup(l2Id);
-  return Boolean(category && category.id === l2Id && isL1InScope(category.l1_id));
+  return Boolean(category && category.id === l2Id && category.l1_active);
 }
 
 /**

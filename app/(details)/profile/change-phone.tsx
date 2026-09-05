@@ -40,6 +40,7 @@ import {
   TextInput,
   View,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
 import { useAuthSession } from "@/features/auth/use-auth-session";
 import { digitsOnly, formatPhoneMask, normalizePhone } from "@/features/auth/validation";
@@ -47,6 +48,7 @@ import { useUpdateMyPhone, useUserPrivate } from "@/features/profile/use-user-pr
 import { useThemeColors } from "@/lib/use-theme-color";
 
 export default function ChangePhoneScreen() {
+  const insets = useSafeAreaInsets();
   const router = useRouter();
   const { session } = useAuthSession();
   const userId = session?.user?.id;
@@ -100,6 +102,10 @@ export default function ChangePhoneScreen() {
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : undefined}
         className="flex-1 bg-canvas"
+        // Отступ от чёлки обязателен на каждом экране (DECISION владельца
+        // 2026-09-06). Внутри системной модалки inset маленький, на полном
+        // экране — высота статус-бара; в обоих случаях заголовок не под часами.
+        style={{ paddingTop: insets.top }}
       >
         <View className="flex-row items-center gap-3 px-5 py-3">
           <AppText weight="bold" className="flex-1 text-display-sm tracking-tight text-ink">

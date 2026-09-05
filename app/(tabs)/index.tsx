@@ -28,10 +28,7 @@ import { Animated, FlatList, Pressable, View } from "react-native";
 import { AppText } from "@/components/AppText";
 import { Avatar, Card, Skeleton } from "@/components/ui";
 import { useAuthSession } from "@/features/auth/use-auth-session";
-import {
-  useVisibleCategories,
-  type VisibleCategory,
-} from "@/features/categories/use-visible-categories";
+import { type CategoryL1, useCategoriesL1 } from "@/features/categories/use-categories-l1";
 import { ActiveOrdersShowcase } from "@/features/home/ActiveOrdersShowcase";
 import { CinematicHero } from "@/features/home/CinematicHero";
 import {
@@ -47,7 +44,6 @@ import {
 import { useRecordMasterView } from "@/features/master-view/use-record-view";
 import { useTopMasters } from "@/features/master-view/use-top-masters";
 import { usePullToRefresh } from "@/hooks/use-pull-to-refresh";
-import { getCategoryColorIconUrl } from "@/lib/category-color-icons";
 import { getCategoryIcon } from "@/lib/category-icons";
 import { useTabBarSpace } from "@/lib/tab-bar-space";
 import { scrollViewToTop, useTabScrollResetCounter } from "@/lib/tab-scroll-reset";
@@ -76,7 +72,9 @@ export default function HomeTab() {
     <ClientHome
       userId={userId}
       refresh={refresh}
-      onCategoryPress={(id) => router.push(`/category/${id}` as never)}
+      onCategoryPress={(id) =>
+        router.push({ pathname: "/(tabs)/specialists", params: { l1: id } } as never)
+      }
       onMasterPress={(id) => router.push(`/master/${id}` as never)}
       onDescribeTask={(draft) => {
         // Передаём текст черновика в визард — orders/new подхватит его как
@@ -136,7 +134,11 @@ function ClientHome({
   onDescribeTask,
 }: ClientHomeProps) {
   const tabBarSpace = useTabBarSpace();
-  const { data: categories, isLoading, error } = useVisibleCategories();
+  // DECISION владельца 2026-09-05: на главной — крупные разделы («Ремонт и
+  // отделка», «Сантехника и электрика»…), а детальные категории внутри.
+  // Плоский список из 42 строк ушёл; тап по разделу ведёт на «Специалисты» с
+  // фильтром по этому разделу.
+  const { data: categories, isLoading, error } = useCategoriesL1();
   const width = useAppWidth();
   // Фон страницы чуть темнее карточек — см. src/lib/colors.ts, surface-page.
   const canvasBg = useThemeColor("surface-page");
@@ -150,7 +152,7 @@ function ClientHome({
   // Tap-on-active-tab → scroll to top. Тот же паттерн, что и у ScrollView-веток
   // (scrollViewToTop поддерживает FlatList/FlashList-рефы через scrollToOffset —
   // см. src/lib/tab-scroll-reset.ts).
-  const listRef = useRef<FlashListRef<VisibleCategory>>(null);
+  const listRef = useRef<FlashListRef<CategoryL1>>(null);
   const resetCounter = useTabScrollResetCounter("index");
   useEffect(() => {
     if (resetCounter > 0) {
@@ -209,7 +211,10 @@ function ClientHome({
             <TopMasters onMasterPress={onMasterPress} />
             <View className="mt-10 px-5">
               <AppText weight="bold" className="text-display-sm text-ink">
-                Категории исполнителей
+                Категории
+              </AppText>
+              <AppText className="mt-1 text-body-md text-mute">
+                Выберите раздел — внутри все специалисты по нему
               </AppText>
             </View>
             <View style={{ height: 16 }} />
@@ -580,7 +585,7 @@ function MasterMiniCard({
 // ----------------------------------------------------------------------------
 
 interface CategoryItemProps {
-  category: VisibleCategory;
+  category: CategoryL1;
   isGrid: boolean;
   isLast: boolean;
   onPress: () => void;
@@ -588,20 +593,10 @@ interface CategoryItemProps {
 
 function CategoryItem({ category, isGrid, isLast, onPress }: CategoryItemProps) {
   const Icon = getCategoryIcon(category.icon);
-  // Mapping по L2 id — гарантирует уникальную иконку каждой категории.
-  const colorUrl = getCategoryColorIconUrl(category.id);
-  // Если есть fluent-color match — рендерим цветную SVG-иконку через CDN.
-  // Иначе — Phosphor моно (fallback). NB: эмодзи запрещены (см. CLAUDE.md).
-  const iconNode = colorUrl ? (
-    <ExpoImage
-      source={{ uri: colorUrl }}
-      style={{ width: 24, height: 24 }}
-      contentFit="contain"
-      cachePolicy="memory-disk"
-    />
-  ) : (
-    <Icon size={20} weight="bold" color="currentColor" />
-  );
+  const accent = useThemeColor("accent");
+  // Один набор иконок на всё приложение — Phosphor, в фирменном цвете (как
+  // линейные одноцветные иконки категорий у Thumbtack).
+  const iconNode = <Icon size={22} weight="bold" color={accent} />;
 
   if (isGrid) {
     // Desktop grid: 2 (md) / 3 (lg) колонки, карточки с бордером. Без

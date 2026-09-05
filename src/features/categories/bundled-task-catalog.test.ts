@@ -1,9 +1,15 @@
 import { describe, expect, it } from "vitest";
 import {
+  getBundledSections,
   getBundledVisibleCategories,
   searchBundledTaskCatalog,
 } from "@/features/categories/bundled-task-catalog";
 import { flipLayout } from "@/lib/keyboard-layout";
+
+// Какие разделы показываются, решает база; в бандле лежат только активные
+// (см. src/lib/product-scope.ts). Категория не может ссылаться на раздел,
+// которого в бандле нет.
+const sectionIds = new Set(getBundledSections().map((section) => section.id));
 
 describe("bundled task catalog", () => {
   it("contains only active visible categories in current product scope", () => {
@@ -11,10 +17,7 @@ describe("bundled task catalog", () => {
     expect(categories.length).toBeGreaterThan(0);
     expect(
       categories.every(
-        (category) =>
-          category.is_active &&
-          category.is_visible &&
-          ["construction", "home-services"].includes(category.l1_id),
+        (category) => category.is_active && category.is_visible && sectionIds.has(category.l1_id),
       ),
     ).toBe(true);
   });

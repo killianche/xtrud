@@ -43,7 +43,6 @@ import type { OrderStatusValue } from "@/components/OrderStatusBadge";
 import { formatOrderTiming, formatPrice } from "@/features/orders/order-schema";
 import { responsesLabel } from "@/features/orders/plural-ru";
 import type { OrderPriceKind, OrderUrgency } from "@/features/orders/use-create-order";
-import { getCategoryColorIconUrl } from "@/lib/category-color-icons";
 import { getCategoryIcon } from "@/lib/category-icons";
 import { cdnBlur, cdnImage } from "@/lib/image-cdn";
 import { useThemeColors } from "@/lib/use-theme-color";
@@ -160,7 +159,6 @@ export function OrderRow(props: OrderRowProps) {
   };
 
   const Icon = getCategoryIcon(props.categoryIcon);
-  const colorIconUrl = getCategoryColorIconUrl(props.categoryL2Id);
   const overrideLabel = props.statusOverrideLabel?.trim() || null;
   const dimmedLabel = overrideLabel ?? (props.status ? DIMMED_STATUS[props.status] : undefined);
   const isDimmed = !!dimmedLabel;
@@ -210,16 +208,7 @@ export function OrderRow(props: OrderRowProps) {
             категории сохранён, а плитка, из-за которой карточка выглядела
             блочной, убрана. Справа — возраст задания. */}
         <View className="flex-row items-center gap-2">
-          {colorIconUrl ? (
-            <ExpoImage
-              source={{ uri: colorIconUrl }}
-              style={{ width: 20, height: 20 }}
-              contentFit="contain"
-              cachePolicy="memory-disk"
-            />
-          ) : (
-            <Icon size={18} weight="bold" color={tc.accent} />
-          )}
+          {<Icon size={18} weight="bold" color={tc.accent} />}
           <AppText
             weight="semibold"
             className="min-w-0 flex-1 text-body-sm text-body"

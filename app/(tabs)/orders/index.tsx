@@ -35,12 +35,18 @@ import {
 } from "phosphor-react-native";
 import type { RefObject } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Animated, type FlatList, Pressable, View } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import {
+  Animated,
+  type FlatList,
+  type NativeScrollEvent,
+  type NativeSyntheticEvent,
+  Pressable,
+  View,
+} from "react-native";
 import { AppText } from "@/components/AppText";
 import { OrderRow } from "@/components/OrderRow";
 import { OrderRowsSkeleton } from "@/components/OrderRowsSkeleton";
-import { Button } from "@/components/ui";
+import { Button, LargeTitleBar, LargeTitleBlock, useLargeTitle } from "@/components/ui";
 import { useAuthSession } from "@/features/auth/use-auth-session";
 import { type OrderWithRefs, useMyOrders } from "@/features/orders/use-my-orders";
 import {
@@ -63,9 +69,8 @@ type Segment = "orders" | "responses";
 const ACTIVE_STATUSES = new Set<string>(["open"]);
 
 export default function OrdersScreen() {
-  const insets = useSafeAreaInsets();
+  const large = useLargeTitle();
   const router = useRouter();
-  const tc = useThemeColors(["on-accent"]);
   const { session } = useAuthSession();
   const userId = session?.user?.id;
 
@@ -86,34 +91,37 @@ export default function OrdersScreen() {
   const resolved: Segment = tab ?? "orders";
 
   return (
-    <View className="flex-1 bg-surface-page" style={{ paddingTop: insets.top }}>
-      {/* Заголовок + единственное главное действие экрана. */}
-      <View className="flex-row items-center justify-between px-5 pt-2">
-        <AppText weight="bold" className="text-display-lg text-ink">
-          Мои задания
-        </AppText>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Создать задание"
-          onPress={() => router.push("/orders/new" as never)}
-          className="h-12 w-12 items-center justify-center rounded-full bg-accent active:opacity-85"
-        >
-          <Plus size={24} weight="bold" color={tc["on-accent"]} />
-        </Pressable>
-      </View>
-
-      <Segments
-        value={resolved}
-        onChange={setTab}
-        ordersCount={myOrders?.length ?? null}
-        responsesCount={myResponses?.length ?? null}
-      />
-
+    <View className="flex-1 bg-surface-page">
       {resolved === "responses" ? (
-        <ResponsesList userId={userId} />
+        <ResponsesList userId={userId} contentTop={large.contentTop} onScroll={large.onScroll} />
       ) : (
-        <OrdersList userId={userId} />
+        <OrdersList userId={userId} contentTop={large.contentTop} onScroll={large.onScroll} />
       )}
+
+      {/* Шапка в стиле системных приложений iOS (DECISION владельца 2026-09-06):
+          компактный заголовок и «+» в закреплённой строке, сегменты под ней. */}
+      <LargeTitleBar
+        title="Мои задания"
+        compactTitleOpacity={large.compactTitleOpacity}
+        onLayoutHeight={large.setBarHeight}
+        actions={[
+          {
+            label: "Создать задание",
+            Icon: Plus,
+            iconOnly: true,
+            active: true,
+            onPress: () => router.push("/orders/new" as never),
+          },
+        ]}
+        below={
+          <Segments
+            value={resolved}
+            onChange={setTab}
+            ordersCount={myOrders?.length ?? null}
+            responsesCount={myResponses?.length ?? null}
+          />
+        }
+      />
     </View>
   );
 }
@@ -139,7 +147,7 @@ function Segments({
     ["responses", "Как мастер", responsesCount],
   ];
   return (
-    <View className="mx-4 mt-4 flex-row rounded-xl bg-canvas-soft p-1">
+    <View className="mx-4 mt-1 mb-2 flex-row rounded-xl bg-canvas-soft p-1">
       {items.map(([key, label, count]) => {
         const active = value === key;
         const title = count != null && count > 0 ? `${label} · ${count}` : label;
@@ -172,7 +180,15 @@ function Segments({
 // плашкой на карточке, отдельная вкладка «История» только прятала бы список.
 // ============================================================================
 
-function OrdersList({ userId }: { userId: string | undefined }) {
+interface ListProps {
+  userId: string | undefined;
+  /** Отступ под закреплённую шапку (useLargeTitle().contentTop). */
+  contentTop: number;
+  /** Прокрутка — в шапку, чтобы компактный заголовок проявлялся. */
+  onScroll: (event: NativeSyntheticEvent<NativeScrollEvent>) => void;
+}
+
+function OrdersList({ userId, contentTop, onScroll }: ListProps) {
   const tabBarSpace = useTabBarSpace();
   const router = useRouter();
   const { data: orders, isLoading, error, refetch } = useMyOrders(userId);
@@ -202,7 +218,11 @@ function OrdersList({ userId }: { userId: string | undefined }) {
       ref={listRef}
       data={hasItems ? allOrders : []}
       keyExtractor={(o) => o.id}
-      contentContainerStyle={{ paddingTop: 16, paddingBottom: tabBarSpace }}
+      contentContainerStyle={{ paddingTop: contentTop, paddingBottom: tabBarSpace }}
+      onScroll={onScroll}
+      scrollEventThrottle={16}
+      renderScrollComponent={Animated.ScrollView as never}
+      ListHeaderComponent={<LargeTitleBlock title="Мои задания" />}
       showsVerticalScrollIndicator={false}
       refreshControl={refresh.control}
       renderItem={({ item: o }) => (
@@ -254,7 +274,7 @@ function OrdersList({ userId }: { userId: string | undefined }) {
 // источник — historyResponseStatusLabel.
 // ============================================================================
 
-function ResponsesList({ userId }: { userId: string | undefined }) {
+function ResponsesList({ userId, contentTop, onScroll }: ListProps) {
   const tabBarSpace = useTabBarSpace();
   const router = useRouter();
   const navigation = useNavigation();
@@ -298,7 +318,11 @@ function ResponsesList({ userId }: { userId: string | undefined }) {
         ref={listRef}
         data={hasItems ? sorted : []}
         keyExtractor={(r: MyResponseWithOrder) => r.response.id}
-        contentContainerStyle={{ paddingTop: 16, paddingBottom: tabBarSpace }}
+        contentContainerStyle={{ paddingTop: contentTop, paddingBottom: tabBarSpace }}
+        onScroll={onScroll}
+        scrollEventThrottle={16}
+        renderScrollComponent={Animated.ScrollView as never}
+        ListHeaderComponent={<LargeTitleBlock title="Мои задания" />}
         showsVerticalScrollIndicator={false}
         refreshControl={refresh.control}
         renderItem={({ item: r }) => {

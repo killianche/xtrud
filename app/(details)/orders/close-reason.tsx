@@ -26,12 +26,14 @@
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { CheckCircle, X } from "phosphor-react-native";
 import { Pressable, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
 import { useCloseReasonPickerStore } from "@/features/orders/close-reason-picker-store";
 import type { CancelReason } from "@/features/orders/use-cancel-order";
 import { useThemeColors } from "@/lib/use-theme-color";
 
 export default function CloseReasonScreen() {
+  const insets = useSafeAreaInsets();
   const router = useRouter();
   const params = useLocalSearchParams<{ orderId?: string }>();
   const orderId = typeof params.orderId === "string" ? params.orderId : undefined;
@@ -54,7 +56,7 @@ export default function CloseReasonScreen() {
           sheetGrabberVisible: true,
         }}
       />
-      <View className="bg-canvas w-full">
+      <View className="bg-canvas w-full" style={{ paddingTop: insets.top }}>
         {/* Header — тот же стиль, что у `PickerSheetPage` (bold title + close-X). */}
         <View className="flex-row items-center gap-3 px-5 py-3">
           <AppText

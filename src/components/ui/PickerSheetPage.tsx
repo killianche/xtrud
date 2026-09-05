@@ -200,7 +200,14 @@ export function PickerSheetPage({
   );
 
   return (
-    <View className={`bg-canvas w-full ${scrollable ? "flex-1" : ""}`}>
+    // paddingTop: insets.top — обязательный отступ от чёлки (DECISION владельца
+    // 2026-09-06: «на всём приложении, чтобы такого больше не было»). Внутри
+    // настоящей шторки система отдаёт свой inset, на полном экране — высоту
+    // статус-бара; в обоих случаях заголовок не заезжает под часы.
+    <View
+      className={`bg-canvas w-full ${scrollable ? "flex-1" : ""}`}
+      style={{ paddingTop: insets.top }}
+    >
       {/* Header: большой title слева + (опц) reset + лёгкий close-X справа. */}
       <View className="flex-row items-center gap-3 px-5 py-3">
         <View className="flex-1 min-w-0">

@@ -34,6 +34,7 @@ import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { X } from "phosphor-react-native";
 import { useState } from "react";
 import { KeyboardAvoidingView, Platform, Pressable, TextInput, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
 import { useDeleteMyAccount } from "@/features/auth/use-delete-account";
 import { signOut } from "@/lib/auth";
@@ -51,6 +52,7 @@ function ConsequenceRow({ text }: { text: string }) {
 }
 
 export default function DeleteAccountScreen() {
+  const insets = useSafeAreaInsets();
   const router = useRouter();
   const params = useLocalSearchParams<{ isMaster?: string }>();
   const isMaster = params.isMaster === "true";
@@ -87,6 +89,10 @@ export default function DeleteAccountScreen() {
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : undefined}
         className="flex-1 bg-canvas"
+        // Отступ от чёлки обязателен на каждом экране (DECISION владельца
+        // 2026-09-06). Внутри системной модалки inset маленький, на полном
+        // экране — высота статус-бара; в обоих случаях заголовок не под часами.
+        style={{ paddingTop: insets.top }}
       >
         <View className="flex-row items-center gap-3 px-5 py-3">
           <AppText weight="bold" className="flex-1 text-display-sm tracking-tight text-ink">

@@ -34,6 +34,11 @@ interface CategoryFilterPickerState {
   /** `value: null` — пользователь выбрал «Все услуги» (сброс L3-фильтра). */
   l3Result: { value: string | null } | null;
   setL3Result: (value: string | null) => void;
+
+  /** Выбор категории на экране «Специалисты»: раздел (L1) и/или категория
+   *  (L2). `{ l1Id: null, l2Id: null }` — «Все категории». */
+  categoryResult: { value: { l1Id: string | null; l2Id: string | null } } | null;
+  setCategoryResult: (value: { l1Id: string | null; l2Id: string | null } | null) => void;
 }
 
 export const useCategoryFilterPickerStore = create<CategoryFilterPickerState>()((set) => ({
@@ -45,4 +50,7 @@ export const useCategoryFilterPickerStore = create<CategoryFilterPickerState>()(
 
   l3Result: null,
   setL3Result: (value) => set({ l3Result: { value } }),
+
+  categoryResult: null,
+  setCategoryResult: (value) => set({ categoryResult: value === null ? null : { value } }),
 }));

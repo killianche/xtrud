@@ -1714,10 +1714,12 @@ export type Database = {
         Args: {
           p_city_id?: string | null
           p_hide_demo?: boolean
+          p_l1_id?: string | null
           p_l2_id?: string | null
           p_limit?: number
           p_offset?: number
           p_query?: string | null
+          p_sort?: string | null
         }
         Returns: {
           avatar_url: string | null

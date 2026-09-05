@@ -18,6 +18,7 @@
 import { useRouter } from "expo-router";
 import { CheckCircle, X } from "phosphor-react-native";
 import { Pressable, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
 import { ORDER_CREATE_RETURN_TO } from "@/features/auth/auth-return";
 import { useAuthReturnUrlStore } from "@/lib/auth-return-url-store";
@@ -29,6 +30,7 @@ export interface PublishAuthSheetProps {
 }
 
 export function PublishAuthSheet({ onClose }: PublishAuthSheetProps) {
+  const insets = useSafeAreaInsets();
   const router = useRouter();
   const tc = useThemeColors(["success", "mute"]);
 
@@ -47,7 +49,7 @@ export function PublishAuthSheet({ onClose }: PublishAuthSheetProps) {
   };
 
   return (
-    <View className="bg-canvas w-full">
+    <View className="bg-canvas w-full" style={{ paddingTop: insets.top }}>
       {/* Header — тот же стиль, что у `PickerSheetPage` (bold title + close-X). */}
       <View className="flex-row items-center gap-3 px-5 py-3">
         <AppText

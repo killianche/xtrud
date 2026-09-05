@@ -11,7 +11,6 @@ const ROOT = resolve(SCRIPT_DIR, "../..");
 const OUTPUT_PATH = resolve(ROOT, "src/generated/task-catalog.json");
 const EAS_CONFIG_PATH = resolve(ROOT, "eas.json");
 const PRODUCTION_LEDGER_PATH = resolve(ROOT, "release/production.json");
-const IN_SCOPE_L1_IDS = ["construction", "home-services"];
 const PAGE_SIZE = 1_000;
 
 function compareText(left, right) {
@@ -89,7 +88,25 @@ export function resolveReleaseCatalogSource(easConfig, productionLedger) {
   return { baseUrl, anonKey };
 }
 
-export function buildPublicTaskCatalog({ categories, services, terms }) {
+export function buildPublicTaskCatalog({ sections, categories, services, terms }) {
+  // Разделы (L1). Источник истины о том, что показывается, — is_active в базе;
+  // списка разделов в коде больше нет (см. src/lib/product-scope.ts).
+  const publicSections = assertUniqueBy(
+    sections
+      .map((section) => ({
+        id: requireString(section.id, "sections.id"),
+        name_ru: requireString(section.name_ru, "sections.name_ru"),
+        icon: requireString(section.icon, "sections.icon"),
+        sort_order: requireNumber(section.sort_order, "sections.sort_order"),
+        is_active: requireBoolean(section.is_active, "sections.is_active"),
+      }))
+      .filter((section) => section.is_active)
+      .sort(compareByPosition),
+    (section) => section.id,
+    "sections.id",
+  );
+  const activeSectionIds = new Set(publicSections.map((section) => section.id));
+
   const publicCategories = assertUniqueBy(
     categories
       .map((category) => ({
@@ -104,7 +121,7 @@ export function buildPublicTaskCatalog({ categories, services, terms }) {
       }))
       .filter(
         (category) =>
-          category.is_active && category.is_visible && IN_SCOPE_L1_IDS.includes(category.l1_id),
+          category.is_active && category.is_visible && activeSectionIds.has(category.l1_id),
       )
       .sort(compareByPosition),
     (category) => category.id,
@@ -158,7 +175,8 @@ export function buildPublicTaskCatalog({ categories, services, terms }) {
   );
 
   const content = {
-    schema_version: 1,
+    schema_version: 2,
+    sections: publicSections,
     categories: publicCategories,
     services: publicServices,
     terms: publicTerms,
@@ -202,7 +220,16 @@ async function fetchAll(baseUrl, table, query, anonKey) {
 }
 
 export async function readPublicTaskCatalog(baseUrl, anonKey) {
-  const l1Filter = `in.(${IN_SCOPE_L1_IDS.join(",")})`;
+  const sections = await fetchAll(
+    baseUrl,
+    "categories_l1",
+    {
+      select: "id,name_ru,icon,sort_order,is_active",
+      is_active: "eq.true",
+      order: "sort_order.asc,name_ru.asc",
+    },
+    anonKey,
+  );
   const categories = await fetchAll(
     baseUrl,
     "categories_l2",
@@ -210,7 +237,7 @@ export async function readPublicTaskCatalog(baseUrl, anonKey) {
       select: "id,l1_id,name_ru,icon,sort_order,is_active,is_visible,is_featured",
       is_active: "eq.true",
       is_visible: "eq.true",
-      l1_id: l1Filter,
+      l1_id: `in.(${sections.map((section) => section.id).join(",")})`,
       order: "sort_order.asc,name_ru.asc",
     },
     anonKey,
@@ -240,7 +267,7 @@ export async function readPublicTaskCatalog(baseUrl, anonKey) {
     anonKey,
   );
 
-  return buildPublicTaskCatalog({ categories, services, terms });
+  return buildPublicTaskCatalog({ sections, categories, services, terms });
 }
 
 async function main() {

@@ -18,14 +18,13 @@
 import { useFocusEffect } from "expo-router";
 import { Check, Sparkle } from "phosphor-react-native";
 import { useCallback, useMemo, useState } from "react";
-import { Image, Pressable, ScrollView, View } from "react-native";
+import { Pressable, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
 import { Button, ScreenHeader, SearchField } from "@/components/ui";
 import { useSearchCategories } from "@/features/categories/use-search-categories";
 import { useVisibleCategories } from "@/features/categories/use-visible-categories";
 import { useOrdersSearchFiltersStore } from "@/features/orders/orders-search-filters-store";
-import { getCategoryColorIconUrl } from "@/lib/category-color-icons";
 import { getCategoryIcon } from "@/lib/category-icons";
 import { highlightMatch } from "@/lib/highlight-match";
 import { useTabBarVisibility } from "@/lib/tabbar-visibility";
@@ -177,7 +176,6 @@ export default function FiltersCategorySelectScreen() {
           </View>
         ) : (
           rows.map((row) => {
-            const colorUrl = getCategoryColorIconUrl(row.l2_id);
             const Icon = getCategoryIcon(row.icon);
             const segments = isSearching ? highlightMatch(row.name_ru, query) : null;
             const isSelected = selected.has(row.l2_id);
@@ -191,11 +189,7 @@ export default function FiltersCategorySelectScreen() {
                 className="flex-row items-center gap-3 px-5 py-3 active:bg-canvas-soft-2"
               >
                 <View className="h-10 w-10 items-center justify-center rounded-full bg-canvas-soft shrink-0">
-                  {colorUrl ? (
-                    <Image source={{ uri: colorUrl }} style={{ width: 24, height: 24 }} />
-                  ) : (
-                    <Icon size={20} weight="bold" color={inkColor} />
-                  )}
+                  {<Icon size={20} weight="bold" color={inkColor} />}
                 </View>
                 <View className="flex-1">
                   <AppText className="text-body-md text-ink" numberOfLines={1}>

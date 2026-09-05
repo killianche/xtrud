@@ -7,6 +7,13 @@ import {
   serializePublicTaskCatalog,
 } from "./generate-public-task-catalog.mjs";
 
+// Разделы: «business» намеренно выключен — категория «legal» под ним обязана
+// выпасть из бандла, как раньше выпадала по зашитому списку.
+const sections = [
+  { id: "construction", name_ru: "Строительство", icon: "Crane", sort_order: 1, is_active: true },
+  { id: "business", name_ru: "Бизнес", icon: "Briefcase", sort_order: 2, is_active: false },
+];
+
 const categories = [
   {
     id: "wallpaper",
@@ -72,8 +79,12 @@ const terms = [
 ];
 
 test("buildPublicTaskCatalog keeps only active visible current-scope public data", () => {
-  const catalog = buildPublicTaskCatalog({ categories, services, terms });
+  const catalog = buildPublicTaskCatalog({ sections, categories, services, terms });
 
+  assert.deepEqual(
+    catalog.sections.map((item) => item.id),
+    ["construction"],
+  );
   assert.deepEqual(
     catalog.categories.map((item) => item.id),
     ["wallpaper"],
@@ -89,9 +100,12 @@ test("buildPublicTaskCatalog keeps only active visible current-scope public data
 });
 
 test("serialization is deterministic and excludes backend metadata", () => {
-  const first = serializePublicTaskCatalog(buildPublicTaskCatalog({ categories, services, terms }));
+  const first = serializePublicTaskCatalog(
+    buildPublicTaskCatalog({ sections, categories, services, terms }),
+  );
   const second = serializePublicTaskCatalog(
     buildPublicTaskCatalog({
+      sections: [...sections].reverse(),
       categories: [...categories].reverse(),
       services: [...services].reverse(),
       terms: [...terms].reverse(),
@@ -107,6 +121,7 @@ test("duplicate public identifiers fail instead of being silently discarded", ()
   assert.throws(
     () =>
       buildPublicTaskCatalog({
+        sections,
         categories: [categories[0], categories[0]],
         services,
         terms,

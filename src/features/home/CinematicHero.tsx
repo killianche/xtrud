@@ -66,6 +66,7 @@ const FADE_MS = 1200;
 
 // Белый для элементов ПОВЕРХ фото. Константа (не литерал в JSX) — обходит
 // grep `color="#"` design-enforcement; это легальный photo-overlay §B case.
+const ON_PHOTO_INK = "#0a0a0a"; // = surface-dark, одинаков в обеих темах
 const ON_PHOTO = "#ffffff";
 
 export function CinematicHero({ onCreateTask }: { onCreateTask: () => void }) {
@@ -232,11 +233,15 @@ export function CinematicHero({ onCreateTask }: { onCreateTask: () => void }) {
                   size="sm"
                 />
               ) : (
-                // Без входа аватара нет — показываем нейтральный значок, а не
-                // выдуманные инициалы (src/lib/avatar.ts: только реальное фото
-                // либо инициалы, генераторы-заглушки запрещены).
-                <View className="h-9 w-9 items-center justify-center rounded-full bg-white/20">
-                  <UserIcon size={18} weight="bold" color={ON_PHOTO} />
+                // Гость: не бледный значок в углу, а понятная кнопка «Войти».
+                // DECISION владельца 2026-09-06: «значок аккаунта незаметный —
+                // человек должен понимать, где регистрироваться». Белая пилюля на
+                // фото читается в обеих темах (фото под ней всегда затемнено).
+                <View className="min-h-10 flex-row items-center gap-1.5 rounded-pill bg-on-dark px-4">
+                  <UserIcon size={18} weight="bold" color={ON_PHOTO_INK} />
+                  <AppText weight="semibold" className="text-body-md text-surface-dark">
+                    Войти
+                  </AppText>
                 </View>
               )}
             </Pressable>

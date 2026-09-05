@@ -1,4 +1,3 @@
-import { Image as ExpoImage } from "expo-image";
 import { useRouter } from "expo-router";
 import { Tag, WarningCircle } from "phosphor-react-native";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -14,7 +13,6 @@ import {
   changedTaskIntentDraft,
   resolveTaskIntentQuery,
 } from "@/features/orders/task-intent-suggestions";
-import { getCategoryColorIconUrl } from "@/lib/category-color-icons";
 import { getCategoryIcon } from "@/lib/category-icons";
 import { useOrderDraftStore } from "@/lib/order-draft-store";
 import { useDebouncedValue } from "@/lib/use-debounced-value";
@@ -510,7 +508,6 @@ function CategoryRow({
   accentColor,
   disabled,
   iconKey,
-  l2Id,
   name,
   onPress,
 }: {
@@ -521,7 +518,6 @@ function CategoryRow({
   name: string;
   onPress: () => void;
 }) {
-  const colorUrl = getCategoryColorIconUrl(l2Id);
   const Icon = getCategoryIcon(iconKey);
   return (
     <Pressable
@@ -535,16 +531,7 @@ function CategoryRow({
       }`}
     >
       <View className="h-11 w-11 items-center justify-center rounded-xl bg-accent-soft">
-        {colorUrl ? (
-          <ExpoImage
-            source={{ uri: colorUrl }}
-            style={{ width: 24, height: 24 }}
-            contentFit="contain"
-            cachePolicy="memory-disk"
-          />
-        ) : (
-          <Icon size={22} weight="bold" color={accentColor} />
-        )}
+        {<Icon size={22} weight="bold" color={accentColor} />}
       </View>
       <AppText weight="semibold" className="min-w-0 flex-1 text-body-lg text-ink" numberOfLines={1}>
         {name}

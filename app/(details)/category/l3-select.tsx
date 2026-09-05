@@ -16,13 +16,12 @@
  * показывает loading/error/empty состояния, а не падает.
  */
 
-import { Image } from "expo-image";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { ListChecks } from "phosphor-react-native";
 import { type PickerOption, PickerSheetPage } from "@/components/ui";
 import { useCategoryFilterPickerStore } from "@/features/categories/category-filter-picker-store";
 import { useCategoryDetail } from "@/features/categories/use-category-detail";
-import { getCategoryColorIconUrl } from "@/lib/category-color-icons";
+import { getCategoryIcon } from "@/lib/category-icons";
 import { useThemeColors } from "@/lib/use-theme-color";
 
 const ALL_SERVICES_ID = "__all";
@@ -36,6 +35,7 @@ export default function L3SelectScreen() {
   const tc = useThemeColors(["ink", "mute"]);
 
   const categoryName = data?.category.name_ru ?? "Услуга";
+  const CategoryIcon = getCategoryIcon(data?.category.icon);
   const services = data?.services ?? [];
   const currentL3Id = params.l3Filter || ALL_SERVICES_ID;
 
@@ -47,21 +47,13 @@ export default function L3SelectScreen() {
       title: "Все услуги",
       icon: <ListChecks size={18} weight="bold" color={tc.ink} />,
     },
-    ...services.map<PickerOption>((s) => {
-      // Все L3-услуги одной L2 — рендерим цветную тематическую SVG-иконку
-      // родительской L2-категории (через Iconify CDN), как в старом PickerSheet
-      // (см. историю в `src/components/ui/PickerSheet.tsx`).
-      const colorUrl = getCategoryColorIconUrl(categoryId ?? null);
-      return {
-        id: s.id,
-        title: s.name_ru,
-        icon: colorUrl ? (
-          <Image source={{ uri: colorUrl }} style={{ width: 22, height: 22 }} />
-        ) : (
-          <ListChecks size={18} weight="bold" color={tc.mute} />
-        ),
-      };
-    }),
+    ...services.map<PickerOption>((s) => ({
+      id: s.id,
+      title: s.name_ru,
+      // Иконка родительской категории — один набор (Phosphor) на всё
+      // приложение, см. src/lib/category-icons.ts.
+      icon: <CategoryIcon size={18} weight="bold" color={tc.mute} />,
+    })),
   ];
 
   return (

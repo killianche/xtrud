@@ -38,6 +38,7 @@ import { blockConfirmMessage } from "@/features/blocking/blocking-copy";
 import { blockingActionFailureMessage } from "@/features/blocking/blocking-error-message";
 import { useBlockUser } from "@/features/blocking/use-user-blocks";
 import { useColorScheme } from "@/hooks/use-color-scheme";
+import { getCategoryIcon } from "@/lib/category-icons";
 import { confirmAsync } from "@/lib/confirm";
 import { hapticSuccess } from "@/lib/haptics";
 import { openExternalUrl } from "@/lib/open-link";
@@ -71,7 +72,6 @@ import { type CaseWithPreview, useMasterCases } from "@/features/profile/use-por
 import { ReportModal } from "@/features/reports/ReportModal";
 import { useMyRecentReviewForMaster } from "@/features/reviews/use-reviews";
 import { usePullToRefresh } from "@/hooks/use-pull-to-refresh";
-import { getCategoryColorIconUrl } from "@/lib/category-color-icons";
 import { cdnBlur, cdnImage } from "@/lib/image-cdn";
 import { pluralizeClosedDeals, pluralizeReviews, pluralizeYears } from "@/lib/pluralize";
 import { useSafeBack } from "@/lib/use-safe-back";
@@ -665,14 +665,12 @@ export default function MasterPublicScreen() {
                 <View className="mb-3">
                   {cats.map((c, idx) => {
                     const name = c.l2?.name_ru ?? c.l2_id;
-                    const colorUrl = getCategoryColorIconUrl(c.l2_id);
+                    const CatIcon = getCategoryIcon(c.l2?.icon);
                     return (
                       <View key={c.l2_id} className={`flex-row gap-3 ${idx > 0 ? "mt-3" : ""}`}>
-                        {colorUrl ? (
-                          <View className="h-6 w-6 items-center justify-center mt-0.5">
-                            <Image source={{ uri: colorUrl }} style={{ width: 20, height: 20 }} />
-                          </View>
-                        ) : null}
+                        <View className="mt-0.5 h-6 w-6 items-center justify-center">
+                          <CatIcon size={20} weight="bold" color={tc.accent} />
+                        </View>
                         <View className="flex-1">
                           <AppText weight="semibold" className="text-ink text-body-md">
                             {name}

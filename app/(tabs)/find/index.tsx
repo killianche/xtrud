@@ -26,11 +26,10 @@ import { useRouter } from "expo-router";
 import { SlidersHorizontal, Sparkle, Tray } from "phosphor-react-native";
 import { useEffect, useRef } from "react";
 import { ActivityIndicator, Animated, Pressable, View } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
 import { OrderRow } from "@/components/OrderRow";
 import { OrderRowsSkeleton } from "@/components/OrderRowsSkeleton";
-import { ScreenHeader } from "@/components/ui";
+import { LargeTitleBar, LargeTitleBlock, useLargeTitle } from "@/components/ui";
 import { useAuthSession } from "@/features/auth/use-auth-session";
 import {
   countActiveFilters,
@@ -44,8 +43,8 @@ import { useTabBarSpace } from "@/lib/tab-bar-space";
 import { useThemeColor } from "@/lib/use-theme-color";
 
 export default function FindScreen() {
-  const insets = useSafeAreaInsets();
   const tabBarSpace = useTabBarSpace();
+  const large = useLargeTitle();
   const router = useRouter();
   const { session } = useAuthSession();
   const userId = session?.user?.id;
@@ -124,15 +123,22 @@ export default function FindScreen() {
   }, [isLoading, error, displayedOrders.length, opacity]);
 
   return (
-    <View className="flex-1 bg-surface-page" style={{ paddingTop: insets.top }}>
-      <ScreenHeader
+    <View className="flex-1 bg-surface-page">
+      {/* Шапка в стиле системных приложений iOS: крупный заголовок в списке,
+          компактный — в закреплённой строке при прокрутке (DECISION владельца
+          2026-09-06, единый стиль заголовков на всех вкладках). */}
+      <LargeTitleBar
         title="Задания"
-        rightAction={{
-          label: hasActiveFilters ? `Фильтры · ${activeCount}` : "Фильтры",
-          Icon: SlidersHorizontal,
-          onPress: () => router.push("/find/filters" as never),
-          active: hasActiveFilters,
-        }}
+        compactTitleOpacity={large.compactTitleOpacity}
+        onLayoutHeight={large.setBarHeight}
+        actions={[
+          {
+            label: hasActiveFilters ? `Фильтры · ${activeCount}` : "Фильтры",
+            Icon: SlidersHorizontal,
+            onPress: () => router.push("/find/filters" as never),
+            active: hasActiveFilters,
+          },
+        ]}
       />
 
       {/* Pill «Мои отклики» перенесена отсюда на главную мастера (над секцией
@@ -140,11 +146,12 @@ export default function FindScreen() {
           src/features/master-view/MyResponsesEntry.tsx. */}
 
       {isLoading ? (
-        <View className="flex-1">
+        <View className="flex-1" style={{ paddingTop: large.contentTop }}>
+          <LargeTitleBlock title="Задания" />
           <OrderRowsSkeleton count={5} />
         </View>
       ) : error ? (
-        <View className="flex-1 px-6 pt-6">
+        <View className="flex-1 px-6" style={{ paddingTop: large.contentTop + 24 }}>
           {/* Показываем человеческий текст, а не `error.message`: там
               техническая строка вроде «FetchError: …» (DECISION 2026-09-03). */}
           <AppText weight="bold" className="text-title-lg text-ink">
@@ -179,7 +186,11 @@ export default function FindScreen() {
             keyExtractor={(order) => order.id}
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
-            contentContainerStyle={{ paddingTop: 4, paddingBottom: tabBarSpace }}
+            contentContainerStyle={{ paddingTop: large.contentTop, paddingBottom: tabBarSpace }}
+            onScroll={large.onScroll}
+            scrollEventThrottle={16}
+            renderScrollComponent={Animated.ScrollView as never}
+            ListHeaderComponent={<LargeTitleBlock title="Задания" />}
             renderItem={({ item: o }) => (
               <OrderRow
                 id={o.id}

@@ -99,6 +99,15 @@ const config: Config = {
         "title-lg": ["18px", { lineHeight: "24px", letterSpacing: "-0.3px" }],
         "title-md": ["16px", { lineHeight: "22px" }],
 
+        // ios-* — метрики системных заголовков Apple (SF Pro), как в
+        // приложениях iOS 26. DECISION владельца 2026-09-06: «заголовки
+        // везде в стиле последнего iOS, один размер, один шрифт».
+        //   Large Title — 34/41, tracking +0.37 (Bold)
+        //   Title       — 17/22, tracking −0.41 (Semibold) — заголовок в
+        //                 строке навигации, появляется при прокрутке.
+        "ios-large-title": ["34px", { lineHeight: "41px", letterSpacing: "0.37px" }],
+        "ios-title": ["17px", { lineHeight: "22px", letterSpacing: "-0.41px" }],
+
         // field-* — шрифт ПОЛЯ ВВОДА. Отличается от body-* ровно одним: у него
         // нет lineHeight. Так и должно быть: на iOS lineHeight у TextInput
         // ложится в paragraphStyle.maximumLineHeight, весь запас высоты уходит

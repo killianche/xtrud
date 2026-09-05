@@ -12,7 +12,8 @@ const fail = (message) => {
   throw new Error(`Bundled task catalog: ${message}`);
 };
 
-if (catalog.schema_version !== 1) fail("unsupported schema_version");
+if (catalog.schema_version !== 2) fail("unsupported schema_version");
+if (!Array.isArray(catalog.sections)) fail("sections must be an array");
 if (!Array.isArray(catalog.categories)) fail("categories must be an array");
 if (!Array.isArray(catalog.services)) fail("services must be an array");
 if (!Array.isArray(catalog.terms)) fail("terms must be an array");
@@ -20,6 +21,7 @@ if (!/^[a-f0-9]{64}$/.test(catalog.content_sha256 ?? "")) fail("invalid content_
 
 const content = {
   schema_version: catalog.schema_version,
+  sections: catalog.sections,
   categories: catalog.categories,
   services: catalog.services,
   terms: catalog.terms,
@@ -37,12 +39,16 @@ function uniqueIds(items, label) {
   return ids;
 }
 
+const sectionIds = uniqueIds(catalog.sections, "sections");
+for (const section of catalog.sections) {
+  if (!section.is_active) fail(`section ${section.id} is inactive`);
+}
+
 const l2Ids = uniqueIds(catalog.categories, "categories");
 for (const category of catalog.categories) {
   if (!category.is_active || !category.is_visible) fail(`category ${category.id} is not public`);
-  if (!["construction", "home-services"].includes(category.l1_id)) {
-    fail(`category ${category.id} is outside current scope`);
-  }
+  // Раздел категории обязан быть в бандле: иначе на главной она осиротеет.
+  if (!sectionIds.has(category.l1_id)) fail(`category ${category.id} has a dangling l1_id`);
 }
 
 const l3Ids = uniqueIds(catalog.services, "services");

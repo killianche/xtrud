@@ -31,6 +31,7 @@ import { Stack, useRouter } from "expo-router";
 import { X } from "phosphor-react-native";
 import { useState } from "react";
 import { Alert, KeyboardAvoidingView, Platform, Pressable, TextInput, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
 import { useAuthSession } from "@/features/auth/use-auth-session";
 import { useCreateCase } from "@/features/profile/use-portfolio-cases";
@@ -40,6 +41,7 @@ const MAX_TITLE_LEN = 120;
 const MAX_DESCRIPTION_LEN = 500;
 
 export default function CreateCaseScreen() {
+  const insets = useSafeAreaInsets();
   const router = useRouter();
   const { session } = useAuthSession();
   const userId = session?.user?.id ?? null;
@@ -80,6 +82,10 @@ export default function CreateCaseScreen() {
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : undefined}
         className="flex-1 bg-canvas"
+        // Отступ от чёлки обязателен на каждом экране (DECISION владельца
+        // 2026-09-06). Внутри системной модалки inset маленький, на полном
+        // экране — высота статус-бара; в обоих случаях заголовок не под часами.
+        style={{ paddingTop: insets.top }}
       >
         {/* Header — тот же стиль, что у formSheet-роутов (bold title + close-X). */}
         <View className="flex-row items-center gap-3 px-5 py-3">

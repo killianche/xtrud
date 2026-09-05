@@ -1,46 +1,35 @@
-// Product scope: какие L1 разделы каталога АКТИВНЫ в текущем релизе.
+// Product scope: какие разделы каталога (L1) показываются в приложении.
 //
-// Решение user 2026-05-15 (повторное уточнение): xtrud — нишевый сервис
-// под РЕМОНТ + СТРОЙКУ + БЫТ (включая клининг). Изначально 10 L1, но
-// 8 (Авто, Перевозки, Бьюти, Образование, События, Бизнес, IT,
-// Личный сервис) удалены физически — миграция 0068_drop_out_of_scope_categories.sql.
-// Этот файл оставлен как «второй защитный слой» на случай восстановления
-// out-of-scope категорий через seed/restore — фильтр выкинет их из UI.
+// ИСТОРИЯ. До 2026-09-06 здесь был зашит список из двух разделов
+// (`construction`, `home-services`), и три места фильтровали каталог по нему:
+// хук L1, хук L2 и генератор встроенного каталога. Когда миграция 0157
+// разложила категории по семи разделам, приложение молча спрятало всё, что
+// переехало в новые — 23 категории из 42. Список в коде и список в базе
+// разошлись, и победил код.
 //
-// Архитектура: фильтр применяется в хуках `useCategoriesL1` /
-// `useVisibleCategories`. После миграции 0068 в БД остаются 2 L1
-// (`construction`, `home-services`), и они оба перечислены здесь —
-// фильтр фактически no-op, но защищает от случайного появления oos
-// записей.
+// РЕШЕНИЕ. Источник истины один — база: раздел показывается, если у него
+// `categories_l1.is_active = true`. Никаких списков в коде. Что база отдала —
+// то и каталог; выключить раздел можно одной строкой в админке, а не
+// релизом приложения.
 //
-// **Расширение scope (если когда-то вернуть авто/бьюти):** нужно (1)
-// перевыполнить seed с категориями, (2) добавить id в IN_SCOPE_L1_IDS.
+// Фильтр по L2 остаётся как защита от осиротевших категорий: L2, чей раздел
+// приложению неизвестен (выключен или удалён), не показывается.
 
-/**
- * L1 разделы, которые показываются клиентам и мастерам в текущем релизе.
- * После миграции 0068 в БД физически живут только эти L1 — список
- * совпадает с реальным состоянием БД.
- */
-export const IN_SCOPE_L1_IDS: ReadonlyArray<string> = ["construction", "home-services"] as const;
-
-/** True если L1 показывается в каталоге сейчас. */
-export function isL1InScope(l1Id: string | null | undefined): boolean {
-  if (!l1Id) return false;
-  return IN_SCOPE_L1_IDS.includes(l1Id);
+export interface ScopedSection {
+  id: string;
+  is_active: boolean;
 }
 
-/**
- * Фильтр массива L1-объектов по scope. Используется поверх результата
- * `useCategoriesL1()` или вручную над `categories_l1`-данными.
- */
-export function filterL1ByScope<T extends { id: string }>(items: T[]): T[] {
-  return items.filter((c) => isL1InScope(c.id));
+/** Множество id активных разделов из ответа базы или встроенного каталога. */
+export function activeSectionIds(sections: readonly ScopedSection[]): Set<string> {
+  return new Set(sections.filter((s) => s.is_active).map((s) => s.id));
 }
 
-/**
- * Фильтр массива L2-объектов: оставить только те, которые принадлежат
- * in-scope L1. Полезно для category-select / filters где user выбирает L2.
- */
-export function filterL2ByScope<T extends { l1_id: string }>(items: T[]): T[] {
-  return items.filter((c) => isL1InScope(c.l1_id));
+/** Оставить только L2, чей раздел активен. */
+export function filterL2BySections<T extends { l1_id: string }>(
+  items: readonly T[],
+  sections: readonly ScopedSection[],
+): T[] {
+  const active = activeSectionIds(sections);
+  return items.filter((c) => active.has(c.l1_id));
 }

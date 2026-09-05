@@ -11,7 +11,9 @@ import {
 
 describe("validateOrderPublishCategory", () => {
   it("accepts a current visible category returned by the backend", async () => {
-    const lookup = vi.fn().mockResolvedValue({ id: "wallpaper", l1_id: "construction" });
+    const lookup = vi
+      .fn()
+      .mockResolvedValue({ id: "wallpaper", l1_id: "construction", l1_active: true });
 
     await expect(validateOrderPublishCategory("wallpaper", lookup)).resolves.toBe(true);
     expect(lookup).toHaveBeenCalledWith("wallpaper");
@@ -23,6 +25,8 @@ describe("validateOrderPublishCategory", () => {
       validateOrderPublishCategory("legal-help", async () => ({
         id: "legal-help",
         l1_id: "business",
+        // Раздел выключен в базе — публиковать в него нельзя.
+        l1_active: false,
       })),
     ).resolves.toBe(false);
   });

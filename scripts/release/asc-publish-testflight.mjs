@@ -91,7 +91,7 @@ for (let attempt = 1; attempt <= 80; attempt += 1) {
   }
   await sleep(30_000);
 }
-if (!build || build.attributes.processingState !== "VALID") {
+if (build?.attributes.processingState !== "VALID") {
   console.error("Сборка не стала VALID за отведённое время.");
   process.exit(1);
 }

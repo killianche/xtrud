@@ -14,8 +14,8 @@
 | GitHub | канонический Git `killianche/xtrud`, CI | подключён `origin/main` | остаётся | локальный clone не заменяет offsite Git; access/CI проверяются перед release |
 | Apple / App Store Connect | iOS signing, TestFlight, публикация | iOS 1.0.1 build 11 по ledger | остаётся обязательно | опубликованный binary не откатывается; feature-off или новый build |
 | Expo EAS | текущая remote native build/submit orchestration | EAS project и profiles заданы | остаётся до отдельного решения | локальный iOS/Android production build fallback пока `UNKNOWN`, его нельзя обещать |
-| Supabase Cloud | текущий production backend | project `wgeimsajvjkzrrnfrnkb` | удаляется только после cutover/rollback window | encrypted backup, два restore, transition build и final delta |
-| Beget VPS | целевой self-hosted Supabase | отдельный VPS ещё не создан | основной backend host | exact-stack preflight; существующий `62.113.106.30` для backend NO-GO |
+| Supabase Cloud | не используется с 2026-09-06 | сервер и БД шлют только в Beget (0165); облачный проект пока существует | удалить проект в кабинете Supabase — действие владельца | перед удалением: на Beget есть своя ночная копия (`/opt/xtrud/backup.sh`) |
+| Beget VPS | production self-hosted Supabase | `api.xtrud.pro`, стек работает с 2026-08-31 | основной backend host | exact-stack preflight; существующий `62.113.106.30` для backend NO-GO |
 | Beget S3 app | Storage object backend | bucket/endpoint/credentials отсутствуют | обязателен | reviewed S3 Adapter + empty-bucket upload/download/checksum smoke |
 | Beget S3 backup | DB/Storage backup и PITR | bucket/credentials отсутствуют | обязателен и отдельный от app | versioning/retention + real point-in-time restore |
 | DNS `xtrud.pro` | `api`, AASA, recovery/legal routes | зона/оператор live не перепроверялись в этой работе | остаётся | scoped DNS access и cutover/rollback evidence |

@@ -33,8 +33,8 @@ Web на VPS — supporting surface и производная статика; st
   │              └─ https://xtrud.alanbani.ru
   │
   └─ Backend
-       ├─ сейчас: Supabase Cloud project wgeimsajvjkzrrnfrnkb
-       └─ цель: api.xtrud.pro -> отдельный Beget VPS + Beget S3
+       └─ https://api.xtrud.pro -> Beget VPS, self-hosted Supabase Docker
+            (облачный проект Supabase не используется; DECISION владельца 2026-09-06)
 ```
 
 VPS `85.198.86.41` **не относится к xtrud**: там размещены другие проекты.
@@ -76,8 +76,11 @@ SQL-источника в Git. Поэтому `supabase/migrations/` сейча�
 
 ### Backend
 
-- До cutover source of truth — Supabase Cloud project
-  `wgeimsajvjkzrrnfrnkb`.
+- Source of truth — self-hosted стек на Beget (`api.xtrud.pro`, контейнер
+  `supabase-db`). Облачный проект Supabase выведен из использования: последняя
+  ссылка на него (`notify_user`) убрана миграцией 0165 (2026-09-06).
+  DECISION владельца 2026-09-06: «убираем Supabase Cloud, работаем чисто на
+  Beget, чтобы всё изначально было на российских серверах».
 - Принято целевое решение: официальный self-hosted Supabase Docker на новом
   отдельном Beget VPS; Storage и backups — в разных Beget S3 buckets.
 - Существующий Beget VPS `62.113.106.30` недостаточен для backend: 2 CPU,

@@ -24,10 +24,9 @@ const EXEMPT = new Set(["(tabs)/index.tsx"]);
 const INSET_AWARE_WRAPPERS = [
   "OwnerCaseDetailScreen",
   "LegalScreen",
-  "NewOrderScreen",
+  "<ComposerScreen",
   "<PublishAuthSheet",
   "<RespondAuthSheet",
-  "<OrderDateSheet",
   "<PickerSheetPage",
 ];
 const SATISFIES = [

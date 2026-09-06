@@ -107,6 +107,18 @@ const config: Config = {
         //                 строке навигации, появляется при прокрутке.
         "ios-large-title": ["34px", { lineHeight: "41px", letterSpacing: "0.37px" }],
         "ios-title": ["17px", { lineHeight: "22px", letterSpacing: "-0.41px" }],
+        //   Title 1     — 28/34, +0.36 (Bold) — заголовок шторки
+        //   Title 2     — 22/28, +0.35 (Bold) — заголовок группы
+        //   Body        — 17/22, −0.41 — строка списка, кнопка
+        //   Callout     — 16/21, −0.32 — чипы, вторичные кнопки
+        //   Subheadline — 15/20, −0.24 — подзаголовок, подпись под строкой
+        //   Footnote    — 13/18, −0.08 — заголовок раздела списка, сноска
+        "ios-title1": ["28px", { lineHeight: "34px", letterSpacing: "0.36px" }],
+        "ios-title2": ["22px", { lineHeight: "28px", letterSpacing: "0.35px" }],
+        "ios-body": ["17px", { lineHeight: "22px", letterSpacing: "-0.41px" }],
+        "ios-callout": ["16px", { lineHeight: "21px", letterSpacing: "-0.32px" }],
+        "ios-subheadline": ["15px", { lineHeight: "20px", letterSpacing: "-0.24px" }],
+        "ios-footnote": ["13px", { lineHeight: "18px", letterSpacing: "-0.08px" }],
 
         // field-* — шрифт ПОЛЯ ВВОДА. Отличается от body-* ровно одним: у него
         // нет lineHeight. Так и должно быть: на iOS lineHeight у TextInput

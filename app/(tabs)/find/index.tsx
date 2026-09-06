@@ -135,51 +135,52 @@ export default function FindScreen() {
     }
   }, [isLoading, error, displayedOrders.length, opacity]);
 
+  // Крупный заголовок первым, под ним строка фильтров — как у Apple под
+  // large title (DECISION владельца 2026-09-06, вечер: «заголовок — в самом
+  // верху, где пустое место, фильтры под ним»). Чипы показывают выбранное и
+  // открывают системные шторки; отдельного экрана «Фильтры» нет.
+  const header = (
+    <>
+      <LargeTitleBlock title="Задания" />
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 12, gap: 8 }}
+      >
+        <FilterChip
+          label={categoryChipLabel}
+          Icon={SquaresFour}
+          active={l2Ids.length > 0}
+          onPress={() => router.push("/find/category-select" as never)}
+        />
+        <FilterChip
+          label={locationChipLabel}
+          Icon={MapPin}
+          active={!!cityId || !!district}
+          onPress={() => router.push("/find/location-select" as never)}
+        />
+        {hasActiveFilters ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Сбросить фильтры"
+            onPress={clearAll}
+            className="h-11 justify-center px-2 active:opacity-60"
+          >
+            <AppText className="text-ios-callout text-accent">Сбросить</AppText>
+          </Pressable>
+        ) : null}
+      </ScrollView>
+    </>
+  );
+
   return (
     <View className="flex-1 bg-surface-page">
-      {/* Шапка в стиле системных приложений iOS: крупный заголовок в списке,
-          компактный — в закреплённой строке при прокрутке (DECISION владельца
-          2026-09-06, единый стиль заголовков на всех вкладках). */}
+      {/* Закреплённая строка — только компактный заголовок при прокрутке.
+          Крупный заголовок и чипы фильтров — в начале списка (`header`). */}
       <LargeTitleBar
         title="Задания"
         compactTitleOpacity={large.compactTitleOpacity}
         onLayoutHeight={large.setBarHeight}
-        below={
-          // Строка фильтров под заголовком — как у Apple под полем поиска
-          // (DECISION владельца 2026-09-06: фильтры как в последнем iOS).
-          // Отдельного экрана «Фильтры» больше нет: чипы показывают выбранное
-          // и открывают системные шторки выбора.
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 10, gap: 8 }}
-          >
-            <FilterChip
-              label={categoryChipLabel}
-              Icon={SquaresFour}
-              active={l2Ids.length > 0}
-              onPress={() => router.push("/find/category-select" as never)}
-            />
-            <FilterChip
-              label={locationChipLabel}
-              Icon={MapPin}
-              active={!!cityId || !!district}
-              onPress={() => router.push("/find/location-select" as never)}
-            />
-            {hasActiveFilters ? (
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Сбросить фильтры"
-                onPress={clearAll}
-                className="h-11 justify-center px-2 active:opacity-60"
-              >
-                <AppText weight="medium" className="text-body-md text-accent">
-                  Сбросить
-                </AppText>
-              </Pressable>
-            ) : null}
-          </ScrollView>
-        }
       />
 
       {/* Pill «Мои отклики» перенесена отсюда на главную мастера (над секцией
@@ -188,37 +189,43 @@ export default function FindScreen() {
 
       {isLoading ? (
         <View className="flex-1" style={{ paddingTop: large.contentTop }}>
-          <LargeTitleBlock title="Задания" />
+          {header}
           <OrderRowsSkeleton count={5} />
         </View>
       ) : error ? (
-        <View className="flex-1 px-6" style={{ paddingTop: large.contentTop + 24 }}>
-          {/* Показываем человеческий текст, а не `error.message`: там
+        <View className="flex-1" style={{ paddingTop: large.contentTop }}>
+          {header}
+          <View className="px-6 pt-4">
+            {/* Показываем человеческий текст, а не `error.message`: там
               техническая строка вроде «FetchError: …» (DECISION 2026-09-03). */}
-          <AppText weight="bold" className="text-title-lg text-ink">
-            {describeQueryError(error).title}
-          </AppText>
-          <AppText className="mt-1 text-body-md text-body">
-            {describeQueryError(error).hint}
-          </AppText>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Повторить загрузку заданий"
-            disabled={isRefetching}
-            onPress={() => void refetch()}
-            className="mt-5 min-h-12 self-start items-center justify-center rounded-pill border border-hairline bg-canvas px-5 active:bg-canvas-soft"
-          >
-            <AppText weight="semibold" className="text-body-md text-ink">
-              {isRefetching ? "Загружаем…" : "Повторить"}
+            <AppText weight="bold" className="text-title-lg text-ink">
+              {describeQueryError(error).title}
             </AppText>
-          </Pressable>
+            <AppText className="mt-1 text-body-md text-body">
+              {describeQueryError(error).hint}
+            </AppText>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Повторить загрузку заданий"
+              disabled={isRefetching}
+              onPress={() => void refetch()}
+              className="mt-5 min-h-12 self-start items-center justify-center rounded-pill border border-hairline bg-canvas px-5 active:bg-canvas-soft"
+            >
+              <AppText weight="semibold" className="text-body-md text-ink">
+                {isRefetching ? "Загружаем…" : "Повторить"}
+              </AppText>
+            </Pressable>
+          </View>
         </View>
       ) : displayedOrders.length === 0 ? (
-        <EmptyState
-          hasActiveFilters={hasActiveFilters}
-          onClearFilters={clearAll}
-          accentColor={accentColor}
-        />
+        <View className="flex-1" style={{ paddingTop: large.contentTop }}>
+          {header}
+          <EmptyState
+            hasActiveFilters={hasActiveFilters}
+            onClearFilters={clearAll}
+            accentColor={accentColor}
+          />
+        </View>
       ) : (
         <Animated.View style={{ opacity }} className="flex-1">
           <FlashList
@@ -231,7 +238,7 @@ export default function FindScreen() {
             onScroll={large.onScroll}
             scrollEventThrottle={16}
             renderScrollComponent={Animated.ScrollView as never}
-            ListHeaderComponent={<LargeTitleBlock title="Задания" />}
+            ListHeaderComponent={header}
             renderItem={({ item: o }) => (
               <OrderRow
                 id={o.id}

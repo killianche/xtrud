@@ -34,7 +34,7 @@ import {
   WarningCircle,
 } from "phosphor-react-native";
 import type { RefObject } from "react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { type ReactElement, useEffect, useMemo, useRef, useState } from "react";
 import {
   Animated,
   type FlatList,
@@ -46,7 +46,13 @@ import {
 import { AppText } from "@/components/AppText";
 import { OrderRow } from "@/components/OrderRow";
 import { OrderRowsSkeleton } from "@/components/OrderRowsSkeleton";
-import { Button, LargeTitleBar, LargeTitleBlock, useLargeTitle } from "@/components/ui";
+import {
+  Button,
+  FloatingActionButton,
+  LargeTitleBar,
+  LargeTitleBlock,
+  useLargeTitle,
+} from "@/components/ui";
 import { useAuthSession } from "@/features/auth/use-auth-session";
 import { type OrderWithRefs, useMyOrders } from "@/features/orders/use-my-orders";
 import {
@@ -91,37 +97,51 @@ export default function OrdersScreen() {
   }, [tab, myOrders, myResponses]);
   const resolved: Segment = tab ?? "orders";
 
+  // Крупный заголовок первым, под ним сегменты — как у Apple под large
+  // title (Фитнес, Здоровье). Уезжают вместе со списком; в закреплённой строке
+  // остаётся компактный заголовок (DECISION владельца 2026-09-06, вечер:
+  // «заголовок — в самом верху, где пустое место»).
+  const header = (
+    <>
+      <LargeTitleBlock title="Мои задания" />
+      <Segments
+        value={resolved}
+        onChange={setTab}
+        ordersCount={myOrders?.length ?? null}
+        responsesCount={myResponses?.length ?? null}
+      />
+    </>
+  );
+
   return (
     <View className="flex-1 bg-surface-page">
       {resolved === "responses" ? (
-        <ResponsesList userId={userId} contentTop={large.contentTop} onScroll={large.onScroll} />
+        <ResponsesList
+          userId={userId}
+          contentTop={large.contentTop}
+          onScroll={large.onScroll}
+          header={header}
+        />
       ) : (
-        <OrdersList userId={userId} contentTop={large.contentTop} onScroll={large.onScroll} />
+        <OrdersList
+          userId={userId}
+          contentTop={large.contentTop}
+          onScroll={large.onScroll}
+          header={header}
+        />
       )}
 
-      {/* Шапка в стиле системных приложений iOS (DECISION владельца 2026-09-06):
-          компактный заголовок и «+» в закреплённой строке, сегменты под ней. */}
       <LargeTitleBar
         title="Мои задания"
         compactTitleOpacity={large.compactTitleOpacity}
         onLayoutHeight={large.setBarHeight}
-        actions={[
-          {
-            label: "Создать задание",
-            Icon: Plus,
-            iconOnly: true,
-            active: true,
-            onPress: () => router.push("/orders/new" as never),
-          },
-        ]}
-        below={
-          <Segments
-            value={resolved}
-            onChange={setTab}
-            ordersCount={myOrders?.length ?? null}
-            responsesCount={myResponses?.length ?? null}
-          />
-        }
+      />
+
+      {/* Главное действие экрана — плавающая кнопка снизу справа, как «новая
+          заметка» в Заметках iOS 26 (DECISION владельца 2026-09-06, вечер). */}
+      <FloatingActionButton
+        label="Создать задание"
+        onPress={() => router.push("/orders/new" as never)}
       />
     </View>
   );
@@ -152,7 +172,7 @@ function Segments({
     ["responses", "Как мастер", responsesCount],
   ];
   return (
-    <View className="mx-4 mt-1 mb-2 flex-row rounded-xl bg-canvas-soft p-1">
+    <View className="mx-4 mb-3 flex-row rounded-xl bg-canvas-soft p-1">
       {items.map(([key, label, count]) => {
         const active = value === key;
         const title = count != null && count > 0 ? `${label} · ${count}` : label;
@@ -196,9 +216,11 @@ interface ListProps {
   contentTop: number;
   /** Прокрутка — в шапку, чтобы компактный заголовок проявлялся. */
   onScroll: (event: NativeSyntheticEvent<NativeScrollEvent>) => void;
+  /** Крупный заголовок и сегменты — начало списка. */
+  header: ReactElement;
 }
 
-function OrdersList({ userId, contentTop, onScroll }: ListProps) {
+function OrdersList({ userId, contentTop, onScroll, header }: ListProps) {
   const tabBarSpace = useTabBarSpace();
   const router = useRouter();
   const { data: orders, isLoading, error, refetch } = useMyOrders(userId);
@@ -232,7 +254,7 @@ function OrdersList({ userId, contentTop, onScroll }: ListProps) {
       onScroll={onScroll}
       scrollEventThrottle={16}
       renderScrollComponent={Animated.ScrollView as never}
-      ListHeaderComponent={<LargeTitleBlock title="Мои задания" />}
+      ListHeaderComponent={header}
       showsVerticalScrollIndicator={false}
       refreshControl={refresh.control}
       renderItem={({ item: o }) => (
@@ -284,7 +306,7 @@ function OrdersList({ userId, contentTop, onScroll }: ListProps) {
 // источник — historyResponseStatusLabel.
 // ============================================================================
 
-function ResponsesList({ userId, contentTop, onScroll }: ListProps) {
+function ResponsesList({ userId, contentTop, onScroll, header }: ListProps) {
   const tabBarSpace = useTabBarSpace();
   const router = useRouter();
   const navigation = useNavigation();
@@ -332,7 +354,7 @@ function ResponsesList({ userId, contentTop, onScroll }: ListProps) {
         onScroll={onScroll}
         scrollEventThrottle={16}
         renderScrollComponent={Animated.ScrollView as never}
-        ListHeaderComponent={<LargeTitleBlock title="Мои задания" />}
+        ListHeaderComponent={header}
         showsVerticalScrollIndicator={false}
         refreshControl={refresh.control}
         renderItem={({ item: r }) => {

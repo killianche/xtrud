@@ -32,6 +32,7 @@ import { Keyboard, Platform, Pressable, TextInput, type TextInputProps, View } f
 import { AppText } from "@/components/AppText";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useThemeColors } from "@/lib/use-theme-color";
+import { SystemIcon } from "./SystemIcon";
 
 export interface SearchFieldProps extends Omit<TextInputProps, "style" | "value" | "onChangeText"> {
   value: string;
@@ -79,9 +80,11 @@ export const SearchField = forwardRef<TextInput, SearchFieldProps>(function Sear
         }`}
         style={{ borderWidth: 1.5 }}
       >
-        <MagnifyingGlass
-          size={20}
-          weight="bold"
+        <SystemIcon
+          sf="magnifyingglass"
+          fallback={MagnifyingGlass}
+          size={18}
+          weight="medium"
           color={invalid ? tc.error : focused ? tc.accent : tc.mute}
         />
         <TextInput

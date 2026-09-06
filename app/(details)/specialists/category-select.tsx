@@ -12,7 +12,7 @@
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { SquaresFour } from "phosphor-react-native";
 import { useMemo } from "react";
-import { type PickerOption, PickerSheetPage } from "@/components/ui";
+import { PickerSheetPage, type PickerSheetRow, type PickerSheetSection } from "@/components/ui";
 import { useCategoryFilterPickerStore } from "@/features/categories/category-filter-picker-store";
 import { useCategoriesL1 } from "@/features/categories/use-categories-l1";
 import { useVisibleCategories } from "@/features/categories/use-visible-categories";
@@ -26,39 +26,53 @@ export default function SpecialistsCategorySelectScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ l1?: string; l2?: string }>();
   const setCategoryResult = useCategoryFilterPickerStore((s) => s.setCategoryResult);
-  const tc = useThemeColors(["ink", "mute", "accent"]);
-  const sections = useCategoriesL1();
+  const tc = useThemeColors(["ink", "on-accent"]);
+  const sections_ = useCategoriesL1();
   const categories = useVisibleCategories();
 
   const currentId = params.l2 ? params.l2 : params.l1 ? `${SECTION_PREFIX}${params.l1}` : ALL_ID;
 
-  const options = useMemo<PickerOption[]>(() => {
-    const list: PickerOption[] = [
+  // Группы inset grouped: «Все категории» отдельно, дальше по разделу на
+  // группу. Первая строка группы — «Весь раздел» с залитой акцентом плиткой:
+  // так видно, что это раздел целиком, а не ещё одна категория (DECISION
+  // владельца 2026-09-06, вечер).
+  const sections = useMemo<PickerSheetSection[]>(() => {
+    const list: PickerSheetSection[] = [
       {
-        id: ALL_ID,
-        title: "Все категории",
-        icon: <SquaresFour size={18} weight="bold" color={tc.ink} />,
+        id: "__all",
+        options: [
+          {
+            id: ALL_ID,
+            title: "Все категории",
+            icon: <SquaresFour size={17} weight="bold" color={tc["on-accent"]} />,
+            emphasis: true,
+          },
+        ],
       },
     ];
-    for (const section of sections.data ?? []) {
+    for (const section of sections_.data ?? []) {
       const SectionIcon = getCategoryIcon(section.icon);
-      list.push({
-        id: `${SECTION_PREFIX}${section.id}`,
-        title: section.name_ru,
-        subtitle: "Весь раздел",
-        icon: <SectionIcon size={18} weight="bold" color={tc.accent} />,
-      });
+      const rows: PickerSheetRow[] = [
+        {
+          id: `${SECTION_PREFIX}${section.id}`,
+          title: "Весь раздел",
+          subtitle: section.name_ru,
+          icon: <SectionIcon size={17} weight="bold" color={tc["on-accent"]} />,
+          emphasis: true,
+        },
+      ];
       for (const category of (categories.data ?? []).filter((c) => c.l1_id === section.id)) {
         const Icon = getCategoryIcon(category.icon);
-        list.push({
+        rows.push({
           id: category.id,
           title: category.name_ru,
-          icon: <Icon size={18} weight="bold" color={tc.mute} />,
+          icon: <Icon size={17} weight="bold" color={tc.ink} />,
         });
       }
+      list.push({ id: section.id, title: section.name_ru, options: rows });
     }
     return list;
-  }, [sections.data, categories.data, tc.ink, tc.accent, tc.mute]);
+  }, [sections_.data, categories.data, tc.ink, tc["on-accent"]]);
 
   const close = () => router.back();
 
@@ -74,16 +88,16 @@ export default function SpecialistsCategorySelectScreen() {
       />
       <PickerSheetPage
         title="Категория"
-        options={options}
+        sections={sections}
         selectedId={currentId}
         searchable
         searchPlaceholder="Например, электрик или уборка"
-        loading={sections.isLoading || categories.isLoading}
+        loading={sections_.isLoading || categories.isLoading}
         errorMessage={
-          sections.error || categories.error ? "Не удалось загрузить категории" : undefined
+          sections_.error || categories.error ? "Не удалось загрузить категории" : undefined
         }
         onRetry={() => {
-          void sections.refetch();
+          void sections_.refetch();
           void categories.refetch();
         }}
         onSelect={(id) => {

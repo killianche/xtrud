@@ -8,6 +8,11 @@
 
 > Этот документ — про **моно-UI-иконки** (System / UI / Action). Цветные иконки **категорий услуг** (L2) — отдельный документ [`docs/ICONS.md`](ICONS.md), они через Iconify CDN и не пересекаются с Phosphor.
 
+> DECISION владельца 2026-09-06 (вечер): служебные (chrome) иконки на iOS —
+> **SF Symbols** через `SystemIcon` (`src/components/ui/SystemIcon.tsx`);
+> Phosphor остаётся запасным вариантом для них на Android/web и основным для
+> иконок категорий и содержимого. Подробно — `docs/IOS_FOUNDATION.md` §7.
+
 ## Почему Phosphor, а не Lucide
 
 | Критерий | Lucide (Feather-стиль) | Phosphor (выбран) |

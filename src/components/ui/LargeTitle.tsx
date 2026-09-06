@@ -40,6 +40,7 @@ import { AppText } from "@/components/AppText";
 import { useThemeColors } from "@/lib/use-theme-color";
 import type { IconComponent } from "@/types/icon";
 import { GlassSurface, LIQUID_GLASS } from "./GlassSurface";
+import { SystemIcon } from "./SystemIcon";
 
 /** Высота строки навигации — системные 44 pt. */
 export const NAV_ROW_HEIGHT = 44;
@@ -134,7 +135,13 @@ export function LargeTitleBar({
               hitSlop={6}
               className="h-11 w-11 items-center justify-center rounded-full active:opacity-50"
             >
-              <CaretLeft size={22} weight="bold" color={tc.ink} />
+              <SystemIcon
+                sf="chevron.left"
+                fallback={CaretLeft}
+                size={22}
+                weight="semibold"
+                color={tc.accent}
+              />
             </Pressable>
           ) : (
             <View className="w-2" />

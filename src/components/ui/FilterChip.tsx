@@ -21,6 +21,7 @@ import { Pressable } from "react-native";
 import { AppText } from "@/components/AppText";
 import { useThemeColors } from "@/lib/use-theme-color";
 import type { IconComponent } from "@/types/icon";
+import { SystemIcon } from "./SystemIcon";
 
 export interface FilterChipProps {
   label: string;
@@ -46,12 +47,18 @@ export function FilterChip({ label, Icon, active, onPress, accessibilityLabel }:
       {Icon ? <Icon size={17} weight="bold" color={active ? tc.accent : tc.body} /> : null}
       <AppText
         weight="semibold"
-        className={`text-body-md ${active ? "text-accent" : "text-body"}`}
+        className={`text-ios-callout ${active ? "text-accent" : "text-body"}`}
         numberOfLines={1}
       >
         {label}
       </AppText>
-      <CaretDown size={14} weight="bold" color={active ? tc.accent : tc.mute} />
+      <SystemIcon
+        sf="chevron.down"
+        fallback={CaretDown}
+        size={12}
+        weight="semibold"
+        color={active ? tc.accent : tc.mute}
+      />
     </Pressable>
   );
 }

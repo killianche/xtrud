@@ -168,11 +168,17 @@ expo-router.
    (`UIViewControllerBasedStatusBarAppearance`, `UIStatusBarStyle`) и
    `<StatusBar style>` проверяется на устройстве в обеих темах
    ([expo-status-bar](https://docs.expo.dev/versions/latest/sdk/status-bar/)).
-7. **Иконки.** Mono-UI — Phosphor (`docs/UI_ICONS.md`). SF Symbols
-   (`expo-symbols`, beta) допустимы только там, где нужен именно системный
-   символ — прежде всего в NativeTabs (`sf` проп)
-   ([expo-symbols](https://docs.expo.dev/versions/latest/sdk/symbols/)).
-   Смешивать два набора в одном визуальном ряду запрещено.
+7. **Иконки.** DECISION владельца 2026-09-06 (вечер): «ориентируемся на
+   последний iOS — какие иконки там, такие и у нас». Служебные иконки
+   интерфейса («назад», «закрыть», галочка выбора, «+», стрелка чипа, лупа,
+   вкладки) — SF Symbols через `SystemIcon` (`src/components/ui/SystemIcon.tsx`,
+   пакет `expo-symbols`) с запасной Phosphor-иконкой того же смысла для
+   Android/web ([expo-symbols](https://docs.expo.dev/versions/latest/sdk/symbols/)).
+   Иконки категорий и содержимого — Phosphor в одном стиле (`docs/UI_ICONS.md`,
+   референс Thumbtack). В одном визуальном ряду не смешивать: ряд служебных
+   кнопок — только SF, ряд категорий — только Phosphor; плитка категории рядом
+   с системной галочкой в строке списка — допустимо, как иконка приложения
+   рядом с галочкой в Настройках.
 
 ---
 

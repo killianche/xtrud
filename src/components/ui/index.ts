@@ -6,6 +6,7 @@ export { Button, type ButtonProps, type ButtonSize, type ButtonVariant } from ".
 export { Card, type CardPadding, type CardProps, type CardVariant } from "./Card";
 export { Chip, type ChipProps, type ChipSize, type ChipVariant } from "./Chip";
 export { FilterChip, type FilterChipProps } from "./FilterChip";
+export { FloatingActionButton, type FloatingActionButtonProps } from "./FloatingActionButton";
 export { GlassSurface, type GlassSurfaceProps, LIQUID_GLASS } from "./GlassSurface";
 export { Input, type InputProps, type InputSize } from "./Input";
 export {
@@ -16,7 +17,13 @@ export {
   useLargeTitle,
 } from "./LargeTitle";
 export { type PickerOption, PickerSheet, type PickerSheetProps } from "./PickerSheet";
-export { PickerSheetPage, type PickerSheetPageProps } from "./PickerSheetPage";
+export {
+  PickerSheetPage,
+  type PickerSheetPageProps,
+  type PickerSheetRow,
+  type PickerSheetSection,
+} from "./PickerSheetPage";
 export { ScreenHeader, type ScreenHeaderRightAction } from "./ScreenHeader";
 export { SearchField, type SearchFieldProps } from "./SearchField";
 export { Skeleton, type SkeletonProps } from "./Skeleton";
+export { type SFSymbol, SystemIcon, type SystemIconProps } from "./SystemIcon";

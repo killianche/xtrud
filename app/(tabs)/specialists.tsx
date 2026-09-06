@@ -216,7 +216,7 @@ export default function SpecialistsScreen() {
       <FlashList
         data={list}
         keyExtractor={(m) => m.user_id}
-        contentContainerStyle={{ paddingTop: large.contentTop + 4, paddingBottom: tabBarSpace }}
+        contentContainerStyle={{ paddingTop: large.contentTop, paddingBottom: tabBarSpace }}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
@@ -228,12 +228,67 @@ export default function SpecialistsScreen() {
         }}
         onEndReachedThreshold={0.6}
         ListHeaderComponent={
-          <LargeTitleBlock
-            title={title}
-            subtitle={
-              isLoading ? null : `${specialistsLabel(list.length)}${hasNextPage ? " и ещё" : ""}`
-            }
-          />
+          // Крупный заголовок первым, под ним поиск и чипы — как у Apple под
+          // large title (Настройки, Почта). DECISION владельца 2026-09-06,
+          // вечер: «заголовок — в самом верху, где пустое место».
+          <>
+            <LargeTitleBlock
+              title={title}
+              subtitle={
+                isLoading ? null : `${specialistsLabel(list.length)}${hasNextPage ? " и ещё" : ""}`
+              }
+            />
+            <View className="pb-2">
+              <View className="px-4 pt-1 pb-2">
+                <SearchField
+                  value={query}
+                  onChangeText={setQuery}
+                  placeholder="Имя или услуга — например, электрик"
+                  accessibilityLabel="Поиск специалистов"
+                />
+              </View>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                keyboardShouldPersistTaps="handled"
+                contentContainerStyle={{ paddingHorizontal: 16, gap: 8 }}
+              >
+                <FilterChip
+                  label={categoryLabel}
+                  Icon={SquaresFour}
+                  active={hasCategoryFilter}
+                  onPress={() =>
+                    router.push({
+                      pathname: "/specialists/category-select",
+                      params: { l1: l1Id ?? "", l2: l2Id ?? "" },
+                    } as never)
+                  }
+                />
+                <FilterChip
+                  label={cityLabel}
+                  Icon={MapPin}
+                  active={cityId !== "all"}
+                  onPress={() =>
+                    router.push({
+                      pathname: "/category/city-select",
+                      params: { cityId },
+                    } as never)
+                  }
+                />
+                <FilterChip
+                  label={SORT_LABEL[sort]}
+                  Icon={SORT_ICON[sort]}
+                  active={sort !== "rating"}
+                  onPress={() =>
+                    router.push({
+                      pathname: "/category/sort-select",
+                      params: { sortBy: sort },
+                    } as never)
+                  }
+                />
+              </ScrollView>
+            </View>
+          </>
         }
         renderItem={({ item }) => (
           <MasterCard
@@ -271,58 +326,6 @@ export default function SpecialistsScreen() {
         compactTitleOpacity={large.compactTitleOpacity}
         onLayoutHeight={large.setBarHeight}
         onBack={hasCategoryFilter ? () => router.back() : undefined}
-        below={
-          <View className="pb-2">
-            <View className="px-4 pt-1 pb-2">
-              <SearchField
-                value={query}
-                onChangeText={setQuery}
-                placeholder="Имя или услуга — например, электрик"
-                accessibilityLabel="Поиск специалистов"
-              />
-            </View>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              keyboardShouldPersistTaps="handled"
-              contentContainerStyle={{ paddingHorizontal: 16, gap: 8 }}
-            >
-              <FilterChip
-                label={categoryLabel}
-                Icon={SquaresFour}
-                active={hasCategoryFilter}
-                onPress={() =>
-                  router.push({
-                    pathname: "/specialists/category-select",
-                    params: { l1: l1Id ?? "", l2: l2Id ?? "" },
-                  } as never)
-                }
-              />
-              <FilterChip
-                label={cityLabel}
-                Icon={MapPin}
-                active={cityId !== "all"}
-                onPress={() =>
-                  router.push({
-                    pathname: "/category/city-select",
-                    params: { cityId },
-                  } as never)
-                }
-              />
-              <FilterChip
-                label={SORT_LABEL[sort]}
-                Icon={SORT_ICON[sort]}
-                active={sort !== "rating"}
-                onPress={() =>
-                  router.push({
-                    pathname: "/category/sort-select",
-                    params: { sortBy: sort },
-                  } as never)
-                }
-              />
-            </ScrollView>
-          </View>
-        }
       />
     </View>
   );

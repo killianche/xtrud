@@ -84,6 +84,7 @@ export default function OrdersSearchCategorySelectScreen() {
         searchPlaceholder="Например, сантехник или уборка"
         resettable
         resetLabel="Сбросить"
+        onReset={() => setSelected([])}
         loading={categories.isLoading}
         errorMessage={categories.error ? "Не удалось загрузить категории" : undefined}
         onRetry={() => void categories.refetch()}

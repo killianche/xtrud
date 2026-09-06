@@ -86,9 +86,11 @@ export interface PickerSheetPageProps {
   /** Показать поиск. По умолчанию — если строк 8 и больше. */
   searchable?: boolean;
   searchPlaceholder?: string;
-  /** Кнопка сброса в шапке справа. Вызывается → передаёт "" в onSelect. */
+  /** Кнопка сброса в шапке справа. Зовёт `onReset`, а без него — `onSelect("")`. */
   resettable?: boolean;
   resetLabel?: string;
+  /** Сброс выбора; обязателен в multiSelect, где `onSelect` не используется. */
+  onReset?: () => void;
   /**
    * `true` (по умолчанию) — список в `ScrollView`. `false` — обычный `View`
    * без скролла: обязательно для route с `sheetAllowedDetents: "fitToContents"`.
@@ -122,6 +124,7 @@ export function PickerSheetPage({
   searchPlaceholder = "Поиск",
   resettable = false,
   resetLabel = "Сбросить",
+  onReset,
   scrollable = true,
   loading = false,
   errorMessage,
@@ -176,7 +179,7 @@ export function PickerSheetPage({
         key={opt.id || "__empty"}
         accessibilityRole="button"
         accessibilityState={{ selected: isSel }}
-        accessibilityLabel={opt.title}
+        accessibilityLabel={opt.subtitle ? `${opt.title}, ${opt.subtitle}` : opt.title}
         onPress={() => (multiSelect ? onToggle?.(opt.id) : onSelect(opt.id))}
         className={`flex-row items-center pl-4 active:bg-canvas-soft ${
           isSel && !multiSelect ? "bg-accent-soft" : "bg-canvas"
@@ -310,7 +313,8 @@ export function PickerSheetPage({
             accessibilityRole="button"
             accessibilityLabel={resetLabel}
             onPress={() => {
-              onSelect("");
+              if (onReset) onReset();
+              else onSelect("");
               setQuery("");
             }}
             hitSlop={8}

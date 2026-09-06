@@ -48,6 +48,7 @@ import { OrderRow } from "@/components/OrderRow";
 import { OrderRowsSkeleton } from "@/components/OrderRowsSkeleton";
 import {
   Button,
+  FAB_LIST_SPACE,
   FloatingActionButton,
   LargeTitleBar,
   LargeTitleBlock,
@@ -138,11 +139,15 @@ export default function OrdersScreen() {
       />
 
       {/* Главное действие экрана — плавающая кнопка снизу справа, как «новая
-          заметка» в Заметках iOS 26 (DECISION владельца 2026-09-06, вечер). */}
-      <FloatingActionButton
-        label="Создать задание"
-        onPress={() => router.push("/orders/new" as never)}
-      />
+          заметка» в Заметках iOS 26 (DECISION владельца 2026-09-06, вечер).
+          В пустом «Как клиент» её нет: там уже стоит «Разместить задание», а
+          два равнозначных призыва — дефект (design-quality §1.1, QA). */}
+      {resolved === "orders" && myOrders !== undefined && myOrders.length === 0 ? null : (
+        <FloatingActionButton
+          label="Создать задание"
+          onPress={() => router.push("/orders/new" as never)}
+        />
+      )}
     </View>
   );
 }
@@ -221,7 +226,8 @@ interface ListProps {
 }
 
 function OrdersList({ userId, contentTop, onScroll, header }: ListProps) {
-  const tabBarSpace = useTabBarSpace();
+  // Место под плавающую кнопку, иначе она ляжет на последнюю карточку (QA).
+  const tabBarSpace = useTabBarSpace(FAB_LIST_SPACE);
   const router = useRouter();
   const { data: orders, isLoading, error, refetch } = useMyOrders(userId);
   const refresh = usePullToRefresh();
@@ -307,7 +313,8 @@ function OrdersList({ userId, contentTop, onScroll, header }: ListProps) {
 // ============================================================================
 
 function ResponsesList({ userId, contentTop, onScroll, header }: ListProps) {
-  const tabBarSpace = useTabBarSpace();
+  // Место под плавающую кнопку, иначе она ляжет на последнюю карточку (QA).
+  const tabBarSpace = useTabBarSpace(FAB_LIST_SPACE);
   const router = useRouter();
   const navigation = useNavigation();
   const refresh = usePullToRefresh();

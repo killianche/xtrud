@@ -24,6 +24,11 @@ import { GlassSurface, LIQUID_GLASS } from "./GlassSurface";
 import { type SFSymbol, SystemIcon } from "./SystemIcon";
 
 const SIZE = 56;
+/** Отступ кнопки от нижнего меню. */
+const GAP = 16;
+/** Сколько места снизу резервировать списку под этой кнопкой: передавать в
+ *  `useTabBarSpace(FAB_LIST_SPACE)`, иначе кнопка ляжет на последнюю карточку. */
+export const FAB_LIST_SPACE = GAP + SIZE + 12;
 
 export interface FloatingActionButtonProps {
   label: string;
@@ -38,7 +43,7 @@ export function FloatingActionButton({
   sf = "plus",
   fallback = Plus,
 }: FloatingActionButtonProps) {
-  const bottom = useTabBarSpace(16);
+  const bottom = useTabBarSpace(GAP);
   const tc = useThemeColors(["accent", "on-accent"]);
 
   const icon = (

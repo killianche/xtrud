@@ -98,6 +98,7 @@
     "@expo/env": "2.0.12",
     "@types/react": "~19.2.2",
     "react-native-svg-transformer": "^1.5.3",
+    "sf-symbols-typescript": "^2.2.0",
     "typescript": "~6.0.3",
     "vitest": "^4.1.6"
   },

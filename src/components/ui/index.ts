@@ -6,7 +6,11 @@ export { Button, type ButtonProps, type ButtonSize, type ButtonVariant } from ".
 export { Card, type CardPadding, type CardProps, type CardVariant } from "./Card";
 export { Chip, type ChipProps, type ChipSize, type ChipVariant } from "./Chip";
 export { FilterChip, type FilterChipProps } from "./FilterChip";
-export { FloatingActionButton, type FloatingActionButtonProps } from "./FloatingActionButton";
+export {
+  FAB_LIST_SPACE,
+  FloatingActionButton,
+  type FloatingActionButtonProps,
+} from "./FloatingActionButton";
 export { GlassSurface, type GlassSurfaceProps, LIQUID_GLASS } from "./GlassSurface";
 export { Input, type InputProps, type InputSize } from "./Input";
 export {

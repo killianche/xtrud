@@ -15,6 +15,7 @@
 
 | # | Что | Статус |
 |---|---|---|
+| 70 | Права API-ролей (0166): сняты TRUNCATE/REFERENCES/TRIGGER у anon/authenticated и INSERT/UPDATE/DELETE у anon на всех таблицах; `notify_user` и 6 ночных функций больше не вызываются через /rpc; `withdraw_response` — SECURITY DEFINER | ✅ |
 | 69 | Ночная копия базы и Storage на Beget (`/opt/xtrud/backup.sh`, cron 04:40, 14 дней) — раньше копий xtrud не было вовсе | ✅ |
 | 68 | Облачный проект Supabase не используется: `notify_user` шлёт в Edge Runtime на Beget (0165), проверено пробой БД→шлюз→функция | ✅ |
 | 67 | expo-doctor 21/21: expo-image-picker и expo-router подняты до ожидаемых патчей | ✅ |

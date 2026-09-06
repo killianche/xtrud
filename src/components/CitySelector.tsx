@@ -15,8 +15,8 @@
  *   <CitySelector />   // pill с текущим городом, тап открывает PickerSheet
  *
  * Сёла — не показываются в этом селекторе (он про «город пользователя»,
- * один уровень). Для иерархического выбора заказа — <LocationPicker> в
- * `src/features/orders/LocationPicker.tsx`.
+ * один уровень). Для выбора места задания — шаг «Где» конструктора,
+ * `app/(details)/orders/new/where.tsx`.
  */
 
 import { CaretDown, MapPin } from "phosphor-react-native";

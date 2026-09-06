@@ -3,7 +3,7 @@
  * координаты, fallback'ы. Подход скопирован из проекта Ingush-Business
  * (`lib/config.ts`). Используется везде где упоминается локация:
  *   - <CitySelector>  — выбор города пользователя (главная)
- *   - <LocationPicker> — выбор локации заказа (orders/new, orders/edit)
+ *   - шаг «Где» конструктора задания (app/(details)/orders/new/where.tsx)
  *   - фильтры ленты по городам и районам
  *   - Set<"c:"|"v:"> фильтр с сёлами
  *   - useUserCity     — глобальное состояние + init цикл
@@ -225,7 +225,7 @@ export const FILTER_VILLAGES: readonly string[] = DISTRICTS.flatMap((d) => d.vil
 // ============================================================================
 
 /** Обратный lookup: село → родительский район-имя.
- *  Используется в LocationPicker для подсветки родителя при pre-fill заказа
+ *  Использовалось старым пикером локации; конструктор задания выбирает район целиком
  *  с district = имя села. */
 const _villageToDistrict: Record<string, string> = (() => {
   const map: Record<string, string> = {};

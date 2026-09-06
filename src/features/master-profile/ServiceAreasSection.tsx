@@ -84,7 +84,7 @@ export function ServiceAreasSection({ masterId }: ServiceAreasSectionProps) {
   const totalSelected = cities.size + districts.size;
   // Семантика: пустой выбор = «вся Ингушетия» (нет территориального фильтра,
   // мастер получает заявки откуда угодно). Аналогично клиентскому
-  // <LocationSheet> и <LocationPicker> — паттерн «карточка-toggle сверху»,
+  // <LocationSheet> — паттерн «карточка-toggle сверху»,
   // снимающая остальные чипы. По фидбэку user 2026-05-15: «добавь один,
   // который покрывает все — Ингушетия».
   const isAllIngushetia = totalSelected === 0;

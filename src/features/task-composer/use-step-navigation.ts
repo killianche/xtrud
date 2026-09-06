@@ -28,6 +28,8 @@ export function useStepNavigation(step: ComposerStep) {
     primaryLabel: fromReview ? "Готово" : "Далее",
     goNext,
     goBack: () => router.back(),
+    /** Черновик ещё читается с диска — экран не рисуем, чтобы не мигали пустые ответы. */
+    notReady: !composer.ready,
     /** Холодный вход на шаг без категории — к первому вопросу. */
     needsIntent: composer.mode.kind === "create" && composer.ready && !composer.values.l2Id,
   };

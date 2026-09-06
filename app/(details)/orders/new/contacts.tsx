@@ -31,6 +31,7 @@ export default function TaskContactsScreen() {
     prefilledRef.current = true;
     patch({ contactPhone: phone });
   }, [composer.mode.kind, user?.contact_phone, values.contactPhone, patch]);
+  if (nav.notReady) return null;
   if (nav.needsIntent) return <Redirect href="/orders/new" />;
 
   const empty = !values.contactPhone.trim() && !values.whatsappPhone.trim();

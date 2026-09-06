@@ -166,7 +166,7 @@ export const createOrderSchema = z
       });
     }
     // Локация обязательна — должен быть либо город (включая "all"=Вся
-    // Ингушетия), либо район. LocationPicker делает их взаимоисключающими.
+    // Ингушетия), либо район. шаг «Где» конструктора делает их взаимоисключающими.
     if (!val.cityId && !val.district) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,

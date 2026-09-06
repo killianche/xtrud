@@ -250,7 +250,8 @@ export default function RootLayout() {
               <Stack
                 screenOptions={{
                   headerShown: false,
-                  animation: "slide_from_right",
+                  // Системный push (docs/IOS_FOUNDATION.md §2 п.2): slide_from_right на iOS — мёртвая настройка.
+                  animation: "default",
                   gestureEnabled: true,
                   contentStyle: { backgroundColor: canvasColor },
                 }}

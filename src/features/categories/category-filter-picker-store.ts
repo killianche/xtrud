@@ -9,7 +9,7 @@
  * `router.push` params, а выбор возвращается назад через этот store: экран
  * пикера коммитит результат и делает `router.back()`, экран категории слушает
  * store через `useEffect` (паттерн 1-в-1 с `useOrderDraftStore.selectedLocation`
- * / `src/features/orders/LocationPicker.tsx`) и применяет его в свой local
+ * ) и применяет его в свой local
  * state, затем очищает поле — иначе повторное открытие того же пикера сразу
  * «съест» старый результат.
  *

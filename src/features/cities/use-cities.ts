@@ -4,7 +4,7 @@
 // cities раздельные записи `nazran` и `magas` остаются для legacy-lookup, но в
 // любых списках выбора их быть не должно — только объединённый `nazran-magas`
 // («Назрань · Магас»). Поэтому здесь фильтруем HIDDEN_PICKER_CITY_IDS: экраны
-// выбора локации заказа (LocationPicker в orders/new, orders/edit,
+// выбора локации заказа (конструктор задания orders/new,
 // location-select) берут города отсюда, и так правило соблюдается везде, а не
 // только в config-списке PICKER_CITIES.
 import { useQuery } from "@tanstack/react-query";

@@ -16,6 +16,7 @@ export default function TaskDetailsScreen() {
   const composer = useComposer();
   const { values, patch, photos, setPhotos } = composer;
   const nav = useStepNavigation("details");
+  if (nav.notReady) return null;
   if (nav.needsIntent) return <Redirect href="/orders/new" />;
 
   const empty = values.description.trim().length === 0 && photos.length === 0;

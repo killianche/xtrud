@@ -70,7 +70,7 @@ export function PhotoGrid({
             accessibilityRole="button"
             accessibilityLabel="Добавить фото"
             onPress={() => void add()}
-            className="items-center justify-center rounded-2xl bg-canvas active:opacity-70"
+            className="items-center justify-center overflow-hidden rounded-2xl bg-canvas active:opacity-70"
             style={{ width: tile, height: tile }}
           >
             <SystemIcon
@@ -80,7 +80,9 @@ export function PhotoGrid({
               weight="regular"
               color={tc.accent}
             />
-            <AppText className="mt-1 text-ios-footnote text-accent">Добавить</AppText>
+            <AppText className="mt-1 text-ios-footnote text-accent" numberOfLines={1}>
+              Добавить
+            </AppText>
           </Pressable>
         ) : null}
         {photos.map((p, i) => (
@@ -108,7 +110,7 @@ export function PhotoGrid({
                 accessibilityLabel={`Удалить фото ${i + 1}`}
                 hitSlop={8}
                 onPress={() => onChange(photos.filter((x) => x.id !== p.id))}
-                className="absolute right-1 top-1 rounded-full bg-black/50 p-0.5 active:opacity-70"
+                className="absolute right-0.5 top-0.5 h-8 w-8 items-center justify-center rounded-full bg-black/50 active:opacity-70"
               >
                 <SystemIcon
                   sf="xmark.circle.fill"

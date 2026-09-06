@@ -34,6 +34,7 @@ export default function TaskBudgetScreen() {
   useEffect(() => {
     if (needsAmount && values.budgetValue === null) inputRef.current?.focus();
   }, [needsAmount, values.budgetValue]);
+  if (nav.notReady) return null;
   if (nav.needsIntent) return <Redirect href="/orders/new" />;
 
   const tooBig = values.budgetValue !== null && values.budgetValue > BUDGET_MAX;

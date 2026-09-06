@@ -24,6 +24,7 @@ const OPTIONS: Array<{ id: OrderUrgencyValue; title: string; subtitle: string }>
 export default function TaskWhenScreen() {
   const { values, patch } = useComposer();
   const nav = useStepNavigation("when");
+  if (nav.notReady) return null;
   if (nav.needsIntent) return <Redirect href="/orders/new" />;
 
   return (

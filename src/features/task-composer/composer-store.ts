@@ -24,6 +24,9 @@ interface EditSessionState {
   mode: ComposerMode;
   values: ComposerValues;
   photos: ComposerPhoto[];
+  /** Ответы на момент открытия редактирования — чтобы знать, есть ли правки. */
+  initialValues: ComposerValues;
+  initialPhotos: ComposerPhoto[];
   startEdit: (orderId: string, values: ComposerValues, photos: ComposerPhoto[]) => void;
   patchEdit: (patch: Partial<ComposerValues>) => void;
   setEditPhotos: (photos: ComposerPhoto[]) => void;
@@ -34,11 +37,37 @@ export const useComposerSession = create<EditSessionState>((set) => ({
   mode: { kind: "create" },
   values: EMPTY_COMPOSER_VALUES,
   photos: [],
-  startEdit: (orderId, values, photos) => set({ mode: { kind: "edit", orderId }, values, photos }),
+  initialValues: EMPTY_COMPOSER_VALUES,
+  initialPhotos: [],
+  startEdit: (orderId, values, photos) =>
+    set({
+      mode: { kind: "edit", orderId },
+      values,
+      photos,
+      initialValues: values,
+      initialPhotos: photos,
+    }),
   patchEdit: (patch) => set((s) => ({ values: { ...s.values, ...patch } })),
   setEditPhotos: (photos) => set({ photos }),
-  endEdit: () => set({ mode: { kind: "create" }, values: EMPTY_COMPOSER_VALUES, photos: [] }),
+  endEdit: () =>
+    set({
+      mode: { kind: "create" },
+      values: EMPTY_COMPOSER_VALUES,
+      photos: [],
+      initialValues: EMPTY_COMPOSER_VALUES,
+      initialPhotos: [],
+    }),
 }));
+
+/** Есть ли в сессии редактирования несохранённые правки. */
+export function isEditDirty(
+  s: Pick<EditSessionState, "values" | "photos" | "initialValues" | "initialPhotos">,
+): boolean {
+  return (
+    JSON.stringify(s.values) !== JSON.stringify(s.initialValues) ||
+    s.photos.map((p) => p.uri).join("|") !== s.initialPhotos.map((p) => p.uri).join("|")
+  );
+}
 
 export function isRemotePhoto(uri: string): boolean {
   return /^https?:/i.test(uri);

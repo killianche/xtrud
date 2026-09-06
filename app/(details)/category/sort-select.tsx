@@ -14,7 +14,7 @@
  * `orders/category-select`: текущее значение приходит через URL-param
  * (`sortBy`), выбор коммитится в `useCategoryFilterPickerStore` + `router.back()`.
  * `category/[id].tsx` слушает store через `useEffect` и применяет выбор в свой
- * local state (см. `src/features/orders/LocationPicker.tsx` — тот же handshake
+ * local state (тот же handshake
  * для `useOrderDraftStore.selectedLocation`).
  *
  * Deep link: без родительского контекста (например, открыт напрямую) экран

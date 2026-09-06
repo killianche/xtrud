@@ -46,7 +46,7 @@ import { useThemeColors } from "@/lib/use-theme-color";
 
 export default function TaskIntentScreen() {
   const router = useRouter();
-  const params = useLocalSearchParams<{ draft?: string; l2?: string }>();
+  const params = useLocalSearchParams<{ draft?: string; l2?: string; stale?: string }>();
   const composer = useComposer();
   const { values, patch } = composer;
   const nav = useStepNavigation("intent");
@@ -221,7 +221,13 @@ export default function TaskIntentScreen() {
       ) : null}
 
       {!selected ? (
-        <ChoiceGroup>
+        <ChoiceGroup
+          footer={
+            params.stale === "1"
+              ? "Категория изменилась в каталоге — выберите её заново."
+              : undefined
+          }
+        >
           <ChoiceRow
             title="Выбрать категорию из списка"
             icon={<SquaresFour size={17} weight="bold" color={tc.ink} />}

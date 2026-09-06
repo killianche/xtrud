@@ -78,7 +78,7 @@ export function useCreateOrder() {
         description: trimmedDesc.length === 0 ? null : trimmedDesc,
         // city_id = NULL когда:
         //   - выбрана «Вся Ингушетия» (миграция 0045 сделала city_id nullable);
-        //   - выбран район без города (LocationPicker позволяет «либо город,
+        //   - выбран район без города (шаг «Где» позволяет «либо город,
         //     либо район» — territориальный фильтр по district).
         city_id: input.cityId === ALL_INGUSHETIA_CITY || !input.cityId ? null : input.cityId,
         district: input.district || null,

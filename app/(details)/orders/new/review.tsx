@@ -12,7 +12,7 @@
 import { Redirect, useRouter } from "expo-router";
 import { usePreventRemove } from "expo-router/react-navigation";
 import { CheckCircle } from "phosphor-react-native";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { View } from "react-native";
 import { AppText } from "@/components/AppText";
 import { Button } from "@/components/ui";
@@ -24,7 +24,11 @@ import { formatOrderTiming, formatPrice } from "@/features/orders/order-schema";
 import { useOrderPublishCapacity } from "@/features/orders/use-order-publish-capacity";
 import { ChoiceGroup, ChoiceRow } from "@/features/task-composer/ComposerRows";
 import { ComposerScreen } from "@/features/task-composer/ComposerScreen";
-import { useComposer, useComposerSession } from "@/features/task-composer/composer-store";
+import {
+  isEditDirty,
+  useComposer,
+  useComposerSession,
+} from "@/features/task-composer/composer-store";
 import {
   COMPOSER_ROUTE,
   type ComposerStep,
@@ -34,6 +38,7 @@ import { usePublishTask } from "@/features/task-composer/use-publish-task";
 import { ALL_INGUSHETIA_CITY_ID, getCityName } from "@/lib/location-config";
 import { useBackGestureLock } from "@/lib/use-back-gesture-lock";
 import { useThemeColors } from "@/lib/use-theme-color";
+import { useUnsavedChangesGuard } from "@/lib/use-unsaved-changes-guard";
 
 export default function TaskReviewScreen() {
   const router = useRouter();
@@ -45,6 +50,7 @@ export default function TaskReviewScreen() {
   const capacity = useOrderPublishCapacity(mode.kind === "create" ? userId : undefined);
   const categories = useVisibleCategories();
   const endEdit = useComposerSession((s) => s.endEdit);
+  const editDirty = useComposerSession((s) => (s.mode.kind === "edit" ? isEditDirty(s) : false));
   const tc = useThemeColors(["success"]);
 
   // Сессия редактирования живёт, пока открыт этот экран.
@@ -58,12 +64,35 @@ export default function TaskReviewScreen() {
     mode.kind === "create" && !done && !!userId && !!capacity.data && !capacity.data.canPublish;
   usePreventRemove(publish.busy, () => {});
   useBackGestureLock(publish.busy || done);
+  // Редактирование: уйти с несохранёнными правками можно только осознанно
+  // (тот же гвард, что у профиля). После сохранения ничего не держит.
+  useUnsavedChangesGuard({ hasUnsavedChanges: editDirty && !done, isBusy: publish.busy });
 
+  // Категория устарела на сервере: сбрасываем её и ведём к первому вопросу с
+  // объяснением, а не молча. В редактировании шаг открывается «из проверки».
+  const staleHandledRef = useRef(false);
   useEffect(() => {
-    if (publish.categoryStale) router.replace(COMPOSER_ROUTE.intent as never);
-  }, [publish.categoryStale, router]);
+    if (!publish.categoryStale || staleHandledRef.current) return;
+    staleHandledRef.current = true;
+    composer.patch({ l2Id: "" });
+    if (mode.kind === "edit") {
+      router.push({
+        pathname: COMPOSER_ROUTE.intent,
+        params: { from: "review", stale: "1" },
+      } as never);
+    } else {
+      router.replace({ pathname: COMPOSER_ROUTE.intent, params: { stale: "1" } } as never);
+    }
+  }, [publish.categoryStale, composer, mode.kind, router]);
 
-  if (composer.ready && !isComposerComplete(values)) return <Redirect href="/orders/new" />;
+  if (
+    composer.ready &&
+    mode.kind === "create" &&
+    !isComposerComplete(values) &&
+    !publish.categoryStale
+  ) {
+    return <Redirect href="/orders/new" />;
+  }
   if (!composer.ready) return null;
 
   const category = categories.data?.find((c) => c.id === values.l2Id);

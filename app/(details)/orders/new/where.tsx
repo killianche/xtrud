@@ -15,6 +15,7 @@ import { ALL_INGUSHETIA_CITY_ID, DISTRICTS, PICKER_CITIES } from "@/lib/location
 export default function TaskWhereScreen() {
   const { values, patch } = useComposer();
   const nav = useStepNavigation("where");
+  if (nav.notReady) return null;
   if (nav.needsIntent) return <Redirect href="/orders/new" />;
 
   const cities = [{ id: ALL_INGUSHETIA_CITY_ID, name: "Вся Ингушетия" }, ...PICKER_CITIES];

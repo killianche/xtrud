@@ -44,3 +44,7 @@ Thumbs.db
 .idea/
 .vscode/
 *.swp
+
+# Локальные ключи подписи (экспорт из EAS для сборок на GitHub) — никогда в Git
+credentials.json
+credentials/

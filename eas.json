@@ -67,6 +67,10 @@
         "buildType": "app-bundle",
         "resourceClass": "medium"
       }
+    },
+    "production-local": {
+      "extends": "production",
+      "credentialsSource": "local"
     }
   },
   "submit": {

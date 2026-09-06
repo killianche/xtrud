@@ -193,3 +193,33 @@ release-контракте накануне iOS-релиза. Заморозка
 device QA на реальном устройстве, и только затем планировать store submission.
 Нативный каталог `android/` в репозитории отсутствует и генерируется
 `expo prebuild`.
+
+## Сборка на GitHub Actions (с 2026-09-06)
+
+> DECISION владельца: у EAS кончился бесплатный лимит облачных сборок iOS;
+> собираем на macOS-раннере GitHub.
+
+- Сценарий: `.github/workflows/ios.yml` («iOS → TestFlight», запуск кнопкой
+  Run workflow; поля — «Что нового» и ID группы TestFlight).
+- Раннер `macos-26` (Xcode 26 — нужен SDK iOS 26 для Liquid Glass). Сборка —
+  `eas build --platform ios --profile production-local --local`: тот же движок,
+  что в облаке EAS, но на нашем раннере; лимит EAS не расходуется (локальные
+  сборки в EAS всегда бесплатны).
+- Профиль `production-local` в `eas.json` — это `production` +
+  `credentialsSource: "local"`: подпись берётся из `credentials.json`, который
+  сценарий собирает из секретов репозитория на время сборки и стирает после.
+- Загрузка в App Store Connect — `scripts/release/asc-upload-build.mjs`,
+  публикация в TestFlight — `scripts/release/asc-publish-testflight.mjs`
+  (ждёт обработку, пишет «Что нового», отправляет на проверку, добавляет в
+  группу). Оба читают ключ из файла `XTRUD_ASC_CONFIG`.
+- Секреты репозитория: `IOS_DIST_P12_BASE64`, `IOS_DIST_P12_PASSWORD`,
+  `IOS_PROFILE_BASE64`, `ASC_KEY_P8_BASE64`, `ASC_KEY_ID`, `ASC_ISSUER_ID`,
+  `ASC_APP_ID`, `EXPO_TOKEN`. Сертификат и профиль выгружены из EAS
+  (`eas credentials → Download credentials from EAS`), p12 перепакован под
+  собственный пароль; оригиналы лежат на VDS в `/root/.config/xtrud/ios-signing/`
+  (0600) и в Git не попадают (`.gitignore`: credentials.json, credentials/).
+- Стоимость (FACT, docs.github.com): приватный репозиторий на плане Free —
+  2 000 минут/мес, macOS считается ×10 → ~200 «маковских» минут, сверх —
+  $0,062/мин. Публичный репозиторий — стандартные раннеры бесплатны.
+- Перед запуском сценария на VDS обязателен зелёный `npm run release:check`
+  и поднятый `buildNumber` в `app.json` (гейт версий выполняется и на раннере).

@@ -1,0 +1,124 @@
+# Сборка iOS на GitHub Actions и выкладка в TestFlight — без облака EAS.
+#
+# DECISION владельца 2026-09-06: у EAS кончился бесплатный лимит облачных
+# сборок; собираем на macOS-раннере GitHub. Сборка идёт тем же движком, что и в
+# облаке (`eas build --local`: prebuild → CocoaPods → fastlane gym), но на
+# нашем раннере, поэтому лимит EAS не расходуется («Local builds with your own
+# CI/CD are always free» — expo.dev/changelog/2023-08-01-eas-free-plan-limits).
+#
+# Подпись: сертификат и профиль выгружены из EAS и лежат в секретах репозитория
+# (IOS_DIST_P12_BASE64, IOS_DIST_P12_PASSWORD, IOS_PROFILE_BASE64). Загрузка в
+# App Store Connect — нашим скриптом через официальный API (ASC_*), как и на
+# VDS. Ничего секретного в логи не печатается.
+#
+# Запуск: вкладка Actions → «iOS → TestFlight» → Run workflow. Номер сборки и
+# версия берутся из app.json в выбранном коммите; гейт версий тот же, что на
+# VDS (`npm run release:check` перед запуском обязателен).
+
+name: iOS → TestFlight
+
+on:
+  workflow_dispatch:
+    inputs:
+      notes:
+        description: "Что нового (для тестировщиков TestFlight)"
+        required: false
+        default: ""
+      group:
+        description: "ID группы TestFlight"
+        required: false
+        default: "e7311a74-0939-4f53-aca3-fe8e71bde95b"
+
+concurrency:
+  group: ios-testflight
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Собрать и выложить
+    # macOS 26 с Xcode 26 — нужен SDK iOS 26 (Liquid Glass, NativeTabs).
+    runs-on: macos-26
+    timeout-minutes: 90
+    env:
+      EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+      SENTRY_DISABLE_AUTO_UPLOAD: "true"
+      CI: "1"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20.19.4"
+          cache: npm
+
+      - name: Установить зависимости
+        run: npm ci --no-audit --no-fund
+
+      - name: Гейт версии и конфигурации
+        run: |
+          node scripts/release/check-version-consistency.mjs
+          npm run mobile:config:check
+
+      - name: Подготовить ключи подписи (из секретов, не в Git)
+        run: |
+          set -euo pipefail
+          mkdir -p credentials/ios
+          echo "$IOS_DIST_P12_BASE64" | base64 --decode > credentials/ios/dist-cert.p12
+          echo "$IOS_PROFILE_BASE64" | base64 --decode > credentials/ios/profile.mobileprovision
+          node -e '
+            const fs = require("node:fs");
+            fs.writeFileSync("credentials.json", JSON.stringify({
+              ios: {
+                distributionCertificate: { path: "credentials/ios/dist-cert.p12", password: process.env.IOS_DIST_P12_PASSWORD },
+                provisioningProfilePath: "credentials/ios/profile.mobileprovision",
+              },
+            }, null, 2));
+          '
+        env:
+          IOS_DIST_P12_BASE64: ${{ secrets.IOS_DIST_P12_BASE64 }}
+          IOS_PROFILE_BASE64: ${{ secrets.IOS_PROFILE_BASE64 }}
+          IOS_DIST_P12_PASSWORD: ${{ secrets.IOS_DIST_P12_PASSWORD }}
+
+      - name: Собрать IPA (eas build --local, профиль production-local)
+        run: |
+          npx eas-cli build --platform ios --profile production-local --local --non-interactive --output build/xtrud.ipa
+          ls -la build/xtrud.ipa
+
+      - name: Загрузить в App Store Connect
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/asc"
+          echo "$ASC_KEY_P8_BASE64" | base64 --decode > "$RUNNER_TEMP/asc/AuthKey.p8"
+          node -e '
+            const fs = require("node:fs");
+            fs.writeFileSync(process.env.RUNNER_TEMP + "/asc/asc.json", JSON.stringify({
+              keyId: process.env.ASC_KEY_ID, issuerId: process.env.ASC_ISSUER_ID,
+              keyPath: process.env.RUNNER_TEMP + "/asc/AuthKey.p8", appId: process.env.ASC_APP_ID,
+            }));
+          '
+          XTRUD_ASC_CONFIG="$RUNNER_TEMP/asc/asc.json" node scripts/release/asc-upload-build.mjs build/xtrud.ipa
+        env:
+          ASC_KEY_P8_BASE64: ${{ secrets.ASC_KEY_P8_BASE64 }}
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_APP_ID: ${{ secrets.ASC_APP_ID }}
+
+      - name: Выложить в TestFlight
+        run: |
+          set -euo pipefail
+          printf '%s' "${{ github.event.inputs.notes }}" > "$RUNNER_TEMP/notes.txt"
+          NOTES_ARG=""
+          if [ -s "$RUNNER_TEMP/notes.txt" ]; then NOTES_ARG="--notes-file $RUNNER_TEMP/notes.txt"; fi
+          XTRUD_ASC_CONFIG="$RUNNER_TEMP/asc/asc.json" node scripts/release/asc-publish-testflight.mjs --group "${{ github.event.inputs.group }}" $NOTES_ARG
+
+      - name: Убрать ключи с раннера
+        if: always()
+        run: rm -rf credentials credentials.json "$RUNNER_TEMP/asc"
+
+      - name: Сохранить IPA как артефакт (на 7 дней)
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: xtrud-ios-${{ github.run_number }}
+          path: build/xtrud.ipa
+          retention-days: 7

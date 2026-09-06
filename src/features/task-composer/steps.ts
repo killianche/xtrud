@@ -142,7 +142,9 @@ export function parseBudgetInput(text: string): number | null {
 
 export function formatBudgetInput(value: number | null): string {
   // Intl ставит узкий неразрывный пробел (U+202F); в поле ввода нужен обычный.
-  return value === null ? "" : new Intl.NumberFormat("ru-RU").format(value).replace(/[\u00A0\u202F]/g, " ");
+  return value === null
+    ? ""
+    : new Intl.NumberFormat("ru-RU").format(value).replace(/[\u00A0\u202F]/g, " ");
 }
 
 /** Ближайшие N дат для полосы выбора даты, ISO yyyy-mm-dd по местному времени. */

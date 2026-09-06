@@ -10,7 +10,7 @@
 //
 // Пустой запрос — не пустой экран: возвращается витрина по рейтингу.
 
-import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import { type InfiniteData, keepPreviousData, useInfiniteQuery } from "@tanstack/react-query";
 import { shouldHideDemo } from "@/lib/demo-mode";
 import { supabase } from "@/lib/supabase";
 
@@ -48,9 +48,20 @@ const PAGE_SIZE = 30;
 export function useSearchMasters(filters: MasterSearchFilters) {
   const trimmed = filters.query.trim();
 
-  return useQuery<MasterSearchResult[]>({
+  // Страницами по 30 с догрузкой при прокрутке: QA 2026-09-06 нашёл, что
+  // список обрезался на 30 — при 1000 специалистов остальных было не увидеть.
+  return useInfiniteQuery<
+    MasterSearchResult[],
+    Error,
+    InfiniteData<MasterSearchResult[]>,
+    readonly unknown[],
+    number
+  >({
     queryKey: ["search-masters", trimmed, filters.l1Id, filters.l2Id, filters.cityId, filters.sort],
-    queryFn: async () => {
+    initialPageParam: 0,
+    getNextPageParam: (lastPage, pages) =>
+      lastPage.length === PAGE_SIZE ? pages.length * PAGE_SIZE : undefined,
+    queryFn: async ({ pageParam }) => {
       const { data, error } = await supabase.rpc("search_masters", {
         p_query: trimmed.length > 0 ? trimmed : null,
         p_l2_id: filters.l2Id,
@@ -59,7 +70,7 @@ export function useSearchMasters(filters: MasterSearchFilters) {
         p_sort: filters.sort,
         p_hide_demo: shouldHideDemo(),
         p_limit: PAGE_SIZE,
-        p_offset: 0,
+        p_offset: pageParam,
       });
       if (error) throw error;
       return (data ?? []) as MasterSearchResult[];

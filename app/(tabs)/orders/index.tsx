@@ -57,6 +57,7 @@ import {
   useMyResponses,
 } from "@/features/orders/use-my-responses";
 import { usePullToRefresh } from "@/hooks/use-pull-to-refresh";
+import { hapticSelection } from "@/lib/haptics";
 import { useTabBarSpace } from "@/lib/tab-bar-space";
 import { scrollViewToTop, useTabScrollResetCounter } from "@/lib/tab-scroll-reset";
 import { useThemeColors } from "@/lib/use-theme-color";
@@ -142,6 +143,10 @@ function Segments({
   ordersCount: number | null;
   responsesCount: number | null;
 }) {
+  // DECISION владельца 2026-09-06: две роли — два цвета. «Как клиент» — в
+  // фирменном акценте, «Как мастер» — чёрный (ink): человек с одного взгляда
+  // понимает, в каком контексте он сейчас. Тот же цвет подхватывает
+  // содержимое списка ниже (см. accent у OrderRow «Ваш отклик»).
   const items: Array<[Segment, string, number | null]> = [
     ["orders", "Как клиент", ordersCount],
     ["responses", "Как мастер", responsesCount],
@@ -151,20 +156,25 @@ function Segments({
       {items.map(([key, label, count]) => {
         const active = value === key;
         const title = count != null && count > 0 ? `${label} · ${count}` : label;
+        const activeClass = key === "responses" ? "bg-primary" : "bg-accent";
+        const activeText = key === "responses" ? "text-on-primary" : "text-on-accent";
         return (
           <Pressable
             key={key}
             accessibilityRole="tab"
             accessibilityLabel={title}
             accessibilityState={{ selected: active }}
-            onPress={() => onChange(key)}
+            onPress={() => {
+              hapticSelection();
+              onChange(key);
+            }}
             className={`min-h-12 flex-1 items-center justify-center rounded-lg ${
-              active ? "border border-hairline bg-canvas" : ""
+              active ? activeClass : ""
             }`}
           >
             <AppText
               weight="semibold"
-              className={`text-body-md ${active ? "text-ink" : "text-mute"}`}
+              className={`text-body-md ${active ? activeText : "text-mute"}`}
             >
               {title}
             </AppText>

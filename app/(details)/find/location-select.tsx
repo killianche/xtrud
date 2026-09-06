@@ -1,167 +1,89 @@
-// /find/location-select — full-screen выбор локации для фильтра поиска
-// заданий. Открывается кнопкой-триггером с экрана /find/filters.
-//
-// Зачем отдельная страница (фидбэк владельца 2026-05-24): на экране фильтра
-// «Категория» открывается отдельной полной страницей (category-select), а
-// «Локация» раньше была инлайн (Вся Ингушетия + города + районы сразу). Владелец:
-// «сделай локацию точно так же — кнопкой, тапнул → открылись все варианты →
-// выбрал». Поэтому контент локации перенесён сюда 1-в-1 (тот же набор: Вся
-// Ингушетия / город / район, без сёл — как было в фильтре), а на /filters
-// остаётся компактный триггер.
-//
-// Handshake (как у /find/category-select): пишем ПРЯМО в общий Zustand
-// `useOrdersSearchFiltersStore` (он переживает навигацию). Выбор применяется
-// сразу; кнопка «Готово» и back из header просто возвращают на фильтры.
-//
-// Модель локации фильтра (НЕ трогалась при переносе):
-//   - cityId / district взаимоисключающие;
-//   - «Вся Ингушетия» = setLocation("", "") — фильтр локации снят;
-//   - повторный тап по городу/району снимает его.
+/**
+ * /find/location-select — выбор места для фильтра ленты заданий.
+ *
+ * Системная шторка (formSheet) со списком и галочкой — как выбор параметра в
+ * приложениях iOS. Первая строка снимает фильтр («Вся Ингушетия»), дальше
+ * города, затем районы. Город и район взаимоисключающие — это правило
+ * store (setLocation), здесь оно только отражено.
+ */
 
-import { Check, MapPin } from "phosphor-react-native";
-import { Pressable, ScrollView, View } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { AppText } from "@/components/AppText";
-import { Button, ScreenHeader } from "@/components/ui";
-import { Skeleton } from "@/components/ui/Skeleton";
+import { Stack, useRouter } from "expo-router";
+import { MapPin, MapTrifold } from "phosphor-react-native";
+import { useMemo } from "react";
+import { type PickerOption, PickerSheetPage } from "@/components/ui";
 import { useCities } from "@/features/cities/use-cities";
 import { districtOptions } from "@/features/orders/order-schema";
 import { useOrdersSearchFiltersStore } from "@/features/orders/orders-search-filters-store";
-import { useSafeBack } from "@/lib/use-safe-back";
+import { hapticSelection } from "@/lib/haptics";
 import { useThemeColors } from "@/lib/use-theme-color";
 
-/** Единый стиль chip-кнопки (город / район) — совпадает с SortChip на /filters
- *  (h-11, rounded-pill, accent-soft selected, hairline default). */
-const chipClass = (selected: boolean) =>
-  `h-11 items-center justify-center rounded-pill border px-4 active:opacity-70 ${
-    selected ? "border-ink bg-ink" : "border-hairline bg-canvas hover:bg-surface-2"
-  }`;
-const chipTextClass = (selected: boolean) =>
-  `text-body-sm ${selected ? "text-on-primary" : "text-ink"}`;
+const ALL_ID = "__all";
+const DISTRICT_PREFIX = "district:";
 
 export default function OrdersSearchLocationSelectScreen() {
-  const insets = useSafeAreaInsets();
-  const goBack = useSafeBack("/find/filters" as const);
-  const tc = useThemeColors(["ink", "accent"]);
-
+  const router = useRouter();
+  const tc = useThemeColors(["ink", "mute"]);
   const cityId = useOrdersSearchFiltersStore((s) => s.cityId);
   const district = useOrdersSearchFiltersStore((s) => s.district);
   const setLocation = useOrdersSearchFiltersStore((s) => s.setLocation);
+  const cities = useCities();
 
-  const { data: cities } = useCities();
-  // «Вся Ингушетия» = локация-фильтр снят (ни город, ни район не выбраны).
-  const isAllLoc = !cityId && !district;
+  const currentId = cityId ? cityId : district ? `${DISTRICT_PREFIX}${district}` : ALL_ID;
+
+  const options = useMemo<PickerOption[]>(
+    () => [
+      {
+        id: ALL_ID,
+        title: "Вся Ингушетия",
+        icon: <MapTrifold size={18} weight="bold" color={tc.ink} />,
+      },
+      ...(cities.data ?? []).map<PickerOption>((c) => ({
+        id: c.id,
+        title: c.name,
+        subtitle: "Город",
+        icon: <MapPin size={18} weight="bold" color={tc.mute} />,
+      })),
+      ...districtOptions.map<PickerOption>((d) => ({
+        id: `${DISTRICT_PREFIX}${d}`,
+        title: d,
+        subtitle: "Район",
+        icon: <MapPin size={18} weight="bold" color={tc.mute} />,
+      })),
+    ],
+    [cities.data, tc.ink, tc.mute],
+  );
+
+  const close = () => router.back();
 
   return (
-    <View className="flex-1 bg-canvas" style={{ paddingTop: insets.top }}>
-      <ScreenHeader title="Локация" onBack={goBack} />
-
-      <ScrollView
-        className="mt-2 flex-1"
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
-        contentContainerStyle={{ paddingBottom: 24 }}
-      >
-        <View className="px-5 pt-2">
-          {/* Вся Ингушетия — снимает фильтр локации (показать все районы). */}
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Вся Ингушетия"
-            accessibilityState={{ selected: isAllLoc }}
-            onPress={() => setLocation("", "")}
-            className={`flex-row items-center gap-3 rounded-lg border p-3.5 ${
-              isAllLoc
-                ? "border-accent bg-accent-soft"
-                : "border-hairline bg-canvas-soft active:opacity-70"
-            }`}
-          >
-            <View className="h-10 w-10 items-center justify-center rounded-md bg-canvas">
-              <MapPin
-                size={20}
-                weight={isAllLoc ? "fill" : "bold"}
-                color={isAllLoc ? tc.accent : tc.ink}
-              />
-            </View>
-            <AppText
-              weight="semibold"
-              className={`flex-1 text-body-md ${isAllLoc ? "text-accent" : "text-ink"}`}
-            >
-              Вся Ингушетия
-            </AppText>
-            {isAllLoc ? <Check size={20} weight="fill" color={tc.accent} /> : null}
-          </Pressable>
-
-          {/* Город — выбор сбрасывает район; повторный тап снимает. */}
-          <AppText
-            weight="semibold"
-            className="mt-8 text-caption uppercase tracking-wider text-muted"
-          >
-            Город
-          </AppText>
-          {cities === undefined ? (
-            <View className="mt-3 flex-row flex-wrap gap-2">
-              {[72, 92, 80, 88, 104, 76].map((w) => (
-                <Skeleton key={w} width={w} height={44} className="rounded-pill" />
-              ))}
-            </View>
-          ) : (
-            <View className="mt-3 flex-row flex-wrap gap-2">
-              {cities.map((c) => {
-                const selected = cityId === c.id;
-                return (
-                  <Pressable
-                    key={c.id}
-                    accessibilityRole="button"
-                    accessibilityState={{ selected }}
-                    onPress={() => setLocation(selected ? "" : c.id, "")}
-                    className={chipClass(selected)}
-                  >
-                    <AppText weight="medium" className={chipTextClass(selected)}>
-                      {c.name}
-                    </AppText>
-                  </Pressable>
-                );
-              })}
-            </View>
-          )}
-
-          {/* Район — выбор сбрасывает город; повторный тап снимает. */}
-          <AppText
-            weight="semibold"
-            className="mt-8 text-caption uppercase tracking-wider text-muted"
-          >
-            Район
-          </AppText>
-          <View className="mt-3 flex-row flex-wrap gap-2">
-            {districtOptions.map((d) => {
-              const selected = district === d;
-              return (
-                <Pressable
-                  key={d}
-                  accessibilityRole="button"
-                  accessibilityState={{ selected }}
-                  onPress={() => setLocation("", selected ? "" : d)}
-                  className={chipClass(selected)}
-                >
-                  <AppText weight="medium" className={chipTextClass(selected)}>
-                    {d}
-                  </AppText>
-                </Pressable>
-              );
-            })}
-          </View>
-        </View>
-      </ScrollView>
-
-      {/* Sticky footer — выбор уже применён в store, кнопка просто возвращает. */}
-      <View
-        className="border-t border-hairline px-5 pt-4"
-        style={{ paddingBottom: insets.bottom + 12 }}
-      >
-        <Button variant="primary" size="lg" fullWidth onPress={goBack}>
-          Готово
-        </Button>
-      </View>
-    </View>
+    <>
+      <Stack.Screen
+        options={{
+          presentation: "formSheet",
+          sheetAllowedDetents: [0.6, 1.0],
+          sheetGrabberVisible: true,
+          sheetExpandsWhenScrolledToEdge: true,
+        }}
+      />
+      <PickerSheetPage
+        title="Место"
+        options={options}
+        selectedId={currentId}
+        searchable
+        searchPlaceholder="Город или район"
+        loading={cities.isLoading}
+        errorMessage={cities.error ? "Не удалось загрузить города" : undefined}
+        onRetry={() => void cities.refetch()}
+        onSelect={(id) => {
+          hapticSelection();
+          if (id === ALL_ID) setLocation("", "");
+          else if (id.startsWith(DISTRICT_PREFIX))
+            setLocation("", id.slice(DISTRICT_PREFIX.length));
+          else setLocation(id, "");
+          close();
+        }}
+        onClose={close}
+      />
+    </>
   );
 }

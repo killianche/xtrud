@@ -6,22 +6,15 @@
  *    status='open' AND l2_id IN l2Ids AND client_id != userId AND
  *    created_at > lastSeenAt.
  *  - useMarkFeedSeen: RPC mark_feed_seen() — каждый mount /orders tab.
- *  - useRealtimeFeed: подписка на INSERT orders → invalidate count.
+ *  - живые обновления — общая личная подписка use-realtime-notifications.ts.
  *
  * Не вычитаем уже-откликнутые orders: minor over-count приемлем,
  * избегает сложного NOT IN запроса.
  */
 
-import type { RealtimeChannel } from "@supabase/supabase-js";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect } from "react";
 import { userRecordKey } from "@/features/auth/use-user-record";
-import {
-  type OrderRowMinimal,
-  shouldInvalidateFeedOnInsert,
-  unreadFeedKey,
-} from "@/features/orders/unread-feed-helpers";
-import { uniqueRealtimeTopic } from "@/lib/realtime-topic";
+import { unreadFeedKey } from "@/features/orders/unread-feed-helpers";
 import { supabase } from "@/lib/supabase";
 
 export { unreadFeedKey };
@@ -64,37 +57,4 @@ export function useMarkFeedSeen(userId: string | undefined) {
       qc.invalidateQueries({ queryKey: userRecordKey(userId) });
     },
   });
-}
-
-export function useRealtimeFeed(opts: { userId: string | null | undefined; l2Ids: string[] }) {
-  const qc = useQueryClient();
-  useEffect(() => {
-    if (!opts.userId || opts.l2Ids.length === 0) return;
-    // Уникальное имя канала и защита от исключения — по той же причине, что и
-    // в use-unread-responses.ts. См. src/lib/realtime-topic.ts.
-    let channel: RealtimeChannel;
-    try {
-      channel = supabase
-        .channel(uniqueRealtimeTopic(`feed:${opts.userId}`))
-        .on(
-          "postgres_changes",
-          { event: "INSERT", schema: "public", table: "orders" },
-          (payload) => {
-            const row = payload.new as OrderRowMinimal;
-            if (opts.userId && shouldInvalidateFeedOnInsert(row, opts.userId, opts.l2Ids)) {
-              qc.invalidateQueries({
-                queryKey: unreadFeedKey(opts.userId ?? undefined, opts.l2Ids),
-              });
-            }
-          },
-        )
-        .subscribe();
-    } catch (e) {
-      console.warn("[realtime] подписка feed не создана:", e);
-      return;
-    }
-    return () => {
-      void supabase.removeChannel(channel);
-    };
-  }, [opts.userId, opts.l2Ids, qc]);
 }

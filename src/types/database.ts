@@ -1674,6 +1674,7 @@ export type Database = {
           searches: number
         }[]
       }
+      get_unread_responses_count: { Args: Record<PropertyKey, never>; Returns: number }
       get_response_limit_today: { Args: never; Returns: Json }
       is_current_user_admin: { Args: never; Returns: boolean }
       is_username_available: { Args: { p_username: string }; Returns: boolean }

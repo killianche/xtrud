@@ -4,16 +4,15 @@ import {
   ThemeProvider as NavThemeProvider,
 } from "expo-router/react-navigation";
 import { NativeTabs } from "expo-router/unstable-native-tabs";
+import { useMemo } from "react";
 import { LIQUID_GLASS } from "@/components/ui/GlassSurface";
 import { useAuthSession } from "@/features/auth/use-auth-session";
 import { useTouchLastActive } from "@/features/auth/use-touch-last-active";
 import { useUserRecord } from "@/features/auth/use-user-record";
 import { useMyMasterCategories } from "@/features/master-categories/use-my-categories";
-import { useRealtimeFeed, useUnreadFeedCount } from "@/features/orders/use-unread-feed";
-import {
-  useRealtimeMyResponses,
-  useUnreadResponsesCount,
-} from "@/features/orders/use-unread-responses";
+import { useRealtimeNotifications } from "@/features/orders/use-realtime-notifications";
+import { useUnreadFeedCount } from "@/features/orders/use-unread-feed";
+import { useUnreadResponsesCount } from "@/features/orders/use-unread-responses";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useThemeColors } from "@/lib/use-theme-color";
 
@@ -39,19 +38,21 @@ export default function TabsLayout() {
   // Отмечаем онлайн-активность (рейтинг мастеров, Этап 2). Троттл внутри хука.
   useTouchLastActive(!!userId);
 
-  useRealtimeMyResponses(userId ?? null);
-
   // Непрочитанные отклики на мои задания.
   const { data: unreadResponses = 0 } = useUnreadResponsesCount(userId ?? null);
 
   // Непрочитанные задания в ленте по моим категориям, если они заданы.
   const { data: myCats } = useMyMasterCategories(userId);
-  const masterL2Ids = myCats?.map((c) => c.l2_id) ?? [];
+  // Стабильный массив: новый экземпляр на каждый рендер переподписывал
+  // realtime-канал ленты при каждом обновлении бейджа (QA 2026-09-06).
+  const masterL2Key = (myCats ?? [])
+    .map((c) => c.l2_id)
+    .sort()
+    .join(",");
+  const masterL2Ids = useMemo(() => (masterL2Key ? masterL2Key.split(",") : []), [masterL2Key]);
   const lastSeenFeedAt = user?.last_seen_feed_at ?? null;
-  useRealtimeFeed({
-    userId: userId ?? null,
-    l2Ids: masterL2Ids,
-  });
+  // Одна личная подписка на уведомления вместо двух глобальных (0164).
+  useRealtimeNotifications({ userId: userId ?? null, l2Ids: masterL2Ids });
   const { data: unreadFeed = 0 } = useUnreadFeedCount({
     userId: userId ?? null,
     l2Ids: masterL2Ids,

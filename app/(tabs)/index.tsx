@@ -211,7 +211,7 @@ function ClientHome({
             <TopMasters onMasterPress={onMasterPress} />
             <View className="mt-10 px-5">
               <AppText weight="bold" className="text-display-sm text-ink">
-                Категории
+                Категории специалистов
               </AppText>
               <AppText className="mt-1 text-body-md text-mute">
                 Выберите раздел — внутри все специалисты по нему

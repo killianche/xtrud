@@ -87,6 +87,16 @@ export interface PickerSheetPageProps {
   /** Загрузка упала — вместо списка текст ошибки + повтор. `options` игнорируются. */
   errorMessage?: string;
   onRetry?: () => void;
+  /**
+   * Множественный выбор (фильтр категорий): галочки у выбранных строк,
+   * кнопка «Готово» внизу. `onSelect` в этом режиме не используется —
+   * тап по строке зовёт `onToggle`.
+   */
+  multiSelect?: boolean;
+  selectedIds?: readonly string[];
+  onToggle?: (id: string) => void;
+  onDone?: () => void;
+  doneLabel?: string;
 }
 
 export function PickerSheetPage({
@@ -104,10 +114,16 @@ export function PickerSheetPage({
   loading = false,
   errorMessage,
   onRetry,
+  multiSelect = false,
+  selectedIds,
+  onToggle,
+  onDone,
+  doneLabel = "Готово",
 }: PickerSheetPageProps) {
   const insets = useSafeAreaInsets();
   const muteColor = useThemeColor("mute");
   const onPrimaryColor = useThemeColor("on-primary");
+  const onAccentColor = useThemeColor("on-accent");
   const [query, setQuery] = useState("");
 
   // loading/error — список ещё не пришёл, поиск скрываем (нечего искать).
@@ -155,7 +171,7 @@ export function PickerSheetPage({
     </View>
   ) : (
     filtered.map((opt) => {
-      const isSel = opt.id === selectedId;
+      const isSel = multiSelect ? (selectedIds ?? []).includes(opt.id) : opt.id === selectedId;
       const tintBgClass =
         opt.iconTint === "accent-soft" || opt.iconTint === "primary-soft"
           ? "bg-accent-soft"
@@ -166,9 +182,9 @@ export function PickerSheetPage({
             accessibilityRole="button"
             accessibilityState={{ selected: isSel }}
             accessibilityLabel={opt.title}
-            onPress={() => onSelect(opt.id)}
+            onPress={() => (multiSelect ? onToggle?.(opt.id) : onSelect(opt.id))}
             className={`flex-row items-center gap-3 rounded-lg px-2 py-2.5 active:bg-canvas-soft ${
-              isSel ? "bg-canvas-soft" : ""
+              isSel && !multiSelect ? "bg-canvas-soft" : ""
             }`}
           >
             {opt.icon ? (
@@ -192,7 +208,17 @@ export function PickerSheetPage({
               ) : null}
             </View>
 
-            {isSel ? <SelectedMark onPrimaryColor={onPrimaryColor} /> : null}
+            {multiSelect ? (
+              <View
+                className={`h-7 w-7 items-center justify-center rounded-full border ${
+                  isSel ? "border-accent bg-accent" : "border-hairline-strong bg-canvas"
+                }`}
+              >
+                {isSel ? <Check size={16} weight="bold" color={onAccentColor} /> : null}
+              </View>
+            ) : isSel ? (
+              <SelectedMark onPrimaryColor={onPrimaryColor} />
+            ) : null}
           </Pressable>
         </View>
       );
@@ -286,6 +312,23 @@ export function PickerSheetPage({
       ) : (
         <View style={{ paddingTop: 8, paddingBottom: insets.bottom + 16 }}>{rows}</View>
       )}
+      {multiSelect ? (
+        <View
+          className="border-t border-hairline bg-canvas px-5 pt-3"
+          style={{ paddingBottom: insets.bottom + 12 }}
+        >
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={doneLabel}
+            onPress={onDone ?? onClose}
+            className="min-h-13 items-center justify-center rounded-pill bg-accent active:opacity-85"
+          >
+            <AppText weight="semibold" className="text-button-lg text-on-accent">
+              {(selectedIds?.length ?? 0) > 0 ? `${doneLabel} · ${selectedIds?.length}` : doneLabel}
+            </AppText>
+          </Pressable>
+        </View>
+      ) : null}
     </View>
   );
 }

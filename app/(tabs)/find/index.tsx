@@ -23,24 +23,28 @@
 
 import { FlashList } from "@shopify/flash-list";
 import { useRouter } from "expo-router";
-import { SlidersHorizontal, Sparkle, Tray } from "phosphor-react-native";
+import { MapPin, Sparkle, SquaresFour, Tray } from "phosphor-react-native";
 import { useEffect, useRef } from "react";
-import { ActivityIndicator, Animated, Pressable, View } from "react-native";
+import { ActivityIndicator, Animated, Pressable, ScrollView, View } from "react-native";
 import { AppText } from "@/components/AppText";
 import { OrderRow } from "@/components/OrderRow";
 import { OrderRowsSkeleton } from "@/components/OrderRowsSkeleton";
-import { LargeTitleBar, LargeTitleBlock, useLargeTitle } from "@/components/ui";
+import { FilterChip, LargeTitleBar, LargeTitleBlock, useLargeTitle } from "@/components/ui";
 import { useAuthSession } from "@/features/auth/use-auth-session";
+import { useVisibleCategories } from "@/features/categories/use-visible-categories";
+import { useCities } from "@/features/cities/use-cities";
 import {
   countActiveFilters,
   useOrdersSearchFiltersStore,
 } from "@/features/orders/orders-search-filters-store";
 import { useAllOpenOrders } from "@/features/orders/use-all-open-orders";
-import { useMyResponses } from "@/features/orders/use-my-responses";
+import { useMyRespondedOrderIds } from "@/features/orders/use-my-responded-order-ids";
 import { useMarkFeedSeen } from "@/features/orders/use-unread-feed";
 import { describeQueryError } from "@/lib/describe-query-error";
 import { useTabBarSpace } from "@/lib/tab-bar-space";
 import { useThemeColor } from "@/lib/use-theme-color";
+
+const EMPTY_IDS: ReadonlySet<string> = new Set();
 
 export default function FindScreen() {
   const tabBarSpace = useTabBarSpace();
@@ -75,6 +79,18 @@ export default function FindScreen() {
 
   const effectiveL2Ids = l2Ids.length > 0 ? l2Ids : null;
 
+  // Подписи чипов — из каталога и городов (без сети берётся бандл).
+  const categoriesQ = useVisibleCategories();
+  const citiesQ = useCities();
+  const categoryChipLabel = (() => {
+    if (l2Ids.length === 0) return "Категория";
+    const first = categoriesQ.data?.find((c) => c.id === l2Ids[0])?.name_ru ?? "Категория";
+    return l2Ids.length > 1 ? `${first} +${l2Ids.length - 1}` : first;
+  })();
+  const locationChipLabel = cityId
+    ? (citiesQ.data?.find((c) => c.id === cityId)?.name ?? "Город")
+    : district || "Вся Ингушетия";
+
   // P1-3 (LAUNCH_READINESS): при заходе мастера в /find сбрасываем
   // unread-badge на TabBar (RPC mark_feed_seen обновляет
   // users.feed_last_seen_at = now()). До этого badge только рос.
@@ -102,12 +118,9 @@ export default function FindScreen() {
   // withdrawn). Используется для маркера «Вы откликнулись» в OrderRow,
   // чтобы мастер сразу видел в фиде поиска, какие заявки он уже трогал.
   // Withdrawn исключаем — отозванный отклик не считается активным.
-  const myResponsesQ = useMyResponses(userId);
-  const respondedOrderIds = new Set(
-    (myResponsesQ.data ?? [])
-      .filter((r) => r.response.status !== "withdrawn")
-      .map((r) => r.response.order_id),
-  );
+  // Только id заданий с моим откликом — без полного списка откликов с JOIN.
+  const myResponsesQ = useMyRespondedOrderIds(userId);
+  const respondedOrderIds = myResponsesQ.data ?? EMPTY_IDS;
 
   // Animated fade-in списка (UI_PATTERNS §3.7) — opacity 0→1 за 280ms когда
   // данные пришли. Skeleton → real list переход не должен быть «дёрганый».
@@ -131,14 +144,42 @@ export default function FindScreen() {
         title="Задания"
         compactTitleOpacity={large.compactTitleOpacity}
         onLayoutHeight={large.setBarHeight}
-        actions={[
-          {
-            label: hasActiveFilters ? `Фильтры · ${activeCount}` : "Фильтры",
-            Icon: SlidersHorizontal,
-            onPress: () => router.push("/find/filters" as never),
-            active: hasActiveFilters,
-          },
-        ]}
+        below={
+          // Строка фильтров под заголовком — как у Apple под полем поиска
+          // (DECISION владельца 2026-09-06: фильтры как в последнем iOS).
+          // Отдельного экрана «Фильтры» больше нет: чипы показывают выбранное
+          // и открывают системные шторки выбора.
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 10, gap: 8 }}
+          >
+            <FilterChip
+              label={categoryChipLabel}
+              Icon={SquaresFour}
+              active={l2Ids.length > 0}
+              onPress={() => router.push("/find/category-select" as never)}
+            />
+            <FilterChip
+              label={locationChipLabel}
+              Icon={MapPin}
+              active={!!cityId || !!district}
+              onPress={() => router.push("/find/location-select" as never)}
+            />
+            {hasActiveFilters ? (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Сбросить фильтры"
+                onPress={clearAll}
+                className="h-11 justify-center px-2 active:opacity-60"
+              >
+                <AppText weight="medium" className="text-body-md text-accent">
+                  Сбросить
+                </AppText>
+              </Pressable>
+            ) : null}
+          </ScrollView>
+        }
       />
 
       {/* Pill «Мои отклики» перенесена отсюда на главную мастера (над секцией

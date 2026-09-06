@@ -1,241 +1,83 @@
-// /find/category-select — full-screen multi-select picker категорий
-// для фильтров глобального поиска заданий (/find/filters).
-//
-// Отличие от /orders/category-select (wizard-flow):
-//   - **Multi-select** (Set), не single-pick.
-//   - Тап по строке → toggle (✓), а не сразу navigate back.
-//   - Sticky footer с primary-кнопкой «Применить · N» (или «Сбросить»
-//     если ничего не выбрано).
-//   - Пишет в useOrdersSearchFiltersStore.setL2Ids(), не в order-draft.
-//
-// UX-стандарты (фидбек user 2026-05-15):
-//   - <ScreenHeader title="Категории" onBack={...} /> (height 64).
-//   - MagnifyingGlass input крупный (h-14, 18px шрифт).
-//   - Lucide Check 20 для отметки выбранного, цветные Iconify-иконки
-//     слева (как в wizard category-select).
-//   - Sticky footer с большой Button size="lg".
+/**
+ * /find/category-select — выбор категорий для фильтра ленты заданий.
+ *
+ * DECISION владельца 2026-09-06: фильтры — как в последнем iOS. У Apple
+ * подробный выбор живёт в системной шторке со списком и галочками, а лёгкая
+ * фильтрация — чипами под полем поиска (WWDC26 «Design intuitive search
+ * experiences»). Здесь — шторка: formSheet, поиск по каталогу, галочки у
+ * выбранных, «Готово» внизу. Выбор коммитится в store только по «Готово»;
+ * закрыть шторку жестом — значит ничего не менять.
+ */
 
-import { useFocusEffect } from "expo-router";
-import { Check, Sparkle } from "phosphor-react-native";
-import { useCallback, useMemo, useState } from "react";
-import { Pressable, ScrollView, View } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { AppText } from "@/components/AppText";
-import { Button, ScreenHeader, SearchField } from "@/components/ui";
-import { useSearchCategories } from "@/features/categories/use-search-categories";
+import { Stack, useRouter } from "expo-router";
+import { useMemo, useState } from "react";
+import { type PickerOption, PickerSheetPage } from "@/components/ui";
 import { useVisibleCategories } from "@/features/categories/use-visible-categories";
 import { useOrdersSearchFiltersStore } from "@/features/orders/orders-search-filters-store";
 import { getCategoryIcon } from "@/lib/category-icons";
-import { highlightMatch } from "@/lib/highlight-match";
-import { useTabBarVisibility } from "@/lib/tabbar-visibility";
-import { useSafeBack } from "@/lib/use-safe-back";
-import { useThemeColor } from "@/lib/use-theme-color";
+import { hapticSelection } from "@/lib/haptics";
+import { useThemeColors } from "@/lib/use-theme-color";
 
-export default function FiltersCategorySelectScreen() {
-  const insets = useSafeAreaInsets();
-  const inkColor = useThemeColor("ink");
-  // Галочка на акцентной заливке — токен on-accent (единое правило для
-  // содержимого на розовом фоне).
-  const onAccentColor = useThemeColor("on-accent");
-  const goBack = useSafeBack("/find/filters" as const);
-
-  // Скрываем TabBar — это full-screen detail-экран фильтров.
-  const setTabBarHidden = useTabBarVisibility((s) => s.setHidden);
-  useFocusEffect(
-    useCallback(() => {
-      setTabBarHidden(true);
-      return () => setTabBarHidden(false);
-    }, [setTabBarHidden]),
-  );
-
-  const [query, setQuery] = useState("");
-
-  // Multi-select state — локальная Set, синхронизируется со стором при apply.
-  // Инициализируем из стора (чтобы при reopen уже выбранные были отмечены).
+export default function OrdersSearchCategorySelectScreen() {
+  const router = useRouter();
+  const tc = useThemeColors(["mute", "accent"]);
   const storeL2Ids = useOrdersSearchFiltersStore((s) => s.l2Ids);
   const setStoreL2Ids = useOrdersSearchFiltersStore((s) => s.setL2Ids);
-  const [selected, setSelected] = useState<Set<string>>(() => new Set(storeL2Ids));
+  const [selected, setSelected] = useState<string[]>(storeL2Ids);
+  const categories = useVisibleCategories();
 
-  const { data: categories = [] } = useVisibleCategories();
-  const search = useSearchCategories(query, 20);
-
-  type Row = {
-    rowKey: string;
-    l2_id: string;
-    name_ru: string;
-    parentName: string | null;
-    icon: string | null;
-    isL3: boolean;
-  };
-
-  const browseRows: Row[] = useMemo(
+  const options = useMemo<PickerOption[]>(
     () =>
-      categories.map((cat) => ({
-        rowKey: `l2:${cat.id}`,
-        l2_id: cat.id,
-        name_ru: cat.name_ru,
-        parentName: null,
-        icon: cat.icon,
-        isL3: false,
-      })),
-    [categories],
+      (categories.data ?? []).map((category) => {
+        const Icon = getCategoryIcon(category.icon);
+        const active = selected.includes(category.id);
+        return {
+          id: category.id,
+          title: category.name_ru,
+          icon: <Icon size={18} weight="bold" color={active ? tc.accent : tc.mute} />,
+        };
+      }),
+    [categories.data, selected, tc.accent, tc.mute],
   );
 
-  const searchRows: Row[] = useMemo(() => {
-    if (!search.data) return [];
-    const l2NameById = new Map(categories.map((c) => [c.id, c.name_ru]));
-    return search.data.hits.map((hit) => ({
-      rowKey: `${hit.kind}:${hit.id}`,
-      l2_id: hit.l2_id,
-      name_ru: hit.name_ru,
-      parentName: hit.kind === "l3" ? (l2NameById.get(hit.l2_id) ?? null) : null,
-      icon: categories.find((c) => c.id === hit.l2_id)?.icon ?? null,
-      isL3: hit.kind === "l3",
-    }));
-  }, [search.data, categories]);
-
-  const isSearching = query.trim().length >= 2;
-  const rows = isSearching ? searchRows : browseRows;
-
-  const toggle = (l2Id: string) => {
-    setSelected((prev) => {
-      const next = new Set(prev);
-      if (next.has(l2Id)) next.delete(l2Id);
-      else next.add(l2Id);
-      return next;
-    });
-  };
-
-  const clearAll = () => setSelected(new Set());
-
-  const apply = () => {
-    setStoreL2Ids(Array.from(selected));
-    goBack();
-  };
-
-  const count = selected.size;
+  const close = () => router.back();
 
   return (
-    <View className="flex-1 bg-canvas" style={{ paddingTop: insets.top }}>
-      <ScreenHeader
-        title="Категории"
-        onBack={goBack}
-        rightAction={
-          count > 0
-            ? {
-                label: "Сбросить",
-                onPress: clearAll,
-              }
-            : undefined
-        }
+    <>
+      <Stack.Screen
+        options={{
+          presentation: "formSheet",
+          sheetAllowedDetents: [0.7, 1.0],
+          sheetGrabberVisible: true,
+          sheetExpandsWhenScrolledToEdge: true,
+        }}
       />
-
-      {/* Поле поиска — общий SearchField (правила Apple HIG). Подсказка
-          объясняет, что искать: «Найти категорию» ничего не сообщало. */}
-      <View className="px-5 mt-2">
-        <SearchField
-          value={query}
-          onChangeText={setQuery}
-          placeholder="Например, сантехник, обои или уборка"
-          accessibilityLabel="Поиск категории"
-          showCancel={false}
-        />
-      </View>
-
-      {/* Раскладка-fix баннер */}
-      {isSearching && search.data?.wasFlipped && search.data.flippedQuery ? (
-        <View className="px-5 mt-3">
-          <View className="flex-row items-center gap-2 rounded-md bg-canvas-soft px-3 py-2">
-            <Sparkle size={14} weight="bold" color={inkColor} />
-            <AppText className="text-caption text-body" numberOfLines={1}>
-              Возможно, вы искали:{" "}
-              <AppText weight="semibold" className="text-ink">
-                {search.data.flippedQuery}
-              </AppText>
-            </AppText>
-          </View>
-        </View>
-      ) : null}
-
-      <ScrollView
-        className="mt-3 flex-1"
-        keyboardShouldPersistTaps="handled"
-        contentContainerStyle={{ paddingBottom: 140 }}
-      >
-        {isSearching && search.isLoading ? (
-          <View className="px-5 py-4">
-            <AppText className="text-body-sm text-mute">Ищем…</AppText>
-          </View>
-        ) : rows.length === 0 ? (
-          <View className="px-5 py-8 items-center">
-            <AppText className="text-body-sm text-mute text-center">
-              {isSearching
-                ? `Ничего не нашли по запросу «${query}». Попробуйте другое слово.`
-                : "Категорий пока нет."}
-            </AppText>
-          </View>
-        ) : (
-          rows.map((row) => {
-            const Icon = getCategoryIcon(row.icon);
-            const segments = isSearching ? highlightMatch(row.name_ru, query) : null;
-            const isSelected = selected.has(row.l2_id);
-            return (
-              <Pressable
-                key={row.rowKey}
-                accessibilityRole="checkbox"
-                accessibilityState={{ checked: isSelected }}
-                accessibilityLabel={row.name_ru}
-                onPress={() => toggle(row.l2_id)}
-                className="flex-row items-center gap-3 px-5 py-3 active:bg-canvas-soft-2"
-              >
-                <View className="h-10 w-10 items-center justify-center rounded-full bg-canvas-soft shrink-0">
-                  {<Icon size={20} weight="bold" color={inkColor} />}
-                </View>
-                <View className="flex-1">
-                  <AppText className="text-body-md text-ink" numberOfLines={1}>
-                    {segments
-                      ? segments.map((seg, idx) => (
-                          <AppText
-                            // biome-ignore lint/suspicious/noArrayIndexKey: stable segment index
-                            key={idx}
-                            weight={seg.match ? "semibold" : "regular"}
-                            className={seg.match ? "text-ink" : "text-body"}
-                          >
-                            {seg.text}
-                          </AppText>
-                        ))
-                      : row.name_ru}
-                  </AppText>
-                  {row.isL3 && row.parentName ? (
-                    <AppText className="mt-0.5 text-caption text-mute" numberOfLines={1}>
-                      в категории «{row.parentName}»
-                    </AppText>
-                  ) : null}
-                </View>
-                {/* Checkbox-индикатор справа — солидный accent (iOS-style)
-                    когда выбран. Чёрные индикаторы запрещены (user 2026-05-15). */}
-                <View
-                  className={`h-7 w-7 items-center justify-center rounded-full border ${
-                    isSelected ? "border-accent bg-accent" : "border-hairline bg-canvas"
-                  }`}
-                >
-                  {isSelected ? <Check size={16} weight="bold" color={onAccentColor} /> : null}
-                </View>
-              </Pressable>
-            );
-          })
-        )}
-      </ScrollView>
-
-      {/* Sticky footer с primary-кнопкой */}
-      <View
-        className="border-hairline-soft border-t bg-canvas px-5 pt-3"
-        style={{ paddingBottom: insets.bottom + 12 }}
-      >
-        <Button variant="primary" size="lg" fullWidth onPress={apply}>
-          {count > 0 ? `Применить · ${count}` : "Применить"}
-        </Button>
-      </View>
-    </View>
+      <PickerSheetPage
+        title="Категории"
+        subtitle={selected.length > 0 ? `Выбрано: ${selected.length}` : "Можно выбрать несколько"}
+        options={options}
+        selectedId=""
+        onSelect={() => undefined}
+        multiSelect
+        selectedIds={selected}
+        onToggle={(id) => {
+          hapticSelection();
+          setSelected((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+        }}
+        onDone={() => {
+          setStoreL2Ids(selected);
+          close();
+        }}
+        doneLabel="Готово"
+        searchable
+        searchPlaceholder="Например, сантехник или уборка"
+        resettable
+        resetLabel="Сбросить"
+        loading={categories.isLoading}
+        errorMessage={categories.error ? "Не удалось загрузить категории" : undefined}
+        onRetry={() => void categories.refetch()}
+        onClose={close}
+      />
+    </>
   );
 }

@@ -3,7 +3,7 @@ import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { usePreventRemove } from "expo-router/react-navigation";
 import { CaretLeft, CaretRight, CheckCircle, WarningCircle } from "phosphor-react-native";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
@@ -540,7 +540,30 @@ export function NewOrderScreen({ screenPhase = "intent" }: NewOrderScreenProps) 
   // делают один POP, а черновик живёт в store и переживает выход.
   // ==========================================================================
   const stepIndex = inDetails ? STEP_ORDER.indexOf(screenPhase as (typeof STEP_ORDER)[number]) : -1;
-  const values = watch();
+  // useWatch по конкретным полям, а не watch() всей формы: полный watch
+  // перерисовывал весь экран создания на каждую букву (QA 2026-09-06).
+  const [wCityId, wDistrict, wUrgency, wPreferredDate, wBudgetKind, wBudgetValue, wDescription] =
+    useWatch({
+      control,
+      name: [
+        "cityId",
+        "district",
+        "urgency",
+        "preferredDate",
+        "budgetKind",
+        "budgetValue",
+        "description",
+      ],
+    });
+  const values = {
+    cityId: wCityId,
+    district: wDistrict,
+    urgency: wUrgency,
+    preferredDate: wPreferredDate,
+    budgetKind: wBudgetKind,
+    budgetValue: wBudgetValue,
+    description: wDescription,
+  };
   const stepValid: Record<(typeof STEP_ORDER)[number], boolean> = {
     details: true,
     where: !!values.cityId || !!values.district,

@@ -10,6 +10,7 @@
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import type { CreateOrderFormValues } from "@/features/orders/order-schema";
+import { createDebouncedStorage } from "@/lib/debounced-storage";
 import {
   activateOrderDraftOwner,
   bindGuestDraftClaimToUser,
@@ -219,7 +220,9 @@ export const useOrderDraftStore = create<OrderDraftState>()(
       skipHydration: true,
       // Order descriptions can exceed one iOS Keychain item, so the chunked
       // adapter stores the snapshot without truncation.
-      storage: createJSONStorage(() => largeSecureStorage),
+      // Запись на диск с паузой 400 мс: в памяти черновик обновляется сразу,
+      // а Keychain получает только последнее значение (см. debounced-storage).
+      storage: createJSONStorage(() => createDebouncedStorage(largeSecureStorage, 400)),
       partialize: (state): PersistedOrderDraftState => ({ snapshots: state.snapshots }),
       // v2 did not bind PII to an owner. It cannot be safely assigned after an
       // upgrade, so legacy single snapshots fail closed instead of resurfacing.

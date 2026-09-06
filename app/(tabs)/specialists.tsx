@@ -23,6 +23,7 @@ import { AppText } from "@/components/AppText";
 import { CITIES, type CityId } from "@/components/CitySelector";
 import {
   Avatar,
+  FilterChip,
   LargeTitleBar,
   LargeTitleBlock,
   SearchField,
@@ -131,41 +132,6 @@ function MasterCard({ master, onPress }: { master: MasterSearchResult; onPress: 
   );
 }
 
-/** Чип фильтра под поиском. Лежит на стекле, поэтому со своей заливкой. */
-function FilterChip({
-  label,
-  Icon,
-  active,
-  onPress,
-}: {
-  label: string;
-  Icon: IconComponent;
-  active: boolean;
-  onPress: () => void;
-}) {
-  const tc = useThemeColors(["accent", "body"]);
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityState={{ selected: active }}
-      accessibilityLabel={label}
-      onPress={onPress}
-      className={`h-11 flex-row items-center gap-2 rounded-pill px-4 active:opacity-60 ${
-        active ? "border border-accent bg-accent-soft" : "border border-hairline bg-canvas-soft"
-      }`}
-    >
-      <Icon size={17} weight="bold" color={active ? tc.accent : tc.body} />
-      <AppText
-        weight="semibold"
-        className={`text-body-md ${active ? "text-accent" : "text-body"}`}
-        numberOfLines={1}
-      >
-        {label}
-      </AppText>
-    </Pressable>
-  );
-}
-
 export default function SpecialistsScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ l1?: string | string[]; l2?: string | string[] }>();
@@ -226,14 +192,23 @@ export default function SpecialistsScreen() {
 
   // Поиск не дёргает сервер на каждую букву: 250 мс.
   const debounced = useDebouncedValue(query.trim(), 250);
-  const { data, isLoading, error, refetch, isFetching } = useSearchMasters({
+  const {
+    data,
+    isLoading,
+    error,
+    refetch,
+    isFetching,
+    hasNextPage,
+    fetchNextPage,
+    isFetchingNextPage,
+  } = useSearchMasters({
     query: debounced,
     l1Id,
     l2Id,
     cityId: cityId === "all" ? null : cityId,
     sort,
   });
-  const list = data ?? [];
+  const list = useMemo(() => (data?.pages ?? []).flat(), [data]);
   const title = hasCategoryFilter ? categoryLabel : "Специалисты";
 
   return (
@@ -248,10 +223,16 @@ export default function SpecialistsScreen() {
         onScroll={large.onScroll}
         scrollEventThrottle={16}
         renderScrollComponent={Animated.ScrollView as never}
+        onEndReached={() => {
+          if (hasNextPage && !isFetchingNextPage) void fetchNextPage();
+        }}
+        onEndReachedThreshold={0.6}
         ListHeaderComponent={
           <LargeTitleBlock
             title={title}
-            subtitle={isLoading ? null : specialistsLabel(list.length)}
+            subtitle={
+              isLoading ? null : `${specialistsLabel(list.length)}${hasNextPage ? " и ещё" : ""}`
+            }
           />
         }
         renderItem={({ item }) => (
@@ -261,7 +242,7 @@ export default function SpecialistsScreen() {
           />
         )}
         ListEmptyComponent={
-          isLoading || isFetching ? (
+          isLoading || (isFetching && !isFetchingNextPage) ? (
             <SpecialistsSkeleton />
           ) : error ? (
             <ErrorBlock

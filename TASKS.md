@@ -184,14 +184,16 @@
 Проверено в `node_modules`: detents, NativeTabs и Liquid Glass уже доступны,
 апгрейд для них не нужен.
 
-- [ ] `BottomSheet` (239 строк на старом RN `Animated`) → нативный `formSheet`
-      с detents, grabber и интерактивным закрытием
-- [ ] Haptics шире: `expo-haptics@~15.0.8` установлен и используется в
-      блокировке; остальные значимые действия отклика пока не дают
-- [ ] Reduce Motion: ноль обработки
-- [ ] `FlashList` вместо `ScrollView` на длинных лентах (сейчас 1 место из 7)
-- [ ] Нативные заголовки и large titles (`headerShown: false` глобально)
-- [ ] `TabBar` (301 строка) → `NativeTabs`
+- [x] `BottomSheet` удалён (a4c161e); шторки выбора — нативный `formSheet`
+      с detents и grabber.
+- [x] Haptics: `hapticSelection`/`hapticImpact` в 12 файлах (чипы, сегменты,
+      пикеры, переключатели).
+- [x] Reduce Motion: `useReducedMotion` (src/hooks) в 4 экранах.
+- [x] `FlashList` на длинных лентах — 7 экранов.
+- [x] Крупные заголовки и строка навигации — `LargeTitleBar`/`useLargeTitle`
+      (свои, как в iOS 26; системные large titles не подходят из-за
+      закреплённой шапки с фильтрами).
+- [x] `TabBar` → `NativeTabs` (Liquid Glass, системные бейджи).
 
 ---
 

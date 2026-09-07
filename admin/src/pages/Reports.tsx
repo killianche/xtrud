@@ -148,6 +148,16 @@ function ReportCard({ report, onDone }: { report: ReportRow; onDone: () => void 
             >
               Заблокировать
             </button>
+            {report.target_type === "order" ? (
+              <button
+                type="button"
+                className="btn btn-danger"
+                disabled={busy}
+                onClick={() => run(() => api.hideOrder(report.target_id, reason.trim(), report.id))}
+              >
+                Скрыть задание
+              </button>
+            ) : null}
             <button
               type="button"
               className="btn btn-primary"

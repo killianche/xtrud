@@ -12,6 +12,7 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { initialWindowMetrics, SafeAreaProvider } from "react-native-safe-area-context";
 import "react-native-reanimated";
 import { AppErrorBoundary } from "@/components/AppErrorBoundary";
+import { BannedScreen } from "@/features/auth/BannedScreen";
 import { needsMasterFinalization } from "@/features/auth/master-onboarding-recovery";
 import { isPublicDetailsRoute } from "@/features/auth/public-route-policy";
 import { useAuthSession } from "@/features/auth/use-auth-session";
@@ -204,6 +205,8 @@ function AuthGate({ children }: { children: React.ReactNode }) {
 
   // Prevent a one-frame render of settings/edit/history while the redirect
   // effect moves an anonymous cold deep link back to the public tabs.
+  // Р3: заблокированный аккаунт не видит приложение вовсе.
+  if (userRecord?.status === "banned") return <BannedScreen />;
   return unauthenticatedPrivateDetails ? null : children;
 }
 

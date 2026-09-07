@@ -16,9 +16,16 @@
 import { create } from "zustand";
 import type { CancelReason } from "@/features/orders/use-cancel-order";
 
+export interface CloseReasonResult {
+  orderId: string;
+  reason: CancelReason;
+  /** Кто сделал (из откликнувшихся) — только для found_master. */
+  pickedMasterId?: string | null;
+}
+
 interface CloseReasonPickerState {
-  result: { orderId: string; reason: CancelReason } | null;
-  setResult: (value: { orderId: string; reason: CancelReason } | null) => void;
+  result: CloseReasonResult | null;
+  setResult: (value: CloseReasonResult | null) => void;
 }
 
 export const useCloseReasonPickerStore = create<CloseReasonPickerState>()((set) => ({

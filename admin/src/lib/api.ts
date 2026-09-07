@@ -206,6 +206,13 @@ export const api = {
       p_limit: limit,
       p_offset: offset,
     }),
+  /** Р5 (0175): скрыть задание по жалобе — статус cancelled, автору уведомление. */
+  hideOrder: (orderId: string, reason: string, reportId: string | null) =>
+    rpc<void>("admin_hide_order", {
+      p_order_id: orderId,
+      p_reason: reason.trim(),
+      p_report_id: reportId,
+    }),
   resolveReport: (reportId: string, status: string, note: string) =>
     rpc<{ ok: boolean }>("admin_resolve_report", {
       p_report_id: reportId,

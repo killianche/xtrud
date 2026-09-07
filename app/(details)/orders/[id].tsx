@@ -153,10 +153,10 @@ export default function OrderDetailScreen() {
   // `/orders/close-reason` коммитит выбор в store. useCallback — иначе эффект
   // ниже перезапускался бы на каждый рендер (функция не мемоизирована).
   const handleCloseWithReason = useCallback(
-    (reason: CancelReason) => {
+    (reason: CancelReason, pickedMasterId: string | null = null) => {
       if (!id || !userId) return;
       cancelOrder.mutate(
-        { orderId: id, clientId: userId, reason },
+        { orderId: id, clientId: userId, reason, pickedMasterId },
         { onError: (e) => Alert.alert("Не удалось закрыть", e.message) },
       );
     },
@@ -165,7 +165,7 @@ export default function OrderDetailScreen() {
 
   useEffect(() => {
     if (!closeReasonResult || closeReasonResult.orderId !== id) return;
-    handleCloseWithReason(closeReasonResult.reason);
+    handleCloseWithReason(closeReasonResult.reason, closeReasonResult.pickedMasterId ?? null);
     setCloseReasonResult(null);
   }, [closeReasonResult, id, setCloseReasonResult, handleCloseWithReason]);
 
@@ -718,6 +718,7 @@ interface ClientResponsesSectionProps {
 
 function ClientResponsesSection({ orderId, order }: ClientResponsesSectionProps) {
   const tc = useThemeColors(["muted-soft"]);
+  const router = useRouter();
   const {
     data: responses,
     isLoading,
@@ -839,6 +840,33 @@ function ClientResponsesSection({ orderId, order }: ClientResponsesSectionProps)
                 попробуйте дополнить описание, добавить фото или указать бюджет. Можно также найти
                 исполнителя самому в каталоге.
               </AppText>
+              <View className="mt-3 flex-row flex-wrap gap-2">
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Посмотреть специалистов раздела"
+                  onPress={() =>
+                    router.push({
+                      pathname: "/specialists/section",
+                      params: { l2: order.l2_id },
+                    } as never)
+                  }
+                  className="min-h-11 items-center justify-center rounded-pill bg-accent px-4 active:opacity-85"
+                >
+                  <AppText weight="semibold" className="text-body-sm text-on-accent">
+                    Специалисты раздела
+                  </AppText>
+                </Pressable>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Изменить задание"
+                  onPress={() => router.push(`/orders/edit/${orderId}` as never)}
+                  className="min-h-11 items-center justify-center rounded-pill border border-hairline bg-canvas px-4 active:bg-canvas-soft"
+                >
+                  <AppText weight="semibold" className="text-body-sm text-ink">
+                    Изменить задание
+                  </AppText>
+                </Pressable>
+              </View>
             </>
           ) : (
             <>

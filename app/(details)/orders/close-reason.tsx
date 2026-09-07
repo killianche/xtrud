@@ -24,12 +24,17 @@
  */
 
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
-import { CheckCircle, X } from "phosphor-react-native";
+import { CheckCircle, UserCircle, X } from "phosphor-react-native";
+import { useState } from "react";
 import { Pressable, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
+import { Avatar } from "@/components/Avatar";
+import { InsetGroup, InsetRow } from "@/components/ui";
 import { useCloseReasonPickerStore } from "@/features/orders/close-reason-picker-store";
 import type { CancelReason } from "@/features/orders/use-cancel-order";
+import { useOrderResponses } from "@/features/orders/use-order-responses";
+import { hapticSelection } from "@/lib/haptics";
 import { useThemeColors } from "@/lib/use-theme-color";
 
 // Параметры шторки — константа модуля. Объект, создаваемый заново при каждом
@@ -52,9 +57,24 @@ export default function CloseReasonScreen() {
 
   const close = () => router.back();
 
-  const pick = (reason: CancelReason) => {
-    if (orderId) setResult({ orderId, reason });
+  // Р1 (DECISION владельца 2026-09-07): «нашёл исполнителя» → спросить, кто
+  // из откликнувшихся сделал работу. Мастер получит уведомление (0175).
+  const [step, setStep] = useState<"reason" | "who">("reason");
+  const responsesQ = useOrderResponses(orderId);
+  const responders = (responsesQ.data ?? []).filter((r) => r.status !== "rejected" && r.master);
+
+  const pick = (reason: CancelReason, pickedMasterId: string | null = null) => {
+    if (orderId) setResult({ orderId, reason, pickedMasterId });
     close();
+  };
+
+  const onFoundMaster = () => {
+    if (responders.length === 0) {
+      pick("found_master");
+      return;
+    }
+    hapticSelection();
+    setStep("who");
   };
 
   return (
@@ -68,7 +88,7 @@ export default function CloseReasonScreen() {
             className="flex-1 text-display-sm tracking-tight text-ink"
             numberOfLines={2}
           >
-            Почему закрываете задание?
+            {step === "who" ? "Кто сделал работу?" : "Почему закрываете задание?"}
           </AppText>
           <Pressable
             accessibilityRole="button"
@@ -85,29 +105,61 @@ export default function CloseReasonScreen() {
             status-picker). Каждый — иконка в круге + заголовок + описание справа.
             «Нашёл мастера» — позитивный исход (success-tint), «Больше не нужно» —
             нейтральный. Оба → cancelled, разница в cancel_reason. */}
-        <View className="gap-2 px-5 pb-6 pt-1">
-          <CloseReasonOption
-            icon={CheckCircle}
-            title="Я нашёл исполнителя"
-            description="Договорился с подрядчиком — задача закрыта успешно."
-            tone="success"
-            onPress={() => pick("found_master")}
-          />
-          <CloseReasonOption
-            icon={X}
-            title="Больше не нужно"
-            description="Передумал или решил вопрос другим способом."
-            tone="neutral"
-            onPress={() => pick("no_longer_needed")}
-          />
+        {step === "who" ? (
+          <View className="pb-6 pt-1">
+            <InsetGroup footer="Исполнитель получит уведомление, а вы сможете оставить ему отзыв.">
+              {responders.map((r) => {
+                const m = r.master;
+                const name =
+                  [m?.first_name, m?.last_name].filter(Boolean).join(" ") || "Специалист";
+                return (
+                  <InsetRow
+                    key={r.id}
+                    title={name}
+                    subtitle={
+                      r.price_value
+                        ? `${r.price_value} ₽ · ${r.lead_time ?? ""}`
+                        : (r.lead_time ?? undefined)
+                    }
+                    icon={<Avatar url={m?.avatar_url} name={name} seed={m?.id} size="sm" />}
+                    onPress={() => pick("found_master", m?.id ?? null)}
+                  />
+                );
+              })}
+              <InsetRow
+                title="Не из приложения"
+                subtitle="Нашёл исполнителя другим способом"
+                icon={<UserCircle size={20} weight="bold" color={tc.mute} />}
+                onPress={() => pick("found_master", null)}
+                last
+              />
+            </InsetGroup>
+          </View>
+        ) : (
+          <View className="gap-2 px-5 pb-6 pt-1">
+            <CloseReasonOption
+              icon={CheckCircle}
+              title="Я нашёл исполнителя"
+              description="Договорился с подрядчиком — задача закрыта успешно."
+              tone="success"
+              onPress={onFoundMaster}
+            />
+            <CloseReasonOption
+              icon={X}
+              title="Больше не нужно"
+              description="Передумал или решил вопрос другим способом."
+              tone="neutral"
+              onPress={() => pick("no_longer_needed")}
+            />
 
-          {/* Честное предупреждение о последствиях (паттерн Avito при снятии).
+            {/* Честное предупреждение о последствиях (паттерн Avito при снятии).
               Это не subtitle под H1, а сноска внизу списка вариантов. */}
-          <AppText className="mt-2 text-caption text-mute" style={{ lineHeight: 18 }}>
-            Исполнители перестанут видеть задание и не смогут откликнуться. Контакты тех, кто уже
-            откликнулся, останутся у вас.
-          </AppText>
-        </View>
+            <AppText className="mt-2 text-caption text-mute" style={{ lineHeight: 18 }}>
+              Исполнители перестанут видеть задание и не смогут откликнуться. Контакты тех, кто уже
+              откликнулся, останутся у вас.
+            </AppText>
+          </View>
+        )}
       </View>
     </>
   );

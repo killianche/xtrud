@@ -25,13 +25,16 @@ export interface CancelOrderInput {
   /** Причина закрытия. Опционально для обратной совместимости со старыми
    *  вызовами (CloseOrderHint без выбора причины), но UI всегда передаёт. */
   reason?: CancelReason;
+  /** Р1 (DECISION владельца 2026-09-07): при «нашёл исполнителя» — кто из
+   *  откликнувшихся сделал работу. Мастер получает уведомление (0175). */
+  pickedMasterId?: string | null;
 }
 
 export function useCancelOrder() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ orderId, clientId, reason }: CancelOrderInput) => {
+    mutationFn: async ({ orderId, clientId, reason, pickedMasterId }: CancelOrderInput) => {
       const { error } = await supabase
         .from("orders")
         .update({
@@ -39,6 +42,9 @@ export function useCancelOrder() {
           // Пишем причину только если она передана — не затираем существующую
           // (например, авто-причину от ночной задачи) пустым значением.
           ...(reason ? { cancel_reason: reason, cancelled_by: clientId } : {}),
+          ...(reason === "found_master" && pickedMasterId
+            ? { picked_master_id: pickedMasterId, picked_at: new Date().toISOString() }
+            : {}),
         })
         .eq("id", orderId);
       if (error) throw error;

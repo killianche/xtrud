@@ -92,11 +92,12 @@ export function useMyRecentReviewForMaster(
     queryKey: recentReviewByAuthorKey(targetId, authorId),
     queryFn: async () => {
       if (!targetId || !authorId) return null;
-      const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+      // DECISION владельца 2026-09-07 (Р2): один отзыв в неделю от
+      // пользователя — любому специалисту, без привязки к заданию (0175).
+      const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
       const { data, error } = await supabase
         .from("reviews")
         .select("*")
-        .eq("target_id", targetId)
         .eq("author_id", authorId)
         .eq("direction", "client_to_master")
         .gte("created_at", since)

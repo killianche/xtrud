@@ -15,6 +15,8 @@ import { KeyboardAvoidingView, Platform, Pressable, ScrollView, View } from "rea
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
 import { Button, Input } from "@/components/ui";
+import { NavCircleButton } from "@/components/ui/LargeTitle";
+import { SystemIcon } from "@/components/ui/SystemIcon";
 import { ORDER_CREATE_RETURN_TO, parseAuthReturnTo } from "@/features/auth/auth-return";
 import { useLogin } from "@/features/auth/use-auth-mutations";
 import { type LoginFormValues, loginFormSchema } from "@/features/auth/validation";
@@ -140,17 +142,15 @@ export default function LoginScreen() {
         showsVerticalScrollIndicator={false}
       >
         <View className="px-6 pt-4">
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Назад"
-            disabled={isBusy}
-            onPress={goBack}
-            className={`-ml-2 h-12 w-12 items-center justify-center rounded-full ${
-              isBusy ? "opacity-30" : "active:bg-canvas-soft"
-            }`}
-          >
-            <CaretLeft size={28} weight="bold" color={tc.ink} />
-          </Pressable>
+          <NavCircleButton label="Назад" onPress={goBack} disabled={isBusy}>
+            <SystemIcon
+              sf="chevron.left"
+              fallback={CaretLeft}
+              size={20}
+              weight="semibold"
+              color={tc.ink}
+            />
+          </NavCircleButton>
           {/* Стандарт auth-экранов 2026-09-02 (DECISION владельца: «всё
               бело-белое, непонятно, что где нажимать»): крупный заголовок,
               поля Input с заливкой и акцентной рамкой в фокусе, одна

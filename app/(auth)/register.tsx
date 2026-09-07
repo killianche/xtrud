@@ -24,6 +24,8 @@ import { KeyboardAvoidingView, Platform, Pressable, ScrollView, View } from "rea
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
 import { Button, Input } from "@/components/ui";
+import { NavCircleButton } from "@/components/ui/LargeTitle";
+import { SystemIcon } from "@/components/ui/SystemIcon";
 import { ORDER_CREATE_RETURN_TO, parseAuthReturnTo } from "@/features/auth/auth-return";
 import { useRegister } from "@/features/auth/use-auth-mutations";
 import {
@@ -185,17 +187,15 @@ export default function RegisterScreen() {
         showsVerticalScrollIndicator={false}
       >
         <View className="flex-1 px-6 pt-4">
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Назад"
-            disabled={isBusy}
-            onPress={goBack}
-            className={`-ml-2 h-12 w-12 items-center justify-center rounded-full ${
-              isBusy ? "opacity-30" : "active:bg-canvas-soft"
-            }`}
-          >
-            <CaretLeft size={28} weight="bold" color={tc.ink} />
-          </Pressable>
+          <NavCircleButton label="Назад" onPress={goBack} disabled={isBusy}>
+            <SystemIcon
+              sf="chevron.left"
+              fallback={CaretLeft}
+              size={20}
+              weight="semibold"
+              color={tc.ink}
+            />
+          </NavCircleButton>
           {/* Стандарт auth-экранов 2026-09-02 — см. app/(auth)/phone.tsx. */}
           <AppText weight="bold" className="mt-6 text-display-lg text-ink">
             Создать аккаунт

@@ -43,10 +43,10 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
 import { Avatar } from "@/components/Avatar";
 import { CITIES } from "@/components/CitySelector";
-import { type PickerOption, PickerSheet } from "@/components/ui";
 import { XtrudWordmark } from "@/components/XtrudWordmark";
 import { useAuthSession } from "@/features/auth/use-auth-session";
 import { useUserRecord } from "@/features/auth/use-user-record";
+import { useCategoryFilterPickerStore } from "@/features/categories/category-filter-picker-store";
 import { useReducedMotion } from "@/hooks/use-reduced-motion";
 import { useAppWidth } from "@/lib/use-app-width";
 import { useThemeColor } from "@/lib/use-theme-color";
@@ -76,7 +76,15 @@ export function CinematicHero({ onCreateTask }: { onCreateTask: () => void }) {
 
   // Город — из user-city store (то же, что было в TopBar).
   const { cityId, cityName, setCity } = useUserCity();
-  const [cityOpen, setCityOpen] = useState(false);
+  // Выбор города — системная шторка (formSheet), общая с «Специалистами»;
+  // результат приходит через store пикера (дизайн-роль, 2026-09-07).
+  const cityResult = useCategoryFilterPickerStore((s) => s.cityResult);
+  const setCityResult = useCategoryFilterPickerStore((s) => s.setCityResult);
+  useEffect(() => {
+    if (!cityResult) return;
+    setCity(cityResult.value);
+    setCityResult(null);
+  }, [cityResult, setCity, setCityResult]);
 
   // Dual-role: если у клиента есть также мастер-аккаунт (is_master=true),
   // показываем компактный pill «Клиент / Мастер» в правом верхнем углу hero,
@@ -261,7 +269,9 @@ export function CinematicHero({ onCreateTask }: { onCreateTask: () => void }) {
           <Pressable
             accessibilityRole="button"
             accessibilityLabel={`Город: ${cityName}`}
-            onPress={() => setCityOpen(true)}
+            onPress={() =>
+              router.push({ pathname: "/category/city-select", params: { cityId } } as never)
+            }
             className="mt-1.5 flex-row items-center gap-1 self-start active:opacity-70"
             hitSlop={6}
           >
@@ -313,24 +323,6 @@ export function CinematicHero({ onCreateTask }: { onCreateTask: () => void }) {
           </Pressable>
         </View>
       </View>
-
-      {/* City picker — модалка выбора города. */}
-      <PickerSheet
-        open={cityOpen}
-        onClose={() => setCityOpen(false)}
-        title="Город"
-        searchable={false}
-        options={CITIES.map<PickerOption>((c) => ({
-          id: c.id,
-          title: c.name,
-          icon: <MapPin size={18} weight="bold" color={inkColor} />,
-        }))}
-        selectedId={cityId}
-        onSelect={(id) => {
-          setCity(id);
-          setCityOpen(false);
-        }}
-      />
     </View>
   );
 }

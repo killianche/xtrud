@@ -57,8 +57,9 @@ export function useAllOpenOrders({ userId, l2Ids, cityId, district }: UseAllOpen
         .from("orders")
         .select(
           hideDemo
-            ? "*, l2:categories_l2(id, name_ru, icon), city:cities(id, name), client:users!orders_client_id_fkey!inner(is_demo)"
-            : "*, l2:categories_l2(id, name_ru, icon), city:cities(id, name), client:users!orders_client_id_fkey(is_demo)",
+            ? // Только то, что читают карточка и курсор ленты — не «*» (QA, 2026-09-07).
+              "id, client_id, l2_id, title, description, city_id, district, address, urgency, preferred_date, budget_kind, budget_value, photo_urls, status, responses_count, created_at, updated_at, expires_at, contact_mode, contact_phone, whatsapp_phone, contact_name, picked_master_id, l2:categories_l2(id, name_ru, icon), city:cities(id, name), client:users!orders_client_id_fkey!inner(is_demo)"
+            : "id, client_id, l2_id, title, description, city_id, district, address, urgency, preferred_date, budget_kind, budget_value, photo_urls, status, responses_count, created_at, updated_at, expires_at, contact_mode, contact_phone, whatsapp_phone, contact_name, picked_master_id, l2:categories_l2(id, name_ru, icon), city:cities(id, name), client:users!orders_client_id_fkey(is_demo)",
         )
         .eq("status", "open")
         .limit(FEED_PAGE_SIZE);

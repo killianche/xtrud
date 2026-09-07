@@ -19,6 +19,8 @@ import { KeyboardAvoidingView, Platform, Pressable, ScrollView, View } from "rea
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
 import { Button, Input } from "@/components/ui";
+import { NavCircleButton } from "@/components/ui/LargeTitle";
+import { SystemIcon } from "@/components/ui/SystemIcon";
 import { useRequestReset } from "@/features/auth/use-auth-mutations";
 import { type ForgotPasswordValues, forgotPasswordSchema } from "@/features/auth/validation";
 import { openExternalUrl } from "@/lib/open-link";
@@ -95,17 +97,15 @@ export default function ForgotPasswordScreen() {
           // ── Форма: ввод почты ─────────────────────────────────────────────
           <>
             <View className="px-6 pt-4">
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Назад"
-                disabled={isBusy}
-                onPress={goBack}
-                className={`-ml-2 h-12 w-12 items-center justify-center rounded-full ${
-                  isBusy ? "opacity-30" : "active:bg-canvas-soft"
-                }`}
-              >
-                <CaretLeft size={28} weight="bold" color={tc.ink} />
-              </Pressable>
+              <NavCircleButton label="Назад" onPress={goBack} disabled={isBusy}>
+                <SystemIcon
+                  sf="chevron.left"
+                  fallback={CaretLeft}
+                  size={20}
+                  weight="semibold"
+                  color={tc.ink}
+                />
+              </NavCircleButton>
               <AppText weight="bold" className="mt-6 text-display-lg text-ink">
                 Восстановление пароля
               </AppText>

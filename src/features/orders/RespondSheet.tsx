@@ -17,7 +17,7 @@
  *     словами, а не блокировкой без причины.
  */
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Pressable, View } from "react-native";
 import { AppText } from "@/components/AppText";
 import { GlassButton, InsetGroup, InsetRow } from "@/components/ui";
@@ -76,9 +76,11 @@ export function RespondSheet({
   const [message, setMessage] = useState("");
 
   // Номер из аккаунта подставляется один раз — «не просим то, что знаем».
+  const prefilledRef = useRef(false);
   useEffect(() => {
-    if (accountPhone && !phone) setPhone(accountPhone);
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- только при появлении данных
+    if (prefilledRef.current || !accountPhone) return;
+    prefilledRef.current = true;
+    setPhone(accountPhone);
   }, [accountPhone]);
 
   const leadTime = lead === CUSTOM ? customLead.trim() : lead;

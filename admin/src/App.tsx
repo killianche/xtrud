@@ -95,11 +95,11 @@ export function App() {
     ? "users"
     : route.startsWith("/masters")
       ? "masters"
-    : route.startsWith("/reports")
-      ? "reports"
-      : route.startsWith("/journal")
-        ? "journal"
-        : "overview";
+      : route.startsWith("/reports")
+        ? "reports"
+        : route.startsWith("/journal")
+          ? "journal"
+          : "overview";
 
   return (
     <>

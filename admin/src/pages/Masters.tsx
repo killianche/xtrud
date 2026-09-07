@@ -32,6 +32,7 @@ export function Masters({ onOpen }: { onOpen: (userId: string) => void }) {
   const reload = useCallback(() => setTick((n) => n + 1), []);
 
   useEffect(() => {
+    void tick; // перезагрузка по кнопке — зависимость намеренная
     let cancelled = false;
     setRows(null);
     setError(null);
@@ -136,7 +137,8 @@ export function Masters({ onOpen }: { onOpen: (userId: string) => void }) {
               {rows.map((m) => {
                 const v = visibilityLabel(m);
                 const busy = busyId === m.id;
-                const canShow = m.user_status !== "banned" && !(m.master_status === "active" && !m.is_hidden);
+                const canShow =
+                  m.user_status !== "banned" && !(m.master_status === "active" && !m.is_hidden);
                 const canHide = m.user_status !== "banned" && m.master_status !== "suspended";
                 return (
                   <tr key={m.id}>
@@ -149,7 +151,9 @@ export function Masters({ onOpen }: { onOpen: (userId: string) => void }) {
                     <td>{m.categories.length > 0 ? m.categories.join(", ") : "—"}</td>
                     <td>{m.photos_count}</td>
                     <td>
-                      {m.rating_count ? `${Number(m.rating_avg ?? 0).toFixed(1)} · ${m.rating_count}` : "—"}
+                      {m.rating_count
+                        ? `${Number(m.rating_avg ?? 0).toFixed(1)} · ${m.rating_count}`
+                        : "—"}
                     </td>
                     <td>
                       <Badge status={v.status} />
@@ -160,17 +164,33 @@ export function Masters({ onOpen }: { onOpen: (userId: string) => void }) {
                     <td>{formatDate(m.created_at)}</td>
                     <td style={{ whiteSpace: "nowrap" }}>
                       {canShow ? (
-                        <button type="button" className="btn btn-ghost" disabled={busy} onClick={() => void setVisible(m, true)}>
+                        <button
+                          type="button"
+                          className="btn btn-ghost"
+                          disabled={busy}
+                          onClick={() => void setVisible(m, true)}
+                        >
                           Показать
                         </button>
                       ) : null}
                       {canHide ? (
-                        <button type="button" className="btn btn-ghost" disabled={busy} onClick={() => void setVisible(m, false)}>
+                        <button
+                          type="button"
+                          className="btn btn-ghost"
+                          disabled={busy}
+                          onClick={() => void setVisible(m, false)}
+                        >
                           Скрыть
                         </button>
                       ) : null}
                       {m.user_status !== "banned" ? (
-                        <button type="button" className="btn btn-ghost" disabled={busy} onClick={() => void block(m)} style={{ color: "var(--error)" }}>
+                        <button
+                          type="button"
+                          className="btn btn-ghost"
+                          disabled={busy}
+                          onClick={() => void block(m)}
+                          style={{ color: "var(--error)" }}
+                        >
                           Заблокировать
                         </button>
                       ) : null}

@@ -18,7 +18,7 @@
 
 import { Plus } from "phosphor-react-native";
 import { useEffect, useRef } from "react";
-import { Animated, Pressable, View } from "react-native";
+import { Animated, Pressable } from "react-native";
 import { useTabBarSpace } from "@/lib/tab-bar-space";
 import { useThemeColors } from "@/lib/use-theme-color";
 import type { IconComponent } from "@/types/icon";
@@ -45,7 +45,7 @@ export function FloatingActionButton({
   fallback = Plus,
 }: FloatingActionButtonProps) {
   const bottom = useTabBarSpace(GAP);
-  const tc = useThemeColors(["accent"]);
+  const tc = useThemeColors(["accent", "canvas", "hairline-strong"]);
   // Мягкое появление (кнопка на главной показывается при прокрутке).
   const opacity = useRef(new Animated.Value(0)).current;
   useEffect(() => {
@@ -54,6 +54,11 @@ export function FloatingActionButton({
 
   // Круг на светлой поверхности с тенью — читается и на фото, и на тёмной
   // рекламе (владелец, 2026-09-07: «плюсик без фона — сделай кнопку»).
+  // Фон страницы (250) почти совпадает с поверхностью (255), поэтому круг
+  // отделяют заметная тень и контрастная обводка. Цвет фона задан на том же
+  // View, что и тень: iOS считает форму тени по непрозрачному фону; без него
+  // тень рисуется по содержимому и выходит бледной (сборки ≤ 46, скриншот
+  // владельца: «плюсик без фона, просто иконка»).
   const icon = <SystemIcon sf={sf} fallback={fallback} size={26} weight="bold" color={tc.accent} />;
 
   return (
@@ -68,26 +73,22 @@ export function FloatingActionButton({
         hitSlop={4}
         className="active:opacity-70"
         style={{
+          width: SIZE,
+          height: SIZE,
+          borderRadius: SIZE / 2,
+          alignItems: "center",
+          justifyContent: "center",
+          backgroundColor: tc.canvas,
+          borderWidth: 1,
+          borderColor: tc["hairline-strong"],
           shadowColor: "#000",
-          shadowOpacity: 0.18,
-          shadowRadius: 12,
+          shadowOpacity: 0.22,
+          shadowRadius: 14,
           shadowOffset: { width: 0, height: 6 },
           elevation: 6,
         }}
       >
-        <View
-          className="border border-hairline bg-canvas"
-          style={{
-            width: SIZE,
-            height: SIZE,
-            borderRadius: SIZE / 2,
-            alignItems: "center",
-            justifyContent: "center",
-            overflow: "hidden",
-          }}
-        >
-          {icon}
-        </View>
+        {icon}
       </Pressable>
     </Animated.View>
   );

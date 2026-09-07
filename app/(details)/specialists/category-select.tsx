@@ -22,6 +22,17 @@ import { useThemeColors } from "@/lib/use-theme-color";
 const ALL_ID = "__all";
 const SECTION_PREFIX = "l1:";
 
+// Параметры шторки — константа модуля. Объект, создаваемый заново при каждом
+// рендере, заставлял систему переоткрывать шторку и сбрасывать выбор
+// (владелец, 2026-09-07: «нажимаю категорию — не выбирается, шторка
+// открывается повторно»).
+const SHEET_OPTIONS = {
+  presentation: "formSheet" as const,
+  sheetAllowedDetents: [0.7, 1.0],
+  sheetGrabberVisible: true,
+  sheetExpandsWhenScrolledToEdge: true,
+};
+
 export default function SpecialistsCategorySelectScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ l1?: string; l2?: string }>();
@@ -78,14 +89,7 @@ export default function SpecialistsCategorySelectScreen() {
 
   return (
     <>
-      <Stack.Screen
-        options={{
-          presentation: "formSheet",
-          sheetAllowedDetents: [0.7, 1.0],
-          sheetGrabberVisible: true,
-          sheetExpandsWhenScrolledToEdge: true,
-        }}
-      />
+      <Stack.Screen options={SHEET_OPTIONS} />
       <PickerSheetPage
         title="Категория"
         sections={sections}

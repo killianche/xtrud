@@ -25,6 +25,8 @@ const INSET_AWARE_WRAPPERS = [
   "OwnerCaseDetailScreen",
   "LegalScreen",
   "<ComposerScreen",
+  "<FormScreen",
+  "<SpecialistsListScreen",
   "<PublishAuthSheet",
   "<RespondAuthSheet",
   "<PickerSheetPage",

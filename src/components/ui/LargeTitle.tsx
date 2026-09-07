@@ -19,7 +19,7 @@
  *
  * Экран собирает части сам (FlashList/ScrollView разные):
  *   useLargeTitle() → <LargeTitleBar/> поверх списка + <LargeTitleBlock/> в
- *   начале списка. Пример — app/(tabs)/specialists.tsx.
+ *   начале списка. Пример — src/features/master-view/SpecialistsListScreen.tsx.
  */
 
 import { CaretLeft } from "phosphor-react-native";
@@ -139,6 +139,14 @@ export interface LargeTitleBarProps {
   below?: ReactNode;
   /** Компактный заголовок и фон видны всегда (экран без крупного заголовка). */
   alwaysCompact?: boolean;
+  /**
+   * Резервировать ли строку 44 pt под кнопки в покое. По умолчанию — только
+   * если есть «назад», действия или панель под строкой. На корне вкладки без
+   * кнопок крупный заголовок начинается сразу под безопасной областью
+   * (DECISION владельца 2026-09-07: «почему пустое место над заголовком»);
+   * компактная полоса появляется поверх содержимого только при прокрутке.
+   */
+  compactRow?: boolean;
 }
 
 export function LargeTitleBar({
@@ -149,10 +157,12 @@ export function LargeTitleBar({
   actions = [],
   below,
   alwaysCompact = false,
+  compactRow,
 }: LargeTitleBarProps) {
   const insets = useSafeAreaInsets();
   const tc = useThemeColors(["ink", "accent", "on-accent"]);
   const barOpacity = alwaysCompact ? 1 : compactTitleOpacity;
+  const hasRow = compactRow ?? (!!onBack || actions.length > 0 || !!below || alwaysCompact);
 
   return (
     <View
@@ -162,7 +172,14 @@ export function LargeTitleBar({
       {/* Фон строки — только когда содержимое уехало под неё. */}
       <Animated.View
         pointerEvents="none"
-        style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, opacity: barOpacity }}
+        style={{
+          position: "absolute",
+          top: 0,
+          left: 0,
+          right: 0,
+          ...(hasRow ? { bottom: 0 } : { height: insets.top + NAV_ROW_HEIGHT }),
+          opacity: barOpacity,
+        }}
       >
         <GlassSurface style={{ flex: 1 }} fallbackClassName="bg-canvas">
           <View className="flex-1" />
@@ -170,35 +187,18 @@ export function LargeTitleBar({
         </GlassSurface>
       </Animated.View>
 
-      <View
-        pointerEvents="box-none"
-        style={{ paddingTop: insets.top }}
-        onLayout={(e) => onLayoutHeight(Math.round(e.nativeEvent.layout.height - insets.top))}
-      >
-        <View
-          pointerEvents="box-none"
-          className="flex-row items-center px-3"
-          style={{ height: NAV_ROW_HEIGHT }}
+      {hasRow ? null : (
+        // Строки в покое нет: полоса с компактным заголовком живёт поверх
+        // содержимого и видна только при прокрутке.
+        <Animated.View
+          pointerEvents="none"
+          style={{
+            height: insets.top + NAV_ROW_HEIGHT,
+            justifyContent: "flex-end",
+            opacity: barOpacity,
+          }}
         >
-          {onBack ? (
-            <NavCircleButton label="Назад" onPress={onBack}>
-              <SystemIcon
-                sf="chevron.left"
-                fallback={CaretLeft}
-                size={20}
-                weight="semibold"
-                color={tc.ink}
-              />
-            </NavCircleButton>
-          ) : (
-            <View style={{ width: NAV_BUTTON_SIZE }} />
-          )}
-
-          <Animated.View
-            pointerEvents="none"
-            className="min-w-0 flex-1"
-            style={{ opacity: barOpacity }}
-          >
+          <View className="justify-center" style={{ height: NAV_ROW_HEIGHT }}>
             <AppText
               weight="semibold"
               className="text-center text-ios-title text-ink"
@@ -206,64 +206,113 @@ export function LargeTitleBar({
             >
               {title}
             </AppText>
-          </Animated.View>
-
-          <View className="flex-row items-center gap-2" style={{ minWidth: NAV_BUTTON_SIZE }}>
-            {actions.map((action) =>
-              action.iconOnly && (action.Icon || action.sf) ? (
-                <NavCircleButton
-                  key={action.label}
-                  label={action.label}
-                  onPress={action.onPress}
-                  active={action.active}
-                >
-                  {action.sf && action.Icon ? (
-                    <SystemIcon
-                      sf={action.sf}
-                      fallback={action.Icon}
-                      size={20}
-                      weight="semibold"
-                      color={action.active ? tc["on-accent"] : tc.ink}
-                    />
-                  ) : action.Icon ? (
-                    <action.Icon
-                      size={20}
-                      weight="bold"
-                      color={action.active ? tc["on-accent"] : tc.ink}
-                    />
-                  ) : null}
-                </NavCircleButton>
-              ) : (
-                <Pressable
-                  key={action.label}
-                  accessibilityRole="button"
-                  accessibilityLabel={action.label}
-                  onPress={action.onPress}
-                  hitSlop={6}
-                  className="active:opacity-60"
-                >
-                  <GlassSurface
-                    fallbackClassName="border border-hairline bg-canvas"
-                    style={{
-                      height: NAV_BUTTON_SIZE,
-                      borderRadius: NAV_BUTTON_SIZE / 2,
-                      paddingHorizontal: 16,
-                      justifyContent: "center",
-                      overflow: "hidden",
-                    }}
-                  >
-                    <AppText
-                      weight={action.active ? "semibold" : "regular"}
-                      className="text-ios-body text-accent"
-                    >
-                      {action.label}
-                    </AppText>
-                  </GlassSurface>
-                </Pressable>
-              ),
-            )}
           </View>
-        </View>
+        </Animated.View>
+      )}
+      <View
+        pointerEvents="box-none"
+        style={{
+          paddingTop: hasRow ? insets.top : 0,
+          position: hasRow ? "relative" : "absolute",
+          top: 0,
+          left: 0,
+          right: 0,
+        }}
+        onLayout={(e) =>
+          onLayoutHeight(hasRow ? Math.round(e.nativeEvent.layout.height - insets.top) : 0)
+        }
+      >
+        {hasRow ? (
+          <View
+            pointerEvents="box-none"
+            className="flex-row items-center px-3"
+            style={{ height: NAV_ROW_HEIGHT }}
+          >
+            {onBack ? (
+              <NavCircleButton label="Назад" onPress={onBack}>
+                <SystemIcon
+                  sf="chevron.left"
+                  fallback={CaretLeft}
+                  size={20}
+                  weight="semibold"
+                  color={tc.ink}
+                />
+              </NavCircleButton>
+            ) : (
+              <View style={{ width: NAV_BUTTON_SIZE }} />
+            )}
+
+            <Animated.View
+              pointerEvents="none"
+              className="min-w-0 flex-1"
+              style={{ opacity: barOpacity }}
+            >
+              <AppText
+                weight="semibold"
+                className="text-center text-ios-title text-ink"
+                numberOfLines={1}
+              >
+                {title}
+              </AppText>
+            </Animated.View>
+
+            <View className="flex-row items-center gap-2" style={{ minWidth: NAV_BUTTON_SIZE }}>
+              {actions.map((action) =>
+                action.iconOnly && (action.Icon || action.sf) ? (
+                  <NavCircleButton
+                    key={action.label}
+                    label={action.label}
+                    onPress={action.onPress}
+                    active={action.active}
+                  >
+                    {action.sf && action.Icon ? (
+                      <SystemIcon
+                        sf={action.sf}
+                        fallback={action.Icon}
+                        size={20}
+                        weight="semibold"
+                        color={action.active ? tc["on-accent"] : tc.ink}
+                      />
+                    ) : action.Icon ? (
+                      <action.Icon
+                        size={20}
+                        weight="bold"
+                        color={action.active ? tc["on-accent"] : tc.ink}
+                      />
+                    ) : null}
+                  </NavCircleButton>
+                ) : (
+                  <Pressable
+                    key={action.label}
+                    accessibilityRole="button"
+                    accessibilityLabel={action.label}
+                    onPress={action.onPress}
+                    hitSlop={6}
+                    className="active:opacity-60"
+                  >
+                    <GlassSurface
+                      fallbackClassName="border border-hairline bg-canvas"
+                      style={{
+                        height: NAV_BUTTON_SIZE,
+                        borderRadius: NAV_BUTTON_SIZE / 2,
+                        paddingHorizontal: 16,
+                        justifyContent: "center",
+                        overflow: "hidden",
+                      }}
+                    >
+                      <AppText
+                        weight={action.active ? "semibold" : "regular"}
+                        className="text-ios-body text-accent"
+                      >
+                        {action.label}
+                      </AppText>
+                    </GlassSurface>
+                  </Pressable>
+                ),
+              )}
+            </View>
+          </View>
+        ) : null}
 
         {below}
       </View>
@@ -279,7 +328,7 @@ export interface LargeTitleBlockProps {
 /** Крупный заголовок в начале списка. Уезжает вместе с содержимым. */
 export function LargeTitleBlock({ title, subtitle }: LargeTitleBlockProps) {
   return (
-    <View className="px-5 pt-2 pb-4">
+    <View className="px-5 pt-3 pb-4">
       <AppText weight="bold" className="text-ios-large-title text-ink">
         {title}
       </AppText>

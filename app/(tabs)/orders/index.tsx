@@ -261,6 +261,7 @@ function OrdersList({ userId, contentTop, onScroll, header }: ListProps) {
       scrollEventThrottle={16}
       renderScrollComponent={Animated.ScrollView as never}
       ListHeaderComponent={header}
+      extraData={header}
       showsVerticalScrollIndicator={false}
       refreshControl={refresh.control}
       renderItem={({ item: o }) => (
@@ -362,6 +363,7 @@ function ResponsesList({ userId, contentTop, onScroll, header }: ListProps) {
         scrollEventThrottle={16}
         renderScrollComponent={Animated.ScrollView as never}
         ListHeaderComponent={header}
+        extraData={header}
         showsVerticalScrollIndicator={false}
         refreshControl={refresh.control}
         renderItem={({ item: r }) => {

@@ -13,5 +13,7 @@ import { Redirect, useLocalSearchParams } from "expo-router";
 export default function CategoryRedirect() {
   const { id } = useLocalSearchParams<{ id: string | string[] }>();
   const l2 = Array.isArray(id) ? id[0] : id;
-  return <Redirect href={{ pathname: "/(tabs)/specialists", params: { l2: l2 ?? "" } } as never} />;
+  return (
+    <Redirect href={{ pathname: "/specialists/section", params: { l2: l2 ?? "" } } as never} />
+  );
 }

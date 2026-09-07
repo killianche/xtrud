@@ -32,6 +32,16 @@ import { useCloseReasonPickerStore } from "@/features/orders/close-reason-picker
 import type { CancelReason } from "@/features/orders/use-cancel-order";
 import { useThemeColors } from "@/lib/use-theme-color";
 
+// Параметры шторки — константа модуля. Объект, создаваемый заново при каждом
+// рендере, заставлял систему переоткрывать шторку и сбрасывать выбор
+// (владелец, 2026-09-07: «нажимаю категорию — не выбирается, шторка
+// открывается повторно»).
+const SHEET_OPTIONS = {
+  presentation: "formSheet" as const,
+  sheetAllowedDetents: "fitToContents" as const,
+  sheetGrabberVisible: true,
+};
+
 export default function CloseReasonScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
@@ -49,13 +59,7 @@ export default function CloseReasonScreen() {
 
   return (
     <>
-      <Stack.Screen
-        options={{
-          presentation: "formSheet",
-          sheetAllowedDetents: "fitToContents",
-          sheetGrabberVisible: true,
-        }}
-      />
+      <Stack.Screen options={SHEET_OPTIONS} />
       <View className="bg-canvas w-full" style={{ paddingTop: insets.top }}>
         {/* Header — тот же стиль, что у `PickerSheetPage` (bold title + close-X). */}
         <View className="flex-row items-center gap-3 px-5 py-3">

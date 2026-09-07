@@ -14,18 +14,22 @@
 import { Stack, useRouter } from "expo-router";
 import { PublishAuthSheet } from "@/features/auth/PublishAuthSheet";
 
+// Параметры шторки — константа модуля. Объект, создаваемый заново при каждом
+// рендере, заставлял систему переоткрывать шторку и сбрасывать выбор
+// (владелец, 2026-09-07: «нажимаю категорию — не выбирается, шторка
+// открывается повторно»).
+const SHEET_OPTIONS = {
+  presentation: "formSheet" as const,
+  sheetAllowedDetents: "fitToContents" as const,
+  sheetGrabberVisible: true,
+};
+
 export default function PublishAuthScreen() {
   const router = useRouter();
 
   return (
     <>
-      <Stack.Screen
-        options={{
-          presentation: "formSheet",
-          sheetAllowedDetents: "fitToContents",
-          sheetGrabberVisible: true,
-        }}
-      />
+      <Stack.Screen options={SHEET_OPTIONS} />
       <PublishAuthSheet onClose={() => router.back()} />
     </>
   );

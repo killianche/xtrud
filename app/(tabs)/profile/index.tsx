@@ -324,7 +324,7 @@ export default function ProfileScreen() {
             {/* Edit master profile shortcut */}
             <Pressable
               accessibilityRole="button"
-              onPress={() => router.push("/profile/edit-master" as never)}
+              onPress={() => router.push("/profile/specialist" as never)}
               className="mx-6 mt-3 flex-row items-center justify-between rounded-lg border border-hairline bg-canvas p-4 active:opacity-70"
             >
               <AppText weight="semibold" className="flex-1 text-body-md text-ink">
@@ -351,7 +351,7 @@ export default function ProfileScreen() {
             {/* Categories shortcut */}
             <Pressable
               accessibilityRole="button"
-              onPress={() => router.push("/(onboarding)/master-categories")}
+              onPress={() => router.push("/profile/specialist/categories" as never)}
               className="mx-6 mt-3 flex-row items-center justify-between rounded-lg border border-hairline bg-canvas p-4 active:opacity-70"
             >
               <AppText weight="semibold" className="flex-1 text-body-md text-ink">
@@ -691,10 +691,7 @@ function BecomeMasterButton() {
   const mutedColor = useThemeColors(["mute"]).mute;
 
   const handlePress = () => {
-    router.push({
-      pathname: "/(onboarding)/master-profile",
-      params: { mode: "onboarding" },
-    } as never);
+    router.push("/account" as never);
   };
 
   return (

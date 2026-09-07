@@ -38,6 +38,16 @@ function isSortBy(value: string | undefined): value is CategorySortBy {
   return !!value && (SORT_IDS as readonly string[]).includes(value);
 }
 
+// Параметры шторки — константа модуля. Объект, создаваемый заново при каждом
+// рендере, заставлял систему переоткрывать шторку и сбрасывать выбор
+// (владелец, 2026-09-07: «нажимаю категорию — не выбирается, шторка
+// открывается повторно»).
+const SHEET_OPTIONS = {
+  presentation: "formSheet" as const,
+  sheetAllowedDetents: "fitToContents" as const,
+  sheetGrabberVisible: true,
+};
+
 export default function SortSelectScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ sortBy?: string }>();
@@ -50,13 +60,7 @@ export default function SortSelectScreen() {
 
   return (
     <>
-      <Stack.Screen
-        options={{
-          presentation: "formSheet",
-          sheetAllowedDetents: "fitToContents",
-          sheetGrabberVisible: true,
-        }}
-      />
+      <Stack.Screen options={SHEET_OPTIONS} />
       <PickerSheetPage
         title="Сортировка"
         scrollable={false}

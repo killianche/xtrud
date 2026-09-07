@@ -26,7 +26,7 @@ import type { RefObject } from "react";
 import { useEffect, useRef, useState } from "react";
 import { Animated, FlatList, Pressable, View } from "react-native";
 import { AppText } from "@/components/AppText";
-import { Avatar, Card, Skeleton } from "@/components/ui";
+import { Avatar, Card, FloatingActionButton, Skeleton } from "@/components/ui";
 import { useAuthSession } from "@/features/auth/use-auth-session";
 import { type CategoryL1, useCategoriesL1 } from "@/features/categories/use-categories-l1";
 import { ActiveOrdersShowcase } from "@/features/home/ActiveOrdersShowcase";
@@ -73,7 +73,7 @@ export default function HomeTab() {
       userId={userId}
       refresh={refresh}
       onCategoryPress={(id) =>
-        router.push({ pathname: "/(tabs)/specialists", params: { l1: id } } as never)
+        router.push({ pathname: "/specialists/section", params: { l1: id } } as never)
       }
       onMasterPress={(id) => router.push(`/master/${id}` as never)}
       onDescribeTask={(draft) => {
@@ -126,6 +126,9 @@ const CATEGORY_TILE_GUTTER = 6;
 const CATEGORY_SCREEN_PADDING = 20;
 const CATEGORY_CONTAINER_PADDING = CATEGORY_SCREEN_PADDING - CATEGORY_TILE_GUTTER;
 
+/** Прокрутка, после которой на главной показывается плавающий «+». */
+const HOME_FAB_OFFSET = 320;
+
 function ClientHome({
   userId,
   refresh,
@@ -153,6 +156,7 @@ function ClientHome({
   // (scrollViewToTop поддерживает FlatList/FlashList-рефы через scrollToOffset —
   // см. src/lib/tab-scroll-reset.ts).
   const listRef = useRef<FlashListRef<CategoryL1>>(null);
+  const [showFab, setShowFab] = useState(false);
   const resetCounter = useTabScrollResetCounter("index");
   useEffect(() => {
     if (resetCounter > 0) {
@@ -190,8 +194,13 @@ function ClientHome({
         // каждом кадре: React гасит повтор с тем же значением.
         scrollEventThrottle={32}
         onScroll={(event) => {
-          const next = event.nativeEvent.contentOffset.y > HOME_STATUS_BAR_COVER_OFFSET;
+          const y = event.nativeEvent.contentOffset.y;
+          const next = y > HOME_STATUS_BAR_COVER_OFFSET;
           setStatusBarCovered((prev) => (prev === next ? prev : next));
+          // Плавающий «+» появляется, когда шапка с полем «Что нужно сделать»
+          // ушла вверх (DECISION владельца 2026-09-07).
+          const fab = y > HOME_FAB_OFFSET;
+          setShowFab((prev) => (prev === fab ? prev : fab));
         }}
         contentContainerStyle={{
           // Фото-hero идёт от самого верха экрана (под статус-бар), поэтому НЕ
@@ -245,6 +254,9 @@ function ClientHome({
         }
       />
       <HomeStatusBarCover visible={statusBarCovered} />
+      {showFab ? (
+        <FloatingActionButton label="Создать задание" onPress={() => onDescribeTask()} />
+      ) : null}
     </View>
   );
 }

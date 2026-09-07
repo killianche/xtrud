@@ -36,6 +36,17 @@ function isCountryCode(value: string | undefined): boolean {
   return !!value && COUNTRIES.some((c) => c.code === value);
 }
 
+// Параметры шторки — константа модуля. Объект, создаваемый заново при каждом
+// рендере, заставлял систему переоткрывать шторку и сбрасывать выбор
+// (владелец, 2026-09-07: «нажимаю категорию — не выбирается, шторка
+// открывается повторно»).
+const SHEET_OPTIONS = {
+  presentation: "formSheet" as const,
+  sheetAllowedDetents: [0.6, 1.0],
+  sheetExpandsWhenScrolledToEdge: true,
+  sheetGrabberVisible: true,
+};
+
 export default function CountrySelectScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ code?: string }>();
@@ -47,14 +58,7 @@ export default function CountrySelectScreen() {
 
   return (
     <>
-      <Stack.Screen
-        options={{
-          presentation: "formSheet",
-          sheetAllowedDetents: [0.6, 1.0],
-          sheetExpandsWhenScrolledToEdge: true,
-          sheetGrabberVisible: true,
-        }}
-      />
+      <Stack.Screen options={SHEET_OPTIONS} />
       <PickerSheetPage
         title="Страна"
         searchable={false}

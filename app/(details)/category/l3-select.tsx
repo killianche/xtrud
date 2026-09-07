@@ -26,6 +26,17 @@ import { useThemeColors } from "@/lib/use-theme-color";
 
 const ALL_SERVICES_ID = "__all";
 
+// Параметры шторки — константа модуля. Объект, создаваемый заново при каждом
+// рендере, заставлял систему переоткрывать шторку и сбрасывать выбор
+// (владелец, 2026-09-07: «нажимаю категорию — не выбирается, шторка
+// открывается повторно»).
+const SHEET_OPTIONS = {
+  presentation: "formSheet" as const,
+  sheetAllowedDetents: [0.6, 1.0],
+  sheetExpandsWhenScrolledToEdge: true,
+  sheetGrabberVisible: true,
+};
+
 export default function L3SelectScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ categoryId?: string; l3Filter?: string }>();
@@ -58,14 +69,7 @@ export default function L3SelectScreen() {
 
   return (
     <>
-      <Stack.Screen
-        options={{
-          presentation: "formSheet",
-          sheetAllowedDetents: [0.6, 1.0],
-          sheetExpandsWhenScrolledToEdge: true,
-          sheetGrabberVisible: true,
-        }}
-      />
+      <Stack.Screen options={SHEET_OPTIONS} />
       <PickerSheetPage
         title={categoryName}
         loading={!categoryId || isLoading}

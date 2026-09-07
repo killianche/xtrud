@@ -16,7 +16,8 @@
  */
 
 import { Plus } from "phosphor-react-native";
-import { Pressable, View } from "react-native";
+import { useEffect, useRef } from "react";
+import { Animated, Pressable } from "react-native";
 import { useTabBarSpace } from "@/lib/tab-bar-space";
 import { useThemeColors } from "@/lib/use-theme-color";
 import type { IconComponent } from "@/types/icon";
@@ -45,6 +46,11 @@ export function FloatingActionButton({
 }: FloatingActionButtonProps) {
   const bottom = useTabBarSpace(GAP);
   const tc = useThemeColors(["accent", "on-accent"]);
+  // Мягкое появление (кнопка на главной показывается при прокрутке).
+  const opacity = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    Animated.timing(opacity, { toValue: 1, duration: 180, useNativeDriver: true }).start();
+  }, [opacity]);
 
   const icon = (
     <SystemIcon
@@ -57,7 +63,10 @@ export function FloatingActionButton({
   );
 
   return (
-    <View pointerEvents="box-none" style={{ position: "absolute", right: 20, bottom, zIndex: 20 }}>
+    <Animated.View
+      pointerEvents="box-none"
+      style={{ position: "absolute", right: 20, bottom, zIndex: 20, opacity }}
+    >
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={label}
@@ -90,6 +99,6 @@ export function FloatingActionButton({
           {icon}
         </GlassSurface>
       </Pressable>
-    </View>
+    </Animated.View>
   );
 }

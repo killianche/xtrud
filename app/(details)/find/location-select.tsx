@@ -20,6 +20,17 @@ import { useThemeColors } from "@/lib/use-theme-color";
 const ALL_ID = "__all";
 const DISTRICT_PREFIX = "district:";
 
+// Параметры шторки — константа модуля. Объект, создаваемый заново при каждом
+// рендере, заставлял систему переоткрывать шторку и сбрасывать выбор
+// (владелец, 2026-09-07: «нажимаю категорию — не выбирается, шторка
+// открывается повторно»).
+const SHEET_OPTIONS = {
+  presentation: "formSheet" as const,
+  sheetAllowedDetents: [0.6, 1.0],
+  sheetGrabberVisible: true,
+  sheetExpandsWhenScrolledToEdge: true,
+};
+
 export default function OrdersSearchLocationSelectScreen() {
   const router = useRouter();
   const tc = useThemeColors(["ink", "mute"]);
@@ -57,14 +68,7 @@ export default function OrdersSearchLocationSelectScreen() {
 
   return (
     <>
-      <Stack.Screen
-        options={{
-          presentation: "formSheet",
-          sheetAllowedDetents: [0.6, 1.0],
-          sheetGrabberVisible: true,
-          sheetExpandsWhenScrolledToEdge: true,
-        }}
-      />
+      <Stack.Screen options={SHEET_OPTIONS} />
       <PickerSheetPage
         title="Место"
         options={options}

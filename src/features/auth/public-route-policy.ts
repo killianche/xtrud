@@ -23,6 +23,7 @@ const PUBLIC_DETAIL_ROUTES = new Set([
   "orders/respond-auth",
   "search",
   "specialists/category-select",
+  "specialists/section",
   "useful",
   "useful/[slug]",
 ]);

@@ -24,6 +24,8 @@
  *     названия услуг.
  *  7. Высота 48 — выше минимальной тач-цели 44 pt; текст центрирован
  *     контейнером, без `lineHeight`.
+ *  8. Материал — капсула Liquid Glass, как поле поиска в iOS 26 (DECISION
+ *     владельца 2026-09-07); без стекла — поверхность с волосяной границей.
  */
 
 import { MagnifyingGlass, X } from "phosphor-react-native";
@@ -32,6 +34,7 @@ import { Keyboard, Platform, Pressable, TextInput, type TextInputProps, View } f
 import { AppText } from "@/components/AppText";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useThemeColors } from "@/lib/use-theme-color";
+import { GlassSurface } from "./GlassSurface";
 import { SystemIcon } from "./SystemIcon";
 
 export interface SearchFieldProps extends Omit<TextInputProps, "style" | "value" | "onChangeText"> {
@@ -74,64 +77,70 @@ export const SearchField = forwardRef<TextInput, SearchFieldProps>(function Sear
 
   return (
     <View accessibilityRole="search" className="flex-row items-center gap-2">
-      <View
-        className={`min-h-12 flex-1 flex-row items-center gap-2.5 rounded-xl bg-canvas-soft px-3.5 ${
-          invalid ? "border-error" : focused ? "border-accent" : "border-hairline-strong"
-        }`}
-        style={{ borderWidth: 1.5 }}
+      <GlassSurface
+        style={{ flex: 1, minHeight: 48, borderRadius: 24, overflow: "hidden" }}
+        fallbackClassName={
+          invalid
+            ? "border border-error bg-canvas"
+            : focused
+              ? "border border-accent bg-canvas"
+              : "border border-hairline bg-canvas"
+        }
       >
-        <SystemIcon
-          sf="magnifyingglass"
-          fallback={MagnifyingGlass}
-          size={18}
-          weight="medium"
-          color={invalid ? tc.error : focused ? tc.accent : tc.mute}
-        />
-        <TextInput
-          ref={ref}
-          value={value}
-          onChangeText={onChangeText}
-          placeholder={placeholder}
-          placeholderTextColor={tc["muted-soft"]}
-          selectionColor={tc.accent}
-          cursorColor={tc.accent}
-          keyboardAppearance={colorScheme === "dark" ? "dark" : "light"}
-          clearButtonMode={IOS_CLEAR_BUTTON ? "while-editing" : "never"}
-          returnKeyType="search"
-          autoCapitalize="none"
-          autoCorrect={false}
-          spellCheck={false}
-          inputMode="search"
-          {...props}
-          onFocus={(e) => {
-            setFocused(true);
-            onFocus?.(e);
-          }}
-          onBlur={(e) => {
-            setFocused(false);
-            onBlur?.(e);
-          }}
-          className="flex-1 text-ink"
-          style={{
-            fontSize: 17,
-            color: tc.ink,
-            paddingVertical: 0,
-            ...({ outlineStyle: "none" } as object),
-          }}
-        />
-        {/* Правило 1: своя кнопка очистки только там, где системной нет. */}
-        {!IOS_CLEAR_BUTTON && value.length > 0 ? (
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Очистить поиск"
-            hitSlop={12}
-            onPress={() => onChangeText("")}
-            className="h-7 w-7 items-center justify-center rounded-full bg-canvas-soft-2 active:opacity-70"
-          >
-            <X size={14} weight="bold" color={tc.mute} />
-          </Pressable>
-        ) : null}
-      </View>
+        <View className="min-h-12 flex-1 flex-row items-center gap-2.5 px-4">
+          <SystemIcon
+            sf="magnifyingglass"
+            fallback={MagnifyingGlass}
+            size={18}
+            weight="medium"
+            color={invalid ? tc.error : focused ? tc.accent : tc.mute}
+          />
+          <TextInput
+            ref={ref}
+            value={value}
+            onChangeText={onChangeText}
+            placeholder={placeholder}
+            placeholderTextColor={tc["muted-soft"]}
+            selectionColor={tc.accent}
+            cursorColor={tc.accent}
+            keyboardAppearance={colorScheme === "dark" ? "dark" : "light"}
+            clearButtonMode={IOS_CLEAR_BUTTON ? "while-editing" : "never"}
+            returnKeyType="search"
+            autoCapitalize="none"
+            autoCorrect={false}
+            spellCheck={false}
+            inputMode="search"
+            {...props}
+            onFocus={(e) => {
+              setFocused(true);
+              onFocus?.(e);
+            }}
+            onBlur={(e) => {
+              setFocused(false);
+              onBlur?.(e);
+            }}
+            className="flex-1 text-ink"
+            style={{
+              fontSize: 17,
+              color: tc.ink,
+              paddingVertical: 0,
+              ...({ outlineStyle: "none" } as object),
+            }}
+          />
+          {/* Правило 1: своя кнопка очистки только там, где системной нет. */}
+          {!IOS_CLEAR_BUTTON && value.length > 0 ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Очистить поиск"
+              hitSlop={12}
+              onPress={() => onChangeText("")}
+              className="h-7 w-7 items-center justify-center rounded-full bg-canvas-soft-2 active:opacity-70"
+            >
+              <X size={14} weight="bold" color={tc.mute} />
+            </Pressable>
+          ) : null}
+        </View>
+      </GlassSurface>
 
       {cancelVisible ? (
         <Pressable

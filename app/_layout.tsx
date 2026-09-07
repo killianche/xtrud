@@ -153,10 +153,10 @@ function AuthGate({ children }: { children: React.ReactNode }) {
     // Crash/network recovery: legacy RPC and profile publication are two
     // commits. A durable draft/pending status keeps the user in the last step
     // until retry completes instead of silently releasing a broken master.
-    if (mustFinishMasterOnboarding && !inOnboarding) {
-      router.replace("/(onboarding)/master-photo");
-      return;
-    }
+    // Профиль специалиста больше не «дозаполняется» принудительно: статус
+    // pending — это просто «ещё нет категории», хаб /profile/specialist сам
+    // подсказывает (DECISION владельца 2026-09-07). Ловушка убрана.
+    void mustFinishMasterOnboarding;
 
     // Залогинен в (auth) — отправляем туда куда положено.
     // Экран выбора роли /role удалён (2026-06-06): новый пользователь по
@@ -168,7 +168,7 @@ function AuthGate({ children }: { children: React.ReactNode }) {
           const destination = useAuthReturnUrlStore.getState().consumeReturnUrl();
           router.replace((destination ?? "/(tabs)") as never);
         } else {
-          router.replace("/(onboarding)/master-profile");
+          router.replace("/account");
         }
       } else if (!onboardingDone) {
         router.replace("/(onboarding)/client-name");

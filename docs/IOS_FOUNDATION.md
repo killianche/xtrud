@@ -21,6 +21,35 @@ NativeWind `^4.2.1`, `newArchEnabled: true`, `supportsTablet: false`,
 
 ---
 
+
+## 0. Каждый экран — iOS 26 Liquid Glass
+
+> DECISION владельца 2026-09-07: «фильтры, пилюли, строки поиска, всё —
+> полностью как в последнем iOS, Liquid Glass. Запиши в документацию, что
+> каждый дизайн у нас соответствует iOS Liquid Glass последней версии».
+
+Правило: любой новый или изменённый экран сначала ищет системный аналог в
+iOS 26 и повторяет его материал, форму и поведение. Таблица соответствий —
+источник для приёмки (`design-enforcement.md` §1):
+
+| Элемент xtrud | Аналог iOS 26 | Компонент |
+|---|---|---|
+| Строка навигации без фона, круглые стеклянные «назад»/действия; фон и компактный заголовок — при прокрутке | Navigation bar iOS 26 (Liquid Glass, scroll edge effect) | `LargeTitleBar`, `NavCircleButton` |
+| Крупный заголовок 34 pt в содержимом, уезжает при прокрутке | Large title | `LargeTitleBlock`, `useLargeTitle` |
+| Капсулы фильтров под заголовком; выбранная — с оттенком | Фильтры Почты iOS 26 (стеклянные капсулы) | `FilterChip` |
+| Поле поиска — стеклянная капсула 48 pt, системный крестик, «Отмена» | Search field iOS 26 | `SearchField` |
+| Списки выбора и настроек — inset grouped, плитки иконок 36 pt, галочка/шеврон | Настройки, шторки выбора | `InsetGroup`, `InsetRow`, `PickerSheetPage` |
+| Главное действие — выпуклая стеклянная капсула 56 pt с оттенком | Prominent glass button | `GlassButton`, `ComposerScreen`, `FormScreen` |
+| Плавающая круглая кнопка действия над нижним меню | «Новая заметка» в Заметках | `FloatingActionButton` |
+| Нижнее меню — системное, стеклянное, с SF Symbols | UITabBar iOS 26 | `NativeTabs` |
+| Служебные иконки | SF Symbols | `SystemIcon` |
+| Шторки выбора — системные formSheet с грабером и детентами | UISheetPresentationController | `Stack.Screen presentation="formSheet"` |
+| Списки действий — системный лист | UIAlertController (action sheet) | `ActionSheetIOS` |
+| Шкала текста | Large Title 34 / Title 1 28 / Title 2 22 / Body 17 / Callout 16 / Subheadline 15 / Footnote 13 | токены `text-ios-*` |
+
+Без стекла (iOS до 26, Android) те же компоненты рисуют поверхность с
+волосяной границей — экран остаётся правильным.
+
 ## 1. Принципы
 
 1. **Платформа диктует поведение, бренд диктует контент.** Навигация, жесты,

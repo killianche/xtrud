@@ -1,16 +1,14 @@
 /**
- * /find/category-select — выбор категорий для фильтра ленты заданий.
- *
- * DECISION владельца 2026-09-06: фильтры — как в последнем iOS. У Apple
- * подробный выбор живёт в системной шторке со списком и галочками, а лёгкая
- * фильтрация — чипами под полем поиска (WWDC26 «Design intuitive search
- * experiences»). Здесь — шторка: formSheet, поиск по каталогу, галочки у
- * выбранных, «Готово» внизу. Выбор коммитится в store только по «Готово»;
- * закрыть шторку жестом — значит ничего не менять.
+ * /find/category-select — категория для ленты заданий. Та же шторка, что у
+ * «Специалистов» (DECISION владельца 2026-09-07: «фильтры категории на
+ * страницах должны быть в одном стиле»): «Все категории», затем разделы с
+ * первой строкой «Весь раздел» и категориями внутри, один выбор — галочка.
+ * Раздел целиком = все его категории в фильтре ленты.
  */
 
 import { Stack, useRouter } from "expo-router";
-import { useMemo, useState } from "react";
+import { SquaresFour } from "phosphor-react-native";
+import { useMemo } from "react";
 import { PickerSheetPage, type PickerSheetRow, type PickerSheetSection } from "@/components/ui";
 import { useCategoriesL1 } from "@/features/categories/use-categories-l1";
 import { useVisibleCategories } from "@/features/categories/use-visible-categories";
@@ -19,75 +17,103 @@ import { getCategoryIcon } from "@/lib/category-icons";
 import { hapticSelection } from "@/lib/haptics";
 import { useThemeColors } from "@/lib/use-theme-color";
 
+const ALL_ID = "__all";
+const SECTION_PREFIX = "l1:";
+
+// Параметры шторки — константа модуля: новый объект на каждый рендер
+// заставлял систему переоткрывать шторку и сбрасывать выбор.
+const SHEET_OPTIONS = {
+  presentation: "formSheet" as const,
+  sheetAllowedDetents: [0.75, 1.0],
+  sheetGrabberVisible: true,
+  sheetExpandsWhenScrolledToEdge: true,
+};
+
 export default function OrdersSearchCategorySelectScreen() {
   const router = useRouter();
-  const tc = useThemeColors(["ink", "accent"]);
-  const storeL2Ids = useOrdersSearchFiltersStore((s) => s.l2Ids);
-  const setStoreL2Ids = useOrdersSearchFiltersStore((s) => s.setL2Ids);
-  const [selected, setSelected] = useState<string[]>(storeL2Ids);
+  const tc = useThemeColors(["ink", "on-accent"]);
+  const l2Ids = useOrdersSearchFiltersStore((s) => s.l2Ids);
+  const setL2Ids = useOrdersSearchFiltersStore((s) => s.setL2Ids);
+  const l1 = useCategoriesL1();
   const categories = useVisibleCategories();
 
-  // Группы по разделам каталога — как inset grouped список в Настройках.
-  const l1 = useCategoriesL1();
   const sections = useMemo<PickerSheetSection[]>(() => {
-    const byL1 = new Map<string, PickerSheetRow[]>();
-    for (const category of categories.data ?? []) {
-      const Icon = getCategoryIcon(category.icon);
-      const active = selected.includes(category.id);
-      const rows = byL1.get(category.l1_id) ?? [];
-      rows.push({
-        id: category.id,
-        title: category.name_ru,
-        icon: <Icon size={17} weight="bold" color={active ? tc.accent : tc.ink} />,
-      });
-      byL1.set(category.l1_id, rows);
-    }
-    const ordered = (l1.data ?? []).filter((s) => byL1.has(s.id));
-    const known = new Set(ordered.map((s) => s.id));
-    const rest = [...byL1.keys()].filter((id) => !known.has(id));
-    return [
-      ...ordered.map((s) => ({ id: s.id, title: s.name_ru, options: byL1.get(s.id) ?? [] })),
-      ...rest.map((id) => ({ id, options: byL1.get(id) ?? [] })),
+    const list: PickerSheetSection[] = [
+      {
+        id: "__all",
+        options: [
+          {
+            id: ALL_ID,
+            title: "Все категории",
+            icon: <SquaresFour size={17} weight="bold" color={tc["on-accent"]} />,
+            emphasis: true,
+          },
+        ],
+      },
     ];
-  }, [categories.data, l1.data, selected, tc.accent, tc.ink]);
+    for (const section of l1.data ?? []) {
+      const inSection = (categories.data ?? []).filter((c) => c.l1_id === section.id);
+      if (inSection.length === 0) continue;
+      const SectionIcon = getCategoryIcon(section.icon);
+      const rows: PickerSheetRow[] = [
+        {
+          id: `${SECTION_PREFIX}${section.id}`,
+          title: "Весь раздел",
+          subtitle: section.name_ru,
+          icon: <SectionIcon size={17} weight="bold" color={tc["on-accent"]} />,
+          emphasis: true,
+        },
+        ...inSection.map((c) => {
+          const Icon = getCategoryIcon(c.icon);
+          return {
+            id: c.id,
+            title: c.name_ru,
+            icon: <Icon size={17} weight="bold" color={tc.ink} />,
+          };
+        }),
+      ];
+      list.push({ id: section.id, title: section.name_ru, options: rows });
+    }
+    return list;
+  }, [l1.data, categories.data, tc.ink, tc["on-accent"]]);
+
+  // Текущее значение: раздел целиком, если выбраны ровно все его категории.
+  const currentId = useMemo(() => {
+    if (l2Ids.length === 0) return ALL_ID;
+    for (const section of l1.data ?? []) {
+      const ids = (categories.data ?? []).filter((c) => c.l1_id === section.id).map((c) => c.id);
+      if (ids.length > 0 && ids.length === l2Ids.length && ids.every((id) => l2Ids.includes(id))) {
+        return `${SECTION_PREFIX}${section.id}`;
+      }
+    }
+    return l2Ids.length === 1 ? (l2Ids[0] ?? ALL_ID) : ALL_ID;
+  }, [l2Ids, l1.data, categories.data]);
 
   const close = () => router.back();
-
   return (
     <>
-      <Stack.Screen
-        options={{
-          presentation: "formSheet",
-          sheetAllowedDetents: [0.7, 1.0],
-          sheetGrabberVisible: true,
-          sheetExpandsWhenScrolledToEdge: true,
-        }}
-      />
+      <Stack.Screen options={SHEET_OPTIONS} />
       <PickerSheetPage
-        title="Категории"
-        subtitle={selected.length > 0 ? `Выбрано: ${selected.length}` : "Можно выбрать несколько"}
+        title="Категория"
         sections={sections}
-        selectedId=""
-        onSelect={() => undefined}
-        multiSelect
-        selectedIds={selected}
-        onToggle={(id) => {
+        selectedId={currentId}
+        onSelect={(id) => {
           hapticSelection();
-          setSelected((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
-        }}
-        onDone={() => {
-          setStoreL2Ids(selected);
+          if (id === ALL_ID) setL2Ids([]);
+          else if (id.startsWith(SECTION_PREFIX)) {
+            const sectionId = id.slice(SECTION_PREFIX.length);
+            setL2Ids((categories.data ?? []).filter((c) => c.l1_id === sectionId).map((c) => c.id));
+          } else setL2Ids([id]);
           close();
         }}
-        doneLabel="Готово"
         searchable
-        searchPlaceholder="Например, сантехник или уборка"
-        resettable
-        resetLabel="Сбросить"
-        onReset={() => setSelected([])}
-        loading={categories.isLoading}
-        errorMessage={categories.error ? "Не удалось загрузить категории" : undefined}
-        onRetry={() => void categories.refetch()}
+        searchPlaceholder="Например, электрик или уборка"
+        loading={categories.isLoading || l1.isLoading}
+        errorMessage={categories.error || l1.error ? "Не удалось загрузить категории" : undefined}
+        onRetry={() => {
+          void categories.refetch();
+          void l1.refetch();
+        }}
         onClose={close}
       />
     </>

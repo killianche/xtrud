@@ -38,6 +38,7 @@ import { OrderRow } from "@/components/OrderRow";
 import { OrderRowsSkeleton } from "@/components/OrderRowsSkeleton";
 import { FilterChip, LargeTitleBar, LargeTitleBlock, useLargeTitle } from "@/components/ui";
 import { useAuthSession } from "@/features/auth/use-auth-session";
+import { useCategoriesL1 } from "@/features/categories/use-categories-l1";
 import { useVisibleCategories } from "@/features/categories/use-visible-categories";
 import { useCities } from "@/features/cities/use-cities";
 import {
@@ -91,10 +92,20 @@ export default function FindScreen() {
   // Подписи чипов — из каталога и городов (без сети берётся бандл).
   const categoriesQ = useVisibleCategories();
   const citiesQ = useCities();
+  const l1Q = useCategoriesL1();
   const categoryChipLabel = (() => {
     if (l2Ids.length === 0) return "Категория";
-    const first = categoriesQ.data?.find((c) => c.id === l2Ids[0])?.name_ru ?? "Категория";
-    return l2Ids.length > 1 ? `${first} +${l2Ids.length - 1}` : first;
+    // Раздел целиком — его название; одна категория — её; иначе счётчик.
+    for (const section of l1Q.data ?? []) {
+      const ids = (categoriesQ.data ?? []).filter((c) => c.l1_id === section.id).map((c) => c.id);
+      if (ids.length > 0 && ids.length === l2Ids.length && ids.every((id) => l2Ids.includes(id))) {
+        return section.name_ru;
+      }
+    }
+    if (l2Ids.length === 1) {
+      return categoriesQ.data?.find((c) => c.id === l2Ids[0])?.name_ru ?? "Категория";
+    }
+    return `Категории · ${l2Ids.length}`;
   })();
   const locationChipLabel = cityId
     ? (citiesQ.data?.find((c) => c.id === cityId)?.name ?? "Город")
@@ -247,7 +258,9 @@ export default function FindScreen() {
           <FlashList
             ref={listRef}
             data={displayedOrders}
-            extraData={myResponsesQ.data}
+            // Шапка (чипы фильтров) живёт внутри списка: без extraData FlashList
+            // не перерисовывал её после «Сбросить» (владелец, 2026-09-07).
+            extraData={[myResponsesQ.data, l2Ids, cityId, district] as const}
             keyExtractor={(order) => order.id}
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}

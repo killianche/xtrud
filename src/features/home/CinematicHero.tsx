@@ -221,17 +221,29 @@ export function CinematicHero({ onCreateTask }: { onCreateTask: () => void }) {
               accessibilityRole="button"
               accessibilityLabel={currentUserId ? "Профиль" : "Войти"}
               accessibilityHint={currentUserId ? "Откроет ваш профиль" : "Откроет экран входа"}
-              onPress={() => router.push((currentUserId ? "/profile" : "/(auth)/phone") as never)}
+              onPress={() => router.push((currentUserId ? "/account" : "/(auth)/phone") as never)}
               hitSlop={8}
               className="active:opacity-70"
             >
               {currentUserId ? (
-                <Avatar
-                  url={currentUser?.avatar_url ?? null}
-                  name={currentUser?.first_name ?? null}
-                  seed={currentUserId}
-                  size="sm"
-                />
+                // Вошёл: имя и аватар в белой пилюле, а не крошечный кружок
+                // (DECISION владельца 2026-09-07). Тап — страница аккаунта
+                // со своим «назад».
+                <View className="min-h-11 flex-row items-center gap-2 rounded-pill bg-on-dark py-1 pl-1 pr-4">
+                  <Avatar
+                    url={currentUser?.avatar_url ?? null}
+                    name={currentUser?.first_name ?? null}
+                    seed={currentUserId}
+                    size="sm"
+                  />
+                  <AppText
+                    weight="semibold"
+                    className="max-w-[140px] text-ios-callout text-surface-dark"
+                    numberOfLines={1}
+                  >
+                    {currentUser?.first_name?.trim() || "Аккаунт"}
+                  </AppText>
+                </View>
               ) : (
                 // Гость: не бледный значок в углу, а понятная кнопка «Войти».
                 // DECISION владельца 2026-09-06: «значок аккаунта незаметный —

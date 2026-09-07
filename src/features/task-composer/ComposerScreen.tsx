@@ -15,26 +15,18 @@
  *   - отступ от чёлки обязателен.
  */
 
-import { GlassView } from "expo-glass-effect";
 import { CaretLeft, X } from "phosphor-react-native";
 import type { ReactNode } from "react";
-import {
-  ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  View,
-} from "react-native";
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
-import { LIQUID_GLASS } from "@/components/ui/GlassSurface";
+import { GLASS_BUTTON_HEIGHT, GlassButton } from "@/components/ui/GlassButton";
 import { NAV_BUTTON_SIZE, NAV_ROW_HEIGHT, NavCircleButton } from "@/components/ui/LargeTitle";
 import { SystemIcon } from "@/components/ui/SystemIcon";
 import { useThemeColors } from "@/lib/use-theme-color";
 import { type ComposerStep, stepPosition } from "./steps";
 
-export const PRIMARY_HEIGHT = 56;
+export const PRIMARY_HEIGHT = GLASS_BUTTON_HEIGHT;
 
 export interface ComposerScreenProps {
   step: ComposerStep;
@@ -75,7 +67,7 @@ export function ComposerScreen({
   hideActions = false,
 }: ComposerScreenProps) {
   const insets = useSafeAreaInsets();
-  const tc = useThemeColors(["ink", "mute", "accent", "on-accent", "error"]);
+  const tc = useThemeColors(["ink"]);
   const { index, total } = stepPosition(step);
   const bottomSpace = insets.bottom + 16;
   const actionsHeight = hideActions
@@ -172,84 +164,14 @@ export function ComposerScreen({
               </AppText>
             </Pressable>
           ) : null}
-          <PrimaryGlassButton
+          <GlassButton
             label={primaryLabel}
             onPress={onPrimary}
-            disabled={primaryDisabled || busy}
+            disabled={primaryDisabled}
             busy={busy}
-            accent={tc.accent}
-            onAccent={tc["on-accent"]}
           />
         </View>
       )}
     </KeyboardAvoidingView>
-  );
-}
-
-/**
- * Выпуклая капсула главного действия. На iOS 26 — Liquid Glass с фирменным
- * оттенком (prominent glass button); без стекла — сплошная заливка с тенью.
- */
-function PrimaryGlassButton({
-  label,
-  onPress,
-  disabled,
-  busy,
-  accent,
-  onAccent,
-}: {
-  label: string;
-  onPress: () => void;
-  disabled: boolean;
-  busy: boolean;
-  accent: string;
-  onAccent: string;
-}) {
-  const content = busy ? (
-    <ActivityIndicator color={onAccent} />
-  ) : (
-    <AppText weight="semibold" className="text-ios-body" style={{ color: onAccent, fontSize: 18 }}>
-      {label}
-    </AppText>
-  );
-  const shape = {
-    height: PRIMARY_HEIGHT,
-    borderRadius: PRIMARY_HEIGHT / 2,
-    alignItems: "center" as const,
-    justifyContent: "center" as const,
-    overflow: "hidden" as const,
-  };
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={label}
-      accessibilityState={{ disabled, busy }}
-      onPress={onPress}
-      disabled={disabled}
-      className="active:opacity-80"
-      style={{ opacity: disabled && !busy ? 0.45 : 1 }}
-    >
-      {LIQUID_GLASS ? (
-        <GlassView glassEffectStyle="regular" tintColor={accent} isInteractive style={shape}>
-          {content}
-        </GlassView>
-      ) : (
-        <View
-          style={[
-            shape,
-            {
-              backgroundColor: accent,
-              shadowColor: "#000",
-              shadowOpacity: 0.16,
-              shadowRadius: 10,
-              shadowOffset: { width: 0, height: 4 },
-              elevation: 4,
-            },
-          ]}
-        >
-          {content}
-        </View>
-      )}
-    </Pressable>
   );
 }

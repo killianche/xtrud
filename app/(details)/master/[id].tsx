@@ -1,63 +1,41 @@
 /**
- * Master detail — публичная карточка мастера, conversion-критичный экран.
+ * /master/[id] — публичная страница специалиста.
  *
- * Vercel-based DESIGN.md + Thumbtack/Airbnb pattern:
- *   - Hero: 16:9 фото (avatar_url cover) с back/share/flag в углах
- *   - Trust-row сразу под hero: ★ + город + опыт + кол-во работ (mono accent)
- *   - Имя + bio
- *   - Категории chips
- *   - Услуги + прайс (existing MasterServicesList)
- *   - Портфолио grid (existing PortfolioGrid + lightbox)
- *   - Отзывы (existing ReviewsSection)
- *   - Контакт-кнопки «Позвонить» + «WhatsApp» (только если не свой профиль).
- *     In-app чата нет — модель доски объявлений, прямой контакт по телефону.
+ * DECISION владельца 2026-09-07 (референс — карточка исполнителя TaskRabbit):
+ * имя и рейтинг, чем занимается, о себе и опыт, фото работ, отзывы, и
+ * контакты — позвонить или написать в WhatsApp. Всё в стиле iOS 26: строка
+ * навигации без фона с круглыми стеклянными кнопками, крупный заголовок,
+ * inset grouped блоки, плавающие стеклянные кнопки связи внизу.
  *
- * Анон-friendly: контакт-кнопки открывают LoginWall на тапе если userId == null.
+ * Гость видит контакты (DECISION 2026-05-20 «classifieds»), отзыв оставляет
+ * после входа. Автор профиля вместо контактов видит «Редактировать профиль».
  */
 
-import { Image as ExpoImage } from "expo-image";
-import { LinearGradient } from "expo-linear-gradient";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { Buildings, CaretLeft, DotsThreeVertical, Star, Users } from "phosphor-react-native";
-import { useEffect, useState } from "react";
-import {
-  ActionSheetIOS,
-  Alert,
-  FlatList,
-  Image,
-  type NativeScrollEvent,
-  type NativeSyntheticEvent,
-  Pressable,
-  ScrollView,
-  View,
-} from "react-native";
+import { DotsThree, Image as ImageIcon, PencilSimple, Star } from "phosphor-react-native";
+import { useEffect, useMemo, useState } from "react";
+import { ActionSheetIOS, Alert, Animated, Image, Pressable, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
-import { Avatar, Button, normalizeAvatarUrl, Skeleton } from "@/components/ui";
+import { Avatar } from "@/components/Avatar";
+import {
+  GLASS_BUTTON_HEIGHT,
+  GlassButton,
+  InsetGroup,
+  InsetRow,
+  LargeTitleBar,
+  useLargeTitle,
+} from "@/components/ui";
+import { Skeleton } from "@/components/ui/Skeleton";
+import { SystemIcon } from "@/components/ui/SystemIcon";
+import { useAuthSession } from "@/features/auth/use-auth-session";
 import { blockConfirmMessage } from "@/features/blocking/blocking-copy";
 import { blockingActionFailureMessage } from "@/features/blocking/blocking-error-message";
 import { useBlockUser } from "@/features/blocking/use-user-blocks";
-import { useColorScheme } from "@/hooks/use-color-scheme";
-import { getCategoryIcon } from "@/lib/category-icons";
-import { confirmAsync } from "@/lib/confirm";
-import { hapticSuccess } from "@/lib/haptics";
-import { openExternalUrl } from "@/lib/open-link";
-import { useAppWidth } from "@/lib/use-app-width";
-
-// PRICING_MODE_LABELS убран 2026-05-15 (P0-1 в archive/research/MASTER_ACCOUNT_PLAN.md).
-// Цены — единственным источником master_services, отображаются через
-// <MasterServicesList />. Поле master_categories.pricing_mode помечено
-// DEPRECATED в миграции 0055.
-
-import { useAuthSession } from "@/features/auth/use-auth-session";
-import { MasterServicesList } from "@/features/master-services/MasterServicesList";
-import { useMasterServices } from "@/features/master-services/use-master-services";
 import {
-  AVAILABILITY_DOT,
-  AVAILABILITY_LABELS,
-  effectiveStatus,
-  isAvailabilityVisible,
-} from "@/features/master-view/availability";
+  formatServicePrice,
+  useMasterServices,
+} from "@/features/master-services/use-master-services";
 import { ReviewsSection } from "@/features/master-view/ReviewsSection";
 import {
   useMasterCategoriesPublic,
@@ -67,161 +45,93 @@ import {
 } from "@/features/master-view/use-master-public";
 import { useRecordMasterView } from "@/features/master-view/use-record-view";
 import { PortfolioLightbox } from "@/features/profile/PortfolioLightbox";
-import { type PortfolioItem, useMasterPortfolio } from "@/features/profile/use-my-portfolio";
-import { type CaseWithPreview, useMasterCases } from "@/features/profile/use-portfolio-cases";
+import { useMasterPortfolio } from "@/features/profile/use-my-portfolio";
 import { ReportModal } from "@/features/reports/ReportModal";
 import { useMyRecentReviewForMaster } from "@/features/reviews/use-reviews";
-import { usePullToRefresh } from "@/hooks/use-pull-to-refresh";
-import { cdnBlur, cdnImage } from "@/lib/image-cdn";
-import { pluralizeClosedDeals, pluralizeReviews, pluralizeYears } from "@/lib/pluralize";
+import { useColorScheme } from "@/hooks/use-color-scheme";
+import { getCategoryIcon } from "@/lib/category-icons";
+import { confirmAsync } from "@/lib/confirm";
+import { hapticSuccess } from "@/lib/haptics";
+import { getCityName } from "@/lib/location-config";
+import { openExternalUrl } from "@/lib/open-link";
 import { useSafeBack } from "@/lib/use-safe-back";
-import { useThemeColor, useThemeColors } from "@/lib/use-theme-color";
+import { useThemeColors } from "@/lib/use-theme-color";
 import { resolveWhatsappDigits } from "@/lib/whatsapp";
 
-const HERO_RATIO = 16 / 9;
-const PORTFOLIO_RATIO = 4 / 5; // Wildberries-style: вертикальный товар, height = width * 5/4
+const GAP = 6;
+const PHOTOS_PREVIEW = 6;
+const ON_PHOTO = "#ffffff";
+
+function experienceLabel(years: number | null | undefined): string | null {
+  if (!years || years <= 0) return null;
+  if (years < 2) return "Опыт меньше года";
+  if (years <= 3) return "Опыт 1–3 года";
+  if (years <= 7) return "Опыт 3–7 лет";
+  return "Опыт больше 7 лет";
+}
 
 export default function MasterPublicScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const params = useLocalSearchParams<{ id: string }>();
-  const masterId = typeof params.id === "string" ? params.id : null;
-  const viewportWidth = useAppWidth();
-  // Desktop hero не должен растягиваться до 1400px — на широком экране это
-  // вытесняет всё ниже фолда. Lazyweb-паттерн (Airbnb/Booking listing detail)
-  // — landscape 16:9 с потолком 520px. Mobile сохраняет портретные 4:5.
-  const isDesktopHero = viewportWidth >= 768;
-  const heroAspect = isDesktopHero ? HERO_RATIO : PORTFOLIO_RATIO;
-
+  const { id } = useLocalSearchParams<{ id: string }>();
+  const masterId = typeof id === "string" ? id : undefined;
   const { session } = useAuthSession();
   const currentUserId = session?.user?.id;
-  const isOwnProfile = !!masterId && masterId === currentUserId;
-  const isAnon = !currentUserId;
-
-  // safeBack: при заходе по deeplink/refresh стек пуст — уходим на home,
-  // а не в браузерную историю до приложения.
-  const goBack = useSafeBack("/" as const);
-
-  // Telemetry: profile_open при заходе на /master/[id]. RPC сам игнорирует
-  // self-views (auth.uid()==master_id) и дедупит за 24h по session_id.
-  const recordView = useRecordMasterView();
-  useEffect(() => {
-    if (masterId) recordView(masterId, "profile_open");
-  }, [masterId, recordView]);
+  const isOwn = !!currentUserId && currentUserId === masterId;
+  const goBack = useSafeBack("/(tabs)" as never);
+  const large = useLargeTitle();
+  const tc = useThemeColors(["ink", "mute", "accent", "on-accent", "warning", "error"]);
+  const { colorScheme } = useColorScheme();
 
   const profile = useMasterPublicProfile(masterId);
   const categories = useMasterCategoriesPublic(masterId);
   const portfolio = useMasterPortfolio(masterId);
   const reviews = useReviewsForTarget(masterId, "client_to_master");
   const masterPhone = useMasterPhone(masterId);
-  // Подтягиваем services здесь, чтобы решать видимость секции «Услуги»
-  // на верхнем уровне: если у мастера нет ни одной услуги И ни одной
-  // категории с bio — заголовок «Услуги» не должен висеть пустым.
-  const masterServices = useMasterServices(masterId);
-  // Обновляем только запросы этого экрана, а не всё смонтированное дерево.
-  const refresh = usePullToRefresh([
-    "master-public",
-    "master-categories-public",
-    "master-phone",
-    "reviews-for-target",
-    "master-services",
-    "portfolio",
-    "portfolio-cases",
-  ]);
-
-  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
-  const [reportOpen, setReportOpen] = useState(false);
+  const services = useMasterServices(masterId);
+  const recentReview = useMyRecentReviewForMaster(masterId, currentUserId);
   const blockUser = useBlockUser();
-  const { colorScheme } = useColorScheme();
+  const recordView = useRecordMasterView();
+  useEffect(() => {
+    if (masterId && !isOwn) void recordView(masterId, "profile_open");
+  }, [masterId, isOwn, recordView]);
 
-  // CTA «Оставить отзыв». Кнопка видна всем (кроме владельца профиля и тех,
-  // кто уже оставил отзыв за последние 30 дней). Аноним по тапу сначала идёт
-  // на вход — после авторизации вернётся на профиль и сможет оставить отзыв
-  // (правильная логика входа, решение владельца 2026-05-27). Лимит 1/30 дней
-  // проверяется на бэке через RPC submit_master_review.
-  const recentReview = useMyRecentReviewForMaster(masterId ?? undefined, currentUserId);
-  const showReviewCta = !!masterId && !isOwnProfile && !recentReview.data;
-
-  // Тап «Оставить отзыв»: аноним → на вход; авторизованный → форма отзыва
-  // (отдельный modal-route `/master/review` — нативная iOS модальность).
-  const handleReviewPress = () => {
-    if (!currentUserId) {
-      router.push("/(auth)/phone" as never);
-      return;
-    }
-    router.push({
-      pathname: "/master/review",
-      params: { masterId: masterId ?? "", masterName: fullName ?? "Мастер" },
-    } as never);
-  };
-  // Safari-fallback: если avatar_url hero не загрузился (CORS / 404) —
-  // переключаемся на инициалы через Avatar xl. Иначе пользователь
-  // видит пустой серый блок 16:9. State объявлен здесь, reset-effect — ниже,
-  // после получения `u?.avatar_url` из profile.data.
-  const [heroFailed, setHeroFailed] = useState(false);
-
-  const tc = useThemeColors(["ink", "accent", "on-dark"]);
-
-  // Избранное. Для гостя/own-profile кнопка скрыта (rendering ниже).
+  const [lightbox, setLightbox] = useState<number | null>(null);
+  const [reportOpen, setReportOpen] = useState(false);
+  const [gridWidth, setGridWidth] = useState(0);
 
   const u = profile.data?.user;
   const m = profile.data?.master;
-  // Reset hero-fallback при смене avatar_url, чтобы новая попытка
-  // загрузки не была заблокирована предыдущей ошибкой.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: dependency is an intentional reset trigger; the value is not read inside the effect
-  useEffect(() => {
-    setHeroFailed(false);
-  }, [u?.avatar_url]);
-  const fullName = [u?.first_name, u?.last_name].filter(Boolean).join(" ") || "Мастер";
+  const name = [u?.first_name, u?.last_name].filter(Boolean).join(" ") || "Специалист";
   const ratingAvg = m?.rating_overall_avg ?? null;
   const ratingCount = m?.rating_overall_count ?? 0;
-  const closedDeals = m?.closed_deals ?? 0;
-  const experienceYears = m?.experience_years ?? null;
-
-  // Прямые контакты — без обязательной авторизации.
-  // Phone приходит через RPC get_master_phone (миграция 0040) — обходит RLS
-  // на users (phone живёт в auth.users), но фильтрует только активных мастеров.
-  // Если phone null (мастер новый, без auth.phone) — fallback на orders/new.
-  const phoneRaw = masterPhone.data ?? null;
-  const phoneTel = phoneRaw?.replace(/[^\d+]/g, "") ?? null; // "+79991234567"
-
-  // Sprint 0079: WhatsApp — отдельный номер ИЛИ совпадает с основным, либо
-  // не указан. Если null — кнопка WhatsApp не отображается.
+  const place = u?.district ? u.district : u?.city_id ? getCityName(u.city_id) : null;
+  const phoneTel = masterPhone.data?.replace(/[^\d+]/g, "") || null;
   const phoneWa = resolveWhatsappDigits({
     whatsappPhone: m?.whatsapp_phone,
     whatsappSameAsPhone: m?.whatsapp_same_as_phone,
-    masterPhone: phoneRaw,
+    masterPhone: masterPhone.data ?? null,
   });
+  const photos = useMemo(
+    () => (portfolio.data ?? []).map((p) => ({ id: p.id, url: p.url, caption: p.caption })),
+    [portfolio.data],
+  );
+  const tile = gridWidth > 0 ? Math.floor((gridWidth - GAP * 2) / 3) : 0;
+  const showReviewCta = !!masterId && !isOwn && !recentReview.data;
+  const hasContacts = !!phoneTel || !!phoneWa;
+  const bottomBar = isOwn || hasContacts;
+  const bottomSpace = insets.bottom + 16 + (bottomBar ? GLASS_BUTTON_HEIGHT + 12 : 0);
 
-  // 2026-05-20 «classifieds»: убран fallback на in-app форму («Написать в xtrud»).
-  // Если у мастера нет phone — кнопка просто неактивна, чтобы не сбивать с
-  // прямого контакта на /orders/new.
-  const handleCall = () => {
-    if (phoneTel) {
-      openExternalUrl(`tel:${phoneTel}`);
-    }
-  };
-
-  const handleWhatsApp = () => {
-    if (phoneWa) {
-      openExternalUrl(`https://wa.me/${phoneWa}`);
-    }
-  };
-
-  // Блокировка (UGC safety, App Store Guideline 1.2). Текст подтверждения не
-  // обещает «звонки и WhatsApp станут недоступны» — если собеседник уже знает
-  // номер, вне-приложенческий контакт мы остановить не можем (whatsapp_phone
-  // мастера читается публично по RLS независимо от блокировки, src/lib/whatsapp.ts).
   const handleBlock = async () => {
     if (!masterId || blockUser.isPending) return;
-    const confirmed = await confirmAsync({
+    const ok = await confirmAsync({
       title: "Заблокировать пользователя?",
-      message: blockConfirmMessage(fullName),
+      message: blockConfirmMessage(name),
       confirmText: "Заблокировать",
       cancelText: "Отмена",
       destructive: true,
     });
-    if (!confirmed) return;
+    if (!ok) return;
     blockUser.mutate(masterId, {
       onSuccess: () => {
         hapticSuccess();
@@ -230,558 +140,294 @@ export default function MasterPublicScreen() {
       onError: (e) => Alert.alert("Не удалось заблокировать", blockingActionFailureMessage(e)),
     });
   };
-
-  // Меню «Действия» — нативный ActionSheetIOS вместо самописной шторки
-  // (docs/IOS_FOUNDATION.md §2.8). Максимум 2 пункта одновременно
-  // («Заблокировать» скрыт для анонима), оба destructive (были окрашены в
-  // error в BottomSheet-варианте) — систему красит сама.
-  const openActionMenu = () => {
+  const openActions = () => {
     const items: Array<{ label: string; onPress: () => void }> = [];
-    if (!isAnon) items.push({ label: "Заблокировать", onPress: handleBlock });
+    if (currentUserId) items.push({ label: "Заблокировать", onPress: () => void handleBlock() });
     items.push({ label: "Пожаловаться", onPress: () => setReportOpen(true) });
-
-    const cancelButtonIndex = items.length;
     ActionSheetIOS.showActionSheetWithOptions(
       {
-        title: "Действия",
         options: [...items.map((i) => i.label), "Отмена"],
-        cancelButtonIndex,
+        cancelButtonIndex: items.length,
         destructiveButtonIndex: items.map((_, i) => i),
         userInterfaceStyle: colorScheme,
       },
-      (buttonIndex) => {
-        if (buttonIndex === cancelButtonIndex) return;
-        items[buttonIndex]?.onPress();
-      },
+      (i) => items[i]?.onPress(),
     );
   };
+  const handleReview = () => {
+    if (!currentUserId) {
+      router.push("/(auth)/phone" as never);
+      return;
+    }
+    router.push({
+      pathname: "/master/review",
+      params: { masterId: masterId ?? "", masterName: name },
+    } as never);
+  };
 
-  // Цельный skeleton всей страницы пока грузятся основные данные (профиль +
-  // портфолио). Раньше был «progressive cascade»: layout рендерился сразу,
-  // кнопка «Позвонить» и TabBar появлялись раньше hero/имени/bio — выглядело
-  // рвано (фидбэк владельца 2026-05-27: «что-то прогружено, что-то белое»).
-  // Теперь: открыл → видишь скелет всей структуры → потом весь контент разом.
-  if (profile.isLoading || portfolio.isLoading) {
-    return (
-      <MasterProfileSkeleton
-        insets={insets}
-        goBack={goBack}
-        heroStyle={
-          isDesktopHero
-            ? { height: Math.min((viewportWidth * 9) / 16, 520) }
-            : { aspectRatio: heroAspect }
-        }
-      />
-    );
-  }
-
-  // Полностью пустой error-state показываем только если запрос завершился ошибкой
-  // или дал null.
-  if (profile.error || !profile.data) {
-    return (
-      <View
-        className="flex-1 bg-canvas items-center justify-center px-6"
-        style={{ paddingTop: insets.top + 24 }}
-      >
-        <AppText weight="semibold" className="text-ink text-title-lg">
-          Не удалось загрузить профиль
-        </AppText>
-        <AppText className="text-body mt-2 text-center">
-          {profile.error?.message ?? "Попробуйте позже"}
-        </AppText>
-        <View className="mt-6">
-          <Button onPress={goBack}>Назад</Button>
-        </View>
-      </View>
-    );
-  }
+  const loading = profile.isLoading || (profile.isFetching && !profile.data);
+  const notFound = !loading && (profile.error || !u);
 
   return (
-    <View className="flex-1 bg-canvas">
-      <ScrollView
-        contentContainerStyle={{
-          paddingBottom: insets.bottom + 24,
-        }}
+    <View className="flex-1 bg-surface-page">
+      <Animated.ScrollView
+        contentContainerStyle={{ paddingTop: large.contentTop, paddingBottom: bottomSpace + 24 }}
+        onScroll={large.onScroll}
+        scrollEventThrottle={16}
         showsVerticalScrollIndicator={false}
-        refreshControl={refresh.control}
       >
-        {/* HERO — приоритет:
-              1. portfolio загружается или profile загружается → skeleton 4:5
-              2. есть фото → swipeable галерея 4:5 (Wildberries-style)
-              3. fallback на 16:9 аватар.
-            Back и overflow (⋮) — overlay-кнопки поверх hero (фидбэк user
-            2026-05-15: «верни как было — overlay, не отдельный canvas-header»).
-            Flag заменён на DotsThreeVertical → ActionSheetIOS с «Пожаловаться». */}
-        {portfolio.isLoading || profile.isLoading ? (
-          <View style={{ position: "relative" }}>
-            <Skeleton
-              width="100%"
-              style={
-                isDesktopHero
-                  ? { height: Math.min((viewportWidth * 9) / 16, 520) }
-                  : { aspectRatio: heroAspect }
-              }
-            />
-            {/* Back button оставляем активным даже на skeleton — пользователь
-                должен иметь возможность уйти, если передумал ждать. */}
-            <View
-              className="absolute left-0 right-0 flex-row items-center justify-between px-4"
-              style={{ top: insets.top + 8 }}
-            >
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Назад"
-                onPress={goBack}
-                className="h-12 w-12 items-center justify-center rounded-full bg-black/50 active:opacity-70"
-              >
-                <CaretLeft size={28} weight="bold" color={tc["on-dark"]} />
-              </Pressable>
+        {loading ? (
+          <View className="px-5 pt-3">
+            <View className="flex-row items-center gap-4">
+              <Skeleton width={96} height={96} className="rounded-full" />
+              <View className="flex-1 gap-2">
+                <Skeleton height={28} className="w-2/3 rounded" />
+                <Skeleton height={18} className="w-1/3 rounded" />
+              </View>
             </View>
+            <Skeleton height={120} className="mt-8 rounded-2xl" />
+            <Skeleton height={120} className="mt-4 rounded-2xl" />
           </View>
-        ) : portfolio.data && portfolio.data.length > 0 ? (
-          <View style={{ position: "relative" }}>
-            <PortfolioPager items={portfolio.data} onOpen={(idx) => setLightboxIndex(idx)} />
-            {/* Gradient overlay для читаемости иконок */}
-            <LinearGradient
-              colors={["rgba(0,0,0,0.4)", "transparent"]}
-              style={{ position: "absolute", top: 0, left: 0, right: 0, height: 80 }}
-              pointerEvents="none"
-            />
-            {/* Back + Overflow (⋮) */}
-            <View
-              className="absolute left-0 right-0 flex-row items-center justify-between px-4"
-              style={{ top: insets.top + 8 }}
-            >
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Назад"
-                onPress={goBack}
-                className="h-12 w-12 items-center justify-center rounded-full bg-black/50 active:opacity-70"
-              >
-                <CaretLeft size={28} weight="bold" color={tc["on-dark"]} />
-              </Pressable>
-              {!isOwnProfile && (
-                <View className="flex-row items-center gap-2">
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel="Действия"
-                    onPress={openActionMenu}
-                    hitSlop={4}
-                    className="h-9 w-9 items-center justify-center rounded-full bg-black/50 active:opacity-70"
-                  >
-                    <DotsThreeVertical size={20} weight="bold" color={tc["on-dark"]} />
-                  </Pressable>
-                </View>
-              )}
-            </View>
+        ) : notFound ? (
+          <View className="px-5 pt-6">
+            <AppText weight="bold" className="text-ios-title1 text-ink">
+              Профиль не найден
+            </AppText>
+            <AppText className="mt-2 text-ios-body text-mute">
+              Возможно, специалист удалил аккаунт или ссылка устарела.
+            </AppText>
           </View>
         ) : (
-          <View
-            style={{
-              // heroAspect, а НЕ HERO_RATIO: скелет рисует шапку этой же
-              // пропорцией. Пока здесь стояло 16/9, а в скелете 4/5, экран
-              // после загрузки прыгал примерно на 270 точек — но только у
-              // мастеров БЕЗ портфолио, поэтому баг ловился не всегда.
-              width: "100%",
-              aspectRatio: heroAspect,
-              position: "relative",
-            }}
-            className="bg-canvas-soft-2"
-          >
-            {normalizeAvatarUrl(u?.avatar_url) && !heroFailed ? (
-              <Image
-                source={{ uri: normalizeAvatarUrl(u?.avatar_url) as string }}
-                style={{ width: "100%", height: "100%" }}
-                resizeMode="cover"
-                onError={() => setHeroFailed(true)}
-              />
-            ) : (
-              <View className="flex-1 items-center justify-center bg-canvas-soft-2">
-                <Avatar name={fullName} seed={masterId} size="xl" />
-              </View>
-            )}
-            <LinearGradient
-              colors={["rgba(0,0,0,0.4)", "transparent"]}
-              style={{ position: "absolute", top: 0, left: 0, right: 0, height: 80 }}
-              pointerEvents="none"
-            />
-            <View
-              className="absolute left-0 right-0 flex-row items-center justify-between px-4"
-              style={{ top: insets.top + 8 }}
-            >
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Назад"
-                onPress={goBack}
-                className="h-12 w-12 items-center justify-center rounded-full bg-black/50 active:opacity-70"
-              >
-                <CaretLeft size={28} weight="bold" color={tc["on-dark"]} />
-              </Pressable>
-              {!isOwnProfile && (
-                <View className="flex-row items-center gap-2">
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel="Действия"
-                    onPress={openActionMenu}
-                    hitSlop={4}
-                    className="h-9 w-9 items-center justify-center rounded-full bg-black/50 active:opacity-70"
-                  >
-                    <DotsThreeVertical size={20} weight="bold" color={tc["on-dark"]} />
-                  </Pressable>
-                </View>
-              )}
-            </View>
-          </View>
-        )}
-
-        {/* Trust-row + имя — Avatar md слева от имени (фидбэк user 2026-05-14).
-            Hero-фото сверху — это «портфолио»/работы мастера, а аватар рядом
-            с именем нужен как persona-signal (как Airbnb host card / Booking
-            agent name + photo). Раньше имя шло одиноким display-md заголовком
-            без визуального якоря. */}
-        <View className="px-5 mt-4">
-          {u ? (
-            <View className="flex-row items-center gap-3">
-              <Avatar
-                url={u.avatar_url ?? null}
-                name={fullName}
-                seed={u.id ?? masterId}
-                size="md"
-              />
-              <AppText
-                weight="display"
-                className="flex-1 text-display-md tracking-tight text-ink"
-                numberOfLines={2}
-              >
-                {fullName}
-              </AppText>
-            </View>
-          ) : (
-            // Skeleton: avatar-круг 44 + имя 220×28 — повторяет финальный
-            // layout, чтобы при появлении данных не было layout-shift.
-            <View className="flex-row items-center gap-3">
-              <Skeleton height={44} width={44} className="rounded-full" />
-              <Skeleton height={28} width={180} className="rounded" />
-            </View>
-          )}
-
-          {/* Trust-info — 2 строки inline-meta (Airbnb / Booking master profile
-              pattern). Раньше всё в одну строку из 7 chips → выглядело
-              «сплющенным» (фидбэк user 2026-05-14). Теперь:
-                Row 1: статус-pill (если есть) + ★ рейтинг + 📍 город
-                Row 2: 14 лет опыта · Радиус 16 км · Бригада 4 чел.
-              Размер text-body-sm (14px), iconы 14px — крупнее и читабельнее
-              чем chip h-7 / text-caption-xs (10px). */}
-          {!m ? (
-            <View className="mt-4 gap-2">
-              <Skeleton height={20} width={260} className="rounded" />
-              <Skeleton height={16} width={220} className="rounded" />
-            </View>
-          ) : (
-            <View className="mt-4 gap-2">
-              {/* Row 1: статус + рейтинг + город */}
-              <View className="flex-row flex-wrap items-center gap-x-4 gap-y-2">
-                {(() => {
-                  const status = effectiveStatus(
-                    m.availability_status ?? null,
-                    m.availability_until ?? null,
-                  );
-                  if (!isAvailabilityVisible(status)) return null;
-                  return (
-                    <View
-                      className="flex-row items-center gap-1.5 h-7 px-3 rounded-full"
-                      style={{ backgroundColor: `${AVAILABILITY_DOT[status]}22` }}
-                    >
-                      <View
-                        style={{
-                          width: 8,
-                          height: 8,
-                          borderRadius: 4,
-                          backgroundColor: AVAILABILITY_DOT[status],
-                        }}
-                      />
-                      <AppText
-                        weight="semibold"
-                        className="text-caption"
-                        style={{ color: AVAILABILITY_DOT[status] }}
-                      >
-                        {AVAILABILITY_LABELS[status]}
-                      </AppText>
-                    </View>
-                  );
-                })()}
-
-                {ratingAvg !== null && ratingCount > 0 ? (
-                  <View className="flex-row items-center gap-1">
-                    <Star size={14} weight="bold" color="currentColor" className="text-ink" />
-                    <AppText weight="mono" className="text-ink text-mono-body">
-                      {ratingAvg.toFixed(1)}
-                    </AppText>
-                    <AppText weight="mono" className="text-mute text-mono-body">
-                      ({pluralizeReviews(ratingCount)})
-                    </AppText>
-                  </View>
-                ) : null}
-
-                {/* Город мастера НЕ показываем (2026-05-16) — где он работает,
-                    видно в секции «Где работаете» (master_service_areas). */}
-              </View>
-
-              {/* Row 2: опыт · бригада/компания (inline через bullets у text-mute).
-                  Радиус выезда удалён 2026-05-15 — заменено на ServiceAreas
-                  (m2m мастер ↔ город/район), отображается ниже отдельной секцией. */}
-              {(experienceYears !== null && experienceYears > 0) ||
-              closedDeals > 0 ||
-              m.account_type === "brigade" ||
-              m.account_type === "company" ? (
-                <View className="flex-row flex-wrap items-center gap-x-3 gap-y-1.5">
-                  {experienceYears !== null && experienceYears > 0 ? (
-                    <View className="flex-row items-center gap-1">
-                      <AppText className="text-body text-body-sm">
-                        {pluralizeYears(experienceYears)} опыта
-                      </AppText>
-                    </View>
-                  ) : null}
-
-                  {closedDeals > 0 ? (
-                    <>
-                      <View className="h-1 w-1 rounded-full bg-mute opacity-40" />
-                      <AppText className="text-body text-body-sm">
-                        {pluralizeClosedDeals(closedDeals)}
-                      </AppText>
-                    </>
-                  ) : null}
-
-                  {m.account_type === "brigade" ? (
-                    <>
-                      <View className="h-1 w-1 rounded-full bg-mute opacity-40" />
-                      <View className="flex-row items-center gap-1">
-                        <Users size={13} weight="bold" color="currentColor" className="text-mute" />
-                        <AppText className="text-body text-body-sm">
-                          Бригада{m.team_size && m.team_size > 1 ? ` ${m.team_size} чел.` : ""}
-                        </AppText>
-                      </View>
-                    </>
-                  ) : null}
-                  {m.account_type === "company" ? (
-                    <>
-                      <View className="h-1 w-1 rounded-full bg-mute opacity-40" />
-                      <View className="flex-row items-center gap-1">
-                        <Buildings
-                          size={13}
-                          weight="bold"
-                          color="currentColor"
-                          className="text-mute"
-                        />
-                        <AppText className="text-body text-body-sm">Компания</AppText>
-                      </View>
-                    </>
-                  ) : null}
-                </View>
-              ) : null}
-            </View>
-          )}
-
-          {/* Bio */}
-          {m?.bio ? (
-            <AppText className="text-body text-body-md mt-4 leading-6">{m.bio}</AppText>
-          ) : null}
-
-          {/* Inline contact actions — ghost equal-weight pills, единый стиль
-              с category page MasterRow (фидбэк user 2026-05-14: «кнопки
-              делаем как там, на всём сайте»). bg-canvas-soft + min-h-11 (тач-цель 44 pt) + medium
-              + без иконок (text-only) — minimal-shadcn-pattern. */}
-          {!isOwnProfile && (
-            <View className="flex-row gap-2 mt-5">
-              {/* «Позвонить» — primary-действие, фирменный акцент (bg-accent-soft
-                  + text-accent), как активный таб в нижнем меню (решение
-                  владельца 2026-05-27). WhatsApp ниже остаётся secondary-серым,
-                  чтобы был один акцентный primary. */}
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Позвонить"
-                onPress={handleCall}
-                className="flex-1 items-center justify-center min-h-11 rounded-full bg-accent-soft active:opacity-80"
-              >
-                <AppText weight="semibold" className="text-body-sm text-accent">
-                  Позвонить
+          <>
+            {/* Шапка: аватар, имя, рейтинг, место */}
+            <View className="flex-row items-center gap-4 px-5 pt-3 pb-6">
+              <Avatar url={u?.avatar_url} name={name} seed={masterId} size="xl" />
+              <View className="min-w-0 flex-1">
+                <AppText weight="bold" className="text-ios-title1 text-ink" numberOfLines={2}>
+                  {name}
                 </AppText>
-              </Pressable>
-              {/* Sprint 0079: кнопка WhatsApp только если у мастера указан
-                  WhatsApp (явный номер или same_as_phone=true). Иначе
-                  скрываем — клиент не видит «пустую» кнопку. */}
-              {phoneWa ? (
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel="Написать в WhatsApp"
-                  onPress={handleWhatsApp}
-                  className="flex-1 items-center justify-center min-h-11 rounded-full bg-canvas-soft active:bg-canvas-soft-2"
-                >
-                  <AppText weight="medium" className="text-body-sm text-ink">
-                    WhatsApp
+                <View className="mt-1 flex-row items-center gap-1.5">
+                  {ratingCount > 0 ? (
+                    <>
+                      <Star size={16} weight="fill" color={tc.warning} />
+                      <AppText weight="semibold" className="text-ios-subheadline text-ink">
+                        {Number(ratingAvg ?? 0).toFixed(1)}
+                      </AppText>
+                      <AppText className="text-ios-subheadline text-mute">
+                        · {ratingCount} отзывов
+                      </AppText>
+                    </>
+                  ) : (
+                    <AppText className="text-ios-subheadline text-mute">Отзывов пока нет</AppText>
+                  )}
+                </View>
+                {place ? (
+                  <AppText className="mt-0.5 text-ios-subheadline text-mute" numberOfLines={1}>
+                    {place}
                   </AppText>
-                </Pressable>
-              ) : null}
+                ) : null}
+              </View>
             </View>
-          )}
 
-          {/* «Этот мастер выполнил работу» CTA убран отсюда — был слишком
-              видный сразу после Позвонить/WhatsApp, отвлекал на edge-case
-              (ad-hoc подтверждение оффлайн-работы). Перенесён в самый низ
-              экрана как ghost-text-link перед wrench-разделителем (по
-              фидбэку user 2026-05-14). */}
-        </View>
+            {/* Чем занимается */}
+            {(categories.data ?? []).length > 0 ? (
+              <InsetGroup title="Чем занимается">
+                {(categories.data ?? []).map((c, i, arr) => {
+                  const Icon = getCategoryIcon(c.l2?.icon);
+                  return (
+                    <InsetRow
+                      key={c.l2_id}
+                      title={c.l2?.name_ru ?? c.l2_id}
+                      icon={<Icon size={18} weight="bold" color={tc.ink} />}
+                      navigates
+                      onPress={() =>
+                        router.push({
+                          pathname: "/specialists/section",
+                          params: { l2: c.l2_id },
+                        } as never)
+                      }
+                      last={i === arr.length - 1}
+                    />
+                  );
+                })}
+              </InsetGroup>
+            ) : null}
 
-        {/* Секция «Услуги» — единый блок без визуальной путаницы. Состоит из:
-              1. Направления (категории с непустым описанием bio) — Card-soft
-                 со списком «что делаю + как работаю». Категории БЕЗ bio не
-                 показываем, чтобы не было «пустых» карточек разного стиля
-                 (фидбэк user 2026-05-14).
-              2. Прайс (master_services) — карточки с ценами в том же
-                 Card-soft стиле через MasterServicesList.
-              Скрываем целиком, если у мастера нет ни одной категории с bio
-              И нет ни одной услуги (фидбэк user 2026-05-20: «то, что не
-              нужно — убрать»). Заголовок без контента — анти-паттерн. */}
-        {(() => {
-          const cats = (categories.data ?? []).filter((c) => !!c.category_bio);
-          const hasCats = cats.length > 0;
-          const hasServices = (masterServices.data?.length ?? 0) > 0;
-          // Пока хоть один из источников грузится — рисуем секцию-skeleton
-          // через MasterServicesList (он сам рисует Skeleton-ряды). Иначе
-          // при «холодном старте» секция мигнёт пропаданием.
-          const isLoading = categories.isLoading || masterServices.isLoading;
-          if (!hasCats && !hasServices && !isLoading) return null;
-          if (!masterId) return null;
-          return (
-            <View className="px-5 mt-8">
-              <AppText weight="semibold" className="text-ink text-title-md mb-4">
-                Услуги
-              </AppText>
+            {/* О себе */}
+            {m?.bio?.trim() || experienceLabel(m?.experience_years) ? (
+              <View className="mb-7 px-4">
+                <AppText className="mb-1.5 ml-4 text-ios-footnote uppercase text-mute">
+                  О себе
+                </AppText>
+                <View className="rounded-2xl bg-canvas px-4 py-3.5">
+                  {m?.bio?.trim() ? (
+                    <AppText className="text-ios-body text-ink">{m.bio.trim()}</AppText>
+                  ) : null}
+                  {experienceLabel(m?.experience_years) ? (
+                    <AppText
+                      className={`text-ios-subheadline text-mute ${m?.bio?.trim() ? "mt-2" : ""}`}
+                    >
+                      {experienceLabel(m?.experience_years)}
+                    </AppText>
+                  ) : null}
+                </View>
+              </View>
+            ) : null}
 
-              {/* Направления — inline-rows без card-обёрток. icon + name + bio
-                  на одной строке + 2-line description под ним. Меньше воздуха,
-                  читаемо. (Lazyweb / TaskRabbit pattern — direct rows). */}
-              {hasCats ? (
-                <View className="mb-3">
-                  {cats.map((c, idx) => {
-                    const name = c.l2?.name_ru ?? c.l2_id;
-                    const CatIcon = getCategoryIcon(c.l2?.icon);
+            {/* Фото работ */}
+            {photos.length > 0 ? (
+              <View className="mb-7 px-4">
+                <View className="mb-1.5 ml-4 flex-row items-center gap-1.5">
+                  <ImageIcon size={14} weight="bold" color={tc.mute} />
+                  <AppText className="text-ios-footnote uppercase text-mute">
+                    Фото работ · {photos.length}
+                  </AppText>
+                </View>
+                <View
+                  className="flex-row flex-wrap"
+                  style={{ gap: GAP }}
+                  onLayout={(e) => setGridWidth(Math.round(e.nativeEvent.layout.width))}
+                >
+                  {photos.slice(0, PHOTOS_PREVIEW).map((p, i) => {
+                    const rest = photos.length - PHOTOS_PREVIEW;
+                    const isLast = i === PHOTOS_PREVIEW - 1 && rest > 0;
                     return (
-                      <View key={c.l2_id} className={`flex-row gap-3 ${idx > 0 ? "mt-3" : ""}`}>
-                        <View className="mt-0.5 h-6 w-6 items-center justify-center">
-                          <CatIcon size={20} weight="bold" color={tc.accent} />
-                        </View>
-                        <View className="flex-1">
-                          <AppText weight="semibold" className="text-ink text-body-md">
-                            {name}
-                          </AppText>
-                          <AppText
-                            className="mt-0.5 text-body text-body-sm leading-5"
-                            numberOfLines={2}
-                          >
-                            {c.category_bio}
-                          </AppText>
-                        </View>
-                      </View>
+                      <Pressable
+                        key={p.id}
+                        accessibilityRole="imagebutton"
+                        accessibilityLabel={`Фото работы ${i + 1}`}
+                        onPress={() => setLightbox(i)}
+                        className="overflow-hidden rounded-2xl active:opacity-80"
+                        style={{ width: tile, height: tile }}
+                      >
+                        <Image
+                          source={{ uri: p.url }}
+                          style={{ width: tile, height: tile }}
+                          resizeMode="cover"
+                          accessibilityIgnoresInvertColors
+                        />
+                        {isLast ? (
+                          <View className="absolute inset-0 items-center justify-center bg-black/50">
+                            <AppText
+                              weight="bold"
+                              className="text-ios-title2"
+                              style={{ color: ON_PHOTO }}
+                            >
+                              +{rest}
+                            </AppText>
+                          </View>
+                        ) : null}
+                      </Pressable>
                     );
                   })}
                 </View>
+              </View>
+            ) : null}
+
+            {/* Услуги и цены — если специалист их заполнил */}
+            {(services.data ?? []).length > 0 ? (
+              <InsetGroup title="Услуги и цены">
+                {(services.data ?? []).map((s, i, arr) => (
+                  <InsetRow
+                    key={s.id}
+                    title={s.title}
+                    value={formatServicePrice(s)}
+                    last={i === arr.length - 1}
+                  />
+                ))}
+              </InsetGroup>
+            ) : null}
+
+            {/* Отзывы */}
+            <View className="px-4">
+              <ReviewsSection
+                title="Отзывы"
+                emptyText="Отзывов пока нет. Станьте первым, кто расскажет о работе."
+                query={reviews}
+              />
+              {showReviewCta ? (
+                <View className="mt-3">
+                  <GlassButton label="Оставить отзыв" onPress={handleReview} secondary />
+                </View>
               ) : null}
-
-              {masterId ? <MasterServicesList masterId={masterId} hideTitle compact /> : null}
             </View>
-          );
-        })()}
+          </>
+        )}
+      </Animated.ScrollView>
 
-        {/* Портфолио grid вынесен в hero-pager выше (Wildberries-style 4:5).
-            Lightbox по тапу всё ещё открывается через onOpen(index). */}
+      <LargeTitleBar
+        title={name}
+        compactTitleOpacity={large.compactTitleOpacity}
+        onLayoutHeight={large.setBarHeight}
+        onBack={goBack}
+        actions={
+          isOwn
+            ? [
+                {
+                  label: "Редактировать профиль",
+                  sf: "pencil",
+                  Icon: PencilSimple,
+                  iconOnly: true,
+                  onPress: () => router.push("/profile/specialist" as never),
+                },
+              ]
+            : [
+                {
+                  label: "Действия",
+                  sf: "ellipsis",
+                  Icon: DotsThree,
+                  iconOnly: true,
+                  onPress: openActions,
+                },
+              ]
+        }
+      />
 
-        {/* «Работы мастера» — список кейсов (portfolio_cases, миграция 0085).
-            Preview 2 шт + ghost-link «Смотреть все» (паттерн TaskRabbit/LinkedIn
-            view-all). Каждый кейс = cover-фото + title + description + дата. */}
-        {masterId ? <MasterCasesPreview masterId={masterId} /> : null}
-
-        {/* Отзывы — скрываем секцию целиком если у мастера 0 отзывов.
-            Раньше ReviewsSection рисовал собственный empty-state с серым
-            box'ом «Пока нет отзывов» — это противоречит правилу «empty =
-            invisible» (фидбэк user 2026-05-20). Когда первая страница ещё
-            грузится — рисуем секцию с loading-индикатором ReviewsSection.
-            Когда данные пришли и rows.length===0 — секции нет. */}
-        {(() => {
-          if (!masterId) return null;
-          const total = reviews.data?.pages.reduce((sum, p) => sum + p.rows.length, 0) ?? 0;
-          if (!reviews.isLoading && total === 0) return null;
-          return (
-            <ReviewsSection
-              title="Отзывы клиентов"
-              emptyText="Пока нет отзывов"
-              query={reviews}
-              // Мастер на СВОЕЙ странице может обжаловать накрученный/
-              // оскорбительный отзыв → жалоба уходит модератору (#163).
-              // Отдельный modal-route `/master/report-review` (нативная iOS
-              // модальность) — передаём только id/text, а не весь объект.
-              onReport={
-                isOwnProfile
-                  ? (r) =>
-                      router.push({
-                        pathname: "/master/report-review",
-                        params: { reviewId: r.id, reviewText: r.text ?? "" },
-                      } as never)
-                  : undefined
-              }
-            />
-          );
-        })()}
-
-        {/* CTA «Оставить отзыв» (freeform-flow 2026-05-27). Кнопка одна и та же
-            для всех: аноним по тапу сначала идёт на вход (handleReviewPress),
-            авторизованный — открывает форму. Владельцу профиля кнопки нет.
-            Если отзыв за 30 дней уже есть — вместо кнопки мягкая info-строка.
-            RPC лимитом 1/30 дней страхует на бэке. */}
-        {showReviewCta ? (
-          <View className="mt-6 px-5">
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Оставить отзыв"
-              onPress={handleReviewPress}
-              className="min-h-12 flex-row items-center justify-center rounded-md border border-hairline bg-canvas active:bg-canvas-soft"
-            >
-              <AppText weight="semibold" className="text-button text-ink">
-                Оставить отзыв
-              </AppText>
-            </Pressable>
-          </View>
-        ) : masterId && !isOwnProfile && recentReview.data ? (
-          <View className="mt-6 px-5">
-            <AppText className="text-center text-caption text-mute">
-              Вы уже оставили отзыв этому мастеру. Новый можно будет оставить через 30 дней.
-            </AppText>
-          </View>
-        ) : null}
-
-        {/* «Этот мастер выполнил работу» — перенесён в action menu (⋮ → sheet).
-            Это edge-case (ad-hoc подтверждение оффлайн-работы), не должен
-            светиться внизу карточки. Wrench-divider убран — Vercel-стиль
-            обходится без декоративных разделителей.
-
-            Источник: ⋮ DotsThreeVertical в hero header → ActionSheetIOS «Действия»
-            → пункт «Этот мастер выполнил работу» (см. openActionMenu). */}
-      </ScrollView>
-
-      {/* Sticky CTA убран — кнопки call/WhatsApp перенесены inline после bio. */}
-
-      {/* Portfolio lightbox */}
-      {portfolio.data ? (
-        <PortfolioLightbox
-          items={portfolio.data}
-          index={lightboxIndex}
-          onChangeIndex={setLightboxIndex}
-          onClose={() => setLightboxIndex(null)}
-        />
+      {/* Связь — плавающие стеклянные кнопки внизу */}
+      {!loading && !notFound && bottomBar ? (
+        <View
+          pointerEvents="box-none"
+          className="absolute left-0 right-0 flex-row gap-3 px-5"
+          style={{ bottom: insets.bottom + 16 }}
+        >
+          {isOwn ? (
+            <View className="flex-1">
+              <GlassButton
+                label="Редактировать профиль"
+                onPress={() => router.push("/profile/specialist" as never)}
+              />
+            </View>
+          ) : (
+            <>
+              {phoneTel ? (
+                <View className="flex-1">
+                  <GlassButton
+                    label="Позвонить"
+                    onPress={() => openExternalUrl(`tel:${phoneTel}`)}
+                  />
+                </View>
+              ) : null}
+              {phoneWa ? (
+                <View className="flex-1">
+                  <GlassButton
+                    label="WhatsApp"
+                    onPress={() => openExternalUrl(`https://wa.me/${phoneWa}`)}
+                    secondary={!!phoneTel}
+                  />
+                </View>
+              ) : null}
+            </>
+          )}
+        </View>
       ) : null}
 
-      {/* Report modal */}
-      {!isOwnProfile && masterId ? (
+      <PortfolioLightbox
+        items={photos}
+        index={lightbox}
+        onClose={() => setLightbox(null)}
+        onChangeIndex={setLightbox}
+      />
+      {masterId ? (
         <ReportModal
           visible={reportOpen}
           onClose={() => setReportOpen(false)}
@@ -790,413 +436,5 @@ export default function MasterPublicScreen() {
         />
       ) : null}
     </View>
-  );
-}
-
-// ----------------------------------------------------------------------------
-// MasterProfileSkeleton — цельный скелет страницы мастера на время загрузки.
-// Повторяет структуру: hero (фото) → аватар+имя+опыт → bio → кнопки контакта
-// → секция услуг. Показывается пока грузятся profile+portfolio, потом весь
-// контент появляется разом (не рвано). См. фидбэк владельца 2026-05-27.
-// ----------------------------------------------------------------------------
-
-function MasterProfileSkeleton({
-  insets,
-  goBack,
-  heroStyle,
-}: {
-  insets: { top: number; bottom: number };
-  goBack: () => void;
-  heroStyle: { height: number } | { aspectRatio: number };
-}) {
-  const onDarkColor = useThemeColor("on-dark");
-
-  return (
-    <View className="flex-1 bg-canvas">
-      {/* Hero-плейсхолдер + активная back-кнопка (уйти можно сразу). */}
-      <View style={{ position: "relative" }}>
-        <Skeleton width="100%" style={heroStyle} />
-        <View
-          className="absolute left-0 right-0 flex-row items-center px-4"
-          style={{ top: insets.top + 8 }}
-        >
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Назад"
-            onPress={goBack}
-            className="h-12 w-12 items-center justify-center rounded-full bg-black/50 active:opacity-70"
-          >
-            <CaretLeft size={28} weight="bold" color={onDarkColor} />
-          </Pressable>
-        </View>
-      </View>
-
-      <View className="px-5 pt-5">
-        {/* Аватар + имя + опыт */}
-        <View className="flex-row items-center gap-3">
-          <Skeleton width={56} height={56} style={{ borderRadius: 28 }} />
-          <View className="flex-1">
-            <Skeleton width="55%" height={22} style={{ borderRadius: 6 }} />
-            <View className="mt-2">
-              <Skeleton width="40%" height={14} style={{ borderRadius: 4 }} />
-            </View>
-          </View>
-        </View>
-
-        {/* Bio — 3 строки */}
-        <View className="mt-5">
-          <Skeleton width="100%" height={14} style={{ borderRadius: 4 }} />
-          <View className="mt-2">
-            <Skeleton width="94%" height={14} style={{ borderRadius: 4 }} />
-          </View>
-          <View className="mt-2">
-            <Skeleton width="68%" height={14} style={{ borderRadius: 4 }} />
-          </View>
-        </View>
-
-        {/* Кнопки контакта */}
-        <View className="mt-6 flex-row gap-2">
-          <View className="flex-1">
-            <Skeleton width="100%" height={40} style={{ borderRadius: 999 }} />
-          </View>
-          <View className="flex-1">
-            <Skeleton width="100%" height={40} style={{ borderRadius: 999 }} />
-          </View>
-        </View>
-
-        {/* Секция «Услуги» */}
-        <View className="mt-8">
-          <Skeleton width="35%" height={18} style={{ borderRadius: 6 }} />
-          <View className="mt-4">
-            <Skeleton width="100%" height={52} style={{ borderRadius: 12 }} />
-          </View>
-          <View className="mt-3">
-            <Skeleton width="100%" height={52} style={{ borderRadius: 12 }} />
-          </View>
-        </View>
-      </View>
-    </View>
-  );
-}
-
-// ----------------------------------------------------------------------------
-// PortfolioPager — Wildberries-style hero галерея 4:5 (вертикальные фото).
-// Горизонтальный pagingEnabled FlatList + pagination dots внизу. Тап откры-
-// вает PortfolioLightbox через onOpen(index).
-// ----------------------------------------------------------------------------
-
-function PortfolioPager({
-  items,
-  onOpen,
-}: {
-  items: PortfolioItem[];
-  onOpen: (index: number) => void;
-}) {
-  const screenWidth = useAppWidth();
-  // Ширина контейнера — на web с max-width:480 контейнер уже screenWidth,
-  // поэтому индекс по screenWidth был неверным (фидбэк user 2026-05-14:
-  // dot не обновлялся при свайпе на web). Меряем фактическую ширину через
-  // onLayout и считаем индекс относительно неё.
-  const [containerWidth, setContainerWidth] = useState(screenWidth);
-  const [index, setIndex] = useState(0);
-  // На desktop (≥ 768) hero не должен расти до 1400px — это огромный блок,
-  // вытесняющий всё остальное за фолд. Lazyweb-паттерн (Airbnb/Booking listing
-  // detail) — landscape ~16:9, потолок ~520px. На mobile сохраняем 4:5
-  // (Wildberries-style), потому что портретный hero лучше для маркетплейс-карточки
-  // на узком экране.
-  const isDesktop = containerWidth >= 768;
-  const heroHeight = isDesktop
-    ? Math.min((containerWidth * 9) / 16, 520)
-    : containerWidth / PORTFOLIO_RATIO; // 4:5 → height = width * 5/4
-
-  // onScroll + throttle вместо onMomentumScrollEnd. На RN-Web нет настоящего
-  // momentum — momentum-event иногда не вызывается, dot-индикатор «зависает»
-  // на первой странице. onScroll работает и на web, и на native.
-  const onScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
-    if (!containerWidth) return;
-    const i = Math.round(e.nativeEvent.contentOffset.x / containerWidth);
-    if (i !== index && i >= 0 && i < items.length) setIndex(i);
-  };
-
-  return (
-    <View
-      style={{ width: "100%", height: heroHeight }}
-      className="bg-canvas-soft-2"
-      onLayout={(e) => setContainerWidth(e.nativeEvent.layout.width)}
-    >
-      <FlatList
-        data={items}
-        horizontal
-        pagingEnabled
-        snapToInterval={containerWidth}
-        decelerationRate="fast"
-        showsHorizontalScrollIndicator={false}
-        onScroll={onScroll}
-        scrollEventThrottle={16}
-        keyExtractor={(item) => item.id}
-        // Ленивый рендер: первое фото рендерится сразу (priority high), остальные
-        // — по мере свайпа. Так первый кадр появляется быстро, не конкурируя за
-        // канал с 5 другими фото (фидбэк юзера «первая быстрее»).
-        initialNumToRender={1}
-        maxToRenderPerBatch={2}
-        windowSize={3}
-        renderItem={({ item, index: i }) => (
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={`Фото ${i + 1} из ${items.length}`}
-            onPress={() => onOpen(i)}
-            style={{ width: containerWidth, height: heroHeight }}
-          >
-            <PortfolioPagerImage
-              url={item.url}
-              width={Math.round(containerWidth) || Math.round(screenWidth)}
-              priority={i === 0 ? "high" : "low"}
-            />
-          </Pressable>
-        )}
-      />
-      {/* Pagination dots — Wildberries-style: активный длиннее, неактивные точки */}
-      {items.length > 1 ? (
-        <View
-          style={{
-            position: "absolute",
-            bottom: 16,
-            left: 0,
-            right: 0,
-            flexDirection: "row",
-            justifyContent: "center",
-            gap: 6,
-          }}
-          pointerEvents="none"
-        >
-          {items.map((it, i) => (
-            <View
-              key={it.id}
-              style={{
-                width: i === index ? 24 : 6,
-                height: 6,
-                borderRadius: 3,
-                backgroundColor: i === index ? "#ffffff" : "rgba(255,255,255,0.5)",
-              }}
-            />
-          ))}
-        </View>
-      ) : null}
-    </View>
-  );
-}
-
-// PortfolioPagerImage — отдельный компонент с локальным fail-state, чтобы
-// ошибка одной картинки не сваливала весь pager. При onError рендерим
-// нейтральный canvas-soft-2 фон (стандартный «фото-плейсхолдер» Vercel-style).
-// Без этого Safari на CORS-fail оставлял пустоту вместо первого слайда.
-function PortfolioPagerImage({
-  url,
-  width,
-  priority = "normal",
-}: {
-  url: string;
-  /** Ширина показа в логических px — для подгонки размера через image-CDN. */
-  width: number;
-  /** Первое фото карусели — "high" (грузится первым), остальные — "low". */
-  priority?: "low" | "normal" | "high";
-}) {
-  const [failed, setFailed] = useState(false);
-  if (failed) {
-    return <View className="flex-1 bg-canvas-soft-2" />;
-  }
-  const blur = cdnBlur(url);
-  return (
-    <ExpoImage
-      // Подгоняем под ширину показа + webp + blur-up плейсхолдер (image-cdn).
-      source={{ uri: cdnImage(url, { width, quality: 74 }) }}
-      placeholder={blur ? { uri: blur } : undefined}
-      placeholderContentFit="cover"
-      style={{ width: "100%", height: "100%" }}
-      contentFit="cover"
-      transition={200}
-      priority={priority}
-      // Кэш память+диск — повторный заход на мастера показывает фото мгновенно.
-      cachePolicy="memory-disk"
-      onError={() => setFailed(true)}
-    />
-  );
-}
-
-// ============================================================================
-// MasterCasesPreview — секция «Работы мастера» на публичной карточке.
-//
-// Редизайн 2026-05-20 (фидбэк user: «как делают большие компании. Сделать
-// офигенно крутой блок»).
-//
-// Layout: Instagram-style 3-column square grid (на mobile), 4-col на planshet,
-// 5-col на desktop. Нулевой gap (1px разделитель через background) — fotos-first
-// без шума. До 9 плиток на странице мастера (3×3), всё остальное — за «Все N».
-//
-// Lazyweb-референсы:
-//   - Instagram profile grid (3-col square, нулевые подписи) — главный паттерн.
-//   - Behance/Dribbble (fotos-first showcase).
-//
-// Ключевые правила:
-//   1. Кейс БЕЗ обложки в гриде НЕ показывается — никаких placeholder'ов с
-//      гаечным ключом. Если у мастера 0 кейсов с фото → секция целиком
-//      скрыта (фидбэк user 2026-05-20: «пустые блоки убрать»).
-//   2. Подпись (название) рендерится поверх фото снизу полупрозрачным
-//      gradient'ом, в одну строку — Airbnb host card pattern.
-//   3. Бейдж «+N» в правом верхнем углу если в кейсе больше 1 фото.
-//   4. Тап по плитке → /case/[caseId] (публичный read-only viewer).
-// ============================================================================
-
-const CASES_PREVIEW_LIMIT = 9; // 3×3 на mobile
-
-function MasterCasesPreview({ masterId }: { masterId: string }) {
-  const router = useRouter();
-  const cases = useMasterCases(masterId);
-  // Берём только кейсы с обложкой (preview_items[0] есть). Если фото не
-  // загружено — кейс пока «невидимый» для публичной карточки.
-  const visibleCases = (cases.data ?? []).filter((c) => !!c.preview_items[0]?.url);
-
-  // Loading + пустой list → секция скрыта (публичная карточка, никаких
-  // «pending» состояний).
-  if (cases.isLoading || visibleCases.length === 0) return null;
-
-  const visible = visibleCases.slice(0, CASES_PREVIEW_LIMIT);
-  const showSeeAll = visibleCases.length > CASES_PREVIEW_LIMIT;
-  const total = visibleCases.length;
-
-  return (
-    <View className="mt-8">
-      <View className="px-5 flex-row items-center justify-between mb-3">
-        <AppText weight="semibold" className="text-ink text-title-md">
-          Работы мастера
-        </AppText>
-        {showSeeAll ? (
-          <Pressable
-            accessibilityRole="link"
-            onPress={() => router.push(`/master-cases/${masterId}` as never)}
-            hitSlop={8}
-            className="active:opacity-70"
-          >
-            <AppText weight="medium" className="text-body-sm text-ink underline">
-              Все {total}
-            </AppText>
-          </Pressable>
-        ) : null}
-      </View>
-
-      <CasesGrid cases={visible} onPress={(caseId) => router.push(`/case/${caseId}` as never)} />
-    </View>
-  );
-}
-
-// ----------------------------------------------------------------------------
-// CasesGrid — сетка плиток (Instagram-style). Всегда 3 колонки (решение
-// владельца 2026-05-27). Раньше была адаптивная (3/4/5 col по viewport)
-// — на широком превью получалось 2 неэстетично-крупных плитки на ряд.
-// Считаем плитку через flex-basis: `100%/cols - gap`. Gap 2px (минимальный
-// разделитель между photo, как в IG).
-// ----------------------------------------------------------------------------
-
-const GRID_GAP = 2;
-const GRID_COLS = 3;
-
-function CasesGrid({
-  cases,
-  onPress,
-}: {
-  cases: CaseWithPreview[];
-  onPress: (caseId: string) => void;
-}) {
-  const viewportWidth = useAppWidth();
-  const cols = GRID_COLS;
-  // Доступная ширина грида: viewportWidth - 0 (без horizontal padding,
-  // плитки идут до краёв как в Instagram). gap*(cols-1) уходит на
-  // зазоры между плитками.
-  const tileSize = (viewportWidth - GRID_GAP * (cols - 1)) / cols;
-
-  return (
-    <View
-      style={{
-        flexDirection: "row",
-        flexWrap: "wrap",
-        gap: GRID_GAP,
-      }}
-    >
-      {cases.map((c) => (
-        <CaseTile key={c.id} data={c} size={tileSize} onPress={() => onPress(c.id)} />
-      ))}
-    </View>
-  );
-}
-
-// ----------------------------------------------------------------------------
-// CaseTile — квадратная плитка с фото-обложкой, бейджем «+N» и подписью-
-// гра­ди­ен­том снизу. Используется только в CasesGrid; preview_items[0]
-// гарантирован вышестоящим фильтром.
-// ----------------------------------------------------------------------------
-
-function CaseTile({
-  data,
-  size,
-  onPress,
-}: {
-  data: CaseWithPreview;
-  size: number;
-  onPress: () => void;
-}) {
-  const cover = data.preview_items[0];
-  const remainingPhotos = data.items_count > 1 ? data.items_count - 1 : 0;
-  // Safari-fallback: ошибка одной обложки не должна ломать всю Instagram-grid.
-  // При onError остаётся bg-canvas-soft-2 фон (нейтральный плейсхолдер).
-  const [failed, setFailed] = useState(false);
-
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={`Работа: ${data.title}`}
-      onPress={onPress}
-      style={{ width: size, height: size, position: "relative" }}
-      className="bg-canvas-soft-2 overflow-hidden active:opacity-80"
-    >
-      {failed || !cover ? null : (
-        <Image
-          source={{ uri: cdnImage(cover.url, { width: size }) }}
-          style={{ width: "100%", height: "100%" }}
-          resizeMode="cover"
-          onError={() => setFailed(true)}
-        />
-      )}
-      {/* Бейдж «+N фото» — правый верхний угол, как у IG carousel-indicator.
-          rgba(0,0,0,0.55) — технический цвет overlay'я, не токен (это alpha
-          на фото, не текст на фоне; работает одинаково в обеих темах). */}
-      {remainingPhotos > 0 ? (
-        <View
-          className="absolute top-1.5 right-1.5 rounded-full px-2 py-0.5"
-          style={{ backgroundColor: "rgba(0,0,0,0.55)" }}
-        >
-          <AppText weight="mono" className="text-mono-caption text-white">
-            +{remainingPhotos}
-          </AppText>
-        </View>
-      ) : null}
-      {/* Подпись поверх фото — gradient снизу для читаемости title.
-          Airbnb host-card pattern: photo-first, текст subtle поверх. */}
-      <LinearGradient
-        colors={["transparent", "rgba(0,0,0,0.65)"]}
-        style={{
-          position: "absolute",
-          left: 0,
-          right: 0,
-          bottom: 0,
-          height: "55%",
-        }}
-        pointerEvents="none"
-      />
-      <View className="absolute left-0 right-0 bottom-0 px-2 pb-2" pointerEvents="none">
-        <AppText weight="semibold" className="text-caption text-white" numberOfLines={1}>
-          {data.title}
-        </AppText>
-      </View>
-    </Pressable>
   );
 }

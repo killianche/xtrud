@@ -399,7 +399,20 @@ export default function OrderDetailScreen() {
             />
           ) : null}
 
-          {isOwner && id && order && <ClientResponsesSection orderId={id} order={order} />}
+          {isOwner && id && order && order.contact_mode !== "phone_open" ? (
+            <ClientResponsesSection orderId={id} order={order} />
+          ) : null}
+          {isOwner && order.contact_mode === "phone_open" ? (
+            <View className="mx-5 mt-6 rounded-2xl bg-canvas-soft p-4">
+              <AppText weight="semibold" className="text-ios-body text-ink">
+                Мастера свяжутся напрямую
+              </AppText>
+              <AppText className="mt-1 text-ios-subheadline text-mute">
+                Вы выбрали связь по номеру: откликов в приложении не будет, мастера позвонят или
+                напишут в WhatsApp.
+              </AppText>
+            </View>
+          ) : null}
           {/* Откликнуться может любой аккаунт, кроме автора задания
               (DECISION владельца 2026-09-01). Раньше форма показывалась
               только в «режиме мастера», и человеку приходилось сначала
@@ -407,14 +420,14 @@ export default function OrderDetailScreen() {
               ровно ради этого перехода. */}
           {/* Гость видит ту же кнопку, что и вошедший (DECISION владельца
               2026-09-06): по нажатию — вход/регистрация и возврат сюда. */}
-          {!userId && id && order.status === "open" ? (
+          {!userId && id && order.status === "open" && order.contact_mode !== "phone_open" ? (
             <GuestRespondCta
               onPress={() =>
                 router.push({ pathname: "/orders/respond-auth", params: { orderId: id } } as never)
               }
             />
           ) : null}
-          {!isOwner && userId && id && (
+          {!isOwner && userId && id && order.contact_mode !== "phone_open" && (
             <MasterResponseSection
               orderId={id}
               masterId={userId}
@@ -625,8 +638,13 @@ function OrderInfoBlock({ order, isOwner }: OrderInfoBlockProps) {
               {contactDisplay}
             </AppText>
           </View>
-          {/* Контакты, которые заказчик сам оставил в задании (0159). Нет —
-              значит связь через отклик, как и раньше. */}
+          {/* Контакты, которые заказчик сам оставил в задании (0159, режим
+              «напрямую» — 0168). Нет — значит связь через отклик. */}
+          {order.contact_mode === "phone_open" ? (
+            <AppText className="mt-3 text-ios-subheadline text-mute">
+              Заказчик ждёт звонка или сообщения — откликов в приложении здесь нет.
+            </AppText>
+          ) : null}
           {order.contact_phone || order.whatsapp_phone ? (
             <View className="mt-2 flex-row gap-2">
               {order.contact_phone ? (

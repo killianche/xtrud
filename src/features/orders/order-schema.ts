@@ -130,6 +130,8 @@ export const createOrderSchema = z
     // Заполненный номер должен быть номером — проверка в superRefine.
     contactPhone: z.string().trim().max(32, "Слишком длинный номер"),
     whatsappPhone: z.string().trim().max(32, "Слишком длинный номер"),
+    /** Способ связи (0168): отклики в приложении или напрямую по номеру. */
+    contactMode: z.enum(["chat_only", "phone_open"]).default("chat_only"),
     // description — необязательное. Пустая строка допустима.
     description: z.string().max(2000, "Максимум 2000 символов"),
     // cityId: либо id города из таблицы cities, либо "all" для «Вся Ингушетия»

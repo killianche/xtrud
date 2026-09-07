@@ -273,6 +273,7 @@ export default function FindScreen() {
                 budgetKind={o.budget_kind}
                 budgetValue={o.budget_value}
                 description={o.description}
+                contactMode={o.contact_mode}
                 coverUrl={o.photo_urls?.[0] ?? null}
                 photosCount={o.photo_urls?.length ?? 0}
                 alreadyResponded={respondedOrderIds.has(o.id)}

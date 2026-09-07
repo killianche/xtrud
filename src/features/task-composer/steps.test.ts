@@ -53,8 +53,16 @@ describe("composer steps", () => {
     ).toBe(true);
   });
 
-  it("контакты по желанию, но введённый номер должен быть номером", () => {
+  it("связь: отклики — без номера; напрямую — нужен хотя бы один номер", () => {
     expect(isStepValid("contacts", complete)).toBe(true);
+    expect(isStepValid("contacts", { ...complete, contactMode: "phone_open" })).toBe(false);
+    expect(
+      isStepValid("contacts", {
+        ...complete,
+        contactMode: "phone_open",
+        whatsappPhone: "+7 928 123-45-67",
+      }),
+    ).toBe(true);
     expect(isStepValid("contacts", { ...complete, contactPhone: "123" })).toBe(false);
     expect(isStepValid("contacts", { ...complete, whatsappPhone: "+7 928 123-45-67" })).toBe(true);
   });

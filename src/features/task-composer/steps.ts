@@ -53,6 +53,9 @@ export function stepPosition(step: ComposerStep): { index: number; total: number
   return { index: COMPOSER_STEPS.indexOf(step) + 1, total: COMPOSER_STEPS.length };
 }
 
+/** Способ связи по заданию (orders.contact_mode). См. миграцию 0168. */
+export type ContactMode = "chat_only" | "phone_open";
+
 export interface ComposerValues {
   l2Id: string;
   title: string;
@@ -66,6 +69,7 @@ export interface ComposerValues {
   contactPhone: string;
   whatsappPhone: string;
   contactName: string;
+  contactMode: ContactMode;
 }
 
 export const EMPTY_COMPOSER_VALUES: ComposerValues = {
@@ -81,6 +85,7 @@ export const EMPTY_COMPOSER_VALUES: ComposerValues = {
   contactPhone: "",
   whatsappPhone: "",
   contactName: "",
+  contactMode: "chat_only",
 };
 
 export const TITLE_MIN = 5;
@@ -116,7 +121,9 @@ export function isStepValid(step: ComposerStep, v: ComposerValues): boolean {
       if (v.budgetKind === "negotiable") return true;
       return v.budgetValue !== null && v.budgetValue > 0 && v.budgetValue <= BUDGET_MAX;
     case "contacts":
-      return isPhoneAcceptable(v.contactPhone) && isPhoneAcceptable(v.whatsappPhone);
+      if (!isPhoneAcceptable(v.contactPhone) || !isPhoneAcceptable(v.whatsappPhone)) return false;
+      // Напрямую — нужен хотя бы один номер; отклики — номера не нужны.
+      return v.contactMode === "chat_only" || !!v.contactPhone.trim() || !!v.whatsappPhone.trim();
     case "review":
       return isComposerComplete(v);
   }

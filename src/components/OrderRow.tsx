@@ -36,7 +36,7 @@
 // поэтому обе темы корректны.
 
 import { Image as ExpoImage } from "expo-image";
-import { ArrowRight, ChatCenteredText } from "phosphor-react-native";
+import { ArrowRight, ChatCenteredText, Phone } from "phosphor-react-native";
 import { type GestureResponderEvent, Pressable, View } from "react-native";
 import { AppText } from "@/components/AppText";
 import type { OrderStatusValue } from "@/components/OrderStatusBadge";
@@ -97,6 +97,8 @@ export interface OrderRowProps {
    *  основная лента открывает детали тапом по всей карточке. Скрывается,
    *  если уже откликнулись. */
   showRespondButton?: boolean;
+  /** Способ связи (0168): «phone_open» — клиент ждёт звонка, откликов нет. */
+  contactMode?: "chat_only" | "phone_open" | "phone_masked" | null;
   /** Обложка задания (первое фото) — миниатюра справа от заголовка. */
   coverUrl?: string | null;
   /** Всего фото — для метки «+N» поверх миниатюры. */
@@ -283,6 +285,17 @@ export function OrderRow(props: OrderRowProps) {
             {locationLabel}
           </AppText>
         </View>
+
+        {/* Связь напрямую (0168): клиент ждёт звонка, откликов нет — мастеру
+            это важно знать до открытия карточки. */}
+        {props.contactMode === "phone_open" ? (
+          <View className="mt-2 flex-row items-center gap-1.5">
+            <Phone size={15} weight="bold" color={tc.accent} />
+            <AppText weight="medium" className="text-body-sm text-accent">
+              Связь напрямую — без откликов
+            </AppText>
+          </View>
+        ) : null}
 
         {/* Цена и действие. Число — крупно: ради него мастер и смотрит ленту. */}
         {priceLabel || showButton || props.alreadyResponded ? (

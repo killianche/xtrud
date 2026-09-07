@@ -105,9 +105,12 @@ export default function TaskReviewScreen() {
     : values.cityId === ALL_INGUSHETIA_CITY_ID
       ? "Вся Ингушетия"
       : getCityName(values.cityId);
-  const contacts = [values.contactPhone.trim(), values.whatsappPhone.trim() ? "WhatsApp" : ""]
-    .filter(Boolean)
-    .join(" · ");
+  const contacts =
+    values.contactMode === "phone_open"
+      ? [values.contactPhone.trim(), values.whatsappPhone.trim() ? "WhatsApp" : ""]
+          .filter(Boolean)
+          .join(" · ")
+      : "Отклики в приложении";
 
   const onPrimary = () => {
     if (!userId) {
@@ -234,19 +237,15 @@ export default function TaskReviewScreen() {
           navigates
           onPress={() => open("budget")}
         />
-        <ChoiceRow
-          title="Контакты"
-          value={contacts || "Не указаны"}
-          navigates
-          onPress={() => open("contacts")}
-          last
-        />
+        <ChoiceRow title="Связь" value={contacts} navigates onPress={() => open("contacts")} last />
       </ChoiceGroup>
       <View className="px-9">
         <AppText className="text-ios-footnote text-mute">
           {mode.kind === "edit"
             ? "Изменения увидят мастера, которые уже откликнулись."
-            : "Задание увидят мастера выбранной категории. Отклики бесплатны."}
+            : values.contactMode === "phone_open"
+              ? "Задание увидят мастера выбранной категории. Они позвонят или напишут вам напрямую."
+              : "Задание увидят мастера выбранной категории. Отклики бесплатны."}
         </AppText>
       </View>
     </ComposerScreen>

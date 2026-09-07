@@ -125,6 +125,7 @@ export function usePublishTask(mode: ComposerMode, activeUserId: string | undefi
         contactName: values.contactName,
         contactPhone: values.contactPhone,
         whatsappPhone: values.whatsappPhone,
+        contactMode: values.contactMode,
         description: values.description,
         cityId: values.cityId,
         district: values.district,

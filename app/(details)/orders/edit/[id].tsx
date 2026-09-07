@@ -49,6 +49,7 @@ export default function EditOrderScreen() {
         contactPhone: order.contact_phone ?? "",
         whatsappPhone: order.whatsapp_phone ?? "",
         contactName: order.contact_name ?? "",
+        contactMode: order.contact_mode === "phone_open" ? "phone_open" : "chat_only",
       },
       (order.photo_urls ?? []).map((uri, i) => ({ id: `remote-${i}`, uri, width: 0, height: 0 })),
     );

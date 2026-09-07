@@ -28,6 +28,8 @@ export interface UpdateOrderInput {
   /** Телефон/WhatsApp для связи по заданию — по желанию. Пусто → NULL. */
   contactPhone?: string;
   whatsappPhone?: string;
+  /** Способ связи (0168). По умолчанию — отклики в приложении. */
+  contactMode?: "chat_only" | "phone_open";
   description: string;
   cityId: string;
   district: string;
@@ -62,8 +64,17 @@ export function useUpdateOrder() {
         l2_id: input.l2Id,
         title: input.title,
         contact_name: trimmedName.length === 0 ? null : trimmedName,
-        contact_phone: toStoredPhone(input.contactPhone),
-        whatsapp_phone: toStoredPhone(input.whatsappPhone),
+        // Отклики в приложении — номеров в задании нет (0168: они не
+        // показываются, хранить незачем). Напрямую — хотя бы один номер.
+        contact_mode: input.contactMode ?? "chat_only",
+        contact_phone:
+          (input.contactMode ?? "chat_only") === "phone_open"
+            ? toStoredPhone(input.contactPhone)
+            : null,
+        whatsapp_phone:
+          (input.contactMode ?? "chat_only") === "phone_open"
+            ? toStoredPhone(input.whatsappPhone)
+            : null,
         description: trimmedDesc.length === 0 ? null : trimmedDesc,
         city_id: input.cityId === ALL_INGUSHETIA_CITY || !input.cityId ? null : input.cityId,
         district: input.district || null,

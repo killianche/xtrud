@@ -87,6 +87,7 @@ function draftToValues(draft: Partial<ComposerValues> & Record<string, unknown>)
     contactPhone: typeof draft.contactPhone === "string" ? draft.contactPhone : "",
     whatsappPhone: typeof draft.whatsappPhone === "string" ? draft.whatsappPhone : "",
     contactName: typeof draft.contactName === "string" ? draft.contactName : "",
+    contactMode: draft.contactMode === "phone_open" ? "phone_open" : "chat_only",
   };
 }
 

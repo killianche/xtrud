@@ -55,6 +55,61 @@ export function useUnreadNotificationsCount(userId: string | undefined) {
   });
 }
 
+/**
+ * События по моим заказам для бейджа «Мои задания»: принят/отменён/закрыт
+ * заказ, отозван отклик, ожидание подтверждения и т.п. Не считаем
+ * `new_response` (он уже в счётчике откликов) и рассылку новых заданий
+ * (`data.kind = new_order`, это бейдж «Найти задание»). Тип события лежит в
+ * `data.type` — колонка `type` для неизвестных значений становится `system`
+ * (FACT: `notify_user` в базе, 2026-09-07).
+ */
+export const unreadOrderEventsKey = (userId: string | undefined) =>
+  ["notifications", "unread-order-events", userId] as const;
+
+export function useUnreadOrderEventsCount(userId: string | undefined) {
+  return useQuery<number>({
+    queryKey: unreadOrderEventsKey(userId),
+    queryFn: async () => {
+      if (!userId) return 0;
+      const { count, error } = await supabase
+        .from("notifications")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", userId)
+        .is("read_at", null)
+        .neq("data->>type", "new_response")
+        .not("data->>kind", "eq", "new_order");
+      if (error) throw error;
+      return count ?? 0;
+    },
+    enabled: !!userId,
+    staleTime: 15_000,
+    refetchOnWindowFocus: true,
+  });
+}
+
+/** Открыли «Мои задания» — события по заказам прочитаны, бейдж гаснет. */
+export function useMarkOrderEventsRead(userId: string | undefined) {
+  const qc = useQueryClient();
+  return useMutation<void, Error, void>({
+    mutationFn: async () => {
+      if (!userId) return;
+      const { error } = await supabase
+        .from("notifications")
+        .update({ read_at: new Date().toISOString() })
+        .eq("user_id", userId)
+        .is("read_at", null)
+        .neq("data->>type", "new_response")
+        .not("data->>kind", "eq", "new_order");
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: unreadOrderEventsKey(userId) });
+      qc.invalidateQueries({ queryKey: unreadNotificationsKey(userId) });
+      qc.invalidateQueries({ queryKey: notificationsKey(userId) });
+    },
+  });
+}
+
 /** Отметить все непрочитанные прочитанными — при открытии экрана. */
 export function useMarkNotificationsRead(userId: string | undefined) {
   const qc = useQueryClient();

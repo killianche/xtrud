@@ -24,7 +24,7 @@
  */
 
 import { FlashList, type FlashListRef } from "@shopify/flash-list";
-import { useNavigation, useRouter } from "expo-router";
+import { useFocusEffect, useNavigation, useRouter } from "expo-router";
 import {
   ArrowClockwise,
   ChatCenteredText,
@@ -35,7 +35,7 @@ import {
   WarningCircle,
 } from "phosphor-react-native";
 import type { RefObject } from "react";
-import { type ReactElement, useEffect, useMemo, useRef, useState } from "react";
+import { type ReactElement, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Animated,
   type FlatList,
@@ -52,10 +52,13 @@ import {
   FAB_LIST_SPACE,
   FloatingActionButton,
   LargeTitleBar,
-  LargeTitleBlock,
   useLargeTitle,
 } from "@/components/ui";
 import { useAuthSession } from "@/features/auth/use-auth-session";
+import {
+  useMarkOrderEventsRead,
+  useUnreadOrderEventsCount,
+} from "@/features/notifications/use-notifications";
 import { type OrderWithRefs, useMyOrders } from "@/features/orders/use-my-orders";
 import {
   historyResponseStatusLabel,
@@ -94,6 +97,18 @@ export default function OrdersScreen() {
   // загрузились, и дальше не пересчитывается — иначе фоновое обновление
   // данных (pull-to-refresh, инвалидация кэша) переключало бы сегмент под
   // рукой у пользователя (QA 2026-09-02).
+  // Открыли вкладку — события по заказам прочитаны, бейдж гаснет (как
+  // бейдж на вкладке в системных приложениях).
+  const unreadEventsQ = useUnreadOrderEventsCount(userId ?? undefined);
+  const markEventsRead = useMarkOrderEventsRead(userId ?? undefined);
+  const markEventsMutate = markEventsRead.mutate;
+  const unreadEvents = unreadEventsQ.data ?? 0;
+  useFocusEffect(
+    useCallback(() => {
+      if (unreadEvents > 0) markEventsMutate();
+    }, [unreadEvents, markEventsMutate]),
+  );
+
   const [tab, setTab] = useState<Segment | null>(null);
   useEffect(() => {
     if (tab !== null || myOrders === undefined || myResponses === undefined) return;

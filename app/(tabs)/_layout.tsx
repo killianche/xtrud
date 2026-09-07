@@ -10,12 +10,17 @@ import { useAuthSession } from "@/features/auth/use-auth-session";
 import { useTouchLastActive } from "@/features/auth/use-touch-last-active";
 import { useUserRecord } from "@/features/auth/use-user-record";
 import { useMyMasterCategories } from "@/features/master-categories/use-my-categories";
+import { useUnreadOrderEventsCount } from "@/features/notifications/use-notifications";
 import { useRealtimeNotifications } from "@/features/orders/use-realtime-notifications";
 import { useUnreadFeedCount } from "@/features/orders/use-unread-feed";
 import { useUnreadResponsesCount } from "@/features/orders/use-unread-responses";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { triggerTabScrollReset } from "@/lib/tab-scroll-reset";
 import { useThemeColors } from "@/lib/use-theme-color";
+
+// Знак xtrud для вкладки «Главная»: assets/images/tab-home[@2x|@3x].png —
+// монохромный, из splash-icon.png (25 pt, как системные иконки вкладок).
+const HOME_TAB_ICON = require("../../assets/images/tab-home.png");
 
 function badgeLabel(n: number): string | undefined {
   if (n <= 0) return undefined;
@@ -69,7 +74,11 @@ export default function TabsLayout() {
     lastSeenAt: lastSeenFeedAt,
   });
 
-  const ordersBadge = badgeLabel(unreadResponses);
+  // «Мои задания»: новые отклики клиенту + события по моим заказам (выбрали,
+  // отменили, закрыли, отозвали отклик) — владелец 2026-09-07: «если отклик
+  // пришёл либо статус моего заказа поменялся — циферка внизу».
+  const { data: unreadOrderEvents = 0 } = useUnreadOrderEventsCount(userId ?? undefined);
+  const ordersBadge = badgeLabel(unreadResponses + unreadOrderEvents);
   const findBadge = badgeLabel(unreadFeed);
 
   const tc = useThemeColors(["error", "canvas", "hairline", "ink", "accent", "mute"]);
@@ -122,11 +131,20 @@ export default function TabsLayout() {
         labelStyle={{ default: { color: tc.mute }, selected: { color: tc.accent } }}
       >
         <NativeTabs.Trigger name="index" listeners={scrollToTopOnReselect("index")}>
-          <NativeTabs.Trigger.Icon sf={{ default: "house", selected: "house.fill" }} />
+          {/* Знак xtrud вместо домика (владелец, 2026-09-07). Шаблонная
+              картинка: система красит её цветом вкладки, как SF Symbol. */}
+          <NativeTabs.Trigger.Icon src={HOME_TAB_ICON} renderingMode="template" />
           <NativeTabs.Trigger.Label>Главная</NativeTabs.Trigger.Label>
         </NativeTabs.Trigger>
 
         {/* Видна всем: откликнуться может любой аккаунт. */}
+        <NativeTabs.Trigger name="orders" listeners={scrollToTopOnReselect("orders")}>
+          <NativeTabs.Trigger.Icon
+            sf={{ default: "checkmark.circle", selected: "checkmark.circle.fill" }}
+          />
+          <NativeTabs.Trigger.Label>Мои задания</NativeTabs.Trigger.Label>
+          {ordersBadge ? <NativeTabs.Trigger.Badge>{ordersBadge}</NativeTabs.Trigger.Badge> : null}
+        </NativeTabs.Trigger>
         <NativeTabs.Trigger name="find" listeners={scrollToTopOnReselect("find")}>
           <NativeTabs.Trigger.Icon sf="magnifyingglass" />
           <NativeTabs.Trigger.Label>Найти задание</NativeTabs.Trigger.Label>
@@ -138,14 +156,6 @@ export default function TabsLayout() {
         <NativeTabs.Trigger name="specialists" listeners={scrollToTopOnReselect("specialists")}>
           <NativeTabs.Trigger.Icon sf={{ default: "person.2", selected: "person.2.fill" }} />
           <NativeTabs.Trigger.Label>Специалисты</NativeTabs.Trigger.Label>
-        </NativeTabs.Trigger>
-
-        <NativeTabs.Trigger name="orders" listeners={scrollToTopOnReselect("orders")}>
-          <NativeTabs.Trigger.Icon
-            sf={{ default: "checkmark.circle", selected: "checkmark.circle.fill" }}
-          />
-          <NativeTabs.Trigger.Label>Мои задания</NativeTabs.Trigger.Label>
-          {ordersBadge ? <NativeTabs.Trigger.Badge>{ordersBadge}</NativeTabs.Trigger.Badge> : null}
         </NativeTabs.Trigger>
 
         {/* Профиль — через аватар в правом верхнем углу главной. Скрытые

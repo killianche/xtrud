@@ -17,6 +17,7 @@ import { useEffect } from "react";
 import {
   notificationsKey,
   unreadNotificationsKey,
+  unreadOrderEventsKey,
 } from "@/features/notifications/use-notifications";
 import { unreadFeedKey, unreadResponsesKey } from "@/features/orders/unread-feed-helpers";
 import { myOrdersKey } from "@/features/orders/use-my-orders";
@@ -57,6 +58,7 @@ export function useRealtimeNotifications(opts: {
             // Экран «Уведомления» и счётчик непрочитанных — на любое событие.
             qc.invalidateQueries({ queryKey: notificationsKey(userId) });
             qc.invalidateQueries({ queryKey: unreadNotificationsKey(userId) });
+            qc.invalidateQueries({ queryKey: unreadOrderEventsKey(userId) });
             const row = payload.new as NotificationRow;
             const orderId = row.data?.order_id;
             if (row.type === "new_response") {

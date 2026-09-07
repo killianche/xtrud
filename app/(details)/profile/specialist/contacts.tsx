@@ -15,6 +15,7 @@ import {
 } from "@/features/specialist/use-specialist";
 import { ComposerField } from "@/features/task-composer/ComposerFields";
 import { isPhoneAcceptable } from "@/features/task-composer/steps";
+import { useUnsavedChangesGuard } from "@/lib/use-unsaved-changes-guard";
 
 const PHONE_ERROR = "Введите номер полностью";
 
@@ -36,11 +37,23 @@ export default function SpecialistContactsScreen() {
 
   const valid =
     phone !== null && phone.trim().length > 0 && isPhoneAcceptable(phone) && isPhoneAcceptable(wa);
+  // Уйти с несохранёнными правками можно только осознанно (QA).
+  const allowLeave = useUnsavedChangesGuard({
+    hasUnsavedChanges:
+      phone !== null &&
+      (phone !== (user?.contact_phone ?? "") || wa !== (profile.data?.whatsapp_phone ?? "")),
+    isBusy: update.isPending,
+  });
   const save = () => {
     if (!userId || phone === null) return;
     update.mutate(
       { userId, contactPhone: phone, whatsappPhone: wa },
-      { onSuccess: () => router.back() },
+      {
+        onSuccess: () => {
+          allowLeave();
+          router.back();
+        },
+      },
     );
   };
 

@@ -26,7 +26,8 @@ import { useThemeColors } from "@/lib/use-theme-color";
 
 export default function SpecialistsCategoriesScreen() {
   const router = useRouter();
-  const large = useLargeTitle();
+  // Строки навигации в покое нет — стартовая высота 0, без прыжка (QA).
+  const large = useLargeTitle(0);
   const tabBarSpace = useTabBarSpace();
   const tc = useThemeColors(["ink", "on-accent"]);
   const [query, setQuery] = useState("");

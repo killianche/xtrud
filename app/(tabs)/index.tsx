@@ -128,6 +128,8 @@ const CATEGORY_CONTAINER_PADDING = CATEGORY_SCREEN_PADDING - CATEGORY_TILE_GUTTE
 
 /** Прокрутка, после которой на главной показывается плавающий «+». */
 const HOME_FAB_OFFSET = 320;
+/** Порог скрытия ниже порога показа — без мигания у границы (QA). */
+const HOME_FAB_HIDE_OFFSET = 240;
 
 function ClientHome({
   userId,
@@ -199,8 +201,7 @@ function ClientHome({
           setStatusBarCovered((prev) => (prev === next ? prev : next));
           // Плавающий «+» появляется, когда шапка с полем «Что нужно сделать»
           // ушла вверх (DECISION владельца 2026-09-07).
-          const fab = y > HOME_FAB_OFFSET;
-          setShowFab((prev) => (prev === fab ? prev : fab));
+          setShowFab((prev) => (prev ? y > HOME_FAB_HIDE_OFFSET : y > HOME_FAB_OFFSET));
         }}
         contentContainerStyle={{
           // Фото-hero идёт от самого верха экрана (под статус-бар), поэтому НЕ

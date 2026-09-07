@@ -18,19 +18,19 @@ import {
   useMasterPortfolio,
 } from "@/features/profile/use-my-portfolio";
 import { useInvalidateSpecialistCounts } from "@/features/specialist/use-specialist";
+import { confirmAsync } from "@/lib/confirm";
 import { hapticSelection } from "@/lib/haptics";
 import { pickMultipleImages, uploadPortfolioBatch } from "@/lib/image-upload";
 import { useThemeColors } from "@/lib/use-theme-color";
 
 const MAX_PHOTOS = 30;
-const ON_PHOTO = "#ffffff";
 const GAP = 8;
 
 export default function SpecialistPhotosScreen() {
   const router = useRouter();
   const { session } = useAuthSession();
   const userId = session?.user?.id;
-  const tc = useThemeColors(["accent", "mute"]);
+  const tc = useThemeColors(["accent", "mute", "on-dark"]);
   const portfolio = useMasterPortfolio(userId ?? null);
   const addItem = useAddPortfolioItem(userId ?? null);
   const deleteItem = useDeletePortfolioItem(userId ?? null);
@@ -65,16 +65,15 @@ export default function SpecialistPhotosScreen() {
     }
   };
 
-  const remove = (id: string, storagePath: string) => {
-    Alert.alert("Удалить фото?", undefined, [
-      { text: "Отмена", style: "cancel" },
-      {
-        text: "Удалить",
-        style: "destructive",
-        onPress: () =>
-          deleteItem.mutate({ id, storagePath }, { onSuccess: () => userId && invalidate(userId) }),
-      },
-    ]);
+  const remove = async (id: string, storagePath: string) => {
+    const ok = await confirmAsync({
+      title: "Удалить фото?",
+      confirmText: "Удалить",
+      cancelText: "Отмена",
+      destructive: true,
+    });
+    if (!ok) return;
+    deleteItem.mutate({ id, storagePath }, { onSuccess: () => userId && invalidate(userId) });
   };
 
   return (
@@ -133,7 +132,7 @@ export default function SpecialistPhotosScreen() {
                 accessibilityRole="button"
                 accessibilityLabel={`Удалить фото ${i + 1}`}
                 hitSlop={8}
-                onPress={() => remove(p.id, p.storage_path)}
+                onPress={() => void remove(p.id, p.storage_path)}
                 className="absolute right-0.5 top-0.5 h-8 w-8 items-center justify-center rounded-full bg-black/50 active:opacity-70"
               >
                 <SystemIcon
@@ -141,7 +140,7 @@ export default function SpecialistPhotosScreen() {
                   fallback={XCircle}
                   size={22}
                   weight="regular"
-                  color={ON_PHOTO}
+                  color={tc["on-dark"]}
                 />
               </Pressable>
             </View>

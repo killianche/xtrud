@@ -27,7 +27,6 @@ import {
   useLargeTitle,
 } from "@/components/ui";
 import { Skeleton } from "@/components/ui/Skeleton";
-import { SystemIcon } from "@/components/ui/SystemIcon";
 import { useAuthSession } from "@/features/auth/use-auth-session";
 import { blockConfirmMessage } from "@/features/blocking/blocking-copy";
 import { blockingActionFailureMessage } from "@/features/blocking/blocking-error-message";
@@ -60,7 +59,6 @@ import { resolveWhatsappDigits } from "@/lib/whatsapp";
 
 const GAP = 6;
 const PHOTOS_PREVIEW = 6;
-const ON_PHOTO = "#ffffff";
 
 function experienceLabel(years: number | null | undefined): string | null {
   if (!years || years <= 0) return null;
@@ -80,7 +78,7 @@ export default function MasterPublicScreen() {
   const isOwn = !!currentUserId && currentUserId === masterId;
   const goBack = useSafeBack("/(tabs)" as never);
   const large = useLargeTitle();
-  const tc = useThemeColors(["ink", "mute", "accent", "on-accent", "warning", "error"]);
+  const tc = useThemeColors(["ink", "mute", "accent", "on-accent", "warning", "error", "on-dark"]);
   const { colorScheme } = useColorScheme();
 
   const profile = useMasterPublicProfile(masterId);
@@ -311,7 +309,7 @@ export default function MasterPublicScreen() {
                             <AppText
                               weight="bold"
                               className="text-ios-title2"
-                              style={{ color: ON_PHOTO }}
+                              style={{ color: tc["on-dark"] }}
                             >
                               +{rest}
                             </AppText>

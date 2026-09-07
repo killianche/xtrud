@@ -18,7 +18,7 @@ import { FlashList } from "@shopify/flash-list";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Briefcase, Calendar, MapPin, SquaresFour, Star, UsersThree } from "phosphor-react-native";
 import { useEffect, useMemo, useState } from "react";
-import { Animated, type FlatList, Pressable, ScrollView, View } from "react-native";
+import { Animated, Pressable, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
 import { CITIES, type CityId } from "@/components/CitySelector";

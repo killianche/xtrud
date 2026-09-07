@@ -19,6 +19,7 @@ import { useInvalidateSpecialistCounts } from "@/features/specialist/use-special
 import { getCategoryIcon } from "@/lib/category-icons";
 import { hapticSelection } from "@/lib/haptics";
 import { useThemeColors } from "@/lib/use-theme-color";
+import { useUnsavedChangesGuard } from "@/lib/use-unsaved-changes-guard";
 
 const MAX = 5;
 
@@ -62,6 +63,17 @@ export default function SpecialistCategoriesScreen() {
     });
   };
 
+  // Уйти с несохранёнными правками можно только осознанно (QA).
+  const allowLeave = useUnsavedChangesGuard({
+    hasUnsavedChanges:
+      selected !== null &&
+      [...chosen].sort().join() !==
+        (mine.data ?? [])
+          .map((c) => c.l2_id)
+          .sort()
+          .join(),
+    isBusy: setCategories.isPending,
+  });
   const save = () => {
     if (!userId) return;
     setCategories.mutate(
@@ -69,6 +81,7 @@ export default function SpecialistCategoriesScreen() {
       {
         onSuccess: () => {
           invalidate(userId);
+          allowLeave();
           router.back();
         },
       },

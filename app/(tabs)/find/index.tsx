@@ -58,7 +58,8 @@ const EMPTY_IDS: ReadonlySet<string> = new Set();
 
 export default function FindScreen() {
   const tabBarSpace = useTabBarSpace();
-  const large = useLargeTitle();
+  // Строки навигации в покое нет — стартовая высота 0, без прыжка (QA).
+  const large = useLargeTitle(0);
   const router = useRouter();
   const { session } = useAuthSession();
   const userId = session?.user?.id;

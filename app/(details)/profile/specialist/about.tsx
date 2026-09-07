@@ -12,6 +12,7 @@ import {
   useUpdateSpecialistAbout,
 } from "@/features/specialist/use-specialist";
 import { ComposerField } from "@/features/task-composer/ComposerFields";
+import { useUnsavedChangesGuard } from "@/lib/use-unsaved-changes-guard";
 
 const BIO_MAX = 500;
 const EXPERIENCE: Array<{ years: number; label: string }> = [
@@ -36,9 +37,24 @@ export default function SpecialistAboutScreen() {
     }
   }, [profile.data, bio]);
 
+  // Уйти с несохранёнными правками можно только осознанно (QA).
+  const allowLeave = useUnsavedChangesGuard({
+    hasUnsavedChanges:
+      bio !== null &&
+      (bio !== (profile.data?.bio ?? "") || years !== (profile.data?.experience_years ?? null)),
+    isBusy: update.isPending,
+  });
   const save = () => {
     if (!userId || bio === null) return;
-    update.mutate({ userId, bio, experienceYears: years }, { onSuccess: () => router.back() });
+    update.mutate(
+      { userId, bio, experienceYears: years },
+      {
+        onSuccess: () => {
+          allowLeave();
+          router.back();
+        },
+      },
+    );
   };
 
   return (

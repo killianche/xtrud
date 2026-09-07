@@ -126,6 +126,8 @@ export function UsernameField({
                   outlineWidth: 0,
                   outlineStyle: "none",
                   paddingVertical: 4,
+                  // Поле на всю высоту строки — тап в любое место ставит курсор.
+                  alignSelf: "stretch",
                 } as object
               }
             />

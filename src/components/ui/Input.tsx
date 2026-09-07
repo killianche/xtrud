@@ -151,6 +151,9 @@ export const Input = forwardRef<TextInput, InputProps>(function Input(
             // центрирует контейнер (items-center), и лишний padding только
             // мешает при крупном системном шрифте.
             paddingVertical: props.multiline ? 12 : 0,
+            // Поле занимает всю высоту контейнера — тап в любое место поля
+            // ставит курсор (владелец, 2026-09-07).
+            alignSelf: "stretch",
             ...(Platform.OS === "web" ? { fontFamily: WEB_SANS } : {}),
             // outlineStyle: убираем focus-ring на web — рамку рисует контейнер.
             ...({ outlineStyle: "none" } as object),

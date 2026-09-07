@@ -402,7 +402,15 @@ function NakedInput({
       className="text-field-md text-ink"
       style={
         // web-only: убираем синий focus outline у нативного <input>
-        { color: tc.ink, outlineWidth: 0, outlineStyle: "none", paddingVertical: 4 } as object
+        {
+          color: tc.ink,
+          outlineWidth: 0,
+          outlineStyle: "none",
+          paddingVertical: 4,
+          // Поле на всю высоту строки — тап в любое место ставит курсор.
+          alignSelf: "stretch",
+          minHeight: 44,
+        } as object
       }
     />
   );

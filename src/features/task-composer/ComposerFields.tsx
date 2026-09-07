@@ -96,12 +96,17 @@ export const ComposerField = forwardRef<TextInput, ComposerFieldProps>(function 
             onBlur?.(e);
           }}
           className="flex-1 text-ink"
+          // alignSelf: stretch — поле ввода занимает всю высоту плитки, а не
+          // одну строку текста: тап в любое место белой плитки ставит курсор
+          // (владелец, 2026-09-07: «нажимаешь в пустое место поля — не
+          // откликается»). Однострочное поле iOS центрирует текст само.
           style={{
             fontSize,
             fontWeight: size === "title" ? "600" : "400",
             color: tc.ink,
             paddingVertical: 0,
-            ...(multiline ? { lineHeight: Math.round(fontSize * 1.35) } : {}),
+            alignSelf: "stretch",
+            ...(multiline ? { lineHeight: Math.round(fontSize * 1.35), minHeight: 132 - 24 } : {}),
             ...({ outlineStyle: "none" } as object),
           }}
         />

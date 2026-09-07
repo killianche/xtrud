@@ -14,8 +14,9 @@
  *  1. Поле показывает кнопку очистки. Она системная (`clearButtonMode`), а не
  *     наша: у неё правильный размер, позиция и поведение при наборе.
  *     На Android и web системной кнопки нет — там рисуем свою.
- *  2. Кнопка «Отмена» прекращает поиск: очищает поле и убирает клавиатуру.
- *     Apple показывает её, когда человек начал ввод, а не всегда.
+ *  2. Круглая кнопка «X» рядом с капсулой прекращает поиск: очищает поле и
+ *     убирает клавиатуру (iOS 26). Apple показывает её, когда человек начал
+ *     ввод, а не всегда.
  *  3. Подсказка в поле объясняет, что можно искать («Имя или услуга»), а не
  *     повторяет слово «Поиск» — оно ничего не сообщает.
  *  4. Ведущий край поля говорит о назначении: лупа слева.
@@ -31,10 +32,10 @@
 import { MagnifyingGlass, X } from "phosphor-react-native";
 import { forwardRef, useState } from "react";
 import { Keyboard, Platform, Pressable, TextInput, type TextInputProps, View } from "react-native";
-import { AppText } from "@/components/AppText";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useThemeColors } from "@/lib/use-theme-color";
 import { GlassSurface } from "./GlassSurface";
+import { NavCircleButton } from "./LargeTitle";
 import { SystemIcon } from "./SystemIcon";
 
 export interface SearchFieldProps extends Omit<TextInputProps, "style" | "value" | "onChangeText"> {
@@ -124,6 +125,8 @@ export const SearchField = forwardRef<TextInput, SearchFieldProps>(function Sear
               fontSize: 17,
               color: tc.ink,
               paddingVertical: 0,
+              // На всю высоту капсулы: тап в любое место поля ставит курсор.
+              alignSelf: "stretch",
               ...({ outlineStyle: "none" } as object),
             }}
           />
@@ -143,23 +146,20 @@ export const SearchField = forwardRef<TextInput, SearchFieldProps>(function Sear
       </GlassSurface>
 
       {cancelVisible ? (
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Отменить поиск"
-          hitSlop={8}
+        // iOS 26: рядом с капсулой поиска — отдельная круглая стеклянная
+        // кнопка «X» (DECISION владельца 2026-09-07: «поле поиска как в
+        // последнем iOS, рядом большой X»). Она прекращает поиск: пустое
+        // поле и убранная клавиатура.
+        <NavCircleButton
+          label="Отменить поиск"
           onPress={() => {
-            // Apple: «Отмена» немедленно прекращает поиск — пустое поле и
-            // убранная клавиатура, а не просто снятый фокус.
             onChangeText("");
             Keyboard.dismiss();
             onCancel?.();
           }}
-          className="min-h-12 justify-center px-1 active:opacity-60"
         >
-          <AppText weight="medium" className="text-body-lg text-accent">
-            Отмена
-          </AppText>
-        </Pressable>
+          <SystemIcon sf="xmark" fallback={X} size={18} weight="semibold" color={tc.ink} />
+        </NavCircleButton>
       ) : null}
     </View>
   );

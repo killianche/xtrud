@@ -167,6 +167,7 @@ export default function MasterCategoriesScreen() {
                 flex: 1,
                 fontSize: 15,
                 color: tc.ink,
+                alignSelf: "stretch",
                 outlineWidth: 0,
                 outlineStyle: "none",
               } as object

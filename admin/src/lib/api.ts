@@ -80,6 +80,22 @@ export interface ReportRow {
 
 export type UserStatus = "active" | "suspended" | "banned";
 
+/** Специалист в каталоге (admin_list_masters, 0172). */
+export interface MasterRow {
+  id: string;
+  first_name: string | null;
+  last_name: string | null;
+  phone: string | null;
+  user_status: UserStatus | string;
+  master_status: "draft" | "pending" | "active" | "suspended" | "archived" | string;
+  is_hidden: boolean;
+  categories: string[];
+  photos_count: number;
+  rating_avg: number | null;
+  rating_count: number | null;
+  created_at: string;
+}
+
 export interface ActionRow {
   id: string;
   performed_at: string;
@@ -109,6 +125,7 @@ function describe(error: { message?: string; code?: string } | null): string {
   if (message.includes("user_deleted")) return "Аккаунт удалён — санкции к нему неприменимы.";
   if (message.includes("report_not_found")) return "Жалоба не найдена.";
   if (message.includes("bad_status")) return "Недопустимое состояние.";
+  if (message.includes("master_not_found")) return "Профиль специалиста не найден.";
   if (!message) return "Не удалось выполнить запрос.";
   return "Сервис не ответил. Попробуйте ещё раз.";
 }
@@ -122,6 +139,18 @@ async function rpc<T>(name: string, args?: Record<string, unknown>): Promise<T> 
 
 export const api = {
   metrics: () => rpc<Metrics>("admin_metrics"),
+  listMasters: (search: string, limit = 50, offset = 0) =>
+    rpc<MasterRow[]>("admin_list_masters", {
+      p_search: search.trim() === "" ? null : search.trim(),
+      p_limit: limit,
+      p_offset: offset,
+    }),
+  setMasterVisibility: (userId: string, visible: boolean, reason: string) =>
+    rpc<void>("admin_set_master_visibility", {
+      p_user_id: userId,
+      p_visible: visible,
+      p_reason: reason.trim() === "" ? null : reason.trim(),
+    }),
   listUsers: (search: string, limit = 50, offset = 0) =>
     rpc<UserRow[]>("admin_list_users", {
       p_search: search.trim() === "" ? null : search.trim(),

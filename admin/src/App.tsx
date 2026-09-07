@@ -7,6 +7,7 @@ import { api, getClient } from "./lib/api";
 import { Dashboard } from "./pages/Dashboard";
 import { Journal } from "./pages/Journal";
 import { Login } from "./pages/Login";
+import { Masters } from "./pages/Masters";
 import { Reports } from "./pages/Reports";
 import { UserCard } from "./pages/UserCard";
 import { Users } from "./pages/Users";
@@ -92,6 +93,8 @@ export function App() {
   const userMatch = /^\/users\/(.+)$/.exec(route);
   const section = route.startsWith("/users")
     ? "users"
+    : route.startsWith("/masters")
+      ? "masters"
     : route.startsWith("/reports")
       ? "reports"
       : route.startsWith("/journal")
@@ -122,6 +125,14 @@ export function App() {
           <button
             type="button"
             className="nav-link"
+            aria-current={section === "masters" ? "page" : undefined}
+            onClick={() => navigate("/masters")}
+          >
+            Специалисты
+          </button>
+          <button
+            type="button"
+            className="nav-link"
             aria-current={section === "reports" ? "page" : undefined}
             onClick={() => navigate("/reports")}
           >
@@ -147,6 +158,8 @@ export function App() {
           <UserCard userId={userMatch[1]} onBack={() => navigate("/users")} />
         ) : section === "users" ? (
           <Users onOpen={(id) => navigate(`/users/${id}`)} />
+        ) : section === "masters" ? (
+          <Masters onOpen={(id) => navigate(`/users/${id}`)} />
         ) : section === "reports" ? (
           <Reports />
         ) : section === "journal" ? (

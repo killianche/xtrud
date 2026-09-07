@@ -196,3 +196,17 @@ backend — он обязан оставаться открытым для пр�
 ли demo-админ; управление DNS-зоной; свободное место на web-VPS; переживает ли
 TOTP-фактор восстановление; планка качества для веб-интерфейса (не покрыта
 `docs/IOS_FOUNDATION.md`, задаётся отдельно).
+
+
+## 13. Специалисты (2026-09-07)
+
+DECISION владельца: «в админке подтверждать специалистов — показывать их
+или нет — и блокировать». Страница «Специалисты» (`admin/src/pages/Masters.tsx`):
+список из `admin_list_masters` (имя, телефон, категории, фото, рейтинг,
+состояние), действия «Показать» / «Скрыть» через
+`admin_set_master_visibility(p_user_id, p_visible, p_reason)` (скрытый —
+`master_profiles.status = suspended`, запись в `admin_actions`) и
+«Заблокировать» через `admin_set_user_status`. Автоматика: профиль виден с
+первой категории (0169, триггер 0172); решение админа её переопределяет.
+Развёртывание: `cd admin && npm run build`, затем `admin/dist` → `/var/www/xtrud/admin/`
+на web-VPS (`release/production.json → web.sshHost`).

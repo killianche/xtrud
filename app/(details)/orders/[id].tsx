@@ -1327,6 +1327,7 @@ function MasterResponseSection({
   const onSubmit = handleSubmit(async (values) => {
     try {
       await submitResponse.mutateAsync({
+        resendResponseId: canResend ? myResponse?.id : undefined,
         orderId,
         masterId,
         l2Id,
@@ -1370,7 +1371,10 @@ function MasterResponseSection({
   }
 
   // Уже есть отклик — показываем статус
-  if (myResponse) {
+  // Отозванный отклик на открытое задание можно отправить заново (0172).
+  const canResend = !!myResponse && myResponse.status === "withdrawn" && orderStatus === "open";
+
+  if (myResponse && !canResend) {
     const accentClass = isPickedMaster
       ? "border-success bg-success-soft"
       : "border-accent bg-accent-soft";
@@ -1385,11 +1389,8 @@ function MasterResponseSection({
       if (isBusyWithdraw) return;
       const confirmed = await confirmAsync({
         title: "Отозвать отклик?",
-        // Прежний текст обещал «можно создать новый». База это запрещает:
-        // UNIQUE(order_id, master_id) остаётся после отзыва, строка не
-        // удаляется, и форма больше не возвращается. Интерфейс не должен
-        // обещать того, чего продукт не делает.
-        message: "Клиент получит уведомление. Откликнуться на это задание снова будет нельзя.",
+        // С 0172 отозванный отклик можно отправить заново с новыми условиями.
+        message: "Клиент получит уведомление. Позже можно откликнуться снова.",
         confirmText: "Отозвать",
         cancelText: "Отмена",
       });

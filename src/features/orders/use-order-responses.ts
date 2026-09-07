@@ -89,6 +89,8 @@ export interface SubmitResponseInput {
    *  обязателен — проверяется схемой формы и ограничением в базе (0147). */
   contactPhone: string | null;
   whatsappPhone: string | null;
+  /** Отозванный отклик, который оживляем с новыми условиями (0172). */
+  resendResponseId?: string;
 }
 
 export function useSubmitResponse() {
@@ -109,6 +111,24 @@ export function useSubmitResponse() {
         contact_phone: input.contactPhone,
         whatsapp_phone: input.whatsappPhone,
       };
+      if (input.resendResponseId) {
+        // UNIQUE(order_id, master_id): второй строки быть не может — оживляем
+        // отозванную (сервер проверит, что она была withdrawn, 0172).
+        const { error } = await supabase
+          .from("order_responses")
+          .update({
+            status: "sent",
+            price_kind: payload.price_kind,
+            price_value: payload.price_value,
+            lead_time: payload.lead_time,
+            message: payload.message,
+            contact_phone: payload.contact_phone,
+            whatsapp_phone: payload.whatsapp_phone,
+          })
+          .eq("id", input.resendResponseId);
+        if (error) throw error;
+        return;
+      }
       const { error } = await supabase.from("order_responses").insert(payload);
       if (error) throw error;
     },

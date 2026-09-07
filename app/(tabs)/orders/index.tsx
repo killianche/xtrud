@@ -80,7 +80,7 @@ const ACTIVE_STATUSES = new Set<string>(["open"]);
 
 export default function OrdersScreen() {
   // Строки навигации в покое нет — стартовая высота 0, без прыжка (QA).
-  const large = useLargeTitle(0);
+  const large = useLargeTitle();
   const router = useRouter();
   const { session } = useAuthSession();
   const userId = session?.user?.id;
@@ -105,17 +105,11 @@ export default function OrdersScreen() {
   // title (Фитнес, Здоровье). Уезжают вместе со списком; в закреплённой строке
   // остаётся компактный заголовок (DECISION владельца 2026-09-06, вечер:
   // «заголовок — в самом верху, где пустое место»).
-  const header = (
-    <>
-      <LargeTitleBlock title="Мои задания" />
-      <Segments
-        value={resolved}
-        onChange={setTab}
-        ordersCount={myOrders?.length ?? null}
-        responsesCount={myResponses?.length ?? null}
-      />
-    </>
-  );
+  // Сегменты живут в закреплённой шапке под заголовком: переключение
+  // мгновенное и всегда под рукой (владелец, 2026-09-07: «долго и тяжело
+  // переключаются»). Крупный заголовок здесь не нужен — экран начинается с
+  // выбора роли.
+  const header = <View className="h-2" />;
 
   if (!userId) {
     // Гость: личный кабинет пуст не потому, что заданий нет, а потому что
@@ -123,7 +117,6 @@ export default function OrdersScreen() {
     return (
       <View className="flex-1 bg-surface-page">
         <View className="flex-1" style={{ paddingTop: large.contentTop }}>
-          <LargeTitleBlock title="Мои задания" />
           <EmptyState
             icon={ClipboardText}
             title="Войдите, чтобы видеть свои задания"
@@ -164,6 +157,15 @@ export default function OrdersScreen() {
         title="Мои задания"
         compactTitleOpacity={large.compactTitleOpacity}
         onLayoutHeight={large.setBarHeight}
+        alwaysCompact
+        below={
+          <Segments
+            value={resolved}
+            onChange={setTab}
+            ordersCount={myOrders?.length ?? null}
+            responsesCount={myResponses?.length ?? null}
+          />
+        }
       />
 
       {/* Главное действие экрана — плавающая кнопка снизу справа, как «новая
@@ -289,7 +291,6 @@ function OrdersList({ userId, contentTop, onScroll, header }: ListProps) {
       scrollEventThrottle={16}
       renderScrollComponent={Animated.ScrollView as never}
       ListHeaderComponent={header}
-      extraData={header}
       showsVerticalScrollIndicator={false}
       refreshControl={refresh.control}
       renderItem={({ item: o }) => (
@@ -360,13 +361,6 @@ function ResponsesList({ userId, contentTop, onScroll, header }: ListProps) {
   }, [myResponses]);
 
   // Fade-in списка после скелетона (UI_PATTERNS §3.7).
-  const opacity = useRef(new Animated.Value(0)).current;
-  useEffect(() => {
-    if (!isLoading) {
-      opacity.setValue(0);
-      Animated.timing(opacity, { toValue: 1, duration: 280, useNativeDriver: true }).start();
-    }
-  }, [isLoading, opacity]);
 
   // Tap-on-active-tab → scroll to top — как и у списка заданий.
   const listRef = useRef<FlashListRef<MyResponseWithOrder>>(null);
@@ -380,7 +374,7 @@ function ResponsesList({ userId, contentTop, onScroll, header }: ListProps) {
   const hasItems = !isLoading && !error && sorted.length > 0;
 
   return (
-    <Animated.View style={{ flex: 1, opacity: isLoading ? 1 : opacity }}>
+    <View style={{ flex: 1 }}>
       <FlashList
         style={{ flex: 1 }}
         ref={listRef}
@@ -391,7 +385,6 @@ function ResponsesList({ userId, contentTop, onScroll, header }: ListProps) {
         scrollEventThrottle={16}
         renderScrollComponent={Animated.ScrollView as never}
         ListHeaderComponent={header}
-        extraData={header}
         showsVerticalScrollIndicator={false}
         refreshControl={refresh.control}
         renderItem={({ item: r }) => {
@@ -444,7 +437,7 @@ function ResponsesList({ userId, contentTop, onScroll, header }: ListProps) {
           )
         }
       />
-    </Animated.View>
+    </View>
   );
 }
 

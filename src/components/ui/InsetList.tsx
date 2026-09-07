@@ -45,6 +45,8 @@ export interface InsetRowProps {
   /** Плитка иконки в фирменном цвете. */
   iconAccent?: boolean;
   selected?: boolean;
+  /** Галочка справа без заливки строки — выбор в списке фильтров/настроек. */
+  checked?: boolean;
   /** Строка ведёт дальше (chevron), а не выбирает. */
   navigates?: boolean;
   /** Значение справа. */
@@ -64,6 +66,7 @@ export function InsetRow({
   icon,
   iconAccent = false,
   selected = false,
+  checked = false,
   navigates = false,
   value,
   toggle,
@@ -77,7 +80,7 @@ export function InsetRow({
   return (
     <Pressable
       accessibilityRole={toggle ? "switch" : "button"}
-      accessibilityState={{ selected, disabled, checked: toggle?.value }}
+      accessibilityState={{ selected: selected || checked, disabled, checked: toggle?.value }}
       accessibilityLabel={subtitle ? `${title}, ${subtitle}` : value ? `${title}, ${value}` : title}
       disabled={disabled || (!onPress && !toggle)}
       onPress={() => {
@@ -144,7 +147,7 @@ export function InsetRow({
               color={tc.mute}
             />
           </View>
-        ) : selected ? (
+        ) : selected || checked ? (
           <View className="ml-2">
             <SystemIcon
               sf="checkmark"

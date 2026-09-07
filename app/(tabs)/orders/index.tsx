@@ -172,6 +172,7 @@ export default function OrdersScreen() {
         title="Мои задания"
         compactTitleOpacity={large.compactTitleOpacity}
         onLayoutHeight={large.setBarHeight}
+        hideTitle
         alwaysCompact
         below={
           <Segments

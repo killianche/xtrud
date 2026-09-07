@@ -10,21 +10,20 @@
 // Как устроено:
 //   - параметры маршрута `l1` (раздел) / `l2` (категория) задают фильтр при
 //     входе с главной; тогда название категории стоит в строке навигации;
-//   - три чипа фильтров под поиском: Категория · Город · Сортировка. Каждый
-//     открывает системную шторку выбора и возвращает результат через store;
+//   - кнопка «Фильтры» в строке навигации открывает шторку
+//     /specialists/filters (категория, город, сортировка) — тот же паттерн,
+//     что у ленты заданий; значения в общем сторе;
 //   - один RPC search_masters считает всё на сервере (миграция 0158).
 
 import { FlashList } from "@shopify/flash-list";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { Briefcase, Calendar, MapPin, SquaresFour, Star, UsersThree } from "phosphor-react-native";
+import { SlidersHorizontal, Star, UsersThree } from "phosphor-react-native";
 import { useEffect, useMemo, useState } from "react";
-import { Animated, Pressable, ScrollView, View } from "react-native";
+import { Animated, Pressable, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
-import { CITIES, type CityId } from "@/components/CitySelector";
 import {
   Avatar,
-  FilterChip,
   LargeTitleBar,
   LargeTitleBlock,
   SearchField,
@@ -34,15 +33,17 @@ import { useCategoryFilterPickerStore } from "@/features/categories/category-fil
 import { useCategoriesL1 } from "@/features/categories/use-categories-l1";
 import { useVisibleCategories } from "@/features/categories/use-visible-categories";
 import {
+  countSpecialistsFilters,
+  useSpecialistsFiltersStore,
+} from "@/features/master-view/specialists-filters-store";
+import {
   type MasterSearchResult,
-  type MasterSort,
   useSearchMasters,
 } from "@/features/master-view/use-search-masters";
 import { specialistsLabel } from "@/features/orders/plural-ru";
 import { describeQueryError } from "@/lib/describe-query-error";
 import { useDebouncedValue } from "@/lib/use-debounced-value";
 import { useThemeColors } from "@/lib/use-theme-color";
-import type { IconComponent } from "@/types/icon";
 
 /** Та же тень, что у карточки задания: край читается без опоры на линию. */
 const CARD_SHADOW = {
@@ -52,17 +53,6 @@ const CARD_SHADOW = {
   shadowOffset: { width: 0, height: 2 },
   elevation: 2,
 } as const;
-
-const SORT_LABEL: Record<MasterSort, string> = {
-  rating: "По рейтингу",
-  experience: "По опыту",
-  availability: "Свободные",
-};
-const SORT_ICON: Record<MasterSort, IconComponent> = {
-  rating: Star,
-  experience: Briefcase,
-  availability: Calendar,
-};
 
 function fullName(first: string | null, last: string | null): string {
   const name = [first, last].filter(Boolean).join(" ").trim();
@@ -140,45 +130,46 @@ export function SpecialistsListScreen() {
   const tabBarSpace = insets.bottom + 24;
   const large = useLargeTitle();
 
-  // Фильтры. Стартовые значения — из маршрута (тап по категории на главной).
-  const [l1Id, setL1Id] = useState<string | null>(() => first(params.l1));
-  const [l2Id, setL2Id] = useState<string | null>(() => first(params.l2));
-  const [cityId, setCityId] = useState<CityId>("all");
-  const [sort, setSort] = useState<MasterSort>("rating");
+  // Фильтры — общий стор со шторкой /specialists/filters. Стартовые значения
+  // и повторный вход с главной с другой категорией — из параметров маршрута.
+  const l1Id = useSpecialistsFiltersStore((s) => s.l1Id);
+  const l2Id = useSpecialistsFiltersStore((s) => s.l2Id);
+  const cityId = useSpecialistsFiltersStore((s) => s.cityId);
+  const sort = useSpecialistsFiltersStore((s) => s.sort);
+  const setCategory = useSpecialistsFiltersStore((s) => s.setCategory);
+  const setCity = useSpecialistsFiltersStore((s) => s.setCity);
+  const setSort = useSpecialistsFiltersStore((s) => s.setSort);
+  const clearFilters = useSpecialistsFiltersStore((s) => s.clearAll);
+  const activeFilters = useSpecialistsFiltersStore(countSpecialistsFilters);
   const [query, setQuery] = useState("");
-  // Повторный вход с главной с другой категорией должен переставить фильтр.
   useEffect(() => {
     const nextL1 = first(params.l1);
     const nextL2 = first(params.l2);
-    if (nextL1 || nextL2) {
-      setL1Id(nextL1);
-      setL2Id(nextL2);
-    }
-  }, [params.l1, params.l2]);
+    if (nextL1 || nextL2) setCategory(nextL1, nextL2);
+  }, [params.l1, params.l2, setCategory]);
 
   // Результаты шторок выбора.
   const categoryResult = useCategoryFilterPickerStore((s) => s.categoryResult);
   const setCategoryResult = useCategoryFilterPickerStore((s) => s.setCategoryResult);
   useEffect(() => {
     if (!categoryResult) return;
-    setL1Id(categoryResult.value.l1Id);
-    setL2Id(categoryResult.value.l2Id);
+    setCategory(categoryResult.value.l1Id, categoryResult.value.l2Id);
     setCategoryResult(null);
-  }, [categoryResult, setCategoryResult]);
+  }, [categoryResult, setCategoryResult, setCategory]);
   const cityResult = useCategoryFilterPickerStore((s) => s.cityResult);
   const setCityResult = useCategoryFilterPickerStore((s) => s.setCityResult);
   useEffect(() => {
     if (!cityResult) return;
-    setCityId(cityResult.value);
+    setCity(cityResult.value);
     setCityResult(null);
-  }, [cityResult, setCityResult]);
+  }, [cityResult, setCityResult, setCity]);
   const sortResult = useCategoryFilterPickerStore((s) => s.sortResult);
   const setSortResult = useCategoryFilterPickerStore((s) => s.setSortResult);
   useEffect(() => {
     if (!sortResult) return;
     setSort(sortResult.value);
     setSortResult(null);
-  }, [sortResult, setSortResult]);
+  }, [sortResult, setSortResult, setSort]);
 
   // Названия для чипов и заголовка — из каталога (без сети берётся бандл).
   const sections = useCategoriesL1();
@@ -189,7 +180,6 @@ export function SpecialistsListScreen() {
     return "Категория";
   }, [l1Id, l2Id, categories.data, sections.data]);
   const hasCategoryFilter = !!(l1Id || l2Id);
-  const cityLabel = CITIES.find((c) => c.id === cityId)?.name ?? "Город";
 
   // Поиск не дёргает сервер на каждую букву: 250 мс.
   const debounced = useDebouncedValue(query.trim(), 250);
@@ -243,55 +233,13 @@ export function SpecialistsListScreen() {
                   : `${specialistsLabel(list.length)}${hasNextPage ? " и ещё" : ""}`
               }
             />
-            <View className="pb-2">
-              <View className="px-4 pt-1 pb-2">
-                <SearchField
-                  value={query}
-                  onChangeText={setQuery}
-                  placeholder="Имя или услуга — например, электрик"
-                  accessibilityLabel="Поиск специалистов"
-                />
-              </View>
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                keyboardShouldPersistTaps="handled"
-                contentContainerStyle={{ paddingHorizontal: 16, gap: 8 }}
-              >
-                <FilterChip
-                  label={categoryLabel}
-                  Icon={SquaresFour}
-                  active={hasCategoryFilter}
-                  onPress={() =>
-                    router.push({
-                      pathname: "/specialists/category-select",
-                      params: { l1: l1Id ?? "", l2: l2Id ?? "" },
-                    } as never)
-                  }
-                />
-                <FilterChip
-                  label={cityLabel}
-                  Icon={MapPin}
-                  active={cityId !== "all"}
-                  onPress={() =>
-                    router.push({
-                      pathname: "/category/city-select",
-                      params: { cityId },
-                    } as never)
-                  }
-                />
-                <FilterChip
-                  label={SORT_LABEL[sort]}
-                  Icon={SORT_ICON[sort]}
-                  active={sort !== "rating"}
-                  onPress={() =>
-                    router.push({
-                      pathname: "/category/sort-select",
-                      params: { sortBy: sort },
-                    } as never)
-                  }
-                />
-              </ScrollView>
+            <View className="px-4 pt-1 pb-3">
+              <SearchField
+                value={query}
+                onChangeText={setQuery}
+                placeholder="Имя или услуга — например, электрик"
+                accessibilityLabel="Поиск специалистов"
+              />
             </View>
           </>
         }
@@ -316,9 +264,7 @@ export function SpecialistsListScreen() {
               accent={tc.accent}
               onReset={() => {
                 setQuery("");
-                setL1Id(null);
-                setL2Id(null);
-                setCityId("all");
+                clearFilters();
               }}
               onCreateTask={() => router.push("/orders/new" as never)}
             />
@@ -331,6 +277,18 @@ export function SpecialistsListScreen() {
         compactTitleOpacity={large.compactTitleOpacity}
         onLayoutHeight={large.setBarHeight}
         onBack={() => router.back()}
+        // Одна кнопка «Фильтры» в строке навигации — как на «Заданиях»
+        // (владелец, 2026-09-07: «на специалистах фильтры того же типа»).
+        actions={[
+          {
+            label: activeFilters > 0 ? `Фильтры, выбрано ${activeFilters}` : "Фильтры",
+            sf: "line.3.horizontal.decrease",
+            Icon: SlidersHorizontal,
+            iconOnly: true,
+            active: activeFilters > 0,
+            onPress: () => router.push("/specialists/filters" as never),
+          },
+        ]}
       />
     </View>
   );

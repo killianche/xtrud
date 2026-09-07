@@ -155,6 +155,8 @@ export interface LargeTitleBarProps {
    * компактная полоса появляется поверх содержимого только при прокрутке.
    */
   compactRow?: boolean;
+  /** Без строки заголовка: закреплена только панель `below` (сегменты). */
+  hideTitle?: boolean;
 }
 
 export function LargeTitleBar({
@@ -166,6 +168,7 @@ export function LargeTitleBar({
   below,
   alwaysCompact = false,
   compactRow,
+  hideTitle = false,
 }: LargeTitleBarProps) {
   const insets = useSafeAreaInsets();
   const tc = useThemeColors(["ink", "accent", "on-accent"]);
@@ -230,7 +233,7 @@ export function LargeTitleBar({
           onLayoutHeight(hasRow ? Math.round(e.nativeEvent.layout.height - insets.top) : 0)
         }
       >
-        {hasRow ? (
+        {hasRow && !hideTitle ? (
           <View
             pointerEvents="box-none"
             className="flex-row items-center px-3"

@@ -30,6 +30,7 @@ const INSET_AWARE_WRAPPERS = [
   "<PublishAuthSheet",
   "<RespondAuthSheet",
   "<PickerSheetPage",
+  "<FilterSheetPage",
 ];
 const SATISFIES = [
   "insets.top",

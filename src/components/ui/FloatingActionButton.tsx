@@ -45,7 +45,7 @@ export function FloatingActionButton({
   fallback = Plus,
 }: FloatingActionButtonProps) {
   const bottom = useTabBarSpace(GAP);
-  const tc = useThemeColors(["accent", "canvas", "hairline-strong"]);
+  const tc = useThemeColors(["accent", "canvas"]);
   // Мягкое появление (кнопка на главной показывается при прокрутке).
   const opacity = useRef(new Animated.Value(0)).current;
   useEffect(() => {
@@ -54,11 +54,9 @@ export function FloatingActionButton({
 
   // Круг на светлой поверхности с тенью — читается и на фото, и на тёмной
   // рекламе (владелец, 2026-09-07: «плюсик без фона — сделай кнопку»).
-  // Фон страницы (250) почти совпадает с поверхностью (255), поэтому круг
-  // отделяют заметная тень и контрастная обводка. Цвет фона задан на том же
-  // View, что и тень: iOS считает форму тени по непрозрачному фону; без него
-  // тень рисуется по содержимому и выходит бледной (сборки ≤ 46, скриншот
-  // владельца: «плюсик без фона, просто иконка»).
+  // Цвет фона задан на том же View, что и тень: iOS считает форму тени по
+  // непрозрачному фону; без него тень рисуется по содержимому и выходит
+  // бледной (сборки ≤ 46, скриншот владельца: «плюсик без фона»).
   const icon = <SystemIcon sf={sf} fallback={fallback} size={26} weight="bold" color={tc.accent} />;
 
   return (
@@ -79,13 +77,13 @@ export function FloatingActionButton({
           alignItems: "center",
           justifyContent: "center",
           backgroundColor: tc.canvas,
-          borderWidth: 1,
-          borderColor: tc["hairline-strong"],
+          // Без обводки и с мягкой тенью (владелец, 2026-09-07: «убери
+          // чёрную обводку, тень сделай слабее»).
           shadowColor: "#000",
-          shadowOpacity: 0.22,
-          shadowRadius: 14,
-          shadowOffset: { width: 0, height: 6 },
-          elevation: 6,
+          shadowOpacity: 0.12,
+          shadowRadius: 10,
+          shadowOffset: { width: 0, height: 4 },
+          elevation: 3,
         }}
       >
         {icon}

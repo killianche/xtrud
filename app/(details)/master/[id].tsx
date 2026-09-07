@@ -23,8 +23,10 @@ import {
   GlassButton,
   InsetGroup,
   InsetRow,
+  isVerifiedLevel,
   LargeTitleBar,
   useLargeTitle,
+  VerifiedBadge,
 } from "@/components/ui";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { useAuthSession } from "@/features/auth/use-auth-session";
@@ -202,9 +204,16 @@ export default function MasterPublicScreen() {
             <View className="flex-row items-center gap-4 px-5 pt-3 pb-6">
               <Avatar url={u?.avatar_url} name={name} seed={masterId} size="xl" />
               <View className="min-w-0 flex-1">
-                <AppText weight="bold" className="text-ios-title1 text-ink" numberOfLines={2}>
-                  {name}
-                </AppText>
+                <View className="flex-row items-center gap-2">
+                  <AppText
+                    weight="bold"
+                    className="min-w-0 shrink text-ios-title1 text-ink"
+                    numberOfLines={2}
+                  >
+                    {name}
+                  </AppText>
+                  {isVerifiedLevel(m?.verification_level) ? <VerifiedBadge size={22} /> : null}
+                </View>
                 <View className="mt-1 flex-row items-center gap-1.5">
                   {ratingCount > 0 ? (
                     <>

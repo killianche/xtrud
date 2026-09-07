@@ -26,6 +26,15 @@ export const AVATAR_PRESET = {
   extension: "jpg",
 };
 
+/** Фото документа для проверки личности: читаемый разворот, без лишнего веса. */
+export const DOCUMENT_PRESET = {
+  maxDimension: 1600,
+  compress: 0.85,
+  format: ImageManipulator.SaveFormat.JPEG as const,
+  contentType: "image/jpeg",
+  extension: "jpg",
+};
+
 export const PORTFOLIO_PRESET = {
   // 2026-05-15: 1600→1920 по фидбэку «добавлять с определённым разрешением».
   // 1920px — стандарт detail-image у Airbnb/Behance, баланс качества/веса
@@ -301,7 +310,7 @@ export async function resizeImage(
  * чтобы клиент не показывал старое фото из кэша после re-upload.
  */
 export async function uploadImage(opts: {
-  bucket: "avatars" | "portfolio" | "order-photos";
+  bucket: "avatars" | "portfolio" | "order-photos" | "master-verifications";
   path: string;
   localUri: string;
   contentType: string;
@@ -338,7 +347,7 @@ async function readAsArrayBuffer(uri: string): Promise<ArrayBuffer> {
 }
 
 export async function deleteFromBucket(opts: {
-  bucket: "avatars" | "portfolio" | "order-photos";
+  bucket: "avatars" | "portfolio" | "order-photos" | "master-verifications";
   path: string;
 }): Promise<void> {
   const { error } = await supabase.storage.from(opts.bucket).remove([opts.path]);

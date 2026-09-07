@@ -28,6 +28,8 @@ export interface MasterSearchResult {
   rating_count: number | null;
   closed_deals: number | null;
   categories: string[];
+  /** Паспорт подтверждён администратором (0174). */
+  is_verified: boolean;
 }
 
 export type MasterSort = "rating" | "experience" | "availability";

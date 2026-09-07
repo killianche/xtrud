@@ -96,6 +96,21 @@ export interface MasterRow {
   created_at: string;
 }
 
+/** Заявка на подтверждение паспорта (admin_list_verifications, 0174). */
+export interface VerificationRow {
+  user_id: string;
+  first_name: string | null;
+  last_name: string | null;
+  phone: string | null;
+  status: "pending" | "approved" | "rejected" | string;
+  passport_main_path: string;
+  selfie_path: string | null;
+  submitted_at: string;
+  reviewed_at: string | null;
+  rejection_reason: string | null;
+  verification_level: number | null;
+}
+
 export interface ActionRow {
   id: string;
   performed_at: string;
@@ -151,6 +166,27 @@ export const api = {
       p_visible: visible,
       p_reason: reason.trim() === "" ? null : reason.trim(),
     }),
+  listVerifications: (status: string, limit = 50, offset = 0) =>
+    rpc<VerificationRow[]>("admin_list_verifications", {
+      p_status: status,
+      p_limit: limit,
+      p_offset: offset,
+    }),
+  reviewVerification: (userId: string, approve: boolean, reason: string) =>
+    rpc<void>("admin_review_verification", {
+      p_user_id: userId,
+      p_approve: approve,
+      p_reason: reason.trim() === "" ? null : reason.trim(),
+    }),
+  /** Подписанная ссылка на фото документа: бакет приватный, читает только админ (RLS). */
+  verificationPhotoUrl: async (path: string): Promise<string> => {
+    const supabase = await getClient();
+    const { data, error } = await supabase.storage
+      .from("master-verifications")
+      .createSignedUrl(path, 600);
+    if (error || !data?.signedUrl) throw new Error("Не удалось открыть фото документа.");
+    return data.signedUrl;
+  },
   listUsers: (search: string, limit = 50, offset = 0) =>
     rpc<UserRow[]>("admin_list_users", {
       p_search: search.trim() === "" ? null : search.trim(),

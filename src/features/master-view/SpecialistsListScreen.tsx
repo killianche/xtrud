@@ -28,6 +28,7 @@ import {
   LargeTitleBlock,
   SearchField,
   useLargeTitle,
+  VerifiedBadge,
 } from "@/components/ui";
 import { useCategoryFilterPickerStore } from "@/features/categories/category-filter-picker-store";
 import { useCategoriesL1 } from "@/features/categories/use-categories-l1";
@@ -74,7 +75,7 @@ function MasterCard({ master, onPress }: { master: MasterSearchResult; onPress: 
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={`${name}. ${master.categories.join(", ")}`}
+      accessibilityLabel={`${name}${master.is_verified ? ", проверенный специалист" : ""}. ${master.categories.join(", ")}`}
       onPress={onPress}
       className="mx-4 mb-3 rounded-2xl border border-hairline bg-surface-card p-4 active:opacity-90"
       style={CARD_SHADOW}
@@ -82,9 +83,16 @@ function MasterCard({ master, onPress }: { master: MasterSearchResult; onPress: 
       <View className="flex-row items-center gap-3">
         <Avatar url={master.avatar_url} name={name} seed={name} size="md" />
         <View className="min-w-0 flex-1">
-          <AppText weight="bold" className="text-title-lg text-ink" numberOfLines={1}>
-            {name}
-          </AppText>
+          <View className="flex-row items-center gap-1.5">
+            <AppText
+              weight="bold"
+              className="min-w-0 shrink text-title-lg text-ink"
+              numberOfLines={1}
+            >
+              {name}
+            </AppText>
+            {master.is_verified ? <VerifiedBadge size={18} /> : null}
+          </View>
           {place ? (
             <AppText className="mt-0.5 text-body-sm text-mute" numberOfLines={1}>
               {place}

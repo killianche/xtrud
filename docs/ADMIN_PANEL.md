@@ -210,3 +210,23 @@ DECISION владельца: «в админке подтверждать спе
 первой категории (0169, триггер 0172); решение админа её переопределяет.
 Развёртывание: `cd admin && npm run build`, затем `admin/dist` → `/var/www/xtrud/admin/`
 на web-VPS (`release/production.json → web.sshHost`).
+
+## 14. Паспорта — подтверждение личности (0174)
+
+DECISION владельца 2026-09-07: «человек отправляет фото паспорта, оно
+приходит в админку, админ подтверждает, появляется значок».
+
+- Страница `/verifications` («Паспорта»): вкладки «Ждут проверки /
+  Подтверждены / Отклонены». RPC `admin_list_verifications(p_status)`.
+- Фото — приватный бакет `master-verifications`, путь `{user_id}/passport-<ts>.jpg`.
+  Панель получает подписанную ссылку на 10 минут через Storage API; политика
+  `master_verifications_admin_select` пускает только `is_admin_session()`.
+- Решение — `admin_review_verification(p_user_id, p_approve, p_reason)`:
+  отклонение без причины невозможно; запись в `admin_actions`
+  (`verification_approve` / `verification_reject`); человеку уходит
+  уведомление (`data.type = verification_approved|rejected`).
+- Триггер `sync_master_verification_level`: approved → `verification_level = 2`,
+  иначе 1. Значок в приложении рисуется только при уровне ≥ 2.
+- Что сверять: имя и фамилия в аккаунте совпадают с паспортом, фото читаемо.
+  Паспортные данные никуда не копировать; ссылка на фото временная.
+

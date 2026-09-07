@@ -59,7 +59,8 @@ export function useUnreadNotificationsCount(userId: string | undefined) {
  * События по моим заказам для бейджа «Мои задания»: принят/отменён/закрыт
  * заказ, отозван отклик, ожидание подтверждения и т.п. Не считаем
  * `new_response` (он уже в счётчике откликов) и рассылку новых заданий
- * (`data.kind = new_order`, это бейдж «Найти задание»). Тип события лежит в
+ * (`data.kind = new_order`, это бейдж «Найти задание») и решения по паспорту
+ * (`verification_*` — видны на экране уведомлений, к заказам не относятся). Тип события лежит в
  * `data.type` — колонка `type` для неизвестных значений становится `system`
  * (FACT: `notify_user` в базе, 2026-09-07).
  */
@@ -77,7 +78,8 @@ export function useUnreadOrderEventsCount(userId: string | undefined) {
         .eq("user_id", userId)
         .is("read_at", null)
         .neq("data->>type", "new_response")
-        .not("data->>kind", "eq", "new_order");
+        .not("data->>kind", "eq", "new_order")
+        .not("data->>type", "like", "verification_%");
       if (error) throw error;
       return count ?? 0;
     },
@@ -99,7 +101,8 @@ export function useMarkOrderEventsRead(userId: string | undefined) {
         .eq("user_id", userId)
         .is("read_at", null)
         .neq("data->>type", "new_response")
-        .not("data->>kind", "eq", "new_order");
+        .not("data->>kind", "eq", "new_order")
+        .not("data->>type", "like", "verification_%");
       if (error) throw error;
     },
     onSuccess: () => {

@@ -602,7 +602,7 @@ export type Database = {
           rejection_reason: string | null
           reviewed_at: string | null
           reviewed_by: string | null
-          selfie_path: string
+          selfie_path: string | null
           status: Database["public"]["Enums"]["verification_status"]
           submitted_at: string
           user_id: string
@@ -612,7 +612,7 @@ export type Database = {
           rejection_reason?: string | null
           reviewed_at?: string | null
           reviewed_by?: string | null
-          selfie_path: string
+          selfie_path?: string | null
           status?: Database["public"]["Enums"]["verification_status"]
           submitted_at?: string
           user_id: string
@@ -622,7 +622,7 @@ export type Database = {
           rejection_reason?: string | null
           reviewed_at?: string | null
           reviewed_by?: string | null
-          selfie_path?: string
+          selfie_path?: string | null
           status?: Database["public"]["Enums"]["verification_status"]
           submitted_at?: string
           user_id?: string

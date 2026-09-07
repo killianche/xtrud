@@ -10,6 +10,7 @@
 import { Redirect, useRouter } from "expo-router";
 import {
   ChatCircleText,
+  IdentificationCard,
   Images,
   MapPin,
   Phone,
@@ -29,6 +30,7 @@ import { useMasterServiceAreas } from "@/features/master-profile/use-service-are
 import { useMasterPortfolio } from "@/features/profile/use-my-portfolio";
 import { AvailabilityRows } from "@/features/specialist/AvailabilityRows";
 import { useMySpecialistProfile } from "@/features/specialist/use-specialist";
+import { useMyVerification, VERIFICATION_LABEL } from "@/features/specialist/use-verification";
 import { DISTRICTS, getCityName } from "@/lib/location-config";
 import { useThemeColors } from "@/lib/use-theme-color";
 
@@ -39,6 +41,7 @@ export default function SpecialistHubScreen() {
   const { data: user } = useUserRecord(userId);
   const profile = useMySpecialistProfile(userId);
   const categories = useMyMasterCategories(userId);
+  const verification = useMyVerification(userId);
   const portfolio = useMasterPortfolio(userId ?? null);
   const areas = useMasterServiceAreas(userId ?? null);
   const tc = useThemeColors(["ink", "accent", "on-accent"]);
@@ -74,6 +77,7 @@ export default function SpecialistHubScreen() {
     return names.length <= 2 ? names.join(", ") : `${names[0]} +${names.length - 1}`;
   })();
   const visible = m?.status === "active" && !m?.is_hidden_from_search;
+  const verificationValue = VERIFICATION_LABEL[verification.data?.status ?? "none"];
   const rating = m?.rating_overall_count
     ? `${Number(m.rating_overall_avg ?? 0).toFixed(1)} · ${m.rating_overall_count}`
     : "Пока нет";
@@ -138,6 +142,13 @@ export default function SpecialistHubScreen() {
           icon={<MapPin size={18} weight="bold" color={tc.ink} />}
           navigates
           onPress={() => router.push("/profile/specialist/areas" as never)}
+        />
+        <InsetRow
+          title="Подтверждение личности"
+          value={verificationValue}
+          icon={<IdentificationCard size={18} weight="bold" color={tc.ink} />}
+          navigates
+          onPress={() => router.push("/profile/specialist/verify" as never)}
           last
         />
       </InsetGroup>

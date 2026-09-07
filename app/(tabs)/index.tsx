@@ -213,9 +213,6 @@ function ClientHome({
           <View style={gridCancelStyle}>
             <CinematicHero onCreateTask={() => onDescribeTask()} />
             <ActiveOrdersShowcase userId={userId} />
-            {/* Блок «Часто ищут» (FeaturedRequests) скрыт по фидбэку юзера 2026-05-21.
-              Компонент сохранён ниже — вернуть можно раскомментировав строку:
-              <FeaturedRequests onCategoryPress={onCategoryPress} /> */}
             {/* Promo-баннеры партнёров (рекламные фото-баннеры 16:9). */}
             <PromoBannerCarousel />
             <TopMasters onMasterPress={onMasterPress} />
@@ -273,115 +270,6 @@ function ClientHome({
 }
 
 // ----------------------------------------------------------------------------
-// FeaturedRequests — «Часто заказывают». 3 hardcoded универсальных категории.
-// Hero-area стиля Vercel docs covers: soft-tinted фон + 2-3 декоративные
-// гео-фигуры (круги с разной opacity) + крупная центральная иконка в canvas-
-// circle. Под hero — title + subtitle. Каждая категория — свой tint-цвет
-// из палитры badge-*. Цель: визуально декоративный, но строго моно-Vercel,
-// без стоковых фото и излишеств.
-// ----------------------------------------------------------------------------
-
-const FEATURED: Array<{
-  id: string;
-  title: string;
-  subtitle: string;
-  Icon: typeof Sparkle;
-  tintBg: string;
-}> = [
-  {
-    id: "cleaning",
-    title: "Уборка квартиры",
-    subtitle: "Регулярная и генеральная",
-    Icon: Sparkle,
-    tintBg: "bg-badge-sky",
-  },
-  {
-    id: "plumbing",
-    title: "Сантехник",
-    subtitle: "Аварийный и плановый",
-    Icon: Drop,
-    tintBg: "bg-badge-violet",
-  },
-  {
-    id: "electrical",
-    title: "Электрик",
-    subtitle: "Розетки, проводка, свет",
-    Icon: Lightning,
-    tintBg: "bg-badge-amber",
-  },
-];
-
-// biome-ignore lint/correctness/noUnusedVariables: curated-search block is retained for the upcoming home functionality redesign
-function FeaturedRequests({ onCategoryPress }: { onCategoryPress: (id: string) => void }) {
-  return (
-    <View className="mt-10">
-      <View className="px-5">
-        <AppText weight="semibold" className="text-title-lg text-ink">
-          Часто ищут
-        </AppText>
-      </View>
-
-      <FlatList
-        data={FEATURED}
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={{ paddingHorizontal: 20, gap: 12, paddingTop: 12 }}
-        keyExtractor={(item) => item.id}
-        renderItem={({ item }) => {
-          const Icon = item.Icon;
-          return (
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={item.title}
-              onPress={() => onCategoryPress(item.id)}
-              className="overflow-hidden rounded-xl border border-hairline bg-canvas-soft active:opacity-80"
-              style={{ width: 220 }}
-            >
-              {/* Hero-illustration: tinted фон + декоративные фигуры + центр-иконка */}
-              <View
-                className={`h-28 ${item.tintBg} items-center justify-center relative overflow-hidden`}
-              >
-                {/* Декоры — белые/canvas круги с разной прозрачностью, имитация Vercel docs covers */}
-                <View
-                  className="absolute rounded-full bg-canvas"
-                  style={{ top: -18, left: -16, width: 64, height: 64, opacity: 0.35 }}
-                />
-                <View
-                  className="absolute rounded-full bg-canvas"
-                  style={{ bottom: -14, right: -10, width: 52, height: 52, opacity: 0.45 }}
-                />
-                <View
-                  className="absolute rounded-md bg-canvas"
-                  style={{
-                    top: 18,
-                    right: 18,
-                    width: 18,
-                    height: 18,
-                    opacity: 0.55,
-                    transform: [{ rotate: "12deg" }],
-                  }}
-                />
-                {/* Центральная иконка */}
-                <View className="h-14 w-14 items-center justify-center rounded-full bg-canvas text-ink">
-                  <Icon size={28} weight="bold" color="currentColor" />
-                </View>
-              </View>
-              {/* Body */}
-              <View className="p-4">
-                <AppText weight="semibold" className="text-body-md text-ink" numberOfLines={1}>
-                  {item.title}
-                </AppText>
-                <AppText className="mt-1 text-caption text-mute" numberOfLines={1}>
-                  {item.subtitle}
-                </AppText>
-              </View>
-            </Pressable>
-          );
-        }}
-      />
-    </View>
-  );
-}
 
 // ----------------------------------------------------------------------------
 // DescribeTaskCallout вынесен в `src/features/home/DescribeTaskCallout.tsx`

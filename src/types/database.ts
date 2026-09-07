@@ -1660,6 +1660,10 @@ export type Database = {
       enable_master_mode: { Args: never; Returns: undefined }
       expire_availability: { Args: never; Returns: number }
       expire_old_orders: { Args: never; Returns: number }
+      set_specialist_contacts: {
+        Args: { p_phone: string; p_whatsapp: string; p_same: boolean }
+        Returns: undefined
+      }
       finalize_master_onboarding: { Args: never; Returns: undefined }
       get_master_phone: { Args: { p_master_id: string }; Returns: string }
       get_master_stats: { Args: never; Returns: Json }

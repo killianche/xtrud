@@ -94,19 +94,13 @@ export function useUpdateSpecialistContacts() {
     Error,
     { userId: string; contactPhone: string; whatsappPhone: string; whatsappSameAsPhone: boolean }
   >({
-    mutationFn: async ({ userId, contactPhone, whatsappPhone, whatsappSameAsPhone }) => {
-      const { error: usersErr } = await supabase
-        .from("users")
-        .update({ contact_phone: contactPhone.trim() || null })
-        .eq("id", userId);
-      if (usersErr) throw usersErr;
-      // Ограничение master_profiles_whatsapp_xor: «тот же номер» — без
-      // отдельного whatsapp_phone; отдельный номер — флаг false.
-      const wa = whatsappSameAsPhone ? "" : whatsappPhone.trim();
-      const { error } = await supabase
-        .from("master_profiles")
-        .update({ whatsapp_phone: wa || null, whatsapp_same_as_phone: whatsappSameAsPhone })
-        .eq("user_id", userId);
+    mutationFn: async ({ contactPhone, whatsappPhone, whatsappSameAsPhone }) => {
+      // Один вызов — оба поля в одной транзакции (0173).
+      const { error } = await supabase.rpc("set_specialist_contacts", {
+        p_phone: contactPhone,
+        p_whatsapp: whatsappPhone,
+        p_same: whatsappSameAsPhone,
+      });
       if (error) throw error;
     },
     onSuccess: (_d, { userId }) => invalidate(userId),

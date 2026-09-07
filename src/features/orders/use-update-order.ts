@@ -30,6 +30,8 @@ export interface UpdateOrderInput {
   whatsappPhone?: string;
   /** Способ связи (0168). По умолчанию — отклики в приложении. */
   contactMode?: "chat_only" | "phone_open";
+  /** Улица и дом — по желанию (0170). Пусто → NULL. */
+  address?: string;
   description: string;
   cityId: string;
   district: string;
@@ -67,6 +69,7 @@ export function useUpdateOrder() {
         // Отклики в приложении — номеров в задании нет (0168: они не
         // показываются, хранить незачем). Напрямую — хотя бы один номер.
         contact_mode: input.contactMode ?? "chat_only",
+        address: input.address?.trim() ? input.address.trim() : null,
         contact_phone:
           (input.contactMode ?? "chat_only") === "phone_open"
             ? toStoredPhone(input.contactPhone)

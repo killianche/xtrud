@@ -89,17 +89,23 @@ export function useUpdateSpecialistAbout() {
 
 export function useUpdateSpecialistContacts() {
   const invalidate = useInvalidateSpecialist();
-  return useMutation<void, Error, { userId: string; contactPhone: string; whatsappPhone: string }>({
-    mutationFn: async ({ userId, contactPhone, whatsappPhone }) => {
+  return useMutation<
+    void,
+    Error,
+    { userId: string; contactPhone: string; whatsappPhone: string; whatsappSameAsPhone: boolean }
+  >({
+    mutationFn: async ({ userId, contactPhone, whatsappPhone, whatsappSameAsPhone }) => {
       const { error: usersErr } = await supabase
         .from("users")
         .update({ contact_phone: contactPhone.trim() || null })
         .eq("id", userId);
       if (usersErr) throw usersErr;
-      const wa = whatsappPhone.trim();
+      // Ограничение master_profiles_whatsapp_xor: «тот же номер» — без
+      // отдельного whatsapp_phone; отдельный номер — флаг false.
+      const wa = whatsappSameAsPhone ? "" : whatsappPhone.trim();
       const { error } = await supabase
         .from("master_profiles")
-        .update({ whatsapp_phone: wa || null, whatsapp_same_as_phone: false })
+        .update({ whatsapp_phone: wa || null, whatsapp_same_as_phone: whatsappSameAsPhone })
         .eq("user_id", userId);
       if (error) throw error;
     },

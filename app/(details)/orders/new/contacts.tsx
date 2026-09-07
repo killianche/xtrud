@@ -104,16 +104,38 @@ export default function TaskContactsScreen() {
             hint="Можно указать не тот номер, что в аккаунте."
             accessibilityLabel="Телефон для связи"
           />
-          <ComposerField
-            label="WhatsApp"
-            value={values.whatsappPhone}
-            onChangeText={(t) => patch({ whatsappPhone: t })}
-            placeholder="Если отличается от телефона"
-            keyboardType="phone-pad"
-            textContentType="telephoneNumber"
-            error={isPhoneAcceptable(values.whatsappPhone) ? null : PHONE_ERROR}
-            accessibilityLabel="Номер WhatsApp"
-          />
+          <ChoiceGroup
+            footer={
+              values.whatsappSameAsPhone
+                ? "Мастера смогут написать в WhatsApp на этот же номер."
+                : undefined
+            }
+          >
+            <ChoiceRow
+              title="WhatsApp — тот же номер"
+              toggle={{
+                value: values.whatsappSameAsPhone,
+                onChange: (next) =>
+                  patch({
+                    whatsappSameAsPhone: next,
+                    whatsappPhone: next ? "" : values.whatsappPhone,
+                  }),
+              }}
+              last
+            />
+          </ChoiceGroup>
+          {values.whatsappSameAsPhone ? null : (
+            <ComposerField
+              label="Номер WhatsApp"
+              value={values.whatsappPhone}
+              onChangeText={(t) => patch({ whatsappPhone: t })}
+              placeholder="+7 928 000-00-00"
+              keyboardType="phone-pad"
+              textContentType="telephoneNumber"
+              error={isPhoneAcceptable(values.whatsappPhone) ? null : PHONE_ERROR}
+              accessibilityLabel="Номер WhatsApp"
+            />
+          )}
         </>
       ) : null}
     </ComposerScreen>

@@ -613,6 +613,7 @@ function OrderInfoBlock({ order, isOwner }: OrderInfoBlockProps) {
             <AppText weight="medium" className="flex-1 text-body-md text-ink">
               {order.city?.name ?? order.city_id}
               {order.district ? `, ${order.district}` : ""}
+              {order.address ? `, ${order.address}` : ""}
             </AppText>
           </View>
           <View className="flex-row items-center gap-3">

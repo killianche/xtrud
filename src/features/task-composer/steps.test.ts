@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   COMPOSER_STEPS,
   EMPTY_COMPOSER_VALUES,
+  effectiveWhatsapp,
   firstIncompleteStep,
   formatBudgetInput,
   hasComposerContent,
@@ -63,8 +64,9 @@ describe("composer steps", () => {
         whatsappPhone: "+7 928 123-45-67",
       }),
     ).toBe(true);
-    expect(isStepValid("contacts", { ...complete, contactPhone: "123" })).toBe(false);
-    expect(isStepValid("contacts", { ...complete, whatsappPhone: "+7 928 123-45-67" })).toBe(true);
+    expect(
+      isStepValid("contacts", { ...complete, contactMode: "phone_open", contactPhone: "123" }),
+    ).toBe(false);
   });
 
   it("полнота и первый незаполненный шаг", () => {

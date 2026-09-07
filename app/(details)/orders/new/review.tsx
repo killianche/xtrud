@@ -32,6 +32,7 @@ import {
 import {
   COMPOSER_ROUTE,
   type ComposerStep,
+  effectiveWhatsapp,
   isComposerComplete,
 } from "@/features/task-composer/steps";
 import { useComposerClose } from "@/features/task-composer/use-composer-close";
@@ -107,7 +108,7 @@ export default function TaskReviewScreen() {
       : getCityName(values.cityId);
   const contacts =
     values.contactMode === "phone_open"
-      ? [values.contactPhone.trim(), values.whatsappPhone.trim() ? "WhatsApp" : ""]
+      ? [values.contactPhone.trim(), effectiveWhatsapp(values) ? "WhatsApp" : ""]
           .filter(Boolean)
           .join(" · ")
       : "Отклики в приложении";
@@ -224,7 +225,12 @@ export default function TaskReviewScreen() {
         />
       </ChoiceGroup>
       <ChoiceGroup title="Условия">
-        <ChoiceRow title="Где" value={place} navigates onPress={() => open("where")} />
+        <ChoiceRow
+          title="Где"
+          value={values.address.trim() ? `${place}, ${values.address.trim()}` : place}
+          navigates
+          onPress={() => open("where")}
+        />
         <ChoiceRow
           title="Когда"
           value={values.urgency ? formatOrderTiming(values.urgency, values.preferredDate) : ""}

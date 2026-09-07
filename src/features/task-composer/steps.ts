@@ -70,6 +70,10 @@ export interface ComposerValues {
   whatsappPhone: string;
   contactName: string;
   contactMode: ContactMode;
+  /** WhatsApp совпадает с телефоном — отдельный номер не спрашиваем. */
+  whatsappSameAsPhone: boolean;
+  /** Улица и дом — по желанию; видят только вошедшие. */
+  address: string;
 }
 
 export const EMPTY_COMPOSER_VALUES: ComposerValues = {
@@ -86,12 +90,15 @@ export const EMPTY_COMPOSER_VALUES: ComposerValues = {
   whatsappPhone: "",
   contactName: "",
   contactMode: "chat_only",
+  whatsappSameAsPhone: true,
+  address: "",
 };
 
 export const TITLE_MIN = 5;
 export const TITLE_MAX = 120;
 export const DESCRIPTION_MAX = 2000;
 export const BUDGET_MAX = 10_000_000;
+export const ADDRESS_MAX = 120;
 
 export function normalizeTitle(value: string): string {
   return value.replace(/\s+/g, " ").trim().slice(0, TITLE_MAX);
@@ -113,7 +120,7 @@ export function isStepValid(step: ComposerStep, v: ComposerValues): boolean {
     case "details":
       return v.description.length <= DESCRIPTION_MAX;
     case "where":
-      return v.cityId.length > 0 || v.district.length > 0;
+      return (v.cityId.length > 0 || v.district.length > 0) && v.address.length <= ADDRESS_MAX;
     case "when":
       return v.urgency !== null && (v.urgency !== "by_date" || !!v.preferredDate);
     case "budget":
@@ -121,9 +128,11 @@ export function isStepValid(step: ComposerStep, v: ComposerValues): boolean {
       if (v.budgetKind === "negotiable") return true;
       return v.budgetValue !== null && v.budgetValue > 0 && v.budgetValue <= BUDGET_MAX;
     case "contacts":
-      if (!isPhoneAcceptable(v.contactPhone) || !isPhoneAcceptable(v.whatsappPhone)) return false;
-      // Напрямую — нужен хотя бы один номер; отклики — номера не нужны.
-      return v.contactMode === "chat_only" || !!v.contactPhone.trim() || !!v.whatsappPhone.trim();
+      if (v.contactMode === "chat_only") return true;
+      if (!isPhoneAcceptable(v.contactPhone)) return false;
+      // Напрямую — нужен телефон; WhatsApp либо тот же, либо отдельный номер.
+      if (!v.contactPhone.trim()) return false;
+      return v.whatsappSameAsPhone || isPhoneAcceptable(v.whatsappPhone);
     case "review":
       return isComposerComplete(v);
   }
@@ -170,4 +179,12 @@ export function upcomingDates(count: number, from = new Date()): string[] {
     out.push(`${d.getFullYear()}-${m}-${day}`);
   }
   return out;
+}
+
+/** Номер WhatsApp для сохранения: тот же, что телефон, или отдельный. */
+export function effectiveWhatsapp(
+  v: Pick<ComposerValues, "contactMode" | "contactPhone" | "whatsappPhone" | "whatsappSameAsPhone">,
+): string {
+  if (v.contactMode !== "phone_open") return "";
+  return v.whatsappSameAsPhone ? v.contactPhone : v.whatsappPhone;
 }

@@ -132,6 +132,9 @@ export const createOrderSchema = z
     whatsappPhone: z.string().trim().max(32, "Слишком длинный номер"),
     /** Способ связи (0168): отклики в приложении или напрямую по номеру. */
     contactMode: z.enum(["chat_only", "phone_open"]).default("chat_only"),
+    whatsappSameAsPhone: z.boolean().default(true),
+    /** Улица и дом — по желанию (0170). */
+    address: z.string().trim().max(120, "Максимум 120 символов").default(""),
     // description — необязательное. Пустая строка допустима.
     description: z.string().max(2000, "Максимум 2000 символов"),
     // cityId: либо id города из таблицы cities, либо "all" для «Вся Ингушетия»

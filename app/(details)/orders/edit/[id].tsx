@@ -50,6 +50,8 @@ export default function EditOrderScreen() {
         whatsappPhone: order.whatsapp_phone ?? "",
         contactName: order.contact_name ?? "",
         contactMode: order.contact_mode === "phone_open" ? "phone_open" : "chat_only",
+        whatsappSameAsPhone: !order.whatsapp_phone || order.whatsapp_phone === order.contact_phone,
+        address: order.address ?? "",
       },
       (order.photo_urls ?? []).map((uri, i) => ({ id: `remote-${i}`, uri, width: 0, height: 0 })),
     );

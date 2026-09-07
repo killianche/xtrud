@@ -6,7 +6,7 @@
 
 import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
-import { FormScreen } from "@/components/ui";
+import { FormScreen, InsetGroup, InsetRow } from "@/components/ui";
 import { useAuthSession } from "@/features/auth/use-auth-session";
 import { useUserRecord } from "@/features/auth/use-user-record";
 import {
@@ -28,10 +28,12 @@ export default function SpecialistContactsScreen() {
   const update = useUpdateSpecialistContacts();
   const [phone, setPhone] = useState<string | null>(null);
   const [wa, setWa] = useState("");
+  const [same, setSame] = useState(true);
   useEffect(() => {
     if (phone === null && user && profile.data !== undefined) {
       setPhone(user.contact_phone ?? "");
       setWa(profile.data?.whatsapp_phone ?? "");
+      setSame(!profile.data?.whatsapp_phone);
     }
   }, [user, profile.data, phone]);
 
@@ -47,7 +49,7 @@ export default function SpecialistContactsScreen() {
   const save = () => {
     if (!userId || phone === null) return;
     update.mutate(
-      { userId, contactPhone: phone, whatsappPhone: wa },
+      { userId, contactPhone: phone, whatsappPhone: same ? "" : wa, whatsappSameAsPhone: same },
       {
         onSuccess: () => {
           allowLeave();
@@ -80,16 +82,25 @@ export default function SpecialistContactsScreen() {
         hint="Можно указать не тот номер, что в аккаунте."
         accessibilityLabel="Телефон для клиентов"
       />
-      <ComposerField
-        label="WhatsApp"
-        value={wa}
-        onChangeText={setWa}
-        placeholder="Если отличается от телефона"
-        keyboardType="phone-pad"
-        textContentType="telephoneNumber"
-        error={isPhoneAcceptable(wa) ? null : PHONE_ERROR}
-        accessibilityLabel="Номер WhatsApp"
-      />
+      <InsetGroup footer={same ? "Клиенты напишут в WhatsApp на этот же номер." : undefined}>
+        <InsetRow
+          title="WhatsApp — тот же номер"
+          toggle={{ value: same, onChange: setSame }}
+          last
+        />
+      </InsetGroup>
+      {same ? null : (
+        <ComposerField
+          label="Номер WhatsApp"
+          value={wa}
+          onChangeText={setWa}
+          placeholder="+7 928 000-00-00"
+          keyboardType="phone-pad"
+          textContentType="telephoneNumber"
+          error={isPhoneAcceptable(wa) ? null : PHONE_ERROR}
+          accessibilityLabel="Номер WhatsApp"
+        />
+      )}
     </FormScreen>
   );
 }

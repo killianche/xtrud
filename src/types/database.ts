@@ -873,6 +873,7 @@ export type Database = {
       }
       orders: {
         Row: {
+          address: string | null
           awaiting_confirmation_until: string | null
           budget_kind: Database["public"]["Enums"]["order_price_kind"]
           budget_value: number | null
@@ -914,6 +915,7 @@ export type Database = {
           whatsapp_phone: string | null
         }
         Insert: {
+          address?: string | null
           awaiting_confirmation_until?: string | null
           budget_kind?: Database["public"]["Enums"]["order_price_kind"]
           budget_value?: number | null
@@ -955,6 +957,7 @@ export type Database = {
           whatsapp_phone?: string | null
         }
         Update: {
+          address?: string | null
           awaiting_confirmation_until?: string | null
           budget_kind?: Database["public"]["Enums"]["order_price_kind"]
           budget_value?: number | null

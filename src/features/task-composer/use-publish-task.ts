@@ -34,7 +34,7 @@ import { deleteFromBucket, uploadOrderPhotosBatch } from "@/lib/image-upload";
 import { useOrderDraftStore } from "@/lib/order-draft-store";
 import { supabase } from "@/lib/supabase";
 import { type ComposerMode, type ComposerPhoto, isRemotePhoto } from "./composer-store";
-import type { ComposerValues } from "./steps";
+import { type ComposerValues, effectiveWhatsapp } from "./steps";
 
 export type PublishOutcome =
   | { kind: "published"; orderId: string | null }
@@ -124,8 +124,9 @@ export function usePublishTask(mode: ComposerMode, activeUserId: string | undefi
         title: values.title,
         contactName: values.contactName,
         contactPhone: values.contactPhone,
-        whatsappPhone: values.whatsappPhone,
+        whatsappPhone: effectiveWhatsapp(values),
         contactMode: values.contactMode,
+        address: values.address,
         description: values.description,
         cityId: values.cityId,
         district: values.district,

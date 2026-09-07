@@ -5,10 +5,11 @@
  */
 
 import { Redirect } from "expo-router";
+import { ComposerField } from "@/features/task-composer/ComposerFields";
 import { ChoiceGroup, ChoiceRow } from "@/features/task-composer/ComposerRows";
 import { ComposerScreen } from "@/features/task-composer/ComposerScreen";
 import { useComposer } from "@/features/task-composer/composer-store";
-import { isStepValid } from "@/features/task-composer/steps";
+import { ADDRESS_MAX, isStepValid } from "@/features/task-composer/steps";
 import { useStepNavigation } from "@/features/task-composer/use-step-navigation";
 import { ALL_INGUSHETIA_CITY_ID, DISTRICTS, PICKER_CITIES } from "@/lib/location-config";
 
@@ -41,6 +42,18 @@ export default function TaskWhereScreen() {
           />
         ))}
       </ChoiceGroup>
+      {values.cityId || values.district ? (
+        <ComposerField
+          label="Адрес"
+          value={values.address}
+          onChangeText={(t) => patch({ address: t.slice(0, ADDRESS_MAX) })}
+          placeholder="Улица, дом — по желанию"
+          hint="Поможет мастеру понять, далеко ли ехать. Квартиру и подъезд писать не нужно."
+          returnKeyType="done"
+          textContentType="fullStreetAddress"
+          accessibilityLabel="Адрес"
+        />
+      ) : null}
       <ChoiceGroup title="Район">
         {DISTRICTS.map((d, i) => (
           <ChoiceRow

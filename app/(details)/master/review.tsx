@@ -38,6 +38,11 @@ import { useAuthSession } from "@/features/auth/use-auth-session";
 import { useSubmitMasterReview } from "@/features/reviews/use-reviews";
 import { useThemeColors } from "@/lib/use-theme-color";
 
+// Константа модуля: объект, создаваемый на каждый рендер, заставлял систему
+// переоткрывать модалку (владелец, 2026-09-07: «кликаешь на отзыв — снова
+// открывает эту же страницу»).
+const SCREEN_OPTIONS = { presentation: "modal" as const };
+
 const MAX_TEXT_LENGTH = 500;
 
 function ratingLabel(rating: number): string {
@@ -99,7 +104,7 @@ export default function MasterReviewScreen() {
 
   return (
     <>
-      <Stack.Screen options={{ presentation: "modal", gestureEnabled: !submit.isPending }} />
+      <Stack.Screen options={SCREEN_OPTIONS} />
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : undefined}
         className="flex-1 bg-canvas"

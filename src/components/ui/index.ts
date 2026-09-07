@@ -26,6 +26,7 @@ export {
   NavCircleButton,
   useLargeTitle,
 } from "./LargeTitle";
+export { PickerSections, type PickerSectionsProps } from "./PickerSections";
 export { type PickerOption, PickerSheet, type PickerSheetProps } from "./PickerSheet";
 export {
   PickerSheetPage,

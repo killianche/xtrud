@@ -81,5 +81,7 @@ export function useSearchMasters(filters: MasterSearchFilters) {
     // моргает пустотой на каждую букву и на каждый фильтр.
     placeholderData: keepPreviousData,
     staleTime: 30_000,
+    // Хранится между запусками (persist в app/_layout.tsx): gcTime ≥ maxAge.
+    gcTime: 24 * 60 * 60_000,
   });
 }

@@ -1,5 +1,8 @@
 import "../global.css";
-import { focusManager, QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { createAsyncStoragePersister } from "@tanstack/query-async-storage-persister";
+import { focusManager, QueryClient } from "@tanstack/react-query";
+import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
 import { Stack, useRouter, useSegments } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
@@ -204,6 +207,10 @@ function AuthGate({ children }: { children: React.ReactNode }) {
   return unauthenticatedPrivateDetails ? null : children;
 }
 
+/** Публичные списки, которые стоит показать сразу после запуска. */
+const PERSISTED_QUERY_KEYS = new Set(["all-open-orders", "search-masters"]);
+const PERSIST_MAX_AGE_MS = 24 * 60 * 60_000;
+
 export default function RootLayout() {
   const canvasColor = useThemeColor("canvas");
   // Возврат в приложение = «фокус» для react-query: бейджи и счётчики
@@ -239,6 +246,15 @@ export default function RootLayout() {
       }),
   );
 
+  // Кэш публичных списков переживает перезапуск: главная и лента показывают
+  // сохранённые задания сразу, сеть лишь обновляет (владелец, 2026-09-07:
+  // «актуальные задания грузятся долго — надо мгновенно»; design-quality
+  // §1.2 «экран открывается на том, что уже есть»). Сохраняются только
+  // ключи из PERSISTED_QUERY_KEYS — личные данные в файл не пишутся.
+  const [persister] = useState(() =>
+    createAsyncStoragePersister({ storage: AsyncStorage, key: "xtrud-query-cache-v1" }),
+  );
+
   useEffect(() => {
     // Системный шрифт не требует загрузки — прячем splash сразу после маунта.
     SplashScreen.hideAsync().catch(() => {
@@ -249,7 +265,17 @@ export default function RootLayout() {
   return (
     <AppErrorBoundary>
       <GestureHandlerRootView style={{ flex: 1 }}>
-        <QueryClientProvider client={queryClient}>
+        <PersistQueryClientProvider
+          client={queryClient}
+          persistOptions={{
+            persister,
+            maxAge: PERSIST_MAX_AGE_MS,
+            dehydrateOptions: {
+              shouldDehydrateQuery: (q) =>
+                q.state.status === "success" && PERSISTED_QUERY_KEYS.has(String(q.queryKey[0])),
+            },
+          }}
+        >
           {/* initialMetrics обязателен: без него SafeAreaContext держит insets
               равными null и НЕ РЕНДЕРИТ дерево вообще, пока не придёт нативное
               событие вставок — это лишний пустой кадр на каждом холодном
@@ -275,7 +301,7 @@ export default function RootLayout() {
             </AuthGate>
             <StatusBar style="auto" />
           </SafeAreaProvider>
-        </QueryClientProvider>
+        </PersistQueryClientProvider>
       </GestureHandlerRootView>
     </AppErrorBoundary>
   );

@@ -101,5 +101,7 @@ export function useAllOpenOrders({ userId, l2Ids, cityId, district }: UseAllOpen
     getNextPageParam: (last) => last.nextCursor,
     // enabled всегда true — анон тоже грузит ленту (см. комментарий в queryFn).
     staleTime: 30_000,
+    // Хранится между запусками (persist в app/_layout.tsx): gcTime ≥ maxAge.
+    gcTime: 24 * 60 * 60_000,
   });
 }

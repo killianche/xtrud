@@ -245,7 +245,9 @@ export function SpecialistsListScreen() {
               <SearchField
                 value={query}
                 onChangeText={setQuery}
-                placeholder="Имя или услуга — например, электрик"
+                placeholder={
+                  hasCategoryFilter ? "Имя специалиста" : "Имя или услуга — например, электрик"
+                }
                 accessibilityLabel="Поиск специалистов"
               />
             </View>

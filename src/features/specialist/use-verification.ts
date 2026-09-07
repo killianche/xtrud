@@ -43,7 +43,8 @@ export function useMyVerification(userId: string | undefined) {
 }
 
 export const VERIFICATION_LABEL: Record<MyVerification["status"] | "none", string> = {
-  none: "Не подтверждена",
+  // DECISION владельца 2026-09-07: подтверждение — по желанию, не обязательно.
+  none: "По желанию",
   pending: "На проверке",
   approved: "Подтверждена",
   rejected: "Отклонена",

@@ -67,7 +67,7 @@ export default function VerifyIdentityScreen() {
   return (
     <FormScreen
       title="Подтверждение личности"
-      subtitle="Подтверждённым специалистам доверяют больше: в профиле появится значок."
+      subtitle="По желанию. Профиль виден в каталоге и без этого; подтверждённым специалистам доверяют больше — в профиле появится значок."
       onBack={() => router.back()}
       primaryLabel={
         status === "approved"

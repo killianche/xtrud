@@ -1,30 +1,25 @@
 /**
- * /orders/new — первый вопрос конструктора: «Что нужно сделать?».
+ * /orders/new — первый вопрос конструктора: «Какая категория?».
  *
- * Человек пишет задачу своими словами; каталог подсказывает категорию
- * (как поиск на старте у TaskRabbit). Категория подтверждается только тапом —
- * сама не назначается. Можно выбрать из списка. Дальше — по одному вопросу
- * на экран (src/features/task-composer/steps.ts, docs/TASK_COMPOSER.md).
+ * DECISION владельца 2026-09-07: «в самом начале должен стоять выбор
+ * категории». Как у TaskRabbit: сначала категория, потом описание. Список —
+ * inset grouped по разделам каталога с поиском; выбранная строка — галочка.
+ * Дальше — по одному вопросу на экран (src/features/task-composer/steps.ts).
  *
- * Вход с главной приносит `?draft=` (текст из поля «Что нужно сделать»).
- * Возврат после входа гостя (auth-return) приводит сюда же: если ответы
- * полные — сразу на проверку.
+ * Вход с главной приносит `?draft=` (текст из поля «Что нужно сделать») —
+ * он станет названием. Возврат после входа гостя (auth-return) приводит
+ * сюда же: если ответы полные — сразу на проверку.
  */
 
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { SquaresFour } from "phosphor-react-native";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ActionSheetIOS, Alert, Platform } from "react-native";
+import { View } from "react-native";
+import { SearchField } from "@/components/ui";
 import { ORDER_CREATE_RETURN_TO } from "@/features/auth/auth-return";
 import { useAuthSession } from "@/features/auth/use-auth-session";
 import { useUserRecord } from "@/features/auth/use-user-record";
-import { useSearchCategories } from "@/features/categories/use-search-categories";
+import { useCategoriesL1 } from "@/features/categories/use-categories-l1";
 import { useVisibleCategories } from "@/features/categories/use-visible-categories";
-import {
-  buildTaskIntentCategoryCandidates,
-  buildTaskIntentSuggestions,
-} from "@/features/orders/task-intent-suggestions";
-import { ComposerField } from "@/features/task-composer/ComposerFields";
 import { ChoiceGroup, ChoiceRow } from "@/features/task-composer/ComposerRows";
 import { ComposerScreen } from "@/features/task-composer/ComposerScreen";
 import { useComposer } from "@/features/task-composer/composer-store";
@@ -33,28 +28,23 @@ import {
   isComposerComplete,
   isStepValid,
   normalizeTitle,
-  TITLE_MAX,
-  TITLE_MIN,
 } from "@/features/task-composer/steps";
 import { useStepNavigation } from "@/features/task-composer/use-step-navigation";
 import { useAuthReturnUrlStore } from "@/lib/auth-return-url-store";
 import { getCategoryIcon } from "@/lib/category-icons";
-import { useOrderDraftStore } from "@/lib/order-draft-store";
-import { useDebouncedValue } from "@/lib/use-debounced-value";
-import { useSafeBack } from "@/lib/use-safe-back";
 import { useThemeColors } from "@/lib/use-theme-color";
 
-export default function TaskIntentScreen() {
+export default function TaskCategoryScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ draft?: string; l2?: string; stale?: string }>();
   const composer = useComposer();
   const { values, patch } = composer;
-  const nav = useStepNavigation("intent");
-  const tc = useThemeColors(["ink", "on-accent", "mute"]);
+  const nav = useStepNavigation("category");
+  const tc = useThemeColors(["ink", "on-accent"]);
   const { session } = useAuthSession();
   const userId = session?.user?.id;
   const { data: user } = useUserRecord(userId);
-  const leave = useSafeBack("/(tabs)/orders" as never);
+  const [query, setQuery] = useState("");
 
   // Текст с главной и категория из каталога применяются один раз.
   const appliedParamsRef = useRef(false);
@@ -69,7 +59,7 @@ export default function TaskIntentScreen() {
   }, [composer.ready, params.draft, params.l2, patch, values.title, values.l2Id]);
 
   // Возврат после входа: onboarding обязателен; полный черновик — сразу на
-  // проверку, чтобы человек нажал «Опубликовать» и не проходил шаги заново.
+  // проверку, чтобы человек нажал «Опубликовать», а не проходил шаги заново.
   const [returnHandled, setReturnHandled] = useState(false);
   useEffect(() => {
     if (returnHandled || !userId || !user || !composer.ready) return;
@@ -84,157 +74,83 @@ export default function TaskIntentScreen() {
     if (isComposerComplete(values)) router.replace(COMPOSER_ROUTE.review as never);
   }, [returnHandled, userId, user, composer.ready, values, router]);
 
-  // Подсказки категории по тексту.
-  const categoriesQ = useVisibleCategories();
-  const categories = categoriesQ.data ?? [];
-  const debounced = useDebouncedValue(values.title, 250);
-  const search = useSearchCategories(debounced, 10);
-  const hits = search.data?.hits ?? [];
-  const suggestions = useMemo(
-    () => buildTaskIntentSuggestions(debounced, hits, categories, 4),
-    [debounced, hits, categories],
-  );
-  const candidates = useMemo(
-    () => (suggestions.length === 0 ? buildTaskIntentCategoryCandidates(hits, categories, 5) : []),
-    [suggestions.length, hits, categories],
-  );
-  const selected = categories.find((c) => c.id === values.l2Id) ?? null;
-  const SelectedIcon = selected ? getCategoryIcon(selected.icon) : null;
-
-  const close = () => {
-    if (!composer.hasContent || composer.mode.kind === "edit") {
-      leave();
-      return;
+  const l1 = useCategoriesL1();
+  const categories = useVisibleCategories();
+  const sections = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    const byL1 = new Map<string, Array<{ id: string; name: string; icon: string | null }>>();
+    for (const c of categories.data ?? []) {
+      if (q && !c.name_ru.toLowerCase().includes(q)) continue;
+      const rows = byL1.get(c.l1_id) ?? [];
+      rows.push({ id: c.id, name: c.name_ru, icon: c.icon });
+      byL1.set(c.l1_id, rows);
     }
-    const discard = () => {
-      useOrderDraftStore.getState().clearDraft();
-      leave();
-    };
-    if (Platform.OS === "ios") {
-      ActionSheetIOS.showActionSheetWithOptions(
-        {
-          options: ["Отмена", "Удалить черновик", "Сохранить черновик"],
-          cancelButtonIndex: 0,
-          destructiveButtonIndex: 1,
-          title: "Черновик задания",
-        },
-        (i) => {
-          if (i === 1) discard();
-          if (i === 2) leave();
-        },
-      );
-    } else {
-      Alert.alert("Черновик задания", undefined, [
-        { text: "Удалить", style: "destructive", onPress: discard },
-        { text: "Сохранить", onPress: leave },
-        { text: "Отмена", style: "cancel" },
-      ]);
-    }
-  };
+    const ordered = (l1.data ?? []).filter((s) => byL1.has(s.id));
+    const known = new Set(ordered.map((s) => s.id));
+    return [
+      ...ordered.map((s) => ({ id: s.id, title: s.name_ru, rows: byL1.get(s.id) ?? [] })),
+      ...[...byL1.keys()]
+        .filter((id) => !known.has(id))
+        .map((id) => ({ id, title: undefined, rows: byL1.get(id) ?? [] })),
+    ];
+  }, [categories.data, l1.data, query]);
 
   if (!composer.ready) return null;
 
-  const trimmed = normalizeTitle(values.title);
-  const titleError =
-    trimmed.length > 0 && trimmed.length < TITLE_MIN ? `Минимум ${TITLE_MIN} символов` : null;
-
   return (
     <ComposerScreen
-      step="intent"
-      title="Что нужно сделать?"
-      subtitle="Коротко, своими словами — как сказали бы мастеру."
-      onBack={nav.fromReview ? nav.goBack : close}
-      closeInsteadOfBack={!nav.fromReview}
+      step="category"
+      title="Какая категория?"
+      subtitle={
+        params.stale === "1"
+          ? "Категория изменилась в каталоге — выберите её заново."
+          : "Задание увидят мастера этой категории."
+      }
+      onBack={nav.fromReview ? nav.goBack : undefined}
+      onClose={nav.close}
       primaryLabel={nav.primaryLabel}
-      primaryDisabled={!isStepValid("intent", values)}
-      onPrimary={() => {
-        patch({ title: trimmed });
-        nav.goNext();
-      }}
+      primaryDisabled={!isStepValid("category", values)}
+      onPrimary={nav.goNext}
     >
-      <ComposerField
-        size="title"
-        value={values.title}
-        onChangeText={(t) => patch({ title: t.slice(0, TITLE_MAX) })}
-        placeholder="Например, заменить смеситель"
-        autoFocus={values.title.length === 0}
-        returnKeyType="done"
-        maxLength={TITLE_MAX}
-        error={titleError}
-        accessibilityLabel="Что нужно сделать"
-      />
-
-      {selected && SelectedIcon ? (
-        <ChoiceGroup title="Категория">
-          <ChoiceRow
-            title={selected.name_ru}
-            icon={<SelectedIcon size={17} weight="bold" color={tc["on-accent"]} />}
-            iconAccent
-            selected
-            onPress={() => router.push("/orders/new/category" as never)}
-            last
-          />
+      <View className="mb-5 px-4">
+        <SearchField
+          value={query}
+          onChangeText={setQuery}
+          placeholder="Например, электрик или уборка"
+          showCancel={false}
+          accessibilityLabel="Поиск категории"
+        />
+      </View>
+      {categories.isLoading || l1.isLoading ? null : sections.length === 0 ? (
+        <ChoiceGroup footer="Ничего не нашли. Попробуйте другое слово.">
+          <View className="h-1" />
         </ChoiceGroup>
-      ) : null}
-
-      {!selected && suggestions.length > 0 ? (
-        <ChoiceGroup
-          title="Похоже на"
-          footer="Нажмите подходящее — так мастера точно увидят задание."
-        >
-          {suggestions.map((s, i) => {
-            const cat = categories.find((c) => c.id === s.l2Id);
-            const Icon = getCategoryIcon(cat?.icon);
-            return (
-              <ChoiceRow
-                key={s.key}
-                title={s.title}
-                subtitle={s.categoryName}
-                icon={<Icon size={17} weight="bold" color={tc.ink} />}
-                onPress={() => patch({ title: s.title, l2Id: s.l2Id })}
-                last={i === suggestions.length - 1}
-              />
-            );
-          })}
-        </ChoiceGroup>
-      ) : null}
-
-      {!selected && candidates.length > 0 ? (
-        <ChoiceGroup title="Возможно, категория">
-          {candidates.map((c, i) => {
-            const cat = categories.find((x) => x.id === c.l2Id);
-            const Icon = getCategoryIcon(cat?.icon);
-            return (
-              <ChoiceRow
-                key={c.key}
-                title={c.categoryName}
-                subtitle={
-                  c.matchedServiceName !== c.categoryName ? c.matchedServiceName : undefined
-                }
-                icon={<Icon size={17} weight="bold" color={tc.ink} />}
-                onPress={() => patch({ l2Id: c.l2Id })}
-                last={i === candidates.length - 1}
-              />
-            );
-          })}
-        </ChoiceGroup>
-      ) : null}
-
-      {!selected ? (
-        <ChoiceGroup
-          footer={
-            params.stale === "1"
-              ? "Категория изменилась в каталоге — выберите её заново."
-              : undefined
-          }
-        >
-          <ChoiceRow
-            title="Выбрать категорию из списка"
-            icon={<SquaresFour size={17} weight="bold" color={tc.ink} />}
-            navigates
-            onPress={() => router.push("/orders/new/category" as never)}
-            last
-          />
+      ) : (
+        sections.map((s) => (
+          <ChoiceGroup key={s.id} title={s.title}>
+            {s.rows.map((c, i) => {
+              const Icon = getCategoryIcon(c.icon);
+              const selected = values.l2Id === c.id;
+              return (
+                <ChoiceRow
+                  key={c.id}
+                  title={c.name}
+                  icon={
+                    <Icon size={18} weight="bold" color={selected ? tc["on-accent"] : tc.ink} />
+                  }
+                  iconAccent={selected}
+                  selected={selected}
+                  onPress={() => patch({ l2Id: c.id })}
+                  last={i === s.rows.length - 1}
+                />
+              );
+            })}
+          </ChoiceGroup>
+        ))
+      )}
+      {categories.error || l1.error ? (
+        <ChoiceGroup footer="Не удалось загрузить категории. Проверьте связь.">
+          <View className="h-1" />
         </ChoiceGroup>
       ) : null}
     </ComposerScreen>

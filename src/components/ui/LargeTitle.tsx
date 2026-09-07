@@ -1,29 +1,25 @@
 /**
  * Заголовок экрана в стиле системных приложений iOS 26.
  *
- * DECISION владельца 2026-09-06: «Заголовок и кнопка выглядят нестандартно.
- * Нужно в стиле последнего iOS: размер, шрифт — и везде одинаково: Задания,
- * Специалисты, Мои задания». И раньше: «отступ сверху от чёлки — обязательно,
- * на всём приложении, чтобы такого больше не было».
+ * DECISION владельца 2026-09-07: «откуда взялась белая плашка сверху с
+ * кнопкой назад? Сделать как у Apple в iOS 26 Liquid Glass». У Apple в
+ * iOS 26 строка навигации в покое НЕ имеет фона: содержимое доходит до
+ * верха, «назад» и действия — отдельные круглые стеклянные кнопки. Фон в
+ * материале появляется только когда содержимое уезжает под строку —
+ * вместе с компактным заголовком.
  *
- * Как устроено у Apple и здесь:
- *   1. Закреплённая строка навигации (44 pt) под безопасной областью. В ней
- *      «назад», компактный заголовок 17/semibold и действия справа.
- *   2. Крупный заголовок 34/bold живёт В СОДЕРЖИМОМ и уезжает вверх при
- *      прокрутке; в этот момент компактный заголовок проявляется в строке.
- *   3. Строка навигации — в материале Liquid Glass: содержимое проезжает под
- *      ней. Без стекла (iOS до 26) — обычная поверхность с волосяной линией.
- *   4. Под строкой навигации может стоять панель — поиск или фильтры. Она
- *      закреплена вместе со строкой.
+ * Как устроено здесь:
+ *   1. Круглые кнопки 44 pt (стекло; без стекла — поверхность с волосяной
+ *      границей) стоят поверх содержимого всегда.
+ *   2. Крупный заголовок 34/bold живёт В СОДЕРЖИМОМ (LargeTitleBlock) и
+ *      уезжает вверх при прокрутке.
+ *   3. По мере прокрутки проявляется стеклянная полоса с компактным
+ *      заголовком 17/semibold — та же прозрачность, что у заголовка.
+ *   4. Отступ от чёлки — обязателен на всём приложении.
  *
- * Три части и один хук:
- *   - useLargeTitle()      — прокрутка, прозрачность компактного заголовка,
- *                            измеренная высота закреплённой шапки;
- *   - <LargeTitleBar>      — закреплённая шапка (absolute, поверх списка);
- *   - <LargeTitleBlock>    — крупный заголовок для начала списка.
- *
- * Экран собирает их сам, потому что списки бывают разные (FlashList,
- * ScrollView, Animated.ScrollView). Пример — app/(tabs)/specialists.tsx.
+ * Экран собирает части сам (FlashList/ScrollView разные):
+ *   useLargeTitle() → <LargeTitleBar/> поверх списка + <LargeTitleBlock/> в
+ *   начале списка. Пример — app/(tabs)/specialists.tsx.
  */
 
 import { CaretLeft } from "phosphor-react-native";
@@ -40,13 +36,15 @@ import { AppText } from "@/components/AppText";
 import { useThemeColors } from "@/lib/use-theme-color";
 import type { IconComponent } from "@/types/icon";
 import { GlassSurface, LIQUID_GLASS } from "./GlassSurface";
-import { SystemIcon } from "./SystemIcon";
+import { type SFSymbol, SystemIcon } from "./SystemIcon";
 
 /** Высота строки навигации — системные 44 pt. */
 export const NAV_ROW_HEIGHT = 44;
+/** Круглая кнопка строки навигации. */
+export const NAV_BUTTON_SIZE = 44;
 
-/** На этом отрезке прокрутки крупный заголовок уходит под шапку и в строке
- *  проявляется компактный. Подобрано под 34/41 + отступы блока. */
+/** На этом отрезке прокрутки крупный заголовок уходит под строку и в ней
+ *  проявляется компактный вместе с фоном. Подобрано под 34/41 + отступы. */
 const TITLE_FADE_FROM = 24;
 const TITLE_FADE_TO = 60;
 
@@ -54,6 +52,8 @@ export interface LargeTitleAction {
   /** Подпись; для кнопки-иконки не показывается, но нужна VoiceOver. */
   label: string;
   Icon?: IconComponent;
+  /** Системный символ для iOS; Icon — запасной. */
+  sf?: SFSymbol;
   onPress: () => void;
   /** Фильтр применён и т.п. — кнопка подсвечивается акцентом. */
   active?: boolean;
@@ -78,26 +78,66 @@ export function useLargeTitle(initialBarHeight = NAV_ROW_HEIGHT) {
     scrollY,
     onScroll,
     compactTitleOpacity,
-    /** Высота закреплённой шапки без безопасной области — измеряется. */
+    /** Высота закреплённой строки без безопасной области — измеряется. */
     barHeight,
     setBarHeight,
-    /** Отступ сверху для содержимого списка: безопасная область + шапка. */
+    /** Отступ сверху для содержимого списка: безопасная область + строка. */
     contentTop: insets.top + barHeight,
     insets,
   };
 }
 
+/** Круглая кнопка строки навигации: стекло на iOS 26, иначе поверхность. */
+export function NavCircleButton({
+  label,
+  onPress,
+  children,
+  active = false,
+  disabled = false,
+}: {
+  label: string;
+  onPress: () => void;
+  children: ReactNode;
+  active?: boolean;
+  disabled?: boolean;
+}) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityState={{ disabled, selected: active }}
+      onPress={onPress}
+      disabled={disabled}
+      hitSlop={4}
+      className="active:opacity-60"
+    >
+      <GlassSurface
+        fallbackClassName={active ? "bg-accent" : "border border-hairline bg-canvas"}
+        style={{
+          width: NAV_BUTTON_SIZE,
+          height: NAV_BUTTON_SIZE,
+          borderRadius: NAV_BUTTON_SIZE / 2,
+          alignItems: "center",
+          justifyContent: "center",
+          overflow: "hidden",
+        }}
+      >
+        {children}
+      </GlassSurface>
+    </Pressable>
+  );
+}
+
 export interface LargeTitleBarProps {
   title: string;
-  /** Прозрачность компактного заголовка — из useLargeTitle(). */
+  /** Прозрачность компактного заголовка и фона — из useLargeTitle(). */
   compactTitleOpacity: Animated.AnimatedInterpolation<number>;
   onLayoutHeight: (height: number) => void;
   onBack?: () => void;
   actions?: LargeTitleAction[];
-  /** Панель под строкой навигации: поиск, фильтры. Закреплена вместе с ней. */
+  /** Панель под строкой навигации (поиск, фильтры), закреплена вместе с ней. */
   below?: ReactNode;
-  /** Компактный заголовок виден всегда, без проявления. Нужно там, где
-   *  крупного заголовка в содержимом нет (экран с заданным фильтром). */
+  /** Компактный заголовок и фон видны всегда (экран без крупного заголовка). */
   alwaysCompact?: boolean;
 }
 
@@ -112,73 +152,87 @@ export function LargeTitleBar({
 }: LargeTitleBarProps) {
   const insets = useSafeAreaInsets();
   const tc = useThemeColors(["ink", "accent", "on-accent"]);
+  const barOpacity = alwaysCompact ? 1 : compactTitleOpacity;
 
   return (
-    <GlassSurface
-      style={{
-        position: "absolute",
-        top: 0,
-        left: 0,
-        right: 0,
-        zIndex: 10,
-        paddingTop: insets.top,
-      }}
-      fallbackClassName="bg-canvas"
+    <View
+      pointerEvents="box-none"
+      style={{ position: "absolute", top: 0, left: 0, right: 0, zIndex: 10 }}
     >
-      <View onLayout={(e) => onLayoutHeight(Math.round(e.nativeEvent.layout.height))}>
-        <View className="flex-row items-center px-2" style={{ height: NAV_ROW_HEIGHT }}>
+      {/* Фон строки — только когда содержимое уехало под неё. */}
+      <Animated.View
+        pointerEvents="none"
+        style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, opacity: barOpacity }}
+      >
+        <GlassSurface style={{ flex: 1 }} fallbackClassName="bg-canvas">
+          <View className="flex-1" />
+          {LIQUID_GLASS ? null : <View className="h-px bg-hairline" />}
+        </GlassSurface>
+      </Animated.View>
+
+      <View
+        pointerEvents="box-none"
+        style={{ paddingTop: insets.top }}
+        onLayout={(e) => onLayoutHeight(Math.round(e.nativeEvent.layout.height - insets.top))}
+      >
+        <View
+          pointerEvents="box-none"
+          className="flex-row items-center px-3"
+          style={{ height: NAV_ROW_HEIGHT }}
+        >
           {onBack ? (
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Назад"
-              onPress={onBack}
-              hitSlop={6}
-              className="h-11 w-11 items-center justify-center rounded-full active:opacity-50"
-            >
+            <NavCircleButton label="Назад" onPress={onBack}>
               <SystemIcon
                 sf="chevron.left"
                 fallback={CaretLeft}
-                size={22}
+                size={20}
                 weight="semibold"
-                color={tc.accent}
+                color={tc.ink}
               />
-            </Pressable>
+            </NavCircleButton>
           ) : (
-            <View className="w-2" />
+            <View style={{ width: NAV_BUTTON_SIZE }} />
           )}
 
           <Animated.View
+            pointerEvents="none"
             className="min-w-0 flex-1"
-            style={{ opacity: alwaysCompact ? 1 : compactTitleOpacity }}
+            style={{ opacity: barOpacity }}
           >
             <AppText
               weight="semibold"
-              className={`text-ios-title text-ink ${onBack ? "text-center" : "px-2"}`}
+              className="text-center text-ios-title text-ink"
               numberOfLines={1}
             >
               {title}
             </AppText>
           </Animated.View>
 
-          <View className="flex-row items-center gap-1">
+          <View className="flex-row items-center gap-2" style={{ minWidth: NAV_BUTTON_SIZE }}>
             {actions.map((action) =>
-              action.iconOnly && action.Icon ? (
-                <Pressable
+              action.iconOnly && (action.Icon || action.sf) ? (
+                <NavCircleButton
                   key={action.label}
-                  accessibilityRole="button"
-                  accessibilityLabel={action.label}
+                  label={action.label}
                   onPress={action.onPress}
-                  hitSlop={6}
-                  className={`h-11 w-11 items-center justify-center rounded-full active:opacity-60 ${
-                    action.active ? "bg-accent" : ""
-                  }`}
+                  active={action.active}
                 >
-                  <action.Icon
-                    size={22}
-                    weight="bold"
-                    color={action.active ? tc["on-accent"] : tc.accent}
-                  />
-                </Pressable>
+                  {action.sf && action.Icon ? (
+                    <SystemIcon
+                      sf={action.sf}
+                      fallback={action.Icon}
+                      size={20}
+                      weight="semibold"
+                      color={action.active ? tc["on-accent"] : tc.ink}
+                    />
+                  ) : action.Icon ? (
+                    <action.Icon
+                      size={20}
+                      weight="bold"
+                      color={action.active ? tc["on-accent"] : tc.ink}
+                    />
+                  ) : null}
+                </NavCircleButton>
               ) : (
                 <Pressable
                   key={action.label}
@@ -186,26 +240,34 @@ export function LargeTitleBar({
                   accessibilityLabel={action.label}
                   onPress={action.onPress}
                   hitSlop={6}
-                  className="min-h-11 flex-row items-center gap-1.5 px-2 active:opacity-60"
+                  className="active:opacity-60"
                 >
-                  {action.Icon ? <action.Icon size={20} weight="bold" color={tc.accent} /> : null}
-                  <AppText
-                    weight={action.active ? "semibold" : "medium"}
-                    className="text-ios-title text-accent"
+                  <GlassSurface
+                    fallbackClassName="border border-hairline bg-canvas"
+                    style={{
+                      height: NAV_BUTTON_SIZE,
+                      borderRadius: NAV_BUTTON_SIZE / 2,
+                      paddingHorizontal: 16,
+                      justifyContent: "center",
+                      overflow: "hidden",
+                    }}
                   >
-                    {action.label}
-                  </AppText>
+                    <AppText
+                      weight={action.active ? "semibold" : "regular"}
+                      className="text-ios-body text-accent"
+                    >
+                      {action.label}
+                    </AppText>
+                  </GlassSurface>
                 </Pressable>
               ),
             )}
-            {actions.length === 0 && onBack ? <View className="w-11" /> : null}
           </View>
         </View>
 
         {below}
-        {LIQUID_GLASS ? null : <View className="h-px bg-hairline" />}
       </View>
-    </GlassSurface>
+    </View>
   );
 }
 
@@ -221,7 +283,9 @@ export function LargeTitleBlock({ title, subtitle }: LargeTitleBlockProps) {
       <AppText weight="bold" className="text-ios-large-title text-ink">
         {title}
       </AppText>
-      {subtitle ? <AppText className="mt-1 text-body-md text-mute">{subtitle}</AppText> : null}
+      {subtitle ? (
+        <AppText className="mt-1 text-ios-subheadline text-mute">{subtitle}</AppText>
+      ) : null}
     </View>
   );
 }

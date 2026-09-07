@@ -235,7 +235,11 @@ export default function SpecialistsScreen() {
             <LargeTitleBlock
               title={title}
               subtitle={
-                isLoading ? null : `${specialistsLabel(list.length)}${hasNextPage ? " и ещё" : ""}`
+                // Пока идёт запрос, счётчика нет — «0 специалистов» над
+                // скелетоном было ложью (владелец, 2026-09-07).
+                isLoading || (isFetching && !isFetchingNextPage)
+                  ? null
+                  : `${specialistsLabel(list.length)}${hasNextPage ? " и ещё" : ""}`
               }
             />
             <View className="pb-2">

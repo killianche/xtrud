@@ -1,20 +1,22 @@
 /**
  * ComposerScreen — экран одного вопроса конструктора задания.
  *
- * Как у Apple (HIG iOS 26, docs/TASK_COMPOSER.md):
- *   - строка навигации 44 pt: слева «назад» (chevron.left) или «закрыть»
- *     (xmark.circle.fill) на первом шаге; по центру индикатор шагов —
- *     тонкие капсулы, как точки страниц; справа пусто (действие — внизу);
- *   - вопрос — Title 1 (28/bold) слева, под ним Subheadline;
+ * Как у Apple (iOS 26, docs/TASK_COMPOSER.md), уточнено владельцем
+ * 2026-09-07: «поля, кнопки — всё больше, как в iOS Liquid Glass; должна быть
+ * отмена выхода на любом шаге»:
+ *   - строка навигации без фона: слева круглая стеклянная «назад», справа
+ *     круглая «закрыть» (на любом шаге), по центру индикатор шагов —
+ *     тонкие капсулы;
+ *   - вопрос — Title 1 (28/bold), под ним Subheadline;
  *   - содержимое прокручивается под плавающую кнопку;
- *   - главное действие — одна выпуклая капсула Liquid Glass в фирменном
- *     цвете внизу («Далее», «Опубликовать»); второстепенное — текстом над ней;
- *   - клавиатура поднимает кнопку (KeyboardAvoidingView), а не закрывает её;
- *   - отступ от чёлки — обязателен (DECISION владельца 2026-09-06).
+ *   - главное действие — выпуклая капсула Liquid Glass 56 pt в фирменном
+ *     цвете; второстепенное — текстом над ней;
+ *   - клавиатура поднимает кнопку (KeyboardAvoidingView);
+ *   - отступ от чёлки обязателен.
  */
 
 import { GlassView } from "expo-glass-effect";
-import { CaretLeft, XCircle } from "phosphor-react-native";
+import { CaretLeft, X } from "phosphor-react-native";
 import type { ReactNode } from "react";
 import {
   ActivityIndicator,
@@ -27,21 +29,22 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
 import { LIQUID_GLASS } from "@/components/ui/GlassSurface";
-import { NAV_ROW_HEIGHT } from "@/components/ui/LargeTitle";
+import { NAV_BUTTON_SIZE, NAV_ROW_HEIGHT, NavCircleButton } from "@/components/ui/LargeTitle";
 import { SystemIcon } from "@/components/ui/SystemIcon";
 import { useThemeColors } from "@/lib/use-theme-color";
 import { type ComposerStep, stepPosition } from "./steps";
 
-const PRIMARY_HEIGHT = 52;
+export const PRIMARY_HEIGHT = 56;
 
 export interface ComposerScreenProps {
   step: ComposerStep;
   title: string;
   subtitle?: string;
   children: ReactNode;
-  /** «Закрыть» на первом шаге, «назад» на остальных. */
-  onBack: () => void;
-  closeInsteadOfBack?: boolean;
+  /** «Назад» слева. Нет — первый шаг (слева пусто). */
+  onBack?: () => void;
+  /** «Закрыть» справа — на любом шаге; нет — на экранах результата. */
+  onClose?: () => void;
   primaryLabel: string;
   onPrimary: () => void;
   primaryDisabled?: boolean;
@@ -53,7 +56,6 @@ export interface ComposerScreenProps {
   error?: string | null;
   /** Скрыть нижнюю кнопку (успех, лимит). */
   hideActions?: boolean;
-  scrollRef?: React.Ref<ScrollView>;
 }
 
 export function ComposerScreen({
@@ -62,7 +64,7 @@ export function ComposerScreen({
   subtitle,
   children,
   onBack,
-  closeInsteadOfBack = false,
+  onClose,
   primaryLabel,
   onPrimary,
   primaryDisabled = false,
@@ -71,15 +73,14 @@ export function ComposerScreen({
   onSecondary,
   error,
   hideActions = false,
-  scrollRef,
 }: ComposerScreenProps) {
   const insets = useSafeAreaInsets();
-  const tc = useThemeColors(["ink", "mute", "accent", "on-accent", "hairline-strong", "error"]);
+  const tc = useThemeColors(["ink", "mute", "accent", "on-accent", "error"]);
   const { index, total } = stepPosition(step);
   const bottomSpace = insets.bottom + 16;
   const actionsHeight = hideActions
     ? 0
-    : PRIMARY_HEIGHT + (secondaryLabel ? 44 : 0) + (error ? 40 : 0);
+    : PRIMARY_HEIGHT + (secondaryLabel ? 48 : 0) + (error ? 44 : 0);
 
   return (
     <KeyboardAvoidingView
@@ -87,34 +88,20 @@ export function ComposerScreen({
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
       <View style={{ paddingTop: insets.top }}>
-        <View className="flex-row items-center px-2" style={{ height: NAV_ROW_HEIGHT }}>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={closeInsteadOfBack ? "Закрыть" : "Назад"}
-            onPress={onBack}
-            disabled={busy}
-            hitSlop={6}
-            className="h-11 w-11 items-center justify-center active:opacity-50"
-          >
-            {closeInsteadOfBack ? (
-              <SystemIcon
-                sf="xmark.circle.fill"
-                fallback={XCircle}
-                size={28}
-                weight="regular"
-                hierarchical
-                color={tc.mute}
-              />
-            ) : (
+        <View className="flex-row items-center px-3" style={{ height: NAV_ROW_HEIGHT + 8 }}>
+          {onBack ? (
+            <NavCircleButton label="Назад" onPress={onBack} disabled={busy}>
               <SystemIcon
                 sf="chevron.left"
                 fallback={CaretLeft}
-                size={22}
+                size={20}
                 weight="semibold"
-                color={tc.accent}
+                color={tc.ink}
               />
-            )}
-          </Pressable>
+            </NavCircleButton>
+          ) : (
+            <View style={{ width: NAV_BUTTON_SIZE }} />
+          )}
           <View
             className="flex-1 flex-row items-center justify-center gap-1"
             accessibilityRole="progressbar"
@@ -126,16 +113,21 @@ export function ComposerScreen({
                 // biome-ignore lint/suspicious/noArrayIndexKey: фиксированный набор сегментов
                 key={i}
                 className={`h-1 rounded-full ${i < index ? "bg-accent" : "bg-hairline-strong"}`}
-                style={{ width: 18 }}
+                style={{ width: 16 }}
               />
             ))}
           </View>
-          <View className="w-11" />
+          {onClose ? (
+            <NavCircleButton label="Закрыть" onPress={onClose} disabled={busy}>
+              <SystemIcon sf="xmark" fallback={X} size={18} weight="semibold" color={tc.ink} />
+            </NavCircleButton>
+          ) : (
+            <View style={{ width: NAV_BUTTON_SIZE }} />
+          )}
         </View>
       </View>
 
       <ScrollView
-        ref={scrollRef}
         className="flex-1"
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="interactive"
@@ -147,7 +139,7 @@ export function ComposerScreen({
             {title}
           </AppText>
           {subtitle ? (
-            <AppText className="mt-1.5 text-ios-subheadline text-mute">{subtitle}</AppText>
+            <AppText className="mt-1.5 text-ios-body text-mute">{subtitle}</AppText>
           ) : null}
         </View>
         {children}
@@ -162,7 +154,7 @@ export function ComposerScreen({
           {error ? (
             <AppText
               accessibilityRole="alert"
-              className="mb-2 text-center text-ios-footnote text-error"
+              className="mb-2 text-center text-ios-subheadline text-error"
             >
               {error}
             </AppText>
@@ -173,9 +165,11 @@ export function ComposerScreen({
               accessibilityLabel={secondaryLabel}
               onPress={onSecondary}
               disabled={busy}
-              className="mb-1 min-h-11 items-center justify-center active:opacity-60"
+              className="mb-1 min-h-12 items-center justify-center active:opacity-60"
             >
-              <AppText className="text-ios-body text-accent">{secondaryLabel}</AppText>
+              <AppText weight="medium" className="text-ios-body text-accent">
+                {secondaryLabel}
+              </AppText>
             </Pressable>
           ) : null}
           <PrimaryGlassButton
@@ -214,7 +208,7 @@ function PrimaryGlassButton({
   const content = busy ? (
     <ActivityIndicator color={onAccent} />
   ) : (
-    <AppText weight="semibold" className="text-ios-body" style={{ color: onAccent }}>
+    <AppText weight="semibold" className="text-ios-body" style={{ color: onAccent, fontSize: 18 }}>
       {label}
     </AppText>
   );

@@ -20,7 +20,8 @@ import { digitsOnly } from "@/features/auth/validation";
 import type { OrderPriceKind, OrderUrgencyValue } from "@/features/orders/order-schema";
 
 export const COMPOSER_STEPS = [
-  "intent",
+  "category",
+  "title",
   "details",
   "where",
   "when",
@@ -32,7 +33,8 @@ export type ComposerStep = (typeof COMPOSER_STEPS)[number];
 
 /** Маршрут шага. Вход — `/orders/new` (его знает auth-return). */
 export const COMPOSER_ROUTE: Record<ComposerStep, string> = {
-  intent: "/orders/new",
+  category: "/orders/new",
+  title: "/orders/new/title",
   details: "/orders/new/details",
   where: "/orders/new/where",
   when: "/orders/new/when",
@@ -99,8 +101,10 @@ export function isPhoneAcceptable(value: string): boolean {
 /** Готов ли шаг — по нему включается «Далее». */
 export function isStepValid(step: ComposerStep, v: ComposerValues): boolean {
   switch (step) {
-    case "intent":
-      return normalizeTitle(v.title).length >= TITLE_MIN && v.l2Id.length > 0;
+    case "category":
+      return v.l2Id.length > 0;
+    case "title":
+      return normalizeTitle(v.title).length >= TITLE_MIN;
     case "details":
       return v.description.length <= DESCRIPTION_MAX;
     case "where":

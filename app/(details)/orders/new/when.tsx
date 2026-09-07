@@ -25,7 +25,7 @@ export default function TaskWhenScreen() {
   const { values, patch } = useComposer();
   const nav = useStepNavigation("when");
   if (nav.notReady) return null;
-  if (nav.needsIntent) return <Redirect href="/orders/new" />;
+  if (nav.needsCategory) return <Redirect href="/orders/new" />;
 
   return (
     <ComposerScreen
@@ -33,6 +33,7 @@ export default function TaskWhenScreen() {
       title="Когда?"
       subtitle="Срок виден в карточке задания."
       onBack={nav.goBack}
+      onClose={nav.close}
       primaryLabel={nav.primaryLabel}
       primaryDisabled={!isStepValid("when", values)}
       onPrimary={nav.goNext}

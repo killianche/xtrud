@@ -23,7 +23,7 @@ export function ChoiceGroup({
   footer?: string;
 }) {
   return (
-    <View className="mb-6 px-4">
+    <View className="mb-7 px-4">
       {title ? (
         <AppText className="mb-1.5 ml-4 text-ios-footnote uppercase text-mute">{title}</AppText>
       ) : null}
@@ -78,7 +78,7 @@ export function ChoiceRow({
     >
       {icon ? (
         <View
-          className={`mr-3 h-[29px] w-[29px] items-center justify-center rounded-[7px] ${
+          className={`mr-3 h-9 w-9 items-center justify-center rounded-lg ${
             iconAccent ? "bg-accent" : "bg-canvas-soft"
           }`}
         >
@@ -86,7 +86,7 @@ export function ChoiceRow({
         </View>
       ) : null}
       <View
-        className={`min-h-11 flex-1 flex-row items-center py-2.5 pr-4 ${last ? "" : "border-b border-hairline"}`}
+        className={`min-h-14 flex-1 flex-row items-center py-3 pr-4 ${last ? "" : "border-b border-hairline"}`}
       >
         <View className="min-w-0 flex-1">
           <AppText

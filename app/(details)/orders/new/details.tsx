@@ -17,7 +17,7 @@ export default function TaskDetailsScreen() {
   const { values, patch, photos, setPhotos } = composer;
   const nav = useStepNavigation("details");
   if (nav.notReady) return null;
-  if (nav.needsIntent) return <Redirect href="/orders/new" />;
+  if (nav.needsCategory) return <Redirect href="/orders/new" />;
 
   const empty = values.description.trim().length === 0 && photos.length === 0;
   return (
@@ -26,6 +26,7 @@ export default function TaskDetailsScreen() {
       title="Расскажите подробнее"
       subtitle="Чем точнее описание, тем точнее цена в откликах. По желанию."
       onBack={nav.goBack}
+      onClose={nav.close}
       primaryLabel={nav.primaryLabel}
       primaryDisabled={!isStepValid("details", values)}
       onPrimary={() => {

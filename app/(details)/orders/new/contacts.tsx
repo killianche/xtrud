@@ -32,7 +32,7 @@ export default function TaskContactsScreen() {
     patch({ contactPhone: phone });
   }, [composer.mode.kind, user?.contact_phone, values.contactPhone, patch]);
   if (nav.notReady) return null;
-  if (nav.needsIntent) return <Redirect href="/orders/new" />;
+  if (nav.needsCategory) return <Redirect href="/orders/new" />;
 
   const empty = !values.contactPhone.trim() && !values.whatsappPhone.trim();
   return (
@@ -41,6 +41,7 @@ export default function TaskContactsScreen() {
       title="Как с вами связаться?"
       subtitle="По желанию. Можно указать другой номер — не тот, что в аккаунте. Мастера увидят его в задании."
       onBack={nav.goBack}
+      onClose={nav.close}
       primaryLabel={nav.primaryLabel}
       primaryDisabled={!isStepValid("contacts", values)}
       onPrimary={nav.goNext}

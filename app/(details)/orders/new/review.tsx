@@ -34,6 +34,7 @@ import {
   type ComposerStep,
   isComposerComplete,
 } from "@/features/task-composer/steps";
+import { useComposerClose } from "@/features/task-composer/use-composer-close";
 import { usePublishTask } from "@/features/task-composer/use-publish-task";
 import { ALL_INGUSHETIA_CITY_ID, getCityName } from "@/lib/location-config";
 import { useBackGestureLock } from "@/lib/use-back-gesture-lock";
@@ -52,6 +53,7 @@ export default function TaskReviewScreen() {
   const endEdit = useComposerSession((s) => s.endEdit);
   const editDirty = useComposerSession((s) => (s.mode.kind === "edit" ? isEditDirty(s) : false));
   const tc = useThemeColors(["success"]);
+  const close = useComposerClose();
 
   // Сессия редактирования живёт, пока открыт этот экран.
   useEffect(() => {
@@ -77,11 +79,11 @@ export default function TaskReviewScreen() {
     composer.patch({ l2Id: "" });
     if (mode.kind === "edit") {
       router.push({
-        pathname: COMPOSER_ROUTE.intent,
+        pathname: COMPOSER_ROUTE.category,
         params: { from: "review", stale: "1" },
       } as never);
     } else {
-      router.replace({ pathname: COMPOSER_ROUTE.intent, params: { stale: "1" } } as never);
+      router.replace({ pathname: COMPOSER_ROUTE.category, params: { stale: "1" } } as never);
     }
   }, [publish.categoryStale, composer, mode.kind, router]);
 
@@ -145,8 +147,7 @@ export default function TaskReviewScreen() {
             ? undefined
             : "Мастера из этой категории уже получают уведомление. Отклики придут в «Мои задания»."
         }
-        onBack={() => router.replace("/(tabs)/orders" as never)}
-        closeInsteadOfBack
+        onClose={() => router.replace("/(tabs)/orders" as never)}
         primaryLabel=""
         onPrimary={() => undefined}
         hideActions
@@ -190,6 +191,7 @@ export default function TaskReviewScreen() {
       title={mode.kind === "edit" ? "Проверьте изменения" : "Проверьте задание"}
       subtitle="Нажмите строку, чтобы изменить ответ."
       onBack={() => router.back()}
+      onClose={mode.kind === "edit" ? undefined : close}
       primaryLabel={mode.kind === "edit" ? "Сохранить" : "Опубликовать"}
       onPrimary={onPrimary}
       busy={publish.busy}
@@ -197,11 +199,12 @@ export default function TaskReviewScreen() {
     >
       <ChoiceGroup title="Задание">
         <ChoiceRow
-          title={values.title}
-          subtitle={category?.name_ru}
+          title="Категория"
+          value={category?.name_ru ?? ""}
           navigates
-          onPress={() => open("intent")}
+          onPress={() => open("category")}
         />
+        <ChoiceRow title={values.title} navigates onPress={() => open("title")} />
         <ChoiceRow
           title="Подробности"
           value={

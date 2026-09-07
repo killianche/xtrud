@@ -53,7 +53,7 @@ export const ComposerField = forwardRef<TextInput, ComposerFieldProps>(function 
   const [touched, setTouched] = useState(false);
   const [focused, setFocused] = useState(false);
   const showError = touched && !focused && !!error;
-  const fontSize = size === "title" ? 22 : 17;
+  const fontSize = size === "title" ? 24 : 18;
 
   return (
     <View className="mb-5 px-4">

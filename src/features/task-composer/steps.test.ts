@@ -25,21 +25,17 @@ const complete = {
 
 describe("composer steps", () => {
   it("идёт по порядку и заканчивается проверкой", () => {
-    expect(nextStep("intent")).toBe("details");
+    expect(nextStep("category")).toBe("title");
+    expect(nextStep("title")).toBe("details");
     expect(nextStep("review")).toBeNull();
-    expect(stepPosition("where")).toEqual({ index: 3, total: COMPOSER_STEPS.length });
+    expect(stepPosition("where")).toEqual({ index: 4, total: COMPOSER_STEPS.length });
   });
 
-  it("«Далее» на первом шаге требует название и категорию", () => {
-    expect(isStepValid("intent", { ...EMPTY_COMPOSER_VALUES, title: "Кран", l2Id: "x" })).toBe(
-      false,
-    );
-    expect(
-      isStepValid("intent", { ...EMPTY_COMPOSER_VALUES, title: "Починить кран", l2Id: "" }),
-    ).toBe(false);
-    expect(
-      isStepValid("intent", { ...EMPTY_COMPOSER_VALUES, title: "Починить кран", l2Id: "x" }),
-    ).toBe(true);
+  it("категория — первый шаг, название — второй", () => {
+    expect(isStepValid("category", EMPTY_COMPOSER_VALUES)).toBe(false);
+    expect(isStepValid("category", { ...EMPTY_COMPOSER_VALUES, l2Id: "x" })).toBe(true);
+    expect(isStepValid("title", { ...EMPTY_COMPOSER_VALUES, title: "Кран" })).toBe(false);
+    expect(isStepValid("title", { ...EMPTY_COMPOSER_VALUES, title: "Починить кран" })).toBe(true);
   });
 
   it("«К дате» без даты не готов; бюджет требует сумму, кроме договорной", () => {

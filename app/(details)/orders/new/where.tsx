@@ -16,7 +16,7 @@ export default function TaskWhereScreen() {
   const { values, patch } = useComposer();
   const nav = useStepNavigation("where");
   if (nav.notReady) return null;
-  if (nav.needsIntent) return <Redirect href="/orders/new" />;
+  if (nav.needsCategory) return <Redirect href="/orders/new" />;
 
   const cities = [{ id: ALL_INGUSHETIA_CITY_ID, name: "Вся Ингушетия" }, ...PICKER_CITIES];
   return (
@@ -25,6 +25,7 @@ export default function TaskWhereScreen() {
       title="Где нужно выполнить?"
       subtitle="Мастера ищут задания рядом с собой."
       onBack={nav.goBack}
+      onClose={nav.close}
       primaryLabel={nav.primaryLabel}
       primaryDisabled={!isStepValid("where", values)}
       onPrimary={nav.goNext}

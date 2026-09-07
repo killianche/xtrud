@@ -35,7 +35,7 @@ export default function TaskBudgetScreen() {
     if (needsAmount && values.budgetValue === null) inputRef.current?.focus();
   }, [needsAmount, values.budgetValue]);
   if (nav.notReady) return null;
-  if (nav.needsIntent) return <Redirect href="/orders/new" />;
+  if (nav.needsCategory) return <Redirect href="/orders/new" />;
 
   const tooBig = values.budgetValue !== null && values.budgetValue > BUDGET_MAX;
   return (
@@ -44,6 +44,7 @@ export default function TaskBudgetScreen() {
       title="Какой бюджет?"
       subtitle="Мастера видят бюджет и откликаются с ценой и сроком."
       onBack={nav.goBack}
+      onClose={nav.close}
       primaryLabel={nav.primaryLabel}
       primaryDisabled={!isStepValid("budget", values)}
       onPrimary={nav.goNext}

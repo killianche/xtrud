@@ -26,7 +26,6 @@ import Constants from "expo-constants";
 import { useRouter } from "expo-router";
 import {
   CaretRight,
-  EyeSlash,
   Gear,
   Headset,
   Info,
@@ -35,7 +34,7 @@ import {
   SignOut,
   Trash,
 } from "phosphor-react-native";
-import { ActivityIndicator, Pressable, ScrollView, Switch, View } from "react-native";
+import { Pressable, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
 import { ThemeSwitcher } from "@/components/ThemeSwitcher";
@@ -43,10 +42,6 @@ import { ScreenHeader } from "@/components/ui";
 import { useAuthSession } from "@/features/auth/use-auth-session";
 import { useUserRecord } from "@/features/auth/use-user-record";
 import { useBlockedUsers } from "@/features/blocking/use-user-blocks";
-import {
-  useMasterPrivacy,
-  useUpdateMasterPrivacy,
-} from "@/features/master-profile/use-master-privacy";
 import { signOut } from "@/lib/auth";
 import { confirmAsync } from "@/lib/confirm";
 import { openExternalUrl } from "@/lib/open-link";
@@ -86,7 +81,6 @@ export default function SettingsScreen() {
             любой авторизованной роли (UGC safety, App Store Guideline 1.2). */}
         {userId ? (
           <Section icon={ShieldCheck} title="Приватность и блокировки">
-            {isMaster ? <PrivacyToggleRow userId={userId} /> : null}
             <ActionRow
               label="Заблокированные пользователи"
               count={blockedUsers.data?.length}
@@ -166,68 +160,6 @@ export default function SettingsScreen() {
           />
         </Section>
       </ScrollView>
-    </View>
-  );
-}
-
-// ============================================================================
-// PrivacyToggleRow — toggle «Скрыть профиль от клиентов» для мастера.
-// ============================================================================
-
-function PrivacyToggleRow({ userId }: { userId: string }) {
-  const { data, isLoading } = useMasterPrivacy(userId);
-  const updatePrivacy = useUpdateMasterPrivacy();
-  const tc = useThemeColors(["accent", "muted-soft", "surface-3", "on-primary"]);
-
-  const hidden = data?.isHiddenFromSearch ?? false;
-  const onToggle = (next: boolean) => {
-    updatePrivacy.mutate({ userId, isHiddenFromSearch: next });
-  };
-
-  return (
-    <View className="px-5 py-4">
-      <View className="flex-row items-center gap-3">
-        <View className="mt-0.5">
-          <EyeSlash size={20} weight="bold" color={tc["muted-soft"]} />
-        </View>
-        <View className="flex-1">
-          <AppText weight="semibold" className="text-body-md text-ink">
-            Скрыть профиль от клиентов
-          </AppText>
-          <AppText className="mt-0.5 text-body-sm text-mute">
-            Скрытого мастера не видно в каталоге и поиске. Текущие заказы продолжают работать.
-          </AppText>
-        </View>
-        {isLoading ? (
-          <ActivityIndicator size="small" />
-        ) : (
-          <Switch
-            value={hidden}
-            onValueChange={onToggle}
-            disabled={updatePrivacy.isPending}
-            trackColor={{ false: tc["surface-3"], true: tc.accent }}
-            thumbColor={tc["on-primary"]}
-            ios_backgroundColor={tc["surface-3"]}
-          />
-        )}
-      </View>
-
-      {/* Явный текущий статус — чтобы сразу было видно, скрыты вы или нет. */}
-      {!isLoading ? (
-        <View
-          className={`mt-3 flex-row items-center gap-1.5 self-start rounded-full px-2.5 py-1 ${
-            hidden ? "bg-warning-soft" : "bg-success-soft"
-          }`}
-        >
-          <View className={`h-1.5 w-1.5 rounded-full ${hidden ? "bg-warning" : "bg-success"}`} />
-          <AppText
-            weight="medium"
-            className={`text-caption ${hidden ? "text-warning-deep" : "text-success"}`}
-          >
-            {hidden ? "Сейчас скрыты — клиенты вас не видят" : "Сейчас видны в каталоге"}
-          </AppText>
-        </View>
-      ) : null}
     </View>
   );
 }

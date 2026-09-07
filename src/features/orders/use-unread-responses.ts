@@ -42,6 +42,8 @@ export function useUnreadResponsesCount(userId: string | null | undefined) {
     },
     enabled: !!userId,
     staleTime: 15_000,
+    // Бейдж обновляется при возврате в приложение (focusManager в _layout).
+    refetchOnWindowFocus: true,
   });
 }
 

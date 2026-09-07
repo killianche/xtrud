@@ -14,6 +14,7 @@ import { Avatar } from "@/components/Avatar";
 import { FormScreen, InsetGroup, InsetRow } from "@/components/ui";
 import { useAuthSession } from "@/features/auth/use-auth-session";
 import { useUserRecord } from "@/features/auth/use-user-record";
+import { AvailabilityRows } from "@/features/specialist/AvailabilityRows";
 import {
   useEnableSpecialistMode,
   useMySpecialistProfile,
@@ -103,6 +104,8 @@ export default function AccountScreen() {
           />
         )}
       </InsetGroup>
+
+      {isSpecialist && userId ? <AvailabilityRows userId={userId} /> : null}
 
       <InsetGroup title="Аккаунт">
         <InsetRow

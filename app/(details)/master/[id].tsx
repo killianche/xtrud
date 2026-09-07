@@ -47,6 +47,7 @@ import { PortfolioLightbox } from "@/features/profile/PortfolioLightbox";
 import { useMasterPortfolio } from "@/features/profile/use-my-portfolio";
 import { ReportModal } from "@/features/reports/ReportModal";
 import { useMyRecentReviewForMaster } from "@/features/reviews/use-reviews";
+import { availabilityTitle } from "@/features/specialist/AvailabilityRows";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { getCategoryIcon } from "@/lib/category-icons";
 import { confirmAsync } from "@/lib/confirm";
@@ -222,6 +223,15 @@ export default function MasterPublicScreen() {
                 {place ? (
                   <AppText className="mt-0.5 text-ios-subheadline text-mute" numberOfLines={1}>
                     {place}
+                  </AppText>
+                ) : null}
+                {m?.availability_status && m.availability_status !== "unspecified" ? (
+                  <AppText
+                    weight="medium"
+                    className={`mt-1 text-ios-subheadline ${m.availability_status === "unavailable" ? "text-mute" : "text-success"}`}
+                    numberOfLines={1}
+                  >
+                    {availabilityTitle(m.availability_status)}
                   </AppText>
                 ) : null}
               </View>

@@ -51,6 +51,7 @@ export function useUnreadNotificationsCount(userId: string | undefined) {
     },
     enabled: !!userId,
     staleTime: 30_000,
+    refetchOnWindowFocus: true,
   });
 }
 

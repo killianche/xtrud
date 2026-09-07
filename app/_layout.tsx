@@ -1,9 +1,10 @@
 import "../global.css";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { focusManager, QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Stack, useRouter, useSegments } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 import { useEffect, useState } from "react";
+import { AppState } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { initialWindowMetrics, SafeAreaProvider } from "react-native-safe-area-context";
 import "react-native-reanimated";
@@ -205,6 +206,15 @@ function AuthGate({ children }: { children: React.ReactNode }) {
 
 export default function RootLayout() {
   const canvasColor = useThemeColor("canvas");
+  // Возврат в приложение = «фокус» для react-query: бейджи и счётчики
+  // (refetchOnWindowFocus у нужных запросов) обновляются сразу, без
+  // ожидания staleTime (владелец, 2026-09-07: «бейджи как в iOS»).
+  useEffect(() => {
+    const sub = AppState.addEventListener("change", (state) =>
+      focusManager.setFocused(state === "active"),
+    );
+    return () => sub.remove();
+  }, []);
   const [queryClient] = useState(
     () =>
       new QueryClient({

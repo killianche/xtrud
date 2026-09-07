@@ -23,7 +23,7 @@
  */
 
 import { CaretLeft } from "phosphor-react-native";
-import { type ReactNode, useRef, useState } from "react";
+import { type ReactNode, useCallback, useRef, useState } from "react";
 import {
   Animated,
   type NativeScrollEvent,
@@ -70,9 +70,17 @@ export function useLargeTitle(initialBarHeight = NAV_ROW_HEIGHT) {
     outputRange: [0, 1],
     extrapolate: "clamp",
   });
-  const onScroll = Animated.event<NativeSyntheticEvent<NativeScrollEvent>>(
-    [{ nativeEvent: { contentOffset: { y: scrollY } } }],
-    { useNativeDriver: true },
+  // Обычная функция, а не Animated.event с native driver: FlashList зовёт
+  // onScroll как функцию, а Animated.event с useNativeDriver возвращает
+  // объект — на первом же скролле ленты приложение падало
+  // («undefined is not a function» в client_errors, 2026-09-07).
+  // Прозрачность заголовка считается на JS — при scrollEventThrottle 16 этого
+  // достаточно для плавного проявления.
+  const onScroll = useCallback(
+    (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+      scrollY.setValue(event.nativeEvent.contentOffset.y);
+    },
+    [scrollY],
   );
   return {
     scrollY,

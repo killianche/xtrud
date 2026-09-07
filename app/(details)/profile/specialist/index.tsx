@@ -27,6 +27,7 @@ import { useUserRecord } from "@/features/auth/use-user-record";
 import { useMyMasterCategories } from "@/features/master-categories/use-my-categories";
 import { useMasterServiceAreas } from "@/features/master-profile/use-service-areas";
 import { useMasterPortfolio } from "@/features/profile/use-my-portfolio";
+import { AvailabilityRows } from "@/features/specialist/AvailabilityRows";
 import { useMySpecialistProfile } from "@/features/specialist/use-specialist";
 import { DISTRICTS, getCityName } from "@/lib/location-config";
 import { useThemeColors } from "@/lib/use-theme-color";
@@ -98,6 +99,8 @@ export default function SpecialistHubScreen() {
           </AppText>
         </View>
       </View>
+
+      <AvailabilityRows userId={userId} />
 
       <InsetGroup title="Профиль">
         <InsetRow

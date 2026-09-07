@@ -43,6 +43,8 @@ export function useUnreadFeedCount(opts: {
     },
     enabled: !!opts.userId && opts.l2Ids.length > 0,
     staleTime: 15_000,
+    // Бейдж обновляется при возврате в приложение (focusManager в _layout).
+    refetchOnWindowFocus: true,
   });
 }
 

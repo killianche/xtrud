@@ -5,10 +5,9 @@
 // задание» (редизайн главной + нижней навигации, фидбэк владельца): реальный
 // Tabs.Screen вместо кастомного Pressable, без ручного mutex-подсвечивания.
 //
-// Показываются ВСЕ open-orders сайта. Фильтры выбираются на отдельном
-// full-screen экране /find/filters (не inline) — больше места, лучше UX.
-// State фильтров — в Zustand-сторе useOrdersSearchFiltersStore, чтобы
-// переживать переход на /filters и /category-select.
+// Показываются ВСЕ open-orders сайта. Фильтры — в системной шторке
+// /find/filters (кнопка напротив заголовка), значения в Zustand-сторе
+// useOrdersSearchFiltersStore, чтобы переживать переходы между шторками.
 //
 // **Это таб (4-й таб нижней панели для мастера),** не detail-экран. Поэтому:
 //   - НЕ скрываем TabBar (`useTabBarVisibility` НЕ вызываем).
@@ -23,24 +22,15 @@
 
 import { FlashList, type FlashListRef } from "@shopify/flash-list";
 import { useRouter } from "expo-router";
-import { MapPin, Sparkle, SquaresFour, Tray } from "phosphor-react-native";
+import { SlidersHorizontal, Sparkle, Tray } from "phosphor-react-native";
 import { type RefObject, useEffect, useRef } from "react";
-import {
-  ActivityIndicator,
-  Animated,
-  type FlatList,
-  Pressable,
-  ScrollView,
-  View,
-} from "react-native";
+import { ActivityIndicator, Animated, type FlatList, Pressable, View } from "react-native";
 import { AppText } from "@/components/AppText";
 import { OrderRow } from "@/components/OrderRow";
 import { OrderRowsSkeleton } from "@/components/OrderRowsSkeleton";
-import { FilterChip, LargeTitleBar, LargeTitleBlock, useLargeTitle } from "@/components/ui";
+import { LargeTitleBar, NavCircleButton, useLargeTitle } from "@/components/ui";
+import { SystemIcon } from "@/components/ui/SystemIcon";
 import { useAuthSession } from "@/features/auth/use-auth-session";
-import { useCategoriesL1 } from "@/features/categories/use-categories-l1";
-import { useVisibleCategories } from "@/features/categories/use-visible-categories";
-import { useCities } from "@/features/cities/use-cities";
 import {
   countActiveFilters,
   useOrdersSearchFiltersStore,
@@ -48,6 +38,7 @@ import {
 import { useAllOpenOrders } from "@/features/orders/use-all-open-orders";
 import type { OrderWithRefs } from "@/features/orders/use-my-orders";
 import { useMyRespondedOrderIds } from "@/features/orders/use-my-responded-order-ids";
+import { useOrdersFilterLabels } from "@/features/orders/use-orders-filter-labels";
 import { useMarkFeedSeen } from "@/features/orders/use-unread-feed";
 import { describeQueryError } from "@/lib/describe-query-error";
 import { useTabBarSpace } from "@/lib/tab-bar-space";
@@ -64,6 +55,8 @@ export default function FindScreen() {
   const { session } = useAuthSession();
   const userId = session?.user?.id;
   const accentColor = useThemeColor("accent");
+  const inkColor = useThemeColor("ink");
+  const accentOn = useThemeColor("on-accent");
 
   // active_role нужен чтобы решить, показывать ли entry «Мои отклики».
   // Кнопка имеет смысл только для мастера: у клиента откликов не бывает.
@@ -90,27 +83,7 @@ export default function FindScreen() {
 
   const effectiveL2Ids = l2Ids.length > 0 ? l2Ids : null;
 
-  // Подписи чипов — из каталога и городов (без сети берётся бандл).
-  const categoriesQ = useVisibleCategories();
-  const citiesQ = useCities();
-  const l1Q = useCategoriesL1();
-  const categoryChipLabel = (() => {
-    if (l2Ids.length === 0) return "Категория";
-    // Раздел целиком — его название; одна категория — её; иначе счётчик.
-    for (const section of l1Q.data ?? []) {
-      const ids = (categoriesQ.data ?? []).filter((c) => c.l1_id === section.id).map((c) => c.id);
-      if (ids.length > 0 && ids.length === l2Ids.length && ids.every((id) => l2Ids.includes(id))) {
-        return section.name_ru;
-      }
-    }
-    if (l2Ids.length === 1) {
-      return categoriesQ.data?.find((c) => c.id === l2Ids[0])?.name_ru ?? "Категория";
-    }
-    return `Категории · ${l2Ids.length}`;
-  })();
-  const locationChipLabel = cityId
-    ? (citiesQ.data?.find((c) => c.id === cityId)?.name ?? "Город")
-    : district || "Вся Ингушетия";
+  const labels = useOrdersFilterLabels();
 
   // P1-3 (LAUNCH_READINESS): при заходе мастера в /find сбрасываем
   // unread-badge на TabBar (RPC mark_feed_seen обновляет
@@ -163,42 +136,41 @@ export default function FindScreen() {
     }
   }, [isLoading, error, displayedOrders.length, opacity]);
 
-  // Крупный заголовок первым, под ним строка фильтров — как у Apple под
-  // large title (DECISION владельца 2026-09-06, вечер: «заголовок — в самом
-  // верху, где пустое место, фильтры под ним»). Чипы показывают выбранное и
-  // открывают системные шторки; отдельного экрана «Фильтры» нет.
+  // Заголовок и одна кнопка «Фильтры» напротив него — как кнопка фильтра в
+  // строке заголовка у Apple (DECISION владельца 2026-09-07: «убрать чипы,
+  // одна большая кнопка фильтров справа от заголовка»). Активные фильтры —
+  // счётчик на кнопке и подпись под заголовком.
   const header = (
-    <>
-      <LargeTitleBlock title="Задания" />
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 12, gap: 8 }}
-      >
-        <FilterChip
-          label={categoryChipLabel}
-          Icon={SquaresFour}
-          active={l2Ids.length > 0}
-          onPress={() => router.push("/find/category-select" as never)}
-        />
-        <FilterChip
-          label={locationChipLabel}
-          Icon={MapPin}
-          active={!!cityId || !!district}
-          onPress={() => router.push("/find/location-select" as never)}
-        />
-        {hasActiveFilters ? (
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Сбросить фильтры"
-            onPress={clearAll}
-            className="h-11 justify-center px-2 active:opacity-60"
-          >
-            <AppText className="text-ios-callout text-accent">Сбросить</AppText>
-          </Pressable>
-        ) : null}
-      </ScrollView>
-    </>
+    <View className="px-5 pt-3 pb-4">
+      <View className="flex-row items-center justify-between">
+        <AppText weight="bold" className="text-ios-large-title text-ink">
+          Задания
+        </AppText>
+        <NavCircleButton
+          label={hasActiveFilters ? `Фильтры, выбрано ${activeCount}` : "Фильтры"}
+          onPress={() => router.push("/find/filters" as never)}
+          active={hasActiveFilters}
+        >
+          <SystemIcon
+            sf="line.3.horizontal.decrease"
+            fallback={SlidersHorizontal}
+            size={20}
+            weight="semibold"
+            color={hasActiveFilters ? accentOn : inkColor}
+          />
+        </NavCircleButton>
+      </View>
+      {hasActiveFilters ? (
+        <AppText className="mt-1 text-ios-subheadline text-mute" numberOfLines={1}>
+          {[
+            labels.categoryActive ? labels.category : "",
+            labels.locationActive ? labels.location : "",
+          ]
+            .filter(Boolean)
+            .join(" · ")}
+        </AppText>
+      ) : null}
+    </View>
   );
 
   return (

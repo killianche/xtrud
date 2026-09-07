@@ -58,7 +58,6 @@ export function GlassButton({
         <GlassView
           glassEffectStyle="regular"
           tintColor={secondary ? undefined : tc.accent}
-          isInteractive
           style={shape}
         >
           {content}

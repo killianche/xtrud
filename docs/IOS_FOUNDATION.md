@@ -37,6 +37,7 @@ iOS 26 и повторяет его материал, форму и поведе
 | Строка навигации без фона, круглые стеклянные «назад»/действия; фон и компактный заголовок — при прокрутке | Navigation bar iOS 26 (Liquid Glass, scroll edge effect) | `LargeTitleBar`, `NavCircleButton` |
 | Крупный заголовок 34 pt в содержимом, уезжает при прокрутке | Large title | `LargeTitleBlock`, `useLargeTitle` |
 | Капсулы фильтров под заголовком; выбранная — с оттенком | Фильтры Почты iOS 26 (стеклянные капсулы) | `FilterChip` |
+| Одна круглая кнопка «Фильтры» напротив крупного заголовка (с оттенком, когда фильтр активен); все фильтры — в шторке `fitToContents` со строками «значение + шеврон», вложенные шторки выбора | Кнопка фильтра в строке заголовка (Почта, App Store, Карты), стек листов | `NavCircleButton`, `/find/filters`, `InsetRow value navigates` |
 | Поле поиска — стеклянная капсула 48 pt, системный крестик, «Отмена» | Search field iOS 26 | `SearchField` |
 | Списки выбора и настроек — inset grouped, плитки иконок 36 pt, галочка/шеврон | Настройки, шторки выбора | `InsetGroup`, `InsetRow`, `PickerSheetPage` |
 | Главное действие — выпуклая стеклянная капсула 56 pt с оттенком | Prominent glass button | `GlassButton`, `ComposerScreen`, `FormScreen` |

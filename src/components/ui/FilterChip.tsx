@@ -74,7 +74,6 @@ export function FilterChip({ label, Icon, active, onPress, accessibilityLabel }:
         <GlassView
           glassEffectStyle="regular"
           tintColor={active ? tc.accent : undefined}
-          isInteractive
           style={shape}
         >
           {content}

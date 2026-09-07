@@ -31,6 +31,7 @@ import {
   ClipboardText,
   MagnifyingGlass,
   Plus,
+  SignIn,
   WarningCircle,
 } from "phosphor-react-native";
 import type { RefObject } from "react";
@@ -64,6 +65,7 @@ import {
   useMyResponses,
 } from "@/features/orders/use-my-responses";
 import { usePullToRefresh } from "@/hooks/use-pull-to-refresh";
+import { describeQueryError } from "@/lib/describe-query-error";
 import { hapticSelection } from "@/lib/haptics";
 import { useTabBarSpace } from "@/lib/tab-bar-space";
 import { scrollViewToTop, useTabScrollResetCounter } from "@/lib/tab-scroll-reset";
@@ -114,6 +116,31 @@ export default function OrdersScreen() {
       />
     </>
   );
+
+  if (!userId) {
+    // Гость: личный кабинет пуст не потому, что заданий нет, а потому что
+    // входа нет (дизайн-роль, 2026-09-07: честность интерфейса).
+    return (
+      <View className="flex-1 bg-surface-page">
+        <View className="flex-1" style={{ paddingTop: large.contentTop }}>
+          <LargeTitleBlock title="Мои задания" />
+          <EmptyState
+            icon={ClipboardText}
+            title="Войдите, чтобы видеть свои задания"
+            hint="Здесь будут ваши задания и отклики на них."
+            ctaLabel="Войти"
+            ctaIcon={SignIn}
+            onCta={() => router.push("/(auth)/phone" as never)}
+          />
+        </View>
+        <LargeTitleBar
+          title="Мои задания"
+          compactTitleOpacity={large.compactTitleOpacity}
+          onLayoutHeight={large.setBarHeight}
+        />
+      </View>
+    );
+  }
 
   return (
     <View className="flex-1 bg-surface-page">
@@ -291,7 +318,7 @@ function OrdersList({ userId, contentTop, onScroll, header }: ListProps) {
         isLoading ? (
           <OrderRowsSkeleton count={4} />
         ) : error ? (
-          <ErrorState message={error.message} onRetry={() => refetch()} />
+          <ErrorState message={describeQueryError(error).hint} onRetry={() => refetch()} />
         ) : (
           <EmptyState
             icon={ClipboardText}
@@ -402,7 +429,7 @@ function ResponsesList({ userId, contentTop, onScroll, header }: ListProps) {
           isLoading ? (
             <OrderRowsSkeleton count={4} />
           ) : error ? (
-            <ErrorState message={error.message} onRetry={() => refetch()} />
+            <ErrorState message={describeQueryError(error).hint} onRetry={() => refetch()} />
           ) : (
             <EmptyState
               icon={ChatCenteredText}

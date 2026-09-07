@@ -143,7 +143,7 @@ function ClientHome({
   // отделка», «Сантехника и электрика»…), а детальные категории внутри.
   // Плоский список из 42 строк ушёл; тап по разделу ведёт на «Специалисты» с
   // фильтром по этому разделу.
-  const { data: categories, isLoading, error } = useCategoriesL1();
+  const { data: categories, isLoading, error, refetch } = useCategoriesL1();
   const width = useAppWidth();
   // Фон страницы чуть темнее карточек — см. src/lib/colors.ts, surface-page.
   const canvasBg = useThemeColor("surface-page");
@@ -244,6 +244,16 @@ function ClientHome({
           ) : error ? (
             <View className="px-5" style={gridCancelStyle}>
               <AppText className="text-body-sm text-error">Не удалось загрузить категории.</AppText>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Повторить загрузку категорий"
+                onPress={() => void refetch()}
+                className="mt-3 min-h-11 self-start items-center justify-center rounded-pill border border-hairline bg-canvas px-5 active:bg-canvas-soft"
+              >
+                <AppText weight="semibold" className="text-body-md text-ink">
+                  Повторить
+                </AppText>
+              </Pressable>
             </View>
           ) : (
             <View className="px-5" style={gridCancelStyle}>
@@ -509,6 +519,8 @@ function MasterMiniCard({
   availabilityStatus,
   onPress,
 }: MasterMiniCardProps) {
+  // Обводка точки — цветом поверхности карточки (вырез), не белым (обе темы).
+  const dotRing = useThemeColor("canvas");
   const fullName = [firstName, lastName].filter(Boolean).join(" ") || "Исполнитель";
   // 1-2 категории через · разделитель — больше не помещается в w-180
   const categoriesText = categories.slice(0, 2).join(" · ");
@@ -546,7 +558,7 @@ function MasterMiniCard({
                 borderRadius: 8,
                 backgroundColor: AVAILABILITY_DOT[availabilityStatus],
                 borderWidth: 2,
-                borderColor: "#ffffff",
+                borderColor: dotRing,
               }}
             />
           ) : null}

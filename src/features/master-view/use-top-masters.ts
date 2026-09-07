@@ -93,26 +93,29 @@ export function useTopMasters(limit = 7) {
         new Set(filtered.map((r) => r.user?.city_id).filter((v): v is string => !!v)),
       );
 
-      let citiesMap = new Map<string, { id: string; name: string }>();
-      if (cityIds.length > 0) {
-        const { data: cityData, error: cityErr } = await supabase
-          .from("cities")
-          .select("id, name")
-          .in("id", cityIds);
-        if (cityErr) throw cityErr;
-        citiesMap = new Map(cityData?.map((c) => [c.id, c]) ?? []);
-      }
-
-      // Подтянем категории всех отфильтрованных мастеров одним запросом.
+      // Города и категории не зависят друг от друга — один round-trip вместо
+      // двух подряд (QA, 2026-09-07).
       const masterIds = filtered.map((r) => r.user?.id).filter((v): v is string => !!v);
+      const [citiesRes, catsRes] = await Promise.all([
+        cityIds.length > 0
+          ? supabase.from("cities").select("id, name").in("id", cityIds)
+          : Promise.resolve({ data: [] as Array<{ id: string; name: string }>, error: null }),
+        masterIds.length > 0
+          ? supabase
+              .from("master_categories")
+              .select("master_id, l2:categories_l2(name_ru, sort_order)")
+              .in("master_id", masterIds)
+              .order("created_at", { ascending: true })
+          : Promise.resolve({ data: [], error: null }),
+      ]);
+      if (citiesRes.error) throw citiesRes.error;
+      if (catsRes.error) throw catsRes.error;
+      const citiesMap = new Map<string, { id: string; name: string }>(
+        (citiesRes.data ?? []).map((c) => [c.id, c]),
+      );
       const categoriesMap = new Map<string, string[]>();
-      if (masterIds.length > 0) {
-        const { data: catRows, error: catErr } = await supabase
-          .from("master_categories")
-          .select("master_id, l2:categories_l2(name_ru, sort_order)")
-          .in("master_id", masterIds)
-          .order("created_at", { ascending: true });
-        if (catErr) throw catErr;
+      {
+        const catRows = catsRes.data;
         type CatRow = {
           master_id: string;
           l2: { name_ru: string; sort_order: number } | null;

@@ -7,7 +7,7 @@
  */
 
 import { Redirect, useRouter } from "expo-router";
-import { Gear, PencilSimple, SignOut, UserCircle, Wrench } from "phosphor-react-native";
+import { BellSimple, Gear, PencilSimple, SignOut, UserCircle, Wrench } from "phosphor-react-native";
 import { Alert, View } from "react-native";
 import { AppText } from "@/components/AppText";
 import { Avatar } from "@/components/Avatar";
@@ -105,6 +105,13 @@ export default function AccountScreen() {
       </InsetGroup>
 
       <InsetGroup title="Аккаунт">
+        <InsetRow
+          title="Уведомления"
+          subtitle="Отклики и новости по заданиям"
+          icon={<BellSimple size={18} weight="bold" color={tc.ink} />}
+          navigates
+          onPress={() => router.push("/notifications" as never)}
+        />
         <InsetRow
           title="Имя и фото"
           icon={<PencilSimple size={18} weight="bold" color={tc.ink} />}

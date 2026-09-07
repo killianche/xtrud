@@ -14,6 +14,10 @@
 import type { RealtimeChannel } from "@supabase/supabase-js";
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
+import {
+  notificationsKey,
+  unreadNotificationsKey,
+} from "@/features/notifications/use-notifications";
 import { unreadFeedKey, unreadResponsesKey } from "@/features/orders/unread-feed-helpers";
 import { myOrdersKey } from "@/features/orders/use-my-orders";
 import { orderDetailKey } from "@/features/orders/use-order-detail";
@@ -50,6 +54,9 @@ export function useRealtimeNotifications(opts: {
             filter: `user_id=eq.${userId}`,
           },
           (payload) => {
+            // Экран «Уведомления» и счётчик непрочитанных — на любое событие.
+            qc.invalidateQueries({ queryKey: notificationsKey(userId) });
+            qc.invalidateQueries({ queryKey: unreadNotificationsKey(userId) });
             const row = payload.new as NotificationRow;
             const orderId = row.data?.order_id;
             if (row.type === "new_response") {

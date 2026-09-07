@@ -88,9 +88,14 @@ export default function TaskReviewScreen() {
     }
   }, [publish.categoryStale, composer, mode.kind, router]);
 
+  // После успешной публикации черновик очищен и ответы пусты — редирект на
+  // первый шаг здесь недопустим: сначала экран результата (владелец,
+  // 2026-09-07: «после публикации сразу первый шаг, без сообщения»).
+  const showOutcome = publish.outcome !== null || publish.busy;
   if (
     composer.ready &&
     mode.kind === "create" &&
+    !showOutcome &&
     !isComposerComplete(values) &&
     !publish.categoryStale
   ) {

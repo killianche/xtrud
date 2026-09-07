@@ -113,6 +113,16 @@
       "is_featured": true
     },
     {
+      "id": "materials-delivery",
+      "l1_id": "construction",
+      "name_ru": "Стройматериалы (доставка)",
+      "icon": "Package",
+      "sort_order": 12,
+      "is_active": true,
+      "is_visible": true,
+      "is_featured": false
+    },
+    {
       "id": "water-sewer",
       "l1_id": "utilities",
       "name_ru": "Водоснабжение и канализация",
@@ -265,9 +275,19 @@
     {
       "id": "climate",
       "l1_id": "utilities",
-      "name_ru": "Отопление",
+      "name_ru": "Отопление и котлы",
       "icon": "Thermometer",
       "sort_order": 170,
+      "is_active": true,
+      "is_visible": true,
+      "is_featured": false
+    },
+    {
+      "id": "climate-control",
+      "l1_id": "utilities",
+      "name_ru": "Кондиционеры и вентиляция",
+      "icon": "Wind",
+      "sort_order": 175,
       "is_active": true,
       "is_visible": true,
       "is_featured": false
@@ -328,6 +348,16 @@
       "name_ru": "Сварочные работы",
       "icon": "Fire",
       "sort_order": 230,
+      "is_active": true,
+      "is_visible": true,
+      "is_featured": false
+    },
+    {
+      "id": "machinery",
+      "l1_id": "construction",
+      "name_ru": "Спецтехника",
+      "icon": "Truck",
+      "sort_order": 235,
       "is_active": true,
       "is_visible": true,
       "is_featured": false
@@ -461,16 +491,6 @@
       "is_active": true,
       "is_visible": true,
       "is_featured": false
-    },
-    {
-      "id": "other",
-      "l1_id": "handyman-moving",
-      "name_ru": "Прочее",
-      "icon": "DotsThree",
-      "sort_order": 9999,
-      "is_active": true,
-      "is_visible": true,
-      "is_featured": false
     }
   ],
   "services": [
@@ -517,27 +537,6 @@
       "is_active": true
     },
     {
-      "id": "washing-machine-repair",
-      "l2_id": "appliance-repair",
-      "name_ru": "Ремонт стиральных машин",
-      "sort_order": 51,
-      "is_active": true
-    },
-    {
-      "id": "fridge-repair",
-      "l2_id": "appliance-repair",
-      "name_ru": "Ремонт холодильников",
-      "sort_order": 52,
-      "is_active": true
-    },
-    {
-      "id": "dishwasher-repair",
-      "l2_id": "appliance-repair",
-      "name_ru": "Ремонт посудомоечных машин",
-      "sort_order": 53,
-      "is_active": true
-    },
-    {
       "id": "appl-tv",
       "l2_id": "appliance-repair",
       "name_ru": "Телевизор",
@@ -545,38 +544,10 @@
       "is_active": true
     },
     {
-      "id": "appl-ac",
-      "l2_id": "appliance-repair",
-      "name_ru": "Кондиционер",
-      "sort_order": 70,
-      "is_active": true
-    },
-    {
       "id": "appl-small",
       "l2_id": "appliance-repair",
       "name_ru": "Мелкая бытовая техника",
       "sort_order": 80,
-      "is_active": true
-    },
-    {
-      "id": "ac-install",
-      "l2_id": "appliance-repair",
-      "name_ru": "Установка кондиционера",
-      "sort_order": 90,
-      "is_active": true
-    },
-    {
-      "id": "ac-service",
-      "l2_id": "appliance-repair",
-      "name_ru": "Чистка / заправка кондиционера",
-      "sort_order": 100,
-      "is_active": true
-    },
-    {
-      "id": "ac-uninstall",
-      "l2_id": "appliance-repair",
-      "name_ru": "Демонтаж кондиционера",
-      "sort_order": 110,
       "is_active": true
     },
     {
@@ -776,13 +747,6 @@
       "is_active": true
     },
     {
-      "id": "ventilation",
-      "l2_id": "climate",
-      "name_ru": "Приточно-вытяжная вентиляция",
-      "sort_order": 40,
-      "is_active": true
-    },
-    {
       "id": "radiator-install",
       "l2_id": "climate",
       "name_ru": "Монтаж радиаторов",
@@ -815,6 +779,34 @@
       "l2_id": "climate",
       "name_ru": "Промывка системы отопления",
       "sort_order": 90,
+      "is_active": true
+    },
+    {
+      "id": "ventilation",
+      "l2_id": "climate-control",
+      "name_ru": "Приточно-вытяжная вентиляция",
+      "sort_order": 40,
+      "is_active": true
+    },
+    {
+      "id": "ac-install",
+      "l2_id": "climate-control",
+      "name_ru": "Установка кондиционера",
+      "sort_order": 90,
+      "is_active": true
+    },
+    {
+      "id": "ac-service",
+      "l2_id": "climate-control",
+      "name_ru": "Чистка / заправка кондиционера",
+      "sort_order": 100,
+      "is_active": true
+    },
+    {
+      "id": "ac-uninstall",
+      "l2_id": "climate-control",
+      "name_ru": "Демонтаж кондиционера",
+      "sort_order": 110,
       "is_active": true
     },
     {
@@ -1588,13 +1580,6 @@
       "is_active": true
     },
     {
-      "id": "assemble-small",
-      "l2_id": "handyman",
-      "name_ru": "Сборка мелкой мебели",
-      "sort_order": 30,
-      "is_active": true
-    },
-    {
       "id": "curtain-install",
       "l2_id": "handyman",
       "name_ru": "Установка карниза / штор",
@@ -1613,20 +1598,6 @@
       "l2_id": "handyman",
       "name_ru": "Сборка мебели",
       "sort_order": 50,
-      "is_active": true
-    },
-    {
-      "id": "tv-mount",
-      "l2_id": "handyman",
-      "name_ru": "Повесить телевизор",
-      "sort_order": 51,
-      "is_active": true
-    },
-    {
-      "id": "curtain-mount",
-      "l2_id": "handyman",
-      "name_ru": "Повесить карниз и шторы",
-      "sort_order": 52,
       "is_active": true
     },
     {
@@ -1655,20 +1626,6 @@
       "l2_id": "insulation",
       "name_ru": "Утепление стен (внутри)",
       "sort_order": 10,
-      "is_active": true
-    },
-    {
-      "id": "insul-facade",
-      "l2_id": "insulation",
-      "name_ru": "Утепление фасада",
-      "sort_order": 20,
-      "is_active": true
-    },
-    {
-      "id": "insul-roof",
-      "l2_id": "insulation",
-      "name_ru": "Утепление кровли",
-      "sort_order": 30,
       "is_active": true
     },
     {
@@ -1875,30 +1832,44 @@
       "is_active": true
     },
     {
-      "id": "intercom",
-      "l2_id": "locks-security",
-      "name_ru": "Домофон / видеоглазок",
+      "id": "excavator",
+      "l2_id": "machinery",
+      "name_ru": "Экскаватор / погрузчик",
+      "sort_order": 10,
+      "is_active": true
+    },
+    {
+      "id": "manipulator",
+      "l2_id": "machinery",
+      "name_ru": "Манипулятор",
+      "sort_order": 20,
+      "is_active": true
+    },
+    {
+      "id": "dump-truck",
+      "l2_id": "machinery",
+      "name_ru": "Самосвал",
+      "sort_order": 30,
+      "is_active": true
+    },
+    {
+      "id": "aerial-platform",
+      "l2_id": "machinery",
+      "name_ru": "Автовышка",
       "sort_order": 40,
       "is_active": true
     },
     {
-      "id": "lock-open",
-      "l2_id": "locks-security",
-      "name_ru": "Вскрытие замка",
+      "id": "auger-drill",
+      "l2_id": "machinery",
+      "name_ru": "Ямобур",
       "sort_order": 50,
       "is_active": true
     },
     {
-      "id": "alarm-install",
-      "l2_id": "locks-security",
-      "name_ru": "Монтаж сигнализации",
-      "sort_order": 50,
-      "is_active": true
-    },
-    {
-      "id": "cctv-install",
-      "l2_id": "locks-security",
-      "name_ru": "Камеры видеонаблюдения",
+      "id": "concrete-mixer",
+      "l2_id": "machinery",
+      "name_ru": "Миксер / бетононасос",
       "sort_order": 60,
       "is_active": true
     },
@@ -1949,6 +1920,41 @@
       "l2_id": "masonry",
       "name_ru": "Перегородки",
       "sort_order": 70,
+      "is_active": true
+    },
+    {
+      "id": "delivery-bulk",
+      "l2_id": "materials-delivery",
+      "name_ru": "Песок, щебень, гравий",
+      "sort_order": 10,
+      "is_active": true
+    },
+    {
+      "id": "delivery-blocks",
+      "l2_id": "materials-delivery",
+      "name_ru": "Кирпич и блоки",
+      "sort_order": 20,
+      "is_active": true
+    },
+    {
+      "id": "delivery-cement",
+      "l2_id": "materials-delivery",
+      "name_ru": "Цемент и сухие смеси",
+      "sort_order": 30,
+      "is_active": true
+    },
+    {
+      "id": "delivery-lumber",
+      "l2_id": "materials-delivery",
+      "name_ru": "Пиломатериалы",
+      "sort_order": 40,
+      "is_active": true
+    },
+    {
+      "id": "delivery-mixed",
+      "l2_id": "materials-delivery",
+      "name_ru": "Доставка со склада / магазина",
+      "sort_order": 50,
       "is_active": true
     },
     {
@@ -2005,13 +2011,6 @@
       "l2_id": "painting",
       "name_ru": "Покраска потолка",
       "sort_order": 20,
-      "is_active": true
-    },
-    {
-      "id": "paint-facade",
-      "l2_id": "painting",
-      "name_ru": "Покраска фасада",
-      "sort_order": 30,
       "is_active": true
     },
     {
@@ -2621,6 +2620,13 @@
       "l2_id": "water-sewer",
       "name_ru": "Установка септика",
       "sort_order": 50,
+      "is_active": true
+    },
+    {
+      "id": "septic-pumping",
+      "l2_id": "water-sewer",
+      "name_ru": "Откачка септика / ассенизатор",
+      "sort_order": 55,
       "is_active": true
     },
     {
@@ -4487,5 +4493,5 @@
       "weight": 100
     }
   ],
-  "content_sha256": "15df1b361b46f4bbcd579c5fdd6d530f7f577b79a1b7589dcd281e96fed1b8f8"
+  "content_sha256": "81cc93bf9bf35a4ac0b2fc84b15c1c7a5dbcfb7e182fc05b4efd603fb53a2ad2"
 }

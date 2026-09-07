@@ -17,6 +17,7 @@ import {
   SearchField,
   useLargeTitle,
 } from "@/components/ui";
+import { Skeleton } from "@/components/ui/Skeleton";
 import { useCategoriesL1 } from "@/features/categories/use-categories-l1";
 import { useVisibleCategories } from "@/features/categories/use-visible-categories";
 import { getCategoryIcon } from "@/lib/category-icons";
@@ -78,6 +79,31 @@ export default function SpecialistsCategoriesScreen() {
             placeholder="Например, электрик или уборка"
           />
         </View>
+        {l1.isLoading || categories.isLoading ? (
+          <View className="mx-4 overflow-hidden rounded-2xl bg-canvas">
+            {[0, 1, 2, 3, 4].map((i) => (
+              <View key={i} className="flex-row items-center gap-3 px-4 py-3.5">
+                <Skeleton width={36} height={36} className="rounded-lg" />
+                <Skeleton height={17} className="flex-1 rounded" />
+              </View>
+            ))}
+          </View>
+        ) : l1.error || categories.error ? (
+          <InsetGroup footer="Не удалось загрузить категории. Проверьте связь.">
+            <InsetRow
+              title="Повторить"
+              onPress={() => {
+                void l1.refetch();
+                void categories.refetch();
+              }}
+              last
+            />
+          </InsetGroup>
+        ) : sections.length === 0 ? (
+          <InsetGroup footer="Ничего не нашли. Попробуйте другое слово.">
+            <View className="h-1" />
+          </InsetGroup>
+        ) : null}
         {sections.map(({ section, rows }) => {
           const SectionIcon = getCategoryIcon(section.icon);
           return (

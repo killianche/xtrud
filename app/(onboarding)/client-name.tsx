@@ -155,7 +155,7 @@ export default function ClientNameScreen() {
           accessibilityLabel="Продолжить"
           disabled={!canSubmit || isBusy}
           onPress={onSubmit}
-          className={`h-12 items-center justify-center rounded-md ${
+          className={`min-h-12 items-center justify-center rounded-md ${
             canSubmit && !isBusy ? "bg-primary active:opacity-80" : "bg-surface-3"
           }`}
         >

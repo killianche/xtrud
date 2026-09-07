@@ -1,23 +1,19 @@
-import { zodResolver } from "@hookform/resolvers/zod";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import {
   ArrowCounterClockwise,
-  ArrowRight,
   CaretRight,
-  Check,
   CheckCircle,
   Clock,
   DotsThree,
   MapPin,
+  PaperPlaneTilt,
   Phone,
   Star,
   Users,
   Wallet,
   WhatsappLogo,
-  X,
 } from "phosphor-react-native";
 import { useCallback, useEffect, useState } from "react";
-import { Controller, useForm } from "react-hook-form";
 import {
   ActionSheetIOS,
   ActivityIndicator,
@@ -26,33 +22,22 @@ import {
   Platform,
   Pressable,
   ScrollView,
-  TextInput,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
 import { Avatar } from "@/components/Avatar";
 import { OrderStatusBadge } from "@/components/OrderStatusBadge";
-import { ScreenHeader, Skeleton } from "@/components/ui";
+import { GlassButton, InsetGroup, InsetRow, ScreenHeader, Skeleton } from "@/components/ui";
+import { SystemIcon } from "@/components/ui/SystemIcon";
 import { useAuthSession } from "@/features/auth/use-auth-session";
-import { useUserRecord } from "@/features/auth/use-user-record";
-import { digitsOnly, normalizePhone } from "@/features/auth/validation";
 import { blockConfirmMessage, blockSuccessMessage } from "@/features/blocking/blocking-copy";
 import { blockingActionFailureMessage } from "@/features/blocking/blocking-error-message";
 import { useBlockUser } from "@/features/blocking/use-user-blocks";
 import { useMasterPhone, useMasterPublicProfile } from "@/features/master-view/use-master-public";
 import { useCloseReasonPickerStore } from "@/features/orders/close-reason-picker-store";
 import { OrderPhotoCarousel } from "@/features/orders/OrderPhotoCarousel";
-import {
-  formatOrderTiming,
-  formatPrice,
-  orderPriceKindOptions,
-  priceKindLabel,
-} from "@/features/orders/order-schema";
-import {
-  type ResponseFormValues,
-  responseFormSchema,
-} from "@/features/orders/response-form-schema";
+import { formatOrderTiming, formatPrice } from "@/features/orders/order-schema";
 import { type CancelReason, useCancelOrder } from "@/features/orders/use-cancel-order";
 import { useDeleteOrder } from "@/features/orders/use-delete-order";
 import { type OrderDetail, useOrderDetail } from "@/features/orders/use-order-detail";
@@ -60,11 +45,9 @@ import {
   type OrderResponseWithMaster,
   useMyResponseForOrder,
   useOrderResponses,
-  useSubmitResponse,
 } from "@/features/orders/use-order-responses";
 import { useRejectResponse } from "@/features/orders/use-reject-response";
 import { canReopenOrder, useReopenOrder } from "@/features/orders/use-reopen-order";
-import { isDailyLimitError, useResponseLimit } from "@/features/orders/use-response-limit";
 import { useMarkResponsesViewed } from "@/features/orders/use-unread-responses";
 import { useWithdrawResponse } from "@/features/orders/use-withdraw-response";
 import { ReportModal } from "@/features/reports/ReportModal";
@@ -113,6 +96,14 @@ export default function OrderDetailScreen() {
     shouldCheckMyResponse ? userId : undefined,
   );
   const _hasMyMasterResponse = !!myMasterResponseQ.data;
+  // Можно ли откликнуться: не автор, задание открыто и ждёт откликов, своего
+  // отклика нет или он отозван. Гость тоже видит кнопку — через вход.
+  const canRespond =
+    !!order &&
+    !isOwner &&
+    order.status === "open" &&
+    order.contact_mode !== "phone_open" &&
+    (!userId || !myMasterResponseQ.data || myMasterResponseQ.data.status === "withdrawn");
   const [reportOpen, setReportOpen] = useState(false);
   // Шит выбора причины закрытия заказа («нашёл мастера» / «больше не нужно»).
   // Выбор причины закрытия («нашёл мастера» / «больше не нужно») теперь на
@@ -383,7 +374,7 @@ export default function OrderDetailScreen() {
 
       {order && (
         <ScrollView
-          contentContainerStyle={{ paddingBottom: insets.bottom + 24 }}
+          contentContainerStyle={{ paddingBottom: insets.bottom + 24 + (canRespond ? 72 : 0) }}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
@@ -420,24 +411,39 @@ export default function OrderDetailScreen() {
               ровно ради этого перехода. */}
           {/* Гость видит ту же кнопку, что и вошедший (DECISION владельца
               2026-09-06): по нажатию — вход/регистрация и возврат сюда. */}
-          {!userId && id && order.status === "open" && order.contact_mode !== "phone_open" ? (
-            <GuestRespondCta
-              onPress={() =>
-                router.push({ pathname: "/orders/respond-auth", params: { orderId: id } } as never)
-              }
-            />
-          ) : null}
           {!isOwner && userId && id && order.contact_mode !== "phone_open" && (
             <MasterResponseSection
               orderId={id}
               masterId={userId}
-              l2Id={order.l2_id}
               orderStatus={order.status}
               pickedMasterId={order.picked_master_id}
             />
           )}
         </ScrollView>
       )}
+
+      {/* Отклик — отдельная шторка; кнопка плавает внизу, как главное
+          действие экрана (DECISION владельца 2026-09-07). Гость — через вход. */}
+      {canRespond && id ? (
+        <View
+          pointerEvents="box-none"
+          className="absolute left-0 right-0 px-5"
+          style={{ bottom: insets.bottom + 16 }}
+        >
+          <GlassButton
+            label={
+              myMasterResponseQ.data?.status === "withdrawn" ? "Откликнуться снова" : "Откликнуться"
+            }
+            onPress={() =>
+              router.push(
+                (userId
+                  ? { pathname: "/orders/respond", params: { orderId: id } }
+                  : { pathname: "/orders/respond-auth", params: { orderId: id } }) as never,
+              )
+            }
+          />
+        </View>
+      ) : null}
 
       {id && (
         <ReportModal
@@ -682,40 +688,6 @@ function OrderInfoBlock({ order, isOwner }: OrderInfoBlockProps) {
           ) : null}
         </View>
       ) : null}
-    </View>
-  );
-}
-
-/** Кнопка отклика для гостя — та же по виду, что у вошедшего, но ведёт в
- *  auth-wall. Человек не должен искать, где регистрироваться. */
-function GuestRespondCta({ onPress }: { onPress: () => void }) {
-  const tc = useThemeColors(["on-accent"]);
-  return (
-    <View className="mt-10 px-5">
-      <View className="flex-row items-center gap-3">
-        <AppText
-          weight="medium"
-          className="text-caption uppercase text-mute"
-          style={{ letterSpacing: 1 }}
-        >
-          Ваш отклик
-        </AppText>
-        <View className="h-px flex-1 bg-hairline" />
-      </View>
-      <AppText className="mt-3 text-body-md text-body">
-        Предложите цену и срок — заказчик увидит ваш отклик и свяжется с вами.
-      </AppText>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel="Откликнуться на задание"
-        onPress={onPress}
-        className="mt-4 min-h-14 flex-row items-center justify-center gap-2 rounded-pill bg-accent active:opacity-85"
-      >
-        <AppText weight="semibold" className="text-button-lg text-on-accent">
-          Откликнуться
-        </AppText>
-        <ArrowRight size={18} weight="bold" color={tc["on-accent"]} />
-      </Pressable>
     </View>
   );
 }
@@ -1252,13 +1224,15 @@ function formatResponsePrice(r: Tables<"order_responses">): string {
 }
 
 // ============================================================================
-// Master response section — мастер шлёт отклик или видит свой существующий
+// Master response section — мой отправленный отклик (карточка со статусом и
+// «Отозвать»). Сама форма отклика живёт в шторке /orders/respond (DECISION
+// владельца 2026-09-07: отклик отделён от задания). Если отклика нет или он
+// отозван — секция пустая, кнопка «Откликнуться» плавает внизу экрана.
 // ============================================================================
 
 interface MasterResponseSectionProps {
   orderId: string;
   masterId: string;
-  l2Id: string;
   orderStatus: Tables<"orders">["status"];
   pickedMasterId: string | null;
 }
@@ -1266,576 +1240,76 @@ interface MasterResponseSectionProps {
 function MasterResponseSection({
   orderId,
   masterId,
-  l2Id,
   orderStatus,
   pickedMasterId,
 }: MasterResponseSectionProps) {
-  const { data: myResponse, isLoading } = useMyResponseForOrder(orderId, masterId);
-  const submitResponse = useSubmitResponse();
+  const { data: myResponse } = useMyResponseForOrder(orderId, masterId);
   const withdrawResponse = useWithdrawResponse();
-  // P0-5: дневной лимит откликов (5/день). Не блокируем UI, но блокируем
-  // submit + показываем понятное сообщение если лимит исчерпан.
-  const { data: responseLimit } = useResponseLimit();
-  const tc = useThemeColors(["muted-soft", "mute", "ink", "error", "on-primary", "on-accent"]);
+  const tc = useThemeColors(["accent", "success", "mute"]);
+  if (!myResponse || (myResponse.status === "withdrawn" && orderStatus === "open")) return null;
 
   const isPickedMaster = pickedMasterId === masterId;
-  const orderClosed = orderStatus !== "open";
-
-  const {
-    control,
-    handleSubmit,
-    watch,
-    setValue,
-    getValues,
-    formState: { errors, isValid },
-  } = useForm<ResponseFormValues>({
-    resolver: zodResolver(responseFormSchema),
-    defaultValues: {
-      message: "",
-      priceKind: "negotiable",
-      priceValue: null,
-      leadTime: "",
-      contactPhone: "",
-      whatsappPhone: "",
-    },
-    mode: "onChange",
-  });
-
-  // Контакты подставляем из профиля, если они там есть, — человеку остаётся
-  // только подтвердить. Подставляем один раз и только в пустое поле: то, что
-  // он уже начал вводить, не затираем.
-  const { data: me } = useUserRecord(masterId);
-  const myPublic = useMasterPublicProfile(masterId);
-  useEffect(() => {
-    const phone = me?.contact_phone?.trim();
-    if (phone && !getValues("contactPhone")) {
-      setValue("contactPhone", phone, { shouldValidate: true });
-    }
-    const wa = myPublic.data?.master?.whatsapp_phone?.trim();
-    if (wa && !getValues("whatsappPhone")) {
-      setValue("whatsappPhone", wa, { shouldValidate: true });
-    }
-  }, [me?.contact_phone, myPublic.data?.master?.whatsapp_phone, getValues, setValue]);
-
-  const priceKind = watch("priceKind");
-  const isBusy = submitResponse.isPending;
-  // P0-5: исчерпан ли лимит откликов сегодня?
-  const limitReached = (responseLimit?.remaining ?? 5) <= 0;
-  const submitError = submitResponse.error?.message;
-  const limitError = isDailyLimitError(submitResponse.error);
-
-  const onSubmit = handleSubmit(async (values) => {
-    try {
-      await submitResponse.mutateAsync({
-        resendResponseId: canResend ? myResponse?.id : undefined,
-        orderId,
-        masterId,
-        l2Id,
-        priceKind: values.priceKind,
-        priceValue: values.priceValue,
-        leadTime: values.leadTime,
-        message: values.message,
-        contactPhone:
-          digitsOnly(values.contactPhone).length >= 10 ? normalizePhone(values.contactPhone) : null,
-        whatsappPhone:
-          digitsOnly(values.whatsappPhone).length >= 10
-            ? normalizePhone(values.whatsappPhone)
-            : null,
-      });
-      hapticSuccess();
-    } catch (_e) {
-      // текст ошибки — через submitError, haptic не единственный сигнал
-      hapticError();
-    }
-  });
-
-  if (isLoading) {
-    return (
-      <View className="mt-10 px-5">
-        <Skeleton width={110} height={14} style={{ borderRadius: 4 }} />
-        <View className="mt-4 rounded-2xl border border-hairline p-4">
-          <View className="flex-row items-center gap-3">
-            <Skeleton width={48} height={48} style={{ borderRadius: 24 }} />
-            <View className="flex-1 gap-2">
-              <Skeleton width="55%" height={16} style={{ borderRadius: 4 }} />
-              <Skeleton width="35%" height={12} style={{ borderRadius: 4 }} />
-            </View>
-          </View>
-          <View className="mt-4 gap-2">
-            <Skeleton width="100%" height={14} style={{ borderRadius: 4 }} />
-            <Skeleton width="78%" height={14} style={{ borderRadius: 4 }} />
-          </View>
-        </View>
-      </View>
+  const canWithdraw =
+    orderStatus === "open" && (myResponse.status === "sent" || myResponse.status === "viewed");
+  const onWithdrawPress = async () => {
+    if (withdrawResponse.isPending) return;
+    const confirmed = await confirmAsync({
+      title: "Отозвать отклик?",
+      message: "Клиент получит уведомление. Позже можно откликнуться снова.",
+      confirmText: "Отозвать",
+      cancelText: "Отмена",
+    });
+    if (!confirmed) return;
+    withdrawResponse.mutate(
+      { responseId: myResponse.id, orderId, masterId },
+      {
+        onSuccess: () => hapticSuccess(),
+        onError: (e) =>
+          Alert.alert("Не удалось отозвать", describeServerError(e, "Попробуйте ещё раз.")),
+      },
     );
-  }
+  };
 
-  // Уже есть отклик — показываем статус
-  // Отозванный отклик на открытое задание можно отправить заново (0172).
-  const canResend = !!myResponse && myResponse.status === "withdrawn" && orderStatus === "open";
-
-  if (myResponse && !canResend) {
-    const accentClass = isPickedMaster
-      ? "border-success bg-success-soft"
-      : "border-accent bg-accent-soft";
-    const textColor = isPickedMaster ? "text-success" : "text-accent";
-
-    // T15: можно отозвать пока response в sent/viewed (до accept).
-    const canWithdraw =
-      orderStatus === "open" && (myResponse.status === "sent" || myResponse.status === "viewed");
-    const isBusyWithdraw = withdrawResponse.isPending;
-
-    const onWithdrawPress = async () => {
-      if (isBusyWithdraw) return;
-      const confirmed = await confirmAsync({
-        title: "Отозвать отклик?",
-        // С 0172 отозванный отклик можно отправить заново с новыми условиями.
-        message: "Клиент получит уведомление. Позже можно откликнуться снова.",
-        confirmText: "Отозвать",
-        cancelText: "Отмена",
-      });
-      if (!confirmed) return;
-      withdrawResponse.mutate(
-        { responseId: myResponse.id, orderId, masterId },
-        {
-          onSuccess: () => hapticSuccess(),
-          onError: () => hapticError(),
-        },
-      );
-    };
-
-    // Минимализм 2026-05-16: убрана дублирующая строка «Клиент выбрал вас 🎉»
-    // (для isPickedMaster). Когда мастера уже выбрали — status «В работе» в
-    // header заказа + primary CTA «Работа выполнена» снизу уже сигналят это.
-    // Третий раз сообщать с emoji — шум. Border нейтральный (hairline) для
-    // isPickedMaster, accent остаётся для pending status'ов.
-    return (
-      <View className="mt-10 px-5">
-        {/* Секция-лейбл «ВАШ ОТКЛИК» + линия (Linear-референс). */}
-        <View className="flex-row items-center gap-3">
-          <AppText
-            weight="medium"
-            className="text-caption uppercase text-mute"
-            style={{ letterSpacing: 1 }}
-          >
-            Ваш отклик
-          </AppText>
-          <View className="h-px flex-1 bg-hairline" />
-        </View>
-        <View
-          className={`mt-4 rounded-2xl border ${
-            isPickedMaster ? "border-hairline bg-canvas-soft" : accentClass
-          } p-4`}
-        >
-          {!isPickedMaster && (
-            <AppText weight="semibold" className={`text-body-md ${textColor}`}>
-              {responseStatusLabel(myResponse.status)}
-            </AppText>
-          )}
-          <AppText
-            weight="mono"
-            className={`${isPickedMaster ? "" : "mt-2 "}text-title-md text-ink`}
-          >
-            {formatResponsePrice(myResponse)}
-          </AppText>
-          {myResponse.lead_time && (
-            <AppText className="mt-1 text-caption text-muted">Срок: {myResponse.lead_time}</AppText>
-          )}
-          <AppText className="mt-2 text-body-sm text-body">{myResponse.message}</AppText>
-        </View>
-        {canWithdraw ? (
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Отозвать отклик"
-            disabled={isBusyWithdraw}
-            onPress={onWithdrawPress}
-            className="mt-3 min-h-12 flex-row items-center justify-center gap-2 rounded-xl border border-hairline bg-canvas active:bg-canvas-soft"
-          >
-            <X size={16} weight="bold" color={tc.ink} />
-            <AppText weight="medium" className="text-button-sm text-ink">
-              {isBusyWithdraw ? "Отзываем..." : "Отозвать отклик"}
-            </AppText>
-          </Pressable>
-        ) : null}
-        {withdrawResponse.error && (
-          <AppText weight="medium" className="mt-2 text-caption text-error">
-            {describeServerError(
-              withdrawResponse.error,
-              "Не удалось отозвать отклик. Попробуйте ещё раз.",
-            )}
-          </AppText>
-        )}
-      </View>
-    );
-  }
-
-  // Заказ закрыт (in_progress/completed/cancelled/expired), мастер не откликался
-  // → CTA отключён. В модели доски объявлений клиент НЕ «выбирает мастера» в
-  // приложении — он просто закрывает заказ, когда нашёл исполнителя. Поэтому
-  // текст нейтральный, без ложного «клиент выбрал мастера».
-  if (orderClosed) {
-    return (
-      <View className="mt-10 px-6">
-        <View className="rounded-lg bg-surface-2 p-4">
-          <AppText weight="medium" className="text-body-sm text-muted">
-            Задание закрыто — отклики больше не принимаются.
-          </AppText>
-        </View>
-      </View>
-    );
-  }
-
-  // Форма отклика
-  //
-  // 2026-05-20 — визуально отделили блок «Ваш отклик» от деталей заказа.
-  // Раньше форма шла плоско под автор-карточкой и сливалась с контентом
-  // выше: мастер не сразу понимал, что «вот тут моё действие».
-  //
-  // Решение — Linear/Vercel/Stripe гибрид:
-  //   1) full-width hairline-divider (через negative margins пересекает
-  //      external padding ScrollView'а),
-  //   2) eyebrow-label сверху в caps + tracking-wider («ВАШ ОТКЛИК») —
-  //      перекликается с подписью «ЗАКАЗЧИК» на карточке клиента → визуально
-  //      связывает обе секции в одну ритмику,
-  //   3) короткий, самоочевидный H1 «Откликнуться на заказ» (без
-  //      подзаголовка — правило §G design-quality.md),
-  //   4) форма остаётся плоско на canvas, без обёртки в bg-canvas-soft —
-  //      иначе получится «карточка-в-карточке» (matrёшка-anti-pattern с
-  //      авторской карточкой выше).
-  //
-  // Lazyweb-источники: Stripe (caps section labels), Linear (hairline +
-  // воздух между секциями), Depop «Make an offer» (компактный self-contained
-  // блок без вложенных боксов). Profi.ru и Thumbtack по этому паттерну делают
-  // отдельную карточку — осознанно НЕ повторяем, чтобы избежать matрёшки.
-  const canSubmit = isValid && !isBusy && !limitReached;
   return (
-    <View className="mt-10 px-5">
-      {/* Секция-лейбл «ВАШ ОТКЛИК» + линия (Linear-референс). */}
-      <View className="flex-row items-center gap-3">
-        <AppText
-          weight="medium"
-          className="text-caption uppercase text-mute"
-          style={{ letterSpacing: 1 }}
-        >
-          Ваш отклик
-        </AppText>
-        <View className="h-px flex-1 bg-hairline" />
-      </View>
-
-      {/* Карточка формы — белая, скруглённая (Linear). Цена / Срок / Сообщение
-          разделены тонкими линиями. */}
-      <View className="mt-4 overflow-hidden rounded-2xl border border-hairline bg-canvas">
-        {/* Цена — крупное поле с подчёркиванием + чипы режима. */}
-        <View className="p-5">
-          <AppText weight="medium" className="text-body-sm text-ink">
-            Ваша цена
-          </AppText>
-          <Controller
-            control={control}
-            name="priceValue"
-            render={({ field: { value, onChange, onBlur } }) => {
-              const negotiable = priceKind === "negotiable";
-              return (
-                <View>
-                  <View
-                    className={`mt-3 flex-row items-baseline gap-2 border-b pb-2 ${
-                      errors.priceValue
-                        ? "border-error"
-                        : !negotiable && value != null
-                          ? "border-hairline-strong"
-                          : "border-hairline"
-                    }`}
-                  >
-                    <TextInput
-                      accessibilityLabel="Сумма отклика в рублях"
-                      accessibilityHint={
-                        negotiable ? "Сумма не требуется" : "Введите целую положительную сумму"
-                      }
-                      value={negotiable || value == null ? "" : String(value)}
-                      onBlur={onBlur}
-                      onChangeText={(raw) => {
-                        const cleaned = raw.replace(/\D/g, "");
-                        onChange(cleaned === "" ? null : Number.parseInt(cleaned, 10));
-                      }}
-                      editable={!negotiable && !isBusy}
-                      placeholder={
-                        negotiable
-                          ? "Договорная"
-                          : priceKind === "from"
-                            ? "От суммы"
-                            : priceKind === "up_to"
-                              ? "До суммы"
-                              : "20 000"
-                      }
-                      placeholderTextColor={tc["muted-soft"]}
-                      keyboardType="number-pad"
-                      inputMode="numeric"
-                      className={`flex-1 ${negotiable ? "text-muted-soft" : "text-ink"}`}
-                      style={{
-                        paddingVertical: 2,
-                        fontSize: 28,
-                        fontWeight: "700",
-                        letterSpacing: -0.5,
-                        fontVariant: ["tabular-nums"],
-                      }}
-                    />
-                    <AppText className="text-title-md text-mute">₽</AppText>
-                  </View>
-                  {errors.priceValue ? (
-                    <AppText
-                      accessibilityLiveRegion="polite"
-                      weight="medium"
-                      className="mt-2 text-caption text-error"
-                    >
-                      {errors.priceValue.message}
-                    </AppText>
-                  ) : null}
-                </View>
-              );
-            }}
-          />
-          <Controller
-            control={control}
-            name="priceKind"
-            render={({ field: { value, onChange } }) => (
-              <View className="mt-4 flex-row flex-wrap gap-2">
-                {orderPriceKindOptions.map((k) => {
-                  const selected = value === k;
-                  return (
-                    <Pressable
-                      key={k}
-                      accessibilityRole="radio"
-                      accessibilityLabel={`Тип цены: ${priceKindLabel(k)}`}
-                      accessibilityState={{ selected }}
-                      disabled={isBusy}
-                      onPress={() => onChange(k)}
-                      className={`h-11 items-center justify-center rounded-md border px-3 ${
-                        selected
-                          ? "border-accent bg-accent-soft"
-                          : "border-hairline bg-canvas active:opacity-70"
-                      }`}
-                    >
-                      <AppText
-                        weight="medium"
-                        className={`text-caption ${selected ? "text-accent" : "text-body"}`}
-                      >
-                        {priceKindLabel(k)}
-                      </AppText>
-                    </Pressable>
-                  );
-                })}
-              </View>
-            )}
-          />
-        </View>
-
-        <View className="h-px bg-hairline" />
-
-        {/* Срок — обязателен с 2026-09-01 */}
-        <View className="p-5">
-          <Controller
-            control={control}
-            name="leadTime"
-            render={({ field: { value, onChange, onBlur } }) => (
-              <View>
-                <AppText weight="medium" className="text-body-sm text-ink">
-                  Когда сможете взяться
-                </AppText>
-                <TextInput
-                  accessibilityLabel="Срок выполнения"
-                  accessibilityHint="Обязательное поле"
-                  value={value}
-                  onBlur={onBlur}
-                  onChangeText={onChange}
-                  placeholder="Завтра / 2–3 дня / на следующей неделе"
-                  placeholderTextColor={tc["muted-soft"]}
-                  maxLength={100}
-                  className={`mt-2 border-b pb-2 text-field-md text-ink ${
-                    value ? "border-hairline-strong" : "border-hairline"
-                  }`}
-                  editable={!isBusy}
-                />
-              </View>
-            )}
-          />
-        </View>
-
-        <View className="h-px bg-hairline" />
-
-        {/* Контакты — уходят вместе с откликом (DECISION владельца 2026-09-02).
-            Каждый по желанию, но хотя бы один обязателен: клиенту нужно
-            куда-то написать. Подставляются из профиля, если там есть. */}
-        <View className="p-5 gap-4">
-          <Controller
-            control={control}
-            name="contactPhone"
-            render={({ field: { value, onChange, onBlur } }) => (
-              <View>
-                <AppText weight="medium" className="text-body-sm text-ink">
-                  Телефон для связи
-                </AppText>
-                <TextInput
-                  accessibilityLabel="Телефон для связи"
-                  accessibilityHint="Нужен телефон или WhatsApp, хотя бы один"
-                  value={value}
-                  onBlur={onBlur}
-                  onChangeText={onChange}
-                  placeholder="+7 928 000-00-00"
-                  placeholderTextColor={tc["muted-soft"]}
-                  keyboardType="phone-pad"
-                  autoComplete="tel"
-                  textContentType="telephoneNumber"
-                  maxLength={32}
-                  className={`mt-2 border-b pb-2 text-field-md text-ink ${
-                    errors.contactPhone
-                      ? "border-error"
-                      : value
-                        ? "border-hairline-strong"
-                        : "border-hairline"
-                  }`}
-                  editable={!isBusy}
-                />
-                {errors.contactPhone ? (
-                  <AppText weight="medium" className="mt-2 text-caption text-error">
-                    {errors.contactPhone.message}
-                  </AppText>
-                ) : null}
-              </View>
-            )}
-          />
-          <Controller
-            control={control}
-            name="whatsappPhone"
-            render={({ field: { value, onChange, onBlur } }) => (
-              <View>
-                <AppText weight="medium" className="text-body-sm text-ink">
-                  WhatsApp
-                </AppText>
-                <TextInput
-                  accessibilityLabel="Номер WhatsApp"
-                  accessibilityHint="Нужен телефон или WhatsApp, хотя бы один"
-                  value={value}
-                  onBlur={onBlur}
-                  onChangeText={onChange}
-                  placeholder="Если отличается от телефона"
-                  placeholderTextColor={tc["muted-soft"]}
-                  keyboardType="phone-pad"
-                  autoComplete="tel"
-                  maxLength={32}
-                  className={`mt-2 border-b pb-2 text-field-md text-ink ${
-                    errors.whatsappPhone
-                      ? "border-error"
-                      : value
-                        ? "border-hairline-strong"
-                        : "border-hairline"
-                  }`}
-                  editable={!isBusy}
-                />
-                {errors.whatsappPhone ? (
-                  <AppText weight="medium" className="mt-2 text-caption text-error">
-                    {errors.whatsappPhone.message}
-                  </AppText>
-                ) : null}
-              </View>
-            )}
-          />
-        </View>
-
-        <View className="h-px bg-hairline" />
-
-        {/* Сообщение клиенту */}
-        <View className="p-5">
-          <Controller
-            control={control}
-            name="message"
-            render={({ field: { value, onChange, onBlur } }) => (
-              <View>
-                <AppText weight="medium" className="text-body-sm text-ink">
-                  Сообщение клиенту — если хотите
-                </AppText>
-                <TextInput
-                  accessibilityLabel="Сообщение заказчику"
-                  accessibilityHint="Необязательно, до 1000 символов"
-                  value={value}
-                  onBlur={onBlur}
-                  onChangeText={onChange}
-                  placeholder="Например: делал такое, есть свой инструмент"
-                  placeholderTextColor={tc["muted-soft"]}
-                  multiline
-                  numberOfLines={4}
-                  maxLength={1000}
-                  textAlignVertical="top"
-                  className={`mt-2 min-h-24 border-b pb-2 text-body-md text-ink ${
-                    errors.message
-                      ? "border-error"
-                      : value
-                        ? "border-hairline-strong"
-                        : "border-hairline"
-                  }`}
-                  editable={!isBusy}
-                />
-                {errors.message && (
-                  <AppText
-                    accessibilityLiveRegion="polite"
-                    weight="medium"
-                    className="mt-2 text-caption text-error"
-                  >
-                    {errors.message.message}
-                  </AppText>
-                )}
-              </View>
-            )}
-          />
-        </View>
-      </View>
-
-      {limitReached && (
-        <View
-          accessibilityLiveRegion="polite"
-          className="mt-4 rounded-xl border border-hairline bg-canvas-soft p-3"
-        >
-          <AppText weight="semibold" className="text-body-sm text-ink">
-            Лимит откликов на сегодня исчерпан
-          </AppText>
-          <AppText className="mt-1 text-caption text-muted">
-            Вы отправили {responseLimit?.used ?? 5} из {responseLimit?.max ?? 5} откликов. Завтра в
-            00:00 (МСК) появятся новые.
-          </AppText>
-        </View>
-      )}
-      {submitError && !limitReached && (
-        <AppText
-          accessibilityLiveRegion="polite"
-          weight="medium"
-          className="mt-3 text-caption text-error"
-        >
-          {limitError
-            ? "Лимит откликов на сегодня исчерпан — попробуйте завтра."
-            : `Не удалось отправить отклик. ${submitError}`}
-        </AppText>
-      )}
-
-      {/* Кнопка отклика — акцентная (DECISION владельца 2026-09-02 «кнопка
-          цветнее»), контент белый через токен on-accent (DECISION 2026-09-03).
-          Цена по контрасту — в src/lib/colors.ts. */}
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel="Отправить отклик"
-        accessibilityHint="Цена, срок и контакты будут отправлены заказчику"
-        disabled={!canSubmit}
-        onPress={onSubmit}
-        className={`mt-4 h-12 flex-row items-center justify-center gap-2 rounded-xl ${
-          canSubmit ? "bg-accent active:opacity-85" : "bg-surface-3"
-        }`}
+    <View className="mt-8">
+      <InsetGroup
+        title="Ваш отклик"
+        footer={
+          isPickedMaster
+            ? "Клиент выбрал вас. Свяжитесь с ним по контактам в задании."
+            : "Клиент видит ваш отклик и свяжется сам, если выберет вас."
+        }
       >
-        {canSubmit ? <Check size={18} weight="bold" color={tc["on-accent"]} /> : null}
-        <AppText
-          weight="semibold"
-          className={`text-button ${canSubmit ? "text-on-accent" : "text-muted-soft"}`}
-        >
-          {limitReached ? "Лимит исчерпан" : isBusy ? "Отправляем…" : "Откликнуться"}
-        </AppText>
-      </Pressable>
+        <InsetRow
+          title={formatResponsePrice(myResponse)}
+          subtitle={[
+            myResponse.lead_time ? `Срок: ${myResponse.lead_time}` : "",
+            myResponse.message ?? "",
+          ]
+            .filter(Boolean)
+            .join(" · ")}
+          value={responseStatusLabel(myResponse.status)}
+          icon={
+            <SystemIcon
+              sf={isPickedMaster ? "checkmark.seal.fill" : "paperplane.fill"}
+              fallback={isPickedMaster ? CheckCircle : PaperPlaneTilt}
+              size={18}
+              weight="regular"
+              color={isPickedMaster ? tc.success : tc.accent}
+            />
+          }
+          last={!canWithdraw}
+        />
+        {canWithdraw ? (
+          <InsetRow
+            title={withdrawResponse.isPending ? "Отзываем…" : "Отозвать отклик"}
+            destructive
+            onPress={() => void onWithdrawPress()}
+            disabled={withdrawResponse.isPending}
+            last
+          />
+        ) : null}
+      </InsetGroup>
     </View>
   );
 }

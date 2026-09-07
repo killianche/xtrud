@@ -14,11 +14,11 @@
 //     открывает системную шторку выбора и возвращает результат через store;
 //   - один RPC search_masters считает всё на сервере (миграция 0158).
 
-import { FlashList } from "@shopify/flash-list";
+import { FlashList, type FlashListRef } from "@shopify/flash-list";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Briefcase, Calendar, MapPin, SquaresFour, Star, UsersThree } from "phosphor-react-native";
-import { useEffect, useMemo, useState } from "react";
-import { Animated, Pressable, ScrollView, View } from "react-native";
+import { type RefObject, useEffect, useMemo, useRef, useState } from "react";
+import { Animated, type FlatList, Pressable, ScrollView, View } from "react-native";
 import { AppText } from "@/components/AppText";
 import { CITIES, type CityId } from "@/components/CitySelector";
 import {
@@ -40,6 +40,7 @@ import {
 import { specialistsLabel } from "@/features/orders/plural-ru";
 import { describeQueryError } from "@/lib/describe-query-error";
 import { useTabBarSpace } from "@/lib/tab-bar-space";
+import { scrollViewToTop, useTabScrollResetCounter } from "@/lib/tab-scroll-reset";
 import { useDebouncedValue } from "@/lib/use-debounced-value";
 import { useThemeColors } from "@/lib/use-theme-color";
 import type { IconComponent } from "@/types/icon";
@@ -211,9 +212,17 @@ export default function SpecialistsScreen() {
   const list = useMemo(() => (data?.pages ?? []).flat(), [data]);
   const title = hasCategoryFilter ? categoryLabel : "Специалисты";
 
+  // Повторный тап по вкладке «Специалисты» — к началу списка.
+  const listRef = useRef<FlashListRef<MasterSearchResult>>(null);
+  const resetCounter = useTabScrollResetCounter("specialists");
+  useEffect(() => {
+    if (resetCounter > 0) scrollViewToTop(listRef as unknown as RefObject<FlatList | null>);
+  }, [resetCounter]);
+
   return (
     <View className="flex-1 bg-surface-page">
       <FlashList
+        ref={listRef}
         data={list}
         keyExtractor={(m) => m.user_id}
         contentContainerStyle={{ paddingTop: large.contentTop, paddingBottom: tabBarSpace }}

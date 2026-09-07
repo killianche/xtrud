@@ -14,11 +14,21 @@ import { useRealtimeNotifications } from "@/features/orders/use-realtime-notific
 import { useUnreadFeedCount } from "@/features/orders/use-unread-feed";
 import { useUnreadResponsesCount } from "@/features/orders/use-unread-responses";
 import { useColorScheme } from "@/hooks/use-color-scheme";
+import { triggerTabScrollReset } from "@/lib/tab-scroll-reset";
 import { useThemeColors } from "@/lib/use-theme-color";
 
 function badgeLabel(n: number): string | undefined {
   if (n <= 0) return undefined;
   return n > 99 ? "99+" : String(n);
+}
+
+/** Слушатель вкладки: повторный тап по уже активной — прокрутить её к началу. */
+function scrollToTopOnReselect(tabName: string) {
+  return ({ navigation }: { navigation: { isFocused: () => boolean } }) => ({
+    tabPress: () => {
+      if (navigation.isFocused()) triggerTabScrollReset(tabName);
+    },
+  });
 }
 
 export default function TabsLayout() {
@@ -96,8 +106,12 @@ export default function TabsLayout() {
   // не хватало ровно строки текста.
   //
   // Тап по активной вкладке сбрасывает её стек на корень средствами
-  // NativeTabs (disablePopToTop=false по умолчанию) — прежние listeners не
-  // нужны. Иконки — SF Symbols, цвет выбранной — фирменный акцент.
+  // NativeTabs (disablePopToTop=false по умолчанию). Прокрутка к началу —
+  // через наш счётчик (src/lib/tab-scroll-reset.ts): нативный поиск
+  // UIScrollView идёт по первому потомку, а у наших экранов первым стоит
+  // закреплённая шапка, поэтому системный scroll-to-top списка не находит
+  // (DECISION владельца 2026-09-07: «дважды нажал на вкладку — страница
+  // откручивается наверх»). Иконки — SF Symbols, выбранная — акцент.
   return (
     <NavThemeProvider value={navTheme}>
       <NativeTabs
@@ -107,13 +121,13 @@ export default function TabsLayout() {
         badgeBackgroundColor={tc.error}
         labelStyle={{ default: { color: tc.mute }, selected: { color: tc.accent } }}
       >
-        <NativeTabs.Trigger name="index">
+        <NativeTabs.Trigger name="index" listeners={scrollToTopOnReselect("index")}>
           <NativeTabs.Trigger.Icon sf={{ default: "house", selected: "house.fill" }} />
           <NativeTabs.Trigger.Label>Главная</NativeTabs.Trigger.Label>
         </NativeTabs.Trigger>
 
         {/* Видна всем: откликнуться может любой аккаунт. */}
-        <NativeTabs.Trigger name="find">
+        <NativeTabs.Trigger name="find" listeners={scrollToTopOnReselect("find")}>
           <NativeTabs.Trigger.Icon sf="magnifyingglass" />
           <NativeTabs.Trigger.Label>Найти задание</NativeTabs.Trigger.Label>
           {findBadge ? <NativeTabs.Trigger.Badge>{findBadge}</NativeTabs.Trigger.Badge> : null}
@@ -121,12 +135,12 @@ export default function TabsLayout() {
 
         {/* Каталог людей. Открыт всем, включая гостя: посмотреть, кто есть в
             республике, можно до регистрации — как и ленту заданий. */}
-        <NativeTabs.Trigger name="specialists">
+        <NativeTabs.Trigger name="specialists" listeners={scrollToTopOnReselect("specialists")}>
           <NativeTabs.Trigger.Icon sf={{ default: "person.2", selected: "person.2.fill" }} />
           <NativeTabs.Trigger.Label>Специалисты</NativeTabs.Trigger.Label>
         </NativeTabs.Trigger>
 
-        <NativeTabs.Trigger name="orders">
+        <NativeTabs.Trigger name="orders" listeners={scrollToTopOnReselect("orders")}>
           <NativeTabs.Trigger.Icon
             sf={{ default: "checkmark.circle", selected: "checkmark.circle.fill" }}
           />

@@ -21,11 +21,18 @@
 //
 // Эталон UX: Avito Услуги «лента» / Profi.ru «биржа заявок».
 
-import { FlashList } from "@shopify/flash-list";
+import { FlashList, type FlashListRef } from "@shopify/flash-list";
 import { useRouter } from "expo-router";
 import { MapPin, Sparkle, SquaresFour, Tray } from "phosphor-react-native";
-import { useEffect, useRef } from "react";
-import { ActivityIndicator, Animated, Pressable, ScrollView, View } from "react-native";
+import { type RefObject, useEffect, useRef } from "react";
+import {
+  ActivityIndicator,
+  Animated,
+  type FlatList,
+  Pressable,
+  ScrollView,
+  View,
+} from "react-native";
 import { AppText } from "@/components/AppText";
 import { OrderRow } from "@/components/OrderRow";
 import { OrderRowsSkeleton } from "@/components/OrderRowsSkeleton";
@@ -38,10 +45,12 @@ import {
   useOrdersSearchFiltersStore,
 } from "@/features/orders/orders-search-filters-store";
 import { useAllOpenOrders } from "@/features/orders/use-all-open-orders";
+import type { OrderWithRefs } from "@/features/orders/use-my-orders";
 import { useMyRespondedOrderIds } from "@/features/orders/use-my-responded-order-ids";
 import { useMarkFeedSeen } from "@/features/orders/use-unread-feed";
 import { describeQueryError } from "@/lib/describe-query-error";
 import { useTabBarSpace } from "@/lib/tab-bar-space";
+import { scrollViewToTop, useTabScrollResetCounter } from "@/lib/tab-scroll-reset";
 import { useThemeColor } from "@/lib/use-theme-color";
 
 const EMPTY_IDS: ReadonlySet<string> = new Set();
@@ -125,6 +134,13 @@ export default function FindScreen() {
   // Animated fade-in списка (UI_PATTERNS §3.7) — opacity 0→1 за 280ms когда
   // данные пришли. Skeleton → real list переход не должен быть «дёрганый».
   const opacity = useRef(new Animated.Value(0)).current;
+
+  // Повторный тап по вкладке «Найти задание» — к началу ленты.
+  const listRef = useRef<FlashListRef<OrderWithRefs>>(null);
+  const resetCounter = useTabScrollResetCounter("find");
+  useEffect(() => {
+    if (resetCounter > 0) scrollViewToTop(listRef as unknown as RefObject<FlatList | null>);
+  }, [resetCounter]);
   useEffect(() => {
     if (!isLoading && !error && displayedOrders.length > 0) {
       Animated.timing(opacity, {
@@ -229,6 +245,7 @@ export default function FindScreen() {
       ) : (
         <Animated.View style={{ opacity }} className="flex-1">
           <FlashList
+            ref={listRef}
             data={displayedOrders}
             extraData={myResponsesQ.data}
             keyExtractor={(order) => order.id}

@@ -7,8 +7,19 @@
  */
 
 import { useRouter } from "expo-router";
+import { CaretDown } from "phosphor-react-native";
 import { type RefObject, useEffect, useMemo, useRef, useState } from "react";
-import { Animated, type FlatList, type ScrollView, View } from "react-native";
+import {
+  Animated,
+  type FlatList,
+  LayoutAnimation,
+  Platform,
+  Pressable,
+  type ScrollView,
+  UIManager,
+  View,
+} from "react-native";
+import { AppText } from "@/components/AppText";
 import {
   InsetGroup,
   InsetRow,
@@ -18,20 +29,40 @@ import {
   useLargeTitle,
 } from "@/components/ui";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { SystemIcon } from "@/components/ui/SystemIcon";
 import { useCategoriesL1 } from "@/features/categories/use-categories-l1";
 import { useVisibleCategories } from "@/features/categories/use-visible-categories";
 import { getCategoryIcon } from "@/lib/category-icons";
+import { hapticSelection } from "@/lib/haptics";
 import { useTabBarSpace } from "@/lib/tab-bar-space";
 import { scrollViewToTop, useTabScrollResetCounter } from "@/lib/tab-scroll-reset";
 import { useThemeColors } from "@/lib/use-theme-color";
+
+if (Platform.OS === "android" && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
 
 export default function SpecialistsCategoriesScreen() {
   const router = useRouter();
   // Строки навигации в покое нет — стартовая высота 0, без прыжка (QA).
   const large = useLargeTitle(0);
   const tabBarSpace = useTabBarSpace();
-  const tc = useThemeColors(["ink", "on-accent"]);
+  const tc = useThemeColors(["ink", "on-accent", "mute"]);
   const [query, setQuery] = useState("");
+  // Раздел раскрывается по тапу — как DisclosureGroup в iOS (DECISION
+  // владельца 2026-09-07: «крупные категории большими, мелкие скрыты и
+  // раскрываются»). Поиск раскрывает совпавшие разделы сам.
+  const [open, setOpen] = useState<Set<string>>(() => new Set());
+  const toggle = (id: string) => {
+    hapticSelection();
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setOpen((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
   const l1 = useCategoriesL1();
   const categories = useVisibleCategories();
 
@@ -106,30 +137,68 @@ export default function SpecialistsCategoriesScreen() {
         ) : null}
         {sections.map(({ section, rows }) => {
           const SectionIcon = getCategoryIcon(section.icon);
+          const expanded = open.has(section.id) || query.trim().length > 0;
           return (
-            <InsetGroup key={section.id} title={section.name_ru}>
-              <InsetRow
-                title="Весь раздел"
-                subtitle={section.name_ru}
-                icon={<SectionIcon size={18} weight="bold" color={tc["on-accent"]} />}
-                iconAccent
-                navigates
-                onPress={() => openSection(section.id)}
-              />
-              {rows.map((c, i) => {
-                const Icon = getCategoryIcon(c.icon);
-                return (
-                  <InsetRow
-                    key={c.id}
-                    title={c.name_ru}
-                    icon={<Icon size={18} weight="bold" color={tc.ink} />}
-                    navigates
-                    onPress={() => openCategory(c.id)}
-                    last={i === rows.length - 1}
-                  />
-                );
-              })}
-            </InsetGroup>
+            <View key={section.id} className="mb-3 px-4">
+              <View className="overflow-hidden rounded-2xl bg-canvas">
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityState={{ expanded }}
+                  accessibilityLabel={`${section.name_ru}, ${rows.length} категорий`}
+                  onPress={() => toggle(section.id)}
+                  className="flex-row items-center gap-3 px-4 py-4 active:bg-canvas-soft"
+                >
+                  <View className="h-11 w-11 items-center justify-center rounded-xl bg-accent">
+                    <SectionIcon size={22} weight="bold" color={tc["on-accent"]} />
+                  </View>
+                  <View className="min-w-0 flex-1">
+                    <AppText weight="bold" className="text-ios-title2 text-ink" numberOfLines={2}>
+                      {section.name_ru}
+                    </AppText>
+                    <AppText className="mt-0.5 text-ios-footnote text-mute">
+                      {rows.length}{" "}
+                      {rows.length === 1
+                        ? "категория"
+                        : rows.length < 5
+                          ? "категории"
+                          : "категорий"}
+                    </AppText>
+                  </View>
+                  <View style={{ transform: [{ rotate: expanded ? "180deg" : "0deg" }] }}>
+                    <SystemIcon
+                      sf="chevron.down"
+                      fallback={CaretDown}
+                      size={16}
+                      weight="semibold"
+                      color={tc.mute}
+                    />
+                  </View>
+                </Pressable>
+                {expanded ? (
+                  <View className="border-t border-hairline">
+                    <InsetRow
+                      title="Весь раздел"
+                      subtitle={`Все специалисты: ${section.name_ru.toLowerCase()}`}
+                      navigates
+                      onPress={() => openSection(section.id)}
+                    />
+                    {rows.map((c, i) => {
+                      const Icon = getCategoryIcon(c.icon);
+                      return (
+                        <InsetRow
+                          key={c.id}
+                          title={c.name_ru}
+                          icon={<Icon size={18} weight="bold" color={tc.ink} />}
+                          navigates
+                          onPress={() => openCategory(c.id)}
+                          last={i === rows.length - 1}
+                        />
+                      );
+                    })}
+                  </View>
+                ) : null}
+              </View>
+            </View>
           );
         })}
       </Animated.ScrollView>

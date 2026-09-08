@@ -28,7 +28,9 @@
 | Аватары | [`src/lib/avatar.ts`](src/lib/avatar.ts): только реальное фото, иначе инициалы; любой DiceBear — legacy |
 | Mobile-first release | [`docs/MOBILE_RELEASE_STRATEGY.md`](docs/MOBILE_RELEASE_STRATEGY.md), [`CROSS_PLATFORM_RULES.md`](CROSS_PLATFORM_RULES.md) |
 | Web/mobile/backend и серверы | [`PROJECT_OPERATIONS.md`](PROJECT_OPERATIONS.md) |
-| Стек и внешние сервисы | [`docs/adr/0001-mobile-first-expo-and-beget-supabase.md`](docs/adr/0001-mobile-first-expo-and-beget-supabase.md), [`docs/EXTERNAL_DEPENDENCIES.md`](docs/EXTERNAL_DEPENDENCIES.md) |
+| Стек и внешние сервисы | [`docs/EXTERNAL_DEPENDENCIES.md`](docs/EXTERNAL_DEPENDENCIES.md), [`docs/adr/0001-mobile-first-expo-and-beget-supabase.md`](docs/adr/0001-mobile-first-expo-and-beget-supabase.md) |
+| Свой сервер вместо Supabase | [`docs/BACKEND_REWRITE_PLAN.md`](docs/BACKEND_REWRITE_PLAN.md), код — [`server/`](server/), клиент — [`src/lib/xtrud-client/`](src/lib/xtrud-client/) |
+| Админка (веб и в приложении) | [`docs/ADMIN_PANEL.md`](docs/ADMIN_PANEL.md) |
 | Setup и команды | [`README.md`](README.md), [`package.json`](package.json) |
 | Что делаем дальше | [`TASKS.md`](TASKS.md) — актуальный план работ |
 
@@ -38,14 +40,17 @@
 
 ## Непереговорные правила
 
-- Рабочий проект существует только в `/Users/ruslancherbizhev/Desktop/xtrud`.
-  Не создавай «актуальные копии» проекта в других каталогах.
-- Не коммить, не push, не deploy, не запускай EAS build/submit и не меняй
-  Supabase/VPS без явной команды владельца.
+- Рабочий проект существует только в `/root/projects/xtrud` на VDS (машина
+  владельца не используется — см. `PROJECT_OPERATIONS.md`). Не создавай
+  «актуальные копии» проекта в других каталогах.
+- Commit, push и сборка в TestFlight после зелёного гейта — обычная работа
+  (DECISION владельца 2026-09-04). Продуктовое и необратимое — удаление
+  данных, подача версии в App Store, смена модели продукта, DNS — только по
+  слову владельца.
 - Не отменяй и не перезаписывай чужой dirty worktree. Перед правкой проверь
   `git status --short`; stage — только явными путями или через `git add -p`.
-- VPS, App Store/EAS и Supabase — производные внешние состояния, не место для
-  редактирования исходников и не источник для обратного копирования в Git.
+- Сервер Beget, App Store и база — производные внешние состояния, не место
+  для редактирования исходников и не источник обратного копирования в Git.
 - Для backend сначала нужен live read-only снимок и backup: цепочка миграций в
   репозитории пока не доказана как полный снимок production.
 - Никогда не угадывай факты, значения конфигурации или внешнее состояние:

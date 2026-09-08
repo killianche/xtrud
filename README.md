@@ -6,8 +6,11 @@ web сохраняется как supporting surface для legal/recovery/deep 
 
 ## Стек
 
-- **Frontend:** Expo SDK 54 + Expo Router v6 — единая кодовая база для web / iOS / Android
-- **Backend:** Supabase (Postgres + Auth + Storage)
+- **Frontend:** Expo SDK 57 + Expo Router — единая кодовая база для iOS (главная платформа), Android и supporting web
+- **Backend:** свой сервер `xtrud-api` на Beget (Node 22 + Fastify), PostgreSQL 17
+  с RLS, PostgREST как движок запросов, imgproxy для превью. Supabase как
+  продукт не используется с 2026-09-08 — см. [docs/BACKEND_REWRITE_PLAN.md](docs/BACKEND_REWRITE_PLAN.md)
+- **Клиент данных:** свой `src/lib/xtrud-client` (сессия, запросы, файлы), модуль `@/lib/supabase` — исторически то же имя
 - **Стили:** NativeWind v4 (Tailwind для RN+web), тёмная тема через class strategy
 - **State:** Zustand (клиент) + TanStack Query (сервер)
 - **Формы:** React Hook Form + Zod
@@ -15,9 +18,8 @@ web сохраняется как supporting surface для legal/recovery/deep 
 - **Иконки:** Phosphor (`phosphor-react-native`); Lucide — legacy, в новом коде не использовать
 - **Отслеживание сбоев:** Sentry (`src/lib/sentry.ts`, активен при `EXPO_PUBLIC_SENTRY_DSN`)
 - **Lint/format:** Biome 2.x
-- **Релизы:** iOS 1.0.1 опубликована через EAS/App Store; Android развивается
-  в общей кодовой базе, но preview/device gate ещё не подтверждён; web →
-  защищённый `deploy/web.sh` только для supporting surface.
+- **Сборки:** GitHub Actions (`.github/workflows/ios.yml`, macos-26, `eas build --local`) → App Store Connect → TestFlight
+- **Релизы:** в App Store 1.0.2; версия 1.0.3 — в TestFlight (сборки 28+); Android заморожен до готовности iOS
 
 ## Документация
 
@@ -26,7 +28,9 @@ web сохраняется как supporting surface для legal/recovery/deep 
   версии и release-контракт
 - [STATUS.md](STATUS.md) — текущее состояние (снимок вверху), история решений
 - [PROJECT_OPERATIONS.md](PROJECT_OPERATIONS.md) — источники истины, серверы, сборки, безопасное удаление и deploy-runbook
-- [docs/SUPABASE_BEGET_MIGRATION.md](docs/SUPABASE_BEGET_MIGRATION.md) — полный перенос Cloud backend на отдельный Beget VPS + S3
+- [docs/BACKEND_REWRITE_PLAN.md](docs/BACKEND_REWRITE_PLAN.md) — свой сервер вместо Supabase: архитектура, этапы, откат
+- [docs/ADMIN_PANEL.md](docs/ADMIN_PANEL.md) — веб-панель и админ внутри приложения
+- [docs/SUPABASE_BEGET_MIGRATION.md](docs/SUPABASE_BEGET_MIGRATION.md) — история переезда с облака на Beget (архив)
 - [docs/SIMPLE_FLOW.md](docs/SIMPLE_FLOW.md) — текущая модель (classifieds: отклик + звонок/WhatsApp, без чата/lifecycle)
 - [PROJECT_MAP.md](PROJECT_MAP.md) — legacy-концепт, не источник текущего поведения
 - [DESIGN.md](DESIGN.md) — дизайн-система: токены, цвета, типографика

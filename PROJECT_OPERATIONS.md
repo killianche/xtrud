@@ -2,39 +2,41 @@
 
 ## TL;DR
 
-xtrud разрабатывается **только** в `/Users/ruslancherbizhev/Desktop/xtrud` и
-хранится в GitHub `killianche/xtrud`. Главный продукт — mobile: iOS выпускается
+xtrud разрабатывается **только** на VDS в `/root/projects/xtrud` и хранится в
+GitHub `killianche/xtrud` (машина владельца в работе не участвует). Главный продукт — mobile: iOS выпускается
 первым, Android сохраняет общий контракт и проходит ранние preview/device gates.
 Web на VPS — supporting surface и производная статика; store binaries,
 локальные `ios/`, `android/`, `dist/` и `node_modules/` — производные или
-пересоздаваемые каталоги. Backend живёт в Supabase, но текущая папка миграций не
-является полным снимком production: до любых изменений БД нужен read-only export
-реальной схемы и backup.
+пересоздаваемые каталоги. Backend — свой сервер `xtrud-api` на Beget рядом с PostgreSQL; папка миграций
+не является полным снимком production: до любых изменений БД нужен read-only
+снимок схемы и backup.
 
-Актуальность фактов в этом документе проверена 2026-08-25. История продуктовых
+Актуальность фактов в этом документе проверена 2026-09-08. История продуктовых
 решений остаётся в `STATUS.md`; фактическая модель продукта — в `AGENTS.md` /
 `CLAUDE.md` и `docs/SIMPLE_FLOW.md`.
 
 ## 1. Карта поставки
 
 ```text
-/Users/ruslancherbizhev/Desktop/xtrud
+/root/projects/xtrud (VDS)
   │
-  ├─ Git main -> git@github.com:killianche/xtrud.git
-  │    └─ GitHub Actions: npm ci, typecheck, tokens, Biome, tests, web export
+  ├─ Git master -> git@github.com:killianche/xtrud.git (и ветка main)
+  │    └─ GitHub Actions ios.yml (macos-26): eas build --local -> App Store Connect -> TestFlight
   │
-  ├─ app/ + src/ + assets/ + public/
-  │    ├─ EAS Build
-  │    │    ├─ iOS -> App Store (1.0.1, build 11; primary release)
-  │    │    └─ Android -> shared code; preview/device gate ещё не подтверждён
-  │    └─ supporting web export -> dist/
-  │         └─ deploy/web.sh -> 62.113.106.30:/var/www/xtrud
-  │              ├─ https://xtrud.pro
-  │              └─ https://xtrud.alanbani.ru
-  │
-  └─ Backend
-       └─ https://api.xtrud.pro -> Beget VPS, self-hosted Supabase Docker
-            (облачный проект Supabase не используется; DECISION владельца 2026-09-06)
+  ├─ app/ + src/ + assets/            — приложение (Expo SDK 57)
+  ├─ server/                          — xtrud-api (Node 22 + Fastify)
+  ├─ admin/                           — веб-панель (Vite + React)
+  └─ supabase/migrations/             — схема и правила доступа PostgreSQL
+
+Beget VDS 217.114.8.196
+  ├─ nginx: api.xtrud.pro
+  │    ├─ /v2/**              -> xtrud-api :8100 (вход, данные, файлы, RPC)
+  │    ├─ /files/**           -> /opt/xtrud/files (публичные бакеты, nosniff)
+  │    ├─ /render/<w>/<q>/**  -> xtrud-imgproxy :8101 (превью, кэш 7 дней)
+  │    └─ /rest/v1, /auth/v1  -> старый шлюз Supabase (только для сборок ≤ 59)
+  ├─ nginx: xtrud.pro         -> /var/www/xtrud (сайт) и /admin (панель)
+  └─ docker: supabase-db (PostgreSQL 17), supabase-rest (PostgREST),
+       xtrud-api, xtrud-imgproxy + контейнеры Supabase на контрольный период
 ```
 
 VPS `85.198.86.41` **не относится к xtrud**: там размещены другие проекты.

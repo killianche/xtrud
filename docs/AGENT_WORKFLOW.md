@@ -1,5 +1,15 @@
 # Agent workflow — источники, Git и версии
 
+
+## Контур проверок (2026-09-08)
+
+- Приложение: `npm run quality:check` в корне (типы, Biome, тесты, версии,
+  токены, ассеты).
+- Сервер `server/`: `npm run check` (типы + тесты) внутри каталога.
+- Панель `admin/`: `npx tsc --noEmit` и `npm run build` внутри каталога.
+- Изменения в базе: черновик в `supabase/migration-drafts/`, применение на
+  Beget через `docker cp` + `psql -f`, затем проверка результата запросом.
+
 ## TL;DR
 
 Исходники xtrud живут в одном локальном Git-репозитории и в `origin/main`.

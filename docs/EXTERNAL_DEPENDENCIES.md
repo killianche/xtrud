@@ -5,23 +5,23 @@
 **Имя для запроса:** «от чего зависит xtrud», «что оплачивать», «что останется
 после Beget».
 
-Перенос backend на Beget убирает Supabase Cloud как production hosting, но не
-делает mobile-продукт полностью автономным. Этот реестр отделяет подтверждённые
-зависимости от `UNKNOWN`; секреты и цены здесь не хранятся.
+С 2026-09-08 приложение работает через собственный сервер `xtrud-api` на
+Beget: Supabase как продукт из цепочки убран (остаются его открытые
+компоненты — PostgreSQL и PostgREST — на нашей машине). Реестр отделяет
+подтверждённые зависимости от `UNKNOWN`; секреты и цены здесь не хранятся.
 
-| Зависимость | Назначение | Сейчас подтверждено | После Beget | Fallback / gate |
-|---|---|---|---|---|
-| GitHub | канонический Git `killianche/xtrud`, CI | подключён `origin/main` | остаётся | локальный clone не заменяет offsite Git; access/CI проверяются перед release |
-| Apple / App Store Connect | iOS signing, TestFlight, публикация | iOS 1.0.1 build 11 по ledger | остаётся обязательно | опубликованный binary не откатывается; feature-off или новый build |
-| Expo EAS | текущая remote native build/submit orchestration | EAS project и profiles заданы | остаётся до отдельного решения | локальный iOS/Android production build fallback пока `UNKNOWN`, его нельзя обещать |
-| Supabase Cloud | не используется с 2026-09-06 | сервер и БД шлют только в Beget (0165); облачный проект пока существует | удалить проект в кабинете Supabase — действие владельца | перед удалением: на Beget есть своя ночная копия (`/opt/xtrud/backup.sh`) |
-| Beget VPS | production self-hosted Supabase | `api.xtrud.pro`, стек работает с 2026-08-31 | основной backend host | exact-stack preflight; существующий `62.113.106.30` для backend NO-GO |
-| Beget S3 app | Storage object backend | bucket/endpoint/credentials отсутствуют | обязателен | reviewed S3 Adapter + empty-bucket upload/download/checksum smoke |
-| Beget S3 backup | DB/Storage backup и PITR | bucket/credentials отсутствуют | обязателен и отдельный от app | versioning/retention + real point-in-time restore |
-| DNS `xtrud.pro` | `api`, AASA, recovery/legal routes | зона/оператор live не перепроверялись в этой работе | остаётся | scoped DNS access и cutover/rollback evidence |
-| Unisender Go API | password recovery email | function использует HTTPS API и protected key | остаётся, пока не принято другое решение | provider/account/payment/live delivery — проверить перед backend cutover |
-| Expo Push / APNs / FCM | push transport | server function существует; mobile registration отключена в v1 | `UNKNOWN` до отдельного push decision | не заявлять push как working; provider credentials и device E2E обязательны |
-| Sentry | optional crash reporting | SDK есть, без DSN no-op | optional | собственный `client_errors` не доказывает полноценный monitoring; data policy до включения |
+| Зависимость | Назначение | Состояние 2026-09-08 | Что если пропадёт |
+|---|---|---|---|
+| Apple / App Store Connect | подпись, TestFlight, публикация, push (APNs) | обязательна; в магазине 1.0.2, в TestFlight 1.0.3 | заменить нечем: это условие существования iOS-приложения |
+| GitHub | канонический Git и сборки iOS (macos-26) | обязателен; российской замены с macOS нет | только свой Mac для сборок |
+| Beget VDS 217.114.8.196 | всё production: база, API, файлы, сайт, панель | основной хост, диск 48 ГБ (занято 23) | перенос на другой VDS: образы и дампы наши |
+| Beget Object Storage (S3) | хранение файлов и будущее видео | ⏸ владелец создал хранилище 2026-09-08, ключи в работе | текущий режим — файлы на диске VDS |
+| Expo Push (exp.host) | доставка push, пока нет ключа APNs | остаётся временно | после APNs-ключа сервер шлёт в Apple напрямую, зависимость уходит |
+| SMS.ru | код по SMS | ⏸ не используется: вход по телефону и паролю | понадобится, если владелец включит самостоятельное восстановление |
+| Let's Encrypt | сертификат api.xtrud.pro и xtrud.pro | автопродление certbot | любой другой центр сертификации |
+| images.weserv.nl, flagcdn.com, Unisender | ресайз фото, флаги, письма | ❌ убраны 2026-09-08 | не требуется |
+| Supabase Cloud | не используется | облачный проект существует, но в цепочке его нет | удалить в кабинете — действие владельца |
+| Sentry | необязательный сбор сбоев | выключен (нет DSN); свой журнал `client_errors` работает | не требуется |
 
 ## Правила
 

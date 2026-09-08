@@ -694,7 +694,7 @@ className={`h-10 items-center justify-center rounded-pill border px-4 ${
 **Поведение:**
 - Тап чек-бокса L3 → услуга добавляется в master_services (insert) с авто-ценой = `categories_l3.avg_check_rub * 0.7`. Снятие → удаление (delete).
 - Тап на price → inline-edit (TextInput).
-- Тап на ⋮ возле L2 header → BottomSheet «Удалить категорию?» (cascade удалит и L3 услуги этой L2).
+- Тап на ⋮ возле L2 header → системный лист подтверждения «Удалить категорию?» (cascade удалит и L3 услуги этой L2).
 - Footer «+ Своя услуга» в каждой секции → инпут для кастомного названия + цена.
 - Footer «+ Добавить категорию» открывает PickerSheet с доступными L2 (минус уже добавленные, лимит 5).
 

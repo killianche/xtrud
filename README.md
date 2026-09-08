@@ -24,6 +24,7 @@ web сохраняется как supporting surface для legal/recovery/deep 
 ## Документация
 
 - [AGENTS.md](AGENTS.md) — единая короткая точка входа для любого AI-агента
+- [docs/ONBOARDING_AGENT.md](docs/ONBOARDING_AGENT.md) — что знать новому агенту в первый час
 - [docs/AGENT_WORKFLOW.md](docs/AGENT_WORKFLOW.md) — приоритет источников, Git,
   версии и release-контракт
 - [STATUS.md](STATUS.md) — текущее состояние (снимок вверху), история решений

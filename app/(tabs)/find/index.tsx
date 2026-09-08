@@ -5,9 +5,9 @@
 // задание» (редизайн главной + нижней навигации, фидбэк владельца): реальный
 // Tabs.Screen вместо кастомного Pressable, без ручного mutex-подсвечивания.
 //
-// Показываются ВСЕ open-orders сайта. Фильтры — в системной шторке
-// /find/filters (кнопка напротив заголовка), значения в Zustand-сторе
-// useOrdersSearchFiltersStore, чтобы переживать переходы между шторками.
+// Показываются ВСЕ open-orders сайта. Напротив заголовка две кнопки —
+// «Категория» и «Место», каждая открывает свою системную шторку выбора;
+// значения в Zustand-сторе useOrdersSearchFiltersStore.
 //
 // **Это таб (4-й таб нижней панели для мастера),** не detail-экран. Поэтому:
 //   - НЕ скрываем TabBar (`useTabBarVisibility` НЕ вызываем).
@@ -22,7 +22,7 @@
 
 import { FlashList, type FlashListRef } from "@shopify/flash-list";
 import { useRouter } from "expo-router";
-import { SlidersHorizontal, Sparkle, Tray } from "phosphor-react-native";
+import { MapPin, SlidersHorizontal, Sparkle, Tray } from "phosphor-react-native";
 import { type RefObject, useEffect, useRef } from "react";
 import { ActivityIndicator, Animated, type FlatList, Pressable, View } from "react-native";
 import { AppText } from "@/components/AppText";
@@ -61,7 +61,7 @@ export default function FindScreen() {
   // active_role нужен чтобы решить, показывать ли entry «Мои отклики».
   // Кнопка имеет смысл только для мастера: у клиента откликов не бывает.
 
-  // Фильтры — из Zustand-стора (общие с /find/filters).
+  // Фильтры — из Zustand-стора (общие со шторками выбора).
   // l1Id удалён 2026-05-15 (фидбэк user: убрать «Разделы» из фильтров,
   // оставить только L2 категории).
   const filters = useOrdersSearchFiltersStore();
@@ -78,7 +78,7 @@ export default function FindScreen() {
   // master_categories. Поэтому сам переход на экран никогда не меняет фильтры.
   //
   // Новое поведение: показываем ВСЕ open-orders по умолчанию. Если мастер
-  // хочет отфильтровать — нажимает «Фильтры» и сам выбирает категории
+  // хочет отфильтровать — нажимает «Категория» и сам выбирает категории
   // (там можно одним тапом «применить мои категории» — отдельная задача).
 
   const effectiveL2Ids = l2Ids.length > 0 ? l2Ids : null;
@@ -136,29 +136,43 @@ export default function FindScreen() {
     }
   }, [isLoading, error, displayedOrders.length, opacity]);
 
-  // Заголовок и одна кнопка «Фильтры» напротив него — как кнопка фильтра в
-  // строке заголовка у Apple (DECISION владельца 2026-09-07: «убрать чипы,
-  // одна большая кнопка фильтров справа от заголовка»). Активные фильтры —
-  // счётчик на кнопке и подпись под заголовком.
+  // Две кнопки напротив заголовка: категория и место (DECISION владельца
+  // 2026-09-08: «фильтр — только категории, геолокацию отдельной кнопкой
+  // рядом»). Каждая открывает свою шторку выбора; активная — с оттенком.
   const header = (
     <View className="px-5 pt-3 pb-4">
       <View className="flex-row items-center justify-between">
         <AppText weight="bold" className="text-ios-large-title text-ink">
           Задания
         </AppText>
-        <NavCircleButton
-          label={hasActiveFilters ? `Фильтры, выбрано ${activeCount}` : "Фильтры"}
-          onPress={() => router.push("/find/filters" as never)}
-          active={hasActiveFilters}
-        >
-          <SystemIcon
-            sf="line.3.horizontal.decrease"
-            fallback={SlidersHorizontal}
-            size={20}
-            weight="semibold"
-            color={hasActiveFilters ? accentOn : inkColor}
-          />
-        </NavCircleButton>
+        <View className="flex-row items-center gap-2">
+          <NavCircleButton
+            label={labels.categoryActive ? `Категория: ${labels.category}` : "Категория"}
+            onPress={() => router.push("/find/category-select" as never)}
+            active={labels.categoryActive}
+          >
+            <SystemIcon
+              sf="line.3.horizontal.decrease"
+              fallback={SlidersHorizontal}
+              size={20}
+              weight="semibold"
+              color={labels.categoryActive ? accentOn : inkColor}
+            />
+          </NavCircleButton>
+          <NavCircleButton
+            label={labels.locationActive ? `Место: ${labels.location}` : "Место"}
+            onPress={() => router.push("/find/location-select" as never)}
+            active={labels.locationActive}
+          >
+            <SystemIcon
+              sf="mappin.and.ellipse"
+              fallback={MapPin}
+              size={20}
+              weight="semibold"
+              color={labels.locationActive ? accentOn : inkColor}
+            />
+          </NavCircleButton>
+        </View>
       </View>
       {hasActiveFilters ? (
         <AppText className="mt-1 text-ios-subheadline text-mute" numberOfLines={1}>

@@ -10,18 +10,18 @@
 // Как устроено:
 //   - параметры маршрута `l1` (раздел) / `l2` (категория) задают фильтр при
 //     входе с главной; тогда название категории стоит в строке навигации;
-//   - кнопка «Фильтры» в строке навигации открывает шторку
-//     /specialists/filters (категория, город, сортировка) — тот же паттерн,
-//     что у ленты заданий; значения в общем сторе;
+//   - три круглые кнопки в строке навигации: категория, город, сортировка —
+//     каждая открывает свою системную шторку; значения в общем сторе;
 //   - один RPC search_masters считает всё на сервере (миграция 0158).
 
 import { FlashList } from "@shopify/flash-list";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { SlidersHorizontal, Star, UsersThree } from "phosphor-react-native";
+import { MapPin, SlidersHorizontal, SortAscending, Star, UsersThree } from "phosphor-react-native";
 import { useEffect, useMemo, useState } from "react";
 import { Animated, Pressable, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
+import { CITIES } from "@/components/CitySelector";
 import {
   Avatar,
   LargeTitleBar,
@@ -34,7 +34,7 @@ import { useCategoryFilterPickerStore } from "@/features/categories/category-fil
 import { useCategoriesL1 } from "@/features/categories/use-categories-l1";
 import { useVisibleCategories } from "@/features/categories/use-visible-categories";
 import {
-  countSpecialistsFilters,
+  SORT_LABEL,
   useSpecialistsFiltersStore,
 } from "@/features/master-view/specialists-filters-store";
 import {
@@ -148,7 +148,6 @@ export function SpecialistsListScreen() {
   const setCity = useSpecialistsFiltersStore((s) => s.setCity);
   const setSort = useSpecialistsFiltersStore((s) => s.setSort);
   const clearFilters = useSpecialistsFiltersStore((s) => s.clearAll);
-  const activeFilters = useSpecialistsFiltersStore(countSpecialistsFilters);
   const [query, setQuery] = useState("");
   useEffect(() => {
     const nextL1 = first(params.l1);
@@ -188,6 +187,7 @@ export function SpecialistsListScreen() {
     return "Категория";
   }, [l1Id, l2Id, categories.data, sections.data]);
   const hasCategoryFilter = !!(l1Id || l2Id);
+  const cityLabel = CITIES.find((c) => c.id === cityId)?.name ?? "Город";
 
   // Поиск не дёргает сервер на каждую букву: 250 мс.
   const debounced = useDebouncedValue(query.trim(), 250);
@@ -276,7 +276,6 @@ export function SpecialistsListScreen() {
                 setQuery("");
                 clearFilters();
               }}
-              onCreateTask={() => router.push("/orders/new" as never)}
             />
           )
         }
@@ -287,16 +286,39 @@ export function SpecialistsListScreen() {
         compactTitleOpacity={large.compactTitleOpacity}
         onLayoutHeight={large.setBarHeight}
         onBack={() => router.back()}
-        // Одна кнопка «Фильтры» в строке навигации — как на «Заданиях»
-        // (владелец, 2026-09-07: «на специалистах фильтры того же типа»).
+        // Три кнопки: категория, город, сортировка — каждая открывает свою
+        // шторку (DECISION владельца 2026-09-08: «фильтр — только категории,
+        // геолокацию отдельной кнопкой рядом»).
         actions={[
           {
-            label: activeFilters > 0 ? `Фильтры, выбрано ${activeFilters}` : "Фильтры",
+            label: hasCategoryFilter ? `Категория: ${categoryLabel}` : "Категория",
             sf: "line.3.horizontal.decrease",
             Icon: SlidersHorizontal,
             iconOnly: true,
-            active: activeFilters > 0,
-            onPress: () => router.push("/specialists/filters" as never),
+            active: hasCategoryFilter,
+            onPress: () =>
+              router.push({
+                pathname: "/specialists/category-select",
+                params: { l1: l1Id ?? "", l2: l2Id ?? "" },
+              } as never),
+          },
+          {
+            label: cityId !== "all" ? `Город: ${cityLabel}` : "Город",
+            sf: "mappin.and.ellipse",
+            Icon: MapPin,
+            iconOnly: true,
+            active: cityId !== "all",
+            onPress: () =>
+              router.push({ pathname: "/category/city-select", params: { cityId } } as never),
+          },
+          {
+            label: sort === "rating" ? "Сортировка" : `Сортировка: ${SORT_LABEL[sort]}`,
+            sf: "arrow.up.arrow.down",
+            Icon: SortAscending,
+            iconOnly: true,
+            active: sort !== "rating",
+            onPress: () =>
+              router.push({ pathname: "/category/sort-select", params: { sortBy: sort } } as never),
           },
         ]}
       />
@@ -327,47 +349,32 @@ function EmptyBlock({
   hasQuery,
   accent,
   onReset,
-  onCreateTask,
 }: {
   hasQuery: boolean;
   accent: string;
   onReset: () => void;
-  onCreateTask: () => void;
 }) {
+  // Пусто — значит пусто: одна строка и одно действие (DECISION владельца
+  // 2026-09-08: «просто напиши, что не нашли, и кнопку — без лишних текстов»).
   return (
-    <View className="mt-10 items-center px-8">
-      <View className="h-20 w-20 items-center justify-center rounded-full bg-accent-soft">
-        <UsersThree size={36} weight="bold" color={accent} />
+    <View className="mt-12 items-center px-8">
+      <View className="h-16 w-16 items-center justify-center rounded-full bg-accent-soft">
+        <UsersThree size={30} weight="bold" color={accent} />
       </View>
-      <AppText weight="bold" className="mt-6 text-center text-display-sm text-ink">
-        {hasQuery ? "Никого не нашли" : "Специалистов пока нет"}
-      </AppText>
-      <AppText className="mt-2 text-center text-body-md text-body">
-        {hasQuery
-          ? "Попробуйте другое слово или снимите фильтры. Или опишите задачу — она попадёт в общую ленту, и вам ответят."
-          : "Здесь появятся исполнители, когда заполнят профиль."}
+      <AppText weight="semibold" className="mt-5 text-center text-ios-title2 text-ink">
+        {hasQuery ? "Никого не нашли" : "Здесь пока никого нет"}
       </AppText>
       {hasQuery ? (
-        <View className="mt-6 flex-row gap-3">
-          <Pressable
-            accessibilityRole="button"
-            onPress={onReset}
-            className="min-h-12 items-center justify-center rounded-pill border border-hairline-strong px-5 active:opacity-60"
-          >
-            <AppText weight="semibold" className="text-body-md text-ink">
-              Сбросить
-            </AppText>
-          </Pressable>
-          <Pressable
-            accessibilityRole="button"
-            onPress={onCreateTask}
-            className="min-h-12 items-center justify-center rounded-pill bg-accent px-5 active:opacity-85"
-          >
-            <AppText weight="semibold" className="text-body-md text-on-accent">
-              Описать задачу
-            </AppText>
-          </Pressable>
-        </View>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Сбросить фильтры и поиск"
+          onPress={onReset}
+          className="mt-6 min-h-12 items-center justify-center rounded-pill border border-hairline-strong px-6 active:opacity-60"
+        >
+          <AppText weight="semibold" className="text-body-md text-ink">
+            Сбросить фильтры
+          </AppText>
+        </Pressable>
       ) : null}
     </View>
   );

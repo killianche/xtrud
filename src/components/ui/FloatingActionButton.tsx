@@ -25,8 +25,8 @@ import type { IconComponent } from "@/types/icon";
 import { type SFSymbol, SystemIcon } from "./SystemIcon";
 
 const SIZE = 56;
-/** Отступ кнопки от нижнего меню. */
-const GAP = 16;
+/** Зазор между кнопкой и нижним меню (владелец 2026-09-08: «ближе к меню»). */
+const GAP = 10;
 /** Сколько места снизу резервировать списку под этой кнопкой: передавать в
  *  `useTabBarSpace(FAB_LIST_SPACE)`, иначе кнопка ляжет на последнюю карточку. */
 export const FAB_LIST_SPACE = GAP + SIZE + 12;

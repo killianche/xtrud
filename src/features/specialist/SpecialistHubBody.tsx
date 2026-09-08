@@ -39,7 +39,7 @@ export function SpecialistHubBody({ userId }: { userId: string }) {
   const setShown = useSetShownInCatalog(userId);
   const portfolio = useMasterPortfolio(userId ?? null);
   const areas = useMasterServiceAreas(userId ?? null);
-  const tc = useThemeColors(["ink", "accent", "on-accent"]);
+  const tc = useThemeColors(["ink", "accent", "on-accent", "success", "warning", "error"]);
 
   const m = profile.data;
   const categoryNames = (categories.data ?? [])
@@ -72,50 +72,88 @@ export function SpecialistHubBody({ userId }: { userId: string }) {
   // галочку «Показывать меня среди специалистов».
   const canBeShown = m?.status === "active" && !m?.is_hidden_from_search;
   const shown = !m?.hidden_by_owner;
-  const visible = canBeShown && shown;
+
+  // Статус профиля одним понятием — человек должен видеть, показывают его в
+  // каталоге или нет и почему (DECISION владельца 2026-09-08).
+  const status: {
+    label: string;
+    hint: string;
+    tone: "ok" | "warn" | "error";
+  } = (() => {
+    if (user?.status === "banned" || user?.status === "deleted") {
+      return {
+        label: "Заблокирован",
+        hint: "Аккаунт заблокирован администратором. Напишите в поддержку.",
+        tone: "error",
+      };
+    }
+    if (m?.status === "suspended") {
+      return {
+        label: "Скрыт администратором",
+        hint: "Профиль убран из каталога модерацией. Напишите в поддержку.",
+        tone: "error",
+      };
+    }
+    if (!canBeShown) {
+      return {
+        label: "Нет категории",
+        hint: "Выберите хотя бы одну категорию — и профиль появится в каталоге.",
+        tone: "warn",
+      };
+    }
+    if (!shown) {
+      return {
+        label: "Скрыт вами",
+        hint: "Профиль не показывается в каталоге, но открывается по прямой ссылке.",
+        tone: "warn",
+      };
+    }
+    return {
+      label: "В каталоге",
+      hint: "Клиенты находят вас во вкладке «Специалисты».",
+      tone: "ok",
+    };
+  })();
+  const statusColor =
+    status.tone === "ok" ? tc.success : status.tone === "warn" ? tc.warning : tc.error;
   const verificationValue = VERIFICATION_LABEL[verification.data?.status ?? "none"];
   const rating = m?.rating_overall_count
     ? `${Number(m.rating_overall_avg ?? 0).toFixed(1)} · ${m.rating_overall_count}`
     : "Пока нет";
 
-  const statusText = visible
-    ? "Профиль виден в каталоге. Чем полнее он заполнен, тем чаще к вам обращаются."
-    : canBeShown
-      ? "Вы скрыли профиль из каталога. Включите «Показывать меня среди специалистов», чтобы вас находили."
-      : "Выберите хотя бы одну категорию — и профиль появится в каталоге.";
-
   return (
     <>
-      <View className="mb-5 px-5">
-        <AppText className="text-ios-subheadline text-mute">{statusText}</AppText>
-      </View>
       <View className="mb-7 flex-row items-center gap-4 px-5">
         <Avatar url={user?.avatar_url} name={user?.first_name} seed={userId} size="lg" />
         <View className="min-w-0 flex-1">
           <AppText weight="semibold" className="text-ios-title2 text-ink" numberOfLines={1}>
             {user?.first_name ?? "Специалист"}
           </AppText>
-          <AppText className="mt-0.5 text-ios-subheadline text-mute">
-            {visible ? "В каталоге" : "Скрыт из каталога"}
-          </AppText>
+          <View className="mt-1 flex-row items-center gap-1.5">
+            <View className="h-2 w-2 rounded-full" style={{ backgroundColor: statusColor }} />
+            <AppText className="text-ios-subheadline text-mute" numberOfLines={1}>
+              {status.label}
+            </AppText>
+          </View>
         </View>
       </View>
 
-      {canBeShown ? (
-        <InsetGroup
-          footer={
-            shown
-              ? "Клиенты находят вас во вкладке «Специалисты»."
-              : "Профиль не показывается в каталоге, но открывается по ссылке."
+      <InsetGroup title="Видимость" footer={status.hint}>
+        <InsetRow
+          title="Статус"
+          value={status.label}
+          icon={
+            <View className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: statusColor }} />
           }
-        >
-          <InsetRow
-            title="Показывать меня среди специалистов"
-            toggle={{ value: shown, onChange: (next) => setShown.mutate(next) }}
-            last
-          />
-        </InsetGroup>
-      ) : null}
+        />
+        <InsetRow
+          title="Показывать среди специалистов"
+          subtitle={canBeShown ? undefined : "Доступно после выбора категории"}
+          toggle={{ value: canBeShown && shown, onChange: (next) => setShown.mutate(next) }}
+          disabled={!canBeShown}
+          last
+        />
+      </InsetGroup>
 
       <InsetGroup title="Профиль">
         <InsetRow

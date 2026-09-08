@@ -235,3 +235,28 @@ device QA на реальном устройстве, и только затем
   значений нет, только имена переменных и тестовые заглушки.
 - Перед запуском сценария на VDS обязателен зелёный `npm run release:check`
   и поднятый `buildNumber` в `app.json` (гейт версий выполняется и на раннере).
+
+## Push-уведомления: подготовка (2026-09-08)
+
+Сделано без участия владельца, через App Store Connect API:
+
+- Идентификатору `com.xtrud.app` включена возможность `PUSH_NOTIFICATIONS`
+  (`POST /v1/bundleIdCapabilities`). Проверка:
+  `GET /v1/bundleIds?filter[identifier]=com.xtrud.app&include=bundleIdCapabilities`.
+- Изменение возможности инвалидирует все профили подписи, поэтому создан
+  новый: `xtrud AppStore push 2026-09-08` (`POST /v1/profiles`,
+  `IOS_APP_STORE`, сертификат `IOS_DISTRIBUTION`). Внутри профиля
+  `aps-environment = production` — проверено `strings`.
+- Профиль лежит на VDS `/root/.config/xtrud/ios-signing/profile.mobileprovision`
+  (0600) и загружен в секрет репозитория `IOS_PROFILE_BASE64`. Следующая
+  сборка подписывается им автоматически.
+
+Осталось от владельца: ключ APNs (`.p8`), его Key ID и Team ID. Создание —
+developer.apple.com → Certificates, Identifiers & Profiles → Keys → «+» →
+имя, галочка «Apple Push Notifications service (APNs)» → Continue →
+Register → Download (файл скачивается один раз).
+
+После ключа в работе остаётся: вернуть `expo-notifications` в приложение
+(сейчас пакет удалён, хук `use-register-push-token.ts` — заглушка),
+поднять модуль отправки в `server/` и перевести `notify_user` на него.
+

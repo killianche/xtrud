@@ -434,7 +434,9 @@ DECISION владельца: «полностью уйти от Supabase, пер
 - [ ] Этап 3 (S3). Beget Object Storage + CDN — после ключей владельца.
 - [ ] Этап 4. SSE `/v2/events`; push в APNs напрямую (после ключа);
       `notify_user` → xtrud-api.
-- [ ] Этап 5. Админка на `xtrud-api` (сейчас на supabase-js + GoTrue).
+- [x] Этап 5. Админка на `xtrud-api`: вход `/v2/auth/login` (почта админа),
+      RPC через `/v2/rpc`, фото паспортов через `/v2/files/sign`; supabase-js
+      удалён и из админки. Выложена 2026-09-08.
 - [ ] Этап 6. База на `postgres:17`; выключение GoTrue, storage-api,
       realtime, edge-runtime, studio; контрольный период 2 недели.
 

@@ -3,7 +3,7 @@
 // не нужна.
 
 import { useCallback, useEffect, useState } from "react";
-import { api, getClient } from "./lib/api";
+import { api, hasSession, logout } from "./lib/api";
 import { Dashboard } from "./pages/Dashboard";
 import { Journal } from "./pages/Journal";
 import { Login } from "./pages/Login";
@@ -40,9 +40,7 @@ export function App() {
   // просто по логину и паролю» (миграция 0150). Значит пароль администратора —
   // единственная преграда к персональным данным и смене чужих паролей.
   const check = useCallback(async () => {
-    const supabase = await getClient();
-    const { data } = await supabase.auth.getSession();
-    if (!data.session) {
+    if (!hasSession()) {
       setSession("anonymous");
       return;
     }
@@ -59,8 +57,7 @@ export function App() {
   }, [check]);
 
   const signOut = async () => {
-    const supabase = await getClient();
-    await supabase.auth.signOut();
+    await logout();
     setSession("anonymous");
     navigate("/");
   };

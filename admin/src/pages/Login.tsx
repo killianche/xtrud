@@ -9,7 +9,7 @@
 
 import { type FormEvent, useState } from "react";
 import { Field } from "../components/ui";
-import { getClient } from "../lib/api";
+import { login } from "../lib/api";
 
 export function Login({ onSignedIn }: { onSignedIn: () => void }) {
   const [email, setEmail] = useState("");
@@ -23,11 +23,7 @@ export function Login({ onSignedIn }: { onSignedIn: () => void }) {
     setBusy(true);
     setError(null);
     try {
-      const supabase = await getClient();
-      const { error: signInError } = await supabase.auth.signInWithPassword({
-        email: email.trim().toLowerCase(),
-        password,
-      });
+      const { error: signInError } = await login(email, password);
       if (signInError) {
         setError("Неверная почта или пароль.");
         return;

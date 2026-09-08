@@ -25,9 +25,11 @@ export async function loadConfig(): Promise<AdminConfig> {
   }
   const raw: unknown = await response.json();
   const parsed = raw as Partial<AdminConfig>;
-  if (!parsed.supabaseUrl || !parsed.supabaseAnonKey) {
-    throw new Error("В /config.json нет supabaseUrl или supabaseAnonKey.");
+  if (!parsed.supabaseUrl) {
+    throw new Error("В /config.json нет supabaseUrl (адрес xtrud-api).");
   }
-  cached = { supabaseUrl: parsed.supabaseUrl, supabaseAnonKey: parsed.supabaseAnonKey };
+  // Ключ anon больше не нужен (xtrud-api вместо Supabase); поле оставлено
+  // для совместимости со старыми config.json.
+  cached = { supabaseUrl: parsed.supabaseUrl, supabaseAnonKey: parsed.supabaseAnonKey ?? "" };
   return cached;
 }

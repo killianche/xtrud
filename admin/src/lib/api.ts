@@ -2,18 +2,126 @@
 // панель не делает: широкая политика на users начала бы применяться и к
 // мобильному приложению (docs/ADMIN_PANEL.md §6).
 
-import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+// Всё общение с базой идёт через RPC вида admin_* на xtrud-api (без Supabase:
+// docs/BACKEND_REWRITE_PLAN.md, этап 5). Прямых запросов к таблицам панель не
+// делает (docs/ADMIN_PANEL.md §6).
+
 import { loadConfig } from "./config";
 
-let client: SupabaseClient | null = null;
+interface StoredSession {
+  accessToken: string;
+  refreshToken: string;
+  expiresAt: number;
+}
 
-export async function getClient(): Promise<SupabaseClient> {
-  if (client) return client;
-  const config = await loadConfig();
-  client = createClient(config.supabaseUrl, config.supabaseAnonKey, {
-    auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: false },
+const SESSION_KEY = "xtrud-admin-session";
+
+function readSession(): StoredSession | null {
+  try {
+    const raw = window.localStorage.getItem(SESSION_KEY);
+    return raw ? (JSON.parse(raw) as StoredSession) : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeSession(s: StoredSession | null): void {
+  if (s) window.localStorage.setItem(SESSION_KEY, JSON.stringify(s));
+  else window.localStorage.removeItem(SESSION_KEY);
+}
+
+async function baseUrl(): Promise<string> {
+  return (await loadConfig()).supabaseUrl.replace(/\/+$/, "");
+}
+
+interface TokenResponse {
+  accessToken: string;
+  refreshToken: string;
+  expiresAt: number;
+}
+
+async function postJson(
+  path: string,
+  body: unknown,
+  token?: string,
+): Promise<{ status: number; json: unknown }> {
+  const res = await fetch(`${await baseUrl()}${path}`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify(body ?? {}),
   });
-  return client;
+  const text = await res.text();
+  let json: unknown = null;
+  try {
+    json = text ? JSON.parse(text) : null;
+  } catch {
+    json = { error: text };
+  }
+  return { status: res.status, json };
+}
+
+let refreshing: Promise<string | null> | null = null;
+
+async function refreshToken(): Promise<string | null> {
+  if (refreshing) return refreshing;
+  refreshing = (async () => {
+    const s = readSession();
+    if (!s) return null;
+    const { status, json } = await postJson("/v2/auth/refresh", { refreshToken: s.refreshToken });
+    if (status >= 400) {
+      if (status === 401) writeSession(null);
+      return null;
+    }
+    const t = json as TokenResponse;
+    writeSession({
+      accessToken: t.accessToken,
+      refreshToken: t.refreshToken,
+      expiresAt: t.expiresAt,
+    });
+    return t.accessToken;
+  })().finally(() => {
+    refreshing = null;
+  });
+  return refreshing;
+}
+
+/** Действующий access-токен (обновляется за полторы минуты до истечения). */
+async function accessToken(): Promise<string | null> {
+  const s = readSession();
+  if (!s) return null;
+  if (s.expiresAt - Math.floor(Date.now() / 1000) > 90) return s.accessToken;
+  return refreshToken();
+}
+
+export function hasSession(): boolean {
+  return readSession() !== null;
+}
+
+export async function login(email: string, password: string): Promise<{ error: string | null }> {
+  const { status, json } = await postJson("/v2/auth/login", {
+    login: email.trim().toLowerCase(),
+    password,
+  });
+  if (status >= 400) {
+    const err = (json as { error?: string } | null)?.error;
+    return { error: status === 401 ? "Неверная почта или пароль." : (err ?? "Не удалось войти.") };
+  }
+  const t = json as TokenResponse;
+  writeSession({
+    accessToken: t.accessToken,
+    refreshToken: t.refreshToken,
+    expiresAt: t.expiresAt,
+  });
+  return { error: null };
+}
+
+export async function logout(): Promise<void> {
+  const s = readSession();
+  writeSession(null);
+  if (s) await postJson("/v2/auth/logout", { refreshToken: s.refreshToken }).catch(() => undefined);
 }
 
 export interface Metrics {
@@ -146,10 +254,17 @@ function describe(error: { message?: string; code?: string } | null): string {
 }
 
 async function rpc<T>(name: string, args?: Record<string, unknown>): Promise<T> {
-  const supabase = await getClient();
-  const { data, error } = await supabase.rpc(name, args ?? {});
-  if (error) throw new Error(describe(error));
-  return data as T;
+  let token = await accessToken();
+  let res = await postJson(`/v2/rpc/${name}`, args ?? {}, token ?? undefined);
+  if (res.status === 401 && token) {
+    token = await refreshToken();
+    if (token) res = await postJson(`/v2/rpc/${name}`, args ?? {}, token);
+  }
+  if (res.status >= 400) {
+    const body = (res.json ?? {}) as { error?: string; message?: string; code?: string };
+    throw new Error(describe({ message: body.error ?? body.message, code: body.code }));
+  }
+  return res.json as T;
 }
 
 export const api = {
@@ -180,12 +295,15 @@ export const api = {
     }),
   /** Подписанная ссылка на фото документа: бакет приватный, читает только админ (RLS). */
   verificationPhotoUrl: async (path: string): Promise<string> => {
-    const supabase = await getClient();
-    const { data, error } = await supabase.storage
-      .from("master-verifications")
-      .createSignedUrl(path, 600);
-    if (error || !data?.signedUrl) throw new Error("Не удалось открыть фото документа.");
-    return data.signedUrl;
+    const token = await accessToken();
+    const { status, json } = await postJson(
+      "/v2/files/sign",
+      { bucket: "master-verifications", path },
+      token ?? undefined,
+    );
+    const url = (json as { url?: string } | null)?.url;
+    if (status >= 400 || !url) throw new Error("Не удалось открыть фото документа.");
+    return url;
   },
   listUsers: (search: string, limit = 50, offset = 0) =>
     rpc<UserRow[]>("admin_list_users", {

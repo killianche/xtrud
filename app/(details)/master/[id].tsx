@@ -29,6 +29,7 @@ import {
   VerifiedBadge,
 } from "@/components/ui";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { useAdminSetUserStatus, useIsAdmin } from "@/features/admin/use-admin-actions";
 import { useAuthSession } from "@/features/auth/use-auth-session";
 import { blockConfirmMessage } from "@/features/blocking/blocking-copy";
 import { blockingActionFailureMessage } from "@/features/blocking/blocking-error-message";
@@ -56,6 +57,7 @@ import { confirmAsync } from "@/lib/confirm";
 import { hapticSuccess } from "@/lib/haptics";
 import { getCityName } from "@/lib/location-config";
 import { openExternalUrl } from "@/lib/open-link";
+import { promptAsync } from "@/lib/prompt";
 import { useSafeBack } from "@/lib/use-safe-back";
 import { useThemeColors } from "@/lib/use-theme-color";
 import { resolveWhatsappDigits } from "@/lib/whatsapp";
@@ -141,10 +143,38 @@ export default function MasterPublicScreen() {
       onError: (e) => Alert.alert("Не удалось заблокировать", blockingActionFailureMessage(e)),
     });
   };
+  const isAdmin = useIsAdmin(currentUserId);
+  const adminStatus = useAdminSetUserStatus();
+  const adminSetStatus = async (status: "banned" | "active") => {
+    if (!masterId) return;
+    const reason = await promptAsync({
+      title: status === "banned" ? "Заблокировать аккаунт" : "Снять блокировку",
+      message: "Причина попадёт в журнал администратора.",
+      confirmText: status === "banned" ? "Заблокировать" : "Снять",
+    });
+    if (!reason) return;
+    adminStatus.mutate(
+      { userId: masterId, status, reason },
+      {
+        onSuccess: () => hapticSuccess(),
+        onError: (e) => Alert.alert("Не получилось", e.message),
+      },
+    );
+  };
   const openActions = () => {
     const items: Array<{ label: string; onPress: () => void }> = [];
     if (currentUserId) items.push({ label: "Заблокировать", onPress: () => void handleBlock() });
     items.push({ label: "Пожаловаться", onPress: () => setReportOpen(true) });
+    if (isAdmin && !isOwn) {
+      items.push(
+        u?.status === "banned"
+          ? { label: "Снять блокировку (админ)", onPress: () => void adminSetStatus("active") }
+          : {
+              label: "Заблокировать аккаунт (админ)",
+              onPress: () => void adminSetStatus("banned"),
+            },
+      );
+    }
     ActionSheetIOS.showActionSheetWithOptions(
       {
         options: [...items.map((i) => i.label), "Отмена"],

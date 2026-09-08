@@ -7,7 +7,15 @@
  */
 
 import { Redirect, useRouter } from "expo-router";
-import { BellSimple, Gear, PencilSimple, SignOut, UserCircle, Wrench } from "phosphor-react-native";
+import {
+  BellSimple,
+  Gear,
+  PencilSimple,
+  ShieldCheck,
+  SignOut,
+  UserCircle,
+  Wrench,
+} from "phosphor-react-native";
 import { Alert, View } from "react-native";
 import { AppText } from "@/components/AppText";
 import { Avatar } from "@/components/Avatar";
@@ -103,6 +111,22 @@ export default function AccountScreen() {
       </InsetGroup>
 
       {isSpecialist && userId ? <AvailabilityRows userId={userId} /> : null}
+
+      {user?.is_admin ? (
+        <InsetGroup
+          title="Администратор"
+          footer="Жалобы, паспорта, рейтинг. Блокировка и скрытие — в меню «⋯» на страницах людей и заданий."
+        >
+          <InsetRow
+            title="Панель администратора"
+            icon={<ShieldCheck size={18} weight="bold" color={tc["on-accent"]} />}
+            iconAccent
+            navigates
+            onPress={() => router.push("/admin" as never)}
+            last
+          />
+        </InsetGroup>
+      ) : null}
 
       <InsetGroup title="Аккаунт">
         <InsetRow

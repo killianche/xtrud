@@ -10,7 +10,14 @@
  */
 
 import { useRouter } from "expo-router";
-import { CaretLeft, CaretRight, ChartBar, ShieldCheck, Warning } from "phosphor-react-native";
+import {
+  CaretLeft,
+  CaretRight,
+  ChartBar,
+  IdentificationCard,
+  ShieldCheck,
+  Warning,
+} from "phosphor-react-native";
 import { Pressable, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
@@ -120,6 +127,12 @@ export default function AdminHubScreen() {
             title="Жалобы и модерация"
             hint="Очередь жалоб: скрыть отзыв, приостановить пользователя."
             onPress={() => router.push("/admin/reports" as never)}
+          />
+          <HubCard
+            icon={IdentificationCard}
+            title="Паспорта"
+            hint="Подтверждение личности специалистов: фото, решение, значок."
+            onPress={() => router.push("/admin/verifications" as never)}
           />
         </View>
       </ScrollView>

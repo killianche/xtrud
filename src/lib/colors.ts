@@ -26,7 +26,7 @@ export const lightColors = {
   //
   // Теперь фон списка чуть темнее карточки. В тёмной теме соотношение
   // обратное — приподнятая поверхность светлее фона, как и положено.
-  "surface-page": "#fafafa",
+  "surface-page": "#f2f2f7", // systemGroupedBackground iOS: карточки читаются без обводок
   "surface-card": "#ffffff",
   ink: "#171717",
   body: "#4d4d4d",

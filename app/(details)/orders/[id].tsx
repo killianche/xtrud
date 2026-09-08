@@ -31,6 +31,7 @@ import { Avatar } from "@/components/Avatar";
 import { OrderStatusBadge } from "@/components/OrderStatusBadge";
 import { GlassButton, InsetGroup, InsetRow, ScreenHeader, Skeleton } from "@/components/ui";
 import { SystemIcon } from "@/components/ui/SystemIcon";
+import { useAdminHideOrder, useIsAdmin } from "@/features/admin/use-admin-actions";
 import { useAuthSession } from "@/features/auth/use-auth-session";
 import { blockConfirmMessage, blockSuccessMessage } from "@/features/blocking/blocking-copy";
 import { blockingActionFailureMessage } from "@/features/blocking/blocking-error-message";
@@ -58,6 +59,7 @@ import { confirmAsync } from "@/lib/confirm";
 import { describeServerError } from "@/lib/describe-server-error";
 import { hapticError, hapticSuccess } from "@/lib/haptics";
 import { openExternalUrl } from "@/lib/open-link";
+import { promptAsync } from "@/lib/prompt";
 import { useSafeBack } from "@/lib/use-safe-back";
 import { useThemeColors } from "@/lib/use-theme-color";
 import { normalizeWhatsappDigits, resolveWhatsappDigits } from "@/lib/whatsapp";
@@ -241,6 +243,27 @@ export default function OrderDetailScreen() {
   //   чужой заказ:        Заблокировать заказчика, Пожаловаться
   //                       (UGC safety, App Store Guideline 1.2)
   // Максимум 2 пункта видно одновременно в любой комбинации статуса/владения.
+  const isAdmin = useIsAdmin(userId);
+  const adminHideOrder = useAdminHideOrder();
+  const adminHide = async () => {
+    if (!id) return;
+    const reason = await promptAsync({
+      title: "Скрыть задание",
+      message: "Причина уйдёт автору в уведомлении и в журнал.",
+      confirmText: "Скрыть",
+    });
+    if (!reason) return;
+    adminHideOrder.mutate(
+      { orderId: id, reason },
+      {
+        onSuccess: () => {
+          hapticSuccess();
+          router.back();
+        },
+        onError: (e) => Alert.alert("Не получилось", e.message),
+      },
+    );
+  };
   // Деструктивные помечены destructiveButtonIndex — систему красит сама.
   const openActionMenu = () => {
     if (!order) return;
@@ -272,6 +295,13 @@ export default function OrderDetailScreen() {
         label: "Пожаловаться на задание",
         destructive: true,
         onPress: () => setReportOpen(true),
+      });
+    }
+    if (isAdmin && !isOwner && (order.status === "open" || order.status === "in_progress")) {
+      items.push({
+        label: "Скрыть задание (админ)",
+        destructive: true,
+        onPress: () => void adminHide(),
       });
     }
     if (items.length === 0) return;

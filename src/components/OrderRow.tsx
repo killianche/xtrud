@@ -137,14 +137,15 @@ const DIMMED_STATUS: Partial<Record<OrderStatusValue, string>> = {
 // Мягкая тень карточки: край читается без опоры на линию (DECISION владельца
 // 2026-09-04 — «карточка обведена, но линия не видна»). Значения нарочно
 // скромные: тень обозначает край, а не рисует объём.
-// Карточка должна читаться как отдельный предмет на странице (владелец,
-// 2026-09-08: «задания сливаются, нет разделения»): заметнее тень, больше
-// зазор, подвал на своей поверхности темнее страницы.
+// Разделение карточек — как в iOS: белая карточка на сером сгруппированном
+// фоне страницы (surface-page = systemGroupedBackground), без тёмной обводки
+// и с едва заметной тенью (владелец, 2026-09-08: «чёрная обводка — не в
+// дизайне, сделай как в iOS»).
 const CARD_SHADOW = {
   shadowColor: "#000000",
-  shadowOpacity: 0.09,
-  shadowRadius: 14,
-  shadowOffset: { width: 0, height: 5 },
+  shadowOpacity: 0.04,
+  shadowRadius: 6,
+  shadowOffset: { width: 0, height: 2 },
   elevation: 2,
 } as const;
 
@@ -205,7 +206,7 @@ export function OrderRow(props: OrderRowProps) {
       accessibilityRole="button"
       accessibilityLabel={ariaLabel}
       onPress={props.onPress}
-      className="mx-4 mb-4 overflow-hidden rounded-2xl border border-hairline-strong bg-surface-card active:opacity-90"
+      className="mx-4 mb-4 overflow-hidden rounded-2xl bg-surface-card active:opacity-90"
       style={[CARD_SHADOW, isDimmed ? { opacity: 0.65 } : null]}
     >
       <View className="p-4">

@@ -1622,6 +1622,24 @@ export type Database = {
       }
     }
     Functions: {
+      // Админские функции (0172, 0174, 0175) — добавлены вручную 2026-09-08,
+      // генератор типов запускался до них.
+      admin_set_user_status: {
+        Args: { p_user_id: string; p_status: string; p_reason: string; p_report_id?: string | null }
+        Returns: Json
+      }
+      admin_hide_order: {
+        Args: { p_order_id: string; p_reason: string; p_report_id?: string | null }
+        Returns: undefined
+      }
+      admin_list_verifications: {
+        Args: { p_status?: string; p_limit?: number; p_offset?: number }
+        Returns: Json[]
+      }
+      admin_review_verification: {
+        Args: { p_user_id: string; p_approve: boolean; p_reason?: string | null }
+        Returns: undefined
+      }
       _availability_expires_at: {
         Args: { p_status: Database["public"]["Enums"]["availability_status"] }
         Returns: string

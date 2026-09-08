@@ -18,7 +18,7 @@
   native runtime. Нельзя создавать две копии бизнес-логики ради небольшого
   визуального отличия.
 
-Фактический стек: Expo SDK 54, Expo Router 6, NativeWind 4, React Native Web,
+Фактический стек: Expo SDK 57, Expo Router, NativeWind 4, React Native Web,
 Reanimated 4, TanStack Query 5, Zustand, react-hook-form/zod, Supabase.
 
 ## 2. Источники истины

@@ -19,7 +19,7 @@ AASA/universal links. Он не является продуктом и не ди
 
 ## 1. Проверенные факты
 
-- Клиент построен на Expo SDK 54, React Native 0.81, Expo Router 6 и TypeScript;
+- Клиент построен на Expo SDK 57, React Native 0.86, Expo Router и TypeScript;
   конфигурация iOS и Android находится в `app.json` и `eas.json`.
 - iOS `com.xtrud.app` опубликован как 1.0.1 build 11 по
   `release/production.json`; `app.json` содержит следующий локальный build 12,

@@ -885,7 +885,13 @@ assets/
 - `expo-secure-store` для user-secrets (refresh token, biometric prefs)
 
 ### 7.6. Архитектура запросов
-- **Не плодить `supabase.from('table').select()` в компонентах**. Все запросы — в `src/features/<feature>/api/`.
+
+> ⚠️ Устарело с 2026-09-08: клиента `@supabase/supabase-js` в проекте нет.
+> Запросы идут через свой клиент `src/lib/xtrud-client` (модуль
+> `@/lib/supabase` сохранил имя). Правило «запрос живёт в хуке фичи, а не в
+> компоненте» остаётся в силе: см. `src/features/<фича>/use-*.ts`.
+
+- **Не плодить `supabase.from('table').select()` в компонентах**. Все запросы — в хуках фичи.
 - **Паттерн**: `getOrderById(id)` → `useOrderById(id)` (TanStack hook) → компонент.
 - **Сложная логика**: Supabase RPC функции (`create rpc public.create_order(...)`) → один атомарный запрос вместо нескольких select-update.
 - **Real-time** — отдельный модуль `src/features/chat/realtime.ts` с подпиской на канал.

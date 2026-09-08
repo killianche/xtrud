@@ -48,30 +48,25 @@ web сохраняется как supporting surface для legal/recovery/deep 
 
 ```
 xtrud/
-├── app/                     # Expo Router — экраны и роуты
-│   ├── (auth)/              # auth-flow (phone, verify)
-│   ├── (tabs)/              # основная навигация после логина
-│   ├── _layout.tsx          # root layout
-│   ├── +html.tsx            # web-only HTML shell с viewport+theme guard
-│   └── index.tsx
+├── app/                     # Expo Router — экраны и маршруты
+│   ├── (auth)/              # вход и регистрация (телефон + пароль)
+│   ├── (tabs)/              # Главная, Мои задания, Найти задание, Специалисты
+│   ├── (details)/           # экраны поверх вкладок: задание, специалист, аккаунт, админ
+│   └── _layout.tsx          # корневой layout: сессия, кэш запросов, темы
 ├── src/
-│   ├── features/            # фичи по доменам (auth/, master/, client/, …)
-│   ├── components/          # переиспользуемые UI-компоненты
-│   ├── lib/                 # tokens, supabase client, утилиты
-│   ├── hooks/
-│   └── types/               # типы БД (генерируются из Supabase)
+│   ├── features/            # фичи по доменам (orders/, specialist/, admin/, …)
+│   ├── components/          # общие компоненты, `components/ui` — дизайн-система
+│   ├── lib/                 # клиент данных (xtrud-client), токены, утилиты
+│   └── types/database.ts    # типы схемы PostgreSQL
+├── server/                  # xtrud-api: Node 22 + Fastify (вход, RPC, файлы)
+├── admin/                   # веб-панель администратора (Vite + React)
 ├── supabase/
-│   ├── migrations/          # SQL миграции БД
-│   ├── seed/                # сидинг данных (категории и т.д.)
-│   └── functions/           # Edge Functions
-├── infra/supabase/          # Beget self-host contract без secrets/runtime data
-├── assets/images/           # иконки, splash
-├── app.json                 # Expo конфиг
-├── babel.config.js          # NativeWind preset
-├── metro.config.js          # NativeWind transform
-├── tailwind.config.ts       # design tokens (sprint 1.2)
-├── biome.json               # линтер/форматтер
-└── package.json
+│   ├── migrations/          # SQL: схема, RLS, функции (исторический каталог)
+│   └── migration-drafts/    # черновики, применяются на сервере вручную
+├── release/production.json  # журнал версий и номеров сборок
+├── docs/                    # каноническая документация
+├── .claude/rules/           # правила работы агентов
+└── app.json                 # версия и номер сборки iOS
 ```
 
 ## Setup
@@ -90,7 +85,7 @@ npm run start         # Expo dev server (mobile), выбрать платфор�
 npm run ios           # iOS Simulator (нужен Xcode)
 npm run android       # Android Emulator (нужен Android Studio)
 
-# ⚠️ WEB: `npm run web` (expo start --web) СЛОМАН в SDK 54 (import.meta → белый
+# ⚠️ WEB: `npm run web` (expo start --web) сломан начиная с SDK 54 (import.meta → белый
 # экран). Для web используй watch-сборку:
 npm run web:dev       # expo export + патч + serve dist → http://localhost:8082 (F5 для обновления)
 npm run web:build:preview     # локальный export с demo=true

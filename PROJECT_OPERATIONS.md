@@ -152,7 +152,7 @@ SQL-источника в Git. Поэтому `supabase/migrations/` сейча�
 
 ## 5. Рабочий цикл без «неправильных копий»
 
-1. Работать только в `/Users/ruslancherbizhev/Desktop/xtrud`.
+1. Работать только в `/root/projects/xtrud` на VDS.
 2. Начать с `git status --short`, `AGENTS.md`, `STATUS.md` и этого документа.
 3. Не использовать `dist/`, VPS или игнорируемый `ios/` как место редактирования.
 4. Установить Node 20.19.4 (`.nvmrc`) и зависимости через `npm ci`.

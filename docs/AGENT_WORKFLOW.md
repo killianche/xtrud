@@ -64,7 +64,7 @@ S3 endpoint/region, секреты, тариф, нагрузку, SLO, store sta
 
 ## 2. Начало любой задачи
 
-1. Убедись, что cwd — `/Users/ruslancherbizhev/Desktop/xtrud`.
+1. Убедись, что cwd — `/root/projects/xtrud` (работа идёт на VDS; машина владельца не используется).
 2. Прочитай `AGENTS.md`, верх `STATUS.md` и профильные документы.
 3. Выполни `git status --short --branch`, `git remote -v` и определи, какие
    изменения существовали до задачи.

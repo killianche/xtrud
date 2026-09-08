@@ -28,6 +28,7 @@ web сохраняется как supporting surface для legal/recovery/deep 
   версии и release-контракт
 - [STATUS.md](STATUS.md) — текущее состояние (снимок вверху), история решений
 - [PROJECT_OPERATIONS.md](PROJECT_OPERATIONS.md) — источники истины, серверы, сборки, безопасное удаление и deploy-runbook
+- [docs/RELEASE_RUNBOOK.md](docs/RELEASE_RUNBOOK.md) — как выложить сборку в TestFlight
 - [docs/BACKEND_REWRITE_PLAN.md](docs/BACKEND_REWRITE_PLAN.md) — свой сервер вместо Supabase: архитектура, этапы, откат
 - [docs/ADMIN_PANEL.md](docs/ADMIN_PANEL.md) — веб-панель и админ внутри приложения
 - [docs/SUPABASE_BEGET_MIGRATION.md](docs/SUPABASE_BEGET_MIGRATION.md) — история переезда с облака на Beget (архив)

@@ -32,7 +32,8 @@
 | Свой сервер вместо Supabase | [`docs/BACKEND_REWRITE_PLAN.md`](docs/BACKEND_REWRITE_PLAN.md), код — [`server/`](server/), клиент — [`src/lib/xtrud-client/`](src/lib/xtrud-client/) |
 | Админка (веб и в приложении) | [`docs/ADMIN_PANEL.md`](docs/ADMIN_PANEL.md) |
 | Setup и команды | [`README.md`](README.md), [`package.json`](package.json) |
-| Что делаем дальше | [`TASKS.md`](TASKS.md) — актуальный план работ |
+| Выкладка сборки в TestFlight | [`docs/RELEASE_RUNBOOK.md`](docs/RELEASE_RUNBOOK.md) — пошагово и грабли; стратегия — [`docs/MOBILE_RELEASE_STRATEGY.md`](docs/MOBILE_RELEASE_STRATEGY.md) |
+| Что делаем дальше | [`TASKS.md`](TASKS.md) — актуальный план работ; очередь запросов владельца — в начале файла |
 
 Если исторический текст внутри документа противоречит более новому явно
 помеченному override или исполняемому коду, следуй порядку из

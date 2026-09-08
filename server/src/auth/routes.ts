@@ -1,0 +1,174 @@
+// Вход и регистрация — замена GoTrue. Данные совместимы: строки auth.users и
+// auth.identities создаются так же, как их создавал GoTrue (bcrypt, синтетическая
+// почта phone@…), поэтому при откате старый стек видит те же аккаунты.
+import bcrypt from "bcryptjs";
+import type { FastifyInstance } from "fastify";
+import { z } from "zod";
+import type { Config } from "../config.js";
+import { type Db, pgErrorToHttp } from "../db.js";
+import { canonicalPhone, phoneKey, phoneToAuthEmail } from "./phone.js";
+import { hashRefresh, newRefreshToken, type Tokens } from "./jwt.js";
+
+const registerSchema = z.object({
+  firstName: z.string().trim().min(1).max(60),
+  lastName: z.string().trim().min(1).max(60),
+  phone: z.string().trim().min(10).max(20),
+  password: z.string().min(6).max(200),
+});
+const loginSchema = z.object({
+  login: z.string().trim().min(3).max(120),
+  password: z.string().min(1).max(200),
+});
+const refreshSchema = z.object({ refreshToken: z.string().min(20).max(200) });
+const passwordSchema = z.object({
+  currentPassword: z.string().min(1).max(200),
+  newPassword: z.string().min(6).max(200),
+});
+
+interface AuthUserRow {
+  id: string;
+  email: string | null;
+  phone: string | null;
+  encrypted_password: string | null;
+  banned_until: string | null;
+  deleted_at: string | null;
+}
+
+export function registerAuthRoutes(app: FastifyInstance, db: Db, tokens: Tokens, cfg: Config) {
+  const issueSession = async (user: AuthUserRow) => {
+    const refresh = newRefreshToken();
+    const sessionId = await db.asService(async (c) => {
+      const r = await c.query<{ id: string }>(
+        `INSERT INTO xtrud_api.refresh_tokens (user_id, token_hash, expires_at)
+         VALUES ($1, $2, now() + ($3 || ' days')::interval) RETURNING id`,
+        [user.id, refresh.hash, String(cfg.REFRESH_TTL_DAYS)],
+      );
+      await c.query("SELECT xtrud_api.touch_sign_in($1)", [user.id]);
+      return r.rows[0]?.id ?? "";
+    });
+    const access = await tokens.signAccess(
+      { id: user.id, email: user.email, phone: user.phone },
+      sessionId,
+    );
+    return {
+      accessToken: access.token,
+      expiresAt: access.expiresAt,
+      refreshToken: refresh.raw,
+      user: { id: user.id, email: user.email, phone: user.phone },
+    };
+  };
+
+  const findByLogin = async (login: string): Promise<AuthUserRow | null> =>
+    db.asService(async (c) => {
+      const r = await c.query<AuthUserRow>("SELECT * FROM xtrud_api.find_account($1)", [login.trim()]);
+      return r.rows[0] ?? null;
+    });
+  const findById = async (id: string): Promise<AuthUserRow | null> =>
+    db.asService(async (c) => {
+      const r = await c.query<AuthUserRow>("SELECT * FROM xtrud_api.account_by_id($1)", [id]);
+      return r.rows[0] ?? null;
+    });
+
+  app.post("/auth/register", async (req, reply) => {
+    const parsed = registerSchema.safeParse(req.body);
+    if (!parsed.success) return reply.code(422).send({ error: "Заполните имя, фамилию, телефон и пароль (от 6 символов)" });
+    const input = parsed.data;
+    const phone = canonicalPhone(input.phone);
+    const key = phoneKey(phone);
+    if (!key) return reply.code(422).send({ error: "Введите номер полностью" });
+    const email = phoneToAuthEmail(phone, cfg.PHONE_EMAIL_DOMAIN);
+    const hash = await bcrypt.hash(input.password, 10);
+    try {
+      const user = await db.asService(async (c) => {
+        // Одна функция от владельца базы: auth.users, auth.identities, имя и
+        // телефон (0177). Роль API имеет только EXECUTE на неё.
+        const r = await c.query<{ register_account: string }>(
+          "SELECT xtrud_api.register_account($1, $2, $3, $4, $5)",
+          [email, hash, phone, input.firstName, input.lastName],
+        );
+        const id = r.rows[0]?.register_account;
+        if (!id) throw new Error("register failed");
+        const u = await c.query<AuthUserRow>("SELECT * FROM xtrud_api.account_by_id($1)", [id]);
+        const row = u.rows[0];
+        if (!row) throw new Error("register failed");
+        return row;
+      });
+      return reply.code(201).send(await issueSession(user));
+    } catch (e) {
+      const http = pgErrorToHttp(e);
+      req.log.error({ err: e }, "register failed");
+      return reply.code(http.status).send({ error: (e as Error).message || http.message });
+    }
+  });
+
+  app.post("/auth/login", async (req, reply) => {
+    const parsed = loginSchema.safeParse(req.body);
+    if (!parsed.success) return reply.code(422).send({ error: "Введите телефон и пароль" });
+    const user = await findByLogin(parsed.data.login);
+    const ok = user?.encrypted_password ? await bcrypt.compare(parsed.data.password, user.encrypted_password) : false;
+    if (!user || !ok) return reply.code(401).send({ error: "Неверный телефон или пароль" });
+    if (user.deleted_at) return reply.code(401).send({ error: "Аккаунт удалён" });
+    if (user.banned_until && new Date(user.banned_until) > new Date()) {
+      return reply.code(403).send({ error: "Аккаунт заблокирован. Обратитесь в поддержку." });
+    }
+    return reply.send(await issueSession(user));
+  });
+
+  app.post("/auth/refresh", async (req, reply) => {
+    const parsed = refreshSchema.safeParse(req.body);
+    if (!parsed.success) return reply.code(422).send({ error: "Нет refresh-токена" });
+    const hash = hashRefresh(parsed.data.refreshToken);
+    const rotated = await db.asService(async (c) => {
+      const r = await c.query<{ user_id: string }>(
+        `UPDATE xtrud_api.refresh_tokens SET rotated_at = now(), revoked_at = now()
+          WHERE token_hash = $1 AND revoked_at IS NULL AND expires_at > now()
+          RETURNING user_id`,
+        [hash],
+      );
+      return r.rows[0]?.user_id ?? null;
+    });
+    const result = rotated ? await findById(rotated) : null;
+    if (!result) return reply.code(401).send({ error: "Сессия истекла. Войдите заново." });
+    return reply.send(await issueSession(result));
+  });
+
+  app.post("/auth/logout", async (req, reply) => {
+    const parsed = refreshSchema.safeParse(req.body);
+    if (parsed.success) {
+      await db.asService((c) =>
+        c.query("UPDATE xtrud_api.refresh_tokens SET revoked_at = now() WHERE token_hash = $1 AND revoked_at IS NULL", [
+          hashRefresh(parsed.data.refreshToken),
+        ]),
+      );
+    }
+    return reply.code(204).send();
+  });
+
+  app.get("/auth/me", async (req, reply) => {
+    const claims = await tokens.verify(bearer(req.headers.authorization));
+    if (!claims) return reply.code(401).send({ error: "Нужен вход" });
+    return reply.send({ id: claims.sub, email: claims.email ?? null, phone: claims.phone ?? null });
+  });
+
+  app.post("/auth/password", async (req, reply) => {
+    const claims = await tokens.verify(bearer(req.headers.authorization));
+    if (!claims) return reply.code(401).send({ error: "Нужен вход" });
+    const parsed = passwordSchema.safeParse(req.body);
+    if (!parsed.success) return reply.code(422).send({ error: "Новый пароль — от 6 символов" });
+    const user = await findById(claims.sub);
+    const ok = user?.encrypted_password ? await bcrypt.compare(parsed.data.currentPassword, user.encrypted_password) : false;
+    if (!user || !ok) return reply.code(403).send({ error: "Текущий пароль неверный" });
+    const hash = await bcrypt.hash(parsed.data.newPassword, 10);
+    await db.asService(async (c) => {
+      await c.query("SELECT xtrud_api.set_password_hash($1, $2)", [user.id, hash]);
+      await c.query("UPDATE xtrud_api.refresh_tokens SET revoked_at = now() WHERE user_id = $1 AND revoked_at IS NULL", [user.id]);
+    });
+    return reply.send(await issueSession(user));
+  });
+}
+
+export function bearer(header: string | undefined): string | undefined {
+  if (!header) return undefined;
+  const [scheme, token] = header.split(" ");
+  return scheme?.toLowerCase() === "bearer" && token ? token : undefined;
+}

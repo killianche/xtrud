@@ -1,0 +1,14 @@
+# /opt/xtrud/xtrud-api/compose.yml на Beget. Секреты — в /opt/xtrud/xtrud-api.env.
+services:
+  xtrud-api:
+    build: .
+    container_name: xtrud-api
+    restart: unless-stopped
+    env_file: /opt/xtrud/xtrud-api.env
+    ports:
+      - "127.0.0.1:8100:8100"
+    networks:
+      - supabase_default
+networks:
+  supabase_default:
+    external: true

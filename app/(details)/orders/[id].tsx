@@ -8,6 +8,7 @@ import {
   MapPin,
   PaperPlaneTilt,
   Phone,
+  Question,
   Star,
   Users,
   Wallet,
@@ -492,14 +493,18 @@ function CloseOrderHint({ order, orderId, onCloseRequested }: CloseOrderHintProp
   if (!shouldShow) return null;
 
   return (
-    <View className="mt-6 mx-5 rounded-xl border border-accent bg-accent-soft p-4 flex-row items-start gap-3">
-      <CheckCircle size={22} weight="fill" color={tc.accent} />
+    // Подсказка, а не статус: раньше акцентная плашка с галочкой читалась как
+    // «исполнитель найден» (владелец, 2026-09-08). Нейтральная поверхность,
+    // вопрос и объяснение.
+    <View className="mt-6 mx-5 rounded-xl border border-hairline bg-canvas p-4 flex-row items-start gap-3">
+      <Question size={22} weight="bold" color={tc["muted-soft"]} />
       <View className="flex-1">
         <AppText weight="semibold" className="text-body-md text-ink">
-          Уже нашли исполнителя?
+          Договорились с кем-то из откликнувшихся?
         </AppText>
         <AppText className="mt-1 text-body-sm text-body">
-          Закройте задание — исполнители перестанут отправлять отклики.
+          Тогда закройте задание и укажите, кто сделал работу. Остальные перестанут откликаться, а
+          исполнитель получит уведомление. Если ещё выбираете — ничего делать не нужно.
         </AppText>
         <Pressable
           accessibilityRole="button"

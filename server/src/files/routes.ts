@@ -13,11 +13,18 @@ import type { FastifyInstance } from "fastify";
 import type { Tokens } from "../auth/jwt.js";
 import { bearer } from "../auth/routes.js";
 import type { Db } from "../db.js";
+import type { S3Storage } from "./s3.js";
 
 export interface FilesConfig {
   root: string;
   publicBase: string;
   signSecret: string;
+  /**
+   * Объектное хранилище. Пока не настроено — файлы живут на диске сервера,
+   * как раньше. Настроено — новые файлы уходят туда, а чтение с диска
+   * остаётся запасным путём, пока старые файлы не перенесены.
+   */
+  s3?: S3Storage | null;
 }
 
 const BUCKETS: Record<string, { public: boolean; mastersOnly?: boolean }> = {
@@ -91,10 +98,22 @@ export function registerFilesRoutes(
         return reply.code(400).send({ error: "Пустой файл" });
       if (!matchesMagic(type, body))
         return reply.code(415).send({ error: "Файл не является изображением" });
-      const folder = path.join(cfg.root, req.params.bucket, parts[0] ?? "");
-      const existing = await readdir(folder).catch(() => [] as string[]);
-      if (existing.length >= MAX_FILES_PER_FOLDER && !existing.includes(fileName)) {
-        return reply.code(429).send({ error: "Слишком много файлов. Удалите ненужные." });
+      const s3 = cfg.s3 ?? null;
+      const folderKey = `${req.params.bucket}/${parts[0] ?? ""}/`;
+      if (s3) {
+        const count = await s3.countPrefix(folderKey, MAX_FILES_PER_FOLDER + 1);
+        if (
+          count >= MAX_FILES_PER_FOLDER &&
+          !(await s3.head(`${req.params.bucket}/${parts.join("/")}`))
+        ) {
+          return reply.code(429).send({ error: "Слишком много файлов. Удалите ненужные." });
+        }
+      } else {
+        const folder = path.join(cfg.root, req.params.bucket, parts[0] ?? "");
+        const existing = await readdir(folder).catch(() => [] as string[]);
+        if (existing.length >= MAX_FILES_PER_FOLDER && !existing.includes(fileName)) {
+          return reply.code(429).send({ error: "Слишком много файлов. Удалите ненужные." });
+        }
       }
       if (bucket.mastersOnly) {
         const isMaster = await db.asUser(claims, async (c) => {
@@ -107,12 +126,18 @@ export function registerFilesRoutes(
         if (!isMaster)
           return reply.code(403).send({ error: "Фото работ загружает только специалист" });
       }
-      const target = abs(req.params.bucket, parts);
-      await mkdir(path.dirname(target), { recursive: true, mode: 0o755 });
-      const tmp = `${target}.${process.pid}.${Date.now()}.tmp`;
-      await writeFile(tmp, body, { mode: 0o644 });
-      await rename(tmp, target);
       const filePath = parts.join("/");
+      if (s3) {
+        // Публичные бакеты раздаёт nginx прямо из хранилища; паспорта
+        // кладём закрытыми — их отдаёт только сервер по подписи.
+        await s3.put(`${req.params.bucket}/${filePath}`, body, type, bucket.public);
+      } else {
+        const target = abs(req.params.bucket, parts);
+        await mkdir(path.dirname(target), { recursive: true, mode: 0o755 });
+        const tmp = `${target}.${process.pid}.${Date.now()}.tmp`;
+        await writeFile(tmp, body, { mode: 0o644 });
+        await rename(tmp, target);
+      }
       return reply.send({
         bucket: req.params.bucket,
         path: filePath,
@@ -133,6 +158,7 @@ export function registerFilesRoutes(
       if (parts[0] !== claims.sub)
         return reply.code(403).send({ error: "Можно удалять только свои файлы" });
       await rm(abs(req.params.bucket, parts), { force: true });
+      if (cfg.s3) await cfg.s3.delete(`${req.params.bucket}/${parts.join("/")}`);
       return reply.code(204).send();
     },
   );
@@ -176,14 +202,23 @@ export function registerFilesRoutes(
       if (a.length !== b.length || !timingSafeEqual(a, b))
         return reply.code(403).send({ error: "Неверная подпись" });
       const target = abs(req.params.bucket, parts);
-      if (!existsSync(target)) return reply.code(404).send({ error: "Файл не найден" });
       const ext = path.extname(target).toLowerCase();
-      reply.header(
-        "Content-Type",
-        ext === ".png" ? "image/png" : ext === ".webp" ? "image/webp" : "image/jpeg",
-      );
+      const contentType =
+        ext === ".png" ? "image/png" : ext === ".webp" ? "image/webp" : "image/jpeg";
       reply.header("Cache-Control", "private, max-age=300");
-      return reply.send(createReadStream(target));
+      // Сначала диск: старые файлы ещё там. Потом хранилище.
+      if (existsSync(target)) {
+        reply.header("Content-Type", contentType);
+        return reply.send(createReadStream(target));
+      }
+      if (cfg.s3) {
+        const object = await cfg.s3.get(`${req.params.bucket}/${parts.join("/")}`);
+        if (object) {
+          reply.header("Content-Type", object.contentType || contentType);
+          return reply.send(object.body);
+        }
+      }
+      return reply.code(404).send({ error: "Файл не найден" });
     },
   );
 }

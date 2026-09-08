@@ -35,6 +35,16 @@ const schema = z.object({
   APNS_TOPIC: z.string().min(1).default("com.xtrud.app"),
   /** Общий секрет, которым база подписывает вызов /v2/internal/push. */
   NOTIFY_SECRET: z.string().min(16).optional(),
+  /**
+   * Объектное хранилище S3. Как и push, настройка необязательна: без неё
+   * файлы лежат на диске сервера. Половинчатая настройка отвергается —
+   * иначе загрузка молча ушла бы не туда.
+   */
+  S3_ENDPOINT: z.string().url().optional(),
+  S3_REGION: z.string().min(1).optional(),
+  S3_BUCKET: z.string().min(1).optional(),
+  S3_ACCESS_KEY: z.string().min(16).optional(),
+  S3_SECRET_KEY: z.string().min(16).optional(),
 });
 
 export type Config = z.infer<typeof schema>;
@@ -58,7 +68,31 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
       "Некорректная конфигурация: с APNs обязателен NOTIFY_SECRET — иначе отправку push мог бы вызвать кто угодно",
     );
   }
+  const s3Parts = [
+    cfg.S3_ENDPOINT,
+    cfg.S3_REGION,
+    cfg.S3_BUCKET,
+    cfg.S3_ACCESS_KEY,
+    cfg.S3_SECRET_KEY,
+  ];
+  const s3Filled = s3Parts.filter((v) => v !== undefined).length;
+  if (s3Filled > 0 && s3Filled < s3Parts.length) {
+    throw new Error(
+      "Некорректная конфигурация: хранилище задано наполовину — нужны S3_ENDPOINT, S3_REGION, S3_BUCKET, S3_ACCESS_KEY и S3_SECRET_KEY вместе",
+    );
+  }
   return cfg;
+}
+
+/** Настроено ли объектное хранилище целиком. */
+export function s3Configured(cfg: Config): boolean {
+  return (
+    cfg.S3_ENDPOINT !== undefined &&
+    cfg.S3_REGION !== undefined &&
+    cfg.S3_BUCKET !== undefined &&
+    cfg.S3_ACCESS_KEY !== undefined &&
+    cfg.S3_SECRET_KEY !== undefined
+  );
 }
 
 /** Настроен ли push целиком. Частичная настройка отвергается выше. */

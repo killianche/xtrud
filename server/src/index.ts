@@ -3,9 +3,10 @@ import rateLimit from "@fastify/rate-limit";
 import Fastify from "fastify";
 import { Tokens } from "./auth/jwt.js";
 import { registerAuthRoutes } from "./auth/routes.js";
-import { apnsConfigured, loadConfig } from "./config.js";
+import { apnsConfigured, loadConfig, s3Configured } from "./config.js";
 import { Db } from "./db.js";
 import { registerFilesRoutes } from "./files/routes.js";
+import { S3Storage } from "./files/s3.js";
 import { ApnsClient } from "./push/apns.js";
 import { registerPushRoutes } from "./push/routes.js";
 import { registerRestProxy } from "./rest/routes.js";
@@ -14,6 +15,16 @@ import { registerRpcRoutes } from "./rpc/routes.js";
 const cfg = loadConfig();
 const db = new Db(cfg.DATABASE_URL);
 const tokens = new Tokens(cfg.JWT_SECRET, cfg.JWT_ISSUER, cfg.ACCESS_TTL_SECONDS);
+// Хранилище файлов: объектное, если настроено, иначе диск сервера.
+const s3 = s3Configured(cfg)
+  ? new S3Storage({
+      endpoint: cfg.S3_ENDPOINT as string,
+      region: cfg.S3_REGION as string,
+      bucket: cfg.S3_BUCKET as string,
+      accessKey: cfg.S3_ACCESS_KEY as string,
+      secretKey: cfg.S3_SECRET_KEY as string,
+    })
+  : null;
 // Ключ APNs читается на старте: испорченный файл должен уронить деплой,
 // а не выясниться при первом уведомлении.
 const apns = apnsConfigured(cfg)
@@ -53,7 +64,13 @@ app.addContentTypeParser("*", { parseAs: "buffer" }, (_req, body, done) => done(
 
 app.get("/v2/health", async () => {
   const r = await db.pool.query("SELECT now() AS now");
-  return { ok: true, now: r.rows[0]?.now ?? null, version: "0.1.0", push: apns !== null };
+  return {
+    ok: true,
+    now: r.rows[0]?.now ?? null,
+    version: "0.1.0",
+    push: apns !== null,
+    storage: s3 === null ? "disk" : "s3",
+  };
 });
 
 await app.register(
@@ -71,6 +88,7 @@ await app.register(
       root: cfg.FILES_ROOT,
       publicBase: cfg.FILES_PUBLIC_BASE,
       signSecret: cfg.JWT_SECRET,
+      s3,
     });
   },
   { prefix: "/v2" },

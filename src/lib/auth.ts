@@ -1,8 +1,11 @@
-// Auth API уровня lib.
+// Auth API уровня lib — поверх своего клиента xtrud-api (src/lib/xtrud-client).
 //
-// Основной production auth — email/телефон + пароль. Preview demo-номера
-// используют только заранее созданные email/password аккаунты под env-флагом.
-// Клиент не создаёт временные auth.users и не содержит anonymous sign-in path.
+// С 2026-09-08 регистрация и вход идут через /v2/auth/* на Beget
+// (docs/BACKEND_REWRITE_PLAN.md, этап 1): телефон + пароль. Сервер сам
+// находит аккаунт по последним десяти цифрам номера или по почте.
+// Demo-номера (+79000…, только под env-флагом) входят по заранее созданной
+// почте и паролю. Вход по SMS и письма восстановления отключены:
+// DECISION владельца 2026-09-03 — доступ восстанавливает администратор.
 
 import { looksLikeEmail, normalizePhone } from "@/features/auth/validation";
 import { unregisterCurrentPushToken } from "@/features/notifications/use-register-push-token";
@@ -11,21 +14,11 @@ import { supabase } from "./supabase";
 /** Префиксы телефонов, у которых на сервере уже заведены auth.users + пароль. */
 const DEMO_PHONE_PREFIX = "+79000";
 const DEMO_PASSWORD = "xtrud";
-
-/**
- * Отдельные «настоящие» номера, заведённые под demo-вход (email+пароль).
- * Очищено 2026-06-04: подключён реальный SMS-вход (SMS.ru), номер владельца
- * +79289204029 убран — теперь он входит по настоящему OTP, как все.
- */
 const DEMO_EXTRA_PHONES: string[] = [];
 
 /**
  * P0-02 (LAUNCH_READINESS): demo-flow закрыт за env flag. По умолчанию
- * disabled. Чтобы включить локально для preview/dev — в `.env.local`:
- *   `EXPO_PUBLIC_ENABLE_DEMO=true`
- * В production submit-сборке (eas.json → build.production.env) demo НЕ
- * включается, что предотвращает попадание пароля «xtrud» в публичный bundle
- * с возможностью входа под чужим demo-аккаунтом.
+ * disabled; в production submit-сборке demo не включается.
  */
 function isDemoEnabled(): boolean {
   return process.env.EXPO_PUBLIC_ENABLE_DEMO === "true";
@@ -33,232 +26,86 @@ function isDemoEnabled(): boolean {
 
 function isDemoPhone(phone: string): boolean {
   if (!isDemoEnabled()) return false;
-  // Сравниваем по нормализованной форме без пробелов/тире — на этом этапе
-  // phone уже прошёл normalizePhone (см. features/auth/validation).
   return phone.startsWith(DEMO_PHONE_PREFIX) || DEMO_EXTRA_PHONES.includes(phone);
 }
 
-/**
- * Конвертирует +79000000001 → 79000000001@xtrud-demo.local.
- * См. миграцию 0046_demo_users_email_login — у каждого demo-аккаунта
- * выставлен соответствующий email + identity 'email'.
- */
+/** +79000000001 → 79000000001@xtrud-demo.local (миграция 0046). */
 function demoPhoneToEmail(phone: string): string {
   const digits = phone.replace(/\D/g, "");
   return `${digits}@xtrud-demo.local`;
 }
 
-/**
- * Preview-only demo phone sign-in through a pre-created email/password user.
- * The env flag and phone allowlist are checked by the caller and again here.
- */
+async function markMasterRole(userId: string): Promise<void> {
+  // Мастер открывается в своей роли; для клиента UPDATE затронет 0 строк.
+  await supabase
+    .from("users")
+    .update({ active_role: "master" })
+    .eq("id", userId)
+    .eq("is_master", true);
+}
+
 async function signInWithDemoPhone(
   phone: string,
 ): Promise<{ ok: true; userId: string } | { ok: false; error: string }> {
   if (!isDemoPhone(phone)) {
     return { ok: false, error: "Тестовый вход выключен" };
   }
-  const email = demoPhoneToEmail(phone);
   const { data, error } = await supabase.auth.signInWithPassword({
-    email,
+    login: demoPhoneToEmail(phone),
     password: DEMO_PASSWORD,
   });
-  if (error) {
-    return {
-      ok: false,
-      error:
-        `Не удалось войти как тестовый аккаунт (${phone}).\n` +
-        `${error.message}\n` +
-        "Проверь миграции 0045-0047 (пароль 'xtrud' + email mapping).",
-    };
+  if (error || !data.user) {
+    return { ok: false, error: `Не удалось войти как тестовый аккаунт (${phone}).` };
   }
-  if (!data.session) {
-    return { ok: false, error: "Сессия не создана" };
-  }
-  // Masters should open in their master role; the is_master guard makes this a
-  // no-op for client-only demo accounts.
-  await supabase
-    .from("users")
-    .update({ active_role: "master" })
-    .eq("id", data.user.id)
-    .eq("is_master", true);
+  await markMasterRole(data.user.id);
   return { ok: true, userId: data.user.id };
 }
 
-/**
- * Отправка OTP-кода (реальный SMS через Supabase phone auth → Send SMS Hook →
- * SMS.ru). См. supabase/functions/send-sms + дашборд Auth Hooks.
- *
- * - Demo-телефон (+79000…, флаг включён): код НЕ шлём — на verify-экране вход
- *   произойдёт через email/пароль (signInWithDemoPhone). Это dev/preview.
- * - Реальный номер: supabase.auth.signInWithOtp({ phone }) — Supabase сгенерит
- *   код, вызовет наш hook, hook отправит SMS.
- * - Test-номера ревью Apple (настроены в дашборде Supabase как Test OTP) идут
- *   тем же путём signInWithOtp, но Supabase возвращает фикс-код БЕЗ вызова hook.
- */
+/** Вход по SMS отключён — функции оставлены для экрана verify (дормант). */
 export async function sendOtpToPhone(
   phone: string,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
-  if (isDemoPhone(phone)) {
-    // Demo: SMS не нужен, вход по email/паролю на шаге verify.
-    return { ok: true };
-  }
-  const { error } = await supabase.auth.signInWithOtp({ phone });
-  if (error) {
-    return { ok: false, error: error.message };
-  }
-  return { ok: true };
+  if (isDemoPhone(phone)) return { ok: true };
+  return { ok: false, error: "Вход по SMS отключён. Войдите по телефону и паролю." };
 }
 
-/**
- * Проверка OTP-кода и вход.
- *
- * - Demo-телефон (флаг включён): код игнорируется, вход по email/паролю в
- *   существующий demo-аккаунт (signInWithDemoPhone).
- * - Реальный номер: supabase.auth.verifyOtp({ phone, token, type:'sms' }).
- *   Для новых пользователей триггер handle_new_auth_user создаёт users/
- *   users_private. Для мастеров ставим active_role='master' (как в demo-ветке).
- */
 export async function verifyOtpCode(
   phone: string,
-  code: string,
+  _code: string,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
-  if (isDemoPhone(phone)) {
-    return signInWithDemoPhone(phone);
-  }
-  const { data, error } = await supabase.auth.verifyOtp({
-    phone,
-    token: code,
-    type: "sms",
-  });
-  if (error) {
-    return { ok: false, error: error.message };
-  }
-  if (!data.session || !data.user) {
-    return { ok: false, error: "Сессия не создана" };
-  }
-  // Мастер с is_master=true → сразу в master-режим (как в demo-ветке выше).
-  // Для клиентов UPDATE затронет 0 строк (guard .eq is_master true).
-  await supabase
-    .from("users")
-    .update({ active_role: "master" })
-    .eq("id", data.user.id)
-    .eq("is_master", true);
-  return { ok: true };
+  if (isDemoPhone(phone)) return signInWithDemoPhone(phone);
+  return { ok: false, error: "Вход по SMS отключён. Войдите по телефону и паролю." };
 }
 
-// ============================================================================
-// Вход по номеру/почте + пароль (2026-06-05).
-//
-// SMS-OTP заменён на пароль (не платим операторам за branded-SMS). Почта —
-// для восстановления пароля и как альтернативный логин. Auth-идентичность —
-// РЕАЛЬНАЯ почта (нужно для Supabase resetPasswordForEmail). Телефон хранится
-// в users_private.phone. Вход по номеру → почта через RPC resolve_login_email.
-//
-// Demo-номера (+79000…, флаг ON) по-прежнему входят по email/паролю (demo).
-// SMS-функции (sendOtpToPhone/verifyOtpCode) и экран verify оставлены дормантом
-// для будущего возврата SMS.
-// ============================================================================
-
 /**
- * Регистрация: почта + пароль + телефон.
- *
- * Идёт через серверную функцию `register-user` (admin createUser с
- * email_confirm:true), потому что в Supabase включено «Confirm email» — при
- * обычном signUp сессия не создалась бы до подтверждения письма, а письма мы
- * не шлём (продукт телефоно-ориентированный). Функция создаёт сразу
- * подтверждённого пользователя + сохраняет телефон в профиль; затем здесь
- * сразу входим по паролю → появляется сессия, и корневой AuthGate уводит в
- * онбординг/табы. Логика функции — supabase/functions/register-user/index.ts.
+ * Регистрация: имя, фамилия, телефон, пароль. xtrud-api создаёт аккаунт,
+ * записывает имя и телефон, закрывает онбординг и сразу отдаёт сессию.
  */
-/**
- * Адрес для auth.users, построенный из номера телефона.
- *
- * GoTrue требует email как первичный идентификатор, а форма регистрации его
- * больше не спрашивает (DECISION владельца 2026-09-01). Поддомен phone.xtrud.pro
- * выбран намеренно: формат валиден, домен наш, MX-записи у поддомена нет —
- * то есть адрес заведомо не является доставляемым и не может случайно увести
- * письмо постороннему человеку.
- */
-function phoneToAuthEmail(phone: string): string {
-  const digits = phone.replace(/\D/g, "");
-  return `${digits}@phone.xtrud.pro`;
-}
-
 export async function registerWithCredentials(input: {
   phone: string;
   password: string;
   firstName: string;
   lastName: string;
 }): Promise<{ ok: true; userId: string } | { ok: false; error: string }> {
-  const phone = normalizePhone(input.phone);
-  const email = phoneToAuthEmail(phone);
-
-  // 1. Создаём подтверждённый аккаунт на сервере.
-  const { data, error } = await supabase.functions.invoke("register-user", {
-    body: { email, password: input.password, phone },
-  });
-  if (error) {
-    console.warn("[auth] register-user invoke failed:", error.message);
-    return {
-      ok: false,
-      error: "Не удалось создать аккаунт. Проверьте соединение и попробуйте ещё раз.",
-    };
-  }
-  const result = data as { ok?: boolean; error?: string } | null;
-  if (!result?.ok) {
-    return { ok: false, error: result?.error ?? "Не удалось создать аккаунт" };
-  }
-
-  // 2. Входим по паролю — сессия появляется сразу (аккаунт уже подтверждён).
-  const { data: signInData, error: signInErr } = await supabase.auth.signInWithPassword({
-    email,
+  const { data, error } = await supabase.auth.register({
+    firstName: input.firstName.trim(),
+    lastName: input.lastName.trim(),
+    phone: normalizePhone(input.phone),
     password: input.password,
   });
-  if (signInErr || !signInData.session || !signInData.user) {
-    return {
-      ok: false,
-      error: "Аккаунт создан, но войти не удалось. Попробуйте войти вручную.",
-    };
+  if (error || !data.user) {
+    return { ok: false, error: error?.message ?? "Не удалось создать аккаунт" };
   }
-
-  // 3. Имя и фамилия — из той же формы, отдельного шага «как вас зовут» больше
-  // нет (DECISION владельца 2026-09-03: «пишет имя, логин и пароль, нажимает
-  // создать аккаунт, и аккаунт создается»). Здесь же закрываем онбординг,
-  // иначе AuthGate уведёт человека на экран имени сразу после регистрации.
-  //
-  // Юзернейм не спрашиваем: колонка необязательная, а на профиле он
-  // показывается только когда задан.
-  const { error: profileErr } = await supabase
-    .from("users")
-    .update({
-      first_name: input.firstName.trim(),
-      last_name: input.lastName.trim(),
-      onboarding_completed_at: new Date().toISOString(),
-    })
-    .eq("id", signInData.user.id);
-  if (profileErr) {
-    // Аккаунт уже создан и сессия есть — терять их из-за имени нельзя.
-    // Человек попадёт на экран имени и заполнит его вручную.
-    console.warn("[auth] профиль после регистрации не заполнен:", profileErr.message);
-  }
-
-  return { ok: true, userId: signInData.user.id };
+  return { ok: true, userId: data.user.id };
 }
 
-/**
- * Вход: «почта ИЛИ телефон» + пароль.
- * - demo-телефон (флаг ON) → старый demo email/пароль.
- * - почта → signInWithPassword напрямую.
- * - телефон → resolve_login_email (RPC) → signInWithPassword.
- */
+/** Вход: телефон или почта + пароль. */
 export async function loginWithCredentials(input: {
   login: string;
   password: string;
 }): Promise<{ ok: true; userId: string } | { ok: false; error: string }> {
   const trimmed = input.login.trim();
 
-  // Demo-телефон — старый путь (dev/preview).
   if (!looksLikeEmail(trimmed)) {
     const phone = normalizePhone(trimmed);
     if (isDemoPhone(phone)) {
@@ -266,85 +113,38 @@ export async function loginWithCredentials(input: {
     }
   }
 
-  // Сопоставляем логин → auth-email (почта as-is; телефон → email по users_private).
-  const { data: resolved, error: rpcErr } = await supabase.rpc("resolve_login_email", {
-    p_login: trimmed,
-  });
-  if (rpcErr) {
-    return { ok: false, error: rpcErr.message };
-  }
-  const email = resolved as string | null;
-  if (!email) {
-    return {
-      ok: false,
-      error: "Аккаунт не найден. Проверьте номер или почту, либо зарегистрируйтесь.",
-    };
-  }
-
   const { data, error } = await supabase.auth.signInWithPassword({
-    email,
+    login: trimmed,
     password: input.password,
   });
-  if (error) {
-    return { ok: false, error: "Неверный номер/почта или пароль" };
+  if (error || !data.session || !data.user) {
+    return { ok: false, error: error?.message ?? "Неверный номер/почта или пароль" };
   }
-  if (!data.session || !data.user) {
-    return { ok: false, error: "Сессия не создана" };
-  }
-  // Мастер → сразу master-режим (как в других ветках).
-  await supabase
-    .from("users")
-    .update({ active_role: "master" })
-    .eq("id", data.user.id)
-    .eq("is_master", true);
+  await markMasterRole(data.user.id);
   return { ok: true, userId: data.user.id };
 }
 
-/**
- * Запрос сброса пароля.
- *
- * Идёт через серверную функцию `send-reset-email` (она формирует recovery-ссылку
- * и шлёт письмо через интернет-API Unisender), а НЕ через
- * supabase.auth.resetPasswordForEmail: SMTP между зарубежным Supabase и
- * российским Unisender не работает (таймаут), а HTTPS-API Unisender — работает.
- * Логика — supabase/functions/send-reset-email/index.ts.
- */
+/** Писем восстановления нет: доступ возвращает администратор через панель. */
 export async function requestPasswordReset(
-  email: string,
+  _email: string,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
-  const { data, error } = await supabase.functions.invoke("send-reset-email", {
-    body: { email: email.trim().toLowerCase() },
-  });
-  if (error) {
-    console.warn("[auth] send-reset-email invoke failed:", error.message);
-    return { ok: false, error: "Не удалось отправить письмо. Попробуйте позже." };
-  }
-  const result = data as { ok?: boolean; error?: string } | null;
-  if (!result?.ok) {
-    return { ok: false, error: result?.error ?? "Не удалось отправить письмо" };
-  }
-  return { ok: true };
+  return { ok: false, error: "Напишите в поддержку — мы восстановим доступ." };
 }
 
-/**
- * Установить новый пароль. Вызывается на экране /reset-password, когда Supabase
- * уже подхватил recovery-сессию из ссылки письма (PASSWORD_RECOVERY).
- */
+/** Смена пароля из настроек: нужен текущий пароль. */
 export async function updatePassword(
   newPassword: string,
+  currentPassword?: string,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
-  const { error } = await supabase.auth.updateUser({ password: newPassword });
-  if (error) {
-    return { ok: false, error: error.message };
-  }
+  if (!currentPassword) return { ok: false, error: "Введите текущий пароль" };
+  const { error } = await supabase.auth.changePassword(currentPassword, newPassword);
+  if (error) return { ok: false, error: error.message };
   return { ok: true };
 }
 
 /**
  * Logout — снимает push-токен этого устройства, затем обнуляет сессию.
- *
- * Порядок важен: токен удаляется ДО auth.signOut, пока ещё есть auth.uid()
- * (RLS notification_tokens требует владельца).
+ * Порядок важен: токен удаляется ДО signOut, пока ещё есть auth.uid().
  */
 export async function signOut(): Promise<{ ok: true } | { ok: false; error: string }> {
   await unregisterCurrentPushToken();

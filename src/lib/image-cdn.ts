@@ -23,6 +23,7 @@ import { env } from "@/lib/env";
 const WESERV_MARK = "images.weserv.nl/?url=";
 const STORAGE_PUBLIC = "/storage/v1/object/public/";
 const STORAGE_RENDER = "/storage/v1/render/image/public/";
+const FILES_PUBLIC = "/files/";
 const OWN_ORIGIN = env.EXPO_PUBLIC_SUPABASE_URL.replace(/\/+$/, "");
 
 function isRemoteHttp(url: string): boolean {
@@ -53,7 +54,9 @@ function ownStoragePath(url: string): string | null {
     ? STORAGE_PUBLIC
     : rest.startsWith(STORAGE_RENDER)
       ? STORAGE_RENDER
-      : null;
+      : rest.startsWith(FILES_PUBLIC)
+        ? FILES_PUBLIC
+        : null;
   if (!marker) return null;
   const path = rest.slice(marker.length).split("?")[0] ?? "";
   return path.length > 0 ? path : null;
@@ -87,8 +90,12 @@ function snapWidth(w: number): number {
   return WIDTH_STEPS[WIDTH_STEPS.length - 1] ?? 1920;
 }
 
+// Превью делает наш imgproxy: /render/<ширина>/<качество>/<bucket>/<path>
+// (nginx → xtrud-imgproxy, кэш 7 дней). Старые ссылки
+// /storage/v1/object/public/… ведут к тем же файлам — они перенесены в
+// /opt/xtrud/files.
 function render(path: string, width: number, quality: number): string {
-  return `${OWN_ORIGIN}${STORAGE_RENDER}${path}?width=${width}&quality=${quality}&resize=contain`;
+  return `${OWN_ORIGIN}/render/${width}/${quality}/${path}`;
 }
 
 export function cdnImage(url: string, opts: CdnOptions): string {

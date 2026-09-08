@@ -19,9 +19,9 @@
 // Логика вынесена из хука в модуль намеренно: среда тестов работает без
 // рендера React, и в виде хука эти правила было нельзя проверить.
 
-import type { Session } from "@supabase/supabase-js";
 import { resolveAuthStateAfterDraft } from "@/features/auth/auth-session-policy";
 import { activateOrderDraftOwnerForSession } from "@/lib/order-draft-store";
+import type { Session } from "@/lib/supabase";
 import { supabase } from "@/lib/supabase";
 
 export type AuthStatus = "loading" | "authenticated" | "unauthenticated";

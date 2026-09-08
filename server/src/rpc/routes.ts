@@ -2,9 +2,9 @@
 // PostgREST /rpc: именованные аргументы, роль и claims — из JWT. Список
 // разрешённых функций явный: чужие имена не вызываются.
 import type { FastifyInstance } from "fastify";
-import { type Db, pgErrorToHttp } from "../db.js";
-import { bearer } from "../auth/routes.js";
 import type { Tokens } from "../auth/jwt.js";
+import { bearer } from "../auth/routes.js";
+import { type Db, pgErrorToHttp } from "../db.js";
 
 /** Функции, которые зовёт приложение (инвентаризация 2026-09-08). */
 export const RPC_ALLOWLIST = new Set([
@@ -76,7 +76,9 @@ export function registerRpcRoutes(app: FastifyInstance, db: Db, tokens: Tokens) 
         // значение, как PostgREST; табличная — массив строк.
         const fields = rows.fields.map((f) => f.name);
         if (fields.length === 1 && fields[0] === name) {
-          return reply.send(rows.rows.length === 1 ? rows.rows[0]?.[name] ?? null : rows.rows.map((r) => r[name]));
+          return reply.send(
+            rows.rows.length === 1 ? (rows.rows[0]?.[name] ?? null) : rows.rows.map((r) => r[name]),
+          );
         }
         return reply.send(rows.rows);
       } catch (e) {

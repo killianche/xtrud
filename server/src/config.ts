@@ -12,6 +12,9 @@ const schema = z.object({
   REFRESH_TTL_DAYS: z.coerce.number().default(60),
   /** Домен синтетической почты для аккаунтов по телефону (как в приложении). */
   PHONE_EMAIL_DOMAIN: z.string().default("phone.xtrud.pro"),
+  POSTGREST_URL: z.string().url().default("http://supabase-rest:3000"),
+  FILES_ROOT: z.string().default("/data/files"),
+  FILES_PUBLIC_BASE: z.string().url().default("https://api.xtrud.pro/files"),
 });
 
 export type Config = z.infer<typeof schema>;

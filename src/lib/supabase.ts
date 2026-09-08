@@ -1,51 +1,37 @@
-// Supabase клиент для xtrud — один singleton на всё приложение.
+// Клиент данных xtrud — один singleton на всё приложение.
 //
-// Платформы:
-// - Web: storage через localStorage (передаём наш кросс-платформенный адаптер,
-//   на web он использует window.localStorage). detectSessionInUrl=true для PKCE callback.
-// - iOS/Android: storage через largeSecureStorage (SecureStore + чанкинг для больших session).
-//   detectSessionInUrl=false (нет URL hash на мобиле).
+// С 2026-09-08 это НЕ supabase-js, а свой клиент к xtrud-api на Beget
+// (src/lib/xtrud-client): вход, таблицы через PostgREST, функции базы,
+// файлы. Имя модуля и интерфейс (`supabase.from / rpc / auth / storage`)
+// сохранены, чтобы 46 файлов приложения не менялись — см.
+// docs/BACKEND_REWRITE_PLAN.md.
 //
-// AppState listener: запускаем/останавливаем autoRefresh когда приложение в фоне/активно
-// (рекомендация Supabase для Expo: иначе токены могут протухнуть в фоне).
+// Сессия хранится в защищённом хранилище (largeSecureStorage); старая
+// сессия supabase-js переезжает автоматически (обмен refresh-токена).
+// AppState: фоновое обновление токена только пока приложение активно.
 
 import "react-native-url-polyfill/auto";
 
-import { createClient } from "@supabase/supabase-js";
 import { AppState, Platform } from "react-native";
-import type { Database } from "@/types/database";
 import { env } from "./env";
 import { createTimeoutFetch } from "./fetch-with-timeout";
 import { largeSecureStorage } from "./storage";
+import { createXtrudClient } from "./xtrud-client/client";
 
-const isWeb = Platform.OS === "web";
+export type { ApiError, Session, SessionUser } from "./xtrud-client/types";
 
-export const supabase = createClient<Database>(
-  env.EXPO_PUBLIC_SUPABASE_URL,
-  env.EXPO_PUBLIC_SUPABASE_ANON_KEY,
-  {
-    auth: {
-      storage: largeSecureStorage,
-      autoRefreshToken: true,
-      persistSession: true,
-      detectSessionInUrl: isWeb,
-      flowType: "pkce",
-    },
-    // Таймаут на КАЖДЫЙ запрос (данные и авторизация). Без него молчащая сеть
-    // оставляла экран в вечной загрузке — см. src/lib/fetch-with-timeout.ts.
-    global: { fetch: createTimeoutFetch() },
-  },
-);
+export const supabase = createXtrudClient({
+  baseUrl: env.EXPO_PUBLIC_SUPABASE_URL,
+  storage: largeSecureStorage,
+  // Таймаут на КАЖДЫЙ запрос: молчащая сеть не должна оставлять экран в
+  // вечной загрузке — см. src/lib/fetch-with-timeout.ts.
+  fetch: createTimeoutFetch(),
+});
 
-// AppState-driven autoRefresh — для native. На web этот listener не нужен
-// (браузер сам обрабатывает visibility) и AppState.addEventListener noop-ом
-// возвращает subscription без активного триггера, но не вызываем для чистоты.
-if (!isWeb) {
+if (Platform.OS !== "web") {
   AppState.addEventListener("change", (state) => {
-    if (state === "active") {
-      supabase.auth.startAutoRefresh();
-    } else {
-      supabase.auth.stopAutoRefresh();
-    }
+    if (state === "active") supabase.auth.startAutoRefresh();
+    else supabase.auth.stopAutoRefresh();
   });
+  supabase.auth.startAutoRefresh();
 }

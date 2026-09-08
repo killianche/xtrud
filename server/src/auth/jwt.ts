@@ -20,7 +20,10 @@ export class Tokens {
     this.key = new TextEncoder().encode(secret);
   }
 
-  async signAccess(user: TokenUser, sessionId: string): Promise<{ token: string; expiresAt: number }> {
+  async signAccess(
+    user: TokenUser,
+    sessionId: string,
+  ): Promise<{ token: string; expiresAt: number }> {
     const now = Math.floor(Date.now() / 1000);
     const expiresAt = now + this.accessTtl;
     const token = await new SignJWT({

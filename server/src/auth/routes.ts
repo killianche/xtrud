@@ -6,8 +6,8 @@ import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import type { Config } from "../config.js";
 import { type Db, pgErrorToHttp } from "../db.js";
-import { canonicalPhone, phoneKey, phoneToAuthEmail } from "./phone.js";
 import { hashRefresh, newRefreshToken, type Tokens } from "./jwt.js";
+import { canonicalPhone, phoneKey, phoneToAuthEmail } from "./phone.js";
 
 const registerSchema = z.object({
   firstName: z.string().trim().min(1).max(60),
@@ -60,7 +60,9 @@ export function registerAuthRoutes(app: FastifyInstance, db: Db, tokens: Tokens,
 
   const findByLogin = async (login: string): Promise<AuthUserRow | null> =>
     db.asService(async (c) => {
-      const r = await c.query<AuthUserRow>("SELECT * FROM xtrud_api.find_account($1)", [login.trim()]);
+      const r = await c.query<AuthUserRow>("SELECT * FROM xtrud_api.find_account($1)", [
+        login.trim(),
+      ]);
       return r.rows[0] ?? null;
     });
   const findById = async (id: string): Promise<AuthUserRow | null> =>
@@ -71,7 +73,10 @@ export function registerAuthRoutes(app: FastifyInstance, db: Db, tokens: Tokens,
 
   app.post("/auth/register", async (req, reply) => {
     const parsed = registerSchema.safeParse(req.body);
-    if (!parsed.success) return reply.code(422).send({ error: "Заполните имя, фамилию, телефон и пароль (от 6 символов)" });
+    if (!parsed.success)
+      return reply
+        .code(422)
+        .send({ error: "Заполните имя, фамилию, телефон и пароль (от 6 символов)" });
     const input = parsed.data;
     const phone = canonicalPhone(input.phone);
     const key = phoneKey(phone);
@@ -105,7 +110,9 @@ export function registerAuthRoutes(app: FastifyInstance, db: Db, tokens: Tokens,
     const parsed = loginSchema.safeParse(req.body);
     if (!parsed.success) return reply.code(422).send({ error: "Введите телефон и пароль" });
     const user = await findByLogin(parsed.data.login);
-    const ok = user?.encrypted_password ? await bcrypt.compare(parsed.data.password, user.encrypted_password) : false;
+    const ok = user?.encrypted_password
+      ? await bcrypt.compare(parsed.data.password, user.encrypted_password)
+      : false;
     if (!user || !ok) return reply.code(401).send({ error: "Неверный телефон или пароль" });
     if (user.deleted_at) return reply.code(401).send({ error: "Аккаунт удалён" });
     if (user.banned_until && new Date(user.banned_until) > new Date()) {
@@ -132,13 +139,31 @@ export function registerAuthRoutes(app: FastifyInstance, db: Db, tokens: Tokens,
     return reply.send(await issueSession(result));
   });
 
+  /** Переезд сессии: refresh-токен GoTrue из старой сборки → наша сессия. */
+  app.post("/auth/exchange", async (req, reply) => {
+    const parsed = z.object({ gotrueRefreshToken: z.string().min(8).max(400) }).safeParse(req.body);
+    if (!parsed.success) return reply.code(422).send({ error: "Нет токена" });
+    const userId = await db.asService(async (c) => {
+      const r = await c.query<{ consume_gotrue_refresh: string | null }>(
+        "SELECT xtrud_api.consume_gotrue_refresh($1)",
+        [parsed.data.gotrueRefreshToken],
+      );
+      return r.rows[0]?.consume_gotrue_refresh ?? null;
+    });
+    const user = userId ? await findById(userId) : null;
+    if (!user || user.deleted_at)
+      return reply.code(401).send({ error: "Сессия истекла. Войдите заново." });
+    return reply.send(await issueSession(user));
+  });
+
   app.post("/auth/logout", async (req, reply) => {
     const parsed = refreshSchema.safeParse(req.body);
     if (parsed.success) {
       await db.asService((c) =>
-        c.query("UPDATE xtrud_api.refresh_tokens SET revoked_at = now() WHERE token_hash = $1 AND revoked_at IS NULL", [
-          hashRefresh(parsed.data.refreshToken),
-        ]),
+        c.query(
+          "UPDATE xtrud_api.refresh_tokens SET revoked_at = now() WHERE token_hash = $1 AND revoked_at IS NULL",
+          [hashRefresh(parsed.data.refreshToken)],
+        ),
       );
     }
     return reply.code(204).send();
@@ -156,12 +181,17 @@ export function registerAuthRoutes(app: FastifyInstance, db: Db, tokens: Tokens,
     const parsed = passwordSchema.safeParse(req.body);
     if (!parsed.success) return reply.code(422).send({ error: "Новый пароль — от 6 символов" });
     const user = await findById(claims.sub);
-    const ok = user?.encrypted_password ? await bcrypt.compare(parsed.data.currentPassword, user.encrypted_password) : false;
+    const ok = user?.encrypted_password
+      ? await bcrypt.compare(parsed.data.currentPassword, user.encrypted_password)
+      : false;
     if (!user || !ok) return reply.code(403).send({ error: "Текущий пароль неверный" });
     const hash = await bcrypt.hash(parsed.data.newPassword, 10);
     await db.asService(async (c) => {
       await c.query("SELECT xtrud_api.set_password_hash($1, $2)", [user.id, hash]);
-      await c.query("UPDATE xtrud_api.refresh_tokens SET revoked_at = now() WHERE user_id = $1 AND revoked_at IS NULL", [user.id]);
+      await c.query(
+        "UPDATE xtrud_api.refresh_tokens SET revoked_at = now() WHERE user_id = $1 AND revoked_at IS NULL",
+        [user.id],
+      );
     });
     return reply.send(await issueSession(user));
   });

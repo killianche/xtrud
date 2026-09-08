@@ -153,3 +153,20 @@ BEGIN
   RETURN v_id;
 END;
 $$;
+-- 0177e: обмен refresh-токена GoTrue на сессию xtrud-api (переезд без
+-- повторного входа). Токен GoTrue после обмена отзывается.
+CREATE OR REPLACE FUNCTION xtrud_api.consume_gotrue_refresh(p_token text)
+RETURNS uuid LANGUAGE plpgsql SECURITY DEFINER
+SET search_path TO 'auth', 'pg_temp'
+AS $$
+DECLARE v_user uuid;
+BEGIN
+  UPDATE auth.refresh_tokens SET revoked = true, updated_at = now()
+   WHERE token = p_token AND coalesce(revoked, false) = false
+  RETURNING user_id INTO v_user;
+  RETURN v_user;
+END;
+$$;
+ALTER FUNCTION xtrud_api.consume_gotrue_refresh(text) OWNER TO postgres;
+REVOKE ALL ON FUNCTION xtrud_api.consume_gotrue_refresh(text) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION xtrud_api.consume_gotrue_refresh(text) TO xtrud_api;

@@ -32,6 +32,23 @@ interface AuthUserRow {
   encrypted_password: string | null;
   banned_until: string | null;
   deleted_at: string | null;
+  /** public.users.status — бан админкой живёт здесь (0177f). */
+  user_status: string | null;
+}
+
+// Хеш-пустышка: сравнение выполняется и для несуществующего аккаунта, чтобы
+// по времени ответа нельзя было перечислять номера.
+const DUMMY_HASH = "$2a$10$CwTycUXWue0Thq9StjUM0uJ8Y7p4E7g0vX3s6f1G9o7z4h1j2k3l4";
+
+function blockedMessage(user: AuthUserRow): string | null {
+  if (user.deleted_at) return "Аккаунт удалён";
+  if (user.user_status === "banned" || user.user_status === "deleted") {
+    return "Аккаунт заблокирован. Обратитесь в поддержку.";
+  }
+  if (user.banned_until && new Date(user.banned_until) > new Date()) {
+    return "Аккаунт заблокирован. Обратитесь в поддержку.";
+  }
+  return null;
 }
 
 export function registerAuthRoutes(app: FastifyInstance, db: Db, tokens: Tokens, cfg: Config) {
@@ -102,7 +119,10 @@ export function registerAuthRoutes(app: FastifyInstance, db: Db, tokens: Tokens,
     } catch (e) {
       const http = pgErrorToHttp(e);
       req.log.error({ err: e }, "register failed");
-      return reply.code(http.status).send({ error: (e as Error).message || http.message });
+      // Наружу — только заготовленный текст «номер уже занят»; остальное общее.
+      return reply
+        .code(http.status)
+        .send({ error: http.status === 409 ? (e as Error).message : http.message });
     }
   });
 
@@ -110,14 +130,10 @@ export function registerAuthRoutes(app: FastifyInstance, db: Db, tokens: Tokens,
     const parsed = loginSchema.safeParse(req.body);
     if (!parsed.success) return reply.code(422).send({ error: "Введите телефон и пароль" });
     const user = await findByLogin(parsed.data.login);
-    const ok = user?.encrypted_password
-      ? await bcrypt.compare(parsed.data.password, user.encrypted_password)
-      : false;
+    const ok = await bcrypt.compare(parsed.data.password, user?.encrypted_password ?? DUMMY_HASH);
     if (!user || !ok) return reply.code(401).send({ error: "Неверный телефон или пароль" });
-    if (user.deleted_at) return reply.code(401).send({ error: "Аккаунт удалён" });
-    if (user.banned_until && new Date(user.banned_until) > new Date()) {
-      return reply.code(403).send({ error: "Аккаунт заблокирован. Обратитесь в поддержку." });
-    }
+    const blocked = blockedMessage(user);
+    if (blocked) return reply.code(403).send({ error: blocked });
     return reply.send(await issueSession(user));
   });
 
@@ -125,16 +141,27 @@ export function registerAuthRoutes(app: FastifyInstance, db: Db, tokens: Tokens,
     const parsed = refreshSchema.safeParse(req.body);
     if (!parsed.success) return reply.code(422).send({ error: "Нет refresh-токена" });
     const hash = hashRefresh(parsed.data.refreshToken);
-    const rotated = await db.asService(async (c) => {
+    // Сначала проверяем аккаунт, и только затем сжигаем токен.
+    const owner = await db.asService(async (c) => {
       const r = await c.query<{ user_id: string }>(
-        `UPDATE xtrud_api.refresh_tokens SET rotated_at = now(), revoked_at = now()
-          WHERE token_hash = $1 AND revoked_at IS NULL AND expires_at > now()
-          RETURNING user_id`,
+        "SELECT user_id FROM xtrud_api.refresh_tokens WHERE token_hash = $1 AND revoked_at IS NULL AND expires_at > now()",
         [hash],
       );
       return r.rows[0]?.user_id ?? null;
     });
-    const result = rotated ? await findById(rotated) : null;
+    const result = owner ? await findById(owner) : null;
+    if (result && blockedMessage(result))
+      return reply.code(403).send({ error: blockedMessage(result) });
+    if (result) {
+      const rotated = await db.asService(async (c) => {
+        const r = await c.query(
+          "UPDATE xtrud_api.refresh_tokens SET rotated_at = now(), revoked_at = now() WHERE token_hash = $1 AND revoked_at IS NULL RETURNING id",
+          [hash],
+        );
+        return (r.rowCount ?? 0) > 0;
+      });
+      if (!rotated) return reply.code(401).send({ error: "Сессия истекла. Войдите заново." });
+    }
     if (!result) return reply.code(401).send({ error: "Сессия истекла. Войдите заново." });
     return reply.send(await issueSession(result));
   });

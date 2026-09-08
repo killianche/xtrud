@@ -5,10 +5,9 @@
  * До 2026-09-08 ресайз делал иностранный прокси images.weserv.nl (Cloudflare):
  * лишний хоп за границу, в мобильных сетях РФ нестабилен. DECISION владельца
  * 2026-09-08: «избавиться от иностранного». Теперь ресайз делает наш же
- * сервер — imgproxy внутри Supabase Storage на Beget
- * (`/storage/v1/render/image/public/...?width=&quality=`), а nginx кэширует
- * результат. Чужие адреса (не наше хранилище) не проксируются вовсе —
- * отдаются как есть.
+ * сервер — контейнер xtrud-imgproxy на Beget (`/render/<ширина>/<качество>/
+ * <bucket>/<path>`), а nginx кэширует результат. Чужие адреса (не наше
+ * хранилище) не проксируются вовсе — отдаются как есть.
  *
  * Что НЕ трогаем (возвращаем ссылку как есть):
  *   - локальные ассеты из require (number-id) — сюда вообще не попадают;
@@ -58,8 +57,11 @@ function ownStoragePath(url: string): string | null {
         ? FILES_PUBLIC
         : null;
   if (!marker) return null;
-  const path = rest.slice(marker.length).split("?")[0] ?? "";
-  return path.length > 0 ? path : null;
+  const [path = "", query = ""] = rest.slice(marker.length).split("?");
+  if (path.length === 0) return null;
+  // ?v=<метка> — версия файла при перезаписи по тому же пути (аватар).
+  const v = new URLSearchParams(query).get("v");
+  return v ? `${path}?v=${encodeURIComponent(v)}` : path;
 }
 
 function canOptimize(url: string | null | undefined): url is string {
@@ -95,7 +97,8 @@ function snapWidth(w: number): number {
 // /storage/v1/object/public/… ведут к тем же файлам — они перенесены в
 // /opt/xtrud/files.
 function render(path: string, width: number, quality: number): string {
-  return `${OWN_ORIGIN}/render/${width}/${quality}/${path}`;
+  const [file = "", query = ""] = path.split("?");
+  return `${OWN_ORIGIN}/render/${width}/${quality}/${file}${query ? `?${query}` : ""}`;
 }
 
 export function cdnImage(url: string, opts: CdnOptions): string {

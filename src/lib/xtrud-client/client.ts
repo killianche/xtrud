@@ -71,21 +71,29 @@ export function createXtrudClient(opts: XtrudClientOptions) {
     body: unknown,
     withAuth = true,
   ): Promise<{ status: number; json: unknown }> {
-    const res = await (withAuth
-      ? call
-      : (p: string, i: RequestInit) => fetchImpl(`${baseUrl}${p}`, i))(path, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body ?? {}),
-    });
-    const text = await res.text();
-    let json: unknown = null;
     try {
-      json = text ? JSON.parse(text) : null;
-    } catch {
-      json = { error: text };
+      const init: RequestInit & { headers: Record<string, string> } = {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body ?? {}),
+      };
+      const res = withAuth ? await call(path, init) : await fetchImpl(`${baseUrl}${path}`, init);
+      const text = await res.text();
+      let json: unknown = null;
+      try {
+        json = text ? JSON.parse(text) : null;
+      } catch {
+        json = { error: text };
+      }
+      return { status: res.status, json };
+    } catch (e) {
+      // Нет сети или таймаут: отдаём как ошибку 0, экран покажет «нет связи».
+      const err = e as { message?: string; code?: string; name?: string };
+      return {
+        status: 0,
+        json: { error: err.message ?? "Нет связи с сервером", code: err.code ?? err.name },
+      };
     }
-    return { status: res.status, json };
   }
 
   const auth = {

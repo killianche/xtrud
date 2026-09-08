@@ -132,12 +132,17 @@ export class SessionManager {
     const now = Math.floor(Date.now() / 1000);
     if (s.expires_at - now > REFRESH_MARGIN_S) return s.access_token;
     const refreshed = await this.refresh();
-    return refreshed?.access_token ?? null;
+    // Сервер временно недоступен — шлём старый токен: если он ещё жив,
+    // запрос пройдёт; если нет, экран покажет ошибку без выхода из аккаунта.
+    return refreshed?.access_token ?? s.access_token;
   }
 
   /** Обновление по refresh-токену. Один полёт на все параллельные запросы. */
+  private retryAfter = 0;
+
   refresh(): Promise<Session | null> {
     if (this.refreshing) return this.refreshing;
+    if (Date.now() < this.retryAfter) return Promise.resolve(null);
     this.refreshing = (async () => {
       const s = this.session;
       if (!s) return null;
@@ -151,13 +156,19 @@ export class SessionManager {
           await this.set(null, "SIGNED_OUT");
           return null;
         }
-        if (!res.ok) return s; // временный сбой — оставляем как есть
+        if (!res.ok) {
+          // Временный сбой сервера: сессию не трогаем, но повтор обновления —
+          // не раньше чем через 15 с, иначе каждый запрос бьётся дважды.
+          this.retryAfter = Date.now() + 15_000;
+          return null;
+        }
         const tokens = (await res.json()) as TokenResponse;
         const next = sessionFromTokens(tokens);
         await this.set(next, "TOKEN_REFRESHED");
         return next;
       } catch {
-        return s;
+        this.retryAfter = Date.now() + 15_000;
+        return null;
       } finally {
         this.refreshing = null;
       }

@@ -170,3 +170,76 @@ $$;
 ALTER FUNCTION xtrud_api.consume_gotrue_refresh(text) OWNER TO postgres;
 REVOKE ALL ON FUNCTION xtrud_api.consume_gotrue_refresh(text) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION xtrud_api.consume_gotrue_refresh(text) TO xtrud_api;
+-- 0177f: статус аккаунта из public.users в ответах find_account/account_by_id —
+-- бан админкой живёт там, а не в auth.users.banned_until.
+DROP FUNCTION IF EXISTS xtrud_api.find_account(text);
+CREATE FUNCTION xtrud_api.find_account(p_login text)
+RETURNS TABLE(id uuid, email text, phone text, encrypted_password text, banned_until timestamptz, deleted_at timestamptz, user_status text)
+LANGUAGE sql SECURITY DEFINER STABLE
+SET search_path TO 'public', 'auth', 'pg_temp'
+AS $$
+  SELECT u.id, u.email::text, up.phone, u.encrypted_password::text, u.banned_until, u.deleted_at, pu.status::text
+    FROM auth.users u
+    LEFT JOIN public.users_private up ON up.user_id = u.id
+    LEFT JOIN public.users pu ON pu.id = u.id
+   WHERE (position('@' in p_login) > 0 AND lower(u.email) = lower(btrim(p_login)))
+      OR (position('@' in p_login) = 0
+          AND right(regexp_replace(coalesce(up.phone, ''), '\D', '', 'g'), 10) = right(regexp_replace(p_login, '\D', '', 'g'), 10)
+          AND length(regexp_replace(p_login, '\D', '', 'g')) >= 10)
+   ORDER BY u.created_at
+   LIMIT 1;
+$$;
+DROP FUNCTION IF EXISTS xtrud_api.account_by_id(uuid);
+CREATE FUNCTION xtrud_api.account_by_id(p_id uuid)
+RETURNS TABLE(id uuid, email text, phone text, encrypted_password text, banned_until timestamptz, deleted_at timestamptz, user_status text)
+LANGUAGE sql SECURITY DEFINER STABLE
+SET search_path TO 'public', 'auth', 'pg_temp'
+AS $$
+  SELECT u.id, u.email::text, up.phone, u.encrypted_password::text, u.banned_until, u.deleted_at, pu.status::text
+    FROM auth.users u
+    LEFT JOIN public.users_private up ON up.user_id = u.id
+    LEFT JOIN public.users pu ON pu.id = u.id
+   WHERE u.id = p_id;
+$$;
+DO $$ DECLARE f text; BEGIN
+  FOREACH f IN ARRAY ARRAY['find_account(text)', 'account_by_id(uuid)'] LOOP
+    EXECUTE format('ALTER FUNCTION xtrud_api.%s OWNER TO postgres', f);
+    EXECUTE format('REVOKE ALL ON FUNCTION xtrud_api.%s FROM PUBLIC', f);
+    EXECUTE format('GRANT EXECUTE ON FUNCTION xtrud_api.%s TO xtrud_api', f);
+  END LOOP;
+END $$;
+-- Один аккаунт на номер: уникальный индекс по последним 10 цифрам (дублей нет — проверено).
+CREATE UNIQUE INDEX IF NOT EXISTS users_private_phone_key10_uniq
+  ON public.users_private ((right(regexp_replace(phone, '\D', '', 'g'), 10)))
+  WHERE phone IS NOT NULL;
+-- 0177g (по отчёту безопасности 2026-09-08):
+-- 1. Телефон специалиста — только вошедшим (раньше отдавался анониму).
+CREATE OR REPLACE FUNCTION public.get_master_phone(p_master_id uuid)
+RETURNS text
+LANGUAGE sql SECURITY DEFINER STABLE
+SET search_path TO 'public', 'pg_temp'
+AS $$
+  SELECT pu.contact_phone
+    FROM public.users pu
+   WHERE auth.uid() IS NOT NULL
+     AND pu.id = p_master_id AND pu.is_master = true AND pu.status = 'active';
+$$;
+-- 2. Таблица с телефонами: у анонима не должно быть и гранта (RLS — второй рубеж).
+REVOKE SELECT ON public.users_private FROM anon;
+-- 3. Бан/удаление в админке отзывает наши refresh-токены сразу.
+CREATE OR REPLACE FUNCTION xtrud_api.revoke_tokens_on_status()
+RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER
+SET search_path TO 'xtrud_api', 'pg_temp'
+AS $$
+BEGIN
+  IF NEW.status IN ('banned', 'deleted', 'suspended') AND NEW.status IS DISTINCT FROM OLD.status THEN
+    UPDATE xtrud_api.refresh_tokens SET revoked_at = now() WHERE user_id = NEW.id AND revoked_at IS NULL;
+  END IF;
+  RETURN NEW;
+END;
+$$;
+ALTER FUNCTION xtrud_api.revoke_tokens_on_status() OWNER TO postgres;
+DROP TRIGGER IF EXISTS users_revoke_tokens_on_status ON public.users;
+CREATE TRIGGER users_revoke_tokens_on_status
+  AFTER UPDATE OF status ON public.users
+  FOR EACH ROW EXECUTE FUNCTION xtrud_api.revoke_tokens_on_status();

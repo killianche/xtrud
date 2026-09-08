@@ -7,7 +7,7 @@
 //   ссылке, запись/удаление владельцу.
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { createReadStream, existsSync } from "node:fs";
-import { mkdir, rename, rm, writeFile } from "node:fs/promises";
+import { mkdir, readdir, rename, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import type { FastifyInstance } from "fastify";
 import type { Tokens } from "../auth/jwt.js";
@@ -26,9 +26,26 @@ const BUCKETS: Record<string, { public: boolean; mastersOnly?: boolean }> = {
   "order-photos": { public: true },
   "master-verifications": { public: false },
 };
-const ALLOWED_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
+const ALLOWED_TYPES: Record<string, string[]> = {
+  "image/jpeg": [".jpg", ".jpeg"],
+  "image/png": [".png"],
+  "image/webp": [".webp"],
+};
 const SEGMENT_RE = /^[A-Za-z0-9._-]+$/;
 const MAX_BYTES = 20 * 1024 * 1024;
+/** Не больше файлов в папке пользователя внутри бакета (защита диска). */
+const MAX_FILES_PER_FOLDER = 300;
+
+/** Первые байты файла должны соответствовать заявленному типу. */
+function matchesMagic(type: string, body: Buffer): boolean {
+  if (body.length < 12) return false;
+  if (type === "image/jpeg") return body[0] === 0xff && body[1] === 0xd8 && body[2] === 0xff;
+  if (type === "image/png")
+    return body.subarray(0, 4).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47]));
+  if (type === "image/webp")
+    return body.subarray(0, 4).toString() === "RIFF" && body.subarray(8, 12).toString() === "WEBP";
+  return false;
+}
 
 function safeParts(raw: string): string[] | null {
   const parts = raw.split("/").filter((p) => p.length > 0);
@@ -63,11 +80,22 @@ export function registerFilesRoutes(
       if (parts[0] !== claims.sub)
         return reply.code(403).send({ error: "Можно загружать только в свою папку" });
       const type = (req.headers["content-type"] ?? "").split(";")[0]?.trim() ?? "";
-      if (!ALLOWED_TYPES.has(type))
-        return reply.code(415).send({ error: "Только JPEG, PNG или WebP" });
+      const extensions = ALLOWED_TYPES[type];
+      if (!extensions) return reply.code(415).send({ error: "Только JPEG, PNG или WebP" });
+      const fileName = parts[parts.length - 1] ?? "";
+      const ext = path.extname(fileName).toLowerCase();
+      if (!extensions.includes(ext))
+        return reply.code(415).send({ error: "Расширение файла не совпадает с типом" });
       const body = req.body;
       if (!Buffer.isBuffer(body) || body.length === 0)
         return reply.code(400).send({ error: "Пустой файл" });
+      if (!matchesMagic(type, body))
+        return reply.code(415).send({ error: "Файл не является изображением" });
+      const folder = path.join(cfg.root, req.params.bucket, parts[0] ?? "");
+      const existing = await readdir(folder).catch(() => [] as string[]);
+      if (existing.length >= MAX_FILES_PER_FOLDER && !existing.includes(fileName)) {
+        return reply.code(429).send({ error: "Слишком много файлов. Удалите ненужные." });
+      }
       if (bucket.mastersOnly) {
         const isMaster = await db.asUser(claims, async (c) => {
           const r = await c.query<{ is_master: boolean }>(

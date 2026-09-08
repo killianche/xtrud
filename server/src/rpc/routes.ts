@@ -1,6 +1,7 @@
 // Мост к функциям базы: POST /v2/rpc/<имя> {аргументы}. Тот же контракт, что у
 // PostgREST /rpc: именованные аргументы, роль и claims — из JWT. Список
-// разрешённых функций явный: чужие имена не вызываются.
+// разрешённых функций явный; прямой путь /v2/rest/rpc/* закрыт в прокси.
+// Настоящая граница по-прежнему гранты EXECUTE в базе (0166).
 import type { FastifyInstance } from "fastify";
 import type { Tokens } from "../auth/jwt.js";
 import { bearer } from "../auth/routes.js";
@@ -22,7 +23,6 @@ export const RPC_ALLOWLIST = new Set([
   "record_master_view",
   "reject_response",
   "reopen_order",
-  "resolve_login_email",
   "search_categories",
   "search_masters",
   "set_availability",
@@ -61,10 +61,14 @@ export function registerRpcRoutes(app: FastifyInstance, db: Db, tokens: Tokens) 
       }
       const claims = await tokens.verify(bearer(req.headers.authorization));
       const args = req.body && typeof req.body === "object" ? req.body : {};
-      const keys = Object.keys(args).filter((k) => NAME_RE.test(k));
+      const keys = Object.keys(args);
+      if (keys.some((k) => !NAME_RE.test(k)))
+        return reply.code(400).send({ error: "Неверное имя аргумента" });
       const placeholders = keys.map((k, i) => `"${k}" := $${i + 1}`).join(", ");
       const values = keys.map((k) => {
         const v = (args as Record<string, unknown>)[k];
+        // Массивы node-pg сериализует сам (text[]); объекты — как jsonb-текст.
+        if (Array.isArray(v)) return v;
         return v !== null && typeof v === "object" ? JSON.stringify(v) : v;
       });
       try {

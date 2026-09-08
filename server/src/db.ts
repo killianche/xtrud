@@ -9,7 +9,12 @@ export type Claims = { sub: string; role: "authenticated"; email?: string; phone
 export class Db {
   readonly pool: pg.Pool;
   constructor(url: string) {
-    this.pool = new pg.Pool({ connectionString: url, max: 10, idleTimeoutMillis: 30_000 });
+    this.pool = new pg.Pool({
+      connectionString: url,
+      max: 20,
+      idleTimeoutMillis: 30_000,
+      connectionTimeoutMillis: 5_000,
+    });
   }
 
   /** Выполнить fn под пользователем (или анонимом), в одной транзакции. */
@@ -17,6 +22,7 @@ export class Db {
     const client = await this.pool.connect();
     try {
       await client.query("BEGIN");
+      await client.query("SET LOCAL statement_timeout = '15s'");
       const role = claims ? "authenticated" : "anon";
       await client.query(`SET LOCAL ROLE ${role}`);
       await client.query("SELECT set_config('request.jwt.claims', $1, true)", [
@@ -38,6 +44,7 @@ export class Db {
     const client = await this.pool.connect();
     try {
       await client.query("BEGIN");
+      await client.query("SET LOCAL statement_timeout = '15s'");
       const result = await fn(client);
       await client.query("COMMIT");
       return result;
@@ -57,7 +64,13 @@ export function pgErrorToHttp(e: unknown): { status: number; message: string; co
   if (code === "42501") return { status: 403, message: err.message ?? "Нет доступа", code };
   if (code === "P0002") return { status: 404, message: err.message ?? "Не найдено", code };
   if (code === "23505") return { status: 409, message: err.message ?? "Уже существует", code };
-  if (code === "P0001" || code === "23514" || code === "22023") {
+  if (
+    code === "P0001" ||
+    code === "23514" ||
+    code === "22023" ||
+    code === "22P02" ||
+    code === "22P05"
+  ) {
     return { status: 422, message: err.message ?? "Неверные данные", code };
   }
   if (code === "28000") return { status: 401, message: err.message ?? "Нужен вход", code };

@@ -5,6 +5,7 @@ services:
     container_name: xtrud-api
     restart: unless-stopped
     env_file: /opt/xtrud/xtrud-api.env
+    mem_limit: 512m
     ports:
       - "127.0.0.1:8100:8100"
     volumes:

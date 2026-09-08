@@ -11,9 +11,32 @@ const FORWARD_REQUEST_HEADERS = [
   "accept",
   "range",
   "range-unit",
-  "accept-profile",
-  "content-profile",
 ];
+
+/** Таблицы, к которым ходит приложение (инвентаризация 2026-09-08). Схема — только public. */
+const TABLE_ALLOWLIST = new Set([
+  "cities",
+  "client_errors",
+  "master_categories",
+  "master_profiles",
+  "master_service_areas",
+  "master_services",
+  "master_verifications",
+  "notification_tokens",
+  "notifications",
+  "order_responses",
+  "orders",
+  "portfolio_cases",
+  "portfolio_items",
+  "reports",
+  "reviews",
+  "user_blocks",
+  "users",
+  "users_private",
+  "categories_l1",
+  "categories_l2",
+  "categories_l3",
+]);
 const FORWARD_RESPONSE_HEADERS = [
   "content-type",
   "content-range",
@@ -27,6 +50,8 @@ export function registerRestProxy(app: FastifyInstance, postgrestUrl: string) {
     if (!/^[A-Za-z0-9_./-]*$/.test(path) || path.includes("..")) {
       return reply.code(400).send({ error: "Неверный путь" });
     }
+    // Только таблицы из списка; функции — через /v2/rpc; корень (swagger) закрыт.
+    if (!TABLE_ALLOWLIST.has(path)) return reply.code(404).send({ error: "Нет такой таблицы" });
     const url = req.raw.url ?? "";
     const query = url.includes("?") ? url.slice(url.indexOf("?")) : "";
     const headers: Record<string, string> = {};
@@ -43,7 +68,18 @@ export function registerRestProxy(app: FastifyInstance, postgrestUrl: string) {
           ? new Uint8Array(req.body)
           : JSON.stringify(req.body)
       : undefined;
-    const upstream = await fetch(`${postgrestUrl}/${path}${query}`, { method, headers, body });
+    let upstream: Response;
+    try {
+      upstream = await fetch(`${postgrestUrl}/${path}${query}`, {
+        method,
+        headers,
+        body,
+        signal: AbortSignal.timeout(20_000),
+      });
+    } catch (e) {
+      req.log.warn({ err: e, path }, "postgrest unreachable");
+      return reply.code(502).send({ error: "Сервер данных не ответил. Попробуйте ещё раз." });
+    }
     reply.code(upstream.status);
     for (const h of FORWARD_RESPONSE_HEADERS) {
       const v = upstream.headers.get(h);

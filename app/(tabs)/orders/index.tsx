@@ -41,7 +41,6 @@ import {
   type FlatList,
   type NativeScrollEvent,
   type NativeSyntheticEvent,
-  Pressable,
   View,
 } from "react-native";
 import { AppText } from "@/components/AppText";
@@ -52,6 +51,7 @@ import {
   FAB_LIST_SPACE,
   FloatingActionButton,
   LargeTitleBar,
+  SegmentedControl,
   useLargeTitle,
 } from "@/components/ui";
 import { useAuthSession } from "@/features/auth/use-auth-session";
@@ -69,7 +69,6 @@ import {
 } from "@/features/orders/use-my-responses";
 import { usePullToRefresh } from "@/hooks/use-pull-to-refresh";
 import { describeQueryError } from "@/lib/describe-query-error";
-import { hapticSelection } from "@/lib/haptics";
 import { useTabBarSpace } from "@/lib/tab-bar-space";
 import { scrollViewToTop, useTabScrollResetCounter } from "@/lib/tab-scroll-reset";
 import { useThemeColors } from "@/lib/use-theme-color";
@@ -175,11 +174,18 @@ export default function OrdersScreen() {
         hideTitle
         alwaysCompact
         below={
-          <Segments
+          <SegmentedControl<Segment>
             value={resolved}
             onChange={setTab}
-            ordersCount={myOrders?.length ?? null}
-            responsesCount={myResponses?.length ?? null}
+            items={[
+              { id: "orders", label: "Как клиент", count: myOrders?.length ?? null },
+              {
+                id: "responses",
+                label: "Как мастер",
+                count: myResponses?.length ?? null,
+                tone: "primary",
+              },
+            ]}
           />
         }
       />
@@ -194,64 +200,6 @@ export default function OrdersScreen() {
           onPress={() => router.push("/orders/new" as never)}
         />
       )}
-    </View>
-  );
-}
-
-// ============================================================================
-// Segments — «Задания N» / «Отклики N». Счётчики — из данных, пока данных
-// нет — без числа (не показываем «0», которого не знаем).
-// ============================================================================
-
-function Segments({
-  value,
-  onChange,
-  ordersCount,
-  responsesCount,
-}: {
-  value: Segment;
-  onChange: (v: Segment) => void;
-  ordersCount: number | null;
-  responsesCount: number | null;
-}) {
-  // DECISION владельца 2026-09-06: две роли — два цвета. «Как клиент» — в
-  // фирменном акценте, «Как мастер» — чёрный (ink): человек с одного взгляда
-  // понимает, в каком контексте он сейчас. Тот же цвет подхватывает
-  // содержимое списка ниже (см. accent у OrderRow «Ваш отклик»).
-  const items: Array<[Segment, string, number | null]> = [
-    ["orders", "Как клиент", ordersCount],
-    ["responses", "Как мастер", responsesCount],
-  ];
-  return (
-    <View className="mx-4 mb-3 flex-row rounded-xl bg-canvas-soft p-1">
-      {items.map(([key, label, count]) => {
-        const active = value === key;
-        const title = count != null && count > 0 ? `${label} · ${count}` : label;
-        const activeClass = key === "responses" ? "bg-primary" : "bg-accent";
-        const activeText = key === "responses" ? "text-on-primary" : "text-on-accent";
-        return (
-          <Pressable
-            key={key}
-            accessibilityRole="tab"
-            accessibilityLabel={title}
-            accessibilityState={{ selected: active }}
-            onPress={() => {
-              hapticSelection();
-              onChange(key);
-            }}
-            className={`min-h-12 flex-1 items-center justify-center rounded-lg ${
-              active ? activeClass : ""
-            }`}
-          >
-            <AppText
-              weight="semibold"
-              className={`text-body-md ${active ? activeText : "text-mute"}`}
-            >
-              {title}
-            </AppText>
-          </Pressable>
-        );
-      })}
     </View>
   );
 }

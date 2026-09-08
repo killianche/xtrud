@@ -7,9 +7,10 @@
  */
 
 import { useRouter } from "expo-router";
-import { CaretDown } from "phosphor-react-native";
+import { CaretDown, SignIn, Wrench } from "phosphor-react-native";
 import { type RefObject, useEffect, useMemo, useRef, useState } from "react";
 import {
+  Alert,
   Animated,
   type FlatList,
   LayoutAnimation,
@@ -20,18 +21,25 @@ import {
   View,
 } from "react-native";
 import { AppText } from "@/components/AppText";
+import { EmptyState } from "@/components/EmptyState";
 import {
   InsetGroup,
   InsetRow,
   LargeTitleBar,
-  LargeTitleBlock,
   SearchField,
+  SegmentedControl,
   useLargeTitle,
 } from "@/components/ui";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { SystemIcon } from "@/components/ui/SystemIcon";
+import { useAuthSession } from "@/features/auth/use-auth-session";
 import { useCategoriesL1 } from "@/features/categories/use-categories-l1";
 import { useVisibleCategories } from "@/features/categories/use-visible-categories";
+import { SpecialistHubBody } from "@/features/specialist/SpecialistHubBody";
+import {
+  useEnableSpecialistMode,
+  useMySpecialistProfile,
+} from "@/features/specialist/use-specialist";
 import { getCategoryIcon } from "@/lib/category-icons";
 import { hapticSelection } from "@/lib/haptics";
 import { useTabBarSpace } from "@/lib/tab-bar-space";
@@ -45,10 +53,25 @@ if (Platform.OS === "android" && UIManager.setLayoutAnimationEnabledExperimental
 export default function SpecialistsCategoriesScreen() {
   const router = useRouter();
   // Строки навигации в покое нет — стартовая высота 0, без прыжка (QA).
-  const large = useLargeTitle(0);
+  const large = useLargeTitle();
   const tabBarSpace = useTabBarSpace();
   const tc = useThemeColors(["ink", "on-accent", "mute"]);
   const [query, setQuery] = useState("");
+  // Переключатель «Найти специалиста / Я специалист» — как «Как клиент / Как
+  // мастер» в «Моих заданиях» (DECISION владельца 2026-09-08).
+  type Segment = "find" | "me";
+  const [segment, setSegment] = useState<Segment>("find");
+  const { session } = useAuthSession();
+  const userId = session?.user?.id;
+  const myProfile = useMySpecialistProfile(userId);
+  const enable = useEnableSpecialistMode();
+  const becomeSpecialist = () => {
+    if (!userId) return;
+    enable.mutate(
+      { userId },
+      { onError: () => Alert.alert("Не получилось", "Попробуйте ещё раз.") },
+    );
+  };
   // Раздел раскрывается по тапу — как DisclosureGroup в iOS (DECISION
   // владельца 2026-09-07: «крупные категории большими, мелкие скрыты и
   // раскрываются»). Поиск раскрывает совпавшие разделы сам.
@@ -102,15 +125,35 @@ export default function SpecialistsCategoriesScreen() {
         keyboardDismissMode="on-drag"
         showsVerticalScrollIndicator={false}
       >
-        <LargeTitleBlock title="Специалисты" subtitle="Выберите, кто нужен" />
-        <View className="mb-6 px-4">
+        {segment === "me" ? (
+          !userId ? (
+            <EmptyState
+              icon={SignIn}
+              title="Войдите, чтобы настроить профиль специалиста"
+              hint="Категории, о себе, фото работ и контакты — клиенты найдут вас в каталоге."
+              ctaLabel="Войти"
+              onCtaPress={() => router.push("/(auth)/phone" as never)}
+            />
+          ) : myProfile.isFetched && myProfile.data === null ? (
+            <EmptyState
+              icon={Wrench}
+              title="Станьте специалистом"
+              hint="Выберите категории, расскажите о себе и добавьте фото работ — и клиенты найдут вас во вкладке «Специалисты»."
+              ctaLabel={enable.isPending ? "Включаем…" : "Стать специалистом"}
+              onCtaPress={becomeSpecialist}
+            />
+          ) : (
+            <SpecialistHubBody userId={userId} />
+          )
+        ) : null}
+        <View className={segment === "find" ? "mb-6 px-4" : "hidden"}>
           <SearchField
             value={query}
             onChangeText={setQuery}
             placeholder="Например, электрик или уборка"
           />
         </View>
-        {l1.isLoading || categories.isLoading ? (
+        {segment !== "find" ? null : l1.isLoading || categories.isLoading ? (
           <View className="mx-4 overflow-hidden rounded-2xl bg-canvas">
             {[0, 1, 2, 3, 4].map((i) => (
               <View key={i} className="flex-row items-center gap-3 px-4 py-3.5">
@@ -135,77 +178,95 @@ export default function SpecialistsCategoriesScreen() {
             <View className="h-1" />
           </InsetGroup>
         ) : null}
-        {sections.map(({ section, rows }) => {
-          const SectionIcon = getCategoryIcon(section.icon);
-          const expanded = open.has(section.id) || query.trim().length > 0;
-          return (
-            <View key={section.id} className="mb-3 px-4">
-              <View className="overflow-hidden rounded-2xl bg-canvas">
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityState={{ expanded }}
-                  accessibilityLabel={`${section.name_ru}, ${rows.length} категорий`}
-                  onPress={() => toggle(section.id)}
-                  className="flex-row items-center gap-3 px-4 py-4 active:bg-canvas-soft"
-                >
-                  <View className="h-11 w-11 items-center justify-center rounded-xl bg-accent">
-                    <SectionIcon size={22} weight="bold" color={tc["on-accent"]} />
-                  </View>
-                  <View className="min-w-0 flex-1">
-                    <AppText weight="bold" className="text-ios-title2 text-ink" numberOfLines={2}>
-                      {section.name_ru}
-                    </AppText>
-                    <AppText className="mt-0.5 text-ios-footnote text-mute">
-                      {rows.length}{" "}
-                      {rows.length === 1
-                        ? "категория"
-                        : rows.length < 5
-                          ? "категории"
-                          : "категорий"}
-                    </AppText>
-                  </View>
-                  <View style={{ transform: [{ rotate: expanded ? "180deg" : "0deg" }] }}>
-                    <SystemIcon
-                      sf="chevron.down"
-                      fallback={CaretDown}
-                      size={16}
-                      weight="semibold"
-                      color={tc.mute}
-                    />
-                  </View>
-                </Pressable>
-                {expanded ? (
-                  <View className="border-t border-hairline">
-                    <InsetRow
-                      title="Весь раздел"
-                      subtitle={`Все специалисты: ${section.name_ru.toLowerCase()}`}
-                      navigates
-                      onPress={() => openSection(section.id)}
-                    />
-                    {rows.map((c, i) => {
-                      const Icon = getCategoryIcon(c.icon);
-                      return (
-                        <InsetRow
-                          key={c.id}
-                          title={c.name_ru}
-                          icon={<Icon size={18} weight="bold" color={tc.ink} />}
-                          navigates
-                          onPress={() => openCategory(c.id)}
-                          last={i === rows.length - 1}
+        {segment !== "find"
+          ? null
+          : sections.map(({ section, rows }) => {
+              const SectionIcon = getCategoryIcon(section.icon);
+              const expanded = open.has(section.id) || query.trim().length > 0;
+              return (
+                <View key={section.id} className="mb-3 px-4">
+                  <View className="overflow-hidden rounded-2xl bg-canvas">
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityState={{ expanded }}
+                      accessibilityLabel={`${section.name_ru}, ${rows.length} категорий`}
+                      onPress={() => toggle(section.id)}
+                      className="flex-row items-center gap-3 px-4 py-4 active:bg-canvas-soft"
+                    >
+                      <View className="h-11 w-11 items-center justify-center rounded-xl bg-accent">
+                        <SectionIcon size={22} weight="bold" color={tc["on-accent"]} />
+                      </View>
+                      <View className="min-w-0 flex-1">
+                        <AppText
+                          weight="bold"
+                          className="text-ios-title2 text-ink"
+                          numberOfLines={2}
+                        >
+                          {section.name_ru}
+                        </AppText>
+                        <AppText className="mt-0.5 text-ios-footnote text-mute">
+                          {rows.length}{" "}
+                          {rows.length === 1
+                            ? "категория"
+                            : rows.length < 5
+                              ? "категории"
+                              : "категорий"}
+                        </AppText>
+                      </View>
+                      <View style={{ transform: [{ rotate: expanded ? "180deg" : "0deg" }] }}>
+                        <SystemIcon
+                          sf="chevron.down"
+                          fallback={CaretDown}
+                          size={16}
+                          weight="semibold"
+                          color={tc.mute}
                         />
-                      );
-                    })}
+                      </View>
+                    </Pressable>
+                    {expanded ? (
+                      <View className="border-t border-hairline">
+                        <InsetRow
+                          title="Весь раздел"
+                          subtitle={`Все специалисты: ${section.name_ru.toLowerCase()}`}
+                          navigates
+                          onPress={() => openSection(section.id)}
+                        />
+                        {rows.map((c, i) => {
+                          const Icon = getCategoryIcon(c.icon);
+                          return (
+                            <InsetRow
+                              key={c.id}
+                              title={c.name_ru}
+                              icon={<Icon size={18} weight="bold" color={tc.ink} />}
+                              navigates
+                              onPress={() => openCategory(c.id)}
+                              last={i === rows.length - 1}
+                            />
+                          );
+                        })}
+                      </View>
+                    ) : null}
                   </View>
-                ) : null}
-              </View>
-            </View>
-          );
-        })}
+                </View>
+              );
+            })}
       </Animated.ScrollView>
       <LargeTitleBar
         title="Специалисты"
         compactTitleOpacity={large.compactTitleOpacity}
         onLayoutHeight={large.setBarHeight}
+        hideTitle
+        alwaysCompact
+        below={
+          <SegmentedControl<Segment>
+            value={segment}
+            onChange={setSegment}
+            items={[
+              { id: "find", label: "Найти специалиста" },
+              { id: "me", label: "Я специалист", tone: "primary" },
+            ]}
+          />
+        }
       />
     </View>
   );

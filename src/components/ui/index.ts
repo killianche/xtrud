@@ -36,6 +36,7 @@ export {
 } from "./PickerSheetPage";
 export { ScreenHeader, type ScreenHeaderRightAction } from "./ScreenHeader";
 export { SearchField, type SearchFieldProps } from "./SearchField";
+export { SegmentedControl, type SegmentItem } from "./SegmentedControl";
 export { Skeleton, type SkeletonProps } from "./Skeleton";
 export { type SFSymbol, SystemIcon, type SystemIconProps } from "./SystemIcon";
 export { isVerifiedLevel, VERIFIED_LEVEL, VerifiedBadge } from "./VerifiedBadge";

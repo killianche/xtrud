@@ -28,8 +28,7 @@ import { useUserRecord } from "@/features/auth/use-user-record";
 import { useMyMasterCategories } from "@/features/master-categories/use-my-categories";
 import { useMasterServiceAreas } from "@/features/master-profile/use-service-areas";
 import { useMasterPortfolio } from "@/features/profile/use-my-portfolio";
-import { AvailabilityRows } from "@/features/specialist/AvailabilityRows";
-import { useMySpecialistProfile } from "@/features/specialist/use-specialist";
+import { useMySpecialistProfile, useSetShownInCatalog } from "@/features/specialist/use-specialist";
 import { useMyVerification, VERIFICATION_LABEL } from "@/features/specialist/use-verification";
 import { DISTRICTS, getCityName } from "@/lib/location-config";
 import { useThemeColors } from "@/lib/use-theme-color";
@@ -42,6 +41,7 @@ export default function SpecialistHubScreen() {
   const profile = useMySpecialistProfile(userId);
   const categories = useMyMasterCategories(userId);
   const verification = useMyVerification(userId);
+  const setShown = useSetShownInCatalog(userId);
   const portfolio = useMasterPortfolio(userId ?? null);
   const areas = useMasterServiceAreas(userId ?? null);
   const tc = useThemeColors(["ink", "accent", "on-accent"]);
@@ -76,7 +76,11 @@ export default function SpecialistHubScreen() {
     );
     return names.length <= 2 ? names.join(", ") : `${names[0]} +${names.length - 1}`;
   })();
-  const visible = m?.status === "active" && !m?.is_hidden_from_search;
+  // Видим в каталоге: есть категория (status active) и человек не снял
+  // галочку «Показывать меня среди специалистов».
+  const canBeShown = m?.status === "active" && !m?.is_hidden_from_search;
+  const shown = !m?.hidden_by_owner;
+  const visible = canBeShown && shown;
   const verificationValue = VERIFICATION_LABEL[verification.data?.status ?? "none"];
   const rating = m?.rating_overall_count
     ? `${Number(m.rating_overall_avg ?? 0).toFixed(1)} · ${m.rating_overall_count}`
@@ -88,7 +92,9 @@ export default function SpecialistHubScreen() {
       subtitle={
         visible
           ? "Профиль виден в каталоге. Чем полнее он заполнен, тем чаще к вам обращаются."
-          : "Выберите хотя бы одну категорию — и профиль появится в каталоге."
+          : canBeShown
+            ? "Вы скрыли профиль из каталога. Включите «Показывать меня среди специалистов», чтобы вас находили."
+            : "Выберите хотя бы одну категорию — и профиль появится в каталоге."
       }
       onBack={() => router.back()}
     >
@@ -104,7 +110,21 @@ export default function SpecialistHubScreen() {
         </View>
       </View>
 
-      <AvailabilityRows userId={userId} />
+      {canBeShown ? (
+        <InsetGroup
+          footer={
+            shown
+              ? "Клиенты находят вас во вкладке «Специалисты»."
+              : "Профиль не показывается в каталоге, но открывается по ссылке."
+          }
+        >
+          <InsetRow
+            title="Показывать меня среди специалистов"
+            toggle={{ value: shown, onChange: (next) => setShown.mutate(next) }}
+            last
+          />
+        </InsetGroup>
+      ) : null}
 
       <InsetGroup title="Профиль">
         <InsetRow

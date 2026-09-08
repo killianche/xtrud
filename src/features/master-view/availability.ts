@@ -3,7 +3,7 @@
  * См. миграцию 0043_availability_status.sql.
  */
 
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { type QueryKey, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import type { Enums } from "@/types/database";
 
@@ -126,9 +126,12 @@ export interface MyAvailability {
  * инвалидирует префикс ["my-master-profile"], так что после смены плашка
  * обновляется. Единый источник, чтобы не дублировать запрос (connect-the-dots).
  */
+export const myAvailabilityKey = (userId: string | undefined) =>
+  ["my-master-profile", userId, "availability"] as const;
+
 export function useMyAvailability(userId: string | undefined) {
   return useQuery<MyAvailability | null>({
-    queryKey: ["my-master-profile", userId, "availability"],
+    queryKey: myAvailabilityKey(userId),
     queryFn: async () => {
       if (!userId) return null;
       const { data, error } = await supabase
@@ -145,24 +148,45 @@ export function useMyAvailability(userId: string | undefined) {
 }
 
 /** Mutation: мастер ставит свой статус. */
-export function useSetAvailability() {
+/**
+ * Переключение «Принимаю заказы». Оптимистично: строка меняется в момент
+ * тапа, сервер подтверждает. FACT (2026-09-08): раньше после мутации не
+ * инвалидировался ключ useMyAvailability — выбор «переключался» только
+ * через 30 с staleTime (владелец: «нажимаешь, и нужно неделю ждать»).
+ */
+export function useSetAvailability(userId: string | undefined) {
   const queryClient = useQueryClient();
-  return useMutation({
+  const key: QueryKey = myAvailabilityKey(userId);
+  return useMutation<
+    unknown,
+    Error,
+    AvailabilityStatus,
+    { previous: MyAvailability | null | undefined }
+  >({
     mutationFn: async (status: AvailabilityStatus) => {
       const { data, error } = await supabase.rpc("set_availability", { p_status: status });
       if (error) throw error;
       return data;
     },
-    onSuccess: () => {
-      // Invalidate всё что показывает мастера-меня (топ-мастера, my-profile и т.п.)
+    onMutate: async (status) => {
+      await queryClient.cancelQueries({ queryKey: key });
+      const previous = queryClient.getQueryData<MyAvailability | null>(key);
+      queryClient.setQueryData<MyAvailability>(key, {
+        availability_status: status,
+        availability_until: previous?.availability_until ?? null,
+      });
+      return { previous };
+    },
+    onError: (_e, _status, ctx) => {
+      if (ctx) queryClient.setQueryData(key, ctx.previous ?? null);
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: key });
       queryClient.invalidateQueries({ queryKey: ["top-masters"] });
-      // Ключа "my-master-profile" в коде нет: своя строка master_profiles
-      // читается под ["master-profile", userId] (профиль и редактор профиля).
-      // Прежний вызов был холостым — статус доступности на своём профиле
-      // после переключения не обновлялся.
       queryClient.invalidateQueries({ queryKey: ["master-profile"] });
       queryClient.invalidateQueries({ queryKey: ["master-public"] });
       queryClient.invalidateQueries({ queryKey: ["masters-by-l2"] });
+      queryClient.invalidateQueries({ queryKey: ["search-masters"] });
     },
   });
 }

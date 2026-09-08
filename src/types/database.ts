@@ -408,6 +408,7 @@ export type Database = {
             | Database["public"]["Enums"]["home_clients_policy"]
             | null
           inn: string | null
+          hidden_by_owner: boolean
           is_hidden_from_search: boolean
           languages: string[]
           legal_name: string | null
@@ -439,6 +440,7 @@ export type Database = {
             | Database["public"]["Enums"]["home_clients_policy"]
             | null
           inn?: string | null
+          hidden_by_owner?: boolean
           is_hidden_from_search?: boolean
           languages?: string[]
           legal_name?: string | null
@@ -470,6 +472,7 @@ export type Database = {
             | Database["public"]["Enums"]["home_clients_policy"]
             | null
           inn?: string | null
+          hidden_by_owner?: boolean
           is_hidden_from_search?: boolean
           languages?: string[]
           legal_name?: string | null

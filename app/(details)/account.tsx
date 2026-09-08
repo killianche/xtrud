@@ -67,9 +67,6 @@ export default function AccountScreen() {
           <AppText weight="bold" className="text-ios-title2 text-ink" numberOfLines={1}>
             {user?.first_name ?? "Вы"}
           </AppText>
-          <AppText className="mt-0.5 text-ios-subheadline text-mute" numberOfLines={1}>
-            {isSpecialist ? "Специалист" : "Клиент"}
-          </AppText>
         </View>
       </View>
 

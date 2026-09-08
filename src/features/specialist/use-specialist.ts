@@ -8,7 +8,7 @@
  * одной категории.
  */
 
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { type QueryKey, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { userRecordKey } from "@/features/auth/use-user-record";
 import { myCategoriesKey } from "@/features/master-categories/use-my-categories";
 import { portfolioKey } from "@/features/profile/use-my-portfolio";
@@ -24,6 +24,7 @@ export type SpecialistProfile = Pick<
   | "experience_years"
   | "status"
   | "is_hidden_from_search"
+  | "hidden_by_owner"
   | "whatsapp_phone"
   | "rating_overall_avg"
   | "rating_overall_count"
@@ -38,7 +39,7 @@ export function useMySpecialistProfile(userId: string | undefined) {
       const { data, error } = await supabase
         .from("master_profiles")
         .select(
-          "user_id, bio, experience_years, status, is_hidden_from_search, whatsapp_phone, rating_overall_avg, rating_overall_count",
+          "user_id, bio, experience_years, status, is_hidden_from_search, hidden_by_owner, whatsapp_phone, rating_overall_avg, rating_overall_count",
         )
         .eq("user_id", userId)
         .maybeSingle();
@@ -115,4 +116,38 @@ export function useInvalidateSpecialistCounts() {
     qc.invalidateQueries({ queryKey: portfolioKey(userId) });
     qc.invalidateQueries({ queryKey: specialistKey(userId) });
   };
+}
+
+/**
+ * Галочка «Показывать меня среди специалистов» (0176, DECISION владельца
+ * 2026-09-08). Оптимистично: переключатель меняется сразу, сервер подтверждает.
+ */
+export function useSetShownInCatalog(userId: string | undefined) {
+  const qc = useQueryClient();
+  const key: QueryKey = specialistKey(userId);
+  return useMutation<void, Error, boolean, { previous: SpecialistProfile | null | undefined }>({
+    mutationFn: async (shown: boolean) => {
+      if (!userId) throw new Error("Нужно войти в аккаунт");
+      const { error } = await supabase
+        .from("master_profiles")
+        .update({ hidden_by_owner: !shown })
+        .eq("user_id", userId);
+      if (error) throw error;
+    },
+    onMutate: async (shown) => {
+      await qc.cancelQueries({ queryKey: key });
+      const previous = qc.getQueryData<SpecialistProfile | null>(key);
+      if (previous)
+        qc.setQueryData<SpecialistProfile>(key, { ...previous, hidden_by_owner: !shown });
+      return { previous };
+    },
+    onError: (_e, _shown, ctx) => {
+      if (ctx) qc.setQueryData(key, ctx.previous ?? null);
+    },
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: key });
+      qc.invalidateQueries({ queryKey: ["search-masters"] });
+      qc.invalidateQueries({ queryKey: ["master-public", userId] });
+    },
+  });
 }

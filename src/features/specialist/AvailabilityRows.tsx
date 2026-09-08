@@ -43,7 +43,7 @@ export function availabilityTitle(status: AvailabilityStatus | null | undefined)
 
 export function AvailabilityRows({ userId }: { userId: string }) {
   const mine = useMyAvailability(userId);
-  const set = useSetAvailability();
+  const set = useSetAvailability(userId);
   const current = mine.data?.availability_status ?? "unspecified";
   return (
     <InsetGroup
@@ -60,8 +60,10 @@ export function AvailabilityRows({ userId }: { userId: string }) {
           title={o.title}
           subtitle={o.subtitle}
           selected={current === o.id}
-          onPress={() => set.mutate(o.id)}
-          disabled={set.isPending}
+          onPress={() => {
+            if (current === o.id) return;
+            set.mutate(o.id);
+          }}
           last={i === OPTIONS.length - 1}
         />
       ))}

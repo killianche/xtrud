@@ -53,3 +53,26 @@
   supabase-js. Контейнеры Supabase работают параллельно (откат: старые
   сборки продолжают работать против той же базы).
 
+## 5. Порядок окончательного переключения (этап 6)
+
+Выполняется после того, как владелец проверил сборку 60 и старыми сборками
+никто не пользуется (контрольный период — не меньше 2 недель).
+
+1. Снимок базы и файлов: `/opt/xtrud/backup.sh` вручную + копия
+   `/opt/xtrud/supabase-docker/volumes/storage`.
+2. Ещё раз перенести файлы, загруженные старыми сборками после 2026-09-08
+   (скрипт копирования из §3 журнала), и добавить в nginx переписывание
+   `/storage/v1/object/public/<bucket>/<path>` → `/files/<bucket>/<path>`.
+3. `notify_user` в базе → `http://xtrud-api:8100/v2/internal/notify`
+   (после APNs-ключа), pg_net остаётся.
+4. Остановить контейнеры: supabase-auth, supabase-storage, supabase-imgproxy,
+   realtime, supabase-edge-functions, supabase-studio, supabase-meta,
+   supabase-pooler, logflare, envoy/kong. Оставить: supabase-db (до этапа
+   переезда на `postgres:17`), supabase-rest (PostgREST), xtrud-api,
+   xtrud-imgproxy.
+5. Переезд базы: `pg_dump` → контейнер `postgres:17` с `pg_cron` и `pg_net`;
+   PostgREST и xtrud-api переключаются на новый адрес; старый контейнер
+   остаётся выключенным ещё 2 недели для отката.
+6. Удалить `supabase/functions`, старые `EXPO_PUBLIC_SUPABASE_ANON_KEY` из
+   конфигов, переименовать `EXPO_PUBLIC_SUPABASE_URL` → `EXPO_PUBLIC_API_URL`.
+

@@ -2,6 +2,15 @@
 // (/opt/xtrud/xtrud-api.env), в Git не попадают.
 import { z } from "zod";
 
+/**
+ * Идентификаторы Apple — ровно десять символов [A-Z0-9]. Проверка нужна не
+ * ради красоты: сюда легко попадает placeholder из шаблона, и тогда Apple
+ * молча отвечает 403 на каждое уведомление. Пусть лучше не стартует сервер.
+ */
+function appleId(name: string) {
+  return z.string().regex(/^[A-Z0-9]{10}$/, `${name}: ожидается 10 символов A-Z0-9, а не заглушка`);
+}
+
 const schema = z.object({
   PORT: z.coerce.number().default(8100),
   DATABASE_URL: z.string().url(),
@@ -15,6 +24,17 @@ const schema = z.object({
   POSTGREST_URL: z.string().url().default("http://supabase-rest:3000"),
   FILES_ROOT: z.string().default("/data/files"),
   FILES_PUBLIC_BASE: z.string().url().default("https://api.xtrud.pro/files"),
+  /**
+   * Push через APNs. Настройка целиком необязательна — без неё сервер
+   * работает, а уведомления остаются только внутри приложения. Но если задана
+   * часть, дальше идти нельзя: молча слать «в никуда» хуже, чем не стартовать.
+   */
+  APNS_KEY_PATH: z.string().optional(),
+  APNS_KEY_ID: appleId("APNS_KEY_ID").optional(),
+  APNS_TEAM_ID: appleId("APNS_TEAM_ID").optional(),
+  APNS_TOPIC: z.string().min(1).default("com.xtrud.app"),
+  /** Общий секрет, которым база подписывает вызов /v2/internal/push. */
+  NOTIFY_SECRET: z.string().min(16).optional(),
 });
 
 export type Config = z.infer<typeof schema>;
@@ -25,5 +45,28 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     const issues = parsed.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join("; ");
     throw new Error(`Некорректная конфигурация: ${issues}`);
   }
-  return parsed.data;
+  const cfg = parsed.data;
+  const apnsParts = [cfg.APNS_KEY_PATH, cfg.APNS_KEY_ID, cfg.APNS_TEAM_ID];
+  const filled = apnsParts.filter((v) => v !== undefined).length;
+  if (filled > 0 && filled < apnsParts.length) {
+    throw new Error(
+      "Некорректная конфигурация: APNs задан наполовину — нужны APNS_KEY_PATH, APNS_KEY_ID и APNS_TEAM_ID вместе",
+    );
+  }
+  if (filled === apnsParts.length && cfg.NOTIFY_SECRET === undefined) {
+    throw new Error(
+      "Некорректная конфигурация: с APNs обязателен NOTIFY_SECRET — иначе отправку push мог бы вызвать кто угодно",
+    );
+  }
+  return cfg;
+}
+
+/** Настроен ли push целиком. Частичная настройка отвергается выше. */
+export function apnsConfigured(cfg: Config): boolean {
+  return (
+    cfg.APNS_KEY_PATH !== undefined &&
+    cfg.APNS_KEY_ID !== undefined &&
+    cfg.APNS_TEAM_ID !== undefined &&
+    cfg.NOTIFY_SECRET !== undefined
+  );
 }

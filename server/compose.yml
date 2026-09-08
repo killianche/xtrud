@@ -10,6 +10,9 @@ services:
       - "127.0.0.1:8100:8100"
     volumes:
       - /opt/xtrud/files:/data/files
+      # Ключ APNs (.p8) — только на чтение. В образ он не попадает, чтобы
+      # не уехать вместе с ним куда-нибудь ещё.
+      - /opt/xtrud/apns:/secrets/apns:ro
     networks:
       - supabase_default
   xtrud-imgproxy:

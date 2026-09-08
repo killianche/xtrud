@@ -3,15 +3,27 @@ import rateLimit from "@fastify/rate-limit";
 import Fastify from "fastify";
 import { Tokens } from "./auth/jwt.js";
 import { registerAuthRoutes } from "./auth/routes.js";
-import { loadConfig } from "./config.js";
+import { apnsConfigured, loadConfig } from "./config.js";
 import { Db } from "./db.js";
 import { registerFilesRoutes } from "./files/routes.js";
+import { ApnsClient } from "./push/apns.js";
+import { registerPushRoutes } from "./push/routes.js";
 import { registerRestProxy } from "./rest/routes.js";
 import { registerRpcRoutes } from "./rpc/routes.js";
 
 const cfg = loadConfig();
 const db = new Db(cfg.DATABASE_URL);
 const tokens = new Tokens(cfg.JWT_SECRET, cfg.JWT_ISSUER, cfg.ACCESS_TTL_SECONDS);
+// Ключ APNs читается на старте: испорченный файл должен уронить деплой,
+// а не выясниться при первом уведомлении.
+const apns = apnsConfigured(cfg)
+  ? new ApnsClient({
+      keyPath: cfg.APNS_KEY_PATH as string,
+      keyId: cfg.APNS_KEY_ID as string,
+      teamId: cfg.APNS_TEAM_ID as string,
+      topic: cfg.APNS_TOPIC,
+    })
+  : null;
 
 // trustProxy: реальный IP приходит от nginx в X-Forwarded-For (лимиты по IP).
 const app = Fastify({ logger: { level: "info" }, bodyLimit: 2 * 1024 * 1024, trustProxy: true });
@@ -41,7 +53,7 @@ app.addContentTypeParser("*", { parseAs: "buffer" }, (_req, body, done) => done(
 
 app.get("/v2/health", async () => {
   const r = await db.pool.query("SELECT now() AS now");
-  return { ok: true, now: r.rows[0]?.now ?? null, version: "0.1.0" };
+  return { ok: true, now: r.rows[0]?.now ?? null, version: "0.1.0", push: apns !== null };
 });
 
 await app.register(
@@ -51,6 +63,9 @@ await app.register(
       registerAuthRoutes(authScope, db, tokens, cfg);
     });
     registerRpcRoutes(scope, db, tokens);
+    if (cfg.NOTIFY_SECRET !== undefined) {
+      registerPushRoutes(scope, db, apns, cfg.NOTIFY_SECRET);
+    }
     registerRestProxy(scope, cfg.POSTGREST_URL);
     registerFilesRoutes(scope, db, tokens, {
       root: cfg.FILES_ROOT,

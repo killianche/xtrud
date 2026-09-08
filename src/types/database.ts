@@ -678,7 +678,8 @@ export type Database = {
         Row: {
           created_at: string
           device_name: string | null
-          expo_token: string
+          device_token: string
+          environment: string
           id: string
           platform: string
           updated_at: string
@@ -687,7 +688,8 @@ export type Database = {
         Insert: {
           created_at?: string
           device_name?: string | null
-          expo_token: string
+          device_token: string
+          environment?: string
           id?: string
           platform: string
           updated_at?: string
@@ -696,7 +698,8 @@ export type Database = {
         Update: {
           created_at?: string
           device_name?: string | null
-          expo_token?: string
+          device_token?: string
+          environment?: string
           id?: string
           platform?: string
           updated_at?: string

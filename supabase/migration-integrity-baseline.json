@@ -138,6 +138,42 @@
   },
   "allowlist": [
     {
+      "rule": "comment-only-migration",
+      "fingerprint": "comment-only-migration:supabase/migrations/0084_master_auto_publish.sql",
+      "justification": "Файл документирует prod-only изменение, исходный SQL которого отсутствует; выдумывать определение без live export небезопасно.",
+      "remediation": "Снять pg_get_functiondef и trigger definitions из Cloud read-only, проверить и добавить отдельную forward-only миграцию с реальным SQL."
+    },
+    {
+      "rule": "comment-only-migration",
+      "fingerprint": "comment-only-migration:supabase/migrations/0085_portfolio_cases.sql",
+      "justification": "Файл является исторической заметкой о prod-only schema и честно фиксируется как невосстанавливаемая часть текущей цепочки.",
+      "remediation": "Экспортировать table, policies, grants и indexes из live schema, затем добавить проверенный forward-only source без подмены истории."
+    },
+    {
+      "rule": "comment-only-migration",
+      "fingerprint": "comment-only-migration:supabase/migrations/0086_search_analytics.sql",
+      "justification": "Search analytics objects существуют в типах/production, но их исполняемый SQL не сохранён в репозитории.",
+      "remediation": "Получить view, functions, grants и cron definition из live read-only inventory и оформить новым уникальным forward-only SQL."
+    },
+    {
+      "rule": "comment-only-migration",
+      "fingerprint": "comment-only-migration:supabase/migrations/0087_search_synonyms_expand.sql",
+      "justification": "Исторический файл содержит только описание ручного production change и не может использоваться для clean restore.",
+      "remediation": "Сравнить category terms с live dump и добавить точный идемпотентный forward-only patch после резервной копии и rehearsal."
+    },
+    {
+      "rule": "comment-only-migration",
+      "fingerprint": "comment-only-migration:supabase/migrations/0088_popular_queries_fallback.sql",
+      "justification": "Исполняемое определение popular queries отсутствует; текущая запись сохраняется как явный известный дефект цепочки.",
+      "remediation": "Экспортировать get_popular_queries и зависимые view/table definitions из Cloud, проверить и сохранить новым уникальным SQL."
+    },
+    {
+      "rule": "comment-only-migration",
+      "fingerprint": "comment-only-migration:supabase/migrations/0089_orders_description_optional.sql",
+      "justification": "Файл описывает применённое вручную изменение, но не содержит команды, пригодной для воспроизводимого восстановления.",
+      "remediation": "Подтвердить constraint/nullability через live schema dump и добавить отдельную идемпотентную forward-only миграцию после backup."
+    },
+    {
       "rule": "duplicate-migration-number",
       "fingerprint": "duplicate-migration-number:0024:db9a01ab569d8fe0",
       "justification": "Историческая пара 0024 уже могла быть применена в Cloud; переименование без live migration history исказит восстановление.",
@@ -192,42 +228,6 @@
       "remediation": "Проверить remote history и определения trigger/function после live export; дальнейшие миграции обязаны иметь уникальный идентификатор."
     },
     {
-      "rule": "comment-only-migration",
-      "fingerprint": "comment-only-migration:supabase/migrations/0084_master_auto_publish.sql",
-      "justification": "Файл документирует prod-only изменение, исходный SQL которого отсутствует; выдумывать определение без live export небезопасно.",
-      "remediation": "Снять pg_get_functiondef и trigger definitions из Cloud read-only, проверить и добавить отдельную forward-only миграцию с реальным SQL."
-    },
-    {
-      "rule": "comment-only-migration",
-      "fingerprint": "comment-only-migration:supabase/migrations/0085_portfolio_cases.sql",
-      "justification": "Файл является исторической заметкой о prod-only schema и честно фиксируется как невосстанавливаемая часть текущей цепочки.",
-      "remediation": "Экспортировать table, policies, grants и indexes из live schema, затем добавить проверенный forward-only source без подмены истории."
-    },
-    {
-      "rule": "comment-only-migration",
-      "fingerprint": "comment-only-migration:supabase/migrations/0086_search_analytics.sql",
-      "justification": "Search analytics objects существуют в типах/production, но их исполняемый SQL не сохранён в репозитории.",
-      "remediation": "Получить view, functions, grants и cron definition из live read-only inventory и оформить новым уникальным forward-only SQL."
-    },
-    {
-      "rule": "comment-only-migration",
-      "fingerprint": "comment-only-migration:supabase/migrations/0087_search_synonyms_expand.sql",
-      "justification": "Исторический файл содержит только описание ручного production change и не может использоваться для clean restore.",
-      "remediation": "Сравнить category terms с live dump и добавить точный идемпотентный forward-only patch после резервной копии и rehearsal."
-    },
-    {
-      "rule": "comment-only-migration",
-      "fingerprint": "comment-only-migration:supabase/migrations/0088_popular_queries_fallback.sql",
-      "justification": "Исполняемое определение popular queries отсутствует; текущая запись сохраняется как явный известный дефект цепочки.",
-      "remediation": "Экспортировать get_popular_queries и зависимые view/table definitions из Cloud, проверить и сохранить новым уникальным SQL."
-    },
-    {
-      "rule": "comment-only-migration",
-      "fingerprint": "comment-only-migration:supabase/migrations/0089_orders_description_optional.sql",
-      "justification": "Файл описывает применённое вручную изменение, но не содержит команды, пригодной для воспроизводимого восстановления.",
-      "remediation": "Подтвердить constraint/nullability через live schema dump и добавить отдельную идемпотентную forward-only миграцию после backup."
-    },
-    {
       "rule": "hardcoded-supabase-project-url",
       "fingerprint": "hardcoded-supabase-project-url:supabase/migrations/0018_push_triggers.sql:51:15928910c38b6f00",
       "justification": "Старый notify endpoint уже сохранён в применённой исторической миграции; редактирование файла не изменит production функцию.",
@@ -246,10 +246,10 @@
       "remediation": "Добавить новый configuration-driven notify_user только после live definition export, backup и успешного self-host rehearsal."
     },
     {
-      "rule": "plaintext-vault-secret",
-      "fingerprint": "plaintext-vault-secret:supabase/migrations/0018_push_triggers.sql:27:be5de4e0d64a623b",
-      "justification": "Историческая миграция содержит уже скомпрометированный Vault secret; allowlist лишь не скрывает существующий инцидент.",
-      "remediation": "Ротировать secret в production через защищённый процесс и новую миграцию после backup; значение никогда не переносить в новый стек."
+      "rule": "missing-edge-function-source",
+      "fingerprint": "missing-edge-function-source:notify",
+      "justification": "Функция notify отправляла push через Expo и удалена вместе с переходом на свой сервер (0180): notify_user теперь зовёт http://xtrud-api:8100/v2/internal/push — проверено на живой базе. Упоминания остались только в исторических миграциях 0018/0027/0028, которые перекрыты более поздним определением функции.",
+      "remediation": "Ничего восстанавливать не нужно. Если понадобится новая edge-функция, положить её исходник в supabase/functions/<имя>/index.ts и убрать эту запись."
     },
     {
       "rule": "plaintext-password-literal",
@@ -262,6 +262,12 @@
       "fingerprint": "plaintext-password-literal:supabase/migrations/0054_personal_demo_master.sql:53:5ab047207d73e4cd",
       "justification": "Это повтор существующего публичного demo credential в историческом seed; исключение ограничено точным fingerprint файла.",
       "remediation": "Удалить legacy demo account/credential после inventory реальных пользователей и запретить новые literal passwords в миграциях."
+    },
+    {
+      "rule": "plaintext-vault-secret",
+      "fingerprint": "plaintext-vault-secret:supabase/migrations/0018_push_triggers.sql:27:be5de4e0d64a623b",
+      "justification": "Историческая миграция содержит уже скомпрометированный Vault secret; allowlist лишь не скрывает существующий инцидент.",
+      "remediation": "Ротировать secret в production через защищённый процесс и новую миграцию после backup; значение никогда не переносить в новый стек."
     }
   ]
 }

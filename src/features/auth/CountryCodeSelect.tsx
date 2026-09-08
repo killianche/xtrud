@@ -17,27 +17,21 @@
  * Поле phone в форме хранит только digits (без кода). Полный E.164-номер
  * собирается на submit: `country.dial + digits`.
  *
- * 2026-05-27: эмодзи-флаги (🇷🇺/🇰🇿/...) заменены на SVG-флаги через flagcdn.com.
+ * 2026-09-08: флаги снова эмодзи — без иностранного flagcdn.com (DECISION владельца).
  * Эмодзи нарушали правило «никаких эмодзи в UI» из CLAUDE.md — на разных
  * платформах рендерились по-разному (Apple emoji vs Twemoji vs Google Noto)
  * и выпадали из Vercel-эстетики. CDN — тот же подход что Iconify для иконок
  * категорий (см. docs/ICONS.md): простой URL, кеш, fallback пустой.
  */
 
-import { Image } from "expo-image";
 import { useRouter } from "expo-router";
 import { CaretDown } from "phosphor-react-native";
 import { useEffect } from "react";
 import { Pressable } from "react-native";
 import { AppText } from "@/components/AppText";
 import { useCountrySelectStore } from "@/features/auth/country-select-store";
+import { flagEmoji } from "@/features/auth/flag-emoji";
 import { useThemeColors } from "@/lib/use-theme-color";
-
-/** URL флага страны (PNG из flagcdn.com). w40 даёт ~40×27px — достаточно
- *  для chip-display 20×14 и list-row 28×20. */
-function flagUrl(code: string): string {
-  return `https://flagcdn.com/w40/${code.toLowerCase()}.png`;
-}
 
 export interface Country {
   /** ISO-3166 alpha-2 (для будущей i18n + флаг через flagcdn.com). */
@@ -112,11 +106,7 @@ export function CountryCodeSelect({ selected, onSelect, disabled }: CountryCodeS
       }`}
       style={{ minHeight: 54, borderWidth: 1.5 }}
     >
-      <Image
-        source={{ uri: flagUrl(selected.code) }}
-        style={{ width: 22, height: 16, borderRadius: 2 }}
-        contentFit="cover"
-      />
+      <AppText className="text-body-lg">{flagEmoji(selected.code)}</AppText>
       <AppText weight="semibold" className="text-body-lg text-ink">
         +{selected.dial}
       </AppText>

@@ -21,16 +21,13 @@
  * из `app/(auth)/_layout.tsx`, доступен анонимно как и остальные auth-экраны.
  */
 
-import { Image } from "expo-image";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
+import { AppText } from "@/components/AppText";
 import { PickerSheetPage } from "@/components/ui";
 import type { PickerOption } from "@/components/ui/PickerSheet";
 import { COUNTRIES } from "@/features/auth/CountryCodeSelect";
 import { useCountrySelectStore } from "@/features/auth/country-select-store";
-
-function flagUrl(code: string): string {
-  return `https://flagcdn.com/w40/${code.toLowerCase()}.png`;
-}
+import { flagEmoji } from "@/features/auth/flag-emoji";
 
 function isCountryCode(value: string | undefined): boolean {
   return !!value && COUNTRIES.some((c) => c.code === value);
@@ -66,7 +63,7 @@ export default function CountrySelectScreen() {
           id: c.code,
           title: c.name,
           subtitle: `+${c.dial}`,
-          icon: <Image source={{ uri: flagUrl(c.code) }} style={{ width: 22, height: 16 }} />,
+          icon: <AppText className="text-body-lg">{flagEmoji(c.code)}</AppText>,
         }))}
         selectedId={currentCode ?? null}
         onSelect={(id) => {

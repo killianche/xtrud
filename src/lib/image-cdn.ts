@@ -1,108 +1,113 @@
 /**
- * image-cdn.ts — быстрая загрузка удалённых фото (Instagram-стиль).
+ * image-cdn.ts — быстрая загрузка фото: подгонка под размер показа, webp,
+ * крошечный размытый плейсхолдер.
  *
- * Зачем. Фото на сайте грузились медленно и «прыгали» из серого пустого блока
- * (жалоба пользователя 2026-05-22). Причины: качали полноразмерный тяжёлый JPEG
- * даже в маленькую плитку, и пока картинка едет — пустота. Большие ленты
- * (Instagram, Pinterest, Airbnb) решают это тремя приёмами, которые здесь и
- * реализованы:
- *   1. Подгонка под размер показа — не качаем 800px в плитку 120px.
- *   2. webp + умеренное качество — байт в 3-4 раза меньше JPEG.
- *   3. Blur-up плейсхолдер — мгновенно показываем крошечную размытую версию,
- *      затем плавно подменяем чёткой. Никакого «серого пустого блока».
- *
- * Реализация через публичный image-CDN images.weserv.nl (ресайз + webp + blur +
- * кэш на их стороне). Та же служба, через которую переписаны демо-ссылки в БД
- * (миграция 0105). Каждый компонент с фото уже имеет onError-fallback, поэтому
- * даже при недоступности CDN пользователь видит запасной placeholder, а не
- * сломанную картинку.
+ * До 2026-09-08 ресайз делал иностранный прокси images.weserv.nl (Cloudflare):
+ * лишний хоп за границу, в мобильных сетях РФ нестабилен. DECISION владельца
+ * 2026-09-08: «избавиться от иностранного». Теперь ресайз делает наш же
+ * сервер — imgproxy внутри Supabase Storage на Beget
+ * (`/storage/v1/render/image/public/...?width=&quality=`), а nginx кэширует
+ * результат. Чужие адреса (не наше хранилище) не проксируются вовсе —
+ * отдаются как есть.
  *
  * Что НЕ трогаем (возвращаем ссылку как есть):
  *   - локальные ассеты из require (number-id) — сюда вообще не попадают;
- *   - относительные `/assets/...`, `blob:`, `data:`, `file:` — локальные/уже
- *     быстрые, ресайзить нечем;
- *   - `.svg` — иконки, ресайз не нужен.
- * Уже обёрнутые weserv-ссылки (из БД) нормализуем: вынимаем исходный src и
- * переобёртываем под нужный размер — без двойной вложенности.
+ *   - относительные `/assets/...`, `blob:`, `data:`, `file:`;
+ *   - `.svg` — иконки, ресайз не нужен;
+ *   - любые адреса вне нашего хранилища.
+ * Старые ссылки, обёрнутые в weserv (из БД), разворачиваем до исходника.
  */
 
-const WESERV = "https://images.weserv.nl/?url=";
+import { env } from "@/lib/env";
+
 const WESERV_MARK = "images.weserv.nl/?url=";
+const STORAGE_PUBLIC = "/storage/v1/object/public/";
+const STORAGE_RENDER = "/storage/v1/render/image/public/";
+const OWN_ORIGIN = env.EXPO_PUBLIC_SUPABASE_URL.replace(/\/+$/, "");
 
 function isRemoteHttp(url: string): boolean {
   return /^https?:\/\//i.test(url);
 }
 
-/** Вынуть исходный src из уже обёрнутой weserv-ссылки (или вернуть как есть). */
+/** Исходный адрес из старой weserv-обёртки; остальное — без изменений. */
 function unwrap(url: string): string {
   const i = url.indexOf(WESERV_MARK);
   if (i === -1) return url;
   const rest = url.slice(i + WESERV_MARK.length);
   const amp = rest.indexOf("&");
   const enc = amp === -1 ? rest : rest.slice(0, amp);
+  let src: string;
   try {
-    return decodeURIComponent(enc);
+    src = decodeURIComponent(enc);
   } catch {
-    return enc;
+    src = enc;
   }
+  return isRemoteHttp(src) ? src : `https://${src}`;
 }
 
-/** Можно ли оптимизировать эту ссылку через CDN. */
+/** Путь `bucket/file` внутри нашего публичного хранилища, иначе null. */
+function ownStoragePath(url: string): string | null {
+  if (!url.startsWith(OWN_ORIGIN)) return null;
+  const rest = url.slice(OWN_ORIGIN.length);
+  const marker = rest.startsWith(STORAGE_PUBLIC)
+    ? STORAGE_PUBLIC
+    : rest.startsWith(STORAGE_RENDER)
+      ? STORAGE_RENDER
+      : null;
+  if (!marker) return null;
+  const path = rest.slice(marker.length).split("?")[0] ?? "";
+  return path.length > 0 ? path : null;
+}
+
 function canOptimize(url: string | null | undefined): url is string {
   if (!url) return false;
-  if (url.startsWith("data:") || url.startsWith("blob:") || url.startsWith("file:")) {
-    return false;
-  }
-  // Локальный/относительный ассет (не http и не уже-weserv) — пропускаем.
-  if (!isRemoteHttp(url) && !url.includes("weserv.nl")) return false;
+  if (url.startsWith("data:") || url.startsWith("blob:") || url.startsWith("file:")) return false;
   if (/\.svg(\?|$)/i.test(url)) return false;
-  return true;
-}
-
-/** weserv ждёт url без протокола; кодируем, чтобы query-параметры не ломали строку. */
-function encodeSource(src: string): string {
-  const noProto = src.replace(/^https?:\/\//i, "");
-  return encodeURIComponent(noProto);
+  return isRemoteHttp(url) || url.includes(WESERV_MARK);
 }
 
 export interface CdnOptions {
   /** Ширина показа в логических px (CSS-пикселях). */
   width: number;
-  /** Качество 1-100. Дефолт 62 — баланс «лёгкое/чёткое» для фото-плиток. */
+  /** Качество 20-100. Дефолт 62 — баланс «лёгкое/чёткое» для фото-плиток. */
   quality?: number;
   /** Множитель плотности экрана (retina). Дефолт 2. */
   dpr?: number;
 }
 
-// Если контейнер ещё не измерен (onLayout не сработал, useAppWidth=0 на первой
-// отрисовке web), width приходит 0 → нельзя просить «w=1» (это битый 1px-кадр,
-// растянутый на весь блок). В таком случае берём дефолт под телефонную ширину.
+// Если контейнер ещё не измерен (onLayout не сработал), width приходит 0 →
+// нельзя просить 1px. Берём дефолт под телефонную ширину.
 const FALLBACK_WIDTH = 480;
-// Ниже этого размер не имеет смысла (плитки от ~64px) — отсекаем мусорные 0/1.
 const MIN_VALID_WIDTH = 16;
+// Ограниченный набор ширин — больше попаданий в кэш nginx.
+const WIDTH_STEPS = [96, 160, 240, 320, 480, 640, 800, 1080, 1440, 1920];
 
-/**
- * Оптимизированная ссылка под размер показа: webp, нужная ширина, без
- * увеличения мелких исходников (`we`).
- */
+function snapWidth(w: number): number {
+  for (const step of WIDTH_STEPS) if (w <= step) return step;
+  return WIDTH_STEPS[WIDTH_STEPS.length - 1] ?? 1920;
+}
+
+function render(path: string, width: number, quality: number): string {
+  return `${OWN_ORIGIN}${STORAGE_RENDER}${path}?width=${width}&quality=${quality}&resize=contain`;
+}
+
 export function cdnImage(url: string, opts: CdnOptions): string {
   if (!canOptimize(url)) return url;
   const src = unwrap(url);
+  const path = ownStoragePath(src);
+  if (!path) return src;
   const dpr = opts.dpr ?? 2;
   const logical =
     Number.isFinite(opts.width) && opts.width >= MIN_VALID_WIDTH ? opts.width : FALLBACK_WIDTH;
-  const w = Math.round(logical * dpr);
-  const q = opts.quality ?? 62;
-  return `${WESERV}${encodeSource(src)}&w=${w}&output=webp&q=${q}&we`;
+  const q = Math.min(100, Math.max(20, opts.quality ?? 62));
+  return render(path, snapWidth(Math.round(logical * dpr)), q);
 }
 
-/**
- * Крошечная размытая версия для blur-up плейсхолдера (~1KB). Передавать в
- * expo-image `placeholder={{ uri: cdnBlur(url) }}`. Если ссылку нельзя
- * оптимизировать — вернёт undefined (плейсхолдера не будет, и это ок).
- */
+/** Крошечная версия под размытый плейсхолдер (blur-up). */
 export function cdnBlur(url: string | null | undefined): string | undefined {
   if (!canOptimize(url)) return undefined;
   const src = unwrap(url);
-  return `${WESERV}${encodeSource(src)}&w=32&output=webp&q=30&blur=4`;
+  const path = ownStoragePath(src);
+  if (!path) return undefined;
+  return render(path, 32, 20);
 }

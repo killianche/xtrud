@@ -10,8 +10,8 @@
  *   - 56 pt, круг на светлой поверхности с тенью и акцентным символом — как
  *     плавающие кнопки в Картах; стекло здесь не используется: на фото и
  *     тёмной рекламе оно исчезало (владелец, 2026-09-07);
- *   - стоит над нижним меню на `useTabBarSpace()` — не перекрывает панель и
- *     не уезжает под неё;
+ *   - стоит над нижним меню на зазоре GAP от безопасной области: панель
+ *     системная, её высота уже входит в безопасную область экрана;
  *   - одна на экран, только для главного действия экрана (design-quality §1.1);
  *   - VoiceOver: роль кнопки и подпись обязательны.
  */
@@ -19,7 +19,7 @@
 import { Plus } from "phosphor-react-native";
 import { useEffect, useRef } from "react";
 import { Animated, Pressable } from "react-native";
-import { useTabBarSpace } from "@/lib/tab-bar-space";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useThemeColors } from "@/lib/use-theme-color";
 import type { IconComponent } from "@/types/icon";
 import { type SFSymbol, SystemIcon } from "./SystemIcon";
@@ -44,7 +44,12 @@ export function FloatingActionButton({
   sf = "plus",
   fallback = Plus,
 }: FloatingActionButtonProps) {
-  const bottom = useTabBarSpace(GAP);
+  // Нижнее меню — системное (NativeTabs). iOS сама включает высоту панели в
+  // безопасную область экрана, поэтому прибавлять её ещё раз нельзя: раньше
+  // так и было (safe area + 64 + зазор), и кнопка висела примерно на 70 pt
+  // выше, чем задумано, — это и видел владелец на скриншотах 2026-09-08.
+  const insets = useSafeAreaInsets();
+  const bottom = insets.bottom + GAP;
   const tc = useThemeColors(["accent", "canvas"]);
   // Мягкое появление (кнопка на главной показывается при прокрутке).
   const opacity = useRef(new Animated.Value(0)).current;

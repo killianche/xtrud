@@ -287,11 +287,20 @@ export const api = {
       p_limit: limit,
       p_offset: offset,
     }),
-  reviewVerification: (userId: string, approve: boolean, reason: string) =>
+  /** Имя и фамилию админ вписывает с документа: значок утверждает именно их (0182). */
+  reviewVerification: (
+    userId: string,
+    approve: boolean,
+    reason: string,
+    firstName?: string,
+    lastName?: string,
+  ) =>
     rpc<void>("admin_review_verification", {
       p_user_id: userId,
       p_approve: approve,
       p_reason: reason.trim() === "" ? null : reason.trim(),
+      p_first_name: firstName?.trim() || null,
+      p_last_name: lastName?.trim() || null,
     }),
   /** Подписанная ссылка на фото документа: бакет приватный, читает только админ (RLS). */
   verificationPhotoUrl: async (path: string): Promise<string> => {

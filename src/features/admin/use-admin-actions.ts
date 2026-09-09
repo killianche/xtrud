@@ -83,18 +83,28 @@ export function useAdminVerifications(
 
 export function useAdminReviewVerification() {
   const qc = useQueryClient();
-  return useMutation<void, Error, { userId: string; approve: boolean; reason?: string }>({
-    mutationFn: async ({ userId, approve, reason }) => {
+  return useMutation<
+    void,
+    Error,
+    { userId: string; approve: boolean; reason?: string; firstName?: string; lastName?: string }
+  >({
+    // Имя и фамилию админ вписывает с документа: значок утверждает именно их,
+    // а человек это поле не заполняет (0182).
+    mutationFn: async ({ userId, approve, reason, firstName, lastName }) => {
       const { error } = await supabase.rpc("admin_review_verification", {
         p_user_id: userId,
         p_approve: approve,
         p_reason: reason ?? null,
+        p_first_name: firstName ?? null,
+        p_last_name: lastName ?? null,
       });
       if (error) throw new Error(error.message);
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["admin-verifications"] });
       qc.invalidateQueries({ queryKey: ["search-masters"] });
+      // Имя в профиле меняется вместе с подтверждением.
+      qc.invalidateQueries({ queryKey: ["user"] });
     },
   });
 }

@@ -40,6 +40,7 @@ import { formatPhoneMask } from "@/features/auth/validation";
 import { useRemoveMyAvatar, useUpdateMyAvatar } from "@/features/profile/use-update-my-avatar";
 import { useUpdateMyProfile } from "@/features/profile/use-update-my-profile";
 import { useUserPrivate } from "@/features/profile/use-user-private";
+import { useMyVerification } from "@/features/specialist/use-verification";
 import { confirmAsync } from "@/lib/confirm";
 import { useSafeBack } from "@/lib/use-safe-back";
 import { useThemeColors } from "@/lib/use-theme-color";
@@ -53,6 +54,11 @@ export default function EditClientScreen() {
   const { data: user } = useUserRecord(userId);
   const { data: userPrivate, isLoading: phoneLoading } = useUserPrivate(userId);
   const update = useUpdateMyProfile(userId);
+  // Имя, подтверждённое паспортом, человек не редактирует: его вписал админ
+  // с документа (0182). Правку не запрещаем предупреждением — просто не даём
+  // поля, а меняется имя новой проверкой.
+  const verification = useMyVerification(userId);
+  const nameLocked = !!verification.data?.verified_at && verification.data.revoked_at === null;
   const setUsernameMut = useSetUsername();
   const updateAvatar = useUpdateMyAvatar(userId);
   const removeAvatar = useRemoveMyAvatar(userId);
@@ -115,7 +121,7 @@ export default function EditClientScreen() {
       if (usernameChanged && usernameValue.trim().length > 0) {
         await setUsernameMut.mutateAsync({ username: usernameValue, userId: userId ?? "" });
       }
-      if (nameChanged) {
+      if (nameChanged && !nameLocked) {
         await update.mutateAsync({ first_name: firstName });
       }
       allowSavedNavigation();
@@ -254,18 +260,26 @@ export default function EditClientScreen() {
         ============================================================ */}
         <SectionCaption>Профиль</SectionCaption>
         <View className="mx-4 overflow-hidden rounded-lg border border-hairline bg-canvas">
-          <FieldRow label="Имя">
-            <NakedInput
-              value={firstName}
-              onChangeText={(v) => {
-                setSaveError(null);
-                setFirstName(v);
-              }}
-              placeholder="Алина"
-              autoCapitalize="words"
-              maxLength={50}
-            />
-          </FieldRow>
+          {nameLocked ? (
+            <FieldRow label="Имя">
+              <AppText className="text-ios-body text-ink" numberOfLines={1}>
+                {[user?.first_name, user?.last_name].filter(Boolean).join(" ")}
+              </AppText>
+            </FieldRow>
+          ) : (
+            <FieldRow label="Имя">
+              <NakedInput
+                value={firstName}
+                onChangeText={(v) => {
+                  setSaveError(null);
+                  setFirstName(v);
+                }}
+                placeholder="Алина"
+                autoCapitalize="words"
+                maxLength={50}
+              />
+            </FieldRow>
+          )}
 
           <View className="h-px bg-hairline" />
 
@@ -283,6 +297,14 @@ export default function EditClientScreen() {
             />
           </View>
         </View>
+
+        {nameLocked ? (
+          <AppText className="mt-2 px-4 text-caption text-mute">
+            Имя и фамилия подтверждены паспортом и закреплены за аккаунтом. Чтобы изменить их,
+            отправьте новое фото документа в разделе «Я специалист» — до решения администратора
+            значок остаётся.
+          </AppText>
+        ) : null}
 
         {/* Подсказка ПОЧЕМУ «Сохранить» серая — чтобы владелец не гадал. */}
         {disabledReason ? (

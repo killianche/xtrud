@@ -603,22 +603,32 @@ export type Database = {
         Row: {
           passport_main_path: string
           rejection_reason: string | null
+          revoked_at: string | null
+          revoked_reason: string | null
           reviewed_at: string | null
           reviewed_by: string | null
           selfie_path: string | null
           status: Database["public"]["Enums"]["verification_status"]
           submitted_at: string
           user_id: string
+          verified_at: string | null
+          verified_first_name: string | null
+          verified_last_name: string | null
         }
         Insert: {
           passport_main_path: string
           rejection_reason?: string | null
+          revoked_at?: string | null
+          revoked_reason?: string | null
           reviewed_at?: string | null
           reviewed_by?: string | null
           selfie_path?: string | null
           status?: Database["public"]["Enums"]["verification_status"]
           submitted_at?: string
           user_id: string
+          verified_at?: string | null
+          verified_first_name?: string | null
+          verified_last_name?: string | null
         }
         Update: {
           passport_main_path?: string
@@ -1640,7 +1650,13 @@ export type Database = {
         Returns: Json[]
       }
       admin_review_verification: {
-        Args: { p_user_id: string; p_approve: boolean; p_reason?: string | null }
+        Args: {
+          p_approve: boolean
+          p_first_name?: string | null
+          p_last_name?: string | null
+          p_reason?: string | null
+          p_user_id: string
+        }
         Returns: undefined
       }
       _availability_expires_at: {

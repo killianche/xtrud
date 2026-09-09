@@ -3,9 +3,15 @@
  *
  * Человек отправляет одно фото главного разворота паспорта. Файл лежит в
  * приватном бакете master-verifications в папке {user_id}/ — читают его
- * только владелец и администратор. Строка master_verifications хранит статус:
- * pending → approved | rejected (с причиной). При approved триггер ставит
- * master_profiles.verification_level = 2 — по нему рисуется значок.
+ * только владелец и администратор.
+ *
+ * Значок (master_profiles.verification_level = 2) зависит НЕ от статуса
+ * заявки, а от пары verified_at / revoked_at (0182):
+ *   - verified_at ставится при одобрении вместе с именем из документа;
+ *   - revoked_at ставится автоматически, если человек изменил имя или
+ *     телефон — подтверждение перестаёт быть правдой;
+ *   - новая заявка (status = pending) прежний значок НЕ гасит: пока админ
+ *     смотрит документ, человек не теряет доверие из-за опечатки.
  */
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";

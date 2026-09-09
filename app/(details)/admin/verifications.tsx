@@ -1,14 +1,19 @@
 /**
- * /admin/verifications — проверка паспортов в приложении (админ). Тот же
- * поток, что в веб-панели: фото по временной ссылке, «Подтвердить» /
- * «Отклонить» с причиной. Права проверяет база.
+ * /admin/verifications — проверка паспортов в приложении (админ). Фото по
+ * временной ссылке, «Подтвердить» / «Отклонить» с причиной. Права проверяет
+ * база.
+ *
+ * Имя и фамилию админ вписывает с документа сам (0182): значок утверждает
+ * именно их, поэтому подтвердить без имени нельзя, а человек это поле в
+ * своём профиле не редактирует. Поля стоят рядом с фотографией — чтобы
+ * сверять, не переключаясь между экранами.
  */
 
 import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import { Alert, Image, Pressable, View } from "react-native";
 import { AppText } from "@/components/AppText";
-import { FormScreen, GlassButton, InsetGroup } from "@/components/ui";
+import { FormScreen, GlassButton, Input, InsetGroup } from "@/components/ui";
 import {
   type AdminVerificationRow,
   useAdminReviewVerification,
@@ -45,6 +50,82 @@ function Photo({ path }: { path: string }) {
   );
 }
 
+/** Карточка заявки: фото документа и поля имени рядом с ним. */
+function VerificationCard({
+  row,
+  busy,
+  onApprove,
+  onReject,
+}: {
+  row: AdminVerificationRow;
+  busy: boolean;
+  onApprove: (firstName: string, lastName: string) => void;
+  onReject: () => void;
+}) {
+  // Подставляем то, что человек написал о себе сам, — обычно это правда и
+  // админу останется поправить пару букв, а не набирать заново.
+  const [first, setFirst] = useState(row.first_name ?? "");
+  const [last, setLast] = useState(row.last_name ?? "");
+  const ready = first.trim().length > 0 && last.trim().length > 0;
+
+  return (
+    <View className="mb-6 px-4">
+      <View className="rounded-2xl bg-canvas p-4">
+        <AppText className="text-ios-footnote text-mute">
+          {row.phone ?? "Телефон не указан"} ·{" "}
+          {new Date(row.submitted_at).toLocaleDateString("ru-RU")}
+        </AppText>
+        <View className="mt-3">
+          <Photo path={row.passport_main_path} />
+        </View>
+
+        <AppText className="mt-4 text-ios-footnote text-mute">
+          Впишите фамилию и имя так, как в документе. Они попадут в профиль и закрепятся за
+          человеком.
+        </AppText>
+        <View className="mt-2 gap-2">
+          <Input
+            value={last}
+            onChangeText={setLast}
+            placeholder="Фамилия"
+            accessibilityLabel="Фамилия по документу"
+            autoCapitalize="words"
+          />
+          <Input
+            value={first}
+            onChangeText={setFirst}
+            placeholder="Имя"
+            accessibilityLabel="Имя по документу"
+            autoCapitalize="words"
+          />
+        </View>
+
+        <View className="mt-3 flex-row gap-2">
+          <View className="flex-1">
+            <GlassButton
+              label="Подтвердить"
+              onPress={() => onApprove(first.trim(), last.trim())}
+              busy={busy}
+              disabled={!ready}
+            />
+          </View>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Отклонить"
+            onPress={onReject}
+            disabled={busy}
+            className="min-h-14 items-center justify-center rounded-full border border-hairline bg-canvas px-5 active:bg-canvas-soft"
+          >
+            <AppText weight="semibold" className="text-ios-body text-error">
+              Отклонить
+            </AppText>
+          </Pressable>
+        </View>
+      </View>
+    </View>
+  );
+}
+
 export default function AdminVerificationsScreen() {
   const router = useRouter();
   const { session } = useAuthSession();
@@ -53,7 +134,12 @@ export default function AdminVerificationsScreen() {
   const list = useAdminVerifications("pending", isAdmin);
   const review = useAdminReviewVerification();
 
-  const decide = async (row: AdminVerificationRow, approve: boolean) => {
+  const decide = async (
+    row: AdminVerificationRow,
+    approve: boolean,
+    firstName?: string,
+    lastName?: string,
+  ) => {
     let reason: string | undefined;
     if (!approve) {
       const answer = await promptAsync({
@@ -66,7 +152,7 @@ export default function AdminVerificationsScreen() {
       reason = answer;
     }
     review.mutate(
-      { userId: row.user_id, approve, reason },
+      { userId: row.user_id, approve, reason, firstName, lastName },
       {
         onSuccess: () => hapticSuccess(),
         onError: (e) => Alert.alert("Не получилось", e.message),
@@ -95,40 +181,13 @@ export default function AdminVerificationsScreen() {
         </InsetGroup>
       ) : (
         rows.map((row) => (
-          <View key={row.user_id} className="mb-6 px-4">
-            <View className="rounded-2xl bg-canvas p-4">
-              <AppText weight="semibold" className="text-ios-body text-ink">
-                {[row.first_name, row.last_name].filter(Boolean).join(" ") || "Без имени"}
-              </AppText>
-              <AppText className="mt-0.5 text-ios-footnote text-mute">
-                {row.phone ?? "Телефон не указан"} ·{" "}
-                {new Date(row.submitted_at).toLocaleDateString("ru-RU")}
-              </AppText>
-              <View className="mt-3">
-                <Photo path={row.passport_main_path} />
-              </View>
-              <View className="mt-3 flex-row gap-2">
-                <View className="flex-1">
-                  <GlassButton
-                    label="Подтвердить"
-                    onPress={() => void decide(row, true)}
-                    busy={review.isPending}
-                  />
-                </View>
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel="Отклонить"
-                  onPress={() => void decide(row, false)}
-                  disabled={review.isPending}
-                  className="min-h-14 items-center justify-center rounded-full border border-hairline bg-canvas px-5 active:bg-canvas-soft"
-                >
-                  <AppText weight="semibold" className="text-ios-body text-error">
-                    Отклонить
-                  </AppText>
-                </Pressable>
-              </View>
-            </View>
-          </View>
+          <VerificationCard
+            key={row.user_id}
+            row={row}
+            busy={review.isPending}
+            onApprove={(firstName, lastName) => void decide(row, true, firstName, lastName)}
+            onReject={() => void decide(row, false)}
+          />
         ))
       )}
     </FormScreen>

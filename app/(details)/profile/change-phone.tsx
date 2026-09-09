@@ -45,6 +45,7 @@ import { AppText } from "@/components/AppText";
 import { useAuthSession } from "@/features/auth/use-auth-session";
 import { digitsOnly, formatPhoneMask, normalizePhone } from "@/features/auth/validation";
 import { useUpdateMyPhone, useUserPrivate } from "@/features/profile/use-user-private";
+import { useMyVerification } from "@/features/specialist/use-verification";
 import { useThemeColors } from "@/lib/use-theme-color";
 
 export default function ChangePhoneScreen() {
@@ -52,6 +53,12 @@ export default function ChangePhoneScreen() {
   const router = useRouter();
   const { session } = useAuthSession();
   const userId = session?.user?.id;
+  // Подтверждение личности снимается при смене номера (0182): документ
+  // подтверждал связь «этот человек — этот аккаунт», а с новым номером
+  // аккаунтом может пользоваться кто-то другой. Запретить смену нельзя —
+  // номера меняют по‑настоящему, — поэтому предупреждаем заранее.
+  const verification = useMyVerification(userId);
+  const willLoseBadge = !!verification.data?.verified_at && verification.data.revoked_at === null;
   const { data: userPrivate } = useUserPrivate(userId);
   const currentPhone = userPrivate?.phone ?? null;
 
@@ -155,6 +162,13 @@ export default function ChangePhoneScreen() {
               По этому номеру вы входите в приложение.
             </AppText>
           )}
+
+          {willLoseBadge ? (
+            <AppText weight="medium" className="text-caption text-warning">
+              После смены номера значок «подтверждён паспортом» снимется: документ подтверждал
+              именно этот аккаунт. Вернуть его можно, отправив фото паспорта заново.
+            </AppText>
+          ) : null}
 
           <Pressable
             accessibilityRole="button"

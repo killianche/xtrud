@@ -92,14 +92,23 @@ export function Verifications({ onOpen }: { onOpen: (userId: string) => void }) 
         return;
       }
       reason = answer;
-    } else if (
-      !window.confirm(`Подтвердить личность: ${fullName(row.first_name, row.last_name)}?`)
-    ) {
-      return;
+    }
+    let firstName: string | undefined;
+    let lastName: string | undefined;
+    if (approve) {
+      // Имя закрепляется за человеком и попадёт в его профиль, поэтому
+      // вписываем его с документа, а не подтверждаем «как есть».
+      const last = window.prompt("Фамилия по документу", row.last_name ?? "");
+      if (last === null || last.trim().length === 0) return;
+      const first = window.prompt("Имя по документу", row.first_name ?? "");
+      if (first === null || first.trim().length === 0) return;
+      lastName = last;
+      firstName = first;
+      if (!window.confirm(`Подтвердить личность: ${first.trim()} ${last.trim()}?`)) return;
     }
     setBusyId(row.user_id);
     try {
-      await api.reviewVerification(row.user_id, approve, reason);
+      await api.reviewVerification(row.user_id, approve, reason, firstName, lastName);
       reload();
     } catch (e) {
       window.alert((e as Error).message);

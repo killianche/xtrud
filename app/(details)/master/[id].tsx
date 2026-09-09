@@ -12,7 +12,7 @@
  */
 
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { DotsThree, Image as ImageIcon, PencilSimple, Star } from "phosphor-react-native";
+import { DotsThree, Image as ImageIcon, Star } from "phosphor-react-native";
 import { useEffect, useMemo, useState } from "react";
 import { ActionSheetIOS, Alert, Animated, Image, Pressable, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -122,7 +122,10 @@ export default function MasterPublicScreen() {
   const tile = gridWidth > 0 ? Math.floor((gridWidth - GAP * 2) / 3) : 0;
   const showReviewCta = !!masterId && !isOwn && !recentReview.data;
   const hasContacts = !!phoneTel || !!phoneWa;
-  const bottomBar = isOwn || hasContacts;
+  // У своего профиля нижней панели нет: сюда попадают из редактора
+  // «Я специалист», и кнопка «Редактировать профиль» вернула бы туда,
+  // откуда пришли (владелец, 2026-09-09: «обе кнопки удали»).
+  const bottomBar = !isOwn && hasContacts;
   const bottomSpace = insets.bottom + 16 + (bottomBar ? GLASS_BUTTON_HEIGHT + 12 : 0);
 
   const handleBlock = async () => {
@@ -408,16 +411,9 @@ export default function MasterPublicScreen() {
         onLayoutHeight={large.setBarHeight}
         onBack={goBack}
         actions={
+          // Свой профиль здесь только смотрят: правки живут в «Я специалист».
           isOwn
-            ? [
-                {
-                  label: "Редактировать профиль",
-                  sf: "pencil",
-                  Icon: PencilSimple,
-                  iconOnly: true,
-                  onPress: () => router.push("/profile/specialist" as never),
-                },
-              ]
+            ? []
             : [
                 {
                   label: "Действия",
@@ -437,34 +433,20 @@ export default function MasterPublicScreen() {
           className="absolute left-0 right-0 flex-row gap-3 px-5"
           style={{ bottom: insets.bottom + 16 }}
         >
-          {isOwn ? (
+          {phoneTel ? (
+            <View className="flex-1">
+              <GlassButton label="Позвонить" onPress={() => openExternalUrl(`tel:${phoneTel}`)} />
+            </View>
+          ) : null}
+          {phoneWa ? (
             <View className="flex-1">
               <GlassButton
-                label="Редактировать профиль"
-                onPress={() => router.push("/profile/specialist" as never)}
+                label="WhatsApp"
+                onPress={() => openExternalUrl(`https://wa.me/${phoneWa}`)}
+                secondary={!!phoneTel}
               />
             </View>
-          ) : (
-            <>
-              {phoneTel ? (
-                <View className="flex-1">
-                  <GlassButton
-                    label="Позвонить"
-                    onPress={() => openExternalUrl(`tel:${phoneTel}`)}
-                  />
-                </View>
-              ) : null}
-              {phoneWa ? (
-                <View className="flex-1">
-                  <GlassButton
-                    label="WhatsApp"
-                    onPress={() => openExternalUrl(`https://wa.me/${phoneWa}`)}
-                    secondary={!!phoneTel}
-                  />
-                </View>
-              ) : null}
-            </>
-          )}
+          ) : null}
         </View>
       ) : null}
 

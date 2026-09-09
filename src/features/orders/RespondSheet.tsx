@@ -72,7 +72,13 @@ export function RespondSheet({
   const [lead, setLead] = useState<string>("Завтра");
   const [customLead, setCustomLead] = useState("");
   const [phone, setPhone] = useState("");
-  const [sameWa, setSameWa] = useState(true);
+  // Выключен по умолчанию. Раньше он был включён, и в каждый отклик
+  // подставлялся тот же номер — даже у специалистов без WhatsApp. Клиент
+  // видел кнопку «WhatsApp», которая никуда не вела (владелец, 2026-09-09;
+  // по данным: из 11 откликов у 7 номер просто скопирован, отдельный не
+  // вводил никто). Кнопка у клиента появляется только если человек сам
+  // подтвердил WhatsApp — design-quality §5.
+  const [sameWa, setSameWa] = useState(false);
   const [wa, setWa] = useState("");
   const [message, setMessage] = useState("");
 
@@ -210,7 +216,11 @@ export function RespondSheet({
       ) : null}
 
       <InsetGroup
-        footer={sameWa ? "Клиент сможет написать в WhatsApp на этот же номер." : undefined}
+        footer={
+          sameWa
+            ? "Клиент сможет написать в WhatsApp на этот же номер."
+            : "Без WhatsApp клиент сможет только позвонить."
+        }
       >
         <InsetRow
           title="WhatsApp — тот же номер"

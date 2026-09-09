@@ -28,12 +28,19 @@ export default function SpecialistContactsScreen() {
   const update = useUpdateSpecialistContacts();
   const [phone, setPhone] = useState<string | null>(null);
   const [wa, setWa] = useState("");
-  const [same, setSame] = useState(true);
+  // Выключен по умолчанию: WhatsApp есть не у всех, а включённый переключатель
+  // подставлял номер за человека. Клиент видел кнопку «WhatsApp», которая вела
+  // в пустоту (владелец, 2026-09-09). Интерфейс не должен утверждать того, что
+  // никто не подтверждал (design-quality §5).
+  const [same, setSame] = useState(false);
   useEffect(() => {
     if (phone === null && user && profile.data !== undefined) {
       setPhone(user.contact_phone ?? "");
       setWa(profile.data?.whatsapp_phone ?? "");
-      setSame(!profile.data?.whatsapp_phone);
+      // Восстанавливаем сохранённый ответ, а не выводим его из отсутствия
+      // отдельного номера: раньше выключенный переключатель возвращался
+      // включённым.
+      setSame(profile.data?.whatsapp_same_as_phone === true);
     }
   }, [user, profile.data, phone]);
 

@@ -26,6 +26,7 @@ export type SpecialistProfile = Pick<
   | "is_hidden_from_search"
   | "hidden_by_owner"
   | "whatsapp_phone"
+  | "whatsapp_same_as_phone"
   | "rating_overall_avg"
   | "rating_overall_count"
 >;
@@ -39,7 +40,7 @@ export function useMySpecialistProfile(userId: string | undefined) {
       const { data, error } = await supabase
         .from("master_profiles")
         .select(
-          "user_id, bio, experience_years, status, is_hidden_from_search, hidden_by_owner, whatsapp_phone, rating_overall_avg, rating_overall_count",
+          "user_id, bio, experience_years, status, is_hidden_from_search, hidden_by_owner, whatsapp_phone, whatsapp_same_as_phone, rating_overall_avg, rating_overall_count",
         )
         .eq("user_id", userId)
         .maybeSingle();

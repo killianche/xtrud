@@ -29,6 +29,7 @@ import { useSubmitResponse } from "@/features/orders/use-order-responses";
 import { isDailyLimitError, useResponseLimit } from "@/features/orders/use-response-limit";
 import { ComposerField } from "@/features/task-composer/ComposerFields";
 import { formatBudgetInput, parseBudgetInput } from "@/features/task-composer/steps";
+import { describeServerError } from "@/lib/describe-server-error";
 import { hapticSelection, hapticSuccess } from "@/lib/haptics";
 
 const LEAD_TIMES = ["Сегодня", "Завтра", "На этой неделе", "На следующей неделе"] as const;
@@ -96,7 +97,10 @@ export function RespondSheet({
   const error = submit.error
     ? isDailyLimitError(submit.error)
       ? "На сегодня отклики закончились. Завтра будет снова 5."
-      : "Не удалось отправить отклик. Попробуйте ещё раз."
+      : // Сервер объясняет причину сам («вы уже откликнулись», «вас уже
+        // выбрали»). Прежний общий текст звал повторить попытку там, где
+        // повтор не мог сработать (разбор 2026-09-09).
+        describeServerError(submit.error, "Не удалось отправить отклик. Попробуйте ещё раз.")
     : limitReached
       ? "На сегодня отклики закончились. Завтра будет снова 5."
       : null;

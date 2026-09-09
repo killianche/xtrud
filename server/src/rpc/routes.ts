@@ -31,6 +31,7 @@ export const RPC_ALLOWLIST = new Set([
   "set_specialist_contacts",
   "set_username",
   "submit_master_review",
+  "submit_order_response",
   "touch_last_active",
   "withdraw_response",
   "admin_metrics",

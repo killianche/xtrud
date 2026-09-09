@@ -98,38 +98,22 @@ export function useSubmitResponse() {
 
   return useMutation({
     mutationFn: async (input: SubmitResponseInput) => {
-      const payload: Database["public"]["Tables"]["order_responses"]["Insert"] = {
-        order_id: input.orderId,
-        master_id: input.masterId,
-        l2_id: input.l2Id,
-        price_kind: input.priceKind,
-        price_value: input.priceKind === "negotiable" ? null : input.priceValue,
-        lead_time: input.leadTime || null,
-        // Текст необязателен с 0146; пустую строку храним как NULL, чтобы
-        // карточка не рисовала пустой блок сообщения.
-        message: input.message.trim() || null,
-        contact_phone: input.contactPhone,
-        whatsapp_phone: input.whatsappPhone,
-      };
-      if (input.resendResponseId) {
-        // UNIQUE(order_id, master_id): второй строки быть не может — оживляем
-        // отозванную (сервер проверит, что она была withdrawn, 0172).
-        const { error } = await supabase
-          .from("order_responses")
-          .update({
-            status: "sent",
-            price_kind: payload.price_kind,
-            price_value: payload.price_value,
-            lead_time: payload.lead_time,
-            message: payload.message,
-            contact_phone: payload.contact_phone,
-            whatsapp_phone: payload.whatsapp_phone,
-          })
-          .eq("id", input.resendResponseId);
-        if (error) throw error;
-        return;
-      }
-      const { error } = await supabase.from("order_responses").insert(payload);
+      // Один вызов: сервер сам смотрит, есть ли уже отклик, и вставляет
+      // новый или оживляет отозванный (0181). Раньше это решал клиент по
+      // своему запросу «есть ли мой отклик», и устаревший ответ приводил к
+      // вставке поверх существующей строки: 409 и тупиковое «попробуйте ещё
+      // раз», которое не могло сработать (разбор 2026-09-09).
+      const { error } = await supabase.rpc("submit_order_response", {
+        p_order_id: input.orderId,
+        p_l2_id: input.l2Id,
+        p_price_kind: input.priceKind,
+        p_price_value: input.priceKind === "negotiable" ? null : input.priceValue,
+        p_lead_time: input.leadTime || null,
+        // Текст необязателен с 0146; пустую строку сервер сам превратит в NULL.
+        p_message: input.message.trim() || null,
+        p_contact_phone: input.contactPhone,
+        p_whatsapp_phone: input.whatsappPhone,
+      });
       if (error) throw error;
     },
     onSuccess: (_data, { orderId, masterId }) => {

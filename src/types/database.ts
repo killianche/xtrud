@@ -1794,6 +1794,19 @@ export type Database = {
         Args: { p_rating: number; p_target_id: string; p_text?: string }
         Returns: string
       }
+      submit_order_response: {
+        Args: {
+          p_contact_phone: string | null
+          p_l2_id: string
+          p_lead_time: string | null
+          p_message: string | null
+          p_order_id: string
+          p_price_kind: Database["public"]["Enums"]["order_price_kind"]
+          p_price_value: number | null
+          p_whatsapp_phone: string | null
+        }
+        Returns: string
+      }
       terminate_cooperation: {
         Args: { p_order_id: string; p_reason?: string }
         Returns: undefined

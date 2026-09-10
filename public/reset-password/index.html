@@ -3,275 +3,31 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>Новый пароль — xtrud</title>
+  <title>Восстановление доступа — xtrud</title>
   <meta name="robots" content="noindex,nofollow">
   <meta name="referrer" content="no-referrer">
   <!--
-    Страница смены пароля обходится без сборки и без сторонних доменов.
-    default-src 'none' закрывает всё, чего здесь быть не должно; единственный
-    разрешённый сетевой адресат — Supabase Auth того же проекта, что и в
-    release/production.json → backend.url. form-action 'none' гарантирует, что
-    пароль не уйдёт нативным submit'ом в query string, если скрипт не выполнился.
-    frame-ancestors в <meta> браузерами игнорируется: защиту от кликджекинга
-    даёт заголовок веб-сервера, не эта страница.
+    Раньше здесь была смена пароля по ссылке из письма: страница обращалась
+    ко входу Supabase. Supabase погашен 2026-09-08, писем больше нет, и
+    страница не могла сработать ни для кого.
+
+    DECISION владельца 2026-09-03: доступ восстанавливает поддержка вручную
+    (docs/PASSWORD_RECOVERY_RUNBOOK.md). Страница говорит ровно это. Скриптов
+    и сетевых запросов здесь нет: CSP закрывает всё, кроме своих стилей.
   -->
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; base-uri 'none'; form-action 'none'; img-src 'self'; style-src 'self'; script-src 'self' 'unsafe-inline'; connect-src https://api.xtrud.pro">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; base-uri 'none'; form-action 'none'; img-src 'self'; style-src 'self'">
   <link rel="stylesheet" href="/legal.css">
 </head>
 <body><main>
   <nav><a href="/">xtrud</a><a href="/support/">Поддержка</a><a href="/privacy/">Конфиденциальность</a><a href="/terms/">Условия</a></nav>
-  <h1>Новый пароль</h1>
-  <p class="meta">Смена пароля по ссылке из письма xtrud</p>
+  <h1>Восстановление доступа</h1>
+  <p class="meta">Если вы забыли пароль от xtrud</p>
 
-  <section id="state-checking" class="state">
-    <p>Проверяем ссылку…</p>
-    <noscript><p>Для смены пароля нужен включённый JavaScript. Включите его и откройте ссылку из письма ещё раз или напишите в <a href="/support/">поддержку</a>.</p></noscript>
-  </section>
-
-  <section id="state-form" class="state" hidden>
-    <div class="callout"><p>Если вы не запрашивали смену пароля — закройте эту страницу и напишите в <a href="/support/">поддержку</a>. Никому не пересылайте ссылку из письма.</p></div>
-    <form id="reset-form" novalidate>
-      <div class="field">
-        <label for="password">Новый пароль · минимум 6 символов</label>
-        <div class="field-row">
-          <input id="password" name="password" type="password" autocomplete="new-password" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="Придумайте пароль" aria-describedby="password-error" required>
-          <button id="toggle-password" type="button" aria-label="Показать пароль">Показать</button>
-        </div>
-        <p id="password-error" class="field-error" role="alert" hidden></p>
-      </div>
-      <div class="field">
-        <label for="confirm">Повторите пароль</label>
-        <input id="confirm" name="confirm" type="password" autocomplete="new-password" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="Ещё раз тот же пароль" aria-describedby="confirm-error" required>
-        <p id="confirm-error" class="field-error" role="alert" hidden></p>
-      </div>
-      <p id="form-error" class="field-error" role="alert" hidden></p>
-      <button id="submit" class="primary" type="submit">Сохранить пароль</button>
-    </form>
-  </section>
-
-  <section id="state-done" class="state" hidden>
-    <h2>Пароль изменён</h2>
-    <p>Вернитесь в приложение xtrud и войдите с новым паролем. Ссылка из письма больше не действует — её можно удалить.</p>
-  </section>
-
-  <section id="state-invalid" class="state" hidden>
-    <h2>Ссылка недействительна</h2>
-    <p>Ссылка для сброса пароля устарела или уже использована. Запросите новую: на экране входа в приложении xtrud нажмите «Забыли пароль?» и укажите почту аккаунта.</p>
-    <p>Письмо не приходит или ссылка снова не работает — напишите в <a href="/support/">поддержку</a>.</p>
+  <section>
+    <p>Вход в xtrud — по номеру телефона и паролю. Ссылки для смены пароля по почте больше не отправляются.</p>
+    <p>Забыли пароль — напишите в <a href="/support/">поддержку</a> с номера, на который зарегистрирован аккаунт. Мы проверим, что аккаунт ваш, зададим новый пароль и пришлём его вам.</p>
+    <div class="callout"><p>Если вы открыли эту страницу по старой ссылке из письма — она больше не действует, её можно удалить. Никому не пересылайте свой пароль.</p></div>
   </section>
 
   <footer>© 2026 xtrud</footer>
-</main>
-<script>
-(function () {
-  "use strict";
-
-  // Канонический backend. Эти две константы — единственная точка настройки
-  // страницы. Гейт scripts/release/check-public-legal-pages.mjs сверяет
-  // SUPABASE_URL с release/production.json → backend.url, а SHA-256 ключа —
-  // с backend.clientKeySha256, поэтому рассинхрон ловится до релиза.
-  // При переезде на Beget меняются оба файла одной правкой.
-  var SUPABASE_URL = "https://api.xtrud.pro";
-  var SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzg4MTkxODU5LCJleHAiOjIxMDM1NTE4NTl9.ScG8zJBBJpfzoZuNzrfXud8KeMh4sW7ETWtvfJRW7Ak";
-
-  var MIN_PASSWORD_LENGTH = 6;
-
-  // Recovery-токены живут только в этом замыкании на время жизни вкладки:
-  // они не попадают ни в хранилища браузера, ни в cookie, ни в логи, ни в DOM.
-  var accessToken = null;
-
-  var el = function (id) { return document.getElementById(id); };
-  var states = {
-    checking: el("state-checking"),
-    form: el("state-form"),
-    done: el("state-done"),
-    invalid: el("state-invalid")
-  };
-
-  function show(name) {
-    for (var key in states) {
-      if (Object.prototype.hasOwnProperty.call(states, key)) {
-        states[key].hidden = key !== name;
-      }
-    }
-  }
-
-  function setError(node, message) {
-    node.textContent = message || "";
-    node.hidden = !message;
-  }
-
-  // Токены приходят во фрагменте (#access_token=…&type=recovery). Фрагмент не
-  // отправляется на сервер — так и должно остаться, поэтому query здесь не
-  // читается. Сразу после разбора фрагмент стирается из адресной строки, чтобы
-  // токен не остался в истории браузера и в заголовке вкладки.
-  function takeHashParams() {
-    var raw = window.location.hash && window.location.hash.charAt(0) === "#"
-      ? window.location.hash.slice(1)
-      : "";
-    clearHash();
-    return new URLSearchParams(raw);
-  }
-
-  function clearHash() {
-    try {
-      window.history.replaceState(null, "", window.location.pathname + window.location.search);
-    } catch (ignored) {
-      // Старый браузер без History API: ниже всё равно не показываем токен.
-    }
-  }
-
-  function readableUpdateError(status, code) {
-    if (status === 401 || status === 403 || code === "session_not_found") return null;
-    if (code === "weak_password") {
-      return "Пароль слишком простой. Возьмите не менее " + MIN_PASSWORD_LENGTH + " символов и другую комбинацию.";
-    }
-    if (code === "same_password") return "Новый пароль должен отличаться от прежнего.";
-    if (status === 429 || code === "over_request_rate_limit") {
-      return "Слишком много попыток. Подождите немного и попробуйте ещё раз.";
-    }
-    // Текст ответа сервера намеренно не показывается: он может раскрывать,
-    // существует ли аккаунт и в каком он состоянии.
-    return "Не удалось изменить пароль. Попробуйте ещё раз или запросите новую ссылку.";
-  }
-
-  function authHeaders() {
-    return {
-      "Content-Type": "application/json",
-      apikey: SUPABASE_PUBLISHABLE_KEY,
-      Authorization: "Bearer " + accessToken
-    };
-  }
-
-  // PUT /auth/v1/user — контракт Supabase Auth (GoTrue): тело {"password": …},
-  // JWT восстановления в Authorization, публикуемый ключ в apikey.
-  function updatePassword(password) {
-    return fetch(SUPABASE_URL + "/auth/v1/user", {
-      method: "PUT",
-      headers: authHeaders(),
-      body: JSON.stringify({ password: password }),
-      credentials: "omit",
-      cache: "no-store",
-      referrerPolicy: "no-referrer"
-    }).then(function (response) {
-      if (response.ok) return { ok: true };
-      return response.json().catch(function () { return {}; }).then(function (payload) {
-        var code = "";
-        if (payload && typeof payload.error_code === "string") code = payload.error_code;
-        else if (payload && typeof payload.code === "string") code = payload.code;
-        return { ok: false, message: readableUpdateError(response.status, code) };
-      });
-    });
-  }
-
-  // Гасим сессию восстановления сразу после смены пароля: refresh-токен из
-  // письма перестаёт действовать, даже если ссылка где-то сохранилась.
-  // scope=local не трогает вход пользователя на других устройствах.
-  function revokeRecoverySession() {
-    return fetch(SUPABASE_URL + "/auth/v1/logout?scope=local", {
-      method: "POST",
-      headers: authHeaders(),
-      credentials: "omit",
-      cache: "no-store",
-      referrerPolicy: "no-referrer"
-    }).catch(function () { /* не влияет на результат смены пароля */ });
-  }
-
-  function validate(password, confirm) {
-    if (password.length < MIN_PASSWORD_LENGTH) {
-      return { field: "password", message: "Минимум " + MIN_PASSWORD_LENGTH + " символов" };
-    }
-    if (confirm.length === 0) return { field: "confirm", message: "Повторите пароль" };
-    if (password !== confirm) return { field: "confirm", message: "Пароли не совпадают" };
-    return null;
-  }
-
-  function start() {
-    var params = takeHashParams();
-    if (params.get("error") || params.get("error_code") || params.get("error_description")) {
-      show("invalid");
-      return;
-    }
-    // Ссылка из письма (admin.generateLink → /auth/v1/verify) отдаёт
-    // type=recovery. Отсутствие type не считаем ошибкой, чужой type — считаем.
-    var token = params.get("access_token");
-    var type = params.get("type");
-    if (!token || (type && type !== "recovery")) {
-      show("invalid");
-      return;
-    }
-    accessToken = token;
-    show("form");
-
-    var form = el("reset-form");
-    var passwordInput = el("password");
-    var confirmInput = el("confirm");
-    var passwordError = el("password-error");
-    var confirmError = el("confirm-error");
-    var formError = el("form-error");
-    var submit = el("submit");
-    var toggle = el("toggle-password");
-    var busy = false;
-
-    toggle.addEventListener("click", function () {
-      var shown = passwordInput.type === "text";
-      passwordInput.type = shown ? "password" : "text";
-      confirmInput.type = shown ? "password" : "text";
-      toggle.textContent = shown ? "Показать" : "Скрыть";
-      toggle.setAttribute("aria-label", shown ? "Показать пароль" : "Скрыть пароль");
-    });
-
-    var clearErrors = function () {
-      setError(passwordError, "");
-      setError(confirmError, "");
-      setError(formError, "");
-    };
-    passwordInput.addEventListener("input", clearErrors);
-    confirmInput.addEventListener("input", clearErrors);
-
-    form.addEventListener("submit", function (event) {
-      event.preventDefault();
-      if (busy) return;
-      clearErrors();
-
-      var invalid = validate(passwordInput.value, confirmInput.value);
-      if (invalid) {
-        setError(invalid.field === "password" ? passwordError : confirmError, invalid.message);
-        (invalid.field === "password" ? passwordInput : confirmInput).focus();
-        return;
-      }
-
-      busy = true;
-      submit.disabled = true;
-      submit.textContent = "Сохраняем…";
-
-      updatePassword(passwordInput.value).then(function (result) {
-        if (result.ok) {
-          passwordInput.value = "";
-          confirmInput.value = "";
-          clearHash();
-          revokeRecoverySession();
-          accessToken = null;
-          show("done");
-          return;
-        }
-        if (result.message === null) {
-          accessToken = null;
-          show("invalid");
-          return;
-        }
-        setError(formError, result.message);
-      }).catch(function () {
-        setError(formError, "Нет связи с сервером. Проверьте интернет и попробуйте ещё раз.");
-      }).then(function () {
-        busy = false;
-        submit.disabled = false;
-        submit.textContent = "Сохранить пароль";
-      });
-    });
-  }
-
-  start();
-})();
-</script>
-</body></html>
+</main></body></html>

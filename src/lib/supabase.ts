@@ -21,7 +21,7 @@ import { createXtrudClient } from "./xtrud-client/client";
 export type { ApiError, Session, SessionUser } from "./xtrud-client/types";
 
 export const supabase = createXtrudClient({
-  baseUrl: env.EXPO_PUBLIC_SUPABASE_URL,
+  baseUrl: env.EXPO_PUBLIC_API_URL,
   storage: largeSecureStorage,
   // Таймаут на КАЖДЫЙ запрос: молчащая сеть не должна оставлять экран в
   // вечной загрузке — см. src/lib/fetch-with-timeout.ts.

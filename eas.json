@@ -7,8 +7,7 @@
     "base": {
       "node": "20.19.4",
       "env": {
-        "EXPO_PUBLIC_SUPABASE_URL": "https://api.xtrud.pro",
-        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzg4MTkxODU5LCJleHAiOjIxMDM1NTE4NTl9.ScG8zJBBJpfzoZuNzrfXud8KeMh4sW7ETWtvfJRW7Ak",
+        "EXPO_PUBLIC_API_URL": "https://api.xtrud.pro",
         "SENTRY_DISABLE_AUTO_UPLOAD": "true"
       }
     },

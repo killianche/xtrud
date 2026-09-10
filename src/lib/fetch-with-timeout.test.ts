@@ -20,7 +20,7 @@ describe("createTimeoutFetch", () => {
         }),
     );
     const timeoutFetch = createTimeoutFetch(1000, hangs);
-    const promise = timeoutFetch("https://api.xtrud.pro/rest/v1/orders");
+    const promise = timeoutFetch("https://api.xtrud.pro/v2/rest/orders");
     const assertion = expect(promise).rejects.toMatchObject({ code: "ETIMEDOUT" });
     await vi.advanceTimersByTimeAsync(1000);
     await assertion;
@@ -28,7 +28,7 @@ describe("createTimeoutFetch", () => {
 
   it("помечает таймаут как транспортную ошибку — иначе не сработает офлайн-каталог", async () => {
     const timeoutFetch = createTimeoutFetch(500, () => new Promise<Response>(() => {}));
-    const promise = timeoutFetch("https://api.xtrud.pro/rest/v1/categories_l2").catch(
+    const promise = timeoutFetch("https://api.xtrud.pro/v2/rest/categories_l2").catch(
       (error: unknown) => error,
     );
     await vi.advanceTimersByTimeAsync(500);
@@ -38,12 +38,12 @@ describe("createTimeoutFetch", () => {
   it("пропускает успешный ответ без изменений", async () => {
     const response = new Response("[]", { status: 200 });
     const timeoutFetch = createTimeoutFetch(1000, async () => response);
-    await expect(timeoutFetch("https://api.xtrud.pro/rest/v1/orders")).resolves.toBe(response);
+    await expect(timeoutFetch("https://api.xtrud.pro/v2/rest/orders")).resolves.toBe(response);
   });
 
   it("не отклоняет запрос, который успел ответить до таймаута", async () => {
     const timeoutFetch = createTimeoutFetch(1000, async () => new Response("ok", { status: 200 }));
-    const promise = timeoutFetch("https://api.xtrud.pro/rest/v1/orders");
+    const promise = timeoutFetch("https://api.xtrud.pro/v2/rest/orders");
     await vi.advanceTimersByTimeAsync(5000);
     await expect(promise).resolves.toMatchObject({ status: 200 });
   });
@@ -56,7 +56,7 @@ describe("createTimeoutFetch", () => {
         init?.signal?.addEventListener("abort", () => reject(abortError), { once: true });
       });
     });
-    const promise = timeoutFetch("https://api.xtrud.pro/rest/v1/orders", {
+    const promise = timeoutFetch("https://api.xtrud.pro/v2/rest/orders", {
       signal: controller.signal,
     });
     controller.abort();
@@ -66,14 +66,14 @@ describe("createTimeoutFetch", () => {
   it("передаёт запрос дальше вместе с методом и заголовками", async () => {
     const impl = vi.fn(async () => new Response("{}", { status: 200 }));
     const timeoutFetch = createTimeoutFetch(1000, impl);
-    await timeoutFetch("https://api.xtrud.pro/auth/v1/token", {
+    await timeoutFetch("https://api.xtrud.pro/v2/auth/login", {
       method: "POST",
-      headers: { apikey: "public-anon" },
+      headers: { "x-request-id": "test" },
     });
     expect(impl).toHaveBeenCalledTimes(1);
     const [, init] = impl.mock.calls[0] as unknown as [unknown, RequestInit];
     expect(init.method).toBe("POST");
-    expect((init.headers as Record<string, string>).apikey).toBe("public-anon");
+    expect((init.headers as Record<string, string>)["x-request-id"]).toBe("test");
     expect(init.signal).toBeDefined();
   });
 

@@ -36,6 +36,9 @@ const TABLE_ALLOWLIST = new Set([
   "categories_l1",
   "categories_l2",
   "categories_l3",
+  // Словарь поисковых терминов: публичный, нужен генератору каталога при
+  // сборке. Раньше тот ходил за ним в /rest/v1 Supabase (2026-09-10).
+  "category_terms",
 ]);
 const FORWARD_RESPONSE_HEADERS = [
   "content-type",

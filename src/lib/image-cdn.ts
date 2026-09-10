@@ -20,10 +20,8 @@
 import { env } from "@/lib/env";
 
 const WESERV_MARK = "images.weserv.nl/?url=";
-const STORAGE_PUBLIC = "/storage/v1/object/public/";
-const STORAGE_RENDER = "/storage/v1/render/image/public/";
 const FILES_PUBLIC = "/files/";
-const OWN_ORIGIN = env.EXPO_PUBLIC_SUPABASE_URL.replace(/\/+$/, "");
+const OWN_ORIGIN = env.EXPO_PUBLIC_API_URL.replace(/\/+$/, "");
 
 function isRemoteHttp(url: string): boolean {
   return /^https?:\/\//i.test(url);
@@ -49,15 +47,10 @@ function unwrap(url: string): string {
 function ownStoragePath(url: string): string | null {
   if (!url.startsWith(OWN_ORIGIN)) return null;
   const rest = url.slice(OWN_ORIGIN.length);
-  const marker = rest.startsWith(STORAGE_PUBLIC)
-    ? STORAGE_PUBLIC
-    : rest.startsWith(STORAGE_RENDER)
-      ? STORAGE_RENDER
-      : rest.startsWith(FILES_PUBLIC)
-        ? FILES_PUBLIC
-        : null;
-  if (!marker) return null;
-  const [path = "", query = ""] = rest.slice(marker.length).split("?");
+  // Старые ссылки хранилища Supabase в базе переписаны на /files/ 2026-09-10;
+  // других форм нашего хранилища больше нет.
+  if (!rest.startsWith(FILES_PUBLIC)) return null;
+  const [path = "", query = ""] = rest.slice(FILES_PUBLIC.length).split("?");
   if (path.length === 0) return null;
   // ?v=<метка> — версия файла при перезаписи по тому же пути (аватар).
   const v = new URLSearchParams(query).get("v");
@@ -93,9 +86,8 @@ function snapWidth(w: number): number {
 }
 
 // Превью делает наш imgproxy: /render/<ширина>/<качество>/<bucket>/<path>
-// (nginx → xtrud-imgproxy, кэш 7 дней). Старые ссылки
-// /storage/v1/object/public/… ведут к тем же файлам — они перенесены в
-// /opt/xtrud/files.
+// (nginx → xtrud-imgproxy, кэш 7 дней). Исходник imgproxy берёт через наш же
+// /files/ — там сначала диск сервера, затем объектное хранилище Beget.
 function render(path: string, width: number, quality: number): string {
   const [file = "", query = ""] = path.split("?");
   return `${OWN_ORIGIN}/render/${width}/${quality}/${file}${query ? `?${query}` : ""}`;

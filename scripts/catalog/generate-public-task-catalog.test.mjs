@@ -1,5 +1,4 @@
 import assert from "node:assert/strict";
-import { createHash } from "node:crypto";
 import test from "node:test";
 import {
   buildPublicTaskCatalog,
@@ -131,42 +130,19 @@ test("duplicate public identifiers fail instead of being silently discarded", ()
 });
 
 test("release drift source is bound to the EAS backend and production ledger", () => {
-  const clientKey = "public-client-key";
   const url = "https://api.example.test";
   const easConfig = {
     build: {
-      base: {
-        env: {
-          EXPO_PUBLIC_SUPABASE_URL: url,
-          EXPO_PUBLIC_SUPABASE_ANON_KEY: clientKey,
-        },
-      },
+      base: { env: { EXPO_PUBLIC_API_URL: url } },
       production: { extends: "base", env: { EXPO_PUBLIC_DEMO_MODE: "false" } },
     },
   };
-  const ledger = {
-    backend: {
-      url,
-      clientKeySha256: createHash("sha256").update(clientKey).digest("hex"),
-    },
-  };
+  const ledger = { backend: { url } };
 
-  assert.deepEqual(resolveReleaseCatalogSource(easConfig, ledger), {
-    baseUrl: url,
-    anonKey: clientKey,
-  });
+  assert.deepEqual(resolveReleaseCatalogSource(easConfig, ledger), { baseUrl: url });
   assert.throws(
     () =>
-      resolveReleaseCatalogSource(easConfig, {
-        backend: { ...ledger.backend, url: "https://wrong.example.test" },
-      }),
+      resolveReleaseCatalogSource(easConfig, { backend: { url: "https://wrong.example.test" } }),
     /backend URL.*различаются/,
-  );
-  assert.throws(
-    () =>
-      resolveReleaseCatalogSource(easConfig, {
-        backend: { ...ledger.backend, clientKeySha256: "0".repeat(64) },
-      }),
-    /hash client key.*не совпадает/,
   );
 });

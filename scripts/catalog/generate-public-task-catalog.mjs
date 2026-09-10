@@ -66,26 +66,14 @@ export function resolveReleaseCatalogSource(easConfig, productionLedger) {
     ...(easConfig?.build?.production?.env ?? {}),
   };
   const baseUrl = requireString(
-    releaseEnv.EXPO_PUBLIC_SUPABASE_URL,
-    "eas.build.production EXPO_PUBLIC_SUPABASE_URL",
-  );
-  const anonKey = requireString(
-    releaseEnv.EXPO_PUBLIC_SUPABASE_ANON_KEY,
-    "eas.build.production EXPO_PUBLIC_SUPABASE_ANON_KEY",
+    releaseEnv.EXPO_PUBLIC_API_URL,
+    "eas.build.production EXPO_PUBLIC_API_URL",
   );
   const ledgerUrl = requireString(productionLedger?.backend?.url, "release.backend.url");
-  const expectedKeyHash = requireString(
-    productionLedger?.backend?.clientKeySha256,
-    "release.backend.clientKeySha256",
-  );
-  const actualKeyHash = createHash("sha256").update(anonKey).digest("hex");
   if (baseUrl !== ledgerUrl) {
     throw new Error("Каталог: backend URL в EAS и production ledger различаются.");
   }
-  if (actualKeyHash !== expectedKeyHash) {
-    throw new Error("Каталог: hash client key в EAS не совпадает с production ledger.");
-  }
-  return { baseUrl, anonKey };
+  return { baseUrl };
 }
 
 export function buildPublicTaskCatalog({ sections, categories, services, terms }) {
@@ -191,11 +179,12 @@ export function serializePublicTaskCatalog(catalog) {
   return `${JSON.stringify(catalog, null, 2)}\n`;
 }
 
-async function fetchPage(url, anonKey, from, to) {
+// Каталог публичный: читаем его через наш API как гость, без ключей. Раньше
+// запрос шёл в /rest/v1 Supabase с публичным ключом — этот шлюз погашен
+// 2026-09-08.
+async function fetchPage(url, from, to) {
   const response = await fetch(url, {
     headers: {
-      apikey: anonKey,
-      Authorization: `Bearer ${anonKey}`,
       Range: `${from}-${to}`,
       Prefer: "count=exact",
     },
@@ -208,87 +197,65 @@ async function fetchPage(url, anonKey, from, to) {
   return data;
 }
 
-async function fetchAll(baseUrl, table, query, anonKey) {
+async function fetchAll(baseUrl, table, query) {
   const result = [];
   for (let from = 0; ; from += PAGE_SIZE) {
-    const url = new URL(`/rest/v1/${table}`, baseUrl);
+    const url = new URL(`/v2/rest/${table}`, baseUrl);
     for (const [key, value] of Object.entries(query)) url.searchParams.set(key, value);
-    const page = await fetchPage(url, anonKey, from, from + PAGE_SIZE - 1);
+    const page = await fetchPage(url, from, from + PAGE_SIZE - 1);
     result.push(...page);
     if (page.length < PAGE_SIZE) return result;
   }
 }
 
-export async function readPublicTaskCatalog(baseUrl, anonKey) {
-  const sections = await fetchAll(
-    baseUrl,
-    "categories_l1",
-    {
-      select: "id,name_ru,icon,sort_order,is_active",
-      is_active: "eq.true",
-      order: "sort_order.asc,name_ru.asc",
-    },
-    anonKey,
-  );
-  const categories = await fetchAll(
-    baseUrl,
-    "categories_l2",
-    {
-      select: "id,l1_id,name_ru,icon,sort_order,is_active,is_visible,is_featured",
-      is_active: "eq.true",
-      is_visible: "eq.true",
-      l1_id: `in.(${sections.map((section) => section.id).join(",")})`,
-      order: "sort_order.asc,name_ru.asc",
-    },
-    anonKey,
-  );
+export async function readPublicTaskCatalog(baseUrl) {
+  const sections = await fetchAll(baseUrl, "categories_l1", {
+    select: "id,name_ru,icon,sort_order,is_active",
+    is_active: "eq.true",
+    order: "sort_order.asc,name_ru.asc",
+  });
+  const categories = await fetchAll(baseUrl, "categories_l2", {
+    select: "id,l1_id,name_ru,icon,sort_order,is_active,is_visible,is_featured",
+    is_active: "eq.true",
+    is_visible: "eq.true",
+    l1_id: `in.(${sections.map((section) => section.id).join(",")})`,
+    order: "sort_order.asc,name_ru.asc",
+  });
   const l2Ids = categories.map((category) => requireString(category.id, "categories.id"));
   const services =
     l2Ids.length === 0
       ? []
-      : await fetchAll(
-          baseUrl,
-          "categories_l3",
-          {
-            select: "id,l2_id,name_ru,sort_order,is_active",
-            is_active: "eq.true",
-            l2_id: `in.(${l2Ids.join(",")})`,
-            order: "l2_id.asc,sort_order.asc,name_ru.asc",
-          },
-          anonKey,
-        );
-  const terms = await fetchAll(
-    baseUrl,
-    "category_terms",
-    {
-      select: "term,l2_id,l3_id,weight",
-      order: "term.asc,l2_id.asc,l3_id.asc,weight.desc",
-    },
-    anonKey,
-  );
+      : await fetchAll(baseUrl, "categories_l3", {
+          select: "id,l2_id,name_ru,sort_order,is_active",
+          is_active: "eq.true",
+          l2_id: `in.(${l2Ids.join(",")})`,
+          order: "l2_id.asc,sort_order.asc,name_ru.asc",
+        });
+  const terms = await fetchAll(baseUrl, "category_terms", {
+    select: "term,l2_id,l3_id,weight",
+    order: "term.asc,l2_id.asc,l3_id.asc,weight.desc",
+  });
 
   return buildPublicTaskCatalog({ sections, categories, services, terms });
 }
 
 async function main() {
   let baseUrl;
-  let anonKey;
   if (process.argv.includes("--release-source")) {
-    ({ baseUrl, anonKey } = resolveReleaseCatalogSource(
+    ({ baseUrl } = resolveReleaseCatalogSource(
       JSON.parse(readFileSync(EAS_CONFIG_PATH, "utf8")),
       JSON.parse(readFileSync(PRODUCTION_LEDGER_PATH, "utf8")),
     ));
   } else {
     const envMode = process.env.CATALOG_ENV_MODE === "production" ? "production" : "development";
     loadProjectEnv(ROOT, { mode: envMode, silent: true });
-    baseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
-    anonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
+    baseUrl = process.env.EXPO_PUBLIC_API_URL;
   }
-  if (!baseUrl || !anonKey) {
-    throw new Error("Каталог: нужны EXPO_PUBLIC_SUPABASE_URL и EXPO_PUBLIC_SUPABASE_ANON_KEY.");
+  if (!baseUrl) {
+    throw new Error("Каталог: нужен EXPO_PUBLIC_API_URL.");
   }
 
-  const serialized = serializePublicTaskCatalog(await readPublicTaskCatalog(baseUrl, anonKey));
+  const serialized = serializePublicTaskCatalog(await readPublicTaskCatalog(baseUrl));
   if (process.argv.includes("--check")) {
     if (readFileSync(OUTPUT_PATH, "utf8") !== serialized) {
       throw new Error("src/generated/task-catalog.json устарел. Запусти npm run catalog:generate.");

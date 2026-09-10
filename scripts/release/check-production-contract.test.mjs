@@ -6,9 +6,8 @@ import { validateProductionContract } from "./check-production-contract.mjs";
 const valid = {
   schemaVersion: 1,
   backend: {
-    phase: "supabase-cloud",
-    url: "https://project.supabase.co",
-    clientKeySha256: "a".repeat(64),
+    phase: "beget-primary",
+    url: "https://api.example.test",
   },
   web: {
     sshHost: "deploy@example.com",
@@ -27,11 +26,17 @@ test("valid production contract passes", () => {
 
 test("backend path, duplicate domains and unsafe remote path fail", () => {
   const broken = structuredClone(valid);
-  broken.backend.url += "/rest/v1";
+  broken.backend.url += "/v2";
   broken.web.domains.push("https://xtrud.pro");
   broken.web.remoteDir = "/var/www/../other";
   const errors = validateProductionContract(broken).join("\n");
   assert.match(errors, /backend\.url/);
   assert.match(errors, /domains must be unique/);
   assert.match(errors, /remoteDir/);
+});
+
+test("the retired supabase-cloud phase is rejected", () => {
+  const broken = structuredClone(valid);
+  broken.backend.phase = "supabase-cloud";
+  assert.match(validateProductionContract(broken).join("\n"), /backend\.phase/);
 });

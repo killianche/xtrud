@@ -38,15 +38,12 @@ export function validateProductionContract(contract) {
   if (!contract?.backend || !contract?.web || !contract?.stores) {
     return [...errors, "backend, web and stores are required"];
   }
-  if (
-    !new Set(["supabase-cloud", "beget-transition", "beget-primary"]).has(contract.backend.phase)
-  ) {
+  // supabase-cloud убран: Supabase погашен 2026-09-08, вернуться в эту фазу
+  // без решения владельца нельзя.
+  if (!new Set(["beget-transition", "beget-primary"]).has(contract.backend.phase)) {
     errors.push("backend.phase is invalid");
   }
   rootHttpsUrl(contract.backend.url, "backend.url", errors);
-  if (!/^[a-f0-9]{64}$/.test(contract.backend.clientKeySha256 ?? "")) {
-    errors.push("backend.clientKeySha256 must be a full SHA-256");
-  }
   if (!/^[A-Za-z_][A-Za-z0-9_-]*@[A-Za-z0-9.-]+$/.test(contract.web.sshHost ?? "")) {
     errors.push("web.sshHost must be an explicit user@host target");
   }

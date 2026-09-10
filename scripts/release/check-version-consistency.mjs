@@ -5,7 +5,6 @@
  * additional copies; drift between them makes releases impossible to identify.
  */
 
-import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -32,17 +31,20 @@ const versions = {
 };
 const failures = [];
 const releaseBackendUrl = release.backend?.url;
-const easBackendUrl = eas.build?.base?.env?.EXPO_PUBLIC_SUPABASE_URL;
+const easBackendUrl = eas.build?.base?.env?.EXPO_PUBLIC_API_URL;
 if (easBackendUrl !== releaseBackendUrl) {
   failures.push(
     `EAS backend URL differs from release ledger: eas=${JSON.stringify(easBackendUrl)}, release=${JSON.stringify(releaseBackendUrl)}`,
   );
 }
-const easClientKey = eas.build?.base?.env?.EXPO_PUBLIC_SUPABASE_ANON_KEY;
-const easClientKeyHash =
-  typeof easClientKey === "string" ? createHash("sha256").update(easClientKey).digest("hex") : null;
-if (easClientKeyHash !== release.backend?.clientKeySha256) {
-  failures.push("EAS publishable key generation differs from release ledger hash");
+// Supabase погашен 2026-09-08: ни один профиль сборки не должен тащить его
+// адрес или ключ — иначе они снова окажутся внутри приложения.
+for (const [profile, config] of Object.entries(eas.build ?? {})) {
+  for (const key of Object.keys(config?.env ?? {})) {
+    if (key.startsWith("EXPO_PUBLIC_SUPABASE_")) {
+      failures.push(`eas.json ${profile}: ${key} больше не используется — удалите`);
+    }
+  }
 }
 for (const profile of ["development", "preview"]) {
   if (

@@ -13,6 +13,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
 import {
+  BellSlash,
   Camera,
   CaretRight,
   DeviceMobile,
@@ -37,6 +38,11 @@ import { useAuthSession } from "@/features/auth/use-auth-session";
 import { useUserRecord } from "@/features/auth/use-user-record";
 import { MasterPublishChecklist } from "@/features/master-view/MasterPublishChecklist";
 import { useMasterPublishProgress } from "@/features/master-view/use-master-publish-progress";
+import {
+  openNotificationSettings,
+  useNotificationPermission,
+} from "@/features/notifications/use-notification-permission";
+import { registerPushTokenNow } from "@/features/notifications/use-register-push-token";
 import { PortfolioLightbox } from "@/features/profile/PortfolioLightbox";
 import { useMasterPortfolio } from "@/features/profile/use-my-portfolio";
 import { useRemoveMyAvatar, useUpdateMyAvatar } from "@/features/profile/use-update-my-avatar";
@@ -88,6 +94,9 @@ export default function ProfileScreen() {
     "body",
     "error",
   ]);
+  // «Уведомления выключены → Включить»: iOS спрашивает один раз, после отказа
+  // вернуть уведомления можно только в настройках iPhone (владелец, 2026-09-10).
+  const notifications = useNotificationPermission();
   const onChangeAvatar = () => {
     if (updateAvatar.isPending) return;
     updateAvatar.mutate(undefined, {
@@ -412,6 +421,47 @@ export default function ProfileScreen() {
         publishProgress &&
         !publishProgress.isReady ? (
           <MasterPublishChecklist progress={publishProgress} />
+        ) : null}
+
+        {/* Уведомления выключены — сказать прямо и отвести туда, где их
+            включают. Без этого человек, однажды ответивший «Не разрешать»,
+            оставался без уведомлений навсегда и не знал об этом: iOS задаёт
+            вопрос один раз (владелец, 2026-09-10, случай тестировщика Юсуфа).
+            Когда разрешено — блока нет вовсе. */}
+        {notifications.state === "denied" || notifications.state === "undetermined" ? (
+          <View className={`mt-8 ${isClient ? "px-5" : "px-6"}`}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={
+                notifications.state === "denied"
+                  ? "Уведомления выключены. Открыть настройки iPhone, чтобы включить"
+                  : "Включить уведомления"
+              }
+              onPress={() => {
+                if (notifications.state === "denied") {
+                  openNotificationSettings();
+                  return;
+                }
+                void notifications.request().then(() => registerPushTokenNow(user.id, false));
+              }}
+              className="min-h-12 flex-row items-center gap-3 rounded-md border border-hairline bg-canvas px-4 py-3 active:opacity-70"
+            >
+              <BellSlash size={20} weight="bold" color={themeColors.body} />
+              <View className="min-w-0 flex-1">
+                <AppText weight="semibold" className="text-body-md text-ink">
+                  {notifications.state === "denied"
+                    ? "Уведомления выключены"
+                    : "Уведомления не включены"}
+                </AppText>
+                <AppText className="mt-0.5 text-body-sm text-mute">
+                  Отклики и решения по заданиям не приходят на телефон.
+                </AppText>
+              </View>
+              <AppText weight="semibold" className="text-body-md text-accent">
+                Включить
+              </AppText>
+            </Pressable>
+          </View>
         ) : null}
 
         {/* Theme — единый segmented (3-button row) для клиента и мастера.

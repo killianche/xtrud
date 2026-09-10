@@ -52,6 +52,16 @@ export const RPC_ALLOWLIST = new Set([
 
 const NAME_RE = /^[a-z_][a-z0-9_]*$/;
 
+/**
+ * Тело ответа для функции, возвращающей одно значение, — всегда JSON, как у
+ * PostgREST. Fastify отдаёт строку как есть, без кавычек: get_master_phone
+ * приходил телом «+79…», клиентский JSON.parse не справлялся и подставлял
+ * null — у специалистов пропали кнопки «Позвонить» и «WhatsApp» (2026-09-10).
+ */
+export function rpcScalarBody(value: unknown): string {
+  return JSON.stringify(value ?? null);
+}
+
 export function registerRpcRoutes(app: FastifyInstance, db: Db, tokens: Tokens) {
   app.post<{ Params: { name: string }; Body: Record<string, unknown> | undefined }>(
     "/rpc/:name",
@@ -81,9 +91,9 @@ export function registerRpcRoutes(app: FastifyInstance, db: Db, tokens: Tokens) 
         // значение, как PostgREST; табличная — массив строк.
         const fields = rows.fields.map((f) => f.name);
         if (fields.length === 1 && fields[0] === name) {
-          return reply.send(
-            rows.rows.length === 1 ? (rows.rows[0]?.[name] ?? null) : rows.rows.map((r) => r[name]),
-          );
+          const value =
+            rows.rows.length === 1 ? (rows.rows[0]?.[name] ?? null) : rows.rows.map((r) => r[name]);
+          return reply.type("application/json; charset=utf-8").send(rpcScalarBody(value));
         }
         return reply.send(rows.rows);
       } catch (e) {

@@ -285,17 +285,13 @@ export default function MasterPublicScreen() {
                 {(categories.data ?? []).map((c, i, arr) => {
                   const Icon = getCategoryIcon(c.l2?.icon);
                   return (
+                    // Только показ, без перехода: владелец, 2026-09-10 — «не надо,
+                    // чтобы открывался раздел со всеми специалистами, просто
+                    // показывай, чем занимается».
                     <InsetRow
                       key={c.l2_id}
                       title={c.l2?.name_ru ?? c.l2_id}
                       icon={<Icon size={18} weight="bold" color={tc.ink} />}
-                      navigates
-                      onPress={() =>
-                        router.push({
-                          pathname: "/specialists/section",
-                          params: { l2: c.l2_id },
-                        } as never)
-                      }
                       last={i === arr.length - 1}
                     />
                   );
@@ -397,7 +393,7 @@ export default function MasterPublicScreen() {
               />
               {showReviewCta ? (
                 <View className="mt-3">
-                  <GlassButton label="Оставить отзыв" onPress={handleReview} secondary />
+                  <GlassButton label="Оставить отзыв" onPress={handleReview} secondary neutral />
                 </View>
               ) : null}
             </View>

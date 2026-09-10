@@ -19,6 +19,13 @@ export interface GlassButtonProps {
   busy?: boolean;
   /** Второстепенная капсула: без оттенка, текст в цвете акцента. */
   secondary?: boolean;
+  /**
+   * Нейтральный текст вместо фирменного красного — для второстепенного
+   * действия, которое не должно звать громче остальных (владелец,
+   * 2026-09-10: «Оставить отзыв» красным — не подходит). Работает вместе с
+   * secondary: подложка та же, меняется только цвет надписи.
+   */
+  neutral?: boolean;
 }
 
 export function GlassButton({
@@ -27,9 +34,10 @@ export function GlassButton({
   disabled = false,
   busy = false,
   secondary = false,
+  neutral = false,
 }: GlassButtonProps) {
-  const tc = useThemeColors(["accent", "on-accent"]);
-  const textColor = secondary ? tc.accent : tc["on-accent"];
+  const tc = useThemeColors(["accent", "on-accent", "ink"]);
+  const textColor = secondary ? (neutral ? tc.ink : tc.accent) : tc["on-accent"];
   const content = busy ? (
     <ActivityIndicator color={textColor} />
   ) : (

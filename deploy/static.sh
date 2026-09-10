@@ -92,7 +92,11 @@ LOCAL_SHA="${LOCAL_SHA}" node -e '
 PAGE_PATHS=()
 while IFS= read -r page; do
   PAGE_PATHS+=("${page}")
-done < <(cd "${STAGE_LOCAL}" && find . -name index.html | sed 's|^\./||; s|/index\.html$||' | sort)
+# Корневой index.html даёт пустой путь (страница «домен/»). До 2026-09-10 здесь
+# снимался только «/index.html», и корень превращался в «index.html» —
+# проверка шла по адресу «домен/index.html/», получала 404 и откатывала
+# каждую выкладку с тех пор, как 2026-09-01 появилась главная.
+done < <(cd "${STAGE_LOCAL}" && find . -name index.html | sed 's|^\./||; s|/\{0,1\}index\.html$||' | sort)
 
 echo "-> Упаковка ${LOCAL_SHA:0:12} без macOS-метаданных..."
 COPYFILE_DISABLE=1 tar --no-xattrs -czf "${ARCHIVE}" -C "${STAGE_LOCAL}" .
@@ -177,8 +181,10 @@ for domain in "${PRODUCTION_DOMAINS[@]}"; do
   fi
 
   for page in "${PAGE_PATHS[@]}"; do
-    if ! curl --fail --silent --show-error --max-time 20 --output /dev/null "${domain}/${page}/"; then
-      echo "Страница недоступна: ${domain}/${page}/" >&2
+    # Корневая страница — пустой путь: адрес «домен/», а не «домен//».
+    page_url="${domain}/${page:+${page}/}"
+    if ! curl --fail --silent --show-error --max-time 20 --output /dev/null "${page_url}"; then
+      echo "Страница недоступна: ${page_url}" >&2
       LIVE_VALID=false
       break 2
     fi
@@ -227,5 +233,5 @@ fi
 
 echo "Выкачено ${LOCAL_SHA:0:12}: ${PRODUCTION_PRIMARY_DOMAIN}/"
 for page in "${PAGE_PATHS[@]}"; do
-  echo "  ${PRODUCTION_PRIMARY_DOMAIN}/${page}/"
+  echo "  ${PRODUCTION_PRIMARY_DOMAIN}/${page:+${page}/}"
 done

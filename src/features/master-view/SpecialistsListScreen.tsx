@@ -100,7 +100,10 @@ function MasterCard({ master, onPress }: { master: MasterSearchResult; onPress: 
           <View className="flex-row items-center gap-1">
             <Star size={16} weight="fill" color={tc.warning} />
             <AppText weight="mono" className="text-mono-md text-ink">
-              {master.rating_avg?.toFixed(1)}
+              {/* Number(): рейтинг приходил строкой («1.0») — у строки нет
+                  toFixed, и карточка роняла экран (2026-09-10). Причина
+                  исправлена на сервере, здесь — защита на будущее. */}
+              {Number(master.rating_avg).toFixed(1)}
             </AppText>
           </View>
         ) : null}

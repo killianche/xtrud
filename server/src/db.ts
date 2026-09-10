@@ -4,6 +4,18 @@
 // работают без изменений (docs/BACKEND_REWRITE_PLAN.md §2).
 import pg from "pg";
 
+// Числа из базы — числами, как их отдавал PostgREST (JSON number). node-pg по
+// умолчанию возвращает numeric и bigint строками, чтобы не терять точность, и
+// мост функций /v2/rpc, заменивший PostgREST 2026-09-08, молча сменил
+// договорённость: рейтинг в search_masters стал строкой «1.0», у строки нет
+// toFixed, и карточка специалиста роняла экран «Специалисты» — с первого
+// отзыва, 2026-09-10 09:20 UTC. Клиент писался под числа, поэтому возвращаем
+// их. Точность та же, что была у клиента с PostgREST: JSON.parse даёт double.
+const PG_NUMERIC = 1700;
+const PG_INT8 = 20;
+pg.types.setTypeParser(PG_NUMERIC, (value: string) => Number.parseFloat(value));
+pg.types.setTypeParser(PG_INT8, (value: string) => Number.parseInt(value, 10));
+
 export type Claims = { sub: string; role: "authenticated"; email?: string; phone?: string } | null;
 
 export class Db {

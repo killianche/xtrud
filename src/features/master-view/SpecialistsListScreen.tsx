@@ -16,7 +16,7 @@
 
 import { FlashList } from "@shopify/flash-list";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { MapPin, SlidersHorizontal, SortAscending, Star, UsersThree } from "phosphor-react-native";
+import { MapPin, SlidersHorizontal, Star, UsersThree } from "phosphor-react-native";
 import { useEffect, useMemo, useState } from "react";
 import { Animated, Pressable, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -33,10 +33,7 @@ import {
 import { useCategoryFilterPickerStore } from "@/features/categories/category-filter-picker-store";
 import { useCategoriesL1 } from "@/features/categories/use-categories-l1";
 import { useVisibleCategories } from "@/features/categories/use-visible-categories";
-import {
-  SORT_LABEL,
-  useSpecialistsFiltersStore,
-} from "@/features/master-view/specialists-filters-store";
+import { useSpecialistsFiltersStore } from "@/features/master-view/specialists-filters-store";
 import {
   type MasterSearchResult,
   useSearchMasters,
@@ -143,10 +140,8 @@ export function SpecialistsListScreen() {
   const l1Id = useSpecialistsFiltersStore((s) => s.l1Id);
   const l2Id = useSpecialistsFiltersStore((s) => s.l2Id);
   const cityId = useSpecialistsFiltersStore((s) => s.cityId);
-  const sort = useSpecialistsFiltersStore((s) => s.sort);
   const setCategory = useSpecialistsFiltersStore((s) => s.setCategory);
   const setCity = useSpecialistsFiltersStore((s) => s.setCity);
-  const setSort = useSpecialistsFiltersStore((s) => s.setSort);
   const clearFilters = useSpecialistsFiltersStore((s) => s.clearAll);
   const [query, setQuery] = useState("");
   useEffect(() => {
@@ -170,13 +165,6 @@ export function SpecialistsListScreen() {
     setCity(cityResult.value);
     setCityResult(null);
   }, [cityResult, setCityResult, setCity]);
-  const sortResult = useCategoryFilterPickerStore((s) => s.sortResult);
-  const setSortResult = useCategoryFilterPickerStore((s) => s.setSortResult);
-  useEffect(() => {
-    if (!sortResult) return;
-    setSort(sortResult.value);
-    setSortResult(null);
-  }, [sortResult, setSortResult, setSort]);
 
   // Названия для чипов и заголовка — из каталога (без сети берётся бандл).
   const sections = useCategoriesL1();
@@ -205,7 +193,9 @@ export function SpecialistsListScreen() {
     l1Id,
     l2Id,
     cityId: cityId === "all" ? null : cityId,
-    sort,
+    // Сортировка убрана с экрана (владелец, 2026-09-10): порядок один — по
+    // рейтингу, как и был по умолчанию.
+    sort: "rating",
   });
   const list = useMemo(() => (data?.pages ?? []).flat(), [data]);
   const title = hasCategoryFilter ? categoryLabel : "Специалисты";
@@ -270,7 +260,8 @@ export function SpecialistsListScreen() {
             />
           ) : (
             <EmptyBlock
-              hasQuery={debounced.length > 0 || hasCategoryFilter || cityId !== "all"}
+              hasQuery={debounced.length > 0 || cityId !== "all"}
+              inSection={hasCategoryFilter}
               accent={tc.accent}
               onReset={() => {
                 setQuery("");
@@ -286,9 +277,10 @@ export function SpecialistsListScreen() {
         compactTitleOpacity={large.compactTitleOpacity}
         onLayoutHeight={large.setBarHeight}
         onBack={() => router.back()}
-        // Три кнопки: категория, город, сортировка — каждая открывает свою
-        // шторку (DECISION владельца 2026-09-08: «фильтр — только категории,
-        // геолокацию отдельной кнопкой рядом»).
+        // Две кнопки: категория и город — каждая открывает свою шторку
+        // (DECISION владельца 2026-09-08: «фильтр — только категории,
+        // геолокацию отдельной кнопкой рядом»). Сортировку владелец убрал
+        // 2026-09-10.
         actions={[
           {
             label: hasCategoryFilter ? `Категория: ${categoryLabel}` : "Категория",
@@ -310,15 +302,6 @@ export function SpecialistsListScreen() {
             active: cityId !== "all",
             onPress: () =>
               router.push({ pathname: "/category/city-select", params: { cityId } } as never),
-          },
-          {
-            label: sort === "rating" ? "Сортировка" : `Сортировка: ${SORT_LABEL[sort]}`,
-            sf: "arrow.up.arrow.down",
-            Icon: SortAscending,
-            iconOnly: true,
-            active: sort !== "rating",
-            onPress: () =>
-              router.push({ pathname: "/category/sort-select", params: { sortBy: sort } } as never),
           },
         ]}
       />
@@ -347,10 +330,13 @@ function SpecialistsSkeleton() {
 
 function EmptyBlock({
   hasQuery,
+  inSection,
   accent,
   onReset,
 }: {
   hasQuery: boolean;
+  /** Открыт раздел, и в нём просто нет специалистов — это не «не нашли». */
+  inSection: boolean;
   accent: string;
   onReset: () => void;
 }) {
@@ -362,7 +348,11 @@ function EmptyBlock({
         <UsersThree size={30} weight="bold" color={accent} />
       </View>
       <AppText weight="semibold" className="mt-5 text-center text-ios-title2 text-ink">
-        {hasQuery ? "Никого не нашли" : "Здесь пока никого нет"}
+        {hasQuery
+          ? "Никого не нашли"
+          : inSection
+            ? "В этом разделе пока нет специалистов"
+            : "Здесь пока никого нет"}
       </AppText>
       {hasQuery ? (
         <Pressable

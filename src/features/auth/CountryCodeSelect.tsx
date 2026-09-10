@@ -8,7 +8,7 @@
  * `Stack.Screen` route'а (см. `app/(auth)/country-select.tsx`). Выбор
  * возвращается через `useCountrySelectStore`, этот компонент слушает store
  * через `useEffect` и вызывает `onSelect` — паттерн 1-в-1 с
- * `app/(details)/category/sort-select.tsx`.
+ * `app/(details)/category/city-select.tsx`.
  *
  * Дефолт — Россия (+7). Список фокусирован на близкие к Ингушетии страны:
  * РФ, Беларусь, Казахстан, Узбекистан, Армения, Грузия, Турция, ОАЭ — это
@@ -77,7 +77,7 @@ export function CountryCodeSelect({ selected, onSelect, disabled }: CountryCodeS
 
   // Слушаем store — когда пользователь выбрал страну на /country-select,
   // применяем в форму и обнуляем поле, чтобы следующий цикл не сработал
-  // повторно (тот же handshake, что у sort-select).
+  // повторно (тот же handshake, что у city-select).
   const result = useCountrySelectStore((s) => s.result);
   const setResult = useCountrySelectStore((s) => s.setResult);
   useEffect(() => {

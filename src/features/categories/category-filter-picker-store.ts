@@ -2,8 +2,8 @@
  * Транзитный (не persisted) канал результата фильтр-пикеров экрана категории
  * (`app/(details)/category/[id].tsx`).
  *
- * Триггеры фильтров (сортировка / город / услуга) открывают отдельный
- * route-экран (`sort-select` / `city-select` / `l3-select`) с нативной
+ * Триггеры фильтров (город / услуга / категория) открывают отдельный
+ * route-экран (`city-select` / `l3-select` / `category-select`) с нативной
  * `formSheet`-модальностью вместо самописного `BottomSheet` — см.
  * `docs/IOS_FOUNDATION.md` §2.4. Текущее значение уходит в route через
  * `router.push` params, а выбор возвращается назад через этот store: экран
@@ -22,12 +22,7 @@
 import { create } from "zustand";
 import type { CityId } from "@/components/CitySelector";
 
-export type CategorySortBy = "rating" | "experience" | "availability";
-
 interface CategoryFilterPickerState {
-  sortResult: { value: CategorySortBy } | null;
-  setSortResult: (value: CategorySortBy | null) => void;
-
   cityResult: { value: CityId } | null;
   setCityResult: (value: CityId | null) => void;
 
@@ -42,9 +37,6 @@ interface CategoryFilterPickerState {
 }
 
 export const useCategoryFilterPickerStore = create<CategoryFilterPickerState>()((set) => ({
-  sortResult: null,
-  setSortResult: (value) => set({ sortResult: value === null ? null : { value } }),
-
   cityResult: null,
   setCityResult: (value) => set({ cityResult: value === null ? null : { value } }),
 

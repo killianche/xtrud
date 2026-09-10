@@ -1,9 +1,9 @@
 /**
  * /category/city-select — пикер города для фильтра списка мастеров в категории.
  *
- * См. `sort-select.tsx` — тот же паттерн перехода на нативную iOS
- * `formSheet`-модальность и тот же handshake через
- * `useCategoryFilterPickerStore` + `router.back()`.
+ * Нативная iOS `formSheet`-модальность и handshake через
+ * `useCategoryFilterPickerStore` + `router.back()`: текущее значение приходит
+ * параметром маршрута, выбор коммитится в store, экран-источник его забирает.
  *
  * ~13 городов Ингушетии — на обычном шрифте список короткий, но на
  * accessibility-размерах (Dynamic Type без искусственного капа, см.

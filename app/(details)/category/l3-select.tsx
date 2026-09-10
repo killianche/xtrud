@@ -1,7 +1,7 @@
 /**
  * /category/l3-select — пикер конкретной услуги (L3) внутри категории (L2).
  *
- * См. `sort-select.tsx` / `city-select.tsx` — тот же паттерн: нативная iOS
+ * См. `city-select.tsx` — тот же паттерн: нативная iOS
  * `formSheet`-модальность вместо самописного `<Modal>`, handshake через
  * `useCategoryFilterPickerStore` + `router.back()`.
  *

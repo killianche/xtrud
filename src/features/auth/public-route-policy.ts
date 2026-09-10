@@ -3,7 +3,6 @@ const PUBLIC_DETAIL_ROUTES = new Set([
   "category/[id]",
   "category/city-select",
   "category/l3-select",
-  "category/sort-select",
   "client/[id]",
   "find/category-select",
   "find/location-select",

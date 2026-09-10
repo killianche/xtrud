@@ -120,7 +120,11 @@ export function NavCircleButton({
       className="active:opacity-60"
     >
       <GlassSurface
-        fallbackClassName={active ? "bg-accent" : "border border-hairline bg-canvas"}
+        // Одна подложка для любого состояния. Раньше активная кнопка
+        // получала bg-accent, но на iOS 26 это стекло, и fallbackClassName
+        // не применяется — подложка оставалась светлой, а иконка белела.
+        // Белое на белом: владелец не видел кнопку фильтра (2026-09-10).
+        fallbackClassName="border border-hairline bg-canvas"
         style={{
           width: NAV_BUTTON_SIZE,
           height: NAV_BUTTON_SIZE,
@@ -171,7 +175,7 @@ export function LargeTitleBar({
   hideTitle = false,
 }: LargeTitleBarProps) {
   const insets = useSafeAreaInsets();
-  const tc = useThemeColors(["ink", "accent", "on-accent"]);
+  const tc = useThemeColors(["ink"]);
   const barOpacity = alwaysCompact ? 1 : compactTitleOpacity;
   const hasRow = compactRow ?? (!!onBack || actions.length > 0 || !!below || alwaysCompact);
 
@@ -282,14 +286,10 @@ export function LargeTitleBar({
                         fallback={action.Icon}
                         size={20}
                         weight="semibold"
-                        color={action.active ? tc["on-accent"] : tc.ink}
+                        color={tc.ink}
                       />
                     ) : action.Icon ? (
-                      <action.Icon
-                        size={20}
-                        weight="bold"
-                        color={action.active ? tc["on-accent"] : tc.ink}
-                      />
+                      <action.Icon size={20} weight="bold" color={tc.ink} />
                     ) : null}
                   </NavCircleButton>
                 ) : (

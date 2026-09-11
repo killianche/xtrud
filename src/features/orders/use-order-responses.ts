@@ -22,7 +22,7 @@ export interface OrderResponseWithMaster extends Tables<"order_responses"> {
         // мастеров в карточке отклика не только по цене. one-to-one → объект|null.
         profile: Pick<
           Tables<"master_profiles">,
-          "rating_overall_avg" | "rating_overall_count"
+          "rating_overall_avg" | "rating_overall_count" | "verification_level"
         > | null;
       })
     | null;
@@ -40,7 +40,7 @@ export function useOrderResponses(orderId: string | undefined) {
       const { data, error } = await supabase
         .from("order_responses")
         .select(
-          "*, master:users!order_responses_master_id_fkey(id, first_name, last_name, avatar_url, profile:master_profiles!master_profiles_user_id_fkey(rating_overall_avg, rating_overall_count))",
+          "*, master:users!order_responses_master_id_fkey(id, first_name, last_name, avatar_url, profile:master_profiles!master_profiles_user_id_fkey(rating_overall_avg, rating_overall_count, verification_level))",
         )
         .eq("order_id", orderId)
         .order("created_at", { ascending: false });

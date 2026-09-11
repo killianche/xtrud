@@ -11,7 +11,6 @@ import {
   Phone,
   Question,
   Star,
-  Users,
   Wallet,
   WhatsappLogo,
 } from "phosphor-react-native";
@@ -31,7 +30,13 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
 import { Avatar } from "@/components/Avatar";
 import { OrderStatusBadge } from "@/components/OrderStatusBadge";
-import { GlassButton, InsetGroup, InsetRow, ScreenHeader, Skeleton } from "@/components/ui";
+import {
+  GlassButton,
+  isVerifiedLevel,
+  ScreenHeader,
+  Skeleton,
+  VerifiedBadge,
+} from "@/components/ui";
 import { SystemIcon } from "@/components/ui/SystemIcon";
 import { useAdminHideOrder, useIsAdmin } from "@/features/admin/use-admin-actions";
 import { useAuthSession } from "@/features/auth/use-auth-session";
@@ -675,8 +680,9 @@ function OrderInfoBlock({ order, isOwner }: OrderInfoBlockProps) {
       ) : null}
 
       {/* Детали — список «иконка + факт», всё в ink. Только то, что есть в
-          данных: срочность/дата, место, число откликов. Ничего не выдумываем
-          (design-quality.md §5). */}
+          данных: срочность/дата и место. Число откликов убрано (владелец,
+          2026-09-11): чужому оно ни к чему, а у автора стоит в заголовке
+          «Отклики». Ничего не выдумываем (design-quality.md §5). */}
       <View className="mt-6">
         <AppText weight="bold" className="text-title-md text-ink">
           Детали
@@ -699,71 +705,122 @@ function OrderInfoBlock({ order, isOwner }: OrderInfoBlockProps) {
               {order.address ? `, ${order.address}` : ""}
             </AppText>
           </View>
-          <View className="flex-row items-center gap-3">
-            <Users size={18} weight="bold" color={tc.ink} />
-            <AppText weight="medium" className="flex-1 text-body-md text-ink">
-              {order.responses_count === 0
-                ? "Откликов пока нет"
-                : `Откликов: ${order.responses_count}`}
-            </AppText>
-          </View>
         </View>
       </View>
 
-      {/* Заказчик — просто имя (решение владельца 2026-05-24). */}
+      {/* Заказчик — карточка по стандарту экрана: фото (или инициалы), имя
+          и когда опубликовано задание. Профиля и рейтинга нет (решение
+          владельца 2026-05-24). Редизайн 2026-09-11: прежняя серая плашка с
+          инициалами выглядела заглушкой. Контакты, которые заказчик сам
+          оставил в задании (0159, «напрямую» — 0168), — здесь же. */}
       {!isOwner ? (
         <View className="mt-6">
           <AppText weight="bold" className="text-title-md text-ink">
             Заказчик
           </AppText>
-          <View className="mt-2 flex-row items-center gap-3 rounded-xl border border-hairline bg-canvas-soft p-3">
-            <Avatar url={null} name={contactDisplay} seed={contactDisplay} size="md" />
-            <AppText weight="semibold" className="flex-1 text-body-md text-ink" numberOfLines={1}>
-              {contactDisplay}
-            </AppText>
-          </View>
-          {/* Контакты, которые заказчик сам оставил в задании (0159, режим
-              «напрямую» — 0168). Нет — значит связь через отклик. */}
-          {order.contact_mode === "phone_open" ? (
-            <AppText className="mt-3 text-ios-subheadline text-mute">
-              Заказчик ждёт звонка или сообщения — откликов в приложении здесь нет.
-            </AppText>
-          ) : null}
-          {order.contact_phone || order.whatsapp_phone ? (
-            <View className="mt-2 flex-row gap-2">
-              {order.contact_phone ? (
-                <Pressable
-                  accessibilityRole="link"
-                  accessibilityLabel={`Позвонить ${order.contact_phone}`}
-                  onPress={() => openExternalUrl(`tel:${order.contact_phone}`)}
-                  className="min-h-11 flex-1 flex-row items-center justify-center gap-2 rounded-pill border border-hairline bg-canvas active:bg-canvas-soft"
-                >
-                  <Phone size={18} weight="bold" color={tc.ink} />
-                  <AppText weight="semibold" className="text-body-md text-ink">
-                    Позвонить
-                  </AppText>
-                </Pressable>
-              ) : null}
-              {order.whatsapp_phone ? (
-                <Pressable
-                  accessibilityRole="link"
-                  accessibilityLabel="Написать в WhatsApp"
-                  onPress={() =>
-                    openExternalUrl(
-                      `https://wa.me/${normalizeWhatsappDigits(order.whatsapp_phone)}`,
-                    )
-                  }
-                  className="min-h-11 flex-1 flex-row items-center justify-center gap-2 rounded-pill border border-hairline bg-canvas active:bg-canvas-soft"
-                >
-                  <WhatsappLogo size={18} weight="bold" color={tc.ink} />
-                  <AppText weight="semibold" className="text-body-md text-ink">
-                    WhatsApp
-                  </AppText>
-                </Pressable>
-              ) : null}
+          <View className="mt-3 rounded-2xl border border-hairline bg-canvas p-4">
+            <View className="flex-row items-center gap-3">
+              <Avatar
+                url={order.client?.avatar_url ?? null}
+                name={contactDisplay}
+                seed={order.client_id}
+                size="md"
+              />
+              <View className="min-w-0 flex-1">
+                <AppText weight="semibold" className="text-body-md text-ink" numberOfLines={1}>
+                  {contactDisplay}
+                </AppText>
+                <AppText className="mt-0.5 text-body-sm text-mute" numberOfLines={1}>
+                  {`Задание от ${formatDayMonth(order.created_at)}`}
+                </AppText>
+              </View>
             </View>
-          ) : null}
+            {order.contact_mode === "phone_open" ? (
+              <AppText className="mt-3 text-body-sm text-mute">
+                Заказчик ждёт звонка или сообщения — откликов в приложении здесь нет.
+              </AppText>
+            ) : null}
+            {order.contact_phone || order.whatsapp_phone ? (
+              <ContactButtons
+                phoneTel={order.contact_phone?.replace(/[^\d+]/g, "") || null}
+                whatsappDigits={
+                  order.whatsapp_phone ? normalizeWhatsappDigits(order.whatsapp_phone) : null
+                }
+                who={contactDisplay}
+              />
+            ) : null}
+          </View>
         </View>
+      ) : null}
+    </View>
+  );
+}
+
+/** «11 сентября» — день и месяц словом. */
+function formatDayMonth(iso: string): string {
+  return new Intl.DateTimeFormat("ru-RU", { day: "numeric", month: "long" }).format(new Date(iso));
+}
+
+/**
+ * Связь одной парой кнопок — у заказчика и в откликах одинаково.
+ * «Позвонить» — главное действие (акцент), WhatsApp — второе. Нет номера и
+ * нет WhatsApp — честное «Нет номера»; номер ещё грузится — индикатор.
+ */
+function ContactButtons({
+  phoneTel,
+  whatsappDigits,
+  loading = false,
+  who,
+}: {
+  phoneTel: string | null;
+  whatsappDigits: string | null;
+  loading?: boolean;
+  /** Кому звоним — для VoiceOver. */
+  who: string;
+}) {
+  const tc = useThemeColors(["ink", "on-accent", "mute"]);
+  const showCall = !!phoneTel || loading || !whatsappDigits;
+  return (
+    <View className="mt-4 flex-row gap-2">
+      {showCall ? (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={phoneTel ? `Позвонить: ${who}` : "Номера нет"}
+          accessibilityState={{ disabled: !phoneTel, busy: loading && !phoneTel }}
+          disabled={!phoneTel}
+          onPress={() => phoneTel && openExternalUrl(`tel:${phoneTel}`)}
+          className={`min-h-12 flex-1 flex-row items-center justify-center gap-2 rounded-pill px-3 ${
+            phoneTel ? "bg-accent active:opacity-85" : "bg-canvas-soft"
+          }`}
+        >
+          {phoneTel ? (
+            <>
+              <Phone size={18} weight="bold" color={tc["on-accent"]} />
+              <AppText weight="semibold" className="text-body-md text-on-accent">
+                Позвонить
+              </AppText>
+            </>
+          ) : loading ? (
+            <ActivityIndicator size="small" color={tc.mute} />
+          ) : (
+            <AppText weight="medium" className="text-body-md text-mute">
+              Нет номера
+            </AppText>
+          )}
+        </Pressable>
+      ) : null}
+      {whatsappDigits ? (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={`Написать в WhatsApp: ${who}`}
+          onPress={() => openExternalUrl(`https://wa.me/${whatsappDigits}`)}
+          className="min-h-12 flex-1 flex-row items-center justify-center gap-2 rounded-pill border border-hairline-strong bg-canvas px-3 active:bg-canvas-soft"
+        >
+          <WhatsappLogo size={18} weight="bold" color={tc.ink} />
+          <AppText weight="semibold" className="text-body-md text-ink">
+            WhatsApp
+          </AppText>
+        </Pressable>
       ) : null}
     </View>
   );
@@ -866,13 +923,13 @@ function ClientResponsesSection({ orderId, order }: ClientResponsesSectionProps)
       </View>
 
       {isLoading && (
-        <View className="mt-3 -mx-5 border-t border-hairline">
+        <View className="mt-3 gap-3">
           {[0, 1].map((index) => (
             <View
               key={index}
-              className="flex-row items-center gap-3 border-b border-hairline px-5 py-5"
+              className="flex-row items-center gap-3 rounded-2xl border border-hairline p-4"
             >
-              <Skeleton circle size={48} />
+              <Skeleton circle size={44} />
               <View className="flex-1 gap-2">
                 <Skeleton width="55%" height={16} />
                 <Skeleton width="35%" height={12} />
@@ -962,7 +1019,7 @@ function ClientResponsesSection({ orderId, order }: ClientResponsesSectionProps)
 
       {/* Активные отклики. */}
       {activeResponses.length > 0 ? (
-        <View className="mt-3 -mx-5 border-t border-hairline">
+        <View className="mt-3 gap-3">
           {activeResponses.map((r) => (
             <ClientMasterResponseCard
               key={r.id}
@@ -989,7 +1046,7 @@ function ClientResponsesSection({ orderId, order }: ClientResponsesSectionProps)
           <Pressable
             accessibilityRole="button"
             onPress={() => setHiddenExpanded((v) => !v)}
-            className="flex-row items-center justify-between rounded-lg border border-hairline bg-canvas-soft px-4 py-3 active:opacity-70"
+            className="min-h-12 flex-row items-center justify-between rounded-2xl bg-canvas-soft px-4 py-3 active:opacity-70"
           >
             <View className="flex-1 flex-row items-center gap-2">
               <AppText weight="medium" className="text-body-sm text-mute">
@@ -1011,7 +1068,7 @@ function ClientResponsesSection({ orderId, order }: ClientResponsesSectionProps)
             />
           </Pressable>
           {hiddenExpanded ? (
-            <View className="mt-2 -mx-5 border-t border-hairline">
+            <View className="mt-3 gap-3">
               {rejectedResponses.map((r) => (
                 <ClientMasterResponseCard
                   key={r.id}
@@ -1030,26 +1087,25 @@ function ClientResponsesSection({ orderId, order }: ClientResponsesSectionProps)
 }
 
 // ----------------------------------------------------------------------------
-// Master response card (classifieds, 2026-05-20)
+// Карточка отклика у автора задания. Редизайн 2026-09-11 (владелец:
+// «Показать контакты, Профиль, Скрыть — некрасиво»):
 //
-// Layout:
-//   ┌─ Avatar(md) ─ Name ─────────────────────── Price (mono) ─┐
-//   │              ⏱ срок (если указан)                       │
-//   │              message body (до 4 строк)                   │
-//   │     [Позвонить]  [WhatsApp]  [Профиль]                   │
-//   │     ─── Не подходит (text-link) ───                      │
-//   └──────────────────────────────────────────────────────────┘
+//   ┌──────────────────────────────────────────────┐
+//   │ (фото) Имя ✓                        5 000 ₽   │
+//   │        ★ 5.0 (1)   ⏱ Завтра                   │
+//   │ Сообщение специалиста                          │
+//   │ [   Позвонить   ]  [   WhatsApp   ]            │
+//   │ ─────────────────────────────────────────────  │
+//   │ Профиль ›                              Скрыть │
+//   └──────────────────────────────────────────────┘
 //
-// Контакты:
-//   - Позвонить — Linking.openURL("tel:<phone>"). Phone грузим через RPC
-//     get_master_phone (useMasterPhone), он живёт в auth.users.
-//   - WhatsApp — Linking.openURL("https://wa.me/<digits>"). Берётся из
-//     master_profiles.whatsapp_phone / whatsapp_same_as_phone через
-//     useMasterPublicProfile + resolveWhatsappDigits.
-//   - Профиль — router.push(`/master/<id>`).
-//
-// Контакты запрашиваются только после явного тапа клиента. Это не создаёт по
-// два сетевых запроса на каждую карточку длинного списка откликов.
+// Каждый отклик — отдельная карточка, как задание в ленте (DESIGN.md,
+// 2026-09-02). Контакты видны сразу: они часть отклика (0147, DECISION
+// 2026-09-01). Кнопка «Показать контакты» осталась от старой схемы и
+// появлялась как раз у новых откликов, где номер уже в строке, — лишний шаг
+// убран. Старым откликам без контактов в строке номер подгружается через
+// get_master_phone. «Позвонить» — в акценте: чёрных кнопок в продукте нет
+// (DESIGN.md: «черные кнопки не делай»).
 // ----------------------------------------------------------------------------
 
 interface ClientMasterResponseCardProps {
@@ -1058,7 +1114,7 @@ interface ClientMasterResponseCardProps {
   /** Если undefined — кнопка «Скрыть» не показывается (заказ закрыт /
    *  rejected уже). */
   onReject: (() => void) | undefined;
-  /** Render variant: rejected — приглушённый (opacity 0.6) для скрытых. */
+  /** Скрытый отклик — приглушённый, без кнопок связи. */
   rejected?: boolean;
 }
 
@@ -1069,40 +1125,26 @@ function ClientMasterResponseCard({
   rejected,
 }: ClientMasterResponseCardProps) {
   const router = useRouter();
-  // Контакты — ЧАСТЬ отклика, а не отдельное действие (DECISION владельца
-  // 2026-09-01): мастер отправляет «готов» с ценой, сроком и своими
-  // контактами, а клиент связывается сам через WhatsApp или звонок.
-  // Раньше здесь стояло false, и телефон подгружался только по нажатию
-  // «Показать контакты» — лишний шаг между клиентом и исполнителем.
-  //
-  // Цена: два запроса на карточку отклика вместо нуля. Измерено на живых
-  // данных — в среднем 1.5 отклика на задание, максимум 3, то есть до шести
-  // запросов на экран. Приемлемо; если откликов станет много, это надо будет
-  // заменить одним пакетным запросом, а не возвращать кнопку.
-  // Контакты живут в самом отклике с миграции 0147. Профиль через RPC
-  // дёргаем только для старых откликов, у которых в строке контактов нет —
-  // так на новых карточках вообще нет лишних запросов.
+  const tc = useThemeColors(["ink", "mute", "warning", "accent"]);
   const rowPhone = response.contact_phone?.trim() || null;
   const rowWa = response.whatsapp_phone?.trim() || null;
   const rowHasContacts = Boolean(rowPhone || rowWa);
-  const [contactsRequested, setContactsRequested] = useState(!rowHasContacts);
-  const tc = useThemeColors(["ink", "mute", "warning", "on-primary"]);
 
-  // Рейтинг мастера (общий) — чтобы клиент сравнивал мастеров не только по цене.
-  // Показываем только когда есть хотя бы 1 отзыв (паттерн Airbnb/TaskRabbit:
-  // у новичка строки рейтинга нет вовсе, а не «Без отзывов»).
+  // Рейтинг — только когда есть хотя бы один отзыв (у новичка строки нет,
+  // а не «Без отзывов»). Значок — только за пройденную проверку паспорта.
   const ratingAvg = response.master?.profile?.rating_overall_avg ?? null;
   const ratingCount = response.master?.profile?.rating_overall_count ?? 0;
   const hasRating = ratingAvg != null && ratingCount > 0;
+  const verified = isVerifiedLevel(response.master?.profile?.verification_level);
 
-  // Phone (auth.users) — через RPC get_master_phone. Возвращает null если
-  // мастер не активен или у него нет auth.phone.
-  const masterPhone = useMasterPhone(contactsRequested ? response.master_id : undefined);
-  // WhatsApp (master_profiles) — публично читаемо по RLS.
-  const masterPublic = useMasterPublicProfile(contactsRequested ? response.master_id : undefined);
+  // Старый отклик без контактов в строке — номер и WhatsApp из профиля.
+  // У новых откликов и у скрытых запросов нет вовсе.
+  const fetchContactsFor = !rowHasContacts && !rejected ? response.master_id : undefined;
+  const masterPhone = useMasterPhone(fetchContactsFor);
+  const masterPublic = useMasterPublicProfile(fetchContactsFor);
 
   const phoneRaw = rowHasContacts ? rowPhone : (masterPhone.data ?? null);
-  const phoneTel = phoneRaw?.replace(/[^\d+]/g, "") ?? null;
+  const phoneTel = phoneRaw?.replace(/[^\d+]/g, "") || null;
   const phoneWa = rowHasContacts
     ? normalizeWhatsappDigits(rowWa)
     : resolveWhatsappDigits({
@@ -1110,41 +1152,33 @@ function ClientMasterResponseCard({
         whatsappSameAsPhone: masterPublic.data?.master?.whatsapp_same_as_phone,
         masterPhone: phoneRaw,
       });
-  const contactsError = rowHasContacts ? null : (masterPhone.error ?? masterPublic.error);
-  const contactsLoading = rowHasContacts
-    ? false
-    : masterPhone.isFetching || masterPublic.isFetching;
+  const contactsError = fetchContactsFor ? (masterPhone.error ?? masterPublic.error) : null;
+  const contactsLoading = fetchContactsFor
+    ? masterPhone.isFetching || masterPublic.isFetching
+    : false;
 
   const masterName =
     [response.master?.first_name, response.master?.last_name].filter(Boolean).join(" ") ||
     "Исполнитель";
   const priceText = formatResponsePrice(response);
-  const isNegotiable = response.price_kind === "negotiable";
+  const ratingText = hasRating ? Number(ratingAvg).toFixed(1) : null;
   const profileAccessibilityLabel = [
     `Профиль ${masterName}`,
-    hasRating ? `Рейтинг ${ratingAvg.toFixed(1)}, отзывов ${ratingCount}` : null,
+    verified ? "Проверенный специалист" : null,
+    ratingText ? `Рейтинг ${ratingText}, отзывов ${ratingCount}` : null,
     priceText,
     response.lead_time ? `Срок ${response.lead_time}` : null,
   ]
     .filter(Boolean)
     .join(". ");
-
-  const onCall = () => {
-    if (phoneTel) openExternalUrl(`tel:${phoneTel}`);
-  };
-  const onWhatsApp = () => {
-    if (phoneWa) openExternalUrl(`https://wa.me/${phoneWa}`);
-  };
-  const onProfile = () => {
-    router.push(`/master/${response.master_id}` as never);
-  };
+  const onProfile = () => router.push(`/master/${response.master_id}` as never);
 
   return (
     <View
-      className="border-b border-hairline bg-canvas px-5 py-5"
+      className="rounded-2xl border border-hairline bg-canvas p-4"
       style={rejected ? { opacity: 0.6 } : undefined}
     >
-      {/* Header: avatar + name + price (mono справа). */}
+      {/* Кто и за сколько. Тап — профиль специалиста. */}
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={profileAccessibilityLabel}
@@ -1157,168 +1191,114 @@ function ClientMasterResponseCard({
           seed={response.master?.id ?? response.master_id}
           size="md"
         />
-        <View className="flex-1 min-w-0">
-          <AppText weight="semibold" className="text-body-md text-ink" numberOfLines={1}>
-            {masterName}
-          </AppText>
-          {hasRating ? (
-            <View className="mt-0.5 flex-row items-center gap-1">
-              <Star size={12} weight="fill" color={tc.warning} />
-              <AppText weight="semibold" className="text-caption text-ink">
-                {ratingAvg.toFixed(1)}
-              </AppText>
-              <AppText className="text-caption text-mute">({ratingCount})</AppText>
-            </View>
-          ) : null}
-          {response.lead_time ? (
-            <View className="mt-0.5 flex-row items-center gap-1">
-              <Clock size={12} weight="bold" color={tc.mute} />
-              <AppText className="text-caption text-mute" numberOfLines={1}>
-                {response.lead_time}
-              </AppText>
+        <View className="min-w-0 flex-1">
+          <View className="flex-row items-center gap-1">
+            <AppText weight="semibold" className="shrink text-body-md text-ink" numberOfLines={1}>
+              {masterName}
+            </AppText>
+            {verified ? <VerifiedBadge size={16} /> : null}
+          </View>
+          {ratingText || response.lead_time ? (
+            <View className="mt-0.5 flex-row flex-wrap items-center gap-x-3">
+              {ratingText ? (
+                <View className="flex-row items-center gap-1">
+                  <Star size={14} weight="fill" color={tc.warning} />
+                  <AppText weight="semibold" className="text-body-sm text-ink">
+                    {ratingText}
+                  </AppText>
+                  <AppText className="text-body-sm text-mute">({ratingCount})</AppText>
+                </View>
+              ) : null}
+              {response.lead_time ? (
+                <View className="shrink flex-row items-center gap-1">
+                  <Clock size={14} weight="bold" color={tc.mute} />
+                  <AppText className="shrink text-body-sm text-mute" numberOfLines={1}>
+                    {response.lead_time}
+                  </AppText>
+                </View>
+              ) : null}
             </View>
           ) : null}
         </View>
-        <AppText
-          weight={isNegotiable ? "semibold" : "mono"}
-          className={`${isNegotiable ? "text-body-md" : "text-title-md"} text-ink`}
-        >
+        <AppText weight="bold" className="text-title-lg text-ink">
           {priceText}
         </AppText>
       </Pressable>
 
-      {/* Сообщение мастера. */}
       {response.message ? (
-        <AppText
-          className="mt-3 text-body-sm text-body"
-          style={{ lineHeight: 20 }}
-          numberOfLines={6}
-        >
+        <AppText className="mt-3 text-body-md text-body" numberOfLines={6}>
           {response.message}
         </AppText>
       ) : null}
 
-      {/* Status hint для rejected. */}
       {rejected ? (
-        <AppText weight="medium" className="mt-2 text-caption text-muted-soft">
-          Скрыто
+        <AppText weight="medium" className="mt-3 text-body-sm text-mute">
+          Отклик скрыт
         </AppText>
-      ) : null}
-
-      {/* Контакт-кнопки. В скрытых не показываем. */}
-      {!rejected ? (
-        <View className="mt-4 gap-2">
-          <View className="flex-row gap-2">
-            {!contactsRequested ? (
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={`Показать контакты исполнителя ${masterName}`}
-                onPress={() => setContactsRequested(true)}
-                className="min-h-11 flex-1 flex-row items-center justify-center gap-1.5 rounded-pill bg-ink active:opacity-85"
-              >
-                <Phone size={16} weight="bold" color={tc["on-primary"]} />
-                <AppText weight="semibold" className="text-button-sm text-on-primary">
-                  Показать контакты
-                </AppText>
-              </Pressable>
-            ) : contactsError ? (
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Повторить загрузку контактов"
-                disabled={contactsLoading}
-                onPress={() => {
-                  void Promise.all([masterPhone.refetch(), masterPublic.refetch()]);
-                }}
-                className="min-h-11 flex-1 flex-row items-center justify-center gap-1.5 rounded-pill border border-error bg-canvas active:bg-canvas-soft"
-              >
-                {contactsLoading ? (
-                  <ActivityIndicator size="small" color={tc.mute} />
-                ) : (
-                  <>
-                    <ArrowCounterClockwise size={16} weight="bold" color={tc.ink} />
-                    <AppText weight="semibold" className="text-button-sm text-ink">
-                      Повторить контакты
-                    </AppText>
-                  </>
-                )}
-              </Pressable>
-            ) : (
-              <>
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel="Позвонить исполнителю"
-                  disabled={!phoneTel}
-                  onPress={onCall}
-                  className={`h-11 flex-1 flex-row items-center justify-center gap-1.5 rounded-pill ${
-                    phoneTel ? "bg-ink active:opacity-85" : "bg-canvas-soft-2"
-                  }`}
-                >
-                  {phoneTel ? (
-                    <>
-                      <Phone size={16} weight="bold" color={tc["on-primary"]} />
-                      <AppText weight="semibold" className="text-button-sm text-on-primary">
-                        Позвонить
-                      </AppText>
-                    </>
-                  ) : contactsLoading ? (
-                    <ActivityIndicator size="small" color={tc.mute} />
-                  ) : (
-                    <AppText weight="medium" className="text-button-sm text-mute">
-                      Нет номера
-                    </AppText>
-                  )}
-                </Pressable>
-
-                {phoneWa ? (
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel="Написать в WhatsApp"
-                    onPress={onWhatsApp}
-                    className="min-h-11 flex-1 flex-row items-center justify-center gap-1.5 rounded-pill border border-hairline bg-canvas active:bg-canvas-soft"
-                  >
-                    <WhatsappLogo size={16} weight="bold" color={tc.ink} />
-                    <AppText weight="semibold" className="text-button-sm text-ink">
-                      WhatsApp
-                    </AppText>
-                  </Pressable>
-                ) : null}
-              </>
-            )}
-          </View>
-
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={`Открыть профиль ${masterName}`}
-            onPress={onProfile}
-            className="min-h-11 flex-row items-center justify-center gap-1.5 rounded-pill border border-hairline bg-canvas active:bg-canvas-soft"
-          >
-            <CaretRight size={16} weight="bold" color={tc.ink} />
-            <AppText weight="semibold" className="text-button-sm text-ink">
-              Профиль
-            </AppText>
-          </Pressable>
-        </View>
-      ) : null}
-
-      {/* «Скрыть» — тихое действие под контактами. */}
-      {onReject ? (
+      ) : contactsError ? (
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Скрыть отклик"
-          onPress={onReject}
-          disabled={isRejecting}
-          hitSlop={6}
-          className="mt-3 items-center active:opacity-60"
+          accessibilityLabel="Повторить загрузку контактов"
+          accessibilityState={{ disabled: contactsLoading, busy: contactsLoading }}
+          disabled={contactsLoading}
+          onPress={() => {
+            void Promise.all([masterPhone.refetch(), masterPublic.refetch()]);
+          }}
+          className="mt-4 min-h-12 flex-row items-center justify-center gap-2 rounded-pill border border-hairline-strong bg-canvas px-3 active:bg-canvas-soft"
         >
-          {isRejecting ? (
+          {contactsLoading ? (
             <ActivityIndicator size="small" color={tc.mute} />
           ) : (
-            <AppText weight="medium" className="text-caption text-muted-soft">
-              Скрыть
-            </AppText>
+            <>
+              <ArrowCounterClockwise size={16} weight="bold" color={tc.ink} />
+              <AppText weight="semibold" className="text-body-md text-ink">
+                Контакты не загрузились — повторить
+              </AppText>
+            </>
           )}
         </Pressable>
-      ) : null}
+      ) : (
+        <ContactButtons
+          phoneTel={phoneTel}
+          whatsappDigits={phoneWa}
+          loading={contactsLoading}
+          who={masterName}
+        />
+      )}
+
+      {/* Второстепенное — тихой строкой под линией, а не кнопками во всю
+          ширину: профиль и скрыть нужны реже, чем связь. */}
+      <View className="mt-3 flex-row items-center justify-between border-t border-hairline">
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={`Открыть профиль ${masterName}`}
+          onPress={onProfile}
+          className="min-h-11 flex-row items-center gap-1 pt-2 active:opacity-60"
+        >
+          <AppText weight="semibold" className="text-body-md text-accent">
+            Профиль
+          </AppText>
+          <CaretRight size={14} weight="bold" color={tc.accent} />
+        </Pressable>
+        {onReject ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={`Скрыть отклик: ${masterName}`}
+            accessibilityState={{ disabled: isRejecting, busy: isRejecting }}
+            onPress={onReject}
+            disabled={isRejecting}
+            className="min-h-11 items-center justify-center pl-4 pt-2 active:opacity-60"
+          >
+            {isRejecting ? (
+              <ActivityIndicator size="small" color={tc.mute} />
+            ) : (
+              <AppText weight="medium" className="text-body-md text-mute">
+                Скрыть
+              </AppText>
+            )}
+          </Pressable>
+        ) : null}
+      </View>
     </View>
   );
 }
@@ -1352,7 +1332,7 @@ function MasterResponseSection({
 }: MasterResponseSectionProps) {
   const { data: myResponse } = useMyResponseForOrder(orderId, masterId);
   const withdrawResponse = useWithdrawResponse();
-  const tc = useThemeColors(["accent", "success", "mute"]);
+  const tc = useThemeColors(["ink", "on-accent"]);
   if (!myResponse || (myResponse.status === "withdrawn" && orderStatus === "open")) return null;
 
   const isPickedMaster = pickedMasterId === masterId;
@@ -1377,64 +1357,98 @@ function MasterResponseSection({
     );
   };
 
+  const status = responseStatusView(myResponse.status, isPickedMaster);
+  const hint = isPickedMaster
+    ? "Клиент выбрал вас. Свяжитесь с ним по контактам в задании."
+    : myResponse.status === "rejected"
+      ? "Клиент отклонил отклик. Посмотрите другие задания."
+      : myResponse.status === "withdrawn"
+        ? "Вы отозвали отклик."
+        : "Клиент видит ваш отклик и свяжется сам, если выберет вас.";
+
+  // Отдельный блок на сером фоне (владелец, 2026-09-11: «отделить дизайном
+  // от остального»). Раньше это была InsetGroup — белая плашка на белом
+  // экране: от карточки оставались одни линии, а статус висел справа.
   return (
-    <View className="mt-8">
-      <InsetGroup
-        title="Ваш отклик"
-        footer={
-          isPickedMaster
-            ? "Клиент выбрал вас. Свяжитесь с ним по контактам в задании."
-            : "Клиент видит ваш отклик и свяжется сам, если выберет вас."
-        }
-      >
-        <InsetRow
-          title={formatResponsePrice(myResponse)}
-          subtitle={[
-            myResponse.lead_time ? `Срок: ${myResponse.lead_time}` : "",
-            myResponse.message ?? "",
-          ]
-            .filter(Boolean)
-            .join(" · ")}
-          value={responseStatusLabel(myResponse.status)}
-          icon={
-            <SystemIcon
-              sf={isPickedMaster ? "checkmark.seal.fill" : "paperplane.fill"}
-              fallback={isPickedMaster ? CheckCircle : PaperPlaneTilt}
-              size={18}
-              weight="regular"
-              color={isPickedMaster ? tc.success : tc.accent}
-            />
-          }
-          last={!canWithdraw}
-        />
-        {canWithdraw ? (
-          <InsetRow
-            title={withdrawResponse.isPending ? "Отзываем…" : "Отозвать отклик"}
-            destructive
-            onPress={() => void onWithdrawPress()}
-            disabled={withdrawResponse.isPending}
-            last
+    <View className="mx-5 mt-8 rounded-2xl bg-canvas-soft p-4">
+      <View className="flex-row items-center gap-3">
+        <View className="h-9 w-9 items-center justify-center rounded-lg bg-accent">
+          <SystemIcon
+            sf={isPickedMaster ? "checkmark.seal.fill" : "paperplane.fill"}
+            fallback={isPickedMaster ? CheckCircle : PaperPlaneTilt}
+            size={18}
+            weight="regular"
+            color={tc["on-accent"]}
           />
-        ) : null}
-      </InsetGroup>
+        </View>
+        <AppText
+          accessibilityRole="header"
+          weight="semibold"
+          className="flex-1 text-title-md text-ink"
+        >
+          Ваш отклик
+        </AppText>
+        <View className={`rounded-pill px-2.5 py-1 ${status.pill}`}>
+          <AppText weight="semibold" className={`text-body-sm ${status.text}`}>
+            {status.label}
+          </AppText>
+        </View>
+      </View>
+
+      <AppText weight="bold" className="mt-4 text-title-lg text-ink">
+        {formatResponsePrice(myResponse)}
+      </AppText>
+      {myResponse.lead_time ? (
+        <View className="mt-1.5 flex-row items-center gap-2">
+          <Clock size={16} weight="bold" color={tc.ink} />
+          <AppText className="flex-1 text-body-md text-ink">{`Срок: ${myResponse.lead_time}`}</AppText>
+        </View>
+      ) : null}
+      {myResponse.message ? (
+        <AppText className="mt-2 text-body-md text-body">{myResponse.message}</AppText>
+      ) : null}
+
+      <AppText className="mt-4 text-body-sm text-mute">{hint}</AppText>
+
+      {canWithdraw ? (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Отозвать отклик"
+          accessibilityState={{
+            disabled: withdrawResponse.isPending,
+            busy: withdrawResponse.isPending,
+          }}
+          disabled={withdrawResponse.isPending}
+          onPress={() => void onWithdrawPress()}
+          className="mt-3 min-h-11 items-center justify-center border-t border-hairline pt-1 active:opacity-60"
+        >
+          <AppText weight="semibold" className="text-body-md text-error">
+            {withdrawResponse.isPending ? "Отзываем…" : "Отозвать отклик"}
+          </AppText>
+        </Pressable>
+      ) : null}
     </View>
   );
 }
 
-function responseStatusLabel(s: Tables<"order_responses">["status"]): string {
+/** Статус моего отклика — подпись и цвет плашки. */
+function responseStatusView(
+  s: Tables<"order_responses">["status"],
+  picked: boolean,
+): { label: string; pill: string; text: string } {
+  if (picked) return { label: "Вас выбрали", pill: "bg-success-soft", text: "text-success" };
   switch (s) {
     case "sent":
-      return "Отклик отправлен";
+      return { label: "Отправлен", pill: "bg-canvas", text: "text-mute" };
     case "viewed":
-      return "Клиент прочитал";
+      return { label: "Клиент прочитал", pill: "bg-accent-soft", text: "text-accent" };
     case "accepted":
       // В модели доски объявлений клиент не «выбирает» мастера в приложении —
-      // он связывается напрямую. Поэтому нейтральный «Отклик активен», а не
-      // ложное «клиент выбрал вас».
-      return "Отклик активен";
+      // он связывается напрямую. Поэтому нейтральный «Отклик активен».
+      return { label: "Отклик активен", pill: "bg-success-soft", text: "text-success" };
     case "rejected":
-      return "Клиент отклонил";
+      return { label: "Отклонён", pill: "bg-error-soft", text: "text-error" };
     case "withdrawn":
-      return "Отклик отозван";
+      return { label: "Отозван", pill: "bg-canvas", text: "text-mute" };
   }
 }

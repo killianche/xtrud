@@ -1,22 +1,22 @@
 /**
  * /profile/specialist — «Я специалист» из аккаунта. Тело —
  * `SpecialistHubBody`, оно же во вкладке «Специалисты» → «Я специалист».
+ *
+ * Профиль специалиста есть у каждого (0186). Раньше при его отсутствии экран
+ * уводил на /(tabs)/profile — и хаб не успевал создать профиль сам.
  */
 
 import { Redirect, useRouter } from "expo-router";
 import { FormScreen } from "@/components/ui";
 import { useAuthSession } from "@/features/auth/use-auth-session";
 import { SpecialistHubBody } from "@/features/specialist/SpecialistHubBody";
-import { useMySpecialistProfile } from "@/features/specialist/use-specialist";
 
 export default function SpecialistHubScreen() {
   const router = useRouter();
   const { session } = useAuthSession();
   const userId = session?.user?.id;
-  const profile = useMySpecialistProfile(userId);
 
   if (!userId) return <Redirect href="/(auth)/phone" />;
-  if (profile.isFetched && profile.data === null) return <Redirect href="/(tabs)/profile" />;
 
   return (
     <FormScreen

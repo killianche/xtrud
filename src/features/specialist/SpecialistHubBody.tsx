@@ -18,7 +18,7 @@ import {
   UserCircle,
 } from "phosphor-react-native";
 import { useEffect, useRef } from "react";
-import { View } from "react-native";
+import { Alert, View } from "react-native";
 import { AppText } from "@/components/AppText";
 import { Avatar } from "@/components/Avatar";
 import { InsetGroup, InsetRow } from "@/components/ui";
@@ -27,6 +27,7 @@ import { useMyMasterCategories } from "@/features/master-categories/use-my-categ
 import { useMasterServiceAreas } from "@/features/master-profile/use-service-areas";
 import { useUnreadReviewsCount } from "@/features/notifications/use-notifications";
 import { useMasterPortfolio } from "@/features/profile/use-my-portfolio";
+import { promptChooseCategory } from "@/features/specialist/category-required";
 import {
   useEnableSpecialistMode,
   useMySpecialistProfile,
@@ -160,18 +161,36 @@ export function SpecialistHubBody({ userId }: { userId: string }) {
       </View>
 
       <InsetGroup title="Видимость" footer={status.hint}>
+        {/* ⓘ — что значат статусы (владелец, 2026-09-11). */}
         <InsetRow
           title="Статус"
           value={status.label}
           icon={
             <View className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: statusColor }} />
           }
+          info
+          onPress={() => router.push("/profile/specialist/statuses" as never)}
         />
+        {/* Без категории переключатель не включается, а объясняет, что
+            сделать; раньше он был тихо серым и не отвечал на нажатие. */}
         <InsetRow
           title="Показывать среди специалистов"
           subtitle={canBeShown ? undefined : "Доступно после выбора категории"}
-          toggle={{ value: canBeShown && shown, onChange: (next) => setShown.mutate(next) }}
-          disabled={!canBeShown}
+          toggle={{
+            value: canBeShown && shown,
+            onChange: (next) => {
+              if (canBeShown) {
+                setShown.mutate(next);
+              } else if (m?.status === "suspended") {
+                Alert.alert(
+                  "Профиль скрыт администратором",
+                  "Если это ошибка, напишите в поддержку.",
+                );
+              } else {
+                promptChooseCategory(() => router.push("/profile/specialist/categories" as never));
+              }
+            },
+          }}
           last
         />
       </InsetGroup>

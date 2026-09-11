@@ -8,7 +8,7 @@
  * настроек (DECISION владельца 2026-09-07: «всё крупнее, как в iOS»).
  */
 
-import { CaretRight, Check } from "phosphor-react-native";
+import { CaretRight, Check, Info } from "phosphor-react-native";
 import type { ReactNode } from "react";
 import { Pressable, Switch, View } from "react-native";
 import { AppText } from "@/components/AppText";
@@ -49,6 +49,8 @@ export interface InsetRowProps {
   checked?: boolean;
   /** Строка ведёт дальше (chevron), а не выбирает. */
   navigates?: boolean;
+  /** Справа — значок ⓘ: строка открывает пояснение, а не раздел. */
+  info?: boolean;
   /** Значение справа. */
   value?: string;
   /** Переключатель справа вместо значения. */
@@ -68,6 +70,7 @@ export function InsetRow({
   selected = false,
   checked = false,
   navigates = false,
+  info = false,
   value,
   toggle,
   onPress,
@@ -137,6 +140,16 @@ export function InsetRow({
             trackColor={{ true: tc.accent, false: tc["hairline-strong"] }}
             disabled={disabled}
           />
+        ) : info ? (
+          <View className="ml-2">
+            <SystemIcon
+              sf="info.circle"
+              fallback={Info}
+              size={22}
+              weight="regular"
+              color={tc.accent}
+            />
+          </View>
         ) : navigates ? (
           <View className="ml-2">
             <SystemIcon

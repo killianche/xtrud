@@ -15,6 +15,23 @@ describe("notificationTargetFromData", () => {
     expect(notificationTargetFromData({ type: "review_received" }, null)).toBeNull();
   });
 
+  it("паспорт и значок — на экран подтверждения", () => {
+    for (const type of ["verification_approved", "verification_rejected", "verification_revoked"]) {
+      expect(notificationTargetFromData({ type }, ME)).toBe("/profile/specialist/verify");
+    }
+  });
+
+  it("профиль скрыт или возвращён админом — в «Я специалист»", () => {
+    expect(notificationTargetFromData({ type: "master_hidden" }, ME)).toBe("/profile/specialist");
+    expect(notificationTargetFromData({ type: "master_shown" }, ME)).toBe("/profile/specialist");
+  });
+
+  it("отклонённый отклик ведёт в задание", () => {
+    expect(notificationTargetFromData({ type: "response_rejected", order_id: ORDER }, ME)).toBe(
+      `/orders/${ORDER}`,
+    );
+  });
+
   it("отклик и события задания ведут в задание", () => {
     expect(notificationTargetFromData({ type: "new_response", order_id: ORDER }, ME)).toBe(
       `/orders/${ORDER}`,

@@ -57,12 +57,12 @@ export function useUnreadNotificationsCount(userId: string | undefined) {
 }
 
 /**
- * События по моим заказам для бейджа «Мои задания»: принят/отменён/закрыт
- * заказ, отозван отклик, ожидание подтверждения и т.п. Не считаем
+ * События по моим заказам для бейджа «Мои задания»: закрыто или истекло
+ * задание, отозван или отклонён отклик, задание скрыто модерацией и т.п.
+ * Считаем только строки с `data.order_id` — отзывы, паспорт и скрытие
+ * профиля к заданиям не относятся и сюда не попадают сами. Не считаем
  * `new_response` (он уже в счётчике откликов) и рассылку новых заданий
- * (`data.kind = new_order`, это бейдж «Найти задание») и решения по паспорту
- * (`verification_*` — видны на экране уведомлений, к заказам не относятся),
- * и отзывы (`review_received` — бейдж «Специалистов»).
+ * (`data.kind = new_order`, это бейдж «Найти задание»).
  *
  * `kind` есть только у рассылки новых заданий. Условие «kind ≠ new_order»
  * в SQL отбрасывает строки, где kind нет вовсе, — так бейдж с 2026-09-07 не
@@ -84,10 +84,9 @@ export function useUnreadOrderEventsCount(userId: string | undefined) {
         .select("id", { count: "exact", head: true })
         .eq("user_id", userId)
         .is("read_at", null)
+        .not("data->>order_id", "is", null)
         .neq("data->>type", "new_response")
-        .neq("type", "review_received")
-        .or("data->>kind.is.null,data->>kind.neq.new_order")
-        .not("data->>type", "like", "verification_%");
+        .or("data->>kind.is.null,data->>kind.neq.new_order");
       if (error) throw error;
       return count ?? 0;
     },
@@ -108,10 +107,9 @@ export function useMarkOrderEventsRead(userId: string | undefined) {
         .update({ read_at: new Date().toISOString() })
         .eq("user_id", userId)
         .is("read_at", null)
+        .not("data->>order_id", "is", null)
         .neq("data->>type", "new_response")
-        .neq("type", "review_received")
-        .or("data->>kind.is.null,data->>kind.neq.new_order")
-        .not("data->>type", "like", "verification_%");
+        .or("data->>kind.is.null,data->>kind.neq.new_order");
       if (error) throw error;
     },
     onSuccess: () => {

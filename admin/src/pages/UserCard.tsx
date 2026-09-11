@@ -25,12 +25,23 @@ function Row({ label, value }: { label: string; value: string }) {
   );
 }
 
+/** Пароль без похожих символов: его диктуют вслух и переписывают руками. */
+function generatePassword(): string {
+  const alphabet = "abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  const bytes = new Uint32Array(12);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes, (b) => alphabet[b % alphabet.length]).join("");
+}
+
 function PasswordForm({ userId, onDone }: { userId: string; onDone: () => void }) {
   const [password, setPassword] = useState("");
   const [reason, setReason] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [done, setDone] = useState(false);
+  // Выданный пароль показываем здесь и сейчас — больше его не увидит никто,
+  // включая нас: в базе только необратимый отпечаток.
+  const [issued, setIssued] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
@@ -39,7 +50,8 @@ function PasswordForm({ userId, onDone }: { userId: string; onDone: () => void }
     setError(null);
     try {
       await api.setPassword(userId, password, reason);
-      setDone(true);
+      setIssued(password);
+      setCopied(false);
       setPassword("");
       setReason("");
       onDone();
@@ -50,24 +62,46 @@ function PasswordForm({ userId, onDone }: { userId: string; onDone: () => void }
     }
   };
 
+  const copy = async () => {
+    if (!issued) return;
+    try {
+      await navigator.clipboard.writeText(issued);
+      setCopied(true);
+    } catch {
+      setError("Скопируйте пароль вручную: браузер не дал доступ к буферу обмена.");
+    }
+  };
+
   return (
     <form onSubmit={submit} className="stack">
       <p className="mono-eyebrow">Восстановление доступа</p>
       <p className="body-md text-mute">
-        Задайте временный пароль и передайте его человеку лично. Попросите сменить его после входа.
-        Факт смены попадёт в журнал, сам пароль — нет.
+        Действующий пароль показать нельзя: в базе хранится только необратимый отпечаток, самого
+        пароля нет ни у кого. Чтобы вернуть доступ, задайте временный пароль и передайте его
+        человеку лично, а он сменит его после входа. В журнал попадает факт смены и причина, сам
+        пароль — нет.
       </p>
       <Field label="Новый пароль" hint="Минимум 6 символов">
-        <input
-          className="input"
-          type="text"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          autoComplete="off"
-          disabled={busy}
-          required
-          minLength={6}
-        />
+        <div className="row" style={{ gap: 8 }}>
+          <input
+            className="input"
+            type="text"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            autoComplete="off"
+            disabled={busy}
+            required
+            minLength={6}
+          />
+          <button
+            type="button"
+            className="btn btn-ghost"
+            onClick={() => setPassword(generatePassword())}
+            disabled={busy}
+          >
+            Сгенерировать
+          </button>
+        </div>
       </Field>
       <Field label="Причина" hint="Например: обращение в поддержку, подтвердил номер и город">
         <input
@@ -85,9 +119,20 @@ function PasswordForm({ userId, onDone }: { userId: string; onDone: () => void }
           {error}
         </div>
       ) : null}
-      {done ? (
+      {issued ? (
         <div className="banner-ok body-md" role="status">
-          Пароль изменён. Передайте его человеку и попросите сменить.
+          <div>
+            Временный пароль: <span className="cell-mono">{issued}</span>
+          </div>
+          <div className="row" style={{ gap: 8, marginTop: 8 }}>
+            <button type="button" className="btn btn-ghost" onClick={copy}>
+              {copied ? "Скопировано" : "Скопировать"}
+            </button>
+          </div>
+          <div style={{ marginTop: 8 }}>
+            Передайте его человеку и попросите сменить после входа. Пароль виден, пока вы не ушли со
+            страницы: второй раз его не покажет никто.
+          </div>
         </div>
       ) : null}
       <button type="submit" className="btn btn-primary" disabled={busy}>

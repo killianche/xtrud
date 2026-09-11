@@ -143,11 +143,16 @@ SSR-проверкой `typeof ... !== "undefined"`.
 |---|---|---|---|
 | Сброс пароля | `https://xtrud.pro/reset-password` | не основной путь | не подтверждён |
 | Legal pages | поддержан | не требуется | не требуется |
-| Master/order detail | поддержан как route | тестировать перед заявлением поддержки | не подтверждён |
+| Задание (`/orders/<id>`) — «Поделиться» | `https://xtrud.pro/orders/<id>` — страница со ссылкой в App Store | кнопка «Открыть» на этой странице | объявлен в AASA (`/orders/?*`); UNKNOWN до проверки на устройстве |
+| Профиль специалиста | поддержан как route | тестировать перед заявлением поддержки | не объявлен |
 
-`app.json` содержит `associatedDomains`, но end-to-end AASA/cold-launch тест не
-зафиксирован. Поэтому HTTPS universal links пока нельзя считать рабочими.
-Наличие config и `scheme: "xtrud"` само по себе этого не гарантирует.
+С 2026-09-11 AASA объявляет приложению только `/orders/?*`: раньше там было
+`*`, и любая ссылка на сайт — политика, поддержка, веб-админка — открывала
+приложение на несуществующем экране. Associated Domains включён в App ID и в
+профиле подписи (FACT, App Store Connect API и `profile.mobileprovision`,
+2026-09-11). Сам переход «ссылка в WhatsApp → задание в приложении» на
+устройстве не проверен — до проверки это UNKNOWN. Apple обновляет копию AASA
+у себя не сразу (CDN `app-site-association.cdn-apple.com`).
 
 ## 8. Auth, storage и server state
 

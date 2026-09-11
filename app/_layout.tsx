@@ -18,6 +18,7 @@ import { isPublicDetailsRoute } from "@/features/auth/public-route-policy";
 import { useAuthSession } from "@/features/auth/use-auth-session";
 import { useMasterOnboardingStatus } from "@/features/auth/use-master-onboarding-status";
 import { useUserRecord } from "@/features/auth/use-user-record";
+import { useNotificationTapNavigation } from "@/features/notifications/use-notification-tap";
 import { useRegisterPushToken } from "@/features/notifications/use-register-push-token";
 import { useAuthReturnUrlStore } from "@/lib/auth-return-url-store";
 import { installGlobalErrorHandlers } from "@/lib/error-reporting";
@@ -99,6 +100,7 @@ function AuthGate({ children }: { children: React.ReactNode }) {
   } = useMasterOnboardingStatus(userId, userRecord?.is_master === true);
 
   useRegisterPushToken(userId ?? null);
+  useNotificationTapNavigation(userId, status !== "loading");
 
   const segments = useSegments();
   const router = useRouter();

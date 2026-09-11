@@ -68,6 +68,8 @@ interface ScreenHeaderProps {
   /** Опц. круглая icon-кнопка справа (overflow «⋮» / share / edit и т.п.).
    *  Если переданы и rightAction и iconAction — рендерятся обе (icon правее). */
   iconAction?: ScreenHeaderIconAction;
+  /** Опц. вторая круглая кнопка — левее iconAction («Поделиться» рядом с «⋯»). */
+  secondaryIconAction?: ScreenHeaderIconAction;
 }
 
 const HEADER_HEIGHT = 64;
@@ -78,6 +80,7 @@ export function ScreenHeader({
   backDisabled = false,
   rightAction,
   iconAction,
+  secondaryIconAction,
 }: ScreenHeaderProps) {
   const inkColor = useThemeColor("ink");
   const accentColor = useThemeColor("accent");
@@ -149,17 +152,20 @@ export function ScreenHeader({
         </Pressable>
       ) : null}
 
-      {iconAction ? (
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={iconAction.accessibilityLabel}
-          onPress={iconAction.onPress}
-          hitSlop={8}
-          className="h-10 w-10 items-center justify-center rounded-full active:bg-canvas-soft"
-        >
-          <iconAction.Icon size={20} weight="bold" color={inkColor} />
-        </Pressable>
-      ) : null}
+      {[secondaryIconAction, iconAction].map((action) =>
+        action ? (
+          <Pressable
+            key={action.accessibilityLabel}
+            accessibilityRole="button"
+            accessibilityLabel={action.accessibilityLabel}
+            onPress={action.onPress}
+            hitSlop={8}
+            className="h-10 w-10 items-center justify-center rounded-full active:bg-canvas-soft"
+          >
+            <action.Icon size={20} weight="bold" color={inkColor} />
+          </Pressable>
+        ) : null,
+      )}
     </View>
   );
 }

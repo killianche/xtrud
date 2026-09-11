@@ -35,6 +35,7 @@ import { SystemIcon } from "@/components/ui/SystemIcon";
 import { useAuthSession } from "@/features/auth/use-auth-session";
 import { useCategoriesL1 } from "@/features/categories/use-categories-l1";
 import { useVisibleCategories } from "@/features/categories/use-visible-categories";
+import { useUnreadReviewsCount } from "@/features/notifications/use-notifications";
 import { SpecialistHubBody } from "@/features/specialist/SpecialistHubBody";
 import {
   useEnableSpecialistMode,
@@ -63,6 +64,8 @@ export default function SpecialistsCategoriesScreen() {
   const [segment, setSegment] = useState<Segment>("find");
   const { session } = useAuthSession();
   const userId = session?.user?.id;
+  // Новый отзыв — счётчик на «Я специалист», как у бейджа вкладки.
+  const unreadReviews = useUnreadReviewsCount(userId).data ?? 0;
   const myProfile = useMySpecialistProfile(userId);
   const enable = useEnableSpecialistMode();
   const becomeSpecialist = () => {
@@ -263,7 +266,7 @@ export default function SpecialistsCategoriesScreen() {
             onChange={setSegment}
             items={[
               { id: "find", label: "Найти специалиста" },
-              { id: "me", label: "Я специалист", tone: "primary" },
+              { id: "me", label: "Я специалист", tone: "primary", count: unreadReviews },
             ]}
           />
         }

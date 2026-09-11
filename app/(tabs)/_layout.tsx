@@ -10,7 +10,10 @@ import { useAuthSession } from "@/features/auth/use-auth-session";
 import { useTouchLastActive } from "@/features/auth/use-touch-last-active";
 import { useUserRecord } from "@/features/auth/use-user-record";
 import { useMyMasterCategories } from "@/features/master-categories/use-my-categories";
-import { useUnreadOrderEventsCount } from "@/features/notifications/use-notifications";
+import {
+  useUnreadOrderEventsCount,
+  useUnreadReviewsCount,
+} from "@/features/notifications/use-notifications";
 import { useRealtimeNotifications } from "@/features/orders/use-realtime-notifications";
 import { useUnreadFeedCount } from "@/features/orders/use-unread-feed";
 import { useUnreadResponsesCount } from "@/features/orders/use-unread-responses";
@@ -80,6 +83,10 @@ export default function TabsLayout() {
   const { data: unreadOrderEvents = 0 } = useUnreadOrderEventsCount(userId ?? undefined);
   const ordersBadge = badgeLabel(unreadResponses + unreadOrderEvents);
   const findBadge = badgeLabel(unreadFeed);
+  // «Специалисты»: новый отзыв мне — он виден в «Я специалист» и в профиле
+  // (владелец, 2026-09-11: «получил отзыв и нигде не увидел»).
+  const { data: unreadReviews = 0 } = useUnreadReviewsCount(userId ?? undefined);
+  const specialistsBadge = badgeLabel(unreadReviews);
 
   const tc = useThemeColors(["error", "canvas", "hairline", "ink", "accent", "mute"]);
   // Бейдж всегда на цветном фоне → текст фиксировано белый в обоих режимах.
@@ -156,6 +163,9 @@ export default function TabsLayout() {
         <NativeTabs.Trigger name="specialists" listeners={scrollToTopOnReselect("specialists")}>
           <NativeTabs.Trigger.Icon sf={{ default: "person.2", selected: "person.2.fill" }} />
           <NativeTabs.Trigger.Label>Специалисты</NativeTabs.Trigger.Label>
+          {specialistsBadge ? (
+            <NativeTabs.Trigger.Badge>{specialistsBadge}</NativeTabs.Trigger.Badge>
+          ) : null}
         </NativeTabs.Trigger>
 
         {/* Профиль — через аватар в правом верхнем углу главной. Скрытые

@@ -24,6 +24,7 @@ import { InsetGroup, InsetRow } from "@/components/ui";
 import { useUserRecord } from "@/features/auth/use-user-record";
 import { useMyMasterCategories } from "@/features/master-categories/use-my-categories";
 import { useMasterServiceAreas } from "@/features/master-profile/use-service-areas";
+import { useUnreadReviewsCount } from "@/features/notifications/use-notifications";
 import { useMasterPortfolio } from "@/features/profile/use-my-portfolio";
 import { useMySpecialistProfile, useSetShownInCatalog } from "@/features/specialist/use-specialist";
 import { useMyVerification, VERIFICATION_LABEL } from "@/features/specialist/use-verification";
@@ -120,6 +121,10 @@ export function SpecialistHubBody({ userId }: { userId: string }) {
   const rating = m?.rating_overall_count
     ? `${Number(m.rating_overall_avg ?? 0).toFixed(1)} · ${m.rating_overall_count}`
     : "Пока нет";
+  // Новый отзыв виден здесь, пока человек не открыл свой профиль.
+  const unreadReviews = useUnreadReviewsCount(userId).data ?? 0;
+  const reviewsValue =
+    unreadReviews === 0 ? rating : unreadReviews === 1 ? "Новый отзыв" : `Новых: ${unreadReviews}`;
 
   return (
     <>
@@ -205,7 +210,7 @@ export function SpecialistHubBody({ userId }: { userId: string }) {
       <InsetGroup title="Клиенты">
         <InsetRow
           title="Отзывы"
-          value={rating}
+          value={reviewsValue}
           icon={<Star size={18} weight="bold" color={tc.ink} />}
           navigates
           onPress={() => router.push(`/master/${userId}` as never)}

@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Задание в xtrud</title>
+  <meta name="robots" content="noindex,nofollow">
+  <meta name="description" content="Задание в приложении xtrud для iPhone.">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="xtrud">
+  <meta property="og:title" content="Задание в xtrud">
+  <meta property="og:description" content="Откройте задание в приложении xtrud для iPhone.">
+  <meta name="apple-itunes-app" content="app-id=6776783761">
+  <link rel="stylesheet" href="/legal.css">
+  <style>
+    .actions{display:flex;flex-direction:column;gap:12px;margin:28px 0 0}
+    .button{display:flex;align-items:center;justify-content:center;min-height:50px;padding:0 18px;border-radius:12px;font-size:17px;font-weight:600;text-decoration:none}
+    .button[hidden]{display:none}
+    .button.primary{background:var(--ink);color:var(--canvas)}
+    .button.secondary{border:1px solid var(--line);background:var(--soft);color:var(--ink)}
+  </style>
+</head>
+<body><main>
+  <!-- Сюда попадают по ссылке «Поделиться заданием» те, у кого приложения
+       нет: с приложением iOS открывает задание прямо в нём (universal link,
+       /.well-known/apple-app-site-association). nginx отдаёт эту страницу на
+       любой адрес /orders/<id>. -->
+  <nav><a href="/">xtrud</a><a href="/support/">Поддержка</a></nav>
+  <h1>Задание в xtrud</h1>
+  <p>Это задание открывается в приложении xtrud для iPhone. Установите приложение и снова нажмите на ссылку — задание откроется сразу.</p>
+  <div class="actions">
+    <a class="button primary" href="https://apps.apple.com/app/id6776783761">Скачать в App Store</a>
+    <a class="button secondary" id="open" href="xtrud://" hidden>Открыть задание в приложении</a>
+  </div>
+  <p class="meta" style="margin-top:24px">Приложения для Android пока нет.</p>
+  <footer>© 2026 xtrud</footer>
+</main>
+<script>
+  // Номер задания берём из адреса /orders/<id>. Подставляем только uuid —
+  // иначе кнопку «Открыть» не показываем.
+  (function () {
+    var match = location.pathname.match(/^\/orders\/([0-9a-fA-F-]{36})\/?$/);
+    var open = document.getElementById("open");
+    if (match && open) {
+      open.href = "xtrud://orders/" + match[1];
+      open.hidden = false;
+    }
+  })();
+</script>
+</body></html>

@@ -5,6 +5,7 @@ import {
   CheckCircle,
   Clock,
   DotsThree,
+  Export,
   MapPin,
   PaperPlaneTilt,
   Phone,
@@ -23,6 +24,7 @@ import {
   Platform,
   Pressable,
   ScrollView,
+  Share,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -40,6 +42,7 @@ import { useMasterPhone, useMasterPublicProfile } from "@/features/master-view/u
 import { useCloseReasonPickerStore } from "@/features/orders/close-reason-picker-store";
 import { OrderPhotoCarousel } from "@/features/orders/OrderPhotoCarousel";
 import { formatOrderTiming, formatPrice } from "@/features/orders/order-schema";
+import { orderShareMessage } from "@/features/orders/order-share";
 import { type CancelReason, useCancelOrder } from "@/features/orders/use-cancel-order";
 import { useDeleteOrder } from "@/features/orders/use-delete-order";
 import { type OrderDetail, useOrderDetail } from "@/features/orders/use-order-detail";
@@ -264,6 +267,17 @@ export default function OrderDetailScreen() {
       },
     );
   };
+  // «Поделиться» — системное меню iOS: WhatsApp, Telegram, «Скопировать» —
+  // всё, что стоит у человека (владелец, 2026-09-11). Только открытое
+  // задание: закрытое чужим людям база не отдаёт, друг увидел бы пустоту.
+  const canShare = !!order && !!id && order.status === "open";
+  const shareOrder = () => {
+    if (!order || !id) return;
+    Share.share({ message: orderShareMessage(order.title, id) }).catch(() => {
+      // Меню закрыли или системе не удалось — делать нечего.
+    });
+  };
+
   // Деструктивные помечены destructiveButtonIndex — систему красит сама.
   const openActionMenu = () => {
     if (!order) return;
@@ -348,6 +362,11 @@ export default function OrderDetailScreen() {
               }
             : undefined
         }
+        secondaryIconAction={
+          canShare
+            ? { Icon: Export, onPress: shareOrder, accessibilityLabel: "Поделиться заданием" }
+            : undefined
+        }
       />
 
       {/* Цельный скелет заказа вместо голого спиннера (равномерная загрузка,
@@ -402,6 +421,29 @@ export default function OrderDetailScreen() {
           </Pressable>
         </View>
       )}
+
+      {/* Задания нет: закрыли, удалили или скрыли. Раньше экран оставался
+          пустым — теперь сюда чаще приходят по ссылке от друга. */}
+      {!isLoading && !error && !order ? (
+        <View className="mt-8 px-6">
+          <AppText weight="semibold" className="text-ios-title2 text-ink">
+            Задание недоступно
+          </AppText>
+          <AppText className="mt-1.5 text-ios-subheadline text-mute">
+            Его закрыли или удалили. Посмотрите другие задания.
+          </AppText>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="К заданиям"
+            onPress={() => router.replace("/(tabs)/find" as never)}
+            className="mt-4 min-h-11 self-start items-center justify-center rounded-md border border-hairline bg-canvas px-4 active:bg-canvas-soft"
+          >
+            <AppText weight="semibold" className="text-button-sm text-ink">
+              К заданиям
+            </AppText>
+          </Pressable>
+        </View>
+      ) : null}
 
       {order && (
         <ScrollView

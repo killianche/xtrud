@@ -8,6 +8,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import type { Tables } from "@/types/database";
+import { notificationTargetFromData } from "./notification-target";
 
 export type AppNotification = Tables<"notifications">;
 
@@ -60,7 +61,13 @@ export function useUnreadNotificationsCount(userId: string | undefined) {
  * заказ, отозван отклик, ожидание подтверждения и т.п. Не считаем
  * `new_response` (он уже в счётчике откликов) и рассылку новых заданий
  * (`data.kind = new_order`, это бейдж «Найти задание») и решения по паспорту
- * (`verification_*` — видны на экране уведомлений, к заказам не относятся). Тип события лежит в
+ * (`verification_*` — видны на экране уведомлений, к заказам не относятся),
+ * и отзывы (`review_received` — бейдж «Специалистов»).
+ *
+ * `kind` есть только у рассылки новых заданий. Условие «kind ≠ new_order»
+ * в SQL отбрасывает строки, где kind нет вовсе, — так бейдж с 2026-09-07 не
+ * считал ни одного события (FACT 2026-09-11: 4 непрочитанных, счётчик 0).
+ * Поэтому «kind пуст или не new_order». Тип события лежит в
  * `data.type` — колонка `type` для неизвестных значений становится `system`
  * (FACT: `notify_user` в базе, 2026-09-07).
  */
@@ -78,7 +85,8 @@ export function useUnreadOrderEventsCount(userId: string | undefined) {
         .eq("user_id", userId)
         .is("read_at", null)
         .neq("data->>type", "new_response")
-        .not("data->>kind", "eq", "new_order")
+        .neq("type", "review_received")
+        .or("data->>kind.is.null,data->>kind.neq.new_order")
         .not("data->>type", "like", "verification_%");
       if (error) throw error;
       return count ?? 0;
@@ -101,7 +109,8 @@ export function useMarkOrderEventsRead(userId: string | undefined) {
         .eq("user_id", userId)
         .is("read_at", null)
         .neq("data->>type", "new_response")
-        .not("data->>kind", "eq", "new_order")
+        .neq("type", "review_received")
+        .or("data->>kind.is.null,data->>kind.neq.new_order")
         .not("data->>type", "like", "verification_%");
       if (error) throw error;
     },
@@ -128,16 +137,65 @@ export function useMarkNotificationsRead(userId: string | undefined) {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: unreadNotificationsKey(userId) });
+      qc.invalidateQueries({ queryKey: unreadReviewsKey(userId) });
       qc.invalidateQueries({ queryKey: notificationsKey(userId) });
     },
   });
 }
 
-/** Куда ведёт уведомление: задание, если оно указано в data. */
+/**
+ * Новые отзывы мне — бейдж «Специалистов» и строка «Отзывы» в «Я
+ * специалист» (владелец, 2026-09-11: «получил отзыв и нигде не увидел»).
+ * Гаснет, когда человек открыл свой профиль или экран «Уведомления».
+ */
+export const unreadReviewsKey = (userId: string | undefined) =>
+  ["notifications", "unread-reviews", userId] as const;
+
+export function useUnreadReviewsCount(userId: string | undefined) {
+  return useQuery<number>({
+    queryKey: unreadReviewsKey(userId),
+    queryFn: async () => {
+      if (!userId) return 0;
+      const { count, error } = await supabase
+        .from("notifications")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", userId)
+        .eq("type", "review_received")
+        .is("read_at", null);
+      if (error) throw error;
+      return count ?? 0;
+    },
+    enabled: !!userId,
+    staleTime: 15_000,
+    refetchOnWindowFocus: true,
+  });
+}
+
+/** Открыл свой профиль — новые отзывы увидены. */
+export function useMarkReviewsSeen(userId: string | undefined) {
+  const qc = useQueryClient();
+  return useMutation<void, Error, void>({
+    mutationFn: async () => {
+      if (!userId) return;
+      const { error } = await supabase
+        .from("notifications")
+        .update({ read_at: new Date().toISOString() })
+        .eq("user_id", userId)
+        .eq("type", "review_received")
+        .is("read_at", null);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: unreadReviewsKey(userId) });
+      qc.invalidateQueries({ queryKey: unreadNotificationsKey(userId) });
+      qc.invalidateQueries({ queryKey: notificationsKey(userId) });
+    },
+  });
+}
+
+/** Куда ведёт строка уведомления — то же правило, что у нажатия на push. */
 export function notificationTarget(n: AppNotification): string | null {
-  const data = (n.data ?? {}) as Record<string, unknown>;
-  const orderId = typeof data.order_id === "string" ? data.order_id : null;
-  return orderId ? `/orders/${orderId}` : null;
+  return notificationTargetFromData(n.data as Record<string, unknown> | null, n.user_id);
 }
 
 export function formatNotificationTime(iso: string): string {

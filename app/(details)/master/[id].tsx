@@ -46,6 +46,10 @@ import {
   useReviewsForTarget,
 } from "@/features/master-view/use-master-public";
 import { useRecordMasterView } from "@/features/master-view/use-record-view";
+import {
+  useMarkReviewsSeen,
+  useUnreadReviewsCount,
+} from "@/features/notifications/use-notifications";
 import { PortfolioLightbox } from "@/features/profile/PortfolioLightbox";
 import { useMasterPortfolio } from "@/features/profile/use-my-portfolio";
 import { ReportModal } from "@/features/reports/ReportModal";
@@ -98,6 +102,12 @@ export default function MasterPublicScreen() {
   useEffect(() => {
     if (masterId && !isOwn) void recordView(masterId, "profile_open");
   }, [masterId, isOwn, recordView]);
+  // Свой профиль открыт — новые отзывы увидены, бейдж «Специалистов» гаснет.
+  const unreadReviews = useUnreadReviewsCount(isOwn ? currentUserId : undefined).data ?? 0;
+  const markReviewsSeen = useMarkReviewsSeen(currentUserId).mutate;
+  useEffect(() => {
+    if (isOwn && unreadReviews > 0) markReviewsSeen();
+  }, [isOwn, unreadReviews, markReviewsSeen]);
 
   const [lightbox, setLightbox] = useState<number | null>(null);
   const [reportOpen, setReportOpen] = useState(false);

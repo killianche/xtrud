@@ -3,8 +3,8 @@
  * Supabase (docs/BACKEND_REWRITE_PLAN.md, этап 4: позже SSE /v2/events).
  *
  * Пока приложение активно, раз в 20 секунд обновляются уведомления, бейджи
- * откликов и ленты. Запросы — count под RLS, они уже есть у экранов.
- * Возврат в приложение обновляет всё сразу через focusManager
+ * откликов, отзывов и ленты. Запросы — count под RLS, они уже есть у
+ * экранов. Возврат в приложение обновляет всё сразу через focusManager
  * (app/_layout.tsx).
  */
 
@@ -15,6 +15,7 @@ import {
   notificationsKey,
   unreadNotificationsKey,
   unreadOrderEventsKey,
+  unreadReviewsKey,
 } from "@/features/notifications/use-notifications";
 import { unreadFeedKey, unreadResponsesKey } from "@/features/orders/unread-feed-helpers";
 import { myOrdersKey } from "@/features/orders/use-my-orders";
@@ -37,6 +38,7 @@ export function useRealtimeNotifications(opts: {
       qc.invalidateQueries({ queryKey: notificationsKey(userId) });
       qc.invalidateQueries({ queryKey: unreadNotificationsKey(userId) });
       qc.invalidateQueries({ queryKey: unreadOrderEventsKey(userId) });
+      qc.invalidateQueries({ queryKey: unreadReviewsKey(userId) });
       qc.invalidateQueries({ queryKey: unreadResponsesKey(userId) });
       qc.invalidateQueries({ queryKey: myOrdersKey(userId) });
       if (l2Ids.length > 0) qc.invalidateQueries({ queryKey: unreadFeedKey(userId, l2Ids) });

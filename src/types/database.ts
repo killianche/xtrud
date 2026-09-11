@@ -412,6 +412,7 @@ export type Database = {
           is_hidden_from_search: boolean
           languages: string[]
           legal_name: string | null
+          link_url: string | null
           ogrn: string | null
           ranking_score: number
           rating_overall_avg: number | null
@@ -444,6 +445,7 @@ export type Database = {
           is_hidden_from_search?: boolean
           languages?: string[]
           legal_name?: string | null
+          link_url?: string | null
           ogrn?: string | null
           ranking_score?: number
           rating_overall_avg?: number | null
@@ -476,6 +478,7 @@ export type Database = {
           is_hidden_from_search?: boolean
           languages?: string[]
           legal_name?: string | null
+          link_url?: string | null
           ogrn?: string | null
           ranking_score?: number
           rating_overall_avg?: number | null

@@ -29,6 +29,7 @@ export type SpecialistProfile = Pick<
   | "whatsapp_same_as_phone"
   | "rating_overall_avg"
   | "rating_overall_count"
+  | "link_url"
 >;
 
 /** Моя запись master_profiles; null — режим специалиста не включён. */
@@ -40,7 +41,7 @@ export function useMySpecialistProfile(userId: string | undefined) {
       const { data, error } = await supabase
         .from("master_profiles")
         .select(
-          "user_id, bio, experience_years, status, is_hidden_from_search, hidden_by_owner, whatsapp_phone, whatsapp_same_as_phone, rating_overall_avg, rating_overall_count",
+          "user_id, bio, experience_years, status, is_hidden_from_search, hidden_by_owner, whatsapp_phone, whatsapp_same_as_phone, rating_overall_avg, rating_overall_count, link_url",
         )
         .eq("user_id", userId)
         .maybeSingle();
@@ -94,9 +95,16 @@ export function useUpdateSpecialistContacts() {
   return useMutation<
     void,
     Error,
-    { userId: string; contactPhone: string; whatsappPhone: string; whatsappSameAsPhone: boolean }
+    {
+      userId: string;
+      contactPhone: string;
+      whatsappPhone: string;
+      whatsappSameAsPhone: boolean;
+      /** Соцсеть или сайт (0188); null — убрать. Не передано — не трогать. */
+      linkUrl?: string | null;
+    }
   >({
-    mutationFn: async ({ contactPhone, whatsappPhone, whatsappSameAsPhone }) => {
+    mutationFn: async ({ userId, contactPhone, whatsappPhone, whatsappSameAsPhone, linkUrl }) => {
       // Один вызов — оба поля в одной транзакции (0173).
       const { error } = await supabase.rpc("set_specialist_contacts", {
         p_phone: contactPhone,
@@ -104,6 +112,15 @@ export function useUpdateSpecialistContacts() {
         p_same: whatsappSameAsPhone,
       });
       if (error) throw error;
+      // Ссылка — отдельной колонкой, а не параметром функции выше: старые
+      // сборки зовут её с тремя параметрами и затирали бы ссылку (0188).
+      if (linkUrl !== undefined) {
+        const res = await supabase
+          .from("master_profiles")
+          .update({ link_url: linkUrl })
+          .eq("user_id", userId);
+        if (res.error) throw res.error;
+      }
     },
     onSuccess: (_d, { userId }) => invalidate(userId),
   });

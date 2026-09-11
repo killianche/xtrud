@@ -12,7 +12,7 @@
  */
 
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { DotsThree, Image as ImageIcon, Star } from "phosphor-react-native";
+import { DotsThree, Image as ImageIcon, LinkSimple, Star } from "phosphor-react-native";
 import { useEffect, useMemo, useState } from "react";
 import { ActionSheetIOS, Alert, Animated, Image, Pressable, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -55,6 +55,7 @@ import { useMasterPortfolio } from "@/features/profile/use-my-portfolio";
 import { ReportModal } from "@/features/reports/ReportModal";
 import { useMyRecentReviewForMaster } from "@/features/reviews/use-reviews";
 import { availabilityTitle } from "@/features/specialist/AvailabilityRows";
+import { linkLabel } from "@/features/specialist/link-url";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { getCategoryIcon } from "@/lib/category-icons";
 import { confirmAsync } from "@/lib/confirm";
@@ -328,6 +329,20 @@ export default function MasterPublicScreen() {
                   ) : null}
                 </View>
               </View>
+            ) : null}
+
+            {/* Ссылка на соцсеть или сайт (0188). Показываем адрес целиком
+                без схемы: чужая ссылка должна быть видна до нажатия. */}
+            {m?.link_url ? (
+              <InsetGroup title="Ссылка">
+                <InsetRow
+                  title={linkLabel(m.link_url)}
+                  icon={<LinkSimple size={18} weight="bold" color={tc.ink} />}
+                  navigates
+                  onPress={() => openExternalUrl(m.link_url as string)}
+                  last
+                />
+              </InsetGroup>
             ) : null}
 
             {/* Фото работ */}

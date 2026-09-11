@@ -9,6 +9,7 @@ import { useEffect, useState } from "react";
 import { FormScreen, InsetGroup, InsetRow } from "@/components/ui";
 import { useAuthSession } from "@/features/auth/use-auth-session";
 import { useUserRecord } from "@/features/auth/use-user-record";
+import { normalizeLinkUrl } from "@/features/specialist/link-url";
 import {
   useMySpecialistProfile,
   useUpdateSpecialistContacts,
@@ -33,10 +34,13 @@ export default function SpecialistContactsScreen() {
   // в пустоту (владелец, 2026-09-09). Интерфейс не должен утверждать того, что
   // никто не подтверждал (design-quality §5).
   const [same, setSame] = useState(false);
+  // Соцсеть или сайт с работами (0188), по желанию.
+  const [link, setLink] = useState("");
   useEffect(() => {
     if (phone === null && user && profile.data !== undefined) {
       setPhone(user.contact_phone ?? "");
       setWa(profile.data?.whatsapp_phone ?? "");
+      setLink(profile.data?.link_url ?? "");
       // Восстанавливаем сохранённый ответ, а не выводим его из отсутствия
       // отдельного номера: раньше выключенный переключатель возвращался
       // включённым.
@@ -44,19 +48,32 @@ export default function SpecialistContactsScreen() {
     }
   }, [user, profile.data, phone]);
 
+  const linkUrl = normalizeLinkUrl(link);
   const valid =
-    phone !== null && phone.trim().length > 0 && isPhoneAcceptable(phone) && isPhoneAcceptable(wa);
+    phone !== null &&
+    phone.trim().length > 0 &&
+    isPhoneAcceptable(phone) &&
+    isPhoneAcceptable(wa) &&
+    linkUrl !== undefined;
   // Уйти с несохранёнными правками можно только осознанно (QA).
   const allowLeave = useUnsavedChangesGuard({
     hasUnsavedChanges:
       phone !== null &&
-      (phone !== (user?.contact_phone ?? "") || wa !== (profile.data?.whatsapp_phone ?? "")),
+      (phone !== (user?.contact_phone ?? "") ||
+        wa !== (profile.data?.whatsapp_phone ?? "") ||
+        link !== (profile.data?.link_url ?? "")),
     isBusy: update.isPending,
   });
   const save = () => {
-    if (!userId || phone === null) return;
+    if (!userId || phone === null || linkUrl === undefined) return;
     update.mutate(
-      { userId, contactPhone: phone, whatsappPhone: same ? "" : wa, whatsappSameAsPhone: same },
+      {
+        userId,
+        contactPhone: phone,
+        whatsappPhone: same ? "" : wa,
+        whatsappSameAsPhone: same,
+        linkUrl,
+      },
       {
         onSuccess: () => {
           allowLeave();
@@ -108,6 +125,19 @@ export default function SpecialistContactsScreen() {
           accessibilityLabel="Номер WhatsApp"
         />
       )}
+      <ComposerField
+        label="Ссылка"
+        value={link}
+        onChangeText={setLink}
+        placeholder="instagram.com/ваш_профиль"
+        keyboardType="url"
+        textContentType="URL"
+        autoCapitalize="none"
+        autoCorrect={false}
+        error={linkUrl === undefined ? "Проверьте ссылку: например, instagram.com/имя" : null}
+        hint="Соцсеть или сайт с вашими работами — по желанию."
+        accessibilityLabel="Ссылка на соцсеть или сайт"
+      />
     </FormScreen>
   );
 }

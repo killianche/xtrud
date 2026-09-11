@@ -46,6 +46,7 @@ export type MasterPublicProfile = {
     | "whatsapp_phone"
     | "whatsapp_same_as_phone"
     | "verification_level"
+    | "link_url"
   > | null;
 };
 
@@ -67,7 +68,7 @@ export function useMasterPublicProfile(masterId: string | null | undefined) {
       const { data, error } = await supabase
         .from("users")
         .select(
-          "id, first_name, last_name, avatar_url, city_id, district, is_master, status, master:master_profiles!master_profiles_user_id_fkey(bio, experience_years, rating_overall_avg, rating_overall_count, closed_deals, languages, status, account_type, team_size, availability_status, availability_until, whatsapp_phone, whatsapp_same_as_phone, verification_level)",
+          "id, first_name, last_name, avatar_url, city_id, district, is_master, status, master:master_profiles!master_profiles_user_id_fkey(bio, experience_years, rating_overall_avg, rating_overall_count, closed_deals, languages, status, account_type, team_size, availability_status, availability_until, whatsapp_phone, whatsapp_same_as_phone, verification_level, link_url)",
         )
         .eq("id", masterId)
         .maybeSingle();

@@ -32,15 +32,35 @@ function fixture(privacy, reset = resetPage()) {
 }
 
 const validPrivacy = [
-  "электронная почта",
   "номер мобильного телефона",
-  "сброс пароля по электронной почте",
+  "Восстановление доступа — через поддержку",
   "Встроенного чата",
   "/account-deletion/",
 ].join(" ");
 
 test("accepts a complete current legal artifact", () => {
   assert.deepEqual(validatePublicLegalRoot(fixture(validPrivacy)), []);
+});
+
+// Сброса пароля по почте нет с 2026-09-03 (восстановление — через
+// поддержку), Supabase и сторонние CDN из цепочки убраны: политика не должна
+// обещать того, чего нет.
+for (const obsolete of [
+  "сброс пароля по электронной почте",
+  "Провайдер транзакционной почты",
+  "images.weserv.nl",
+  "Supabase",
+]) {
+  test(`rejects obsolete privacy copy: ${obsolete}`, () => {
+    const errors = validatePublicLegalRoot(fixture(`${validPrivacy} ${obsolete}`));
+    assert.ok(errors.some((error) => error.includes("obsolete marker")));
+  });
+}
+
+test("the shipped privacy page passes the gate", () => {
+  const html = readFileSync(join(projectRoot, "public/privacy/index.html"), "utf8");
+  const root = fixture(html);
+  assert.deepEqual(validatePublicLegalRoot(root), []);
 });
 
 test("rejects obsolete SMS-only privacy copy", () => {

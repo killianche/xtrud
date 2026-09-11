@@ -27,10 +27,13 @@ const requiredFiles = [
   "account-deletion/index.html",
   resetPasswordPage,
 ];
+// Контракт изменён осознанно (2026-09-11): вход — по телефону и паролю,
+// восстановление — через поддержку (DECISION 2026-09-03), сброса по почте
+// нет; Supabase и сторонние CDN из цепочки убраны. Политика должна говорить
+// то же, что делает приложение (app/legal/privacy.tsx).
 const requiredPrivacyMarkers = [
-  "электронная почта",
   "номер мобильного телефона",
-  "сброс пароля по электронной почте",
+  "Восстановление доступа — через поддержку",
   "Встроенного чата",
   "/account-deletion/",
 ];
@@ -39,6 +42,10 @@ const forbiddenPrivacyMarkers = [
   "единственный способ авторизации",
   "Email мы не запрашиваем",
   "Геолокация устройства",
+  "сброс пароля по электронной почте",
+  "Провайдер транзакционной почты",
+  "images.weserv.nl",
+  "Supabase",
 ];
 // Nothing on the reset page may accept a password or talk to a backend.
 const forbiddenResetMarkers = [

@@ -8,8 +8,8 @@
  * (текст стоит по центру — см. tailwind field-*).
  */
 
-import { forwardRef, useState } from "react";
-import { TextInput, type TextInputProps, View } from "react-native";
+import { forwardRef, useImperativeHandle, useRef, useState } from "react";
+import { Pressable, TextInput, type TextInputProps, View } from "react-native";
 import { AppText } from "@/components/AppText";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useThemeColors } from "@/lib/use-theme-color";
@@ -54,28 +54,36 @@ export const ComposerField = forwardRef<TextInput, ComposerFieldProps>(function 
   const [focused, setFocused] = useState(false);
   const showError = touched && !focused && !!error;
   const fontSize = size === "title" ? 24 : 18;
+  // Свой ref — чтобы нажатие в любое место плитки ставило курсор; наружу
+  // отдаём то же поле, как раньше.
+  const inputRef = useRef<TextInput>(null);
+  useImperativeHandle(ref, () => inputRef.current as TextInput, []);
 
   return (
     <View className="mb-5 px-4">
       {label ? (
         <AppText className="mb-1.5 ml-4 text-ios-footnote uppercase text-mute">{label}</AppText>
       ) : null}
-      <View
+      {/* Рамка видна сразу, а не только в фокусе (владелец, 2026-09-11): в
+          тёмной теме плитка bg-canvas совпадала с фоном экрана, и поле было
+          невидимым, пока не нажмёшь. Как у Input (DESIGN.md): 1.5
+          hairline-strong, в фокусе — accent. Вся плитка — одна цель
+          нажатия: тап в отступ вокруг текста тоже ставит курсор. */}
+      <Pressable
+        accessible={false}
+        onPress={() => inputRef.current?.focus()}
         className={`flex-row items-center rounded-2xl bg-canvas px-4 ${
-          showError
-            ? "border border-error"
-            : focused
-              ? "border border-accent"
-              : "border border-transparent"
+          showError ? "border-error" : focused ? "border-accent" : "border-hairline-strong"
         }`}
-        style={
+        style={[
+          { borderWidth: 1.5 },
           multiline
             ? { minHeight: 132, alignItems: "flex-start", paddingVertical: 12 }
-            : { minHeight: 56 }
-        }
+            : { minHeight: 56 },
+        ]}
       >
         <TextInput
-          ref={ref}
+          ref={inputRef}
           value={value}
           onChangeText={onChangeText}
           placeholder={placeholder}
@@ -115,7 +123,7 @@ export const ComposerField = forwardRef<TextInput, ComposerFieldProps>(function 
             {suffix}
           </AppText>
         ) : null}
-      </View>
+      </Pressable>
       {showError ? (
         <AppText accessibilityRole="alert" className="mt-1.5 ml-4 text-ios-footnote text-error">
           {error}

@@ -14,7 +14,13 @@ import { GlassButton } from "@/components/ui";
 import { signOut } from "@/lib/auth";
 import { useThemeColors } from "@/lib/use-theme-color";
 
-export const SUPPORT_URL = "https://t.me/xtrud_support";
+/**
+ * Поддержка — WhatsApp (DECISION владельца 2026-09-11). До этого стоял
+ * `t.me/xtrud_support`, которого не существует: тестировщик нажимал
+ * «написать в поддержку» и получал от Telegram «такого пользователя нет».
+ * Один адрес на всё приложение — менять в одном месте.
+ */
+export const SUPPORT_URL = "https://wa.me/79289204029";
 
 export function BannedScreen() {
   const insets = useSafeAreaInsets();

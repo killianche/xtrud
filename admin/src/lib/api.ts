@@ -327,6 +327,13 @@ export const api = {
       p_new_password: password,
       p_reason: reason,
     }),
+  /** Смена номера входа — вернуть аккаунт человеку, потерявшему симкарту (0190). */
+  setPhone: (userId: string, phone: string, reason: string) =>
+    rpc<{ ok: boolean; phone: string; login_email: string }>("admin_set_user_phone", {
+      p_user_id: userId,
+      p_phone: phone,
+      p_reason: reason,
+    }),
   listReports: (status: string | null, limit = 50, offset = 0) =>
     rpc<ReportRow[]>("admin_list_reports", {
       p_status: status,

@@ -97,6 +97,92 @@ function PasswordForm({ userId, onDone }: { userId: string; onDone: () => void }
   );
 }
 
+/** Смена номера входа: человек потерял симкарту и войти не может — вход по
+ *  номеру. Прежние входы прекращаются, подтверждение личности снимается
+ *  (0182): номер подтверждал связь «этот человек — этот аккаунт». */
+function PhoneForm({
+  userId,
+  current,
+  onDone,
+}: {
+  userId: string;
+  current: string | null;
+  onDone: () => void;
+}) {
+  const [phone, setPhone] = useState("");
+  const [reason, setReason] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [done, setDone] = useState<string | null>(null);
+
+  const submit = async (event: FormEvent) => {
+    event.preventDefault();
+    if (busy) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await api.setPhone(userId, phone, reason);
+      setDone(res.phone);
+      setPhone("");
+      setReason("");
+      onDone();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Не удалось сменить номер.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <form onSubmit={submit} className="stack">
+      <p className="mono-eyebrow">Номер входа</p>
+      <p className="body-md text-mute">
+        Сейчас {formatPhone(current)}. Меняйте, только если человек потерял номер и подтвердил, что
+        аккаунт его. Прежние входы прекратятся, значок проверенного снимется, войти нужно будет по
+        новому номеру.
+      </p>
+      <Field label="Новый номер" hint="С кодом страны, например +7 928 000-00-00">
+        <input
+          className="input"
+          type="tel"
+          value={phone}
+          onChange={(e) => setPhone(e.target.value)}
+          disabled={busy}
+          required
+        />
+      </Field>
+      <Field
+        label="Причина"
+        hint="Например: обращение в поддержку, подтвердил имя, город и задания"
+      >
+        <input
+          className="input"
+          type="text"
+          value={reason}
+          onChange={(e) => setReason(e.target.value)}
+          disabled={busy}
+          required
+          minLength={3}
+        />
+      </Field>
+      {error ? (
+        <div className="banner-error body-md" role="alert">
+          {error}
+        </div>
+      ) : null}
+      {done ? (
+        <div className="banner-ok body-md" role="status">
+          Номер изменён на {formatPhone(done)}. Если пароль человек не помнит — задайте временный
+          рядом.
+        </div>
+      ) : null}
+      <button type="submit" className="btn btn-primary" disabled={busy}>
+        {busy ? "Меняем…" : "Сменить номер"}
+      </button>
+    </form>
+  );
+}
+
 /** Санкции. Снятие — такое же простое действие, как наказание: иначе
  *  ошибочная блокировка живёт вечно. Причина обязательна во всех случаях. */
 function Sanctions({
@@ -271,6 +357,9 @@ export function UserCard({ userId, onBack }: { userId: string; onBack: () => voi
         <div className="stack">
           <div className="card">
             <PasswordForm userId={user.id} onDone={load} />
+          </div>
+          <div className="card">
+            <PhoneForm userId={user.id} current={user.phone} onDone={load} />
           </div>
           <div className="card">
             <Sanctions

@@ -44,6 +44,7 @@ export const RPC_ALLOWLIST = new Set([
   "admin_set_user_status",
   "admin_warn_user",
   "admin_set_user_password",
+  "admin_set_user_phone",
   "admin_list_actions",
   "admin_list_verifications",
   "admin_review_verification",

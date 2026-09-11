@@ -100,7 +100,7 @@ export default function PrivacyScreen() {
       effectiveAt="11 сентября 2026 г."
       intro="Мы уважаем вашу приватность. Этот документ объясняет, какие данные собирает Сервис «xtrud», для чего и какие у вас есть права."
       sections={SECTIONS}
-      contactLine="По вопросам обработки персональных данных — Telegram @xtrud_support."
+      contactLine="По вопросам обработки персональных данных — WhatsApp +7 928 920-40-29."
     />
   );
 }

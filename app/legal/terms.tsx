@@ -102,7 +102,7 @@ export default function TermsScreen() {
       effectiveAt="19 мая 2026 г."
       intro="Эти Условия описывают, как устроена работа в Сервисе «xtrud», какие правила действуют для клиентов и мастеров и какие у каждой стороны есть обязанности."
       sections={SECTIONS}
-      contactLine="По вопросам, связанным с этими Условиями — Telegram @xtrud_support."
+      contactLine="По вопросам, связанным с этими Условиями — WhatsApp +7 928 920-40-29."
     />
   );
 }

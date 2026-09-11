@@ -48,9 +48,10 @@ import { openExternalUrl } from "@/lib/open-link";
 import { useSafeBack } from "@/lib/use-safe-back";
 import { useThemeColors } from "@/lib/use-theme-color";
 
-// Saller Email НЕ публикуем — мы принципиально не используем email
-// для связи с пользователями (правило проекта, см. CLAUDE.md).
-const SUPPORT_TELEGRAM = "https://t.me/xtrud_support";
+// Почту не публикуем — для связи с пользователями её не используем
+// (правило проекта, см. CLAUDE.md). Поддержка — WhatsApp (владелец,
+// 2026-09-11): телеграм-адреса @xtrud_support не существует.
+const SUPPORT_WHATSAPP = "https://wa.me/79289204029";
 
 export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
@@ -136,7 +137,7 @@ export default function SettingsScreen() {
         <Section icon={Headset} title="Поддержка">
           <ActionRow
             label="Написать в Telegram"
-            onPress={() => openExternalUrl(SUPPORT_TELEGRAM)}
+            onPress={() => openExternalUrl(SUPPORT_WHATSAPP)}
           />
         </Section>
 

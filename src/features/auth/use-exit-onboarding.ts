@@ -31,7 +31,10 @@ export function useExitOnboarding() {
 
   const exit = async () => {
     if (isExiting) return;
-    const existingClient = user?.onboarding_completed_at != null && !user.is_master;
+    // Уже зарегистрирован — прерываем настройку, а не выходим из аккаунта.
+    // Раньше условие включало «не специалист», но с 2026-09-11 специалист
+    // каждый (0186) — и зарегистрированного выкидывало бы из аккаунта.
+    const existingClient = user?.onboarding_completed_at != null;
     const confirmed = await confirmAsync({
       title: existingClient ? "Прервать настройку?" : "Выйти из регистрации?",
       message: existingClient

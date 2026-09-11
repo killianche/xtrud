@@ -13,10 +13,8 @@ import { initialWindowMetrics, SafeAreaProvider } from "react-native-safe-area-c
 import "react-native-reanimated";
 import { AppErrorBoundary } from "@/components/AppErrorBoundary";
 import { BannedScreen } from "@/features/auth/BannedScreen";
-import { needsMasterFinalization } from "@/features/auth/master-onboarding-recovery";
 import { isPublicDetailsRoute } from "@/features/auth/public-route-policy";
 import { useAuthSession } from "@/features/auth/use-auth-session";
-import { useMasterOnboardingStatus } from "@/features/auth/use-master-onboarding-status";
 import { useUserRecord } from "@/features/auth/use-user-record";
 import { useNotificationTapNavigation } from "@/features/notifications/use-notification-tap";
 import { useRegisterPushToken } from "@/features/notifications/use-register-push-token";
@@ -93,11 +91,6 @@ function AuthGate({ children }: { children: React.ReactNode }) {
   const { status, session } = useAuthSession();
   const userId = session?.user?.id;
   const { data: userRecord, isLoading: userLoading } = useUserRecord(userId);
-  const {
-    data: masterStatus,
-    isLoading: masterStatusLoading,
-    isError: masterStatusError,
-  } = useMasterOnboardingStatus(userId, userRecord?.is_master === true);
 
   useRegisterPushToken(userId ?? null);
   useNotificationTapNavigation(userId, status !== "loading");
@@ -140,7 +133,10 @@ function AuthGate({ children }: { children: React.ReactNode }) {
     }
 
     // ============ ЗАЛОГИНЕН ============
-    if (userLoading || (userRecord?.is_master && (masterStatusLoading || masterStatusError))) {
+    // Статус «мастер-онбординга» больше не ждём: принудительного
+    // дозаполнения нет с 2026-09-07, а с 2026-09-11 специалист каждый —
+    // сбой этого запроса оставлял бы любого человека на экране входа.
+    if (userLoading) {
       return;
     }
 
@@ -152,18 +148,9 @@ function AuthGate({ children }: { children: React.ReactNode }) {
     }
 
     const onboardingDone = userRecord.onboarding_completed_at !== null;
-    const mustFinishMasterOnboarding = needsMasterFinalization(userRecord.is_master, masterStatus);
     const performerOnboardingRequested = useAuthReturnUrlStore
       .getState()
       .isPerformerOnboardingRequested();
-
-    // Crash/network recovery: legacy RPC and profile publication are two
-    // commits. A durable draft/pending status keeps the user in the last step
-    // until retry completes instead of silently releasing a broken master.
-    // Профиль специалиста больше не «дозаполняется» принудительно: статус
-    // pending — это просто «ещё нет категории», хаб /profile/specialist сам
-    // подсказывает (DECISION владельца 2026-09-07). Ловушка убрана.
-    void mustFinishMasterOnboarding;
 
     // Залогинен в (auth) — отправляем туда куда положено.
     // Экран выбора роли /role удалён (2026-06-06): новый пользователь по
@@ -191,16 +178,7 @@ function AuthGate({ children }: { children: React.ReactNode }) {
       router.replace("/(onboarding)/client-name");
     }
     // Иначе — оставляем где есть.
-  }, [
-    status,
-    userLoading,
-    userRecord,
-    masterStatus,
-    masterStatusLoading,
-    masterStatusError,
-    segments,
-    router,
-  ]);
+  }, [status, userLoading, userRecord, segments, router]);
 
   const unauthenticatedPrivateDetails =
     status === "unauthenticated" && segments[0] === "(details)" && !isPublicDetailsRoute(segments);

@@ -7,10 +7,9 @@
  */
 
 import { useRouter } from "expo-router";
-import { CaretDown, SignIn, Wrench } from "phosphor-react-native";
+import { CaretDown, SignIn } from "phosphor-react-native";
 import { type RefObject, useEffect, useMemo, useRef, useState } from "react";
 import {
-  Alert,
   Animated,
   type FlatList,
   LayoutAnimation,
@@ -37,10 +36,6 @@ import { useCategoriesL1 } from "@/features/categories/use-categories-l1";
 import { useVisibleCategories } from "@/features/categories/use-visible-categories";
 import { useUnreadReviewsCount } from "@/features/notifications/use-notifications";
 import { SpecialistHubBody } from "@/features/specialist/SpecialistHubBody";
-import {
-  useEnableSpecialistMode,
-  useMySpecialistProfile,
-} from "@/features/specialist/use-specialist";
 import { getCategoryIcon } from "@/lib/category-icons";
 import { hapticSelection } from "@/lib/haptics";
 import { useTabBarSpace } from "@/lib/tab-bar-space";
@@ -66,15 +61,6 @@ export default function SpecialistsCategoriesScreen() {
   const userId = session?.user?.id;
   // Новый отзыв — счётчик на «Я специалист», как у бейджа вкладки.
   const unreadReviews = useUnreadReviewsCount(userId).data ?? 0;
-  const myProfile = useMySpecialistProfile(userId);
-  const enable = useEnableSpecialistMode();
-  const becomeSpecialist = () => {
-    if (!userId) return;
-    enable.mutate(
-      { userId },
-      { onError: () => Alert.alert("Не получилось", "Попробуйте ещё раз.") },
-    );
-  };
   // Раздел раскрывается по тапу — как DisclosureGroup в iOS (DECISION
   // владельца 2026-09-07: «крупные категории большими, мелкие скрыты и
   // раскрываются»). Поиск раскрывает совпавшие разделы сам.
@@ -137,15 +123,9 @@ export default function SpecialistsCategoriesScreen() {
               ctaLabel="Войти"
               onCtaPress={() => router.push("/(auth)/phone" as never)}
             />
-          ) : myProfile.isFetched && myProfile.data === null ? (
-            <EmptyState
-              icon={Wrench}
-              title="Станьте специалистом"
-              hint="Выберите категории, расскажите о себе и добавьте фото работ — и клиенты найдут вас во вкладке «Специалисты»."
-              ctaLabel={enable.isPending ? "Включаем…" : "Стать специалистом"}
-              onCtaPress={becomeSpecialist}
-            />
           ) : (
+            // Каждый аккаунт — специалист (DECISION 2026-09-11): экрана
+            // «Станьте специалистом» больше нет, настройки видны сразу.
             <SpecialistHubBody userId={userId} />
           )
         ) : null}

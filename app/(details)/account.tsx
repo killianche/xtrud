@@ -23,10 +23,6 @@ import { FormScreen, InsetGroup, InsetRow } from "@/components/ui";
 import { useAuthSession } from "@/features/auth/use-auth-session";
 import { useUserRecord } from "@/features/auth/use-user-record";
 import { AvailabilityRows } from "@/features/specialist/AvailabilityRows";
-import {
-  useEnableSpecialistMode,
-  useMySpecialistProfile,
-} from "@/features/specialist/use-specialist";
 import { signOut } from "@/lib/auth";
 import { confirmAsync } from "@/lib/confirm";
 import { useThemeColors } from "@/lib/use-theme-color";
@@ -36,24 +32,14 @@ export default function AccountScreen() {
   const { session } = useAuthSession();
   const userId = session?.user?.id;
   const { data: user } = useUserRecord(userId);
-  const specialist = useMySpecialistProfile(userId);
-  const enable = useEnableSpecialistMode();
   const tc = useThemeColors(["ink", "on-accent", "error"]);
 
   if (!userId) return <Redirect href="/(auth)/phone" />;
 
-  const isSpecialist = !!specialist.data;
+  // Каждый аккаунт — специалист (DECISION владельца 2026-09-11): «Стать
+  // специалистом» убрано, «Я специалист» есть у всех. Профиль создаётся при
+  // регистрации (0186), а если его нет — его тихо создаёт сам экран.
   const openSpecialist = () => router.push("/profile/specialist" as never);
-  const becomeSpecialist = () => {
-    if (!userId) return;
-    enable.mutate(
-      { userId },
-      {
-        onSuccess: openSpecialist,
-        onError: () => Alert.alert("Не получилось", "Попробуйте ещё раз."),
-      },
-    );
-  };
   const logout = async () => {
     const ok = await confirmAsync({
       title: "Выйти из аккаунта?",
@@ -78,39 +64,19 @@ export default function AccountScreen() {
         </View>
       </View>
 
-      <InsetGroup
-        title="Специалист"
-        footer={
-          isSpecialist
-            ? undefined
-            : "Категории, о себе, фото работ и контакты — клиенты найдут вас в каталоге."
-        }
-      >
-        {isSpecialist ? (
-          <InsetRow
-            title="Я специалист"
-            subtitle="Категории, о себе, фото работ, контакты"
-            icon={<Wrench size={18} weight="bold" color={tc["on-accent"]} />}
-            iconAccent
-            navigates
-            onPress={openSpecialist}
-            last
-          />
-        ) : (
-          <InsetRow
-            title="Стать специалистом"
-            subtitle="Получать задания и клиентов"
-            icon={<Wrench size={18} weight="bold" color={tc["on-accent"]} />}
-            iconAccent
-            navigates
-            onPress={becomeSpecialist}
-            disabled={enable.isPending}
-            last
-          />
-        )}
+      <InsetGroup title="Специалист">
+        <InsetRow
+          title="Я специалист"
+          subtitle="Категории, о себе, фото работ, контакты"
+          icon={<Wrench size={18} weight="bold" color={tc["on-accent"]} />}
+          iconAccent
+          navigates
+          onPress={openSpecialist}
+          last
+        />
       </InsetGroup>
 
-      {isSpecialist && userId ? <AvailabilityRows userId={userId} /> : null}
+      <AvailabilityRows userId={userId} />
 
       {user?.is_admin ? (
         <InsetGroup
@@ -147,9 +113,7 @@ export default function AccountScreen() {
           subtitle="Как меня видят другие"
           icon={<UserCircle size={18} weight="bold" color={tc.ink} />}
           navigates
-          onPress={() =>
-            router.push((isSpecialist ? `/master/${userId}` : "/(tabs)/profile") as never)
-          }
+          onPress={() => router.push(`/master/${userId}` as never)}
         />
         <InsetRow
           title="Настройки"

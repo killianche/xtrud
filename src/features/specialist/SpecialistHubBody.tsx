@@ -17,6 +17,7 @@ import {
   Tag,
   UserCircle,
 } from "phosphor-react-native";
+import { useEffect, useRef } from "react";
 import { View } from "react-native";
 import { AppText } from "@/components/AppText";
 import { Avatar } from "@/components/Avatar";
@@ -26,7 +27,11 @@ import { useMyMasterCategories } from "@/features/master-categories/use-my-categ
 import { useMasterServiceAreas } from "@/features/master-profile/use-service-areas";
 import { useUnreadReviewsCount } from "@/features/notifications/use-notifications";
 import { useMasterPortfolio } from "@/features/profile/use-my-portfolio";
-import { useMySpecialistProfile, useSetShownInCatalog } from "@/features/specialist/use-specialist";
+import {
+  useEnableSpecialistMode,
+  useMySpecialistProfile,
+  useSetShownInCatalog,
+} from "@/features/specialist/use-specialist";
 import { useMyVerification, VERIFICATION_LABEL } from "@/features/specialist/use-verification";
 import { DISTRICTS, getCityName } from "@/lib/location-config";
 import { useThemeColors } from "@/lib/use-theme-color";
@@ -41,6 +46,17 @@ export function SpecialistHubBody({ userId }: { userId: string }) {
   const portfolio = useMasterPortfolio(userId ?? null);
   const areas = useMasterServiceAreas(userId ?? null);
   const tc = useThemeColors(["ink", "accent", "on-accent", "success", "warning", "error"]);
+
+  // Каждый аккаунт — специалист (DECISION владельца 2026-09-11). Профиль
+  // создаётся при регистрации (0186); если его всё же нет — сбой или старая
+  // запись, — создаём тихо и один раз, без кнопки «Стать специалистом».
+  const ensureProfile = useEnableSpecialistMode().mutate;
+  const ensured = useRef(false);
+  useEffect(() => {
+    if (ensured.current || !profile.isFetched || profile.data !== null) return;
+    ensured.current = true;
+    ensureProfile({ userId });
+  }, [profile.isFetched, profile.data, ensureProfile, userId]);
 
   const m = profile.data;
   const categoryNames = (categories.data ?? [])

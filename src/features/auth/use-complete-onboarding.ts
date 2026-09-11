@@ -37,13 +37,15 @@ export function useCompleteOnboarding() {
 
   return useMutation({
     mutationFn: async ({ userId, role, firstName }: CompleteOnboardingInput) => {
+      // is_master здесь не пишем: каждый аккаунт — специалист с момента
+      // регистрации (DECISION владельца 2026-09-11, 0186). Экран имени
+      // передаёт role 'client', и прежний `is_master: role === "master"`
+      // снимал бы статус у каждого нового человека.
       const updates: {
-        is_master: boolean;
         active_role: OnboardingRole;
         onboarding_completed_at: string;
         first_name?: string;
       } = {
-        is_master: role === "master",
         active_role: role,
         onboarding_completed_at: new Date().toISOString(),
       };

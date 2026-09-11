@@ -5,6 +5,9 @@ import { Tokens } from "./auth/jwt.js";
 import { registerAuthRoutes } from "./auth/routes.js";
 import { apnsConfigured, loadConfig, s3Configured } from "./config.js";
 import { Db } from "./db.js";
+import { EventHub } from "./events/hub.js";
+import { startEventListener } from "./events/listener.js";
+import { registerEventRoutes } from "./events/routes.js";
 import { registerFilesRoutes } from "./files/routes.js";
 import { S3Storage } from "./files/s3.js";
 import { ApnsClient } from "./push/apns.js";
@@ -62,6 +65,11 @@ app.addContentTypeParser("application/json", { parseAs: "string" }, (_req, body,
 });
 app.addContentTypeParser("*", { parseAs: "buffer" }, (_req, body, done) => done(null, body));
 
+// Живые обновления: база сообщает о новом уведомлении (0189), сервер —
+// открытым потокам этого человека (GET /v2/events).
+const hub = new EventHub();
+startEventListener(cfg.DATABASE_URL, hub, app.log);
+
 app.get("/v2/health", async () => {
   const r = await db.pool.query("SELECT now() AS now");
   return {
@@ -80,6 +88,7 @@ await app.register(
       registerAuthRoutes(authScope, db, tokens, cfg);
     });
     registerRpcRoutes(scope, db, tokens);
+    registerEventRoutes(scope, tokens, hub);
     if (cfg.NOTIFY_SECRET !== undefined) {
       registerPushRoutes(scope, db, apns, cfg.NOTIFY_SECRET);
     }

@@ -100,6 +100,11 @@ export function createXtrudClient(opts: XtrudClientOptions) {
     async getSession(): Promise<{ data: { session: Session | null }; error: null }> {
       return { data: { session: await sessions.get() }, error: null };
     },
+    /** Действующий access-токен (обновляется, если истекает) — для потока
+     *  живых обновлений /v2/events, который идёт мимо call(). */
+    async accessToken(): Promise<string | null> {
+      return sessions.accessToken();
+    },
     onAuthStateChange(cb: (event: AuthEvent, session: Session | null) => void) {
       const unsubscribe = sessions.onChange(cb);
       void sessions.ready();

@@ -145,16 +145,20 @@ export default function TabsLayout() {
         </NativeTabs.Trigger>
 
         {/* Видна всем: откликнуться может любой аккаунт. */}
+        {/* Подписи короткие: на iOS 26 выбранная вкладка разворачивается
+            в «пилюлю» и отнимает ширину у соседей — «Мои задания» и
+            «Найти задание» обрезались многоточием (владелец,
+            2026-09-12). Короткое слово помещается при любой раскладке. */}
         <NativeTabs.Trigger name="orders" listeners={scrollToTopOnReselect("orders")}>
           <NativeTabs.Trigger.Icon
             sf={{ default: "checkmark.circle", selected: "checkmark.circle.fill" }}
           />
-          <NativeTabs.Trigger.Label>Мои задания</NativeTabs.Trigger.Label>
+          <NativeTabs.Trigger.Label>Задания</NativeTabs.Trigger.Label>
           {ordersBadge ? <NativeTabs.Trigger.Badge>{ordersBadge}</NativeTabs.Trigger.Badge> : null}
         </NativeTabs.Trigger>
         <NativeTabs.Trigger name="find" listeners={scrollToTopOnReselect("find")}>
           <NativeTabs.Trigger.Icon sf="magnifyingglass" />
-          <NativeTabs.Trigger.Label>Найти задание</NativeTabs.Trigger.Label>
+          <NativeTabs.Trigger.Label>Найти</NativeTabs.Trigger.Label>
           {findBadge ? <NativeTabs.Trigger.Badge>{findBadge}</NativeTabs.Trigger.Badge> : null}
         </NativeTabs.Trigger>
 

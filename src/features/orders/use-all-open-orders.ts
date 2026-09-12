@@ -16,6 +16,7 @@ import {
 } from "@/features/orders/feed-page";
 import type { OrderWithRefs } from "@/features/orders/use-my-orders";
 import { shouldHideDemo } from "@/lib/demo-mode";
+import { cityIdsOfDistrictName, districtNameOfCityId } from "@/lib/location-config";
 import { supabase } from "@/lib/supabase";
 
 type Page = { rows: OrderWithRefs[]; nextCursor: FeedCursor | null };
@@ -82,10 +83,20 @@ export function useAllOpenOrders({ userId, l2Ids, cityId, district }: UseAllOpen
 
       // Локация-фильтр: город ИЛИ район (взаимоисключающие). Пусто = без фильтра
       // («Вся Ингушетия» — мастер видит заявки из всех мест).
+      // Район и город связаны (владелец, 2026-09-12): выбран район — видны и
+      // задания его городов; выбран город — видны и задания, размещённые по
+      // всему его району. Соответствие — src/lib/location-config.ts и
+      // таблица district_cities в базе (0192).
       if (cityFilter) {
-        q = q.eq("city_id", cityFilter);
+        const districtOfCity = districtNameOfCityId(cityFilter);
+        q = districtOfCity
+          ? q.or(`city_id.eq.${cityFilter},district.eq."${districtOfCity}"`)
+          : q.eq("city_id", cityFilter);
       } else if (districtFilter) {
-        q = q.eq("district", districtFilter);
+        const cities = cityIdsOfDistrictName(districtFilter);
+        q = cities.length
+          ? q.or(`district.eq."${districtFilter}",city_id.in.(${cities.join(",")})`)
+          : q.eq("district", districtFilter);
       }
 
       q = q.order("created_at", { ascending: false }).order("id", { ascending: false });

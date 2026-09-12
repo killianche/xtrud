@@ -208,6 +208,37 @@ export const villagesByDistrict: Record<string, readonly string[]> = Object.from
   DISTRICTS.map((d) => [d.name, d.villages]),
 );
 
+/**
+ * Какие города входят в район (владелец, 2026-09-12: «если человек выбрал
+ * Назрановский район, туда входит и Назрань, и Магас»). Ключ — id района,
+ * значения — id городов. Джейрахский район — только сёла; Карабулак —
+ * отдельный городской округ и ни в один район не входит.
+ *
+ * То же соответствие лежит в базе (таблица `district_cities`, 0192): им
+ * пользуются рассылка новых заданий и поиск специалистов.
+ */
+export const CITY_IDS_BY_DISTRICT_ID: Record<string, readonly string[]> = {
+  nazranovsky: ["nazran-magas", "nazran", "magas"],
+  malgobeksky: ["malgobek"],
+  sunzhensky: ["sunzha", "ordzhonikidzevskaya", "sernovodskaya", "nesterovskaya"],
+  dzheirakhsky: [],
+};
+
+/** Города района по его русскому названию — так район хранится в заданиях. */
+export function cityIdsOfDistrictName(districtName: string): readonly string[] {
+  const district = DISTRICTS.find((d) => d.name === districtName);
+  return district ? (CITY_IDS_BY_DISTRICT_ID[district.id] ?? []) : [];
+}
+
+/** Район города — русским названием, как в заданиях. Нет района — null. */
+export function districtNameOfCityId(cityId: string): string | null {
+  const entry = Object.entries(CITY_IDS_BY_DISTRICT_ID).find(([, cities]) =>
+    cities.includes(cityId),
+  );
+  if (!entry) return null;
+  return DISTRICTS.find((d) => d.id === entry[0])?.name ?? null;
+}
+
 /** Список имён районов (для chip-row районов). */
 export const districtNames: readonly string[] = DISTRICTS.map((d) => d.name);
 

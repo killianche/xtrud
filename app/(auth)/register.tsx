@@ -77,7 +77,9 @@ export default function RegisterScreen() {
   const register = useRegister();
   const [serverError, setServerError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
-  const [acceptedTerms, setAcceptedTerms] = useState(false);
+  // Галочка стоит сразу (DECISION владельца 2026-09-12: «ставь»): человек
+  // видит ссылки на условия рядом с кнопкой и может снять отметку.
+  const [acceptedTerms, setAcceptedTerms] = useState(true);
   const tc = useThemeColors(["ink", "mute", "on-accent"]);
   const safeGoBack = useSafeBack("/(auth)/phone" as const);
   // Пришли со входа по номеру, которого нет: номер и пароль уже введены там.
@@ -353,7 +355,7 @@ export default function RegisterScreen() {
             />
           </View>
 
-          {/* Согласие с условиями (active opt-in) — гейтит кнопку. */}
+          {/* Согласие с условиями — отмечено по умолчанию, без него кнопка неактивна. */}
           <Pressable
             accessibilityRole="checkbox"
             accessibilityState={{ checked: acceptedTerms }}

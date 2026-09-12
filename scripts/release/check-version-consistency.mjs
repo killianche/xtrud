@@ -83,8 +83,20 @@ if (packageLock.version !== packageLock.packages?.[""]?.version) {
   );
 }
 
+// Сборка одной платформы не должна спотыкаться о номер соседней: номер iOS
+// «уже загружен» ровно до следующего подъёма, а Android-сборке это не мешает.
+// --platform android|ios сужает только проверки номера сборки; общие
+// (версии, backend URL, demo-флаги, appVersionSource) выполняются всегда.
+const platformIndex = process.argv.indexOf("--platform");
+const platformScope = platformIndex >= 0 ? process.argv[platformIndex + 1] : "all";
+if (!["all", "ios", "android"].includes(platformScope)) {
+  failures.push("--platform принимает только ios или android");
+}
+const checkIos = platformScope !== "android";
+const checkAndroid = platformScope !== "ios";
+
 const iosBuildNumber = app.expo?.ios?.buildNumber;
-if (!/^[1-9]\d*$/.test(String(iosBuildNumber ?? ""))) {
+if (checkIos && !/^[1-9]\d*$/.test(String(iosBuildNumber ?? ""))) {
   failures.push(
     `app.json expo.ios.buildNumber must be a positive integer string, received ${JSON.stringify(iosBuildNumber)}`,
   );
@@ -93,7 +105,9 @@ if (!/^[1-9]\d*$/.test(String(iosBuildNumber ?? ""))) {
 const iosBuild = Number(iosBuildNumber);
 const publishedIosBuild = release.stores?.ios?.latestPublishedBuildNumber;
 const publishedIosVersion = release.stores?.ios?.latestPublishedVersion;
-if (!Number.isInteger(publishedIosBuild) || publishedIosBuild < 1 || !publishedIosVersion) {
+if (!checkIos) {
+  // Android-сборка: номер iOS не проверяем.
+} else if (!Number.isInteger(publishedIosBuild) || publishedIosBuild < 1 || !publishedIosVersion) {
   failures.push("release/production.json должен содержать опубликованные iOS version/build");
 } else {
   const marketingComparison = compareMarketingVersions(app.expo?.version, publishedIosVersion);
@@ -115,22 +129,24 @@ if (!Number.isInteger(publishedIosBuild) || publishedIosBuild < 1 || !publishedI
 
 // App Store Connect отвергает повторную загрузку пары version+build, даже если
 // сборка лежит только в TestFlight. Логика и её тесты — в version-utils.mjs.
-failures.push(
-  ...checkIosBuildNumber({
-    build: iosBuild,
-    published: publishedIosBuild,
-    uploaded: release.stores?.ios?.latestUploadedBuildNumber,
-  }),
-);
+if (checkIos) {
+  failures.push(
+    ...checkIosBuildNumber({
+      build: iosBuild,
+      published: publishedIosBuild,
+      uploaded: release.stores?.ios?.latestUploadedBuildNumber,
+    }),
+  );
+}
 
 const androidVersionCode = app.expo?.android?.versionCode;
-if (!Number.isInteger(androidVersionCode) || androidVersionCode < 1) {
+if (checkAndroid && (!Number.isInteger(androidVersionCode) || androidVersionCode < 1)) {
   failures.push(
     `app.json expo.android.versionCode must be a positive integer, received ${JSON.stringify(androidVersionCode)}`,
   );
 }
 const publishedAndroidCode = release.stores?.android?.latestPublishedVersionCode;
-if (publishedAndroidCode !== null && androidVersionCode < publishedAndroidCode) {
+if (checkAndroid && publishedAndroidCode !== null && androidVersionCode < publishedAndroidCode) {
   failures.push(
     `Android versionCode ${androidVersionCode} меньше опубликованного ${publishedAndroidCode}`,
   );

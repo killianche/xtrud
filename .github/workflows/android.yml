@@ -61,7 +61,7 @@ jobs:
 
       - name: Гейт версии и конфигурации
         run: |
-          node scripts/release/check-version-consistency.mjs
+          node scripts/release/check-version-consistency.mjs --platform android
           npm run mobile:config:check
 
       - name: Подготовить ключ подписи (из секретов, не в Git)

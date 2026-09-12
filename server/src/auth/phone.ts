@@ -24,6 +24,11 @@ export function phoneKey(input: string): string | null {
   return key.length === 10 ? key : null;
 }
 
+/** Логин — номер (не почта, 10+ цифр): так его понимает find_account (0177). */
+export function isPhoneLogin(login: string): boolean {
+  return !login.includes("@") && login.replace(/\D/g, "").length >= 10;
+}
+
 export function phoneToAuthEmail(phone: string, domain: string): string {
   return `${phone.replace(/\D/g, "")}@${domain}`;
 }

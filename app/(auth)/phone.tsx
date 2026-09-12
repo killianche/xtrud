@@ -18,6 +18,7 @@ import { Button, Input } from "@/components/ui";
 import { NavCircleButton } from "@/components/ui/LargeTitle";
 import { SystemIcon } from "@/components/ui/SystemIcon";
 import { ORDER_CREATE_RETURN_TO, parseAuthReturnTo } from "@/features/auth/auth-return";
+import { setRegisterPrefill } from "@/features/auth/register-prefill";
 import { useLogin } from "@/features/auth/use-auth-mutations";
 import { type LoginFormValues, loginFormSchema } from "@/features/auth/validation";
 import { useAuthReturnUrlStore } from "@/lib/auth-return-url-store";
@@ -103,6 +104,21 @@ export default function LoginScreen() {
     mode: "onChange",
   });
 
+  const openRegister = () => {
+    router.push(
+      requestedReturnTo
+        ? ({
+            pathname: "/(auth)/register",
+            params: {
+              returnTo: requestedReturnTo,
+              ...(draftJourney ? { draftJourney } : {}),
+              authOrigin: "phone",
+            },
+          } as never)
+        : ("/(auth)/register" as never),
+    );
+  };
+
   const onSubmit = handleSubmit(async (values) => {
     setServerError(null);
     try {
@@ -123,6 +139,13 @@ export default function LoginScreen() {
         router.replace(returnUrl as never);
       }
     } catch (e) {
+      // Такого номера нет — не заставляем набирать всё заново: регистрация
+      // откроется с этим номером и паролем, останется имя и фамилия.
+      const code = (e as { code?: unknown }).code;
+      if (code === "account_not_found" && setRegisterPrefill(values.login, values.password)) {
+        openRegister();
+        return;
+      }
       setServerError(e instanceof Error ? e.message : "Не удалось войти");
     }
   });
@@ -269,20 +292,7 @@ export default function LoginScreen() {
             <Pressable
               accessibilityRole="button"
               disabled={isBusy}
-              onPress={() => {
-                router.push(
-                  requestedReturnTo
-                    ? ({
-                        pathname: "/(auth)/register",
-                        params: {
-                          returnTo: requestedReturnTo,
-                          ...(draftJourney ? { draftJourney } : {}),
-                          authOrigin: "phone",
-                        },
-                      } as never)
-                    : ("/(auth)/register" as never),
-                );
-              }}
+              onPress={openRegister}
               hitSlop={8}
               className={`min-h-11 justify-center ${isBusy ? "opacity-30" : "active:opacity-70"}`}
             >

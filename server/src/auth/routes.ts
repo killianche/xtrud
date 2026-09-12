@@ -7,7 +7,7 @@ import { z } from "zod";
 import type { Config } from "../config.js";
 import { type Db, pgErrorToHttp } from "../db.js";
 import { hashRefresh, newRefreshToken, type Tokens } from "./jwt.js";
-import { canonicalPhone, phoneKey, phoneToAuthEmail } from "./phone.js";
+import { canonicalPhone, isPhoneLogin, phoneKey, phoneToAuthEmail } from "./phone.js";
 
 const registerSchema = z.object({
   firstName: z.string().trim().min(1).max(60),
@@ -133,6 +133,13 @@ export function registerAuthRoutes(app: FastifyInstance, db: Db, tokens: Tokens,
     if (!parsed.success) return reply.code(422).send({ error: "Введите телефон и пароль" });
     const user = await findByLogin(parsed.data.login);
     const ok = await bcrypt.compare(parsed.data.password, user?.encrypted_password ?? DUMMY_HASH);
+    // Номера нет вовсе — приложение сразу откроет регистрацию с этим номером.
+    // Что номер свободен, и так видно по регистрации («номер уже занят»),
+    // поэтому отдельный ответ ничего нового не раскрывает; перебор держит лимит.
+    if (!user && isPhoneLogin(parsed.data.login))
+      return reply
+        .code(404)
+        .send({ error: "Аккаунта с этим номером нет", code: "account_not_found" });
     if (!user || !ok) return reply.code(401).send({ error: "Неверный телефон или пароль" });
     const blocked = blockedMessage(user);
     if (blocked) return reply.code(403).send({ error: blocked });

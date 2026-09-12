@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { canonicalPhone, phoneKey, phoneToAuthEmail } from "../src/auth/phone.js";
+import { canonicalPhone, isPhoneLogin, phoneKey, phoneToAuthEmail } from "../src/auth/phone.js";
 
 describe("canonicalPhone", () => {
   it("приводит российские номера к +7", () => {
@@ -16,5 +16,17 @@ describe("canonicalPhone", () => {
   });
   it("синтетическая почта как в приложении", () => {
     expect(phoneToAuthEmail("+79287300141", "phone.xtrud.pro")).toBe("79287300141@phone.xtrud.pro");
+  });
+});
+
+describe("isPhoneLogin", () => {
+  it("номер из 10+ цифр — это вход по телефону", () => {
+    expect(isPhoneLogin("89292980006")).toBe(true);
+    expect(isPhoneLogin("+7 929 298-00-06")).toBe(true);
+  });
+  it("почта и неполный номер — нет", () => {
+    expect(isPhoneLogin("9292980006@phone.xtrud.pro")).toBe(false);
+    expect(isPhoneLogin("user@mail.ru")).toBe(false);
+    expect(isPhoneLogin("929 298")).toBe(false);
   });
 });

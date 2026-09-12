@@ -27,6 +27,7 @@ import { Button, Input } from "@/components/ui";
 import { NavCircleButton } from "@/components/ui/LargeTitle";
 import { SystemIcon } from "@/components/ui/SystemIcon";
 import { ORDER_CREATE_RETURN_TO, parseAuthReturnTo } from "@/features/auth/auth-return";
+import { clearRegisterPrefill, peekRegisterPrefill } from "@/features/auth/register-prefill";
 import { useRegister } from "@/features/auth/use-auth-mutations";
 import {
   normalizeRuPhoneDigits,
@@ -79,6 +80,8 @@ export default function RegisterScreen() {
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const tc = useThemeColors(["ink", "mute", "on-accent"]);
   const safeGoBack = useSafeBack("/(auth)/phone" as const);
+  // Пришли со входа по номеру, которого нет: номер и пароль уже введены там.
+  const [prefill] = useState(peekRegisterPrefill);
 
   const abandonDraftJourney = useCallback((shouldAbandon: boolean) => {
     applyGuestDraftAuthAbandonment(shouldAbandon, {
@@ -130,12 +133,25 @@ export default function RegisterScreen() {
   const {
     control,
     handleSubmit,
+    trigger,
     formState: { errors, isValid },
   } = useForm<RegisterFormValues>({
     resolver: zodResolver(registerFormSchema),
-    defaultValues: { firstName: "", lastName: "", phone: "", password: "" },
+    defaultValues: {
+      firstName: "",
+      lastName: "",
+      phone: prefill?.phone ?? "",
+      password: prefill?.password ?? "",
+    },
     mode: "onChange",
   });
+
+  useEffect(() => {
+    // Забираем один раз: следующий заход в регистрацию — с пустой формой.
+    clearRegisterPrefill();
+    // Пароль со входа короче 8 знаков — сразу показываем, что его поменять.
+    if (prefill) void trigger("password");
+  }, [prefill, trigger]);
 
   const onSubmit = handleSubmit(async (values) => {
     // Номер всегда российский и всегда в одном виде: +7 и десять цифр.
@@ -200,6 +216,14 @@ export default function RegisterScreen() {
           <AppText weight="bold" className="mt-6 text-display-lg text-ink">
             Создать аккаунт
           </AppText>
+          {prefill ? (
+            <View className="mt-4 rounded-xl bg-canvas-soft px-4 py-3">
+              <AppText accessibilityRole="alert" className="text-body-md text-body">
+                Аккаунта с номером +7 {formatRuPhone(prefill.phone)} ещё нет. Укажите имя и фамилию
+                — и он будет создан.
+              </AppText>
+            </View>
+          ) : null}
 
           <View className="mt-8 flex-row gap-3">
             <View className="flex-1">
@@ -217,6 +241,7 @@ export default function RegisterScreen() {
                     autoCapitalize="words"
                     autoComplete="given-name"
                     textContentType="givenName"
+                    autoFocus={!!prefill}
                     editable={!isBusy}
                     error={errors.firstName?.message}
                   />

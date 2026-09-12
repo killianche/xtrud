@@ -103,7 +103,7 @@ export async function registerWithCredentials(input: {
 export async function loginWithCredentials(input: {
   login: string;
   password: string;
-}): Promise<{ ok: true; userId: string } | { ok: false; error: string }> {
+}): Promise<{ ok: true; userId: string } | { ok: false; error: string; code?: string }> {
   const trimmed = input.login.trim();
 
   if (!looksLikeEmail(trimmed)) {
@@ -118,7 +118,11 @@ export async function loginWithCredentials(input: {
     password: input.password,
   });
   if (error || !data.session || !data.user) {
-    return { ok: false, error: error?.message ?? "Неверный номер/почта или пароль" };
+    return {
+      ok: false,
+      error: error?.message ?? "Неверный номер/почта или пароль",
+      code: error?.code,
+    };
   }
   await markMasterRole(data.user.id);
   return { ok: true, userId: data.user.id };

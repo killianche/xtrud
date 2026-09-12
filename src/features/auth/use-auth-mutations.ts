@@ -55,7 +55,8 @@ export function useLogin() {
     mutationFn: async (input: LoginInput): Promise<{ ok: true; userId: string }> => {
       const result = await loginWithCredentials(input);
       if (!result.ok) {
-        throw new Error(result.error);
+        // code нужен экрану: account_not_found ведёт в регистрацию.
+        throw Object.assign(new Error(result.error), { code: result.code });
       }
       return { ok: true, userId: result.userId };
     },

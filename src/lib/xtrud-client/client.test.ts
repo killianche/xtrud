@@ -62,4 +62,20 @@ describe("вход без ответа сервера", () => {
     expect(error?.status).toBe(401);
     expect(error?.message).toBe("Неверный телефон или пароль");
   });
+
+  it("номера нет — код account_not_found доходит до экрана", async () => {
+    const client = clientWith(
+      async () =>
+        new Response(
+          JSON.stringify({ error: "Аккаунта с этим номером нет", code: "account_not_found" }),
+          { status: 404 },
+        ),
+    );
+    const { data, error } = await client.auth.signInWithPassword({
+      login: "89292980006",
+      password: "secret1",
+    });
+    expect(data.session).toBeNull();
+    expect(error?.code).toBe("account_not_found");
+  });
 });

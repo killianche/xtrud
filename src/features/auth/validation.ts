@@ -166,7 +166,8 @@ export const registerFormSchema = z.object({
     .refine((v) => digitsOnly(v).length === 10, {
       message: "Номер из 10 цифр после +7",
     }),
-  password: z.string().min(6, "Минимум 6 символов"),
+  // 8 знаков: восстановление ручное, подбор пароля не должен быть лёгким.
+  password: z.string().min(8, "Минимум 8 символов"),
 });
 
 /**

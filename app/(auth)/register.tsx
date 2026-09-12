@@ -288,7 +288,7 @@ export default function RegisterScreen() {
             </View>
           </View>
 
-          {/* «Минимум 6 символов» — лейбл ПОЛЯ (не subtitle под H1), §G не
+          {/* «Минимум 8 символов» — лейбл ПОЛЯ (не subtitle под H1), §G не
               нарушается. */}
           <View className="mt-5">
             <Controller
@@ -297,7 +297,7 @@ export default function RegisterScreen() {
               render={({ field: { value, onChange, onBlur } }) => (
                 <Input
                   size="lg"
-                  label="Пароль · минимум 6 символов"
+                  label="Пароль · минимум 8 символов"
                   value={value}
                   onBlur={onBlur}
                   onChangeText={onChange}

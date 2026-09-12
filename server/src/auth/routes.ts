@@ -13,7 +13,9 @@ const registerSchema = z.object({
   firstName: z.string().trim().min(1).max(60),
   lastName: z.string().trim().min(1).max(60),
   phone: z.string().trim().min(10).max(20),
-  password: z.string().min(6).max(200),
+  // 8 знаков — как в приложении (2026-09-12). Вход старых паролей
+  // не ломается: при входе длина не проверяется.
+  password: z.string().min(8).max(200),
 });
 const loginSchema = z.object({
   login: z.string().trim().min(3).max(120),
@@ -22,7 +24,7 @@ const loginSchema = z.object({
 const refreshSchema = z.object({ refreshToken: z.string().min(20).max(200) });
 const passwordSchema = z.object({
   currentPassword: z.string().min(1).max(200),
-  newPassword: z.string().min(6).max(200),
+  newPassword: z.string().min(8).max(200),
 });
 
 interface AuthUserRow {
@@ -93,7 +95,7 @@ export function registerAuthRoutes(app: FastifyInstance, db: Db, tokens: Tokens,
     if (!parsed.success)
       return reply
         .code(422)
-        .send({ error: "Заполните имя, фамилию, телефон и пароль (от 6 символов)" });
+        .send({ error: "Заполните имя, фамилию, телефон и пароль (от 8 символов)" });
     const input = parsed.data;
     const phone = canonicalPhone(input.phone);
     const key = phoneKey(phone);

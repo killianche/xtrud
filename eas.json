@@ -8,6 +8,7 @@
       "node": "20.19.4",
       "env": {
         "EXPO_PUBLIC_API_URL": "https://api.xtrud.pro",
+        "EXPO_PUBLIC_RUSTORE_PROJECT_ID": "DEdhogdukVeloy0JNHXEs-LovRer5iNJ",
         "SENTRY_DISABLE_AUTO_UPLOAD": "true"
       }
     },

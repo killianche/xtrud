@@ -87,14 +87,23 @@ export function createXtrudClient(opts: XtrudClientOptions) {
       }
       return { status: res.status, json };
     } catch (e) {
-      // Нет сети или таймаут: отдаём как ошибку 0, экран покажет «нет связи».
-      const err = e as { message?: string; code?: string; name?: string };
+      // Нет сети или таймаут: отдаём как ошибку 0. Системный текст iOS
+      // («Network request failed») человеку не показываем — только свой.
+      const err = e as { message?: string; code?: string };
+      const timedOut = err.code === "ETIMEDOUT";
       return {
         status: 0,
-        json: { error: err.message ?? "Нет связи с сервером", code: err.code ?? err.name },
+        json: {
+          error:
+            timedOut && err.message ? err.message : "Нет связи с сервером. Проверьте интернет.",
+          code: timedOut ? "ETIMEDOUT" : "ENETUNREACH",
+        },
       };
     }
   }
+
+  /** Успех — только 2xx. Статус 0 (нет ответа) тоже ошибка. */
+  const failed = (status: number) => status < 200 || status >= 300;
 
   const auth = {
     async getSession(): Promise<{ data: { session: Session | null }; error: null }> {
@@ -122,7 +131,7 @@ export function createXtrudClient(opts: XtrudClientOptions) {
         { login, password: input.password },
         false,
       );
-      if (status >= 400) {
+      if (failed(status)) {
         return {
           data: { session: null, user: null },
           error: toApiError(status, json, "Не удалось войти"),
@@ -139,7 +148,7 @@ export function createXtrudClient(opts: XtrudClientOptions) {
       password: string;
     }): Promise<AuthResult> {
       const { status, json } = await postJson("/v2/auth/register", input, false);
-      if (status >= 400) {
+      if (failed(status)) {
         return {
           data: { session: null, user: null },
           error: toApiError(status, json, "Не удалось создать аккаунт"),
@@ -157,7 +166,7 @@ export function createXtrudClient(opts: XtrudClientOptions) {
         currentPassword,
         newPassword,
       });
-      if (status >= 400) return { error: toApiError(status, json, "Не удалось сменить пароль") };
+      if (failed(status)) return { error: toApiError(status, json, "Не удалось сменить пароль") };
       await sessions.set(
         sessionFromTokens(json as Parameters<typeof sessionFromTokens>[0]),
         "TOKEN_REFRESHED",
@@ -285,7 +294,7 @@ export function createXtrudClient(opts: XtrudClientOptions) {
         },
         async createSignedUrl(path: string, _expiresIn?: number) {
           const { status, json } = await postJson("/v2/files/sign", { bucket, path });
-          if (status >= 400)
+          if (failed(status))
             return { data: null, error: toApiError(status, json, "Нет доступа к файлу") };
           return { data: { signedUrl: (json as { url: string }).url }, error: null };
         },

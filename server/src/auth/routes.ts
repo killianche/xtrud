@@ -208,7 +208,7 @@ export function registerAuthRoutes(app: FastifyInstance, db: Db, tokens: Tokens,
     const claims = await tokens.verify(bearer(req.headers.authorization));
     if (!claims) return reply.code(401).send({ error: "Нужен вход" });
     const parsed = passwordSchema.safeParse(req.body);
-    if (!parsed.success) return reply.code(422).send({ error: "Новый пароль — от 6 символов" });
+    if (!parsed.success) return reply.code(422).send({ error: "Новый пароль — от 8 символов" });
     const user = await findById(claims.sub);
     const ok = user?.encrypted_password
       ? await bcrypt.compare(parsed.data.currentPassword, user.encrypted_password)

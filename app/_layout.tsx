@@ -16,7 +16,10 @@ import { BannedScreen } from "@/features/auth/BannedScreen";
 import { isPublicDetailsRoute } from "@/features/auth/public-route-policy";
 import { useAuthSession } from "@/features/auth/use-auth-session";
 import { useUserRecord } from "@/features/auth/use-user-record";
-import { useNotificationTapNavigation } from "@/features/notifications/use-notification-tap";
+import {
+  useNotificationTapNavigation,
+  useRuStoreNotificationTapNavigation,
+} from "@/features/notifications/use-notification-tap";
 import { useRegisterPushToken } from "@/features/notifications/use-register-push-token";
 import { useAuthReturnUrlStore } from "@/lib/auth-return-url-store";
 import { installGlobalErrorHandlers } from "@/lib/error-reporting";
@@ -94,6 +97,8 @@ function AuthGate({ children }: { children: React.ReactNode }) {
 
   useRegisterPushToken(userId ?? null);
   useNotificationTapNavigation(userId, status !== "loading");
+  // Android: уведомление доставляет RuStore, нажатие приходит его событием.
+  useRuStoreNotificationTapNavigation(userId, status !== "loading");
 
   const segments = useSegments();
   const router = useRouter();

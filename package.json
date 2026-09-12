@@ -111,11 +111,21 @@
       "exclude": [
         "@sentry/react-native"
       ]
+    },
+    "autolinking": {
+      "apple": {
+        "exclude": [
+          "react-native-rustore-push"
+        ]
+      }
     }
   },
   "overrides": {
     "xcode": {
       "uuid": "^11.1.1"
     }
+  },
+  "optionalDependencies": {
+    "react-native-rustore-push": "git+https://gitflic.ru/project/rustore/react-native-rustore-push-sdk.git"
   }
 }

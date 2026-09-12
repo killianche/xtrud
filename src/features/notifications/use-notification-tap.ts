@@ -12,6 +12,7 @@ import * as Notifications from "expo-notifications";
 import { useRootNavigationState, useRouter } from "expo-router";
 import { useEffect, useRef } from "react";
 import { mergePushData, notificationTargetFromData } from "./notification-target";
+import { RUSTORE_ON_OPENED, rustorePush } from "./rustore-push";
 
 export function useNotificationTapNavigation(
   userId: string | null | undefined,
@@ -38,4 +39,50 @@ export function useNotificationTapNavigation(
     );
     if (target) router.push(target as never);
   }, [response, authReady, navReady, userId, router]);
+}
+
+/**
+ * То же самое для Android: там уведомление доставляет и показывает RuStore,
+ * и `expo-notifications` о нажатии ничего не знает.
+ *
+ * Два входа: приложение запустили нажатием (`getInitialNotification`) и
+ * нажали, когда оно уже работало (событие `ON_OPENED`). Оба ведут в ту же
+ * функцию адреса, что и iOS, — правило перехода одно на обе платформы.
+ */
+export function useRuStoreNotificationTapNavigation(
+  userId: string | null | undefined,
+  authReady: boolean,
+): void {
+  const router = useRouter();
+  const navReady = !!useRootNavigationState()?.key;
+  const handledInitial = useRef(false);
+
+  useEffect(() => {
+    const binding = rustorePush();
+    if (binding === null || !authReady || !navReady) return;
+
+    const open = (data: Record<string, unknown> | undefined) => {
+      const target = notificationTargetFromData(data, userId);
+      if (target) router.push(target as never);
+    };
+
+    // Без этого вызова SDK не шлёт события в JS.
+    binding.client.createPushEmitter();
+    const subscription = binding.events.addListener(RUSTORE_ON_OPENED, (message) => {
+      open(message?.data);
+    });
+
+    // Холодный запуск из уведомления — один раз за жизнь приложения.
+    if (!handledInitial.current) {
+      handledInitial.current = true;
+      void binding.client
+        .getInitialNotification()
+        .then((message) => open(message?.data ?? undefined))
+        .catch(() => {
+          // Нет начального уведомления — обычный запуск.
+        });
+    }
+
+    return () => subscription.remove();
+  }, [authReady, navReady, userId, router]);
 }

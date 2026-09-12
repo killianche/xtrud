@@ -88,7 +88,11 @@ export function registerPushRoutes(
           }
           return apns === null
             ? null
-            : apns.send(t.device_token, (t.environment as ApnsEnvironment) ?? "production", message);
+            : apns.send(
+                t.device_token,
+                (t.environment as ApnsEnvironment) ?? "production",
+                message,
+              );
         }),
       )
     ).filter((r): r is DeliveryResult => r !== null);

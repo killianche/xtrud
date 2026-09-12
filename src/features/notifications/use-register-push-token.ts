@@ -1,9 +1,10 @@
 /**
  * Регистрация устройства для push.
  *
- * Токен берём родной, от Apple (`getDevicePushTokenAsync`), а не токен Expo:
- * отправляет уведомления наш сервер напрямую в APNs, сервис Expo Push в
- * цепочке не участвует и данные пользователя туда не уходят.
+ * Токен берём родной: на iPhone — от Apple (`getDevicePushTokenAsync`), на
+ * Android — от RuStore (`rustore-push.ts`). Сервис Expo Push в цепочке не
+ * участвует, уведомления отправляет наш сервер, и данные пользователя на
+ * сторону не уходят.
  *
  * Разрешение спрашиваем не при запуске, а после входа: системный запрос
  * показывается один раз за установку, и человек должен понимать, за что его
@@ -26,6 +27,7 @@ import { useEffect, useRef } from "react";
 import { AppState, Platform } from "react-native";
 import { reportClientError } from "@/lib/error-reporting";
 import { supabase } from "@/lib/supabase";
+import { rustoreDeleteToken, rustoreDeviceToken } from "./rustore-push";
 
 /**
  * Окружение APNs у токена своё: сборка из TestFlight и App Store общается с
@@ -46,7 +48,7 @@ Notifications.setNotificationHandler({
 
 type TokenResult =
   | { token: string }
-  | { skipped: "simulator" | "undetermined" | "denied" | "empty" };
+  | { skipped: "simulator" | "undetermined" | "denied" | "empty" | "no-rustore" };
 
 async function currentDeviceToken(ask: boolean): Promise<TokenResult> {
   // Симулятор токен не выдаёт — на нём push проверить нельзя, и это не ошибка.
@@ -57,6 +59,12 @@ async function currentDeviceToken(ask: boolean): Promise<TokenResult> {
     granted = (await Notifications.requestPermissionsAsync()).granted;
   }
   if (!granted) return { skipped: existing.canAskAgain ? "undetermined" : "denied" };
+  // На Android токен выдаёт RuStore, а не Apple: `getDevicePushTokenAsync`
+  // там требует Firebase, которого в приложении нет.
+  if (Platform.OS === "android") {
+    const token = await rustoreDeviceToken();
+    return token === null ? { skipped: "no-rustore" } : { token };
+  }
   const token = await Notifications.getDevicePushTokenAsync();
   return typeof token.data === "string" && token.data.length > 0
     ? { token: token.data }
@@ -77,7 +85,7 @@ export async function registerPushTokenNow(userId: string, ask: boolean): Promis
     if ("skipped" in result) {
       if (result.skipped === "denied" && !deniedReported) {
         deniedReported = true;
-        reportClientError(new Error("push: уведомления запрещены в настройках iPhone"), {
+        reportClientError(new Error("push: уведомления запрещены в настройках телефона"), {
           fatal: false,
           context: "push-permission",
         });
@@ -97,7 +105,8 @@ export async function registerPushTokenNow(userId: string, ask: boolean): Promis
         user_id: userId,
         device_token: result.token,
         platform: Platform.OS === "ios" ? "ios" : "android",
-        environment: APNS_ENVIRONMENT,
+        // Среда — понятие Apple: у RuStore одна точка доставки.
+        environment: Platform.OS === "ios" ? APNS_ENVIRONMENT : "production",
         device_name: Device.deviceName?.slice(0, 100) ?? null,
         updated_at: new Date().toISOString(),
       },
@@ -151,6 +160,15 @@ export async function unregisterCurrentPushToken(): Promise<void> {
     if (!Device.isDevice) return;
     const permissions = await Notifications.getPermissionsAsync();
     if (!permissions.granted) return;
+    if (Platform.OS === "android") {
+      const token = await rustoreDeviceToken();
+      if (token === null) return;
+      await supabase.from("notification_tokens").delete().eq("device_token", token);
+      // Сам токен на телефоне тоже отзываем: иначе RuStore продолжит считать
+      // это устройство подписанным.
+      await rustoreDeleteToken();
+      return;
+    }
     const token = await Notifications.getDevicePushTokenAsync();
     if (typeof token.data !== "string" || token.data.length === 0) return;
     await supabase.from("notification_tokens").delete().eq("device_token", token.data);

@@ -1,0 +1,114 @@
+# Сборка Android на GitHub Actions — APK для проверки на телефоне и AAB для RuStore.
+#
+# Почему не на VDS: там нет JDK и Android SDK, а свободного места 7 ГБ — SDK и
+# кэш Gradle туда не помещаются. На ubuntu-раннере GitHub Android SDK уже стоит,
+# репозиторий публичный, поэтому минуты Linux не расходуются.
+#
+# Движок тот же, что у iOS: `eas build --local` (prebuild → Gradle), поэтому
+# облачный лимит EAS не тратится.
+#
+# Подпись: ключ загрузки лежит в секретах репозитория
+# (ANDROID_KEYSTORE_BASE64, ANDROID_KEYSTORE_PASSWORD, ANDROID_KEY_ALIAS),
+# оригинал — на VDS в /root/.config/xtrud/android-signing/. Потеря ключа
+# означает невозможность обновлять уже опубликованное приложение.
+#
+# Запуск: Actions → «Android → APK/AAB» → Run workflow, выбрать профиль:
+#   android-test    — APK, окружение production, ставится на телефон напрямую;
+#   production-local — AAB для загрузки в RuStore.
+
+name: Android → APK/AAB
+
+on:
+  workflow_dispatch:
+    inputs:
+      profile:
+        description: "Профиль сборки"
+        required: true
+        default: "android-test"
+        type: choice
+        options:
+          - android-test
+          - production-local
+
+concurrency:
+  group: android-build
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Собрать Android
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+      SENTRY_DISABLE_AUTO_UPLOAD: "true"
+      CI: "1"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20.19.4"
+          cache: npm
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Установить зависимости
+        run: npm ci --no-audit --no-fund
+
+      - name: Гейт версии и конфигурации
+        run: |
+          node scripts/release/check-version-consistency.mjs
+          npm run mobile:config:check
+
+      - name: Подготовить ключ подписи (из секретов, не в Git)
+        run: |
+          set -euo pipefail
+          mkdir -p credentials/android
+          echo "$ANDROID_KEYSTORE_BASE64" | base64 --decode > credentials/android/upload.keystore
+          node -e '
+            const fs = require("node:fs");
+            fs.writeFileSync("credentials.json", JSON.stringify({
+              android: {
+                keystore: {
+                  keystorePath: "credentials/android/upload.keystore",
+                  keystorePassword: process.env.ANDROID_KEYSTORE_PASSWORD,
+                  keyAlias: process.env.ANDROID_KEY_ALIAS,
+                  keyPassword: process.env.ANDROID_KEYSTORE_PASSWORD,
+                },
+              },
+            }, null, 2));
+          '
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+
+      - name: Собрать (eas build --local)
+        run: |
+          set -euo pipefail
+          mkdir -p build
+          if [ "${{ github.event.inputs.profile }}" = "production-local" ]; then
+            OUT=build/xtrud.aab
+          else
+            OUT=build/xtrud.apk
+          fi
+          npx eas-cli build --platform android --profile "${{ github.event.inputs.profile }}" \
+            --local --non-interactive --output "$OUT"
+          ls -la "$OUT"
+          echo "ARTIFACT=$OUT" >> "$GITHUB_ENV"
+
+      - name: Убрать ключ с раннера
+        if: always()
+        run: rm -rf credentials credentials.json
+
+      - name: Сохранить сборку как артефакт (на 14 дней)
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: xtrud-android-${{ github.event.inputs.profile }}-${{ github.run_number }}
+          path: ${{ env.ARTIFACT }}
+          retention-days: 14

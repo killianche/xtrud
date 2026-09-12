@@ -67,6 +67,14 @@
         "resourceClass": "medium"
       }
     },
+    "android-test": {
+      "extends": "production",
+      "credentialsSource": "local",
+      "android": {
+        "buildType": "apk",
+        "resourceClass": "medium"
+      }
+    },
     "production-local": {
       "extends": "production",
       "credentialsSource": "local"

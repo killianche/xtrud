@@ -3,7 +3,7 @@ import rateLimit from "@fastify/rate-limit";
 import Fastify from "fastify";
 import { Tokens } from "./auth/jwt.js";
 import { registerAuthRoutes } from "./auth/routes.js";
-import { apnsConfigured, loadConfig, s3Configured } from "./config.js";
+import { apnsConfigured, loadConfig, rustorePushConfigured, s3Configured } from "./config.js";
 import { Db } from "./db.js";
 import { EventHub } from "./events/hub.js";
 import { startEventListener } from "./events/listener.js";
@@ -12,6 +12,7 @@ import { registerFilesRoutes } from "./files/routes.js";
 import { S3Storage } from "./files/s3.js";
 import { ApnsClient } from "./push/apns.js";
 import { registerPushRoutes } from "./push/routes.js";
+import { RuStorePushClient } from "./push/rustore.js";
 import { registerRestProxy } from "./rest/routes.js";
 import { registerRpcRoutes } from "./rpc/routes.js";
 
@@ -36,6 +37,14 @@ const apns = apnsConfigured(cfg)
       keyId: cfg.APNS_KEY_ID as string,
       teamId: cfg.APNS_TEAM_ID as string,
       topic: cfg.APNS_TOPIC,
+    })
+  : null;
+// Push на Android идёт через RuStore: там наш канал распространения, и он
+// работает на телефонах без сервисов Google.
+const rustorePush = rustorePushConfigured(cfg)
+  ? new RuStorePushClient({
+      projectId: cfg.RUSTORE_PUSH_PROJECT_ID as string,
+      serviceToken: cfg.RUSTORE_PUSH_SERVICE_TOKEN as string,
     })
   : null;
 
@@ -77,6 +86,7 @@ app.get("/v2/health", async () => {
     now: r.rows[0]?.now ?? null,
     version: "0.1.0",
     push: apns !== null,
+    pushAndroid: rustorePush !== null,
     storage: s3 === null ? "disk" : "s3",
   };
 });
@@ -90,7 +100,7 @@ await app.register(
     registerRpcRoutes(scope, db, tokens);
     registerEventRoutes(scope, tokens, hub);
     if (cfg.NOTIFY_SECRET !== undefined) {
-      registerPushRoutes(scope, db, apns, cfg.NOTIFY_SECRET);
+      registerPushRoutes(scope, db, apns, cfg.NOTIFY_SECRET, rustorePush);
     }
     registerRestProxy(scope, cfg.POSTGREST_URL);
     registerFilesRoutes(scope, db, tokens, {

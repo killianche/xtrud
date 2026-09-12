@@ -36,6 +36,13 @@ const schema = z.object({
   /** Общий секрет, которым база подписывает вызов /v2/internal/push. */
   NOTIFY_SECRET: z.string().min(16).optional(),
   /**
+   * Push на Android через RuStore. Настройка так же необязательна, как APNs:
+   * без неё Android-телефоны получают уведомления только внутри приложения.
+   * Половинчатая настройка отвергается — молчаливая отправка «в никуда» хуже.
+   */
+  RUSTORE_PUSH_PROJECT_ID: z.string().min(1).optional(),
+  RUSTORE_PUSH_SERVICE_TOKEN: z.string().min(16).optional(),
+  /**
    * Объектное хранилище S3. Как и push, настройка необязательна: без неё
    * файлы лежат на диске сервера. Половинчатая настройка отвергается —
    * иначе загрузка молча ушла бы не туда.
@@ -68,6 +75,18 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
       "Некорректная конфигурация: с APNs обязателен NOTIFY_SECRET — иначе отправку push мог бы вызвать кто угодно",
     );
   }
+  const rustoreParts = [cfg.RUSTORE_PUSH_PROJECT_ID, cfg.RUSTORE_PUSH_SERVICE_TOKEN];
+  const rustoreFilled = rustoreParts.filter((v) => v !== undefined).length;
+  if (rustoreFilled > 0 && rustoreFilled < rustoreParts.length) {
+    throw new Error(
+      "Некорректная конфигурация: RuStore push задан наполовину — нужны RUSTORE_PUSH_PROJECT_ID и RUSTORE_PUSH_SERVICE_TOKEN вместе",
+    );
+  }
+  if (rustoreFilled === rustoreParts.length && cfg.NOTIFY_SECRET === undefined) {
+    throw new Error(
+      "Некорректная конфигурация: с RuStore push обязателен NOTIFY_SECRET — иначе отправку push мог бы вызвать кто угодно",
+    );
+  }
   const s3Parts = [
     cfg.S3_ENDPOINT,
     cfg.S3_REGION,
@@ -92,6 +111,15 @@ export function s3Configured(cfg: Config): boolean {
     cfg.S3_BUCKET !== undefined &&
     cfg.S3_ACCESS_KEY !== undefined &&
     cfg.S3_SECRET_KEY !== undefined
+  );
+}
+
+/** Настроен ли push RuStore целиком. Частичная настройка отвергается выше. */
+export function rustorePushConfigured(cfg: Config): boolean {
+  return (
+    cfg.RUSTORE_PUSH_PROJECT_ID !== undefined &&
+    cfg.RUSTORE_PUSH_SERVICE_TOKEN !== undefined &&
+    cfg.NOTIFY_SECRET !== undefined
   );
 }
 

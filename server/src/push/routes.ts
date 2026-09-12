@@ -7,7 +7,8 @@
 import { timingSafeEqual } from "node:crypto";
 import type { FastifyInstance } from "fastify";
 import type { Db } from "../db.js";
-import type { ApnsClient, ApnsEnvironment } from "./apns.js";
+import type { ApnsClient, ApnsEnvironment, DeliveryResult } from "./apns.js";
+import type { RuStorePushClient } from "./rustore.js";
 
 interface PushRequestBody {
   user_id?: unknown;
@@ -32,6 +33,7 @@ export function registerPushRoutes(
   db: Db,
   apns: ApnsClient | null,
   notifySecret: string,
+  rustore: RuStorePushClient | null = null,
 ) {
   app.post<{ Body: PushRequestBody }>("/internal/push", async (req, reply) => {
     if (!secretMatches(req.headers["x-notify-secret"] as string | undefined, notifySecret)) {
@@ -40,8 +42,8 @@ export function registerPushRoutes(
     // Уведомление в приложении уже записано базой до этого вызова, поэтому
     // отсутствие ключа APNs не считается ошибкой сценария: пользователь
     // увидит его на экране «Уведомления», просто без звука на телефоне.
-    if (apns === null) {
-      return reply.code(200).send({ sent: 0, skipped: "APNs не настроен" });
+    if (apns === null && rustore === null) {
+      return reply.code(200).send({ sent: 0, skipped: "push не настроен" });
     }
 
     const body = req.body ?? {};
@@ -59,10 +61,14 @@ export function registerPushRoutes(
     // Прямых прав на таблицы у роли API нет (0177c) — читаем через функцию
     // владельца базы, как это сделано для входа и регистрации.
     const rows = await db.asService(async (client) => {
-      const r = await client.query<{ device_token: string; environment: string; unread: number }>(
-        "SELECT device_token, environment, unread FROM xtrud_api.push_targets($1)",
-        [userId],
-      );
+      const r = await client.query<{
+        device_token: string;
+        environment: string;
+        platform: string;
+        unread: number;
+      }>("SELECT device_token, environment, platform, unread FROM xtrud_api.push_targets($1)", [
+        userId,
+      ]);
       return r.rows;
     });
     const tokens = rows;
@@ -70,19 +76,25 @@ export function registerPushRoutes(
 
     if (tokens.length === 0) return { sent: 0, tokens: 0 };
 
-    const results = await Promise.all(
-      tokens.map((t) =>
-        apns.send(t.device_token, (t.environment as ApnsEnvironment) ?? "production", {
-          title,
-          body: text,
-          data,
-          badge: unread,
+    // Телефон получает уведомление там, где он зарегистрирован: iPhone — у
+    // Apple, Android — у RuStore. Токен платформы, отправитель которой не
+    // настроен, просто пропускаем: он живой и дождётся настройки.
+    const message = { title, body: text, data, badge: unread };
+    const results = (
+      await Promise.all(
+        tokens.map((t) => {
+          if (t.platform === "android") {
+            return rustore === null ? null : rustore.send(t.device_token, message);
+          }
+          return apns === null
+            ? null
+            : apns.send(t.device_token, (t.environment as ApnsEnvironment) ?? "production", message);
         }),
-      ),
-    );
+      )
+    ).filter((r): r is DeliveryResult => r !== null);
 
     // Мёртвый токен убираем сразу: иначе он копится и каждое уведомление
-    // тратит запрос к Apple впустую.
+    // тратит запрос впустую.
     const dead = results.filter((r) => r.gone).map((r) => r.deviceToken);
     if (dead.length > 0) {
       await db.asService((client) =>
@@ -95,7 +107,7 @@ export function registerPushRoutes(
     if (failed.length > 0) {
       req.log.warn(
         { failed: failed.map((f) => ({ status: f.status, reason: f.reason })) },
-        "apns: часть уведомлений не доставлена",
+        "push: часть уведомлений не доставлена",
       );
     }
     return { sent, tokens: tokens.length, removed: dead.length };

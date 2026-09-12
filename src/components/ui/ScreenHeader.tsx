@@ -159,10 +159,12 @@ export function ScreenHeader({
             accessibilityRole="button"
             accessibilityLabel={action.accessibilityLabel}
             onPress={action.onPress}
-            hitSlop={8}
-            className="h-10 w-10 items-center justify-center rounded-full active:bg-canvas-soft"
+            hitSlop={10}
+            // 44 pt — минимум Apple для тач-цели; иконка 24, чтобы кнопка
+            // читалась (владелец, 2026-09-12: «слишком мелкие»).
+            className="h-11 w-11 items-center justify-center rounded-full active:bg-canvas-soft"
           >
-            <action.Icon size={20} weight="bold" color={inkColor} />
+            <action.Icon size={24} weight="bold" color={inkColor} />
           </Pressable>
         ) : null,
       )}

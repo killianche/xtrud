@@ -26,6 +26,38 @@
 /** Столько ждём ответа, прежде чем считать запрос повисшим. */
 export const REQUEST_TIMEOUT_MS = 12_000;
 
+/**
+ * Загрузка файла — другое дело: фото уходит по мобильной связи, и 12 секунд
+ * ему мало. Владелец, 2026-09-12: «задание не публикуется без VPN». В логах
+ * сервера запросы из России проходят, включая публикацию, — значит обрывало
+ * не сетью, а нашим же таймаутом на загрузке фото.
+ */
+export const UPLOAD_TIMEOUT_MS = 60_000;
+
+function methodOf(input: RequestInfo | URL, init?: RequestInit): string {
+  if (init?.method) return init.method.toUpperCase();
+  if (typeof input === "object" && input !== null && "method" in input) {
+    return String((input as Request).method ?? "GET").toUpperCase();
+  }
+  return "GET";
+}
+
+function urlOf(input: RequestInfo | URL): string {
+  if (typeof input === "string") return input;
+  if (input instanceof URL) return input.toString();
+  if (typeof input === "object" && input !== null && "url" in input) {
+    return String((input as Request).url ?? "");
+  }
+  return "";
+}
+
+/** Сколько ждать этот запрос: загрузку файла — дольше, остальное — как раньше. */
+export function timeoutForRequest(input: RequestInfo | URL, init?: RequestInit): number {
+  const method = methodOf(input, init);
+  const isUpload = urlOf(input).includes("/v2/files/") && method !== "GET" && method !== "HEAD";
+  return isUpload ? UPLOAD_TIMEOUT_MS : REQUEST_TIMEOUT_MS;
+}
+
 export interface TimeoutError extends Error {
   code: string;
 }
@@ -45,12 +77,11 @@ type FetchImpl = (input: RequestInfo | URL, init?: RequestInit) => Promise<Respo
  * Оборачивает fetch в таймаут, сохраняя отмену вызывающей стороны
  * (`.abortSignal()` в supabase-js).
  */
-export function createTimeoutFetch(
-  timeoutMs: number = REQUEST_TIMEOUT_MS,
-  fetchImpl?: FetchImpl,
-): FetchImpl {
+export function createTimeoutFetch(timeoutMs?: number, fetchImpl?: FetchImpl): FetchImpl {
   return async (input, init) => {
     const impl = fetchImpl ?? (globalThis.fetch as FetchImpl);
+    // Срок ответа — по типу запроса, если явный не задан.
+    const limit = timeoutMs ?? timeoutForRequest(input, init);
     const controller = new AbortController();
     let timer: ReturnType<typeof setTimeout> | undefined;
 
@@ -71,8 +102,8 @@ export function createTimeoutFetch(
     const expiry = new Promise<never>((_resolve, reject) => {
       timer = setTimeout(() => {
         controller.abort();
-        reject(createTimeoutError(timeoutMs));
-      }, timeoutMs);
+        reject(createTimeoutError(limit));
+      }, limit);
     });
 
     try {

@@ -124,9 +124,10 @@ export function isStepValid(step: ComposerStep, v: ComposerValues): boolean {
     case "when":
       return v.urgency !== null && (v.urgency !== "by_date" || !!v.preferredDate);
     case "budget":
-      if (v.budgetKind === null) return false;
-      if (v.budgetKind === "negotiable") return true;
-      return v.budgetValue !== null && v.budgetValue > 0 && v.budgetValue <= BUDGET_MAX;
+      // Пусто — цена договорная (DECISION владельца 2026-09-12), шаг пройден.
+      // Введённая сумма должна быть положительной и не больше предела.
+      if (v.budgetValue === null) return true;
+      return v.budgetValue > 0 && v.budgetValue <= BUDGET_MAX;
     case "contacts":
       if (v.contactMode === "chat_only") return true;
       if (!isPhoneAcceptable(v.contactPhone)) return false;

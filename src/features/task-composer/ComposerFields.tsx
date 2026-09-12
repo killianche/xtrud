@@ -64,19 +64,20 @@ export const ComposerField = forwardRef<TextInput, ComposerFieldProps>(function 
       {label ? (
         <AppText className="mb-1.5 ml-4 text-ios-footnote uppercase text-mute">{label}</AppText>
       ) : null}
-      {/* Рамка видна сразу, а не только в фокусе (владелец, 2026-09-11): в
-          тёмной теме плитка bg-canvas совпадала с фоном экрана, и поле было
-          невидимым, пока не нажмёшь. Как у Input (DESIGN.md): 1.5
-          hairline-strong, в фокусе — accent. Вся плитка — одна цель
-          нажатия: тап в отступ вокруг текста тоже ставит курсор. */}
+      {/* Поле отличается от фона заливкой, а рамка — тонкая и мягкая
+          (владелец, 2026-09-12: «обводка слишком сильная»). Прежняя 1.5
+          hairline-strong выглядела чёрной. Совсем без рамки нельзя: в
+          тёмной теме поле сливалось с фоном и было невидимым, пока не
+          нажмёшь (владелец, 2026-09-11). В фокусе рамка — акцентная.
+          Вся плитка — одна цель нажатия: тап в отступ тоже ставит курсор. */}
       <Pressable
         accessible={false}
         onPress={() => inputRef.current?.focus()}
-        className={`flex-row items-center rounded-2xl bg-canvas px-4 ${
-          showError ? "border-error" : focused ? "border-accent" : "border-hairline-strong"
+        className={`flex-row items-center rounded-2xl bg-canvas-soft px-4 ${
+          showError ? "border-error" : focused ? "border-accent" : "border-hairline"
         }`}
         style={[
-          { borderWidth: 1.5 },
+          { borderWidth: 1 },
           multiline
             ? { minHeight: 132, alignItems: "flex-start", paddingVertical: 12 }
             : { minHeight: 56 },

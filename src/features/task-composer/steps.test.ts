@@ -39,19 +39,22 @@ describe("composer steps", () => {
     expect(isStepValid("title", { ...EMPTY_COMPOSER_VALUES, title: "Починить кран" })).toBe(true);
   });
 
-  it("«К дате» без даты не готов; бюджет требует сумму, кроме договорной", () => {
+  it("«К дате» без даты не готов; бюджет можно не указывать", () => {
     expect(isStepValid("when", { ...complete, urgency: "by_date", preferredDate: null })).toBe(
       false,
     );
     expect(
       isStepValid("when", { ...complete, urgency: "by_date", preferredDate: "2026-09-10" }),
     ).toBe(true);
-    expect(isStepValid("budget", { ...complete, budgetKind: "fixed", budgetValue: null })).toBe(
-      false,
+    // DECISION владельца 2026-09-12: одно поле суммы, пусто — договорная.
+    expect(isStepValid("budget", { ...complete, budgetKind: null, budgetValue: null })).toBe(true);
+    expect(isStepValid("budget", { ...complete, budgetKind: "fixed", budgetValue: 5000 })).toBe(
+      true,
     );
+    expect(isStepValid("budget", { ...complete, budgetKind: "fixed", budgetValue: 0 })).toBe(false);
     expect(
-      isStepValid("budget", { ...complete, budgetKind: "negotiable", budgetValue: null }),
-    ).toBe(true);
+      isStepValid("budget", { ...complete, budgetKind: "fixed", budgetValue: 100_000_000 }),
+    ).toBe(false);
   });
 
   it("связь: отклики — без номера; напрямую — нужен телефон, WhatsApp тот же или отдельный", () => {

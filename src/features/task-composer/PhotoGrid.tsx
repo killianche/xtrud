@@ -70,10 +70,10 @@ export function PhotoGrid({
             accessibilityRole="button"
             accessibilityLabel="Добавить фото"
             onPress={() => void add()}
-            // Рамка — как у полей конструктора: в тёмной теме плитка
-            // bg-canvas совпадала с фоном, и «Добавить» висело в пустоте.
-            className="items-center justify-center overflow-hidden rounded-2xl border-hairline-strong bg-canvas active:opacity-70"
-            style={{ width: tile, height: tile, borderWidth: 1.5 }}
+            // Как у полей конструктора: заливка светлее фона плюс тонкая
+            // мягкая рамка. Без неё в тёмной теме «Добавить» висело в пустоте.
+            className="items-center justify-center overflow-hidden rounded-2xl border-hairline bg-canvas-soft active:opacity-70"
+            style={{ width: tile, height: tile, borderWidth: 1 }}
           >
             <SystemIcon
               sf="camera.fill"

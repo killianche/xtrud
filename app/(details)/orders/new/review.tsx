@@ -244,7 +244,7 @@ export default function TaskReviewScreen() {
         />
         <ChoiceRow
           title="Бюджет"
-          value={values.budgetKind ? formatPrice(values.budgetKind, values.budgetValue) : ""}
+          value={formatPrice(values.budgetKind ?? "negotiable", values.budgetValue)}
           navigates
           onPress={() => open("budget")}
         />

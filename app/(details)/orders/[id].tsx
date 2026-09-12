@@ -700,9 +700,12 @@ function OrderInfoBlock({ order, isOwner }: OrderInfoBlockProps) {
           <View className="flex-row items-center gap-3">
             <MapPin size={18} weight="bold" color={tc.ink} />
             <AppText weight="medium" className="flex-1 text-body-md text-ink">
-              {order.city?.name ?? order.city_id}
-              {order.district ? `, ${order.district}` : ""}
-              {order.address ? `, ${order.address}` : ""}
+              {/* Город может быть не выбран (задание по району) — тогда строка
+                  начиналась с запятой: «, Назрановский район» (владелец,
+                  2026-09-12). Собираем только то, что есть. */}
+              {[order.city?.name ?? order.city_id, order.district, order.address]
+                .filter((part) => !!part && String(part).trim().length > 0)
+                .join(", ") || "Ингушетия"}
             </AppText>
           </View>
         </View>

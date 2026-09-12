@@ -73,7 +73,9 @@ export function usePublishTask(mode: ComposerMode, activeUserId: string | undefi
     let uploadedPaths: string[] = [];
     let committed = false;
     try {
-      if (values.urgency === null || values.budgetKind === null) {
+      // Бюджет необязателен: пусто — договорная (DECISION владельца
+      // 2026-09-12). Обязателен только срок.
+      if (values.urgency === null) {
         setError("Заполните обязательные ответы.");
         return;
       }
@@ -132,8 +134,8 @@ export function usePublishTask(mode: ComposerMode, activeUserId: string | undefi
         district: values.district,
         urgency: values.urgency,
         preferredDate: values.preferredDate,
-        budgetKind: values.budgetKind,
-        budgetValue: values.budgetKind === "negotiable" ? null : values.budgetValue,
+        budgetKind: values.budgetValue === null ? "negotiable" : (values.budgetKind ?? "fixed"),
+        budgetValue: values.budgetValue,
         photoUrls,
       };
 

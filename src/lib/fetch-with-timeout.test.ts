@@ -1,5 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { createTimeoutFetch, REQUEST_TIMEOUT_MS } from "./fetch-with-timeout";
+import {
+  createTimeoutFetch,
+  REQUEST_TIMEOUT_MS,
+  timeoutForRequest,
+  UPLOAD_TIMEOUT_MS,
+} from "./fetch-with-timeout";
 import { isNetworkTransportError } from "./network-transport-error";
 
 describe("createTimeoutFetch", () => {
@@ -82,5 +87,24 @@ describe("createTimeoutFetch", () => {
     // скелетон и не понимает, что связи нет.
     expect(REQUEST_TIMEOUT_MS).toBeGreaterThanOrEqual(5_000);
     expect(REQUEST_TIMEOUT_MS).toBeLessThanOrEqual(20_000);
+  });
+});
+
+describe("срок ожидания по типу запроса", () => {
+  it("загрузка файла ждёт минуту: фото по мобильной связи не укладывается в 12 с", () => {
+    expect(
+      timeoutForRequest("https://api.xtrud.pro/v2/files/order-photos/a/b.jpg", {
+        method: "POST",
+      }),
+    ).toBe(UPLOAD_TIMEOUT_MS);
+  });
+
+  it("чтение файла и обычные запросы — прежние 12 с", () => {
+    expect(timeoutForRequest("https://api.xtrud.pro/v2/files/order-photos/a/b.jpg")).toBe(
+      REQUEST_TIMEOUT_MS,
+    );
+    expect(timeoutForRequest("https://api.xtrud.pro/v2/rest/orders", { method: "POST" })).toBe(
+      REQUEST_TIMEOUT_MS,
+    );
   });
 });

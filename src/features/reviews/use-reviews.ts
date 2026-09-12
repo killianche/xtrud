@@ -2,10 +2,10 @@
 // - useMyReviewForOrder: проверка, есть ли мой отзыв по заказу (sprint 7.3 client-only)
 // - useSubmitReview: создание отзыва client→master по заказу
 // - useSubmitMasterReview: freeform-отзыв на мастера с профиля (без заказа,
-//   лимит 1/30 дней, реализовано через RPC submit_master_review с миграции
+//   лимит 1 отзыв в 3 дня, реализовано через RPC submit_master_review с миграции
 //   freeform_master_reviews 2026-05-27).
 // - useMyRecentReviewForMaster: проверка, может ли клиент оставить отзыв
-//   этому мастеру (есть ли отзыв за последние 30 дней).
+//   этому мастеру (есть ли отзыв за последние 3 дня).
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
@@ -71,7 +71,7 @@ export function useSubmitReview() {
 // ============================================================================
 // Freeform отзывы на мастера (без привязки к заказу).
 // Backend: RPC `submit_master_review` из миграции freeform_master_reviews
-// (2026-05-27). RPC сам проверяет лимит 1 отзыв / 30 дней / (author,target).
+// (2026-05-27). RPC сам проверяет лимит: один отзыв от автора в 3 дня.
 // ============================================================================
 
 export function recentReviewByAuthorKey(
@@ -81,9 +81,8 @@ export function recentReviewByAuthorKey(
   return ["recent-review-by-author", targetId, authorId] as const;
 }
 
-/** Проверка: есть ли отзыв от текущего клиента на этого мастера за последние
- *  30 дней. Используется чтобы скрыть кнопку «Оставить отзыв» / показать
- *  «Вы уже оставили отзыв». */
+/** Проверка: оставлял ли этот человек отзыв за последние 3 дня. Нужна,
+ *  чтобы скрыть кнопку «Оставить отзыв» вместо отказа сервера. */
 export function useMyRecentReviewForMaster(
   targetId: string | undefined,
   authorId: string | undefined,
@@ -92,9 +91,10 @@ export function useMyRecentReviewForMaster(
     queryKey: recentReviewByAuthorKey(targetId, authorId),
     queryFn: async () => {
       if (!targetId || !authorId) return null;
-      // DECISION владельца 2026-09-07 (Р2): один отзыв в неделю от
-      // пользователя — любому специалисту, без привязки к заданию (0175).
-      const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+      // DECISION владельца 2026-09-12: один отзыв в три дня от человека —
+      // любому специалисту, без привязки к заданию (0175, 0191). Окно то же,
+      // что проверяет сервер: иначе кнопка была бы видна, а отправка падала.
+      const since = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString();
       const { data, error } = await supabase
         .from("reviews")
         .select("*")
@@ -119,7 +119,7 @@ export interface SubmitMasterReviewInput {
 }
 
 /** Отправить freeform-отзыв на мастера (без заказа). RPC сам проверит
- *  авторизацию, рейтинг 1-5, что target — мастер, и лимит 1/30 дней.
+ *  авторизацию, рейтинг 1-5, что target — мастер, и лимит 1 отзыв в 3 дня.
  *  Возвращает id созданного отзыва. */
 export function useSubmitMasterReview(authorId: string | undefined) {
   const queryClient = useQueryClient();

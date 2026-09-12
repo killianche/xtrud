@@ -9,7 +9,7 @@
  * `presentation: "modal"`.
  *
  * Не требует завершённого заказа — отзыв freeform (решение владельца
- * 2026-05-27). Лимит 1 отзыв / 30 дней / (author, target) проверяется на
+ * 2026-05-27). Лимит — один отзыв от автора в 3 дня (0191) — проверяется на
  * стороне БД через RPC `submit_master_review`.
  *
  * `authorId` берётся из своей сессии (`useAuthSession`), а не параметром —
@@ -92,9 +92,8 @@ export default function MasterReviewScreen() {
           Alert.alert("Отзыв отправлен", "Спасибо за оценку.");
         },
         onError: (e) => {
-          // RPC возвращает понятный текст: «Вы уже оставляли отзыв этому
-          // мастеру в последние 30 дней» / «Можно оставить отзыв только
-          // мастеру» / etc. Показываем как есть.
+          // RPC возвращает понятный текст: «Один отзыв в три дня» /
+          // «Можно оставить отзыв только специалисту». Показываем как есть.
           const msg = e instanceof Error ? e.message : "Не удалось отправить отзыв";
           setServerError(msg);
         },
@@ -215,7 +214,7 @@ export default function MasterReviewScreen() {
           </Pressable>
 
           <AppText className="mt-4 text-caption text-mute text-center">
-            Один отзыв в 30 дней. Будьте честны — отзывы видны всем клиентам.
+            Один отзыв в три дня. Будьте честны — отзывы видны всем клиентам.
           </AppText>
         </View>
       </KeyboardAvoidingView>

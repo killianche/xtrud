@@ -38,7 +38,7 @@ jobs:
   build:
     name: Собрать Android
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 120
     env:
       EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
       SENTRY_DISABLE_AUTO_UPLOAD: "true"
@@ -56,8 +56,26 @@ jobs:
           distribution: temurin
           java-version: "17"
 
+      # Кэш Gradle между прогонами: первая сборка тянет весь Android-инструментарий
+      # и занимает почти час, повторная с кэшем — минуты.
+      - name: Кэш Gradle
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: android-gradle-${{ hashFiles('package-lock.json') }}
+          restore-keys: |
+            android-gradle-
+
       - name: Установить зависимости
         run: npm ci --no-audit --no-fund
+
+      # SDK RuStore ставится как необязательная зависимость: если gitflic
+      # недоступен, npm ci молча пропустит её. Для Android это означало бы
+      # сборку без push — лучше упасть здесь, чем узнать на телефоне.
+      - name: Проверить, что SDK RuStore на месте
+        run: node -e "require.resolve('react-native-rustore-push/package.json')"
 
       - name: Гейт версии и конфигурации
         run: |

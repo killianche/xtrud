@@ -105,7 +105,23 @@ jobs:
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
 
+      # Память Gradle. Стандартный шаблон Expo даёт демону MaxMetaspaceSize=512m,
+      # и на сборке 2026-09-12 задача :expo-updates:kspReleaseKotlin упала с
+      # OutOfMemoryError: Metaspace, после чего Gradle завис до конца отведённого
+      # времени (два запуска по 60 и 120 минут). Файл в GRADLE_USER_HOME имеет
+      # приоритет над gradle.properties сгенерированного проекта. У раннера 16 ГБ.
+      - name: Настроить память Gradle
+        run: |
+          mkdir -p ~/.gradle
+          cat >> ~/.gradle/gradle.properties <<'PROPS'
+          org.gradle.jvmargs=-Xmx4g -XX:MaxMetaspaceSize=1536m -XX:+HeapDumpOnOutOfMemoryError -Dfile.encoding=UTF-8
+          kotlin.daemon.jvmargs=-Xmx3g -XX:MaxMetaspaceSize=1g
+          PROPS
+          cat ~/.gradle/gradle.properties
+
       - name: Собрать (eas build --local)
+        # Свой предел шага: зависший Gradle не должен съедать весь запуск.
+        timeout-minutes: 90
         run: |
           set -euo pipefail
           mkdir -p build

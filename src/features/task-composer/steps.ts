@@ -22,7 +22,6 @@ import type { OrderPriceKind, OrderUrgencyValue } from "@/features/orders/order-
 export const COMPOSER_STEPS = [
   "category",
   "title",
-  "details",
   "where",
   "when",
   "budget",
@@ -35,7 +34,6 @@ export type ComposerStep = (typeof COMPOSER_STEPS)[number];
 export const COMPOSER_ROUTE: Record<ComposerStep, string> = {
   category: "/orders/new",
   title: "/orders/new/title",
-  details: "/orders/new/details",
   where: "/orders/new/where",
   when: "/orders/new/when",
   budget: "/orders/new/budget",
@@ -116,9 +114,8 @@ export function isStepValid(step: ComposerStep, v: ComposerValues): boolean {
     case "category":
       return v.l2Id.length > 0;
     case "title":
-      return normalizeTitle(v.title).length >= TITLE_MIN;
-    case "details":
-      return v.description.length <= DESCRIPTION_MAX;
+      // Название, описание и фото — один экран (владелец, 2026-09-13).
+      return normalizeTitle(v.title).length >= TITLE_MIN && v.description.length <= DESCRIPTION_MAX;
     case "where":
       return (v.cityId.length > 0 || v.district.length > 0) && v.address.length <= ADDRESS_MAX;
     case "when":

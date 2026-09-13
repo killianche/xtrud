@@ -27,9 +27,9 @@ const complete = {
 describe("composer steps", () => {
   it("идёт по порядку и заканчивается проверкой", () => {
     expect(nextStep("category")).toBe("title");
-    expect(nextStep("title")).toBe("details");
+    expect(nextStep("title")).toBe("where");
     expect(nextStep("review")).toBeNull();
-    expect(stepPosition("where")).toEqual({ index: 4, total: COMPOSER_STEPS.length });
+    expect(stepPosition("where")).toEqual({ index: 3, total: COMPOSER_STEPS.length });
   });
 
   it("категория — первый шаг, название — второй", () => {
@@ -37,6 +37,14 @@ describe("composer steps", () => {
     expect(isStepValid("category", { ...EMPTY_COMPOSER_VALUES, l2Id: "x" })).toBe(true);
     expect(isStepValid("title", { ...EMPTY_COMPOSER_VALUES, title: "Кран" })).toBe(false);
     expect(isStepValid("title", { ...EMPTY_COMPOSER_VALUES, title: "Починить кран" })).toBe(true);
+    // Описание теперь на том же экране: слишком длинное не пускает дальше.
+    expect(
+      isStepValid("title", {
+        ...EMPTY_COMPOSER_VALUES,
+        title: "Починить кран",
+        description: "x".repeat(2001),
+      }),
+    ).toBe(false);
   });
 
   it("«К дате» без даты не готов; бюджет можно не указывать", () => {

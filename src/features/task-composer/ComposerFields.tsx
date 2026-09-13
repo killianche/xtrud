@@ -8,8 +8,17 @@
  * (текст стоит по центру — см. tailwind field-*).
  */
 
-import { forwardRef, useImperativeHandle, useRef, useState } from "react";
-import { Pressable, TextInput, type TextInputProps, View } from "react-native";
+import { Check } from "phosphor-react-native";
+import { forwardRef, useId, useImperativeHandle, useRef, useState } from "react";
+import {
+  InputAccessoryView,
+  Keyboard,
+  Platform,
+  Pressable,
+  TextInput,
+  type TextInputProps,
+  View,
+} from "react-native";
 import { AppText } from "@/components/AppText";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useThemeColors } from "@/lib/use-theme-color";
@@ -48,7 +57,13 @@ export const ComposerField = forwardRef<TextInput, ComposerFieldProps>(function 
   },
   ref,
 ) {
-  const tc = useThemeColors(["ink", "mute", "muted-soft", "accent", "error"]);
+  const tc = useThemeColors(["ink", "mute", "muted-soft", "accent", "error", "on-accent"]);
+  // Над клавиатурой справа — кнопка-галочка «скрыть клавиатуру», чтобы
+  // спокойно нажать «Далее» внизу (владелец, 2026-09-13). На iOS это родной
+  // механизм — панель над клавиатурой; на Android клавиатуру закрывает
+  // системная «назад».
+  const accessoryId = useId();
+  const withAccessory = Platform.OS === "ios";
   const { colorScheme } = useColorScheme();
   const [touched, setTouched] = useState(false);
   const [focused, setFocused] = useState(false);
@@ -94,6 +109,7 @@ export const ComposerField = forwardRef<TextInput, ComposerFieldProps>(function 
           keyboardAppearance={colorScheme === "dark" ? "dark" : "light"}
           multiline={multiline}
           textAlignVertical={multiline ? "top" : "center"}
+          inputAccessoryViewID={withAccessory ? accessoryId : undefined}
           {...props}
           onFocus={(e) => {
             setFocused(true);
@@ -131,6 +147,21 @@ export const ComposerField = forwardRef<TextInput, ComposerFieldProps>(function 
         </AppText>
       ) : hint ? (
         <AppText className="mt-1.5 ml-4 text-ios-footnote text-mute">{hint}</AppText>
+      ) : null}
+      {withAccessory ? (
+        <InputAccessoryView nativeID={accessoryId} backgroundColor="transparent">
+          <View className="flex-row justify-end px-4 pb-2">
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Скрыть клавиатуру"
+              onPress={() => Keyboard.dismiss()}
+              hitSlop={6}
+              className="h-12 w-12 items-center justify-center rounded-full bg-link active:opacity-80"
+            >
+              <Check size={24} weight="bold" color={tc["on-accent"]} />
+            </Pressable>
+          </View>
+        </InputAccessoryView>
       ) : null}
     </View>
   );

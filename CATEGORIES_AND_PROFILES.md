@@ -250,7 +250,7 @@ migration оставляет новый scope fail-closed. Одного re-seed 
 - `upholstery-cleaning` — Химчистка мягкой мебели | `Armchair` | 1 500 ₽ | week
 - `curtains-cleaning` — Стирка штор | `Wind` | 800 ₽ | week
 
-##### L2 — Утилизация и вывоз `disposal` — `Trash2`
+##### L2 — Вывоз мусора `disposal` — `Trash2` (до 2026-09-13 «Утилизация и вывоз»)
 - `garbage-removal` — Вывоз строймусора | `Trash2` | 4 000 ₽ | week
 - `junk-removal` — Вывоз старой мебели / хлама | `Trash2` | 2 500 ₽ | week
 

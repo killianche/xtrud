@@ -75,7 +75,7 @@
     {
       "id": "disposal",
       "l1_id": "home-services",
-      "name_ru": "Утилизация и вывоз",
+      "name_ru": "Вывоз мусора",
       "icon": "Trash",
       "sort_order": 3,
       "is_active": true,
@@ -158,6 +158,16 @@
       "name_ru": "Мастер на час",
       "icon": "Wrench",
       "sort_order": 50,
+      "is_active": true,
+      "is_visible": true,
+      "is_featured": false
+    },
+    {
+      "id": "laborers",
+      "l1_id": "handyman-moving",
+      "name_ru": "Разнорабочие",
+      "icon": "HardHat",
+      "sort_order": 60,
       "is_active": true,
       "is_visible": true,
       "is_featured": false
@@ -1713,6 +1723,48 @@
       "is_active": true
     },
     {
+      "id": "laborer-day",
+      "l2_id": "laborers",
+      "name_ru": "Разнорабочий на день",
+      "sort_order": 10,
+      "is_active": true
+    },
+    {
+      "id": "laborer-hour",
+      "l2_id": "laborers",
+      "name_ru": "Разнорабочий на час",
+      "sort_order": 20,
+      "is_active": true
+    },
+    {
+      "id": "laborer-loading",
+      "l2_id": "laborers",
+      "name_ru": "Погрузка и разгрузка",
+      "sort_order": 30,
+      "is_active": true
+    },
+    {
+      "id": "laborer-demolition",
+      "l2_id": "laborers",
+      "name_ru": "Демонтаж и расчистка",
+      "sort_order": 40,
+      "is_active": true
+    },
+    {
+      "id": "laborer-earthworks",
+      "l2_id": "laborers",
+      "name_ru": "Земляные работы",
+      "sort_order": 50,
+      "is_active": true
+    },
+    {
+      "id": "laborer-site-help",
+      "l2_id": "laborers",
+      "name_ru": "Подсобные работы на стройке",
+      "sort_order": 60,
+      "is_active": true
+    },
+    {
       "id": "paving",
       "l2_id": "landscape",
       "name_ru": "Тротуарная плитка",
@@ -2939,6 +2991,12 @@
       "weight": 100
     },
     {
+      "term": "вывоз мусора",
+      "l2_id": "disposal",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
       "term": "выключатели",
       "l2_id": "electrical",
       "l3_id": null,
@@ -3443,6 +3501,12 @@
       "weight": 100
     },
     {
+      "term": "мусор",
+      "l2_id": "disposal",
+      "l3_id": null,
+      "weight": 90
+    },
+    {
       "term": "мытьё",
       "l2_id": "cleaning-post-renovation",
       "l3_id": null,
@@ -3701,6 +3765,18 @@
       "weight": 100
     },
     {
+      "term": "подсобник",
+      "l2_id": "laborers",
+      "l3_id": null,
+      "weight": 90
+    },
+    {
+      "term": "подсобный рабочий",
+      "l2_id": "laborers",
+      "l3_id": null,
+      "weight": 90
+    },
+    {
       "term": "поклеить",
       "l2_id": "wallpaper",
       "l3_id": null,
@@ -3741,6 +3817,12 @@
       "l2_id": "floors",
       "l3_id": null,
       "weight": 100
+    },
+    {
+      "term": "помощник",
+      "l2_id": "laborers",
+      "l3_id": null,
+      "weight": 60
     },
     {
       "term": "помощь по дому",
@@ -3853,6 +3935,24 @@
     {
       "term": "прочистка канализации",
       "l2_id": "plumbing",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "рабочие на день",
+      "l2_id": "laborers",
+      "l3_id": null,
+      "weight": 80
+    },
+    {
+      "term": "разнорабочие",
+      "l2_id": "laborers",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "разнорабочий",
+      "l2_id": "laborers",
       "l3_id": null,
       "weight": 100
     },
@@ -4361,6 +4461,12 @@
       "weight": 100
     },
     {
+      "term": "утилизация",
+      "l2_id": "disposal",
+      "l3_id": null,
+      "weight": 70
+    },
+    {
       "term": "фактурка",
       "l2_id": null,
       "l3_id": "paint-decorative",
@@ -4433,6 +4539,12 @@
       "weight": 100
     },
     {
+      "term": "чернорабочий",
+      "l2_id": "laborers",
+      "l3_id": null,
+      "weight": 90
+    },
+    {
       "term": "шёлковая штукатурка",
       "l2_id": null,
       "l3_id": "plaster-silk",
@@ -4493,5 +4605,5 @@
       "weight": 100
     }
   ],
-  "content_sha256": "81cc93bf9bf35a4ac0b2fc84b15c1c7a5dbcfb7e182fc05b4efd603fb53a2ad2"
+  "content_sha256": "3db94535c46cb58688c3e9734dbec95ff99d4c647d72615fbd841380b4334cbb"
 }

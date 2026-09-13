@@ -1,19 +1,28 @@
 /**
- * /orders/new/title — «Что нужно сделать?»: название задания одной строкой,
- * своими словами. Подпись над полем объясняет, что сюда писать (DECISION
- * владельца 2026-09-07: «чтобы было понятно, что туда вписывается»).
+ * /orders/new/title — «Что нужно сделать?»: название, подробности и фото на
+ * одном экране (владелец, 2026-09-13: «заголовок, подробное описание и
+ * фотографии на одном экране»). Раньше описание и фото были отдельным шагом.
+ * Подпись над полем объясняет, что сюда писать (DECISION 2026-09-07).
  */
 
 import { Redirect } from "expo-router";
 import { useVisibleCategories } from "@/features/categories/use-visible-categories";
+import { taskDetailsPrompt } from "@/features/orders/task-details-prompt";
 import { ComposerField } from "@/features/task-composer/ComposerFields";
 import { ComposerScreen } from "@/features/task-composer/ComposerScreen";
 import { useComposer } from "@/features/task-composer/composer-store";
-import { isStepValid, normalizeTitle, TITLE_MAX, TITLE_MIN } from "@/features/task-composer/steps";
+import { PhotoGrid } from "@/features/task-composer/PhotoGrid";
+import {
+  DESCRIPTION_MAX,
+  isStepValid,
+  normalizeTitle,
+  TITLE_MAX,
+  TITLE_MIN,
+} from "@/features/task-composer/steps";
 import { useStepNavigation } from "@/features/task-composer/use-step-navigation";
 
 export default function TaskTitleScreen() {
-  const { values, patch } = useComposer();
+  const { values, patch, photos, setPhotos } = useComposer();
   const nav = useStepNavigation("title");
   const categories = useVisibleCategories();
   if (nav.notReady) return null;
@@ -34,7 +43,7 @@ export default function TaskTitleScreen() {
       primaryLabel={nav.primaryLabel}
       primaryDisabled={!isStepValid("title", values)}
       onPrimary={() => {
-        patch({ title: trimmed });
+        patch({ title: trimmed, description: values.description.trim() });
         nav.goNext();
       }}
     >
@@ -51,6 +60,20 @@ export default function TaskTitleScreen() {
         hint="Так задание будет называться в ленте у мастеров."
         accessibilityLabel="Название задания"
       />
+      <ComposerField
+        label="Подробности · по желанию"
+        multiline
+        value={values.description}
+        onChangeText={(t) => patch({ description: t.slice(0, DESCRIPTION_MAX) })}
+        placeholder={taskDetailsPrompt(values.l2Id)}
+        hint={
+          values.description.length > DESCRIPTION_MAX - 200
+            ? `${values.description.length} из ${DESCRIPTION_MAX}`
+            : "Чем точнее описание, тем точнее цена в откликах."
+        }
+        accessibilityLabel="Описание задания"
+      />
+      <PhotoGrid photos={photos} onChange={setPhotos} />
     </ComposerScreen>
   );
 }

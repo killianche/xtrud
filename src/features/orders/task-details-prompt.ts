@@ -16,6 +16,8 @@ const PROMPT_BY_L2: Readonly<Record<string, string>> = {
   cleaning: "Площадь, что именно нужно убрать, нужен ли инвентарь или вывоз мусора…",
   "cleaning-post-renovation": "Площадь, объём мусора и что особенно важно очистить…",
   landscape: "Площадь территории, вид работ, инвентарь и нужен ли вывоз мусора…",
+  disposal: "Что вывезти, примерный объём, этаж и есть ли лифт…",
+  laborers: "Сколько человек нужно, на сколько часов или дней и что делать…",
 };
 
 export function taskDetailsPrompt(l2Id: string | null | undefined): string {

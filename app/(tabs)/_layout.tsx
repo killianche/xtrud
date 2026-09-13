@@ -10,6 +10,7 @@ import { useAuthSession } from "@/features/auth/use-auth-session";
 import { useTouchLastActive } from "@/features/auth/use-touch-last-active";
 import { useUserRecord } from "@/features/auth/use-user-record";
 import { useMyMasterCategories } from "@/features/master-categories/use-my-categories";
+import { useAppIconBadge } from "@/features/notifications/use-app-icon-badge";
 import {
   useUnreadOrderEventsCount,
   useUnreadReviewsCount,
@@ -71,6 +72,8 @@ export default function TabsLayout() {
   const lastSeenFeedAt = user?.last_seen_feed_at ?? null;
   // Одна личная подписка на уведомления вместо двух глобальных (0164).
   useRealtimeNotifications({ userId: userId ?? null, l2Ids: masterL2Ids });
+  // Цифра на иконке приложения — те же непрочитанные, что на колокольчике.
+  useAppIconBadge(userId);
   const { data: unreadFeed = 0 } = useUnreadFeedCount({
     userId: userId ?? null,
     l2Ids: masterL2Ids,

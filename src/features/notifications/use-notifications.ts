@@ -120,6 +120,32 @@ export function useMarkOrderEventsRead(userId: string | undefined) {
   });
 }
 
+/**
+ * Открыл задание — уведомления о нём прочитаны: отклики, закрытие, выбор
+ * исполнителя. Иначе колокольчик и цифра на иконке считали бы то, что
+ * человек уже видел.
+ */
+export function useMarkOrderNotificationsRead(userId: string | undefined) {
+  const qc = useQueryClient();
+  return useMutation<void, Error, string>({
+    mutationFn: async (orderId) => {
+      if (!userId) return;
+      const { error } = await supabase
+        .from("notifications")
+        .update({ read_at: new Date().toISOString() })
+        .eq("user_id", userId)
+        .is("read_at", null)
+        .eq("data->>order_id", orderId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: unreadNotificationsKey(userId) });
+      qc.invalidateQueries({ queryKey: unreadOrderEventsKey(userId) });
+      qc.invalidateQueries({ queryKey: notificationsKey(userId) });
+    },
+  });
+}
+
 /** Отметить все непрочитанные прочитанными — при открытии экрана. */
 export function useMarkNotificationsRead(userId: string | undefined) {
   const qc = useQueryClient();

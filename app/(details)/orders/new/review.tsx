@@ -225,7 +225,7 @@ export default function TaskReviewScreen() {
               .join(", ") || "Нет"
           }
           navigates
-          onPress={() => open("details")}
+          onPress={() => open("title")}
           last
         />
       </ChoiceGroup>

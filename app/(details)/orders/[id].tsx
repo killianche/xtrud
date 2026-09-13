@@ -44,6 +44,7 @@ import { blockConfirmMessage, blockSuccessMessage } from "@/features/blocking/bl
 import { blockingActionFailureMessage } from "@/features/blocking/blocking-error-message";
 import { useBlockUser } from "@/features/blocking/use-user-blocks";
 import { useMasterPhone, useMasterPublicProfile } from "@/features/master-view/use-master-public";
+import { useMarkOrderNotificationsRead } from "@/features/notifications/use-notifications";
 import { useCloseReasonPickerStore } from "@/features/orders/close-reason-picker-store";
 import { OrderPhotoCarousel } from "@/features/orders/OrderPhotoCarousel";
 import { formatOrderTiming, formatPrice } from "@/features/orders/order-schema";
@@ -146,6 +147,13 @@ export default function OrderDetailScreen() {
   useEffect(() => {
     if (isOwner && id) markResponsesMutate(id);
   }, [isOwner, id, markResponsesMutate]);
+
+  // Уведомления об этом задании увидены — гаснут на колокольчике и иконке.
+  const markOrderNotifications = useMarkOrderNotificationsRead(userId);
+  const markOrderNotificationsMutate = markOrderNotifications.mutate;
+  useEffect(() => {
+    if (userId && id) markOrderNotificationsMutate(id);
+  }, [userId, id, markOrderNotificationsMutate]);
 
   // 2026-05-21 (план ORDER_LIFECYCLE_CLIENT_PLAN.md): три действия клиента над
   // заказом — «Закрыть» (open → cancelled, с выбором причины), «Удалить»

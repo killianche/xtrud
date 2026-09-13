@@ -36,7 +36,7 @@
 import { Image as ExpoImage } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
-import { CaretDown, MapPin, Plus, User as UserIcon } from "phosphor-react-native";
+import { BellSimple, CaretDown, MapPin, Plus, User as UserIcon } from "phosphor-react-native";
 import { useEffect, useRef, useState } from "react";
 import { Animated, Easing, Platform, Pressable, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -47,6 +47,7 @@ import { XtrudWordmark } from "@/components/XtrudWordmark";
 import { useAuthSession } from "@/features/auth/use-auth-session";
 import { useUserRecord } from "@/features/auth/use-user-record";
 import { useCategoryFilterPickerStore } from "@/features/categories/category-filter-picker-store";
+import { useUnreadNotificationsCount } from "@/features/notifications/use-notifications";
 import { useReducedMotion } from "@/hooks/use-reduced-motion";
 import { useAppWidth } from "@/lib/use-app-width";
 import { useThemeColor } from "@/lib/use-theme-color";
@@ -96,6 +97,9 @@ export function CinematicHero({ onCreateTask }: { onCreateTask: () => void }) {
   const currentUserId = session?.user?.id;
   const { data: currentUser } = useUserRecord(currentUserId);
   const _showRolePill = !!currentUser?.is_master && !!currentUserId;
+  // Колокольчик: все уведомления в одном месте (владелец, 2026-09-13: «на
+  // иконке одно уведомление, а в приложении его нигде не видно»).
+  const { data: unreadNotifications = 0 } = useUnreadNotificationsCount(currentUserId);
 
   // По одному Animated.Value на каждое фото. Все начинают с 0; первое
   // фото плавно появляется в эффекте ниже (fade-in 0→1 при монтировании
@@ -225,46 +229,73 @@ export function CinematicHero({ onCreateTask }: { onCreateTask: () => void }) {
         <View className="absolute left-0 right-0 px-4" style={{ top: insets.top + 6 }}>
           <View className="flex-row items-center justify-between">
             <XtrudWordmark size={30} color={ON_PHOTO} />
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={currentUserId ? "Профиль" : "Войти"}
-              accessibilityHint={currentUserId ? "Откроет ваш профиль" : "Откроет экран входа"}
-              onPress={() => router.push((currentUserId ? "/account" : "/(auth)/phone") as never)}
-              hitSlop={8}
-              className="active:opacity-70"
-            >
+            <View className="flex-row items-center gap-2">
               {currentUserId ? (
-                // Вошёл: имя и аватар в белой пилюле, а не крошечный кружок
-                // (DECISION владельца 2026-09-07). Тап — страница аккаунта
-                // со своим «назад».
-                <View className="min-h-11 flex-row items-center gap-2 rounded-pill bg-on-dark py-1 pl-1 pr-4">
-                  <Avatar
-                    url={currentUser?.avatar_url ?? null}
-                    name={currentUser?.first_name ?? null}
-                    seed={currentUserId}
-                    size="sm"
-                  />
-                  <AppText
-                    weight="semibold"
-                    className="max-w-[140px] text-ios-callout text-surface-dark"
-                    numberOfLines={1}
-                  >
-                    {currentUser?.first_name?.trim() || "Аккаунт"}
-                  </AppText>
-                </View>
-              ) : (
-                // Гость: не бледный значок в углу, а понятная кнопка «Войти».
-                // DECISION владельца 2026-09-06: «значок аккаунта незаметный —
-                // человек должен понимать, где регистрироваться». Белая пилюля на
-                // фото читается в обеих темах (фото под ней всегда затемнено).
-                <View className="min-h-10 flex-row items-center gap-1.5 rounded-pill bg-on-dark px-4">
-                  <UserIcon size={18} weight="bold" color={ON_PHOTO_INK} />
-                  <AppText weight="semibold" className="text-body-md text-surface-dark">
-                    Войти
-                  </AppText>
-                </View>
-              )}
-            </Pressable>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={
+                    unreadNotifications > 0
+                      ? `Уведомления, новых: ${unreadNotifications}`
+                      : "Уведомления"
+                  }
+                  onPress={() => router.push("/notifications" as never)}
+                  hitSlop={4}
+                  className="h-11 w-11 items-center justify-center rounded-full bg-on-dark active:opacity-70"
+                >
+                  <BellSimple size={22} weight="bold" color={ON_PHOTO_INK} />
+                  {unreadNotifications > 0 ? (
+                    <View
+                      className="absolute -right-1 -top-1 items-center justify-center rounded-full bg-accent px-1.5"
+                      style={{ minWidth: 20, minHeight: 20 }}
+                    >
+                      <AppText weight="bold" className="text-caption text-on-accent">
+                        {unreadNotifications > 99 ? "99+" : unreadNotifications}
+                      </AppText>
+                    </View>
+                  ) : null}
+                </Pressable>
+              ) : null}
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={currentUserId ? "Профиль" : "Войти"}
+                accessibilityHint={currentUserId ? "Откроет ваш профиль" : "Откроет экран входа"}
+                onPress={() => router.push((currentUserId ? "/account" : "/(auth)/phone") as never)}
+                hitSlop={8}
+                className="active:opacity-70"
+              >
+                {currentUserId ? (
+                  // Вошёл: имя и аватар в белой пилюле, а не крошечный кружок
+                  // (DECISION владельца 2026-09-07). Тап — страница аккаунта
+                  // со своим «назад».
+                  <View className="min-h-11 flex-row items-center gap-2 rounded-pill bg-on-dark py-1 pl-1 pr-4">
+                    <Avatar
+                      url={currentUser?.avatar_url ?? null}
+                      name={currentUser?.first_name ?? null}
+                      seed={currentUserId}
+                      size="sm"
+                    />
+                    <AppText
+                      weight="semibold"
+                      className="max-w-[140px] text-ios-callout text-surface-dark"
+                      numberOfLines={1}
+                    >
+                      {currentUser?.first_name?.trim() || "Аккаунт"}
+                    </AppText>
+                  </View>
+                ) : (
+                  // Гость: не бледный значок в углу, а понятная кнопка «Войти».
+                  // DECISION владельца 2026-09-06: «значок аккаунта незаметный —
+                  // человек должен понимать, где регистрироваться». Белая пилюля на
+                  // фото читается в обеих темах (фото под ней всегда затемнено).
+                  <View className="min-h-10 flex-row items-center gap-1.5 rounded-pill bg-on-dark px-4">
+                    <UserIcon size={18} weight="bold" color={ON_PHOTO_INK} />
+                    <AppText weight="semibold" className="text-body-md text-surface-dark">
+                      Войти
+                    </AppText>
+                  </View>
+                )}
+              </Pressable>
+            </View>
           </View>
           <Pressable
             accessibilityRole="button"

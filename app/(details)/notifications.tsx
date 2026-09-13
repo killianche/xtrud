@@ -2,12 +2,13 @@
  * /notifications — последние уведомления: отклики, изменения по заданиям,
  * новые задания по моим категориям. Экран в стиле Настроек: строки с
  * заголовком, текстом и временем; непрочитанные — с точкой. Открытие
- * экрана отмечает всё прочитанным.
+ * экрана отмечает всё прочитанным. Вход — колокольчик на главной и строка
+ * в «Аккаунте».
  */
 
 import { Redirect, useRouter } from "expo-router";
 import { BellSimple } from "phosphor-react-native";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { Pressable, View } from "react-native";
 import { AppText } from "@/components/AppText";
 import { FormScreen, InsetGroup } from "@/components/ui";
@@ -29,6 +30,12 @@ export default function NotificationsScreen() {
   const markRead = useMarkNotificationsRead(userId);
   const tc = useThemeColors(["mute", "accent"]);
 
+  // Что было новым при открытии, остаётся с точкой до ухода с экрана: отметка
+  // о прочтении уходит сразу, и без этого точки гасли бы через секунду.
+  const freshIds = useRef<Set<string> | null>(null);
+  if (freshIds.current === null && list.data) {
+    freshIds.current = new Set(list.data.filter((n) => !n.read_at).map((n) => n.id));
+  }
   const hasUnread = (list.data ?? []).some((n) => !n.read_at);
   const markMutate = markRead.mutate;
   useEffect(() => {
@@ -76,7 +83,7 @@ export default function NotificationsScreen() {
         <InsetGroup>
           {items.map((n, i) => {
             const target = notificationTarget(n);
-            const unread = !n.read_at;
+            const unread = !n.read_at || !!freshIds.current?.has(n.id);
             return (
               <Pressable
                 key={n.id}

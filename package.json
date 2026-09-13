@@ -87,6 +87,7 @@
     "react-native": "0.86.3",
     "react-native-gesture-handler": "~2.32.0",
     "react-native-reanimated": "4.5.1",
+    "react-native-rustore-push": "git+https://gitflic.ru/project/rustore/react-native-rustore-push-sdk.git",
     "react-native-safe-area-context": "~5.7.0",
     "react-native-screens": "~4.26.0",
     "react-native-svg": "15.15.4",
@@ -117,6 +118,11 @@
         "exclude": [
           "react-native-rustore-push"
         ]
+      },
+      "ios": {
+        "exclude": [
+          "react-native-rustore-push"
+        ]
       }
     }
   },
@@ -124,8 +130,5 @@
     "xcode": {
       "uuid": "^11.1.1"
     }
-  },
-  "optionalDependencies": {
-    "react-native-rustore-push": "git+https://gitflic.ru/project/rustore/react-native-rustore-push-sdk.git"
   }
 }

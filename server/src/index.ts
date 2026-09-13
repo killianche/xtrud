@@ -10,6 +10,7 @@ import { startEventListener } from "./events/listener.js";
 import { registerEventRoutes } from "./events/routes.js";
 import { registerFilesRoutes } from "./files/routes.js";
 import { S3Storage } from "./files/s3.js";
+import { TRUSTED_PROXIES } from "./http/trust-proxy.js";
 import { ApnsClient } from "./push/apns.js";
 import { registerPushRoutes } from "./push/routes.js";
 import { RuStorePushClient } from "./push/rustore.js";
@@ -48,8 +49,13 @@ const rustorePush = rustorePushConfigured(cfg)
     })
   : null;
 
-// trustProxy: реальный IP приходит от nginx в X-Forwarded-For (лимиты по IP).
-const app = Fastify({ logger: { level: "info" }, bodyLimit: 2 * 1024 * 1024, trustProxy: true });
+// Реальный IP приходит от nginx в X-Forwarded-For; доверяем только адресам
+// nginx/Docker, иначе заголовок подделывается (см. http/trust-proxy.ts).
+const app = Fastify({
+  logger: { level: "info" },
+  bodyLimit: 2 * 1024 * 1024,
+  trustProxy: TRUSTED_PROXIES,
+});
 // Браузерные клиенты — только админка; приложение (React Native) Origin не шлёт.
 const ALLOWED_ORIGINS = new Set([
   "https://xtrud.pro",

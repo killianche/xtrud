@@ -7,6 +7,7 @@ import { z } from "zod";
 import type { Config } from "../config.js";
 import { type Db, pgErrorToHttp } from "../db.js";
 import { hashRefresh, newRefreshToken, type Tokens } from "./jwt.js";
+import { LoginAttempts, loginAttemptKey } from "./login-attempts.js";
 import { canonicalPhone, isPhoneLogin, phoneKey, phoneToAuthEmail } from "./phone.js";
 
 const registerSchema = z.object({
@@ -53,7 +54,13 @@ function blockedMessage(user: AuthUserRow): string | null {
   return null;
 }
 
-export function registerAuthRoutes(app: FastifyInstance, db: Db, tokens: Tokens, cfg: Config) {
+export function registerAuthRoutes(
+  app: FastifyInstance,
+  db: Db,
+  tokens: Tokens,
+  cfg: Config,
+  loginAttempts: LoginAttempts = new LoginAttempts(),
+) {
   const issueSession = async (user: AuthUserRow) => {
     const refresh = newRefreshToken();
     const sessionId = await db.asService(async (c) => {
@@ -131,16 +138,34 @@ export function registerAuthRoutes(app: FastifyInstance, db: Db, tokens: Tokens,
   app.post("/auth/login", async (req, reply) => {
     const parsed = loginSchema.safeParse(req.body);
     if (!parsed.success) return reply.code(422).send({ error: "Введите телефон и пароль" });
+    // Второй лимит — на номер: перебор пароля к одному аккаунту с разных IP.
+    const attemptKey = loginAttemptKey(parsed.data.login);
+    const retryAfter = loginAttempts.retryAfterSeconds(attemptKey);
+    if (retryAfter > 0) {
+      return reply
+        .code(429)
+        .header("retry-after", String(retryAfter))
+        .send({
+          error: `Слишком много попыток входа. Попробуйте через ${Math.ceil(retryAfter / 60)} мин.`,
+          code: "login_rate_limited",
+        });
+    }
     const user = await findByLogin(parsed.data.login);
     const ok = await bcrypt.compare(parsed.data.password, user?.encrypted_password ?? DUMMY_HASH);
     // Номера нет вовсе — приложение сразу откроет регистрацию с этим номером.
     // Что номер свободен, и так видно по регистрации («номер уже занят»),
     // поэтому отдельный ответ ничего нового не раскрывает; перебор держит лимит.
-    if (!user && isPhoneLogin(parsed.data.login))
+    if (!user && isPhoneLogin(parsed.data.login)) {
+      loginAttempts.fail(attemptKey);
       return reply
         .code(404)
         .send({ error: "Аккаунта с этим номером нет", code: "account_not_found" });
-    if (!user || !ok) return reply.code(401).send({ error: "Неверный телефон или пароль" });
+    }
+    if (!user || !ok) {
+      loginAttempts.fail(attemptKey);
+      return reply.code(401).send({ error: "Неверный телефон или пароль" });
+    }
+    loginAttempts.reset(attemptKey);
     const blocked = blockedMessage(user);
     if (blocked) return reply.code(403).send({ error: blocked });
     return reply.send(await issueSession(user));

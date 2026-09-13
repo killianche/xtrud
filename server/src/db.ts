@@ -86,5 +86,10 @@ export function pgErrorToHttp(e: unknown): { status: number; message: string; co
     return { status: 422, message: err.message ?? "Неверные данные", code };
   }
   if (code === "28000") return { status: 401, message: err.message ?? "Нужен вход", code };
+  // Взаимная блокировка или конфликт сериализации: база уже откатила одну из
+  // транзакций, повтор обычно проходит. Текст базы наружу не отдаём.
+  if (code === "40P01" || code === "40001") {
+    return { status: 409, message: "Попробуйте ещё раз.", code };
+  }
   return { status: 500, message: "Ошибка сервера", code };
 }

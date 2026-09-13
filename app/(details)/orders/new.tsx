@@ -20,6 +20,7 @@ import { useAuthSession } from "@/features/auth/use-auth-session";
 import { useUserRecord } from "@/features/auth/use-user-record";
 import { useCategoriesL1 } from "@/features/categories/use-categories-l1";
 import { useVisibleCategories } from "@/features/categories/use-visible-categories";
+import { MAX_TASK_CATEGORIES, toggleTaskCategory } from "@/features/orders/order-categories";
 import { ComposerScreen } from "@/features/task-composer/ComposerScreen";
 import { useComposer } from "@/features/task-composer/composer-store";
 import {
@@ -31,7 +32,7 @@ import {
 import { useStepNavigation } from "@/features/task-composer/use-step-navigation";
 import { useAuthReturnUrlStore } from "@/lib/auth-return-url-store";
 import { getCategoryIcon } from "@/lib/category-icons";
-import { hapticSelection } from "@/lib/haptics";
+import { hapticSelection, hapticWarning } from "@/lib/haptics";
 import { useThemeColors } from "@/lib/use-theme-color";
 
 export default function TaskCategoryScreen() {
@@ -45,6 +46,7 @@ export default function TaskCategoryScreen() {
   const userId = session?.user?.id;
   const { data: user } = useUserRecord(userId);
   const [query, setQuery] = useState("");
+  const [limitHint, setLimitHint] = useState(false);
 
   // Текст с главной и категория из каталога применяются один раз.
   const appliedParamsRef = useRef(false);
@@ -109,13 +111,18 @@ export default function TaskCategoryScreen() {
       subtitle={
         params.stale === "1"
           ? "Категория изменилась в каталоге — выберите её заново."
-          : "Задание увидят мастера этой категории."
+          : `Можно отметить до ${MAX_TASK_CATEGORIES} — задание увидят мастера каждой. Первая — основная.`
       }
       onBack={nav.fromReview ? nav.goBack : undefined}
       onClose={nav.close}
       primaryLabel={nav.primaryLabel}
       primaryDisabled={!isStepValid("category", values)}
       onPrimary={nav.goNext}
+      error={
+        limitHint
+          ? `Не больше ${MAX_TASK_CATEGORIES} категорий. Снимите одну, чтобы выбрать другую.`
+          : null
+      }
     >
       <View className="mb-5 px-4">
         <SearchField
@@ -126,12 +133,24 @@ export default function TaskCategoryScreen() {
           accessibilityLabel="Поиск категории"
         />
       </View>
+      {/* До трёх категорий (владелец, 2026-09-13): первая отмеченная —
+          основная, остальные — дополнительные (0195). */}
       <PickerSections
         sections={sections}
-        selectedId={values.l2Id ?? null}
-        onSelect={(id) => {
+        selectedId={values.l2Id || null}
+        multiSelect
+        selectedIds={[values.l2Id, ...values.extraL2Ids].filter(Boolean)}
+        onSelect={() => {}}
+        onToggle={(id) => {
+          const next = toggleTaskCategory(values, id);
+          if (!next) {
+            hapticWarning();
+            setLimitHint(true);
+            return;
+          }
           hapticSelection();
-          patch({ l2Id: id });
+          setLimitHint(false);
+          patch(next);
         }}
         query={query}
         loading={categories.isLoading || l1.isLoading}

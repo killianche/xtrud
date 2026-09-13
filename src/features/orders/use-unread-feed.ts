@@ -16,6 +16,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { userRecordKey } from "@/features/auth/use-user-record";
 import { unreadFeedKey } from "@/features/orders/unread-feed-helpers";
 import { supabase } from "@/lib/supabase";
+import { orderCategoryFilter } from "./order-categories";
 
 export { unreadFeedKey };
 
@@ -33,7 +34,7 @@ export function useUnreadFeedCount(opts: {
         .select("id", { count: "exact", head: true })
         .eq("status", "open")
         .neq("client_id", opts.userId)
-        .in("l2_id", opts.l2Ids);
+        .or(orderCategoryFilter(opts.l2Ids));
       if (opts.lastSeenAt) {
         q = q.gt("created_at", opts.lastSeenAt);
       }

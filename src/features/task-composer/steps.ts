@@ -55,7 +55,10 @@ export function stepPosition(step: ComposerStep): { index: number; total: number
 export type ContactMode = "chat_only" | "phone_open";
 
 export interface ComposerValues {
+  /** Основная категория. */
   l2Id: string;
+  /** До двух дополнительных категорий (0195). */
+  extraL2Ids: string[];
   title: string;
   description: string;
   cityId: string;
@@ -76,6 +79,7 @@ export interface ComposerValues {
 
 export const EMPTY_COMPOSER_VALUES: ComposerValues = {
   l2Id: "",
+  extraL2Ids: [],
   title: "",
   description: "",
   cityId: "",

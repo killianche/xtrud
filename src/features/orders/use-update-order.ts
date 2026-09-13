@@ -21,6 +21,8 @@ export interface UpdateOrderInput {
   orderId: string;
   clientId: string;
   l2Id: string;
+  /** Дополнительные категории, до двух (0195). */
+  extraL2Ids?: string[];
   title: string;
   /** Необязательное контактное имя (мастер видит его вместо профиля заказчика).
    *  Пусто → NULL. */
@@ -64,6 +66,7 @@ export function useUpdateOrder() {
       const trimmedName = input.contactName?.trim() ?? "";
       const payload: Database["public"]["Tables"]["orders"]["Update"] = {
         l2_id: input.l2Id,
+        extra_l2_ids: input.extraL2Ids ?? [],
         title: input.title,
         contact_name: trimmedName.length === 0 ? null : trimmedName,
         // Отклики в приложении — номеров в задании нет (0168: они не

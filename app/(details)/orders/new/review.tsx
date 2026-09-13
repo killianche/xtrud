@@ -77,7 +77,7 @@ export default function TaskReviewScreen() {
   useEffect(() => {
     if (!publish.categoryStale || staleHandledRef.current) return;
     staleHandledRef.current = true;
-    composer.patch({ l2Id: "" });
+    composer.patch({ l2Id: "", extraL2Ids: [] });
     if (mode.kind === "edit") {
       router.push({
         pathname: COMPOSER_ROUTE.category,
@@ -103,7 +103,10 @@ export default function TaskReviewScreen() {
   }
   if (!composer.ready) return null;
 
-  const category = categories.data?.find((c) => c.id === values.l2Id);
+  const categoryNames = [values.l2Id, ...values.extraL2Ids]
+    .map((id) => categories.data?.find((c) => c.id === id)?.name_ru)
+    .filter(Boolean)
+    .join(", ");
   const open = (step: ComposerStep) =>
     router.push({ pathname: COMPOSER_ROUTE[step], params: { from: "review" } } as never);
   const place = values.district
@@ -209,7 +212,7 @@ export default function TaskReviewScreen() {
       <ChoiceGroup title="Задание">
         <ChoiceRow
           title="Категория"
-          value={category?.name_ru ?? ""}
+          value={categoryNames}
           navigates
           onPress={() => open("category")}
         />

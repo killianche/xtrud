@@ -80,7 +80,10 @@ export function usePublishTask(mode: ComposerMode, activeUserId: string | undefi
         return;
       }
       const [categoryOk, locationOk] = await Promise.all([
-        validateOrderPublishCategory(values.l2Id),
+        // Все категории задания должны быть живыми, не только основная.
+        Promise.all(
+          [values.l2Id, ...values.extraL2Ids].map((id) => validateOrderPublishCategory(id)),
+        ).then((results) => results.every(Boolean)),
         validateOrderPublishLocation(values.cityId, values.district),
       ]);
       if (!categoryOk) {
@@ -123,6 +126,7 @@ export function usePublishTask(mode: ComposerMode, activeUserId: string | undefi
       const common = {
         clientId: uid,
         l2Id: values.l2Id,
+        extraL2Ids: values.extraL2Ids,
         title: values.title,
         contactName: values.contactName,
         contactPhone: values.contactPhone,

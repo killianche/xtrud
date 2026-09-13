@@ -30,6 +30,8 @@ export type OrderPriceKind = Enums<"order_price_kind">;
 export interface CreateOrderInput {
   clientId: string;
   l2Id: string;
+  /** Дополнительные категории, до двух (0195). */
+  extraL2Ids?: string[];
   title: string;
   /** Необязательное контактное имя, которое мастер увидит в заказе вместо
    *  профиля заказчика. Пусто → NULL → покажем регистрационное имя. */
@@ -74,6 +76,7 @@ export function useCreateOrder() {
       const payload: Database["public"]["Tables"]["orders"]["Insert"] = {
         client_id: input.clientId,
         l2_id: input.l2Id,
+        extra_l2_ids: input.extraL2Ids ?? [],
         title: input.title,
         // Пустое имя → NULL (при просмотре заказа покажем регистрационное).
         contact_name: trimmedName.length === 0 ? null : trimmedName,

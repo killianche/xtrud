@@ -47,6 +47,16 @@ describe("shouldInvalidateFeedOnInsert", () => {
   const userId = "master-1";
   const l2Ids = ["plumbing", "electrical"];
 
+  it("задание, где моя категория — дополнительная, тоже новое для меня", () => {
+    expect(
+      shouldInvalidateFeedOnInsert(
+        { status: "open", client_id: "client-1", l2_id: "doors", extra_l2_ids: ["electrical"] },
+        userId,
+        l2Ids,
+      ),
+    ).toBe(true);
+  });
+
   it("invalidates on open order with matching l2 from different client", () => {
     expect(
       shouldInvalidateFeedOnInsert(

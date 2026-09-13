@@ -35,6 +35,7 @@ export interface OrderRowMinimal {
   status?: string | null;
   client_id?: string | null;
   l2_id?: string | null;
+  extra_l2_ids?: string[] | null;
 }
 
 /**
@@ -55,6 +56,8 @@ export function shouldInvalidateFeedOnInsert(
 ): boolean {
   if (row.status !== "open") return false;
   if (!row.client_id || row.client_id === userId) return false;
-  if (!row.l2_id || !l2Ids.includes(row.l2_id)) return false;
+  // Основная категория или одна из дополнительных (0195).
+  const ids = [row.l2_id, ...(Array.isArray(row.extra_l2_ids) ? row.extra_l2_ids : [])];
+  if (!ids.some((id) => !!id && l2Ids.includes(id))) return false;
   return true;
 }

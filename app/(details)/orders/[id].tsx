@@ -43,10 +43,12 @@ import { useAuthSession } from "@/features/auth/use-auth-session";
 import { blockConfirmMessage, blockSuccessMessage } from "@/features/blocking/blocking-copy";
 import { blockingActionFailureMessage } from "@/features/blocking/blocking-error-message";
 import { useBlockUser } from "@/features/blocking/use-user-blocks";
+import { useVisibleCategories } from "@/features/categories/use-visible-categories";
 import { useMasterPhone, useMasterPublicProfile } from "@/features/master-view/use-master-public";
 import { useMarkOrderNotificationsRead } from "@/features/notifications/use-notifications";
 import { useCloseReasonPickerStore } from "@/features/orders/close-reason-picker-store";
 import { OrderPhotoCarousel } from "@/features/orders/OrderPhotoCarousel";
+import { orderCategoryIds } from "@/features/orders/order-categories";
 import { formatOrderTiming, formatPrice } from "@/features/orders/order-schema";
 import { orderShareMessage } from "@/features/orders/order-share";
 import { type CancelReason, useCancelOrder } from "@/features/orders/use-cancel-order";
@@ -625,6 +627,16 @@ function OrderInfoBlock({ order, isOwner }: OrderInfoBlockProps) {
   // (решение владельца 2026-05-24).
   const contactDisplay = order.contact_name?.trim() || clientDisplay;
   const tc = useThemeColors(["muted-soft", "mute", "ink", "warning", "error"]);
+  // Задание может быть в нескольких категориях (0195): основная + до двух.
+  const categories = useVisibleCategories();
+  const categoryLine = orderCategoryIds(order)
+    .map((id, i) =>
+      i === 0
+        ? (order.l2?.name_ru ?? categories.data?.find((c) => c.id === id)?.name_ru ?? id)
+        : categories.data?.find((c) => c.id === id)?.name_ru,
+    )
+    .filter(Boolean)
+    .join(", ");
 
   // Бюджет — отдельный display-режим: разделяем сумму и пометку «договорной».
   const budgetText = formatBudget(order);
@@ -638,8 +650,8 @@ function OrderInfoBlock({ order, isOwner }: OrderInfoBlockProps) {
       <View className="flex-row items-center gap-2">
         <OrderStatusBadge status={order.status} size="md" />
         <AppText className="text-caption text-mute">·</AppText>
-        <AppText weight="medium" className="text-caption text-body">
-          {order.l2?.name_ru ?? order.l2_id}
+        <AppText weight="medium" className="flex-shrink text-caption text-body">
+          {categoryLine}
         </AppText>
       </View>
 

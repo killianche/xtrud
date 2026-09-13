@@ -18,6 +18,7 @@ import type { OrderWithRefs } from "@/features/orders/use-my-orders";
 import { shouldHideDemo } from "@/lib/demo-mode";
 import { cityIdsOfDistrictName, districtNameOfCityId } from "@/lib/location-config";
 import { supabase } from "@/lib/supabase";
+import { orderCategoryFilter } from "./order-categories";
 
 type Page = { rows: OrderWithRefs[]; nextCursor: FeedCursor | null };
 
@@ -77,8 +78,9 @@ export function useAllOpenOrders({ userId, l2Ids, cityId, district }: UseAllOpen
         q = q.neq("client_id", userId);
       }
 
+      // Категория — основная или одна из дополнительных (0195).
       if (l2Ids && l2Ids.length > 0) {
-        q = q.in("l2_id", l2Ids);
+        q = q.or(orderCategoryFilter(l2Ids));
       }
 
       // Локация-фильтр: город ИЛИ район (взаимоисключающие). Пусто = без фильтра

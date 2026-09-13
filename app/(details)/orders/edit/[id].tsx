@@ -38,6 +38,7 @@ export default function EditOrderScreen() {
       order.id,
       {
         l2Id: order.l2_id,
+        extraL2Ids: order.extra_l2_ids ?? [],
         title: order.title,
         description: order.description ?? "",
         cityId: order.city_id ?? (order.district ? "" : ALL_INGUSHETIA_CITY_ID),

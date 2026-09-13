@@ -76,6 +76,9 @@ export function isRemotePhoto(uri: string): boolean {
 function draftToValues(draft: Partial<ComposerValues> & Record<string, unknown>): ComposerValues {
   return {
     l2Id: typeof draft.l2Id === "string" ? draft.l2Id : "",
+    extraL2Ids: Array.isArray(draft.extraL2Ids)
+      ? draft.extraL2Ids.filter((x): x is string => typeof x === "string" && x.length > 0)
+      : [],
     title: typeof draft.title === "string" ? draft.title : "",
     description: typeof draft.description === "string" ? draft.description : "",
     cityId: typeof draft.cityId === "string" ? draft.cityId : "",

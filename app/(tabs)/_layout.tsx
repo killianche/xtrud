@@ -136,6 +136,9 @@ export default function TabsLayout() {
         iconColor={{ default: tc.mute, selected: tc.accent }}
         badgeBackgroundColor={tc.error}
         labelStyle={{ default: { color: tc.mute }, selected: { color: tc.accent } }}
+        // Android по умолчанию прячет подписи невыбранных вкладок, если их
+        // больше трёх; на iOS подписи видны всегда — делаем так же.
+        labelVisibilityMode="labeled"
       >
         <NativeTabs.Trigger name="index" listeners={scrollToTopOnReselect("index")}>
           {/* Знак xtrud вместо домика (владелец, 2026-09-07). Шаблонная
@@ -150,14 +153,17 @@ export default function TabsLayout() {
             «Найти задание» обрезались многоточием (владелец,
             2026-09-12). Короткое слово помещается при любой раскладке. */}
         <NativeTabs.Trigger name="orders" listeners={scrollToTopOnReselect("orders")}>
+          {/* sf — iOS, md — Android: SF Symbols на Android не рисуются, и
+              без md вкладка оставалась пустой (эмулятор, 2026-09-13). */}
           <NativeTabs.Trigger.Icon
             sf={{ default: "checkmark.circle", selected: "checkmark.circle.fill" }}
+            md="check_circle"
           />
           <NativeTabs.Trigger.Label>Задания</NativeTabs.Trigger.Label>
           {ordersBadge ? <NativeTabs.Trigger.Badge>{ordersBadge}</NativeTabs.Trigger.Badge> : null}
         </NativeTabs.Trigger>
         <NativeTabs.Trigger name="find" listeners={scrollToTopOnReselect("find")}>
-          <NativeTabs.Trigger.Icon sf="magnifyingglass" />
+          <NativeTabs.Trigger.Icon sf="magnifyingglass" md="search" />
           <NativeTabs.Trigger.Label>Найти</NativeTabs.Trigger.Label>
           {findBadge ? <NativeTabs.Trigger.Badge>{findBadge}</NativeTabs.Trigger.Badge> : null}
         </NativeTabs.Trigger>
@@ -165,7 +171,10 @@ export default function TabsLayout() {
         {/* Каталог людей. Открыт всем, включая гостя: посмотреть, кто есть в
             республике, можно до регистрации — как и ленту заданий. */}
         <NativeTabs.Trigger name="specialists" listeners={scrollToTopOnReselect("specialists")}>
-          <NativeTabs.Trigger.Icon sf={{ default: "person.2", selected: "person.2.fill" }} />
+          <NativeTabs.Trigger.Icon
+            sf={{ default: "person.2", selected: "person.2.fill" }}
+            md="group"
+          />
           <NativeTabs.Trigger.Label>Специалисты</NativeTabs.Trigger.Label>
           {specialistsBadge ? (
             <NativeTabs.Trigger.Badge>{specialistsBadge}</NativeTabs.Trigger.Badge>

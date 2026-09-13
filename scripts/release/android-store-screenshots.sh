@@ -15,9 +15,17 @@ mkdir -p "$OUT"
 echo "APK: $APK"
 adb install -r "$APK"
 
+# Медленный эмулятор роняет системный лаунчер в «isn't responding», и диалог
+# перекрывал все снимки первого прогона (2026-09-13). Приложению лаунчер не
+# нужен: открываем его по ссылкам. Диалоги ошибок чужих процессов прячем.
+adb shell settings put global hide_error_dialogs 1 || true
+adb shell pm disable-user --user 0 com.google.android.apps.nexuslauncher || true
+
 shot() {
   local name="$1" wait="${2:-10}"
   sleep "$wait"
+  adb shell am broadcast -a android.intent.action.CLOSE_SYSTEM_DIALOGS > /dev/null 2>&1 || true
+  sleep 1
   adb exec-out screencap -p > "$OUT/$name.png"
   echo "снят $name"
 }
@@ -35,6 +43,7 @@ open_link "xtrud:///";            shot 01-home 12
 open_link "xtrud:///find";        shot 02-find 15
 open_link "xtrud:///specialists"; shot 03-specialists 15
 open_link "xtrud:///orders/new";  shot 04-new-order 12
+open_link "xtrud:///orders";      shot 07-orders 12
 
 adb shell cmd uimode night yes
 open_link "xtrud:///";            shot 05-home-dark 12

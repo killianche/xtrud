@@ -769,11 +769,44 @@ export type Database = {
           },
         ]
       }
+      // 0199: личный архив. Читается только своя строка (RLS); пишут только
+      // archive_order / archive_response. Клиенту — встраиванием в orders:
+      // select=*,order_archive_marks(archived_at).
+      order_archive_marks: {
+        Row: {
+          archived_at: string
+          order_id: string
+          user_id: string
+        }
+        Insert: {
+          archived_at?: string
+          order_id: string
+          user_id: string
+        }
+        Update: {
+          archived_at?: string
+          order_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_archive_marks_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_archive_marks_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       order_responses: {
         Row: {
-          // 0199: необязательное, пока миграция не применена везде и пока
-          // строки собираются вручную (use-my-responses) — сравнивать через != null.
-          archived_by_master_at?: string | null
           contact_phone: string | null
           whatsapp_phone: string | null
           created_at: string
@@ -896,8 +929,6 @@ export type Database = {
       orders: {
         Row: {
           address: string | null
-          // 0199: необязательное до применения миграции — сравнивать через != null.
-          archived_by_client_at?: string | null
           awaiting_confirmation_until: string | null
           budget_kind: Database["public"]["Enums"]["order_price_kind"]
           budget_value: number | null

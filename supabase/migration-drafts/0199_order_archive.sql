@@ -3,87 +3,92 @@
 -- DECISION владельца 2026-09-13:
 --   - архив личный, для обеих ролей: заказчик прячет своё задание из
 --     «Заданий», специалист — свой отклик. У второй стороны, в отзывах и в
---     рейтинге ничего не меняется: orders.status / order_responses.status не
---     трогаются, уведомлений нет;
+--     рейтинге ничего не меняется: orders / order_responses не трогаются;
 --   - в архив — только завершившееся; из архива можно вернуть;
 --   - удаление завершённого не добавляется, 0099 не трогается.
 --
--- Что считается завершившимся (значения сверены с pg_enum на Beget 2026-09-13):
+-- Почему отдельная таблица, а не колонки (DECISION основного агента после
+-- ревью xtrud-security, M1): SELECT на orders и order_responses выдан ролям
+-- приложения на всю таблицу (FACT, relacl на Beget 2026-09-13). Колонку в
+-- такой таблице правами не спрятать, а отзыв табличного SELECT ломает
+-- select=* у опубликованных сборок. Значит, метка в колонке была бы видна
+-- второй стороне. В своей таблице с RLS «только своё» — не видна.
+--
+-- Одна таблица на обе роли, ключ (user_id, order_id): заказчик и специалист
+-- одного задания — всегда разные люди (order_responses_check_not_self не даёт
+-- откликнуться на своё, UNIQUE (order_id, master_id) — не больше одного
+-- отклика), поэтому метка однозначно принадлежит одной роли.
+--
+-- Что считается завершившимся (значения сверены с pg_enum на Beget):
 --   заказчик   — orders.status IN ('completed', 'cancelled', 'expired');
 --   специалист — отклик «больше не активен», ровно как isActiveResponse в
---                src/features/orders/use-my-responses.ts: задание
---                completed/cancelled/expired/disputed/awaiting_confirmation,
---                либо отклик rejected/withdrawn, либо задание in_progress и
---                выбран не этот отклик (status <> 'accepted').
+--                src/features/orders/use-my-responses.ts.
 --
--- Безопасность (FACT, live read-only 2026-09-13):
---   - UPDATE и INSERT у authenticated на orders и order_responses выданы
---     ПО КОЛОНКАМ; табличного UPDATE нет (relacl: authenticated=rdm / rm).
---     Новые колонки в эти списки не попадают, прямой PATCH из приложения
---     получает «permission denied». Ставит и снимает метку только RPC ниже.
---   - SELECT выдан на таблицу целиком (anon и authenticated) — новые колонки
---     читаются под теми же политиками RLS, что и остальные. Следствие:
---     вторая сторона технически может увидеть момент архивации (см. отчёт
---     xtrud-backend, вопрос к xtrud-security). anon читает только open-
---     задания, у них метка всегда NULL (CHECK ниже).
---   - Второй рубеж на случай будущего табличного гранта: триггеры
---     *_track_archive отклоняют изменение метки из-под authenticated/anon
---     (тот же приём, что guard_order_lifecycle_direct_update в 0197).
+-- Метка не должна врать, когда дело снова ожило: смена статуса задания или
+-- повторный отклик после отзыва удаляют метки тех, для кого дело снова
+-- активно (триггеры ниже).
 --
--- Метка не должна врать после того, как дело снова ожило:
---   - reopen_order / unpick_order_master / старые сборки, возвращающие
---     задание в open, снимают метку заказчика (BEFORE-триггер) и метки тех
---     откликов, что снова активны (AFTER-триггер);
---   - повторный отклик (submit_order_response: withdrawn → sent) снимает
---     метку специалиста.
+-- Чтение клиентом: встраиванием PostgREST 14.12 по внешнему ключу
+--   orders?select=*,order_archive_marks(archived_at)
+--   order_responses?select=*,order:orders!order_responses_order_id_fkey(*,order_archive_marks(archived_at))
+-- RLS отдаёт только собственную метку. Отдельная таблица в TABLE_ALLOWLIST
+-- xtrud-api не нужна. Запросы с этим встраиванием — только для вошедшего
+-- (у anon нет SELECT на таблицу).
 --
--- Архивация не сдвигает updated_at: reopen_order считает окно «7 дней» от
--- orders.updated_at, а списки сортируют по нему. set_updated_at ставит now()
--- безусловно, поэтому *_track_archive возвращает прежнее значение, если в
--- строке поменялась только метка. Это работает, потому что BEFORE-триггеры
--- одного события PostgreSQL вызывает по алфавиту имён:
--- 'orders_set_updated_at' < 'orders_track_archive',
--- 'order_responses_set_updated_at' < 'order_responses_track_archive'.
--- Переименование любого из них ломает это — проверка в конце файла.
---
--- Порядок раскатки: эта миграция (аддитивная, старые сборки не замечают
--- новых колонок: читают select=* и пишут явными полями) → xtrud-api с
--- archive_order / archive_response в RPC_ALLOWLIST → сборка с архивом.
+-- Порядок раскатки: снимок схемы и backup → эта миграция (аддитивная, старые
+-- сборки её не замечают) → xtrud-api с archive_order / archive_response в
+-- RPC_ALLOWLIST → сборка с архивом.
 -- Черновик. Не применено.
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- Перед применением (на Beget, вручную; результат сохранить)
+-- ═══════════════════════════════════════════════════════════════════════════
+-- /opt/xtrud/backup.sh
+-- docker exec supabase-db pg_dump -U postgres -d postgres --schema-only \
+--   -n public -n xtrud_private > /root/schema-before-0199-$(date +%F-%H%M).sql
+-- docker exec supabase-db psql -U postgres -d postgres -X -A -c "
+--   SELECT relname, relacl FROM pg_class WHERE oid IN ('public.orders'::regclass, 'public.order_responses'::regclass);
+--   SELECT tablename, policyname, cmd, roles, qual, with_check FROM pg_policies WHERE tablename IN ('orders','order_responses');
+--   SELECT c.relname, t.tgname, pg_get_triggerdef(t.oid) FROM pg_trigger t JOIN pg_class c ON c.oid = t.tgrelid
+--    WHERE c.relname IN ('orders','order_responses') AND NOT t.tgisinternal ORDER BY 1, 2;
+--   SELECT to_regclass('public.order_archive_marks');                       -- ожидается пусто
+--   SELECT defaclacl FROM pg_default_acl WHERE defaclrole = 'postgres'::regrole
+--      AND defaclnamespace = 'public'::regnamespace AND defaclobjtype = 'r'; -- authenticated=rxtm
+-- " > /root/acl-before-0199-$(date +%F-%H%M).txt
 
 BEGIN;
 
 SET LOCAL lock_timeout = '5s';
 
--- ── Колонки ───────────────────────────────────────────────────────────────
-ALTER TABLE public.orders
-  ADD COLUMN IF NOT EXISTS archived_by_client_at timestamptz;
-ALTER TABLE public.order_responses
-  ADD COLUMN IF NOT EXISTS archived_by_master_at timestamptz;
+-- ── Таблица меток ─────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS public.order_archive_marks (
+  user_id uuid NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
+  order_id uuid NOT NULL REFERENCES public.orders(id) ON DELETE CASCADE,
+  archived_at timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (user_id, order_id)
+);
 
-COMMENT ON COLUMN public.orders.archived_by_client_at IS
-  'Личный архив заказчика (0199). Ставит/снимает только archive_order.';
-COMMENT ON COLUMN public.order_responses.archived_by_master_at IS
-  'Личный архив специалиста (0199). Ставит/снимает только archive_response.';
+COMMENT ON TABLE public.order_archive_marks IS
+  'Личный архив (0199): заказчик — своё задание, специалист — свой отклик. '
+  'Читает только сам человек; пишут только archive_order / archive_response и триггеры.';
 
--- Заказчик: метка возможна только у завершившегося задания. Проверка по той
--- же строке — обычный CHECK. Для отклика так нельзя (нужен статус задания),
--- там инвариант держат RPC и триггеры.
-ALTER TABLE public.orders DROP CONSTRAINT IF EXISTS orders_archived_only_finished;
-ALTER TABLE public.orders
-  ADD CONSTRAINT orders_archived_only_finished
-  CHECK (archived_by_client_at IS NULL OR status IN ('completed', 'cancelled', 'expired'));
+CREATE INDEX IF NOT EXISTS order_archive_marks_order_id_idx
+  ON public.order_archive_marks (order_id);
 
--- Явно: писать метку напрямую не может никто из ролей приложения. Сейчас
--- таких грантов нет — это фиксация намерения, а не исправление.
-REVOKE INSERT (archived_by_client_at), UPDATE (archived_by_client_at)
-  ON public.orders FROM PUBLIC, anon, authenticated;
-REVOKE INSERT (archived_by_master_at), UPDATE (archived_by_master_at)
-  ON public.order_responses FROM PUBLIC, anon, authenticated;
+ALTER TABLE public.order_archive_marks ENABLE ROW LEVEL SECURITY;
+
+-- Права по умолчанию в public дают authenticated rxtm (FACT, pg_default_acl)
+-- — снимаем всё и выдаём только чтение. Запись — только функциями ниже.
+REVOKE ALL ON TABLE public.order_archive_marks FROM PUBLIC, anon, authenticated;
+GRANT SELECT ON TABLE public.order_archive_marks TO authenticated;
+
+DROP POLICY IF EXISTS order_archive_marks_read_own ON public.order_archive_marks;
+CREATE POLICY order_archive_marks_read_own ON public.order_archive_marks
+  FOR SELECT TO authenticated
+  USING (user_id = (SELECT auth.uid()));
 
 -- ── Отклик больше не активен ──────────────────────────────────────────────
--- Единое правило для RPC и триггера. Держать в согласии с isActiveResponse
--- (src/features/orders/use-my-responses.ts).
+-- Единое правило для RPC и триггера. Держать в согласии с isActiveResponse.
 CREATE OR REPLACE FUNCTION xtrud_private.order_response_is_closed(
   p_order_status public.order_status,
   p_response_status public.response_status
@@ -101,108 +106,67 @@ $$;
 REVOKE ALL ON FUNCTION xtrud_private.order_response_is_closed(public.order_status, public.response_status)
   FROM PUBLIC, anon, authenticated;
 
--- ── Триггер: задание ──────────────────────────────────────────────────────
-CREATE OR REPLACE FUNCTION public.orders_track_client_archive()
-RETURNS trigger
-LANGUAGE plpgsql
-SET search_path TO 'public', 'pg_temp'
-AS $$
-BEGIN
-  -- Прямая запись метки из приложения — только через archive_order.
-  IF NEW.archived_by_client_at IS DISTINCT FROM OLD.archived_by_client_at
-     AND current_user IN ('authenticated', 'anon') THEN
-    RAISE EXCEPTION 'Архив меняется кнопкой в задании.'
-      USING ERRCODE = '42501', DETAIL = 'order_archive_via_rpc';
-  END IF;
-
-  -- Задание снова живое (reopen, отказ от исполнителя) — из архива оно
-  -- возвращается само, иначе заказчик не увидит дело, требующее действия.
-  IF NEW.archived_by_client_at IS NOT NULL
-     AND NEW.status NOT IN ('completed', 'cancelled', 'expired') THEN
-    NEW.archived_by_client_at := NULL;
-  END IF;
-
-  -- Поменялась только метка — updated_at остаётся прежним.
-  IF NEW.archived_by_client_at IS DISTINCT FROM OLD.archived_by_client_at
-     AND (to_jsonb(NEW) - 'archived_by_client_at' - 'updated_at')
-       = (to_jsonb(OLD) - 'archived_by_client_at' - 'updated_at') THEN
-    NEW.updated_at := OLD.updated_at;
-  END IF;
-
-  RETURN NEW;
-END;
-$$;
-
-DROP TRIGGER IF EXISTS orders_track_archive ON public.orders;
-CREATE TRIGGER orders_track_archive
-  BEFORE UPDATE ON public.orders
-  FOR EACH ROW EXECUTE FUNCTION public.orders_track_client_archive();
-
--- ── Триггер: отклик ───────────────────────────────────────────────────────
-CREATE OR REPLACE FUNCTION public.order_responses_track_master_archive()
-RETURNS trigger
-LANGUAGE plpgsql
-SET search_path TO 'public', 'pg_temp'
-AS $$
-BEGIN
-  IF NEW.archived_by_master_at IS DISTINCT FROM OLD.archived_by_master_at
-     AND current_user IN ('authenticated', 'anon') THEN
-    RAISE EXCEPTION 'Архив меняется кнопкой в отклике.'
-      USING ERRCODE = '42501', DETAIL = 'response_archive_via_rpc';
-  END IF;
-
-  -- Отклик ожил (повторная отправка после отзыва) — снимаем метку.
-  IF NEW.archived_by_master_at IS NOT NULL
-     AND OLD.status IN ('rejected', 'withdrawn')
-     AND NEW.status NOT IN ('rejected', 'withdrawn') THEN
-    NEW.archived_by_master_at := NULL;
-  END IF;
-
-  IF NEW.archived_by_master_at IS DISTINCT FROM OLD.archived_by_master_at
-     AND (to_jsonb(NEW) - 'archived_by_master_at' - 'updated_at')
-       = (to_jsonb(OLD) - 'archived_by_master_at' - 'updated_at') THEN
-    NEW.updated_at := OLD.updated_at;
-  END IF;
-
-  RETURN NEW;
-END;
-$$;
-
-DROP TRIGGER IF EXISTS order_responses_track_archive ON public.order_responses;
-CREATE TRIGGER order_responses_track_archive
-  BEFORE UPDATE ON public.order_responses
-  FOR EACH ROW EXECUTE FUNCTION public.order_responses_track_master_archive();
-
--- ── Триггер: задание ожило — отклики, снова активные, выходят из архива ──
--- SECURITY DEFINER: смену статуса может сделать и сам заказчик старой
--- сборкой (cancelled → open напрямую), а у authenticated нет права писать
--- метку специалиста. Функция снимает метку и больше ничего не делает.
-CREATE OR REPLACE FUNCTION public.orders_release_master_archive()
+-- ── Триггер: статус задания сменился ──────────────────────────────────────
+-- SECURITY DEFINER: статус меняют и функции, и сам заказчик прямым UPDATE
+-- (закрыть задание), а писать в таблицу меток роли приложения не могут.
+-- Функция только удаляет устаревшие метки.
+CREATE OR REPLACE FUNCTION public.orders_release_archive_marks()
 RETURNS trigger
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path TO 'public', 'pg_temp'
 AS $$
 BEGIN
-  IF NEW.status IS DISTINCT FROM OLD.status THEN
-    UPDATE public.order_responses r
-       SET archived_by_master_at = NULL
-     WHERE r.order_id = NEW.id
-       AND r.archived_by_master_at IS NOT NULL
-       AND xtrud_private.order_response_is_closed(NEW.status, r.status) IS NOT TRUE;
+  IF NEW.status IS NOT DISTINCT FROM OLD.status THEN
+    RETURN NULL;
   END IF;
+
+  -- Заказчик: задание снова живое (reopen, отказ от исполнителя).
+  IF NEW.status NOT IN ('completed', 'cancelled', 'expired') THEN
+    DELETE FROM public.order_archive_marks
+     WHERE order_id = NEW.id AND user_id = NEW.client_id;
+  END IF;
+
+  -- Специалисты: чей отклик при новом статусе снова активен.
+  DELETE FROM public.order_archive_marks m
+   USING public.order_responses r
+   WHERE m.order_id = NEW.id
+     AND r.order_id = NEW.id
+     AND r.master_id = m.user_id
+     AND xtrud_private.order_response_is_closed(NEW.status, r.status) IS NOT TRUE;
+
   RETURN NULL;
 END;
 $$;
 
-DROP TRIGGER IF EXISTS orders_release_master_archive ON public.orders;
-CREATE TRIGGER orders_release_master_archive
+DROP TRIGGER IF EXISTS orders_release_archive_marks ON public.orders;
+CREATE TRIGGER orders_release_archive_marks
   AFTER UPDATE OF status ON public.orders
-  FOR EACH ROW EXECUTE FUNCTION public.orders_release_master_archive();
+  FOR EACH ROW EXECUTE FUNCTION public.orders_release_archive_marks();
 
-REVOKE ALL ON FUNCTION public.orders_track_client_archive() FROM PUBLIC, anon, authenticated;
-REVOKE ALL ON FUNCTION public.order_responses_track_master_archive() FROM PUBLIC, anon, authenticated;
-REVOKE ALL ON FUNCTION public.orders_release_master_archive() FROM PUBLIC, anon, authenticated;
+-- ── Триггер: отклик ожил (повторная отправка после отзыва) ──────────────
+CREATE OR REPLACE FUNCTION public.order_responses_release_archive_mark()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO 'public', 'pg_temp'
+AS $$
+BEGIN
+  DELETE FROM public.order_archive_marks
+   WHERE user_id = NEW.master_id AND order_id = NEW.order_id;
+  RETURN NULL;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS order_responses_release_archive_mark ON public.order_responses;
+CREATE TRIGGER order_responses_release_archive_mark
+  AFTER UPDATE OF status ON public.order_responses
+  FOR EACH ROW
+  WHEN (OLD.status IN ('rejected', 'withdrawn') AND NEW.status NOT IN ('rejected', 'withdrawn'))
+  EXECUTE FUNCTION public.order_responses_release_archive_mark();
+
+REVOKE ALL ON FUNCTION public.orders_release_archive_marks() FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION public.order_responses_release_archive_mark() FROM PUBLIC, anon, authenticated;
 
 -- ── Заказчик: задание в архив / из архива ────────────────────────────────
 -- Возвращает метку после вызова: время архивации или NULL.
@@ -214,7 +178,7 @@ SET search_path TO 'public', 'pg_temp'
 AS $$
 DECLARE
   v_caller uuid := auth.uid();
-  v_order public.orders%ROWTYPE;
+  v_status public.order_status;
   v_at timestamptz;
 BEGIN
   IF v_caller IS NULL THEN
@@ -225,33 +189,37 @@ BEGIN
       USING ERRCODE = '22023', DETAIL = 'archive_invalid_arguments';
   END IF;
 
-  -- Блокировка строки: reopen_order / unpick_order_master в то же время
-  -- дождутся нас и снимут метку своим триггером, а не наоборот.
-  SELECT * INTO v_order FROM public.orders WHERE id = p_order_id FOR UPDATE;
-  -- Чужое задание неотличимо от несуществующего.
-  IF NOT FOUND OR v_order.client_id <> v_caller THEN
-    RAISE EXCEPTION 'Задание не найдено.' USING ERRCODE = 'P0002';
-  END IF;
-
   IF NOT p_archived THEN
-    IF v_order.archived_by_client_at IS NOT NULL THEN
-      UPDATE public.orders SET archived_by_client_at = NULL WHERE id = p_order_id;
+    IF NOT EXISTS (SELECT 1 FROM public.orders WHERE id = p_order_id AND client_id = v_caller) THEN
+      RAISE EXCEPTION 'Задание не найдено.' USING ERRCODE = 'P0002';
     END IF;
+    DELETE FROM public.order_archive_marks WHERE user_id = v_caller AND order_id = p_order_id;
     RETURN NULL;
   END IF;
 
-  IF v_order.status NOT IN ('completed', 'cancelled', 'expired') THEN
+  -- Фильтр по автору до блокировки: чужую строку не заблокировать.
+  -- Блокировка держит статус до записи метки: reopen_order / unpick в то же
+  -- время дождутся нас и удалят метку своим триггером.
+  SELECT status INTO v_status
+    FROM public.orders
+   WHERE id = p_order_id AND client_id = v_caller
+   FOR UPDATE;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Задание не найдено.' USING ERRCODE = 'P0002';
+  END IF;
+  IF v_status NOT IN ('completed', 'cancelled', 'expired') THEN
     RAISE EXCEPTION 'В архив можно убрать только завершённое, закрытое или истёкшее задание.'
       USING ERRCODE = 'P0001', DETAIL = 'order_not_finished';
   END IF;
 
-  -- Повторный вызов ничего не меняет и не сдвигает время.
-  IF v_order.archived_by_client_at IS NOT NULL THEN
-    RETURN v_order.archived_by_client_at;
-  END IF;
+  -- Повторный вызов не сдвигает время.
+  INSERT INTO public.order_archive_marks (user_id, order_id)
+  VALUES (v_caller, p_order_id)
+  ON CONFLICT (user_id, order_id) DO NOTHING;
 
-  v_at := now();
-  UPDATE public.orders SET archived_by_client_at = v_at WHERE id = p_order_id;
+  SELECT archived_at INTO v_at
+    FROM public.order_archive_marks
+   WHERE user_id = v_caller AND order_id = p_order_id;
   RETURN v_at;
 END;
 $$;
@@ -266,10 +234,8 @@ AS $$
 DECLARE
   v_caller uuid := auth.uid();
   v_order_id uuid;
-  v_master_id uuid;
   v_order_status public.order_status;
   v_resp_status public.response_status;
-  v_archived_at timestamptz;
   v_at timestamptz;
 BEGIN
   IF v_caller IS NULL THEN
@@ -280,29 +246,34 @@ BEGIN
       USING ERRCODE = '22023', DETAIL = 'archive_invalid_arguments';
   END IF;
 
-  SELECT order_id, master_id INTO v_order_id, v_master_id
-    FROM public.order_responses WHERE id = p_response_id;
-  IF v_master_id IS NULL OR v_master_id <> v_caller THEN
-    RAISE EXCEPTION 'Отклик не найден.' USING ERRCODE = 'P0002';
-  END IF;
-
-  -- Сначала задание (FOR SHARE), потом отклик — тот же порядок, что у
-  -- pick/unpick/complete. Пока мы держим задание, его статус не сменится,
-  -- и проверка «отклик закрыт» не устареет до записи метки.
-  SELECT status INTO v_order_status FROM public.orders WHERE id = v_order_id FOR SHARE;
-  SELECT status, archived_by_master_at INTO v_resp_status, v_archived_at
+  SELECT order_id INTO v_order_id
     FROM public.order_responses
-   WHERE id = p_response_id AND master_id = v_caller
-   FOR UPDATE;
-  IF v_order_status IS NULL OR v_resp_status IS NULL THEN
+   WHERE id = p_response_id AND master_id = v_caller;
+  IF v_order_id IS NULL THEN
     RAISE EXCEPTION 'Отклик не найден.' USING ERRCODE = 'P0002';
   END IF;
 
   IF NOT p_archived THEN
-    IF v_archived_at IS NOT NULL THEN
-      UPDATE public.order_responses SET archived_by_master_at = NULL WHERE id = p_response_id;
-    END IF;
+    DELETE FROM public.order_archive_marks WHERE user_id = v_caller AND order_id = v_order_id;
     RETURN NULL;
+  END IF;
+
+  -- Сначала задание, потом отклик — порядок pick/unpick/complete. Обе
+  -- блокировки — только для участника: задание, на которое у вызывающего
+  -- есть отклик, и его собственный отклик. FOR SHARE не даёт сменить статус
+  -- (unpick, reopen, повторный отклик), пока метка не записана.
+  SELECT o.status INTO v_order_status
+    FROM public.orders o
+   WHERE o.id = v_order_id
+     AND EXISTS (SELECT 1 FROM public.order_responses r
+                  WHERE r.order_id = o.id AND r.master_id = v_caller)
+   FOR SHARE OF o;
+  SELECT status INTO v_resp_status
+    FROM public.order_responses
+   WHERE id = p_response_id AND master_id = v_caller
+   FOR SHARE;
+  IF v_order_status IS NULL OR v_resp_status IS NULL THEN
+    RAISE EXCEPTION 'Отклик не найден.' USING ERRCODE = 'P0002';
   END IF;
 
   IF xtrud_private.order_response_is_closed(v_order_status, v_resp_status) IS NOT TRUE THEN
@@ -310,12 +281,13 @@ BEGIN
       USING ERRCODE = 'P0001', DETAIL = 'response_still_active';
   END IF;
 
-  IF v_archived_at IS NOT NULL THEN
-    RETURN v_archived_at;
-  END IF;
+  INSERT INTO public.order_archive_marks (user_id, order_id)
+  VALUES (v_caller, v_order_id)
+  ON CONFLICT (user_id, order_id) DO NOTHING;
 
-  v_at := now();
-  UPDATE public.order_responses SET archived_by_master_at = v_at WHERE id = p_response_id;
+  SELECT archived_at INTO v_at
+    FROM public.order_archive_marks
+   WHERE user_id = v_caller AND order_id = v_order_id;
   RETURN v_at;
 END;
 $$;
@@ -325,149 +297,137 @@ REVOKE ALL ON FUNCTION public.archive_response(uuid, boolean) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.archive_order(uuid, boolean) TO authenticated, service_role;
 GRANT EXECUTE ON FUNCTION public.archive_response(uuid, boolean) TO authenticated, service_role;
 
+-- PostgREST перечитает схему и сам (event trigger pgrst_ddl_watch есть на
+-- Beget), явный сигнал — на случай, если его отключат. Уходит при COMMIT.
+NOTIFY pgrst, 'reload schema';
+
 COMMIT;
 
 -- ═══════════════════════════════════════════════════════════════════════════
--- Проверка после применения (read-only; каждый ожидаемый результат указан)
+-- Проверка после применения
 -- ═══════════════════════════════════════════════════════════════════════════
 --
--- 1. Колонки есть, nullable, без default:
--- SELECT table_name, column_name, is_nullable, column_default
---   FROM information_schema.columns
---  WHERE table_schema = 'public' AND column_name IN ('archived_by_client_at', 'archived_by_master_at');
---   → 2 строки, is_nullable = YES, column_default пусто.
+-- 1. Таблица, ключ, индекс, RLS:
+-- SELECT relrowsecurity, relforcerowsecurity, relacl FROM pg_class
+--  WHERE oid = 'public.order_archive_marks'::regclass;
+--   → t, f, {postgres=arwdDxtm/postgres,authenticated=r/postgres,service_role=arwdDxtm/postgres}
+--     (у anon ничего, у authenticated только r).
+-- SELECT conname, pg_get_constraintdef(oid) FROM pg_constraint
+--  WHERE conrelid = 'public.order_archive_marks'::regclass ORDER BY 1;
+--   → PRIMARY KEY (user_id, order_id); FK order_id → orders ON DELETE CASCADE;
+--     FK user_id → users ON DELETE CASCADE.
+-- SELECT indexdef FROM pg_indexes WHERE tablename = 'order_archive_marks';
+--   → pkey и order_archive_marks_order_id_idx.
+-- SELECT policyname, cmd, roles, qual, with_check FROM pg_policies
+--  WHERE tablename = 'order_archive_marks';
+--   → одна: order_archive_marks_read_own, SELECT, {authenticated}, (user_id = (SELECT auth.uid())).
 --
--- 2. CHECK на заданиях:
--- SELECT pg_get_constraintdef(oid) FROM pg_constraint
---  WHERE conname = 'orders_archived_only_finished';
---   → CHECK (archived_by_client_at IS NULL OR status = ANY (...completed, cancelled, expired...)).
---
--- 3. Прямой записи у ролей приложения нет, чтение есть (осознанно):
--- SELECT r.rolname, c.tbl, c.col,
---        has_column_privilege(r.rolname, c.tbl, c.col, 'UPDATE') AS can_update,
---        has_column_privilege(r.rolname, c.tbl, c.col, 'INSERT') AS can_insert,
---        has_column_privilege(r.rolname, c.tbl, c.col, 'SELECT') AS can_select
---   FROM (VALUES ('anon'), ('authenticated')) r(rolname),
---        (VALUES ('public.orders', 'archived_by_client_at'),
---                ('public.order_responses', 'archived_by_master_at')) c(tbl, col);
---   → can_update = f и can_insert = f во всех 4 строках; can_select = t.
--- SELECT relname, relacl FROM pg_class
---  WHERE oid IN ('public.orders'::regclass, 'public.order_responses'::regclass);
---   → как до миграции: authenticated=rdm (orders), authenticated=rm (order_responses) — без «w».
---
--- 4. Функции: SECURITY DEFINER, search_path, права:
--- SELECT p.oid::regprocedure, p.prosecdef, p.proconfig, p.proacl
---   FROM pg_proc p
---  WHERE p.oid IN ('public.archive_order(uuid,boolean)'::regprocedure,
---                  'public.archive_response(uuid,boolean)'::regprocedure,
---                  'public.orders_release_master_archive()'::regprocedure,
---                  'public.orders_track_client_archive()'::regprocedure,
---                  'public.order_responses_track_master_archive()'::regprocedure,
---                  'xtrud_private.order_response_is_closed(public.order_status,public.response_status)'::regprocedure);
---   → archive_* и orders_release_master_archive: prosecdef = t; остальные f;
---     у всех proconfig = {"search_path=public, pg_temp"};
---     archive_*: EXECUTE только postgres, authenticated, service_role.
+-- 2. Права ролей приложения:
+-- SELECT r, has_table_privilege(r, 'public.order_archive_marks', 'SELECT') s,
+--        has_table_privilege(r, 'public.order_archive_marks', 'INSERT') i,
+--        has_table_privilege(r, 'public.order_archive_marks', 'UPDATE') u,
+--        has_table_privilege(r, 'public.order_archive_marks', 'DELETE') d
+--   FROM unnest(ARRAY['anon', 'authenticated']) r;
+--   → anon: f f f f; authenticated: t f f f.
 -- SELECT has_function_privilege('anon', 'public.archive_order(uuid,boolean)', 'EXECUTE'),
 --        has_function_privilege('anon', 'public.archive_response(uuid,boolean)', 'EXECUTE'),
 --        has_function_privilege('authenticated', 'public.archive_order(uuid,boolean)', 'EXECUTE'),
+--        has_function_privilege('authenticated', 'public.orders_release_archive_marks()', 'EXECUTE'),
 --        has_function_privilege('authenticated', 'xtrud_private.order_response_is_closed(public.order_status,public.response_status)', 'EXECUTE');
---   → f, f, t, f.
+--   → f, f, t, f, f.
 --
--- 5. Порядок BEFORE-триггеров (от него зависит сохранение updated_at):
--- SELECT c.relname, t.tgname FROM pg_trigger t JOIN pg_class c ON c.oid = t.tgrelid
---  WHERE c.relname IN ('orders', 'order_responses') AND NOT t.tgisinternal
---    AND (t.tgtype & 2) = 2 AND (t.tgtype & 16) = 16   -- BEFORE, UPDATE
---  ORDER BY c.relname, t.tgname;
---   → *_set_updated_at стоит выше *_track_archive в обеих таблицах;
---     orders_guard_lifecycle_direct_update на месте (0197 не задет).
+-- 3. Функции: SECURITY DEFINER и search_path:
+-- SELECT p.oid::regprocedure, p.prosecdef, p.proconfig FROM pg_proc p
+--  WHERE p.proname IN ('archive_order', 'archive_response', 'orders_release_archive_marks',
+--                      'order_responses_release_archive_mark', 'order_response_is_closed');
+--   → prosecdef = t у всех, кроме order_response_is_closed (f);
+--     proconfig = {"search_path=public, pg_temp"} у всех.
 --
--- 6. Данные не тронуты:
--- SELECT count(*) FILTER (WHERE archived_by_client_at IS NOT NULL) FROM public.orders;
--- SELECT count(*) FILTER (WHERE archived_by_master_at IS NOT NULL) FROM public.order_responses;
---   → 0 и 0.
+-- 4. orders и order_responses не изменились (сравнить с файлом снимка):
+-- SELECT relname, relacl FROM pg_class WHERE oid IN ('public.orders'::regclass, 'public.order_responses'::regclass);
+-- SELECT table_name, column_name FROM information_schema.columns
+--  WHERE table_schema = 'public' AND table_name IN ('orders', 'order_responses') AND column_name LIKE 'archived%';
+--   → relacl как в снимке; колонок archived* нет.
 --
--- 7. Поведение — только в транзакции с ROLLBACK (данные не меняются).
---    <client>, <master>, <other> — реальные uuid из orders.client_id /
---    order_responses.master_id; <completed_order>, <open_order>, <resp_closed>,
---    <resp_active> — подобрать запросом перед проверкой.
+-- 5. Поведение — только в транзакциях с ROLLBACK. Подставить реальные uuid:
+--    <client>/<completed_order> — заказчик и его завершённое задание;
+--    <master>/<resp> — выбранный исполнитель и его отклик на это же задание;
+--    <open_order> — открытое задание <client>; <other> — посторонний.
+--
+-- a) заказчик архивирует; вторая сторона метку НЕ видит:
 -- BEGIN;
 -- SET LOCAL ROLE authenticated;
 -- SELECT set_config('request.jwt.claims', '{"sub":"<client>","role":"authenticated"}', true);
--- UPDATE public.orders SET archived_by_client_at = now() WHERE id = '<completed_order>';
---   → ERROR 42501 permission denied (колоночного гранта нет).
--- ROLLBACK;
---
--- BEGIN;
--- SET LOCAL ROLE authenticated;
+-- SELECT public.archive_order('<completed_order>', true);                  → время
+-- SELECT public.archive_order('<completed_order>', true);                  → то же время
+-- SELECT count(*) FROM public.order_archive_marks;                          → 1
+-- SELECT set_config('request.jwt.claims', '{"sub":"<master>","role":"authenticated"}', true);
+-- SELECT count(*) FROM public.order_archive_marks;                          → 0   (вторая сторона не видит)
+-- SELECT count(*) FROM public.order_archive_marks WHERE order_id = '<completed_order>'; → 0
+-- SELECT public.archive_response('<resp>', true);                          → время
 -- SELECT set_config('request.jwt.claims', '{"sub":"<client>","role":"authenticated"}', true);
--- SELECT updated_at FROM public.orders WHERE id = '<completed_order>';           -- запомнить
--- SELECT public.archive_order('<completed_order>', true);                         → время
--- SELECT public.archive_order('<completed_order>', true);                         → то же время
--- SELECT updated_at, archived_by_client_at FROM public.orders WHERE id = '<completed_order>';
---   → updated_at не изменился, метка стоит.
--- SELECT public.archive_order('<completed_order>', false);                        → NULL
+-- SELECT count(*) FROM public.order_archive_marks;                          → 1   (только своя)
+-- SELECT public.archive_order('<completed_order>', false);                 → NULL
 -- ROLLBACK;
 --
+-- b) прямая запись и чужие строки:
 -- BEGIN; SET LOCAL ROLE authenticated;
 -- SELECT set_config('request.jwt.claims', '{"sub":"<client>","role":"authenticated"}', true);
--- SELECT public.archive_order('<open_order>', true);      → ERROR P0001 «В архив можно убрать только…»
+-- INSERT INTO public.order_archive_marks (user_id, order_id) VALUES ('<client>', '<open_order>');
+--   → ERROR 42501 permission denied for table order_archive_marks
 -- ROLLBACK;
---
+-- BEGIN; SET LOCAL ROLE authenticated;
+-- SELECT set_config('request.jwt.claims', '{"sub":"<client>","role":"authenticated"}', true);
+-- SELECT public.archive_order('<open_order>', true);   → ERROR P0001 «В архив можно убрать только…»
+-- ROLLBACK;
 -- BEGIN; SET LOCAL ROLE authenticated;
 -- SELECT set_config('request.jwt.claims', '{"sub":"<other>","role":"authenticated"}', true);
--- SELECT public.archive_order('<completed_order>', true); → ERROR P0002 «Задание не найдено.»
+-- SELECT public.archive_order('<completed_order>', true);  → ERROR P0002 «Задание не найдено.»
 -- ROLLBACK;
---
--- BEGIN; SET LOCAL ROLE authenticated;
--- SELECT set_config('request.jwt.claims', '{"sub":"<master>","role":"authenticated"}', true);
--- SELECT public.archive_response('<resp_closed>', true);  → время
--- SELECT public.archive_response('<resp_active>', true);  → ERROR P0001 «…по которому всё решено.»
--- ROLLBACK;
---
 -- BEGIN; SET LOCAL ROLE anon;
--- SELECT public.archive_order('<completed_order>', true); → ERROR 42501 permission denied for function
+-- SELECT public.archive_order('<completed_order>', true);  → ERROR 42501 permission denied for function
 -- ROLLBACK;
 --
--- Снятие метки при оживлении (от postgres, ROLLBACK):
+-- c) снятие меток при оживлении (от postgres, ROLLBACK):
 -- BEGIN;
--- UPDATE public.orders SET archived_by_client_at = now() WHERE id = '<cancelled_order>';
--- UPDATE public.order_responses SET archived_by_master_at = now()
---  WHERE order_id = '<cancelled_order>' AND status IN ('sent', 'viewed', 'withdrawn');
+-- INSERT INTO public.order_archive_marks (user_id, order_id)
+--   SELECT client_id, id FROM public.orders WHERE id = '<cancelled_order>';
+-- INSERT INTO public.order_archive_marks (user_id, order_id)
+--   SELECT master_id, order_id FROM public.order_responses WHERE order_id = '<cancelled_order>';
 -- UPDATE public.orders SET status = 'open' WHERE id = '<cancelled_order>';
--- SELECT archived_by_client_at FROM public.orders WHERE id = '<cancelled_order>';  → NULL
--- SELECT status, archived_by_master_at FROM public.order_responses WHERE order_id = '<cancelled_order>';
---   → у sent/viewed метка NULL, у withdrawn/rejected — осталась.
+-- SELECT m.user_id, r.status FROM public.order_archive_marks m
+--   LEFT JOIN public.order_responses r ON r.order_id = m.order_id AND r.master_id = m.user_id
+--  WHERE m.order_id = '<cancelled_order>';
+--   → метки заказчика и откликов sent/viewed нет; у withdrawn/rejected — осталась.
 -- ROLLBACK;
 --
--- 8. PostgREST перечитал схему сам (event trigger pgrst_ddl_watch есть на Beget):
---    GET /v2/rest/orders?select=id,archived_by_client_at&limit=1 с токеном → 200.
+-- 6. Через xtrud-api с токеном заказчика и специалиста:
+--    GET /v2/rest/orders?select=id,order_archive_marks(archived_at)&id=eq.<completed_order>
+--    → у заказчика — его метка, у специалиста — пустой массив.
 --
 -- ═══════════════════════════════════════════════════════════════════════════
 -- Откат
 -- ═══════════════════════════════════════════════════════════════════════════
 --
--- Мягкий (первым; данные сохраняются, старые и новые сборки читают как
--- раньше, кнопка «В архив» получает ошибку):
+-- Мягкий (первым; метки сохраняются, чтение работает, кнопка «В архив»
+-- получает ошибку):
 -- REVOKE EXECUTE ON FUNCTION public.archive_order(uuid, boolean) FROM authenticated;
 -- REVOKE EXECUTE ON FUNCTION public.archive_response(uuid, boolean) FROM authenticated;
 -- + убрать archive_order / archive_response из RPC_ALLOWLIST xtrud-api.
 --
--- Полный — только когда в TestFlight/App Store нет сборки, которая явно
--- выбирает archived_* в select или фильтрует по ним (иначе её запросы
--- получат 400). Метки архива теряются — нужно согласие владельца.
+-- Полный — только когда нет сборки, которая встраивает order_archive_marks
+-- (её запросы получат 400 PGRST200). Метки теряются — нужно согласие владельца.
 -- BEGIN;
 -- SET LOCAL lock_timeout = '5s';
--- DROP TRIGGER IF EXISTS orders_release_master_archive ON public.orders;
--- DROP TRIGGER IF EXISTS orders_track_archive ON public.orders;
--- DROP TRIGGER IF EXISTS order_responses_track_archive ON public.order_responses;
+-- DROP TRIGGER IF EXISTS orders_release_archive_marks ON public.orders;
+-- DROP TRIGGER IF EXISTS order_responses_release_archive_mark ON public.order_responses;
 -- DROP FUNCTION IF EXISTS public.archive_order(uuid, boolean);
 -- DROP FUNCTION IF EXISTS public.archive_response(uuid, boolean);
--- DROP FUNCTION IF EXISTS public.orders_release_master_archive();
--- DROP FUNCTION IF EXISTS public.orders_track_client_archive();
--- DROP FUNCTION IF EXISTS public.order_responses_track_master_archive();
+-- DROP FUNCTION IF EXISTS public.orders_release_archive_marks();
+-- DROP FUNCTION IF EXISTS public.order_responses_release_archive_mark();
 -- DROP FUNCTION IF EXISTS xtrud_private.order_response_is_closed(public.order_status, public.response_status);
--- ALTER TABLE public.orders DROP CONSTRAINT IF EXISTS orders_archived_only_finished;
--- ALTER TABLE public.orders DROP COLUMN IF EXISTS archived_by_client_at;
--- ALTER TABLE public.order_responses DROP COLUMN IF EXISTS archived_by_master_at;
+-- DROP TABLE IF EXISTS public.order_archive_marks;
+-- NOTIFY pgrst, 'reload schema';
 -- COMMIT;
--- После полного отката: пункт 1 проверки → 0 строк; пункт 5 → *_track_archive нет.
+-- После полного отката: SELECT to_regclass('public.order_archive_marks') → пусто;
+-- триггеров *_release_archive_* на orders/order_responses нет.

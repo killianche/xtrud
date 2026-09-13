@@ -34,6 +34,12 @@ open_link() {
   adb shell am start -W -a android.intent.action.VIEW -d "$1" "$PKG" > /dev/null
 }
 
+# RuStore принимает скриншоты телефона в пропорции 9:16 и обрезает остальные
+# (форма загрузки, 2026-09-13). Экран pixel_7 — 1080×2400, поэтому переводим
+# эмулятор в 1080×1920: приложение само раскладывается под 9:16, без обрезки.
+adb shell wm size 1080x1920
+sleep 3
+
 adb logcat -c
 adb shell cmd uimode night no
 adb shell monkey -p "$PKG" -c android.intent.category.LAUNCHER 1 > /dev/null

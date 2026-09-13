@@ -9,7 +9,6 @@ import {
   MapPin,
   PaperPlaneTilt,
   Phone,
-  Question,
   Star,
   Wallet,
   WhatsappLogo,
@@ -47,6 +46,7 @@ import { useVisibleCategories } from "@/features/categories/use-visible-categori
 import { useMasterPhone, useMasterPublicProfile } from "@/features/master-view/use-master-public";
 import { useMarkOrderNotificationsRead } from "@/features/notifications/use-notifications";
 import { useCloseReasonPickerStore } from "@/features/orders/close-reason-picker-store";
+import { OrderManageBlock } from "@/features/orders/OrderManageBlock";
 import { OrderPhotoCarousel } from "@/features/orders/OrderPhotoCarousel";
 import { orderCategoryIds } from "@/features/orders/order-categories";
 import { formatOrderTiming, formatPrice } from "@/features/orders/order-schema";
@@ -54,6 +54,11 @@ import { orderShareMessage } from "@/features/orders/order-share";
 import { type CancelReason, useCancelOrder } from "@/features/orders/use-cancel-order";
 import { useDeleteOrder } from "@/features/orders/use-delete-order";
 import { type OrderDetail, useOrderDetail } from "@/features/orders/use-order-detail";
+import {
+  useCompleteOrder,
+  usePickOrderMaster,
+  useUnpickOrderMaster,
+} from "@/features/orders/use-order-lifecycle";
 import {
   type OrderResponseWithMaster,
   useMyResponseForOrder,
@@ -64,6 +69,7 @@ import { canReopenOrder, useReopenOrder } from "@/features/orders/use-reopen-ord
 import { useMarkResponsesViewed } from "@/features/orders/use-unread-responses";
 import { useWithdrawResponse } from "@/features/orders/use-withdraw-response";
 import { ReportModal } from "@/features/reports/ReportModal";
+import { useMyReviewForOrder } from "@/features/reviews/use-reviews";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useAuthReturnUrlStore } from "@/lib/auth-return-url-store";
 import { confirmAsync } from "@/lib/confirm";
@@ -165,6 +171,27 @@ export default function OrderDetailScreen() {
   const deleteOrder = useDeleteOrder();
   const reopenOrder = useReopenOrder();
   const blockUser = useBlockUser();
+  // Выбор исполнителя и завершение (0196).
+  const pickMaster = usePickOrderMaster();
+  const unpickMaster = useUnpickOrderMaster();
+  const completeOrder = useCompleteOrder();
+  const ownerResponsesQ = useOrderResponses(isOwner ? id : undefined);
+  const ownerResponses = ownerResponsesQ.data ?? [];
+  const activeResponsesCount = ownerResponses.filter(
+    (r) => r.status === "sent" || r.status === "viewed",
+  ).length;
+  const pickedResponse =
+    order?.picked_master_id != null
+      ? (ownerResponses.find((r) => r.master_id === order.picked_master_id) ?? null)
+      : null;
+  const pickedName =
+    [pickedResponse?.master?.first_name, pickedResponse?.master?.last_name]
+      .filter(Boolean)
+      .join(" ") || "исполнителя";
+  const myReview = useMyReviewForOrder(
+    isOwner && order?.status === "completed" ? id : undefined,
+    userId,
+  );
 
   // Заказ закрыт клиентом или истёк → доступны «Удалить» / «Открыть заново».
   const isClosedHistory = !!order && (order.status === "cancelled" || order.status === "expired");
@@ -173,16 +200,138 @@ export default function OrderDetailScreen() {
   // Закрытие заказа с выбранной причиной. Вызывается из эффекта ниже, когда
   // `/orders/close-reason` коммитит выбор в store. useCallback — иначе эффект
   // ниже перезапускался бы на каждый рендер (функция не мемоизирована).
+  const pickMutate = pickMaster.mutate;
+  const pickResponse = useCallback(
+    (responseId: string) => {
+      if (!id || !userId) return;
+      pickMutate(
+        { orderId: id, responseId, clientId: userId },
+        {
+          onSuccess: () => hapticSuccess(),
+          onError: (e) => {
+            hapticError();
+            Alert.alert("Не удалось выбрать", describeServerError(e, "Попробуйте ещё раз."));
+          },
+        },
+      );
+    },
+    [id, userId, pickMutate],
+  );
+
+  const cancelMutate = cancelOrder.mutate;
   const handleCloseWithReason = useCallback(
     (reason: CancelReason, pickedMasterId: string | null = null) => {
       if (!id || !userId) return;
-      cancelOrder.mutate(
-        { orderId: id, clientId: userId, reason, pickedMasterId },
-        { onError: (e) => Alert.alert("Не удалось закрыть", e.message) },
+      // «Нашёл исполнителя» среди откликнувшихся — это выбор, а не закрытие
+      // (0196): задание ждёт «Работа выполнена», после неё — отзыв.
+      if (reason === "found_master" && pickedMasterId) {
+        const response = ownerResponses.find(
+          (r) => r.master_id === pickedMasterId && (r.status === "sent" || r.status === "viewed"),
+        );
+        if (response) {
+          pickResponse(response.id);
+          return;
+        }
+      }
+      cancelMutate(
+        { orderId: id, clientId: userId, reason, pickedMasterId: null },
+        {
+          onSuccess: () => hapticSuccess(),
+          onError: (e) => Alert.alert("Не удалось закрыть", e.message),
+        },
       );
     },
-    [id, userId, cancelOrder],
+    [id, userId, cancelMutate, ownerResponses, pickResponse],
   );
+
+  const handlePickFromCard = async (responseId: string, masterName: string) => {
+    const confirmed = await confirmAsync({
+      title: `Выбрать исполнителем: ${masterName}?`,
+      message:
+        "Задание уйдёт из ленты, остальные откликнувшиеся узнают, что выбран другой. Не договоритесь — откажитесь от исполнителя, и задание снова откроется.",
+      confirmText: "Выбрать",
+      cancelText: "Отмена",
+    });
+    if (confirmed) pickResponse(responseId);
+  };
+
+  const openReview = () => {
+    if (!id || !order?.picked_master_id) return;
+    router.push({
+      pathname: "/master/review",
+      params: {
+        masterId: order.picked_master_id,
+        masterName: pickedName === "исполнителя" ? "Исполнитель" : pickedName,
+        orderId: id,
+      },
+    } as never);
+  };
+
+  const handleComplete = async () => {
+    if (!id || !userId) return;
+    const confirmed = await confirmAsync({
+      title: "Работа выполнена?",
+      message: "Задание завершится, и вы сможете оставить отзыв исполнителю.",
+      confirmText: "Да, выполнена",
+      cancelText: "Отмена",
+    });
+    if (!confirmed) return;
+    completeOrder.mutate(
+      { orderId: id, clientId: userId },
+      {
+        onSuccess: () => {
+          hapticSuccess();
+          // Сразу предлагаем отзыв — пока впечатление свежее.
+          openReview();
+        },
+        onError: (e) => {
+          hapticError();
+          Alert.alert("Не удалось завершить", describeServerError(e, "Попробуйте ещё раз."));
+        },
+      },
+    );
+  };
+
+  const handleUnpick = async () => {
+    if (!id || !userId) return;
+    const confirmed = await confirmAsync({
+      title: "Отказаться от исполнителя?",
+      message: `Задание снова откроется для откликов, ${pickedName} получит уведомление.`,
+      confirmText: "Отказаться",
+      cancelText: "Отмена",
+      destructive: true,
+    });
+    if (!confirmed) return;
+    unpickMaster.mutate(
+      { orderId: id, clientId: userId },
+      {
+        onSuccess: () => hapticSuccess(),
+        onError: (e) => {
+          hapticError();
+          Alert.alert("Не получилось", describeServerError(e, "Попробуйте ещё раз."));
+        },
+      },
+    );
+  };
+
+  const handleCancelInProgress = async () => {
+    if (!id || !userId) return;
+    const confirmed = await confirmAsync({
+      title: "Отменить задание?",
+      message: "Задание закроется без исполнителя, выбранный специалист получит уведомление.",
+      confirmText: "Отменить задание",
+      cancelText: "Не отменять",
+      destructive: true,
+    });
+    if (!confirmed) return;
+    cancelMutate(
+      { orderId: id, clientId: userId, reason: "no_longer_needed" },
+      {
+        onSuccess: () => hapticSuccess(),
+        onError: (e) => Alert.alert("Не удалось отменить", e.message),
+      },
+    );
+  };
 
   useEffect(() => {
     if (!closeReasonResult || closeReasonResult.orderId !== id) return;
@@ -249,9 +398,24 @@ export default function OrderDetailScreen() {
     if (!id || !userId) return;
     reopenOrder.mutate(
       { orderId: id, userId },
-      { onError: (e) => Alert.alert("Не удалось открыть заново", e.message) },
+      {
+        onSuccess: () => hapticSuccess(),
+        onError: (e) => Alert.alert("Не удалось открыть заново", e.message),
+      },
     );
   };
+
+  const manageBusy = completeOrder.isPending
+    ? ("complete" as const)
+    : unpickMaster.isPending
+      ? ("unpick" as const)
+      : cancelOrder.isPending
+        ? ("cancel" as const)
+        : reopenOrder.isPending
+          ? ("reopen" as const)
+          : deleteOrder.isPending
+            ? ("delete" as const)
+            : null;
 
   // Меню «Действия с заданием» — нативный ActionSheetIOS вместо самописной
   // шторки (docs/IOS_FOUNDATION.md §2.8). Набор действий зависит от статуса
@@ -468,18 +632,55 @@ export default function OrderDetailScreen() {
         >
           <OrderInfoBlock order={order} isOwner={isOwner} />
 
-          {isOwner && id && userId && order ? (
-            <CloseOrderHint
-              order={order}
-              orderId={id}
-              onCloseRequested={() =>
+          {/* Что дальше с заданием — один блок по состоянию (0196). */}
+          {isOwner && id && userId ? (
+            <OrderManageBlock
+              status={order.status}
+              activeResponsesCount={order.contact_mode === "phone_open" ? 0 : activeResponsesCount}
+              canReopen={canReopen}
+              myReviewRating={myReview.isLoading ? undefined : (myReview.data?.rating ?? null)}
+              busyAction={manageBusy}
+              onChooseMaster={() =>
+                router.push({
+                  pathname: "/orders/close-reason",
+                  params: { orderId: id, step: "who" },
+                } as never)
+              }
+              onClose={() =>
                 router.push({ pathname: "/orders/close-reason", params: { orderId: id } } as never)
               }
+              onComplete={() => void handleComplete()}
+              onUnpick={() => void handleUnpick()}
+              onCancel={() => void handleCancelInProgress()}
+              onReview={openReview}
+              onReopen={handleReopen}
+              onDelete={() => void handleDelete()}
             />
           ) : null}
 
+          {/* Выбранный исполнитель — отдельно, над остальными откликами. */}
+          {isOwner && pickedResponse && order.status !== "open" ? (
+            <View className="mt-8 px-5">
+              <AppText weight="semibold" className="text-title-md tracking-tight text-ink">
+                Исполнитель
+              </AppText>
+              <View className="mt-3">
+                <ClientMasterResponseCard
+                  response={pickedResponse}
+                  isRejecting={false}
+                  onReject={undefined}
+                  highlight={order.status === "completed" ? "completed" : "picked"}
+                />
+              </View>
+            </View>
+          ) : null}
+
           {isOwner && id && order && order.contact_mode !== "phone_open" ? (
-            <ClientResponsesSection orderId={id} order={order} />
+            <ClientResponsesSection
+              orderId={id}
+              order={order}
+              onPick={(responseId, masterName) => void handlePickFromCard(responseId, masterName)}
+            />
           ) : null}
           {isOwner && order.contact_mode === "phone_open" ? (
             <View className="mx-5 mt-6 rounded-2xl bg-canvas-soft p-4">
@@ -547,67 +748,6 @@ export default function OrderDetailScreen() {
 
 // ============================================================================
 // ============================================================================
-// ============================================================================
-// ============================================================================
-// CloseOrderHint — баннер «Нашли мастера? Закройте заказ».
-// Показывается клиенту-владельцу, когда:
-//   - order.status === 'open'
-//   - order.created_at старше 24 часов
-//   - есть хотя бы 1 отклик
-// Это паттерн Avito/Profi.ru: реминд клиенту закрыть заказ чтобы остановить
-// поток откликов от мастеров. Без этого мастера продолжают писать даже когда
-// клиент уже нашёл подрядчика офлайн.
-// ============================================================================
-
-interface CloseOrderHintProps {
-  order: NonNullable<ReturnType<typeof useOrderDetail>["data"]>;
-  orderId: string;
-  /** Открыть шит выбора причины закрытия (единый флоу с action-меню). */
-  onCloseRequested: () => void;
-}
-
-function CloseOrderHint({ order, orderId, onCloseRequested }: CloseOrderHintProps) {
-  const tc = useThemeColors(["accent", "muted-soft"]);
-  const { data: responses } = useOrderResponses(orderId);
-
-  // Условия показа
-  const isOpen = order.status === "open";
-  const createdMs = order.created_at ? new Date(order.created_at).getTime() : 0;
-  const ageHours = createdMs > 0 ? (Date.now() - createdMs) / 3_600_000 : 0;
-  const activeResponseCount = (responses ?? []).filter((r) => r.status !== "rejected").length;
-  const shouldShow = isOpen && ageHours >= 24 && activeResponseCount >= 1;
-
-  if (!shouldShow) return null;
-
-  return (
-    // Подсказка, а не статус: раньше акцентная плашка с галочкой читалась как
-    // «исполнитель найден» (владелец, 2026-09-08). Нейтральная поверхность,
-    // вопрос и объяснение.
-    <View className="mt-6 mx-5 rounded-xl border border-hairline bg-canvas p-4 flex-row items-start gap-3">
-      <Question size={22} weight="bold" color={tc["muted-soft"]} />
-      <View className="flex-1">
-        <AppText weight="semibold" className="text-body-md text-ink">
-          Договорились с кем-то из откликнувшихся?
-        </AppText>
-        <AppText className="mt-1 text-body-sm text-body">
-          Тогда закройте задание и укажите, кто сделал работу. Остальные перестанут откликаться, а
-          исполнитель получит уведомление. Если ещё выбираете — ничего делать не нужно.
-        </AppText>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Закрыть задание"
-          onPress={onCloseRequested}
-          className="mt-3 min-h-11 self-start flex-row items-center justify-center px-4 rounded-full bg-primary active:opacity-80"
-        >
-          <AppText weight="semibold" className="text-button text-on-primary">
-            Закрыть задание
-          </AppText>
-        </Pressable>
-      </View>
-    </View>
-  );
-}
-
 // ============================================================================
 // Order info block — общий для всех
 // ============================================================================
@@ -871,9 +1011,11 @@ function formatBudget(o: {
 interface ClientResponsesSectionProps {
   orderId: string;
   order: OrderDetail;
+  /** «Выбрать исполнителем» на карточке (0196) — только в открытом задании. */
+  onPick: (responseId: string, masterName: string) => void;
 }
 
-function ClientResponsesSection({ orderId, order }: ClientResponsesSectionProps) {
+function ClientResponsesSection({ orderId, order, onPick }: ClientResponsesSectionProps) {
   const tc = useThemeColors(["muted-soft"]);
   const router = useRouter();
   const {
@@ -921,10 +1063,17 @@ function ClientResponsesSection({ orderId, order }: ClientResponsesSectionProps)
     );
   };
 
-  const hasResponses = (responses?.length ?? 0) > 0;
   const isOpen = order.status === "open";
-  const activeResponses = (responses ?? []).filter((r) => r.status !== "rejected");
-  const rejectedResponses = (responses ?? []).filter((r) => r.status === "rejected");
+  // Выбранный исполнитель показан отдельным блоком выше — здесь остальные.
+  const others = (responses ?? []).filter(
+    (r) => !(order.picked_master_id && r.master_id === order.picked_master_id),
+  );
+  const hasResponses = others.length > 0;
+  const activeResponses = others.filter((r) => r.status !== "rejected");
+  const rejectedResponses = others.filter((r) => r.status === "rejected");
+  const hasPicked = !!order.picked_master_id && !isOpen;
+  // Когда исполнитель выбран и других откликов нет — секция не нужна.
+  if (hasPicked && !isLoading && !error && !hasResponses) return null;
 
   // Заказ «висит» больше суток без откликов → не обещаем «в течение часа»
   // (это была бы ложь), а даём честную подсказку как привлечь мастеров.
@@ -936,7 +1085,7 @@ function ClientResponsesSection({ orderId, order }: ClientResponsesSectionProps)
       {/* Heading: «Отклики · N» */}
       <View className="flex-row items-baseline justify-between gap-2">
         <AppText weight="semibold" className="text-title-md text-ink tracking-tight">
-          Отклики
+          {hasPicked ? "Другие отклики" : "Отклики"}
         </AppText>
         {hasResponses ? (
           <AppText weight="mono" className="text-mono-caption text-mute">
@@ -1047,6 +1196,16 @@ function ClientResponsesSection({ orderId, order }: ClientResponsesSectionProps)
             <ClientMasterResponseCard
               key={r.id}
               response={r}
+              onPick={
+                isOpen && (r.status === "sent" || r.status === "viewed")
+                  ? () =>
+                      onPick(
+                        r.id,
+                        [r.master?.first_name, r.master?.last_name].filter(Boolean).join(" ") ||
+                          "специалист",
+                      )
+                  : undefined
+              }
               isRejecting={pendingRejectResponseId === r.id}
               onReject={
                 isOpen
@@ -1139,6 +1298,10 @@ interface ClientMasterResponseCardProps {
   onReject: (() => void) | undefined;
   /** Скрытый отклик — приглушённый, без кнопок связи. */
   rejected?: boolean;
+  /** «Выбрать исполнителем» (0196). Нет — кнопки нет. */
+  onPick?: () => void;
+  /** Выбранный исполнитель: обводка цвета состояния задания. */
+  highlight?: "picked" | "completed";
 }
 
 function ClientMasterResponseCard({
@@ -1146,6 +1309,8 @@ function ClientMasterResponseCard({
   isRejecting,
   onReject,
   rejected,
+  onPick,
+  highlight,
 }: ClientMasterResponseCardProps) {
   const router = useRouter();
   const tc = useThemeColors(["ink", "mute", "warning", "accent"]);
@@ -1198,7 +1363,13 @@ function ClientMasterResponseCard({
 
   return (
     <View
-      className="rounded-2xl border border-hairline bg-canvas p-4"
+      className={`rounded-2xl bg-canvas p-4 ${
+        highlight === "completed"
+          ? "border-2 border-success"
+          : highlight === "picked"
+            ? "border-2 border-warning"
+            : "border border-hairline"
+      }`}
       style={rejected ? { opacity: 0.6 } : undefined}
     >
       {/* Кто и за сколько. Тап — профиль специалиста. */}
@@ -1288,6 +1459,22 @@ function ClientMasterResponseCard({
           who={masterName}
         />
       )}
+
+      {/* Выбор исполнителя — контурная капсула: главное на карточке всё же
+          связь, а выбирают после разговора (0196). */}
+      {onPick ? (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={`Выбрать исполнителем: ${masterName}`}
+          onPress={onPick}
+          className="mt-2.5 min-h-12 flex-row items-center justify-center gap-2 rounded-pill border-2 border-accent bg-canvas px-3 active:bg-accent-soft"
+        >
+          <CheckCircle size={18} weight="bold" color={tc.accent} />
+          <AppText weight="semibold" className="text-body-md text-accent">
+            Выбрать исполнителем
+          </AppText>
+        </Pressable>
+      ) : null}
 
       {/* Второстепенное — тихой строкой под линией, а не кнопками во всю
           ширину: профиль и скрыть нужны реже, чем связь. */}
@@ -1380,14 +1567,27 @@ function MasterResponseSection({
     );
   };
 
-  const status = responseStatusView(myResponse.status, isPickedMaster);
+  const otherPicked =
+    !isPickedMaster &&
+    (orderStatus === "in_progress" ||
+      orderStatus === "awaiting_confirmation" ||
+      orderStatus === "completed");
+  const status = responseStatusView(myResponse.status, isPickedMaster, orderStatus);
   const hint = isPickedMaster
-    ? "Клиент выбрал вас. Свяжитесь с ним по контактам в задании."
-    : myResponse.status === "rejected"
-      ? "Клиент отклонил отклик. Посмотрите другие задания."
-      : myResponse.status === "withdrawn"
-        ? "Вы отозвали отклик."
-        : "Клиент видит ваш отклик и свяжется сам, если выберет вас.";
+    ? orderStatus === "completed"
+      ? "Клиент отметил работу выполненной. Спасибо!"
+      : orderStatus === "cancelled" || orderStatus === "expired"
+        ? "Клиент отменил задание."
+        : "Клиент выбрал вас исполнителем и свяжется по номеру из отклика. Когда работа будет готова, он отметит её выполненной."
+    : otherPicked
+      ? "Клиент выбрал другого исполнителя. Посмотрите другие задания."
+      : myResponse.status === "rejected"
+        ? "Клиент отклонил отклик. Посмотрите другие задания."
+        : myResponse.status === "withdrawn"
+          ? orderStatus === "open"
+            ? "Вы отозвали отклик."
+            : "Задание закрыто."
+          : "Клиент видит ваш отклик и свяжется сам, если выберет вас.";
 
   // Отдельный блок на сером фоне (владелец, 2026-09-11: «отделить дизайном
   // от остального»). Раньше это была InsetGroup — белая плашка на белом
@@ -1458,8 +1658,22 @@ function MasterResponseSection({
 function responseStatusView(
   s: Tables<"order_responses">["status"],
   picked: boolean,
+  orderStatus: Tables<"orders">["status"],
 ): { label: string; pill: string; text: string } {
-  if (picked) return { label: "Вас выбрали", pill: "bg-success-soft", text: "text-success" };
+  // Выбрали меня — фирменный цвет, как обводка карточки в «Моих откликах».
+  if (picked) {
+    if (orderStatus === "completed")
+      return { label: "Вы выполнили", pill: "bg-success-soft", text: "text-success" };
+    if (orderStatus === "cancelled" || orderStatus === "expired")
+      return { label: "Отменено", pill: "bg-canvas", text: "text-mute" };
+    return { label: "Вас выбрали", pill: "bg-accent-soft", text: "text-accent" };
+  }
+  if (
+    orderStatus === "in_progress" ||
+    orderStatus === "awaiting_confirmation" ||
+    orderStatus === "completed"
+  )
+    return { label: "Выбран другой", pill: "bg-canvas", text: "text-mute" };
   switch (s) {
     case "sent":
       return { label: "Отправлен", pill: "bg-canvas", text: "text-mute" };

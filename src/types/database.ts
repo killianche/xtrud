@@ -1757,6 +1757,12 @@ export type Database = {
         Returns: undefined
       }
       reject_response: { Args: { p_response_id: string }; Returns: undefined }
+      pick_order_master: {
+        Args: { p_order_id: string; p_response_id: string }
+        Returns: undefined
+      }
+      unpick_order_master: { Args: { p_order_id: string }; Returns: undefined }
+      complete_order: { Args: { p_order_id: string }; Returns: undefined }
       reopen_order: { Args: { p_order_id: string }; Returns: undefined }
       resolve_login_email: { Args: { p_login: string }; Returns: string }
       search_categories: {
@@ -1813,7 +1819,7 @@ export type Database = {
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }
       submit_master_review: {
-        Args: { p_rating: number; p_target_id: string; p_text?: string }
+        Args: { p_order_id?: string; p_rating: number; p_target_id: string; p_text?: string }
         Returns: string
       }
       submit_order_response: {

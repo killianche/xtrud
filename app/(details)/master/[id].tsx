@@ -53,7 +53,7 @@ import {
 import { PortfolioLightbox } from "@/features/profile/PortfolioLightbox";
 import { useMasterPortfolio } from "@/features/profile/use-my-portfolio";
 import { ReportModal } from "@/features/reports/ReportModal";
-import { useMyRecentReviewForMaster } from "@/features/reviews/use-reviews";
+import { useReviewableOrderForMaster } from "@/features/reviews/use-reviews";
 import { availabilityTitle } from "@/features/specialist/AvailabilityRows";
 import { linkLabel } from "@/features/specialist/link-url";
 import { useColorScheme } from "@/hooks/use-color-scheme";
@@ -97,7 +97,8 @@ export default function MasterPublicScreen() {
   const reviews = useReviewsForTarget(masterId, "client_to_master");
   const masterPhone = useMasterPhone(masterId);
   const services = useMasterServices(masterId);
-  const recentReview = useMyRecentReviewForMaster(masterId, currentUserId);
+  // Отзыв — только по завершённому заданию с этим специалистом (0196).
+  const reviewable = useReviewableOrderForMaster(masterId, currentUserId);
   const blockUser = useBlockUser();
   const recordView = useRecordMasterView();
   useEffect(() => {
@@ -131,7 +132,7 @@ export default function MasterPublicScreen() {
     [portfolio.data],
   );
   const tile = gridWidth > 0 ? Math.floor((gridWidth - GAP * 2) / 3) : 0;
-  const showReviewCta = !!masterId && !isOwn && !recentReview.data;
+  const showReviewCta = !!masterId && !isOwn && !!reviewable.data;
   const hasContacts = !!phoneTel || !!phoneWa;
   // У своего профиля нижней панели нет: сюда попадают из редактора
   // «Я специалист», и кнопка «Редактировать профиль» вернула бы туда,
@@ -200,13 +201,10 @@ export default function MasterPublicScreen() {
     );
   };
   const handleReview = () => {
-    if (!currentUserId) {
-      router.push("/(auth)/phone" as never);
-      return;
-    }
+    if (!currentUserId || !reviewable.data) return;
     router.push({
       pathname: "/master/review",
-      params: { masterId: masterId ?? "", masterName: name },
+      params: { masterId: masterId ?? "", masterName: name, orderId: reviewable.data.id },
     } as never);
   };
 
@@ -413,7 +411,7 @@ export default function MasterPublicScreen() {
             <View className="px-4">
               <ReviewsSection
                 title="Отзывы"
-                emptyText="Отзывов пока нет. Станьте первым, кто расскажет о работе."
+                emptyText="Отзывов пока нет. Отзыв оставляет заказчик после завершённого задания."
                 query={reviews}
               />
               {showReviewCta ? (

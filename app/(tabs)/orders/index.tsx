@@ -59,6 +59,7 @@ import {
   useMarkOrderEventsRead,
   useUnreadOrderEventsCount,
 } from "@/features/notifications/use-notifications";
+import { clientOrderTone, masterOrderTone } from "@/features/orders/order-card-tone";
 import { type OrderWithRefs, useMyOrders } from "@/features/orders/use-my-orders";
 import {
   historyResponseStatusLabel,
@@ -76,9 +77,9 @@ import type { IconComponent } from "@/types/icon";
 
 type Segment = "orders" | "responses";
 
-// Открытые — только open. В classified-ads модели задание не идёт в
-// in_progress/awaiting_confirmation (нет accept-flow), а disputed недостижим.
-const ACTIVE_STATUSES = new Set<string>(["open"]);
+// Активные — открытые и с выбранным исполнителем (0196): оба ждут действия
+// клиента. Завершённые и закрытые — ниже.
+const ACTIVE_STATUSES = new Set<string>(["open", "in_progress", "awaiting_confirmation"]);
 
 export default function OrdersScreen() {
   // Строки навигации в покое нет — стартовая высота 0, без прыжка (QA).
@@ -269,9 +270,11 @@ function OrdersList({ userId, contentTop, onScroll, header }: ListProps) {
           urgency={o.urgency}
           preferredDate={o.preferred_date}
           responsesCount={o.responses_count}
-          showResponsesCount
+          // Счётчик откликов важен, пока исполнитель не выбран.
+          showResponsesCount={o.status === "open"}
           createdAt={o.created_at}
           status={o.status}
+          tone={clientOrderTone(o)}
           budgetKind={o.budget_kind}
           budgetValue={o.budget_value}
           coverUrl={o.photo_urls?.[0] ?? null}
@@ -372,6 +375,7 @@ function ResponsesList({ userId, contentTop, onScroll, header }: ListProps) {
               budgetKind={r.order.budget_kind}
               budgetValue={r.order.budget_value}
               statusOverrideLabel={isHistory ? historyResponseStatusLabel(r) : undefined}
+              tone={userId ? masterOrderTone(r.order, userId, r.response.status) : null}
               myResponse={{
                 priceKind: r.response.price_kind,
                 priceValue: r.response.price_value,

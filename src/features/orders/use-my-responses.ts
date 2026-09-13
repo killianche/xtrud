@@ -45,6 +45,8 @@ export function isActiveResponse(r: MyResponseWithOrder): boolean {
   if (respStatus === "rejected" || respStatus === "withdrawn") {
     return false;
   }
+  // Исполнитель выбран (0196): активно только у того, кого выбрали.
+  if (orderStatus === "in_progress") return respStatus === "accepted";
   return true;
 }
 
@@ -65,9 +67,13 @@ export function isHistoryResponse(r: MyResponseWithOrder): boolean {
  * (open/in_progress) — тогда причина действительно в самом отклике.
  */
 export function historyResponseStatusLabel(r: MyResponseWithOrder): string {
+  // Выбрали меня — итог по моей работе, а не по заданию вообще (0196).
+  if (r.response.status === "accepted") {
+    if (r.order.status === "completed") return "Вы выполнили";
+    if (r.order.status === "cancelled" || r.order.status === "expired") return "Отменено";
+  }
+  if (r.order.status === "in_progress" || r.order.status === "completed") return "Выбран другой";
   switch (r.order.status) {
-    case "completed":
-      return "Завершён";
     case "cancelled":
       return "Заказ закрыли";
     case "expired":

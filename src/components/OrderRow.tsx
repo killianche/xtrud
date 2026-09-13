@@ -40,6 +40,11 @@ import { ArrowRight, ChatCenteredText, Phone } from "phosphor-react-native";
 import { type GestureResponderEvent, Pressable, View } from "react-native";
 import { AppText } from "@/components/AppText";
 import type { OrderStatusValue } from "@/components/OrderStatusBadge";
+import {
+  type OrderCardTone,
+  TONE_BORDER_CLASS,
+  TONE_PILL_CLASS,
+} from "@/features/orders/order-card-tone";
 import { formatOrderTiming, formatPrice } from "@/features/orders/order-schema";
 import { responsesLabel } from "@/features/orders/plural-ru";
 import type { OrderPriceKind, OrderUrgency } from "@/features/orders/use-create-order";
@@ -108,6 +113,10 @@ export interface OrderRowProps {
   statusOverrideLabel?: string | null;
   /** Мой отклик — строка «Ваш отклик: цена · срок» («Мои отклики»). */
   myResponse?: OrderRowMyResponse | null;
+  /** Состояние задания цветом: обводка и плашка («Мои задания», 2026-09-13).
+   *  Задан — перекрывает `status` и `statusOverrideLabel`. В ленте не
+   *  передаётся: там все задания открыты. См. order-card-tone.ts. */
+  tone?: OrderCardTone | null;
 }
 
 /** Короткая дата: «11 ч», «2 д», «23 мая» — без «назад». */
@@ -165,9 +174,14 @@ export function OrderRow(props: OrderRowProps) {
   };
 
   const Icon = getCategoryIcon(props.categoryIcon);
+  const tone = props.tone ?? null;
   const overrideLabel = props.statusOverrideLabel?.trim() || null;
-  const dimmedLabel = overrideLabel ?? (props.status ? DIMMED_STATUS[props.status] : undefined);
-  const isDimmed = !!dimmedLabel;
+  const dimmedLabel = tone
+    ? tone.label
+    : (overrideLabel ?? (props.status ? DIMMED_STATUS[props.status] : undefined));
+  const isDimmed = tone ? tone.dimmed : !!dimmedLabel;
+  const toneBorder = tone ? TONE_BORDER_CLASS[tone.kind] : null;
+  const tonePill = tone ? TONE_PILL_CLASS[tone.kind] : null;
   const showButton = !!props.showRespondButton && !props.alreadyResponded;
 
   const timingLabel = formatOrderTiming(props.urgency, props.preferredDate);
@@ -206,8 +220,14 @@ export function OrderRow(props: OrderRowProps) {
       accessibilityRole="button"
       accessibilityLabel={ariaLabel}
       onPress={props.onPress}
-      className="mx-4 mb-4 overflow-hidden rounded-2xl bg-surface-card active:opacity-90"
-      style={[CARD_SHADOW, isDimmed ? { opacity: 0.65 } : null]}
+      className={`mx-4 mb-4 overflow-hidden rounded-2xl bg-surface-card active:opacity-90 ${
+        toneBorder ?? ""
+      }`}
+      style={[
+        CARD_SHADOW,
+        toneBorder ? { borderWidth: 2 } : null,
+        isDimmed ? { opacity: 0.65 } : null,
+      ]}
     >
       <View className="p-4">
         {/* Строка категории. Иконка — в размер текста и без подложки: цвет
@@ -223,8 +243,11 @@ export function OrderRow(props: OrderRowProps) {
             {props.categoryName}
           </AppText>
           {dimmedLabel ? (
-            <View className="rounded-pill bg-surface-2 px-2.5 py-1">
-              <AppText weight="semibold" className="text-body-sm text-mute">
+            <View className={`rounded-pill px-2.5 py-1 ${tonePill?.bg ?? "bg-surface-2"}`}>
+              <AppText
+                weight="semibold"
+                className={`text-body-sm ${tonePill?.text ?? "text-mute"}`}
+              >
                 {dimmedLabel}
               </AppText>
             </View>

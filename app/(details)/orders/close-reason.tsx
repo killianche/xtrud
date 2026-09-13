@@ -7,9 +7,11 @@
  * `formSheet`, а не самописный full-screen `<Modal>`.
  *
  * Две крупные кнопки (план §4 ORDER_LIFECYCLE_CLIENT_PLAN.md):
- *   - «Я нашёл исполнителя» → cancel_reason = 'found_master'   (успех)
- *   - «Больше не нужно»     → cancel_reason = 'no_longer_needed' (передумал)
- * Обе ведут заказ в статус cancelled — разница только в сохранённой причине.
+ *   - «Я нашёл исполнителя» → выбор из откликнувшихся: задание переходит в
+ *     «Исполнитель выбран» (0196, pick_order_master); «Не из откликов» —
+ *     закрытие с cancel_reason = 'found_master';
+ *   - «Больше не нужно»     → cancel_reason = 'no_longer_needed'.
+ * `?step=who` открывает сразу выбор исполнителя (блок «Нашли исполнителя?»).
  * Заголовок-вопрос без подзаголовка (правило §G design-quality.md).
  * Контент предсказуемой высоты (2 карточки + сноска) → `fitToContents`.
  *
@@ -50,7 +52,7 @@ const SHEET_OPTIONS = {
 export default function CloseReasonScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const params = useLocalSearchParams<{ orderId?: string }>();
+  const params = useLocalSearchParams<{ orderId?: string; step?: string }>();
   const orderId = typeof params.orderId === "string" ? params.orderId : undefined;
   const setResult = useCloseReasonPickerStore((s) => s.setResult);
   const tc = useThemeColors(["mute"]);
@@ -59,9 +61,13 @@ export default function CloseReasonScreen() {
 
   // Р1 (DECISION владельца 2026-09-07): «нашёл исполнителя» → спросить, кто
   // из откликнувшихся сделал работу. Мастер получит уведомление (0175).
-  const [step, setStep] = useState<"reason" | "who">("reason");
+  // «Выбрать исполнителя» из блока задания открывает сразу список (0196).
+  const [step, setStep] = useState<"reason" | "who">(params.step === "who" ? "who" : "reason");
   const responsesQ = useOrderResponses(orderId);
-  const responders = (responsesQ.data ?? []).filter((r) => r.status !== "rejected" && r.master);
+  // Выбрать можно только из живых откликов: отозванный или скрытый — нет.
+  const responders = (responsesQ.data ?? []).filter(
+    (r) => (r.status === "sent" || r.status === "viewed") && r.master,
+  );
 
   const pick = (reason: CancelReason, pickedMasterId: string | null = null) => {
     if (orderId) setResult({ orderId, reason, pickedMasterId });
@@ -88,7 +94,7 @@ export default function CloseReasonScreen() {
             className="flex-1 text-display-sm tracking-tight text-ink"
             numberOfLines={2}
           >
-            {step === "who" ? "Кто сделал работу?" : "Почему закрываете задание?"}
+            {step === "who" ? "С кем договорились?" : "Почему закрываете задание?"}
           </AppText>
           <Pressable
             accessibilityRole="button"
@@ -107,7 +113,7 @@ export default function CloseReasonScreen() {
             нейтральный. Оба → cancelled, разница в cancel_reason. */}
         {step === "who" ? (
           <View className="pb-6 pt-1">
-            <InsetGroup footer="Исполнитель получит уведомление, а вы сможете оставить ему отзыв.">
+            <InsetGroup footer="Задание уйдёт из ленты, выбранный получит уведомление. Когда работа будет готова, отметьте её выполненной — и оставьте отзыв.">
               {responders.map((r) => {
                 const m = r.master;
                 const name =
@@ -127,8 +133,8 @@ export default function CloseReasonScreen() {
                 );
               })}
               <InsetRow
-                title="Не из приложения"
-                subtitle="Нашёл исполнителя другим способом"
+                title="Не из откликов"
+                subtitle="Нашёл исполнителя другим способом — задание закроется"
                 icon={<UserCircle size={20} weight="bold" color={tc.mute} />}
                 onPress={() => pick("found_master", null)}
                 last
@@ -140,7 +146,7 @@ export default function CloseReasonScreen() {
             <CloseReasonOption
               icon={CheckCircle}
               title="Я нашёл исполнителя"
-              description="Договорился с подрядчиком — задача закрыта успешно."
+              description="Выберу из откликнувшихся или отмечу, что нашёл в другом месте."
               tone="success"
               onPress={onFoundMaster}
             />

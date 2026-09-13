@@ -1,11 +1,9 @@
 // Hooks для отзывов:
 // - useMyReviewForOrder: проверка, есть ли мой отзыв по заказу (sprint 7.3 client-only)
 // - useSubmitReview: создание отзыва client→master по заказу
-// - useSubmitMasterReview: freeform-отзыв на мастера с профиля (без заказа,
-//   лимит 1 отзыв в 3 дня, реализовано через RPC submit_master_review с миграции
-//   freeform_master_reviews 2026-05-27).
-// - useMyRecentReviewForMaster: проверка, может ли клиент оставить отзыв
-//   этому мастеру (есть ли отзыв за последние 3 дня).
+// - useSubmitMasterReview: отзыв специалисту по завершённому заданию (0196).
+// - useReviewableOrderForMaster: есть ли завершённое задание с этим
+//   специалистом без моего отзыва — от этого зависит кнопка «Оставить отзыв».
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
@@ -69,43 +67,54 @@ export function useSubmitReview() {
 }
 
 // ============================================================================
-// Freeform отзывы на мастера (без привязки к заказу).
-// Backend: RPC `submit_master_review` из миграции freeform_master_reviews
-// (2026-05-27). RPC сам проверяет лимит: один отзыв от автора в 3 дня.
+// Отзыв специалисту — только по завершённому заданию (0196, DECISION владельца
+// 2026-09-13: «только в таком случае можно оставить отзыв, просто так нельзя»).
+// RPC `submit_master_review` проверяет: задание моё, завершено, исполнитель —
+// этот специалист, отзыва по заданию ещё нет; и лимит «один отзыв в три дня».
 // ============================================================================
 
-export function recentReviewByAuthorKey(
-  targetId: string | undefined,
-  authorId: string | undefined,
-) {
-  return ["recent-review-by-author", targetId, authorId] as const;
+export interface ReviewableOrder {
+  id: string;
+  title: string;
 }
 
-/** Проверка: оставлял ли этот человек отзыв за последние 3 дня. Нужна,
- *  чтобы скрыть кнопку «Оставить отзыв» вместо отказа сервера. */
-export function useMyRecentReviewForMaster(
+export const reviewableOrderKey = (targetId: string | undefined, authorId: string | undefined) =>
+  ["reviewable-order", targetId, authorId] as const;
+
+/**
+ * Последнее моё завершённое задание с этим специалистом, по которому я ещё
+ * не оставил отзыв. Нет такого — кнопки «Оставить отзыв» нет.
+ */
+export function useReviewableOrderForMaster(
   targetId: string | undefined,
   authorId: string | undefined,
 ) {
-  return useQuery<Review | null>({
-    queryKey: recentReviewByAuthorKey(targetId, authorId),
+  return useQuery<ReviewableOrder | null>({
+    queryKey: reviewableOrderKey(targetId, authorId),
     queryFn: async () => {
-      if (!targetId || !authorId) return null;
-      // DECISION владельца 2026-09-12: один отзыв в три дня от человека —
-      // любому специалисту, без привязки к заданию (0175, 0191). Окно то же,
-      // что проверяет сервер: иначе кнопка была бы видна, а отправка падала.
-      const since = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString();
-      const { data, error } = await supabase
-        .from("reviews")
-        .select("*")
-        .eq("author_id", authorId)
-        .eq("direction", "client_to_master")
-        .gte("created_at", since)
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
+      if (!targetId || !authorId || targetId === authorId) return null;
+      const { data: orders, error } = await supabase
+        .from("orders")
+        .select("id, title")
+        .eq("client_id", authorId)
+        .eq("picked_master_id", targetId)
+        .eq("status", "completed")
+        .order("completed_at", { ascending: false })
+        .limit(10);
       if (error) throw error;
-      return data;
+      const list = orders ?? [];
+      if (list.length === 0) return null;
+      const { data: reviewed, error: reviewsError } = await supabase
+        .from("reviews")
+        .select("order_id")
+        .eq("author_id", authorId)
+        .in(
+          "order_id",
+          list.map((o) => o.id),
+        );
+      if (reviewsError) throw reviewsError;
+      const done = new Set((reviewed ?? []).map((r) => r.order_id));
+      return list.find((o) => !done.has(o.id)) ?? null;
     },
     enabled: !!targetId && !!authorId,
     staleTime: 30_000,
@@ -114,13 +123,12 @@ export function useMyRecentReviewForMaster(
 
 export interface SubmitMasterReviewInput {
   targetId: string;
+  orderId: string;
   rating: number;
   text?: string;
 }
 
-/** Отправить freeform-отзыв на мастера (без заказа). RPC сам проверит
- *  авторизацию, рейтинг 1-5, что target — мастер, и лимит 1 отзыв в 3 дня.
- *  Возвращает id созданного отзыва. */
+/** Отправить отзыв специалисту по завершённому заданию. Возвращает id отзыва. */
 export function useSubmitMasterReview(authorId: string | undefined) {
   const queryClient = useQueryClient();
 
@@ -128,23 +136,18 @@ export function useSubmitMasterReview(authorId: string | undefined) {
     mutationFn: async (input: SubmitMasterReviewInput) => {
       const { data, error } = await supabase.rpc("submit_master_review", {
         p_target_id: input.targetId,
+        p_order_id: input.orderId,
         p_rating: input.rating,
         p_text: input.text?.trim() || undefined,
       });
       if (error) throw error;
       return data as string;
     },
-    onSuccess: (_id, { targetId }) => {
-      queryClient.invalidateQueries({
-        queryKey: recentReviewByAuthorKey(targetId, authorId),
-      });
-      // Профиль мастера держит rating_overall_avg/count — инвалидируем,
-      // чтобы шапка обновилась после успешной отправки.
-      //
-      // Ключи были неверными: инвалидировались "master-public-profile" и
-      // "master-reviews", которых в коде НЕТ НИ ОДНОГО. То есть после отправки
-      // отзыва рейтинг в шапке и список отзывов не обновлялись вовсе.
-      // Настоящие ключи — use-master-public.ts:47 и :164.
+    onSuccess: (_id, { targetId, orderId }) => {
+      queryClient.invalidateQueries({ queryKey: reviewableOrderKey(targetId, authorId) });
+      queryClient.invalidateQueries({ queryKey: myReviewForOrderKey(orderId, authorId) });
+      // Шапка профиля (rating_overall_avg/count) и список отзывов —
+      // ключи из use-master-public.ts.
       queryClient.invalidateQueries({ queryKey: ["master-public", targetId] });
       queryClient.invalidateQueries({ queryKey: ["reviews-for-target", targetId] });
     },

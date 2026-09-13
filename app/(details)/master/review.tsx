@@ -8,9 +8,10 @@
  * самостоятельная отменяемая целиком задача с вводом текста →
  * `presentation: "modal"`.
  *
- * Не требует завершённого заказа — отзыв freeform (решение владельца
- * 2026-05-27). Лимит — один отзыв от автора в 3 дня (0191) — проверяется на
- * стороне БД через RPC `submit_master_review`.
+ * Отзыв — только по завершённому заданию, где этот специалист был выбран
+ * исполнителем (DECISION владельца 2026-09-13, 0196): `orderId` приходит
+ * параметром с экрана задания или профиля. Лимит «один отзыв в три дня»
+ * (0191) сервер проверяет по-прежнему.
  *
  * `authorId` берётся из своей сессии (`useAuthSession`), а не параметром —
  * это PII текущего пользователя, ему незачем идти через URL. `masterId` /
@@ -65,8 +66,14 @@ function ratingLabel(rating: number): string {
 export default function MasterReviewScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const params = useLocalSearchParams<{ masterId?: string; masterName?: string }>();
+  const params = useLocalSearchParams<{
+    masterId?: string;
+    masterName?: string;
+    orderId?: string;
+  }>();
   const masterId = typeof params.masterId === "string" ? params.masterId : undefined;
+  // Задание, по которому отзыв (0196): без него сервер отзыв не примет.
+  const orderId = typeof params.orderId === "string" ? params.orderId : undefined;
   const masterName = params.masterName || "Мастер";
   const { session } = useAuthSession();
   const authorId = session?.user?.id;
@@ -77,15 +84,15 @@ export default function MasterReviewScreen() {
   const [serverError, setServerError] = useState<string | null>(null);
   const submit = useSubmitMasterReview(authorId);
 
-  const canSubmit = !!masterId && rating >= 1 && rating <= 5 && !submit.isPending;
+  const canSubmit = !!masterId && !!orderId && rating >= 1 && rating <= 5 && !submit.isPending;
 
   const close = () => router.back();
 
   const handleSubmit = () => {
-    if (!canSubmit || !masterId) return;
+    if (!canSubmit || !masterId || !orderId) return;
     setServerError(null);
     submit.mutate(
-      { targetId: masterId, rating, text },
+      { targetId: masterId, orderId, rating, text },
       {
         onSuccess: () => {
           close();

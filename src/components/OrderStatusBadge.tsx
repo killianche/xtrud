@@ -4,16 +4,11 @@
 // OrderRow. Цвета через токены: success-soft, surface-2, warning-soft, error-soft
 // + текст соответствующего semantic-цвета.
 //
-// 2026-05-20 (classified-ads simplification): убрали accept-flow. В новом
-// lifecycle используются только статусы:
-//   draft     — серый (зарезервирован)
-//   open      — accent (заявка опубликована, ждёт мастеров) — единственный
-//               цветной статус: «активный» сигнал, который ловит взгляд
-//   cancelled — нейтральный серый (закрыта клиентом)
-//   expired   — нейтральный серый (истёк срок)
-// Остальные (in_progress / awaiting_confirmation / completed / disputed)
-// технически в БД ещё есть для legacy-данных, но недостижимы в новом UI —
-// показываем нейтральный лейбл «Закрыт» (серый), не падаем.
+// 2026-09-13 (0196): выбор исполнителя и завершение вернулись. Статусы:
+//   open        — «Открыто», синий: ждёт откликов
+//   in_progress — «Исполнитель выбран», оранжевый
+//   completed   — «Завершено», зелёный: можно оставить отзыв
+//   cancelled / expired / disputed — серые «Закрыто» / «Истекло».
 //
 // 2026-05-21 (полировка дизайна):
 //   - убран `text-caption-xs` (10px, нарушение §C design-quality) — теперь
@@ -51,10 +46,20 @@ interface BadgeStyle {
 }
 
 const CLOSED_LEGACY: BadgeStyle = {
-  label: "Закрыт",
+  label: "Закрыто",
   bgClass: "bg-surface-2",
   textClass: "text-mute",
   dotClass: "bg-muted-soft",
+};
+
+// Цвета совпадают с обводкой карточек «Моих заданий» (order-card-tone.ts,
+// владелец 2026-09-13): открыто — синий, исполнитель выбран — оранжевый,
+// завершено — зелёный, закрыто и истекло — серые.
+const PICKED: BadgeStyle = {
+  label: "Исполнитель выбран",
+  bgClass: "bg-warning-soft",
+  textClass: "text-warning-deep",
+  dotClass: "bg-warning",
 };
 
 const STYLES: Record<OrderStatusValue, BadgeStyle> = {
@@ -64,26 +69,24 @@ const STYLES: Record<OrderStatusValue, BadgeStyle> = {
     textClass: "text-mute",
     dotClass: "bg-muted-soft",
   },
-  // Единственный цветной статус — «активна, ждёт откликов». Accent ловит взгляд.
   open: {
-    label: "Активна",
-    bgClass: "bg-accent-soft",
-    textClass: "text-accent",
-    dotClass: "bg-accent",
+    label: "Открыто",
+    bgClass: "bg-link-bg-soft",
+    textClass: "text-link",
+    dotClass: "bg-link",
   },
-  // Legacy / недостижимы в новом UI — показываем как «Закрыт».
-  in_progress: CLOSED_LEGACY,
-  awaiting_confirmation: CLOSED_LEGACY,
-  completed: CLOSED_LEGACY,
+  in_progress: PICKED,
+  awaiting_confirmation: PICKED,
+  completed: {
+    label: "Завершено",
+    bgClass: "bg-success-soft",
+    textClass: "text-success",
+    dotClass: "bg-success",
+  },
   disputed: CLOSED_LEGACY,
-  cancelled: {
-    label: "Закрыта",
-    bgClass: "bg-surface-2",
-    textClass: "text-mute",
-    dotClass: "bg-muted-soft",
-  },
+  cancelled: CLOSED_LEGACY,
   expired: {
-    label: "Истекла",
+    label: "Истекло",
     bgClass: "bg-surface-2",
     textClass: "text-mute",
     dotClass: "bg-muted-soft",

@@ -771,6 +771,9 @@ export type Database = {
       }
       order_responses: {
         Row: {
+          // 0199: необязательное, пока миграция не применена везде и пока
+          // строки собираются вручную (use-my-responses) — сравнивать через != null.
+          archived_by_master_at?: string | null
           contact_phone: string | null
           whatsapp_phone: string | null
           created_at: string
@@ -893,6 +896,8 @@ export type Database = {
       orders: {
         Row: {
           address: string | null
+          // 0199: необязательное до применения миграции — сравнивать через != null.
+          archived_by_client_at?: string | null
           awaiting_confirmation_until: string | null
           budget_kind: Database["public"]["Enums"]["order_price_kind"]
           budget_value: number | null
@@ -1763,6 +1768,11 @@ export type Database = {
       }
       unpick_order_master: { Args: { p_order_id: string }; Returns: undefined }
       complete_order: { Args: { p_order_id: string }; Returns: undefined }
+      archive_order: { Args: { p_order_id: string; p_archived: boolean }; Returns: string | null }
+      archive_response: {
+        Args: { p_response_id: string; p_archived: boolean }
+        Returns: string | null
+      }
       reopen_order: { Args: { p_order_id: string }; Returns: undefined }
       resolve_login_email: { Args: { p_login: string }; Returns: string }
       search_categories: {

@@ -22,6 +22,9 @@ export const RPC_ALLOWLIST = new Set([
   "complete_order",
   "mark_order_responses_viewed",
   "pick_order_master",
+  // Личный архив заданий и откликов (0199).
+  "archive_order",
+  "archive_response",
   "record_master_view",
   "reject_response",
   "reopen_order",

@@ -1,0 +1,53 @@
+{
+  "name": "react-native-rustore-push",
+  "version": "6.9.1",
+  "description": "RuStore Push SDK",
+  "main": "lib/commonjs/index",
+  "module": "lib/module/index",
+  "types": "lib/typescript/index.d.ts",
+  "react-native": "src/index",
+  "source": "src/index",
+  "files": [
+    "src",
+    "lib",
+    "android",
+    "ios",
+    "cpp",
+    "*.podspec",
+    "!lib/typescript/example",
+    "!ios/build",
+    "!android/build",
+    "!android/gradle",
+    "!android/gradlew",
+    "!android/gradlew.bat",
+    "!android/local.properties",
+    "!android/key.properties",
+    "!**/__tests__",
+    "!**/__fixtures__",
+    "!**/__mocks__",
+    "!**/.*"
+  ],
+  "keywords": [
+    "react-native",
+    "ios",
+    "android"
+  ],
+  "repository": "https://gitflic.ru/project/rustore/react-native-rustore-push-sdk",
+  "author": "RuStore <maksim.kondratev@vk.team> (https://www.rustore.ru)",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://gitflic.ru/project/rustore/react-native-rustore-push-sdk/issues"
+  },
+  "homepage": "https://gitflic.ru/project/rustore/react-native-rustore-push-sdk#readme",
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org/"
+  },
+  "peerDependencies": {
+    "react": "*",
+    "react-native": "*"
+  },
+  "eslintIgnore": [
+    "node_modules/",
+    "lib/"
+  ]
+}

@@ -6,6 +6,9 @@ node_modules/
 # Info.plist берутся из app.json и восстанавливаются `npx expo prebuild`.
 ios/
 android/
+# Исключение: исходники Android-модуля SDK RuStore, а не сгенерированный
+# проект (vendor/react-native-rustore-push/VENDORED.md).
+!vendor/react-native-rustore-push/android/
 
 # Сборки и кэш
 dist/

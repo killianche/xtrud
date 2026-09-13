@@ -24,7 +24,8 @@
       "!assets/animations",
       "!**/expo-env.d.ts",
       "!**/nativewind-env.d.ts",
-      "!src/types/database.ts"
+      "!src/types/database.ts",
+      "!vendor"
     ]
   },
   "formatter": {

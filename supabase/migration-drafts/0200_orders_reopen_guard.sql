@@ -18,15 +18,33 @@
 --     пропускает, как pick/complete в 0197);
 --   - orders_owner_edit_open: USING (open, draft) — править можно только
 --     открытое (так и делает приложение: экран правки только при open);
---     WITH CHECK без in_progress (выбор исполнителя — pick_order_master);
+--     WITH CHECK (open, cancelled) — правка открытого и закрытие; без
+--     in_progress (pick_order_master), draft и expired (их пишут только
+--     функции базы; клиент не пишет — см. «Совместимость»);
+--   - orders_insert_own: создать можно только открытое задание (status =
+--     'open'); черновики, «завершённые» и прочие статусы при вставке — нет;
+--   - order_status_log: у anon/authenticated отняты INSERT/UPDATE/DELETE/
+--     TRUNCATE. Сейчас их держит только RLS без политик на запись; журнал
+--     пишут лишь SECURITY DEFINER-функции (FACT: все 7 функций с
+--     order_status_log в теле — prosecdef = t);
 --   - reopen_order: блокировка строки с фильтром по автору; лимит трёх
 --     активных под тем же advisory lock, что guard_order_publication_limit;
 --     окно 7 дней — от записи перехода в order_status_log (писать туда роли
 --     приложения не могут: RLS включён, политики только на SELECT), для
 --     строк без записи — от expires_at (истёкшие) или updated_at; скрытое
---     модерацией открыть заново нельзя.
+--     модерацией открыть заново нельзя;
+--   - тексты ошибок reopen_order — по-русски, код в DETAIL. Экран задания
+--     показывает e.message как есть (app/(details)/orders/[id].tsx:402, мимо
+--     describeServerError), поэтому прежние коды order_not_found /
+--     reopen_window_expired сборка 95 выводила бы латиницей. Русский текст
+--     доходит до человека в любой сборке.
 --
 -- Совместимость (FACT, git grep 2026-09-13 по HEAD = сборка 95):
+--   - status 'draft' и 'expired' приложение не пишет нигде: git grep
+--     '"draft"\|"expired"' по src/ app/ admin/src — только сравнения при
+--     чтении; прямых записей в order_status_log нет;
+--   - вставка задания одна — use-create-order.ts:108, status: "open";
+--     default колонки на Beget тоже 'open'::order_status;
 --   - приложение не пишет status 'open' прямым UPDATE: создание — INSERT со
 --     status 'open' (use-create-order.ts:108, guard на INSERT не срабатывает),
 --     правка — use-update-order.ts без поля status и только при open
@@ -37,11 +55,13 @@
 --     410 (FACT: curl https://api.xtrud.pro/rest/v1/orders → 410).
 --   Что может сломаться: сборка, открывающая заново прямым UPDATE (в Git
 --   такой нет); правка закрытого/истёкшего задания прямым PATCH (в
---   приложении не предлагается); тексты ошибок reopen_order сохранены,
---   добавлен один новый — про лимит активных.
+--   приложении не предлагается); вставка задания не в статусе open (в Git
+--   такой нет). Коды ошибок reopen_order переехали из текста в DETAIL:
+--   клиентского кода, который сравнивает текст ошибки reopen_order, в Git
+--   нет (только словарь describe-server-error.ts, куда экран задания не ходит).
 --   Клиентская подсказка canReopenOrder (use-reopen-order.ts) по-прежнему
---   считает окно от updated_at — сервер может отказать с
---   reopen_window_expired, текст для этого уже есть (describe-server-error.ts).
+--   считает окно от updated_at — сервер может отказать, и человек увидит
+--   «Срок, в который задание можно было вернуть, истёк.»
 --
 -- Черновик. Не применено. Применять после 0199 или независимо — не зависят.
 
@@ -53,6 +73,7 @@
 --   -n public -n xtrud_private > /root/schema-before-0200-$(date +%F-%H%M).sql
 -- docker exec supabase-db psql -U postgres -d postgres -X -A -c "
 --   SELECT policyname, cmd, roles, qual, with_check FROM pg_policies WHERE tablename = 'orders' ORDER BY 1;
+--   SELECT relacl FROM pg_class WHERE oid = 'public.order_status_log'::regclass;  -- authenticated=arwdm, anon=rm
 --   SELECT prosrc FROM pg_proc WHERE proname IN ('guard_order_lifecycle_direct_update', 'reopen_order', 'guard_order_publication_limit');
 --   SELECT relrowsecurity FROM pg_class WHERE oid = 'public.order_status_log'::regclass;   -- t
 --   SELECT policyname, cmd FROM pg_policies WHERE tablename = 'order_status_log';           -- только SELECT
@@ -122,7 +143,16 @@ DROP POLICY IF EXISTS orders_owner_edit_open ON public.orders;
 CREATE POLICY orders_owner_edit_open ON public.orders
   FOR UPDATE TO public
   USING (((SELECT auth.uid()) = client_id) AND (status = ANY (ARRAY['open'::public.order_status, 'draft'::public.order_status])))
-  WITH CHECK (((SELECT auth.uid()) = client_id) AND (status = ANY (ARRAY['open'::public.order_status, 'draft'::public.order_status, 'cancelled'::public.order_status, 'expired'::public.order_status])));
+  WITH CHECK (((SELECT auth.uid()) = client_id) AND (status = ANY (ARRAY['open'::public.order_status, 'cancelled'::public.order_status])));
+
+-- ── Создание: только открытое задание ────────────────────────────────────
+DROP POLICY IF EXISTS orders_insert_own ON public.orders;
+CREATE POLICY orders_insert_own ON public.orders
+  FOR INSERT TO public
+  WITH CHECK (((SELECT auth.uid()) = client_id) AND (status = 'open'::public.order_status));
+
+-- ── Журнал статусов: писать могут только функции базы ────────────────────
+REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON public.order_status_log FROM anon, authenticated;
 
 -- ── reopen_order ─────────────────────────────────────────────────────────
 CREATE OR REPLACE FUNCTION public.reopen_order(p_order_id uuid)
@@ -139,8 +169,12 @@ DECLARE
   v_now timestamptz := now();
   v_withdrawn_response record;
 BEGIN
-  IF v_user_id IS NULL THEN RAISE EXCEPTION 'not_authenticated' USING ERRCODE = '28000'; END IF;
-  IF p_order_id IS NULL THEN RAISE EXCEPTION 'order_not_found' USING ERRCODE = 'P0002'; END IF;
+  IF v_user_id IS NULL THEN
+    RAISE EXCEPTION 'Нужно войти в аккаунт.' USING ERRCODE = '28000', DETAIL = 'not_authenticated';
+  END IF;
+  IF p_order_id IS NULL THEN
+    RAISE EXCEPTION 'Задание не найдено.' USING ERRCODE = 'P0002', DETAIL = 'order_not_found';
+  END IF;
 
   -- Тот же замок, что у guard_order_publication_limit: лимит активных не
   -- обойти, открывая заново и публикуя новое одновременно. Берётся до
@@ -153,14 +187,18 @@ BEGIN
     FROM public.orders
    WHERE id = p_order_id AND client_id = v_user_id
    FOR UPDATE;
-  IF NOT FOUND THEN RAISE EXCEPTION 'order_not_found' USING ERRCODE = 'P0002'; END IF;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Задание не найдено.' USING ERRCODE = 'P0002', DETAIL = 'order_not_found';
+  END IF;
 
   IF v_order.status NOT IN ('cancelled', 'expired') THEN
-    RAISE EXCEPTION 'order_not_reopenable' USING ERRCODE = 'P0001';
+    RAISE EXCEPTION 'Это задание нельзя открыть заново.'
+      USING ERRCODE = 'P0001', DETAIL = 'order_not_reopenable';
   END IF;
   -- Скрытое модерацией (admin_hide_order) возвращает только модерация.
   IF v_order.cancel_reason LIKE 'moderation:%' THEN
-    RAISE EXCEPTION 'order_not_reopenable' USING ERRCODE = 'P0001', DETAIL = 'order_hidden_by_moderation';
+    RAISE EXCEPTION 'Задание скрыто модерацией. Открыть его заново можно через поддержку.'
+      USING ERRCODE = 'P0001', DETAIL = 'order_hidden_by_moderation';
   END IF;
 
   -- Окно — от момента, когда задание закрылось или истекло.
@@ -173,7 +211,8 @@ BEGIN
     v_order.updated_at
   );
   IF v_closed_at < v_now - interval '7 days' THEN
-    RAISE EXCEPTION 'reopen_window_expired' USING ERRCODE = 'P0001';
+    RAISE EXCEPTION 'Срок, в который задание можно было вернуть, истёк.'
+      USING ERRCODE = 'P0001', DETAIL = 'reopen_window_expired';
   END IF;
 
   SELECT count(*) INTO v_active
@@ -216,9 +255,14 @@ COMMIT;
 -- Проверка после применения
 -- ═══════════════════════════════════════════════════════════════════════════
 --
--- 1. Политика:
--- SELECT qual, with_check FROM pg_policies WHERE tablename = 'orders' AND policyname = 'orders_owner_edit_open';
---   → USING: client_id и status IN (open, draft); WITH CHECK: (open, draft, cancelled, expired).
+-- 1. Политики и журнал:
+-- SELECT policyname, qual, with_check FROM pg_policies
+--  WHERE tablename = 'orders' AND policyname IN ('orders_owner_edit_open', 'orders_insert_own');
+--   → orders_owner_edit_open — USING: client_id и status IN (open, draft); WITH CHECK: (open, cancelled).
+--     orders_insert_own — WITH CHECK: client_id и status = 'open'.
+-- SELECT r, p, has_table_privilege(r, 'public.order_status_log', p)
+--   FROM unnest(ARRAY['anon', 'authenticated']) r, unnest(ARRAY['SELECT', 'INSERT', 'UPDATE', 'DELETE', 'TRUNCATE']) p;
+--   → SELECT = t у обоих, остальное = f.
 --
 -- 2. Функции и права:
 -- SELECT p.oid::regprocedure, p.prosecdef, p.proconfig, p.proacl FROM pg_proc p
@@ -257,7 +301,52 @@ COMMIT;
 -- ROLLBACK;
 -- BEGIN; SET LOCAL ROLE authenticated;
 -- SELECT set_config('request.jwt.claims', '{"sub":"<other>","role":"authenticated"}', true);
--- SELECT public.reopen_order('<cancelled_order>');                          → ERROR P0002 order_not_found
+-- SELECT public.reopen_order('<cancelled_order>');                          → ERROR P0002 «Задание не найдено.»
+-- ROLLBACK;
+--
+-- e) отказ от исполнителя (unpick_order_master) по-прежнему возвращает в open.
+--    <in_progress_order> — задание <client> со статусом in_progress:
+-- BEGIN; SET LOCAL ROLE authenticated;
+-- SELECT set_config('request.jwt.claims', '{"sub":"<client>","role":"authenticated"}', true);
+-- SELECT public.unpick_order_master('<in_progress_order>');                 → успех
+-- SELECT status, picked_master_id FROM public.orders WHERE id = '<in_progress_order>'; → open, NULL
+-- ROLLBACK;
+--
+-- f) старые сборки: «Закрыть — нашёл исполнителя» из open прямым UPDATE.
+--    <responder> — master_id отклика sent/viewed на <open_order>:
+-- BEGIN; SET LOCAL ROLE authenticated;
+-- SELECT set_config('request.jwt.claims', '{"sub":"<client>","role":"authenticated"}', true);
+-- UPDATE public.orders SET status = 'cancelled', cancel_reason = 'found_master',
+--        cancelled_by = '<client>', picked_master_id = '<responder>', picked_at = now()
+--  WHERE id = '<open_order>';                                                → UPDATE 1
+-- ROLLBACK;
+--
+-- g) истёкшее: окно по журналу. <expired_order> — истекло меньше 7 дней назад
+--    (есть запись order_status_log с to_status = 'expired'):
+-- BEGIN; SET LOCAL ROLE authenticated;
+-- SELECT set_config('request.jwt.claims', '{"sub":"<client>","role":"authenticated"}', true);
+-- SELECT public.reopen_order('<expired_order>');                             → успех (если активных < 3)
+-- ROLLBACK;
+-- BEGIN;
+-- UPDATE public.order_status_log SET created_at = now() - interval '8 days'
+--  WHERE order_id = '<expired_order>' AND to_status = 'expired';
+-- SET LOCAL ROLE authenticated;
+-- SELECT set_config('request.jwt.claims', '{"sub":"<client>","role":"authenticated"}', true);
+-- SELECT public.reopen_order('<expired_order>');   → ERROR «Срок, в который задание можно было вернуть, истёк.»
+-- ROLLBACK;
+--
+-- h) вставка не открытого задания и запись в журнал:
+-- BEGIN; SET LOCAL ROLE authenticated;
+-- SELECT set_config('request.jwt.claims', '{"sub":"<client>","role":"authenticated"}', true);
+-- INSERT INTO public.orders (client_id, l2_id, title, status)
+-- VALUES ('<client>', '<l2_id>', 'проверка', 'completed');
+--   → ERROR new row violates row-level security policy for table "orders"
+-- ROLLBACK;
+-- BEGIN; SET LOCAL ROLE authenticated;
+-- SELECT set_config('request.jwt.claims', '{"sub":"<client>","role":"authenticated"}', true);
+-- INSERT INTO public.order_status_log (order_id, to_status, triggered_kind)
+-- VALUES ('<open_order>', 'expired', 'user');
+--   → ERROR permission denied for table order_status_log
 -- ROLLBACK;
 --
 -- d) скрытое модерацией (от postgres, ROLLBACK):
@@ -265,7 +354,7 @@ COMMIT;
 -- UPDATE public.orders SET cancel_reason = 'moderation: test' WHERE id = '<cancelled_order>';
 -- SET LOCAL ROLE authenticated;
 -- SELECT set_config('request.jwt.claims', '{"sub":"<client>","role":"authenticated"}', true);
--- SELECT public.reopen_order('<cancelled_order>');                          → ERROR order_not_reopenable
+-- SELECT public.reopen_order('<cancelled_order>');   → ERROR «Задание скрыто модерацией…»
 -- ROLLBACK;
 --
 -- ═══════════════════════════════════════════════════════════════════════════
@@ -284,11 +373,19 @@ COMMIT;
 --   FOR UPDATE TO public
 --   USING (((SELECT auth.uid()) = client_id) AND (status = ANY (ARRAY['open'::public.order_status, 'draft'::public.order_status, 'cancelled'::public.order_status, 'expired'::public.order_status])))
 --   WITH CHECK (((SELECT auth.uid()) = client_id) AND (status = ANY (ARRAY['open'::public.order_status, 'draft'::public.order_status, 'in_progress'::public.order_status, 'cancelled'::public.order_status, 'expired'::public.order_status])));
+-- DROP POLICY IF EXISTS orders_insert_own ON public.orders;
+-- CREATE POLICY orders_insert_own ON public.orders
+--   FOR INSERT TO public
+--   WITH CHECK ((SELECT auth.uid()) = client_id);
+-- GRANT INSERT, UPDATE, DELETE ON public.order_status_log TO authenticated;
 -- REVOKE ALL ON FUNCTION public.reopen_order(uuid) FROM PUBLIC, anon;
 -- GRANT EXECUTE ON FUNCTION public.reopen_order(uuid) TO authenticated, service_role;
 -- NOTIFY pgrst, 'reload schema';
 -- COMMIT;
--- После отката: пункт 1 проверки показывает прежние USING/WITH CHECK (как в
--- снимке acl-before-0200); position('order_reopen_via_rpc' …) → f.
+-- (До 0200 у authenticated на order_status_log было arwdm, у anon — rm, без
+-- TRUNCATE: FACT, relacl на Beget 2026-09-13. GRANT выше возвращает ровно это.)
+-- После отката: пункт 1 проверки показывает прежние политики (как в снимке
+-- acl-before-0200), has_table_privilege('authenticated', 'public.order_status_log',
+-- 'INSERT') → t; position('order_reopen_via_rpc' …) → f.
 -- Откат возвращает известную дыру (прямой возврат в open) — только если 0200
 -- ломает что-то, чего нет в Git.

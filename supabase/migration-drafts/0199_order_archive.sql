@@ -404,6 +404,11 @@ COMMIT;
 -- 6. Через xtrud-api с токеном заказчика и специалиста:
 --    GET /v2/rest/orders?select=id,order_archive_marks(archived_at)&id=eq.<completed_order>
 --    → у заказчика — его метка, у специалиста — пустой массив.
+--    Встраивание через таблицу-связку (PostgREST видит users ↔ orders через
+--    order_archive_marks) с токеном специалиста:
+--    GET /v2/rest/users?select=id,orders!order_archive_marks(id)&id=eq.<client>
+--    → пустой ответ или [{"id":"<client>","orders":[]}] — метки заказчика
+--      специалисту не видны ни напрямую, ни через связку.
 --
 -- ═══════════════════════════════════════════════════════════════════════════
 -- Откат

@@ -817,10 +817,14 @@ function OrderInfoBlock({ order, isOwner, myResponseStatus }: OrderInfoBlockProp
             size="md"
           />
         </View>
-        <AppText className="text-caption text-mute">·</AppText>
-        <AppText weight="medium" className="flex-shrink text-caption text-body">
-          {categoryLine}
-        </AppText>
+        {/* Точка и категория переносятся вместе: иначе «·» оставалась одна
+            в конце первой строки. */}
+        <View className="shrink flex-row items-center gap-2">
+          <AppText className="text-caption text-mute">·</AppText>
+          <AppText weight="medium" className="flex-shrink text-caption text-body">
+            {categoryLine}
+          </AppText>
+        </View>
       </View>
 
       <AppText weight="display" className="mt-3 text-display-md tracking-tight text-ink">

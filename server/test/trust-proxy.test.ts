@@ -45,6 +45,18 @@ describe("адрес клиента за nginx", () => {
     await app.close();
   });
 
+  it("соседний контейнер той же сети Docker не может подделать адрес", async () => {
+    const app = await buildApp();
+    const res = await app.inject({
+      method: "GET",
+      url: "/ip",
+      remoteAddress: "172.18.0.5",
+      headers: { "x-forwarded-for": "1.2.3.4" },
+    });
+    expect(res.json()).toEqual({ ip: "172.18.0.5" });
+    await app.close();
+  });
+
   it("заголовку от недоверенного адреса не верим совсем", async () => {
     const app = await buildApp();
     const res = await app.inject({

@@ -138,17 +138,14 @@ export function registerAuthRoutes(
   app.post("/auth/login", async (req, reply) => {
     const parsed = loginSchema.safeParse(req.body);
     if (!parsed.success) return reply.code(422).send({ error: "Введите телефон и пароль" });
-    // Второй лимит — на номер: перебор пароля к одному аккаунту с разных IP.
+    // Лимит неудач на номер: с этого адреса и в целом (auth/login-attempts.ts).
+    // Точного времени не обещаем — окна у двух счётчиков разные.
     const attemptKey = loginAttemptKey(parsed.data.login);
-    const retryAfter = loginAttempts.retryAfterSeconds(attemptKey);
-    if (retryAfter > 0) {
-      return reply
-        .code(429)
-        .header("retry-after", String(retryAfter))
-        .send({
-          error: `Слишком много попыток входа. Попробуйте через ${Math.ceil(retryAfter / 60)} мин.`,
-          code: "login_rate_limited",
-        });
+    if (loginAttempts.blocked(attemptKey, req.ip)) {
+      return reply.code(429).send({
+        error: "Слишком много попыток входа. Попробуйте позже.",
+        code: "login_rate_limited",
+      });
     }
     const user = await findByLogin(parsed.data.login);
     const ok = await bcrypt.compare(parsed.data.password, user?.encrypted_password ?? DUMMY_HASH);
@@ -156,16 +153,16 @@ export function registerAuthRoutes(
     // Что номер свободен, и так видно по регистрации («номер уже занят»),
     // поэтому отдельный ответ ничего нового не раскрывает; перебор держит лимит.
     if (!user && isPhoneLogin(parsed.data.login)) {
-      loginAttempts.fail(attemptKey);
+      loginAttempts.fail(attemptKey, req.ip);
       return reply
         .code(404)
         .send({ error: "Аккаунта с этим номером нет", code: "account_not_found" });
     }
     if (!user || !ok) {
-      loginAttempts.fail(attemptKey);
+      loginAttempts.fail(attemptKey, req.ip);
       return reply.code(401).send({ error: "Неверный телефон или пароль" });
     }
-    loginAttempts.reset(attemptKey);
+    loginAttempts.succeed(attemptKey, req.ip);
     const blocked = blockedMessage(user);
     if (blocked) return reply.code(403).send({ error: blocked });
     return reply.send(await issueSession(user));

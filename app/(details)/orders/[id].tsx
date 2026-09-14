@@ -28,7 +28,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
 import { Avatar } from "@/components/Avatar";
-import { OrderStatusBadge } from "@/components/OrderStatusBadge";
+import { StatusPill } from "@/components/StatusPill";
 import {
   GlassButton,
   isVerifiedLevel,
@@ -51,6 +51,7 @@ import { OrderPhotoCarousel } from "@/features/orders/OrderPhotoCarousel";
 import { orderCategoryIds } from "@/features/orders/order-categories";
 import { formatOrderTiming, formatPrice } from "@/features/orders/order-schema";
 import { orderShareMessage } from "@/features/orders/order-share";
+import { type OrderStatusView, orderStatusView } from "@/features/orders/order-status-view";
 import { type CancelReason, useCancelOrder } from "@/features/orders/use-cancel-order";
 import { useDeleteOrder } from "@/features/orders/use-delete-order";
 import { type OrderDetail, useOrderDetail } from "@/features/orders/use-order-detail";
@@ -400,7 +401,8 @@ export default function OrderDetailScreen() {
       { orderId: id, userId },
       {
         onSuccess: () => hapticSuccess(),
-        onError: (e) => Alert.alert("Не удалось открыть заново", e.message),
+        onError: (e) =>
+          Alert.alert("Не удалось открыть заново", describeServerError(e, "Попробуйте ещё раз.")),
       },
     );
   };
@@ -630,7 +632,11 @@ export default function OrderDetailScreen() {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          <OrderInfoBlock order={order} isOwner={isOwner} />
+          <OrderInfoBlock
+            order={order}
+            isOwner={isOwner}
+            myResponseStatus={myMasterResponseQ.data?.status}
+          />
 
           {/* Что дальше с заданием — один блок по состоянию (0196). */}
           {isOwner && id && userId ? (
@@ -669,7 +675,7 @@ export default function OrderDetailScreen() {
                   response={pickedResponse}
                   isRejecting={false}
                   onReject={undefined}
-                  highlight={order.status === "completed" ? "completed" : "picked"}
+                  statusView={orderStatusView({ role: "client", order })}
                 />
               </View>
             </View>
@@ -757,9 +763,21 @@ interface OrderInfoBlockProps {
   /** Клиент сам же видит свой заказ? Тогда «Заказчик»-карточка не показывается
    *  (не показывать себе себя). */
   isOwner: boolean;
+  /** Статус СВОЕГО отклика — для взгляда специалиста (orderStatusView). У
+   *  заказчика и у того, кто ещё не откликнулся, не задан. */
+  myResponseStatus?: Tables<"order_responses">["status"];
 }
 
-function OrderInfoBlock({ order, isOwner }: OrderInfoBlockProps) {
+function OrderInfoBlock({ order, isOwner, myResponseStatus }: OrderInfoBlockProps) {
+  // Единый статус (docs/ORDER_STATUS_DESIGN.md §3.4): для заказчика — его
+  // взгляд; для специалиста со своим откликом — его взгляд; для любого другого
+  // читателя (гость, ещё не откликнувшийся специалист) — нейтральный взгляд
+  // заказчика: он не подразумевает личной вовлечённости, только факт заказа.
+  const headerStatus = isOwner
+    ? orderStatusView({ role: "client", order })
+    : myResponseStatus
+      ? orderStatusView({ role: "master", order, myResponseStatus })
+      : orderStatusView({ role: "client", order });
   const clientDisplay =
     [order.client?.first_name, order.client?.last_name].filter(Boolean).join(" ") || "Клиент";
   // Имя, которое видит мастер: введённое клиентом в заказе (contact_name) →
@@ -788,7 +806,13 @@ function OrderInfoBlock({ order, isOwner }: OrderInfoBlockProps) {
     <View className="px-5 pt-2">
       {/* Статус + категория. */}
       <View className="flex-row items-center gap-2">
-        <OrderStatusBadge status={order.status} size="md" />
+        <StatusPill
+          tone={headerStatus.pillTone}
+          label={headerStatus.label}
+          iconKey={headerStatus.iconKey}
+          iconWeight={headerStatus.iconWeight}
+          size="md"
+        />
         <AppText className="text-caption text-mute">·</AppText>
         <AppText weight="medium" className="flex-shrink text-caption text-body">
           {categoryLine}
@@ -1300,8 +1324,10 @@ interface ClientMasterResponseCardProps {
   rejected?: boolean;
   /** «Выбрать исполнителем» (0196). Нет — кнопки нет. */
   onPick?: () => void;
-  /** Выбранный исполнитель: обводка цвета состояния задания. */
-  highlight?: "picked" | "completed";
+  /** Выбранный исполнитель — статус заказа глазами заказчика, показывается
+   *  пилюлей рядом с ценой (§3.2: обводок цветом карточек больше нет — весь
+   *  смысл несёт пилюля, как везде в приложении). */
+  statusView?: OrderStatusView;
 }
 
 function ClientMasterResponseCard({
@@ -1310,7 +1336,7 @@ function ClientMasterResponseCard({
   onReject,
   rejected,
   onPick,
-  highlight,
+  statusView,
 }: ClientMasterResponseCardProps) {
   const router = useRouter();
   const tc = useThemeColors(["ink", "mute", "warning", "accent"]);
@@ -1363,13 +1389,7 @@ function ClientMasterResponseCard({
 
   return (
     <View
-      className={`rounded-2xl bg-canvas p-4 ${
-        highlight === "completed"
-          ? "border-2 border-success"
-          : highlight === "picked"
-            ? "border-2 border-warning"
-            : "border border-hairline"
-      }`}
+      className="rounded-2xl border border-hairline bg-canvas p-4"
       style={rejected ? { opacity: 0.6 } : undefined}
     >
       {/* Кто и за сколько. Тап — профиль специалиста. */}
@@ -1414,9 +1434,19 @@ function ClientMasterResponseCard({
             </View>
           ) : null}
         </View>
-        <AppText weight="bold" className="text-title-lg text-ink">
-          {priceText}
-        </AppText>
+        <View className="items-end gap-1">
+          {statusView ? (
+            <StatusPill
+              tone={statusView.pillTone}
+              label={statusView.label}
+              iconKey={statusView.iconKey}
+              iconWeight={statusView.iconWeight}
+            />
+          ) : null}
+          <AppText weight="bold" className="text-title-lg text-ink">
+            {priceText}
+          </AppText>
+        </View>
       </Pressable>
 
       {response.message ? (
@@ -1572,7 +1602,11 @@ function MasterResponseSection({
     (orderStatus === "in_progress" ||
       orderStatus === "awaiting_confirmation" ||
       orderStatus === "completed");
-  const status = responseStatusView(myResponse.status, isPickedMaster, orderStatus);
+  const statusView = orderStatusView({
+    role: "master",
+    order: { status: orderStatus, picked_master_id: pickedMasterId },
+    myResponseStatus: myResponse.status,
+  });
   const hint = isPickedMaster
     ? orderStatus === "completed"
       ? "Клиент отметил работу выполненной. Спасибо!"
@@ -1611,11 +1645,12 @@ function MasterResponseSection({
         >
           Ваш отклик
         </AppText>
-        <View className={`rounded-pill px-2.5 py-1 ${status.pill}`}>
-          <AppText weight="semibold" className={`text-body-sm ${status.text}`}>
-            {status.label}
-          </AppText>
-        </View>
+        <StatusPill
+          tone={statusView.pillTone}
+          label={statusView.label}
+          iconKey={statusView.iconKey}
+          iconWeight={statusView.iconWeight}
+        />
       </View>
 
       <AppText weight="bold" className="mt-4 text-title-lg text-ink">
@@ -1652,40 +1687,4 @@ function MasterResponseSection({
       ) : null}
     </View>
   );
-}
-
-/** Статус моего отклика — подпись и цвет плашки. */
-function responseStatusView(
-  s: Tables<"order_responses">["status"],
-  picked: boolean,
-  orderStatus: Tables<"orders">["status"],
-): { label: string; pill: string; text: string } {
-  // Выбрали меня — фирменный цвет, как обводка карточки в «Моих откликах».
-  if (picked) {
-    if (orderStatus === "completed")
-      return { label: "Вы выполнили", pill: "bg-success-soft", text: "text-success" };
-    if (orderStatus === "cancelled" || orderStatus === "expired")
-      return { label: "Отменено", pill: "bg-canvas", text: "text-mute" };
-    return { label: "Вас выбрали", pill: "bg-accent-soft", text: "text-accent" };
-  }
-  if (
-    orderStatus === "in_progress" ||
-    orderStatus === "awaiting_confirmation" ||
-    orderStatus === "completed"
-  )
-    return { label: "Выбран другой", pill: "bg-canvas", text: "text-mute" };
-  switch (s) {
-    case "sent":
-      return { label: "Отправлен", pill: "bg-canvas", text: "text-mute" };
-    case "viewed":
-      return { label: "Клиент прочитал", pill: "bg-accent-soft", text: "text-accent" };
-    case "accepted":
-      // В модели доски объявлений клиент не «выбирает» мастера в приложении —
-      // он связывается напрямую. Поэтому нейтральный «Отклик активен».
-      return { label: "Отклик активен", pill: "bg-success-soft", text: "text-success" };
-    case "rejected":
-      return { label: "Отклонён", pill: "bg-error-soft", text: "text-error" };
-    case "withdrawn":
-      return { label: "Отозван", pill: "bg-canvas", text: "text-mute" };
-  }
 }

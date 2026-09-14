@@ -46,12 +46,14 @@ const config: Config = {
         // === SEMANTIC ===
         success: "rgb(var(--success) / <alpha-value>)",
         "success-soft": "rgb(var(--success-soft) / <alpha-value>)",
+        "success-deep": "rgb(var(--success-deep) / <alpha-value>)",
         warning: "rgb(var(--warning) / <alpha-value>)",
         "warning-soft": "rgb(var(--warning-soft) / <alpha-value>)",
         "warning-deep": "rgb(var(--warning-deep) / <alpha-value>)",
         error: "rgb(var(--error) / <alpha-value>)",
         "error-soft": "rgb(var(--error-soft) / <alpha-value>)",
         "error-deep": "rgb(var(--error-deep) / <alpha-value>)",
+        "mute-deep": "rgb(var(--mute-deep) / <alpha-value>)",
 
         // === BRAND ACCENTS ===
         violet: "rgb(var(--violet) / <alpha-value>)",

@@ -59,15 +59,15 @@ import {
   useMarkOrderEventsRead,
   useUnreadOrderEventsCount,
 } from "@/features/notifications/use-notifications";
-import { clientOrderTone, masterOrderTone } from "@/features/orders/order-card-tone";
-import { type OrderWithRefs, useMyOrders } from "@/features/orders/use-my-orders";
 import {
-  historyResponseStatusLabel,
-  isActiveResponse,
-  isHistoryResponse,
-  type MyResponseWithOrder,
-  useMyResponses,
-} from "@/features/orders/use-my-responses";
+  buildOrderSections,
+  buildResponseSections,
+  countActiveOrders,
+  countActiveResponses,
+  type OrderListSectionItem,
+} from "@/features/orders/order-list-sections";
+import { type OrderWithRefs, useMyOrders } from "@/features/orders/use-my-orders";
+import { type MyResponseWithOrder, useMyResponses } from "@/features/orders/use-my-responses";
 import { usePullToRefresh } from "@/hooks/use-pull-to-refresh";
 import { describeQueryError } from "@/lib/describe-query-error";
 import { useTabBarSpace } from "@/lib/tab-bar-space";
@@ -76,10 +76,6 @@ import { useThemeColors } from "@/lib/use-theme-color";
 import type { IconComponent } from "@/types/icon";
 
 type Segment = "orders" | "responses";
-
-// Активные — открытые и с выбранным исполнителем (0196): оба ждут действия
-// клиента. Завершённые и закрытые — ниже.
-const ACTIVE_STATUSES = new Set<string>(["open", "in_progress", "awaiting_confirmation"]);
 
 export default function OrdersScreen() {
   // Строки навигации в покое нет — стартовая высота 0, без прыжка (QA).
@@ -179,11 +175,11 @@ export default function OrdersScreen() {
             value={resolved}
             onChange={setTab}
             items={[
-              { id: "orders", label: "Как клиент", count: myOrders?.length ?? null },
+              { id: "orders", label: "Как клиент", count: countActiveOrders(myOrders ?? []) },
               {
                 id: "responses",
                 label: "Как мастер",
-                count: myResponses?.length ?? null,
+                count: countActiveResponses(myResponses ?? []),
                 tone: "primary",
               },
             ]}
@@ -220,6 +216,35 @@ interface ListProps {
   header: ReactElement;
 }
 
+/** Тихий заголовок секции «Архив» перед первой архивной карточкой (§4.2) —
+ *  не карточка, не жирная линия, как section header в iOS (Настройки,
+ *  Файлы): просто подпись, задающая смысл всему, что ниже. */
+function ArchiveSectionHeader() {
+  return (
+    <View className="mb-2 mt-6 px-5">
+      <AppText
+        accessibilityRole="header"
+        weight="semibold"
+        className="text-caption uppercase text-mute"
+      >
+        Архив
+      </AppText>
+    </View>
+  );
+}
+
+/** Строка списка — либо заголовок секции, либо карточка. Тип элемента для
+ *  FlashList.getItemType: разные формы ячеек не должны переиспользоваться
+ *  друг другом при рециклинге. */
+function sectionItemType<T>(item: OrderListSectionItem<T>): "archiveHeader" | "row" {
+  return item.kind;
+}
+
+/** Ключ для FlashList.keyExtractor — заголовок один на список, статический id. */
+function sectionItemKey<T>(item: OrderListSectionItem<T>): string {
+  return item.kind === "archiveHeader" ? "archive-header" : item.id;
+}
+
 function OrdersList({ userId, contentTop, onScroll, header }: ListProps) {
   // Место под плавающую кнопку, иначе она ляжет на последнюю карточку (QA).
   const tabBarSpace = useTabBarSpace(FAB_LIST_SPACE);
@@ -227,15 +252,10 @@ function OrdersList({ userId, contentTop, onScroll, header }: ListProps) {
   const { data: orders, isLoading, error, refetch } = useMyOrders(userId);
   const refresh = usePullToRefresh();
 
-  const allOrders = useMemo(() => {
-    const list = orders ?? [];
-    const open = list.filter((o) => ACTIVE_STATUSES.has(o.status as string));
-    const rest = list.filter((o) => !ACTIVE_STATUSES.has(o.status as string));
-    return [...open, ...rest];
-  }, [orders]);
+  const sections = useMemo(() => buildOrderSections(orders ?? []), [orders]);
 
   // Tap-on-active-tab → scroll to top (src/lib/tab-scroll-reset.ts).
-  const listRef = useRef<FlashListRef<OrderWithRefs>>(null);
+  const listRef = useRef<FlashListRef<OrderListSectionItem<OrderWithRefs>>>(null);
   const resetCounter = useTabScrollResetCounter("orders");
   useEffect(() => {
     if (resetCounter > 0) {
@@ -243,14 +263,15 @@ function OrdersList({ userId, contentTop, onScroll, header }: ListProps) {
     }
   }, [resetCounter]);
 
-  const hasItems = !isLoading && !error && allOrders.length > 0;
+  const hasItems = !isLoading && !error && sections.length > 0;
 
   return (
     <FlashList
       style={{ flex: 1 }}
       ref={listRef}
-      data={hasItems ? allOrders : []}
-      keyExtractor={(o) => o.id}
+      data={hasItems ? sections : []}
+      keyExtractor={sectionItemKey}
+      getItemType={sectionItemType}
       contentContainerStyle={{ paddingTop: contentTop, paddingBottom: tabBarSpace }}
       onScroll={onScroll}
       scrollEventThrottle={16}
@@ -258,30 +279,34 @@ function OrdersList({ userId, contentTop, onScroll, header }: ListProps) {
       ListHeaderComponent={header}
       showsVerticalScrollIndicator={false}
       refreshControl={refresh.control}
-      renderItem={({ item: o }) => (
-        <OrderRow
-          id={o.id}
-          title={o.title}
-          categoryName={o.l2?.name_ru ?? o.l2_id}
-          categoryIcon={o.l2?.icon ?? null}
-          categoryL2Id={o.l2_id}
-          cityName={o.city?.name ?? o.city_id ?? "Вся Ингушетия"}
-          district={o.district}
-          urgency={o.urgency}
-          preferredDate={o.preferred_date}
-          responsesCount={o.responses_count}
-          // Счётчик откликов важен, пока исполнитель не выбран.
-          showResponsesCount={o.status === "open"}
-          createdAt={o.created_at}
-          status={o.status}
-          tone={clientOrderTone(o)}
-          budgetKind={o.budget_kind}
-          budgetValue={o.budget_value}
-          coverUrl={o.photo_urls?.[0] ?? null}
-          photosCount={o.photo_urls?.length ?? 0}
-          onPress={() => router.push(`/orders/${o.id}` as never)}
-        />
-      )}
+      renderItem={({ item }) => {
+        if (item.kind === "archiveHeader") return <ArchiveSectionHeader />;
+        const o = item.data;
+        return (
+          <OrderRow
+            id={o.id}
+            title={o.title}
+            categoryName={o.l2?.name_ru ?? o.l2_id}
+            categoryIcon={o.l2?.icon ?? null}
+            categoryL2Id={o.l2_id}
+            cityName={o.city?.name ?? o.city_id ?? "Вся Ингушетия"}
+            district={o.district}
+            urgency={o.urgency}
+            preferredDate={o.preferred_date}
+            responsesCount={o.responses_count}
+            // Счётчик откликов важен, пока исполнитель не выбран.
+            showResponsesCount={o.status === "open"}
+            createdAt={o.created_at}
+            status={o.status}
+            statusView={item.statusView}
+            budgetKind={o.budget_kind}
+            budgetValue={o.budget_value}
+            coverUrl={o.photo_urls?.[0] ?? null}
+            photosCount={o.photo_urls?.length ?? 0}
+            onPress={() => router.push(`/orders/${o.id}` as never)}
+          />
+        );
+      }}
       ListEmptyComponent={
         isLoading ? (
           <OrderRowsSkeleton count={4} />
@@ -306,7 +331,7 @@ function OrdersList({ userId, contentTop, onScroll, header }: ListProps) {
 // ResponsesList — мои отклики: активные (задание ещё открыто) сверху по дате
 // отклика, история ниже. В карточке — что я предложил (цена · срок); для
 // истории — итог (Завершено / Закрыто / Истекло / Отклонён / Отозван), единый
-// источник — historyResponseStatusLabel.
+// источник — orderStatusView() (docs/ORDER_STATUS_DESIGN.md §3.4).
 // ============================================================================
 
 function ResponsesList({ userId, contentTop, onScroll, header }: ListProps) {
@@ -317,20 +342,12 @@ function ResponsesList({ userId, contentTop, onScroll, header }: ListProps) {
   const refresh = usePullToRefresh();
   const { data: myResponses, isLoading, error, refetch } = useMyResponses(userId);
 
-  const sorted = useMemo(() => {
-    const items = myResponses ?? [];
-    return [...items].sort((a, b) => {
-      const aActive = isActiveResponse(a);
-      const bActive = isActiveResponse(b);
-      if (aActive !== bActive) return aActive ? -1 : 1;
-      return new Date(b.response.created_at).getTime() - new Date(a.response.created_at).getTime();
-    });
-  }, [myResponses]);
+  const sections = useMemo(() => buildResponseSections(myResponses ?? []), [myResponses]);
 
   // Fade-in списка после скелетона (UI_PATTERNS §3.7).
 
   // Tap-on-active-tab → scroll to top — как и у списка заданий.
-  const listRef = useRef<FlashListRef<MyResponseWithOrder>>(null);
+  const listRef = useRef<FlashListRef<OrderListSectionItem<MyResponseWithOrder>>>(null);
   const resetCounter = useTabScrollResetCounter("orders");
   useEffect(() => {
     if (resetCounter > 0) {
@@ -338,15 +355,16 @@ function ResponsesList({ userId, contentTop, onScroll, header }: ListProps) {
     }
   }, [resetCounter]);
 
-  const hasItems = !isLoading && !error && sorted.length > 0;
+  const hasItems = !isLoading && !error && sections.length > 0;
 
   return (
     <View style={{ flex: 1 }}>
       <FlashList
         style={{ flex: 1 }}
         ref={listRef}
-        data={hasItems ? sorted : []}
-        keyExtractor={(r: MyResponseWithOrder) => r.response.id}
+        data={hasItems ? sections : []}
+        keyExtractor={sectionItemKey}
+        getItemType={sectionItemType}
         contentContainerStyle={{ paddingTop: contentTop, paddingBottom: tabBarSpace }}
         onScroll={onScroll}
         scrollEventThrottle={16}
@@ -354,8 +372,9 @@ function ResponsesList({ userId, contentTop, onScroll, header }: ListProps) {
         ListHeaderComponent={header}
         showsVerticalScrollIndicator={false}
         refreshControl={refresh.control}
-        renderItem={({ item: r }) => {
-          const isHistory = isHistoryResponse(r);
+        renderItem={({ item }) => {
+          if (item.kind === "archiveHeader") return <ArchiveSectionHeader />;
+          const r = item.data;
           return (
             <OrderRow
               id={r.order.id}
@@ -374,8 +393,7 @@ function ResponsesList({ userId, contentTop, onScroll, header }: ListProps) {
               showResponsesCount={false}
               budgetKind={r.order.budget_kind}
               budgetValue={r.order.budget_value}
-              statusOverrideLabel={isHistory ? historyResponseStatusLabel(r) : undefined}
-              tone={userId ? masterOrderTone(r.order, userId, r.response.status) : null}
+              statusView={item.statusView}
               myResponse={{
                 priceKind: r.response.price_kind,
                 priceValue: r.response.price_value,

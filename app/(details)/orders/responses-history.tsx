@@ -15,11 +15,9 @@
 // UI. Detail-экран с back (ScreenHeader + useSafeBack), список переиспользует
 // OrderRow (variant="responded") — единый вид с остальными лентами. Статус
 // «мёртвого» отклика (Отклонён / Завершён / Истёк / …) передаём в OrderRow через
-// statusOverrideLabel — он рисуется в РОДНОЙ статус-плашке карточки (один чип на
-// строку, без дублирования). Override нужен, потому что родная логика pillFor
-// знает только draft/completed/cancelled/expired + срочность и не покрывает
-// статус самого ОТКЛИКА (rejected/withdrawn) и заказа (disputed/awaiting). Чип
-// нейтральный (bg-surface-2 + text-mute) — это «мёртвые» отклики, не кричат.
+// statusView (orderStatusView() — единый источник статуса всего приложения,
+// docs/ORDER_STATUS_DESIGN.md §3.4), а не отдельной строкой — так карточка
+// рисует ровно ту же плашку, что и на главном экране «Мои задания».
 //
 // Empty-state — без CTA-кнопки (в отличие от EmptyState активных откликов на
 // главной): историю нельзя «создать», она наполняется сама. Паттерн взят из
@@ -35,11 +33,8 @@ import { OrderRow } from "@/components/OrderRow";
 import { OrderRowsSkeleton } from "@/components/OrderRowsSkeleton";
 import { ScreenHeader } from "@/components/ui";
 import { useAuthSession } from "@/features/auth/use-auth-session";
-import {
-  historyResponseStatusLabel,
-  isHistoryResponse,
-  useMyResponses,
-} from "@/features/orders/use-my-responses";
+import { orderStatusView } from "@/features/orders/order-status-view";
+import { isHistoryResponse, useMyResponses } from "@/features/orders/use-my-responses";
 import { useReducedMotion } from "@/hooks/use-reduced-motion";
 import { useSafeBack } from "@/lib/use-safe-back";
 import { useThemeColor } from "@/lib/use-theme-color";
@@ -106,7 +101,11 @@ export default function ResponsesHistoryScreen() {
                 showResponsesCount={false}
                 budgetKind={r.order.budget_kind}
                 budgetValue={r.order.budget_value}
-                statusOverrideLabel={historyResponseStatusLabel(r)}
+                statusView={orderStatusView({
+                  role: "master",
+                  order: r.order,
+                  myResponseStatus: r.response.status,
+                })}
                 onPress={() => router.push(`/orders/${r.order.id}` as never)}
               />
             ))}

@@ -44,12 +44,20 @@ export const lightColors = {
   // === SEMANTIC (наше расширение) ===
   success: "#10b981",
   "success-soft": "#d1fae5",
+  // success-deep (2026-09-14, статусы заданий, docs/ORDER_STATUS_DESIGN.md §3.3):
+  // text-success на success-soft даёт в light только 2.24:1 — ниже AA (4.5:1),
+  // а зелёная пилюля стала главным носителем смысла в системе статусов
+  // («исполнитель выбран» / «завершено»). Тот же приём, что warning-deep/error-deep.
+  "success-deep": "#047857", // 4.84:1 на success-soft (light) — посчитано скриптом контраста
   warning: "#f5a623",
   "warning-soft": "#ffefcf",
   "warning-deep": "#ab570a",
   error: "#ee0000",
   "error-soft": "#f7d4d6",
   "error-deep": "#c50000",
+  // mute-deep — тот же приём для нейтрального/архивного текста статус-пилюль:
+  // text-mute на surface-2 даёт в light 3.25:1 — ниже AA. 5.27:1.
+  "mute-deep": "#666666",
 
   // === BRAND ACCENTS (из Vercel) ===
   violet: "#7928ca",
@@ -124,12 +132,17 @@ export const darkColors = {
   // === SEMANTIC ===
   success: "#34d399",
   "success-soft": "#064e3b",
+  // success-deep (dark) — text-success на success-soft уже даёт 5.06:1 (AA
+  // пройден), отдельного затемнения/осветления не требуется — тот же цвет.
+  "success-deep": "#34d399",
   warning: "#fbbf24",
   "warning-soft": "#78350f",
   "warning-deep": "#fde68a",
   error: "#ef4444",
   "error-soft": "#7f1d1d",
   "error-deep": "#fca5a5",
+  // mute-deep (dark) — mute на surface-2 уже даёт 5.58:1, тот же цвет.
+  "mute-deep": "#999999",
 
   // === BRAND ACCENTS ===
   violet: "#a78bfa",

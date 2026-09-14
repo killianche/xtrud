@@ -55,42 +55,6 @@ export function isHistoryResponse(r: MyResponseWithOrder): boolean {
   return !isActiveResponse(r);
 }
 
-/**
- * Человекочитаемый статус «мёртвого» отклика для бейджа в Истории.
- *
- * Приоритет: СНАЧАЛА терминальный статус ЗАКАЗА, потом статус отклика. Важно:
- * когда клиент закрывает / просрочивает заказ, триггер БД авто-переводит отклики
- * мастера в `withdrawn`. Если бы приоритет был у статуса отклика, мы бы написали
- * «Отозван» (будто мастер сам отозвал) — это вводит в заблуждение. Поэтому
- * «Заказ закрыли» / «Истёк» / «Завершён» (что случилось с заказом) важнее.
- * Статус отклика (rejected/withdrawn) показываем только если заказ ещё активен
- * (open/in_progress) — тогда причина действительно в самом отклике.
- */
-export function historyResponseStatusLabel(r: MyResponseWithOrder): string {
-  // Выбрали меня — итог по моей работе, а не по заданию вообще (0196).
-  if (r.response.status === "accepted") {
-    if (r.order.status === "completed") return "Вы выполнили";
-    if (r.order.status === "cancelled" || r.order.status === "expired") return "Отменено";
-  }
-  if (r.order.status === "in_progress" || r.order.status === "completed") return "Выбран другой";
-  switch (r.order.status) {
-    case "cancelled":
-      return "Заказ закрыли";
-    case "expired":
-      return "Истёк";
-    case "disputed":
-      return "Спор";
-    case "awaiting_confirmation":
-      return "На подтверждении";
-    default:
-      break;
-  }
-  // Заказ ещё активен (open/in_progress) → причина в самом отклике.
-  if (r.response.status === "rejected") return "Отклонён";
-  if (r.response.status === "withdrawn") return "Отозван";
-  return "Закрыт";
-}
-
 export function useMyResponses(userId: string | undefined) {
   return useQuery<MyResponseWithOrder[]>({
     queryKey: myResponsesKey(userId),

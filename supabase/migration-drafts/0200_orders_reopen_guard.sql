@@ -387,5 +387,6 @@ COMMIT;
 -- После отката: пункт 1 проверки показывает прежние политики (как в снимке
 -- acl-before-0200), has_table_privilege('authenticated', 'public.order_status_log',
 -- 'INSERT') → t; position('order_reopen_via_rpc' …) → f.
+-- Если применена 0201: откат 0200 возвращает обход её лимита публикаций цепочкой INSERT draft → PATCH open.
 -- Откат возвращает известную дыру (прямой возврат в open) — только если 0200
 -- ломает что-то, чего нет в Git.

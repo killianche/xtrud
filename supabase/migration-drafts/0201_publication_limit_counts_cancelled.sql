@@ -33,7 +33,27 @@
 --     журнал не нужно;
 --   - запись в журнал — после обеих проверок, в той же транзакции: отклонённая
 --     или откатившаяся вставка следа не оставляет;
---   - записи старше 7 дней по этому автору подчищаются под тем же замком;
+--   - (ревью xtrud-security S1) вставка, где client_id не равен автору
+--     запроса, лимит не проверяет и замок не берёт: BEFORE-триггер работает
+--     раньше RLS WITH CHECK, и без этой проверки чужой client_id получал
+--     ошибку лимита со временем чужой последней публикации (теперь в том числе
+--     удалённой) и держал advisory lock жертвы. Такую вставку от
+--     authenticated отклоняет orders_insert_own (42501). Вставки без JWT
+--     (service_role через xtrud-api, postgres, cron: auth.uid() = NULL)
+--     лимит не проверяли и раньше — это не пользовательская публикация, и
+--     поведение для них не меняется. SECURITY DEFINER-функции, вставляющие
+--     задание, передают client_id = auth.uid() (FACT, live: единственная —
+--     confirm_work_done, v_client_id := auth.uid()), их S1 не затрагивает;
+--   - (S3) журналу нужны 24 часа; хранится 48. Чистит отдельная ночная задача
+--     pg_cron nightly_prune_publication_log (03:45), а не guard: глобальный
+--     DELETE внутри guard брал бы блокировки одних и тех же старых строк из
+--     вставок разных авторов — ожидание и возможный deadlock между людьми,
+--     которых advisory lock намеренно не связывает. Существующие ночные
+--     задачи (FACT, cron.job на Beget 2026-09-14: nightly_expire_orders →
+--     expire_old_orders() и др.) не трогаются: переписывать тело чужой
+--     функции ради одной строки — лишний риск, у отдельной задачи свой откат
+--     (cron.unschedule). Если pg_cron встанет, журнал просто растёт —
+--     правильность лимита от чистки не зависит;
 --   - advisory lock, тексты ошибок, DETAIL (daily_limit / active_limit),
 --     SECURITY DEFINER и search_path — без изменений; триггер не пересоздаётся.
 --
@@ -44,7 +64,15 @@
 --     INSERT: этот триггер на них не срабатывает; лимит «трёх активных» они
 --     проверяют сами (0200) под тем же ключом замка. Рассылку «Новая заявка»
 --     они не ставят (она только на INSERT);
---   - 0201 не зависит от 0199/0200 и применяется в любом порядке с ними.
+--   - 0201 применяется ТОЛЬКО ПОСЛЕ 0200 (ревью xtrud-security S2). Без 0200
+--     лимиты обходятся мимо INSERT: вставка draft (orders_insert_own без
+--     условия на статус) → PATCH status 'open' (orders_owner_edit_open пускает
+--     draft → open, guard 0197 переход в open не запрещает). Этот триггер —
+--     только BEFORE INSERT, draft он пропускает. Рассылку «Новая заявка» такой
+--     путь не ставит (она на AFTER INSERT со status open, FACT live), но
+--     задание в ленте появляется без дневного лимита и лимита трёх активных.
+--     Миграция сама проверяет, что 0200 применена, и иначе прерывается;
+--   - от 0199 не зависит.
 --   Что меняется для человека: после публикации следующая — через 24 часа,
 --   даже если первое задание закрыто или удалено. Черновики (status 'draft')
 --   по-прежнему не считаются.
@@ -70,11 +98,29 @@
 --     -- postgres=UC, anon=U, authenticated=U
 --   SELECT to_regclass('xtrud_private.order_publication_log');   -- ожидается пусто
 --   SELECT policyname, cmd, qual FROM pg_policies WHERE tablename = 'orders' AND cmd = 'DELETE';
+--   SELECT position('order_reopen_via_rpc' IN prosrc) > 0 FROM pg_proc
+--    WHERE proname = 'guard_order_lifecycle_direct_update';
+--     -- должно быть t; f — сначала применить 0200 (иначе 0201 прервётся сама)
+--   SELECT jobname, schedule, username, command FROM cron.job ORDER BY jobid;
+--     -- nightly_prune_publication_log отсутствует
 -- " > /root/acl-before-0201-$(date +%F-%H%M).txt
 
 BEGIN;
 
 SET LOCAL lock_timeout = '5s';
+
+-- ── Зависимость от 0200 (S2): без неё лимит обходится через draft → open ──
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_proc
+     WHERE oid = to_regprocedure('public.guard_order_lifecycle_direct_update()')
+       AND position('order_reopen_via_rpc' IN prosrc) > 0
+  ) THEN
+    RAISE EXCEPTION '0201 требует 0200: guard_order_lifecycle_direct_update без order_reopen_via_rpc';
+  END IF;
+END;
+$$;
 
 -- ── Журнал публикаций ────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS xtrud_private.order_publication_log (
@@ -89,6 +135,10 @@ COMMENT ON TABLE xtrud_private.order_publication_log IS
 
 CREATE INDEX IF NOT EXISTS order_publication_log_client_published_idx
   ON xtrud_private.order_publication_log (client_id, published_at DESC);
+
+-- Для ночной чистки по возрасту (S3).
+CREATE INDEX IF NOT EXISTS order_publication_log_published_idx
+  ON xtrud_private.order_publication_log (published_at);
 
 ALTER TABLE xtrud_private.order_publication_log ENABLE ROW LEVEL SECURITY;
 REVOKE ALL ON TABLE xtrud_private.order_publication_log FROM PUBLIC, anon, authenticated;
@@ -107,6 +157,11 @@ DECLARE
   v_last timestamptz;
 BEGIN
   IF v_actor IS NULL OR NEW.status = 'draft' THEN
+    RETURN NEW;
+  END IF;
+  -- S1: чужой client_id — не наша публикация. Вставку отклонит RLS
+  -- (orders_insert_own), а здесь не считаем чужое и не берём чужой замок.
+  IF NEW.client_id IS DISTINCT FROM v_actor THEN
     RETURN NEW;
   END IF;
   PERFORM pg_advisory_xact_lock(hashtextextended('orders_publish_limit:' || NEW.client_id::text, 0));
@@ -141,9 +196,7 @@ BEGIN
       USING ERRCODE = 'P0001', DETAIL = 'active_limit';
   END IF;
 
-  DELETE FROM xtrud_private.order_publication_log
-   WHERE client_id = NEW.client_id
-     AND published_at < now() - interval '7 days';
+  -- Чистка журнала — не здесь, а в nightly_prune_publication_log (S3).
   INSERT INTO xtrud_private.order_publication_log (order_id, client_id, published_at)
   VALUES (NEW.id, NEW.client_id, now())
   ON CONFLICT (order_id) DO NOTHING;
@@ -155,6 +208,16 @@ $$;
 -- Триггер orders_publication_limit_guard (BEFORE INSERT) уже вызывает эту
 -- функцию; пересоздавать не нужно. Права на функцию CREATE OR REPLACE не
 -- меняет.
+
+-- ── Ночная чистка журнала (S3) ───────────────────────────────────────────
+-- cron.schedule с тем же именем обновляет задачу — повторное применение
+-- безопасно. Задача выполняется от роли, применившей миграцию (postgres —
+-- владелец таблицы; так же заведены order_broadcasts и hourly_no_responses).
+SELECT cron.schedule(
+  'nightly_prune_publication_log',
+  '45 3 * * *',
+  $$DELETE FROM xtrud_private.order_publication_log WHERE published_at < now() - interval '48 hours'$$
+);
 
 COMMIT;
 
@@ -174,6 +237,15 @@ COMMIT;
 -- SELECT r, p, has_table_privilege(r, 'xtrud_private.order_publication_log', p)
 --   FROM unnest(ARRAY['anon', 'authenticated']) r, unnest(ARRAY['SELECT', 'INSERT', 'UPDATE', 'DELETE']) p;
 --   → все f
+-- SELECT indexname FROM pg_indexes WHERE tablename = 'order_publication_log' ORDER BY 1;
+--   → order_publication_log_client_published_idx, order_publication_log_pkey,
+--     order_publication_log_published_idx
+-- SELECT jobname, schedule, active, username, command FROM cron.job
+--  WHERE jobname = 'nightly_prune_publication_log';
+--   → 45 3 * * * | t | postgres | DELETE … published_at < now() - interval '48 hours'
+-- На следующее утро: SELECT status, return_message FROM cron.job_run_details
+--  WHERE jobid = (SELECT jobid FROM cron.job WHERE jobname = 'nightly_prune_publication_log')
+--  ORDER BY start_time DESC LIMIT 1;                                  → succeeded
 --
 -- 2. Поведение — только с ROLLBACK. <client> — пользователь без публикаций
 --    за последние 24 часа и с активными < 3; <l2_id>, <city_id> — существующие
@@ -227,6 +299,18 @@ COMMIT;
 --    reopen_order / unpick_order_master — проверки 0200 (c, e) проходят без
 --    изменений: это UPDATE, этот триггер их не касается.
 --
+-- e) (S1) чужой client_id: отказ RLS, без ошибки лимита и без записи в журнал.
+--    <victim> — другой пользователь, публиковавший задание за последние 24 часа:
+-- BEGIN; SET LOCAL ROLE authenticated;
+-- SELECT set_config('request.jwt.claims', '{"sub":"<client>","role":"authenticated"}', true);
+-- INSERT INTO public.orders (client_id, l2_id, city_id, title, status)
+-- VALUES ('<victim>', '<l2_id>', '<city_id>', 'проверка 0201 чужое', 'open');
+--   → ERROR 42501 new row violates row-level security policy for table "orders"
+--     (не «Одно задание в день…»)
+-- ROLLBACK;
+-- SELECT count(*) FROM xtrud_private.order_publication_log
+--  WHERE client_id = '<victim>' AND published_at > now() - interval '1 minute';  → 0
+--
 -- 3. Журнал пуст после ROLLBACK:
 -- SELECT count(*) FROM xtrud_private.order_publication_log
 --  WHERE client_id = '<client>' AND published_at > now() - interval '1 hour';  → 0
@@ -241,10 +325,15 @@ COMMIT;
 --   docker exec supabase-db psql -U postgres -d postgres -v ON_ERROR_STOP=1 -f /tmp/0179_publish_limit_fix.sql
 -- затем:
 -- BEGIN;
+-- SELECT cron.unschedule(jobid) FROM cron.job WHERE jobname = 'nightly_prune_publication_log';
 -- DROP TABLE IF EXISTS xtrud_private.order_publication_log;
 -- COMMIT;
 -- Порядок важен: функция 0201 обращается к журналу, без него любая
 -- публикация упадёт. Таблицу — только после возврата функции.
 -- После отката: position('order_publication_log' IN prosrc) → f;
--- to_regclass('xtrud_private.order_publication_log') → пусто; prosrc совпадает
--- со снимком acl-before-0201. Откат возвращает известную дыру N4.
+-- to_regclass('xtrud_private.order_publication_log') → пусто;
+-- SELECT count(*) FROM cron.job WHERE jobname = 'nightly_prune_publication_log' → 0;
+-- prosrc совпадает со снимком acl-before-0201. Откат возвращает известную
+-- дыру N4 (и S1: чужой client_id снова получает время чужой публикации).
+-- Откат 0200 при живой 0201 возвращает обход лимита цепочкой draft → open
+-- (S2); строка об этом есть и в откате 0200.

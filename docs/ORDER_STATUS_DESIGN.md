@@ -378,6 +378,16 @@ function orderStatusView(input: {
 
 ---
 
+### Решения 2026-09-14 (владелец делегировал основному агенту)
+
+- Вид для заказчика (§2.1) — принят как есть.
+- Красный `XCircle` — только у заказчика на «Закрыто» (`cancelled`); у специалиста то же задание — серый.
+- Контраст пилюль (`success-deep` и др., §3.3) — входит в реализацию.
+- Отменённые задания считаются в дневном лимите публикаций (backend, отдельный черновик).
+- Ответы входа 404/401 не меняются.
+
+---
+
 ## 10. UNKNOWN — сводка со способом проверки
 
 1. ~~Есть ли на живой базе заказы, зависшие в `awaiting_confirmation`/`disputed`~~ — **закрыто, FACT 2026-09-13**: `SELECT status, count(*) FROM orders` на Beget — open 4, cancelled 1, completed 1; легаси-статусов нет. Там же подтверждено: `reviews.order_id`, `order_status_log.order_id`, `order_responses.order_id` — ON DELETE CASCADE, на `reviews` висит `recalc_master_rating` AFTER DELETE. Исходный вопрос: (легаси-статусы, недостижимые из текущего UI) — проверить `SELECT status, count(*) FROM orders GROUP BY status` на read-only снимке прод-базы.

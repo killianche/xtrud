@@ -112,6 +112,14 @@ export default function OrdersScreen() {
   }, [tab, myOrders, myResponses]);
   const resolved: Segment = tab ?? "orders";
 
+  // Счётчики сегментов — только активные (§4.2); пересчитывать на каждый
+  // рендер незачем, orderStatusView() гоняется по всему списку.
+  const activeOrdersCount = useMemo(() => countActiveOrders(myOrders ?? []), [myOrders]);
+  const activeResponsesCount = useMemo(
+    () => countActiveResponses(myResponses ?? []),
+    [myResponses],
+  );
+
   // Крупный заголовок первым, под ним сегменты — как у Apple под large
   // title (Фитнес, Здоровье). Уезжают вместе со списком; в закреплённой строке
   // остаётся компактный заголовок (DECISION владельца 2026-09-06, вечер:
@@ -175,11 +183,11 @@ export default function OrdersScreen() {
             value={resolved}
             onChange={setTab}
             items={[
-              { id: "orders", label: "Как клиент", count: countActiveOrders(myOrders ?? []) },
+              { id: "orders", label: "Как клиент", count: activeOrdersCount },
               {
                 id: "responses",
                 label: "Как мастер",
-                count: countActiveResponses(myResponses ?? []),
+                count: activeResponsesCount,
                 tone: "primary",
               },
             ]}

@@ -1604,7 +1604,7 @@ function MasterResponseSection({
       orderStatus === "completed");
   const statusView = orderStatusView({
     role: "master",
-    order: { status: orderStatus, picked_master_id: pickedMasterId },
+    order: { status: orderStatus },
     myResponseStatus: myResponse.status,
   });
   const hint = isPickedMaster

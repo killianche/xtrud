@@ -70,7 +70,11 @@ export interface OrderStatusView {
 
 export interface OrderStatusViewInput {
   role: "client" | "master";
-  order: { status: OrderStatusValue; picked_master_id: string | null };
+  /** `picked_master_id` в структуре умышленно нет: "выбрали меня" для роли
+   *  master решает `myResponseStatus === 'accepted'` (см. комментарий у
+   *  переменной `chosenMe` ниже), а роль client его не использует вовсе —
+   *  сравнивать id независимо от этого поля не нужно ни для одной ветки. */
+  order: { status: OrderStatusValue };
   /** Статус СВОЕГО отклика — обязателен для role: "master". */
   myResponseStatus?: ResponseStatusValue;
 }
@@ -106,9 +110,17 @@ export function orderStatusView(input: OrderStatusViewInput): OrderStatusView {
         return view(true, "cancelled", "Закрыто", "cancel");
       case "expired":
         return view(true, "archive", "Истекло", "expired");
-      default:
-        // draft — до публикации, в списках не показывается вовсе.
+      case "draft":
+        // До публикации, в списках не показывается вовсе — сюда попадает
+        // только если что-то отрендерило черновик по ошибке.
         return view(true, "archive", "Черновик");
+      default:
+        // Легаси/непредвиденный статус (disputed и т.п., §1.1 — недостижимо
+        // из текущего приложения, но встречается в старых данных). Не
+        // подписываем его конкретным словом, которого не подтверждают данные
+        // («Черновик» тут было бы неправдой) — нейтральное «Закрыто», без
+        // иконки, архивный тон (design-quality §5 — честность интерфейса).
+        return view(true, "archive", "Закрыто");
     }
   }
 
@@ -146,7 +158,12 @@ export function orderStatusView(input: OrderStatusViewInput): OrderStatusView {
       if (myResponseStatus === "withdrawn") return view(true, "archive", "Отозван", "undo");
       if (myResponseStatus === "viewed") return view(false, "neutral", "Клиент прочитал");
       return view(false, "neutral", "Отклик отправлен");
+    case "draft":
+      // Черновик — не опубликован, специалист не может иметь на него отклик;
+      // сюда попадает только по ошибке рендера, тон/подпись — как у клиента.
+      return view(true, "archive", "Черновик");
     default:
-      return view(true, "archive", "Закрыт");
+      // Легаси/непредвиденный статус — та же логика честности, что у клиента.
+      return view(true, "archive", "Закрыто");
   }
 }

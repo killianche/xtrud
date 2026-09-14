@@ -65,13 +65,19 @@ export function StatusPill({
         ? tc["error-deep"]
         : tc["mute-deep"];
   const cls = TONE_CLASS[tone];
-  const padding = size === "sm" ? "h-6 px-2.5" : "h-7 px-3";
+  // QA 2026-09-14 (BLOCKER): фиксированная h-6/h-7 обрезала текст на
+  // Dynamic Type AX5 (2-3× крупнее) — текст переносится, а высота была
+  // жёсткой. min-h вместо h + вертикальный padding: однострочная пилюля
+  // выглядит как раньше, многострочная растёт вместе с текстом. `shrink` на
+  // тексте — чтобы пилюля переносилась, а не толкала соседей вширь до
+  // бесконечности (ограничение по ширине задаёт вызывающая сторона).
+  const padding = size === "sm" ? "min-h-6 px-2.5 py-1" : "min-h-7 px-3 py-1";
   const iconSize = size === "sm" ? 13 : 15;
   const Icon = iconKey ? ICON_BY_KEY[iconKey] : null;
   return (
     <View className={`flex-row items-center gap-1 self-start rounded-pill ${cls.bg} ${padding}`}>
       {Icon ? <Icon size={iconSize} weight={iconWeight} color={iconColor} /> : null}
-      <AppText weight="semibold" className={`text-caption ${cls.text}`}>
+      <AppText weight="semibold" className={`shrink text-caption ${cls.text}`}>
         {label}
       </AppText>
     </View>

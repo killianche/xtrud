@@ -6,10 +6,7 @@ import { orderStatusView } from "./order-status-view";
 // (красный XCircle только у заказчика на «Закрыто»).
 
 describe("orderStatusView — заказчик (§2.1)", () => {
-  const order = (status: string) => ({
-    status: status as never,
-    picked_master_id: null,
-  });
+  const order = (status: string) => ({ status: status as never });
 
   it("open — «Открыто», без цвета, не архив", () => {
     expect(orderStatusView({ role: "client", order: order("open") })).toMatchObject({
@@ -48,13 +45,28 @@ describe("orderStatusView — заказчик (§2.1)", () => {
       cardArchived: true,
     });
   });
+
+  it("draft — «Черновик», архив, без иконки (отдельная ветка, не default)", () => {
+    const v = orderStatusView({ role: "client", order: order("draft") });
+    expect(v).toMatchObject({ label: "Черновик", pillTone: "archive", cardArchived: true });
+    expect(v.iconKey).toBeUndefined();
+  });
+
+  it("disputed (легаси, недостижим из приложения) — «Закрыто», архив, без иконки, НЕ «Черновик»", () => {
+    const v = orderStatusView({ role: "client", order: order("disputed") });
+    expect(v).toMatchObject({ label: "Закрыто", pillTone: "archive", cardArchived: true });
+    expect(v.iconKey).toBeUndefined();
+  });
+
+  it("неизвестная строка статуса — тот же честный дефолт «Закрыто», не выдумывает факт", () => {
+    const v = orderStatusView({ role: "client", order: order("some_future_status") });
+    expect(v).toMatchObject({ label: "Закрыто", pillTone: "archive", cardArchived: true });
+    expect(v.iconKey).toBeUndefined();
+  });
 });
 
 describe("orderStatusView — специалист (§2.2)", () => {
-  const order = (status: string) => ({
-    status: status as never,
-    picked_master_id: null,
-  });
+  const order = (status: string) => ({ status: status as never });
 
   it("open + sent — «Отклик отправлен», без цвета", () => {
     expect(
@@ -130,5 +142,31 @@ describe("orderStatusView — специалист (§2.2)", () => {
     expect(
       orderStatusView({ role: "master", order: order("expired"), myResponseStatus: "sent" }),
     ).toMatchObject({ label: "Истекло", pillTone: "archive", cardArchived: true });
+  });
+
+  it("draft — «Черновик», архив, без иконки", () => {
+    const v = orderStatusView({ role: "master", order: order("draft"), myResponseStatus: "sent" });
+    expect(v).toMatchObject({ label: "Черновик", pillTone: "archive", cardArchived: true });
+    expect(v.iconKey).toBeUndefined();
+  });
+
+  it("disputed (легаси) — «Закрыто», архив, без иконки, НЕ «Черновик»", () => {
+    const v = orderStatusView({
+      role: "master",
+      order: order("disputed"),
+      myResponseStatus: "sent",
+    });
+    expect(v).toMatchObject({ label: "Закрыто", pillTone: "archive", cardArchived: true });
+    expect(v.iconKey).toBeUndefined();
+  });
+
+  it("неизвестная строка статуса — тот же честный дефолт «Закрыто»", () => {
+    const v = orderStatusView({
+      role: "master",
+      order: order("some_future_status"),
+      myResponseStatus: "sent",
+    });
+    expect(v).toMatchObject({ label: "Закрыто", pillTone: "archive", cardArchived: true });
+    expect(v.iconKey).toBeUndefined();
   });
 });

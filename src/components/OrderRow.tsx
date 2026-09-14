@@ -169,15 +169,21 @@ export function OrderRow(props: OrderRowProps) {
 
   const Icon = getCategoryIcon(props.categoryIcon);
   const statusView = props.statusView ?? null;
-  // "neutral" — статус ещё ничего не утверждает (ждёт исхода), плашки нет
-  // вовсе, карточка показывает время публикации как в общей ленте (§3.1).
-  const showPill = !!statusView && statusView.pillTone !== "neutral";
-  const dimmedLabel = showPill
-    ? statusView?.label
+  // DECISION основного агента 2026-09-14: плашка видна ВСЕГДА, когда есть
+  // statusView — и в списке, и на экране задания. "neutral" ("Открыто",
+  // "Отклик отправлен"…) рисуется серой плашкой без иконки, а не пропадает —
+  // иначе VoiceOver в карточке терял статус, а один и тот же факт выглядел
+  // по-разному в списке и внутри задания. Время публикации не теряется —
+  // уходит под плашку (см. разметку ниже), не заменяется ею.
+  const pillLabel = statusView
+    ? statusView.label
     : props.status
       ? DIMMED_STATUS[props.status]
       : undefined;
-  const isDimmed = statusView ? statusView.cardArchived : !!dimmedLabel;
+  const pillTone = statusView?.pillTone ?? "archive";
+  const pillIconKey = statusView?.iconKey;
+  const pillIconWeight = statusView?.iconWeight;
+  const isDimmed = statusView ? statusView.cardArchived : !!pillLabel;
   const showButton = !!props.showRespondButton && !props.alreadyResponded;
 
   const timingLabel = formatOrderTiming(props.urgency, props.preferredDate);
@@ -201,7 +207,7 @@ export function OrderRow(props: OrderRowProps) {
   const ariaLabel = [
     props.title,
     props.categoryName,
-    dimmedLabel ?? timingLabel,
+    pillLabel ?? timingLabel,
     locationLabel,
     priceLabel ? `Бюджет ${priceLabel}` : null,
     `Опубликовано ${timeAgoShort(props.createdAt)}`,
@@ -222,8 +228,14 @@ export function OrderRow(props: OrderRowProps) {
       <View className="p-4">
         {/* Строка категории. Иконка — в размер текста и без подложки: цвет
             категории сохранён, а плитка, из-за которой карточка выглядела
-            блочной, убрана. Справа — возраст задания. */}
-        <View className="flex-row items-center gap-2">
+            блочной, убрана. Справа — плашка статуса (если есть) и под ней
+            время публикации: раньше время стояло НА МЕСТЕ плашки, но с
+            2026-09-14 плашка видна всегда, поэтому оба факта уместились друг
+            под другом, а не один вместо другого (QA BLOCKER — плашка на
+            Dynamic Type AX5 переносится на 2-3 строки; `items-start` +
+            `max-w` на колонке справа не дают многострочной плашке вытолкнуть
+            иконку/название категории или разъехаться на всю ширину). */}
+        <View className="flex-row items-start gap-2">
           {<Icon size={18} weight="bold" color={tc.accent} />}
           <AppText
             weight="semibold"
@@ -232,13 +244,18 @@ export function OrderRow(props: OrderRowProps) {
           >
             {props.categoryName}
           </AppText>
-          {dimmedLabel ? (
-            <StatusPill
-              tone={showPill && statusView ? statusView.pillTone : "archive"}
-              label={dimmedLabel}
-              iconKey={showPill ? statusView?.iconKey : undefined}
-              iconWeight={showPill ? statusView?.iconWeight : undefined}
-            />
+          {pillLabel ? (
+            <View className="max-w-[55%] items-end gap-1">
+              <StatusPill
+                tone={pillTone}
+                label={pillLabel}
+                iconKey={pillIconKey}
+                iconWeight={pillIconWeight}
+              />
+              <AppText weight="mono" className="text-mono-caption text-mute">
+                {timeAgoShort(props.createdAt)}
+              </AppText>
+            </View>
           ) : (
             <AppText weight="mono" className="text-mono-body text-mute">
               {timeAgoShort(props.createdAt)}

@@ -804,15 +804,19 @@ function OrderInfoBlock({ order, isOwner, myResponseStatus }: OrderInfoBlockProp
 
   return (
     <View className="px-5 pt-2">
-      {/* Статус + категория. */}
-      <View className="flex-row items-center gap-2">
-        <StatusPill
-          tone={headerStatus.pillTone}
-          label={headerStatus.label}
-          iconKey={headerStatus.iconKey}
-          iconWeight={headerStatus.iconWeight}
-          size="md"
-        />
+      {/* Статус + категория. flex-wrap: на крупном шрифте категории уходят на
+          следующую строку, а не выталкивают плашку за край экрана; max-w-full
+          даёт самой плашке перенести длинную подпись (ревью 2026-09-14). */}
+      <View className="flex-row flex-wrap items-center gap-x-2 gap-y-1">
+        <View className="max-w-full">
+          <StatusPill
+            tone={headerStatus.pillTone}
+            label={headerStatus.label}
+            iconKey={headerStatus.iconKey}
+            iconWeight={headerStatus.iconWeight}
+            size="md"
+          />
+        </View>
         <AppText className="text-caption text-mute">·</AppText>
         <AppText weight="medium" className="flex-shrink text-caption text-body">
           {categoryLine}

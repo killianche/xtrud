@@ -67,7 +67,6 @@ export default function VerifyIdentityScreen() {
   return (
     <FormScreen
       title="Подтверждение личности"
-      subtitle="По желанию. Профиль виден в каталоге и без этого; подтверждённым специалистам доверяют больше — в профиле появится значок."
       onBack={() => router.back()}
       primaryLabel={
         status === "approved"
@@ -88,9 +87,7 @@ export default function VerifyIdentityScreen() {
         footer={
           v?.status === "rejected" && v.rejection_reason
             ? `Причина: ${v.rejection_reason}`
-            : v?.status === "pending"
-              ? "Обычно проверяем в течение дня. Пришлём уведомление."
-              : undefined
+            : undefined
         }
       >
         <InsetRow

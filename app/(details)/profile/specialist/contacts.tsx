@@ -86,7 +86,6 @@ export default function SpecialistContactsScreen() {
   return (
     <FormScreen
       title="Как с вами связаться?"
-      subtitle="Клиенты звонят и пишут напрямую — номер виден в профиле."
       onBack={() => router.back()}
       primaryLabel="Готово"
       onPrimary={save}
@@ -103,10 +102,9 @@ export default function SpecialistContactsScreen() {
         textContentType="telephoneNumber"
         autoComplete="tel"
         error={phone !== null && !isPhoneAcceptable(phone) ? PHONE_ERROR : null}
-        hint="Можно указать не тот номер, что в аккаунте."
         accessibilityLabel="Телефон для клиентов"
       />
-      <InsetGroup footer={same ? "Клиенты напишут в WhatsApp на этот же номер." : undefined}>
+      <InsetGroup>
         <InsetRow
           title="WhatsApp — тот же номер"
           toggle={{ value: same, onChange: setSame }}
@@ -135,7 +133,6 @@ export default function SpecialistContactsScreen() {
         autoCapitalize="none"
         autoCorrect={false}
         error={linkUrl === undefined ? "Проверьте ссылку: например, instagram.com/имя" : null}
-        hint="Соцсеть или сайт с вашими работами — по желанию."
         accessibilityLabel="Ссылка на соцсеть или сайт"
       />
     </FormScreen>

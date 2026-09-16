@@ -14,11 +14,7 @@ export default function SpecialistAreasScreen() {
   const { session } = useAuthSession();
   const userId = session?.user?.id;
   return (
-    <FormScreen
-      title="Где работаете?"
-      subtitle="Клиенты видят это в профиле, а вы — задания рядом."
-      onBack={() => router.back()}
-    >
+    <FormScreen title="Где работаете?" onBack={() => router.back()}>
       <View className="px-4">{userId ? <ServiceAreasSection masterId={userId} /> : null}</View>
     </FormScreen>
   );

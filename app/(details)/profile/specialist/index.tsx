@@ -19,11 +19,7 @@ export default function SpecialistHubScreen() {
   if (!userId) return <Redirect href="/(auth)/phone" />;
 
   return (
-    <FormScreen
-      title="Я специалист"
-      subtitle="Категории, о себе, фото работ, контакты"
-      onBack={() => router.back()}
-    >
+    <FormScreen title="Я специалист" onBack={() => router.back()}>
       <SpecialistHubBody userId={userId} />
     </FormScreen>
   );

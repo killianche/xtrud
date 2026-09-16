@@ -91,7 +91,7 @@ export default function SpecialistCategoriesScreen() {
   return (
     <FormScreen
       title="Чем занимаетесь?"
-      subtitle={`До ${MAX} категорий. Клиенты находят вас по ним.`}
+      subtitle={`До ${MAX} категорий.`}
       onBack={() => router.back()}
       primaryLabel={chosen.length > 0 ? `Готово · ${chosen.length}` : "Готово"}
       onPrimary={save}

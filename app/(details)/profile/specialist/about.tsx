@@ -60,7 +60,6 @@ export default function SpecialistAboutScreen() {
   return (
     <FormScreen
       title="Расскажите о себе"
-      subtitle="Что делаете, с чем приходить, что важно знать клиенту."
       onBack={() => router.back()}
       primaryLabel="Готово"
       onPrimary={save}

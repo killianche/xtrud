@@ -77,11 +77,7 @@ export default function SpecialistPhotosScreen() {
   };
 
   return (
-    <FormScreen
-      title="Фото работ"
-      subtitle="Клиенты смотрят фото до звонка. Лучше 5–10 настоящих работ."
-      onBack={() => router.back()}
-    >
+    <FormScreen title="Фото работ" onBack={() => router.back()}>
       <View className="px-4">
         <View className="mb-1.5 ml-4 flex-row items-baseline justify-between">
           <AppText className="text-ios-footnote uppercase text-mute">Фото</AppText>

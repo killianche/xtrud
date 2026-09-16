@@ -113,7 +113,7 @@ export default function CloseReasonScreen() {
             нейтральный. Оба → cancelled, разница в cancel_reason. */}
         {step === "who" ? (
           <View className="pb-6 pt-1">
-            <InsetGroup footer="Задание уйдёт из ленты, выбранный получит уведомление. Когда работа будет готова, отметьте её выполненной — и оставьте отзыв.">
+            <InsetGroup>
               {responders.map((r) => {
                 const m = r.master;
                 const name =
@@ -157,13 +157,6 @@ export default function CloseReasonScreen() {
               tone="neutral"
               onPress={() => pick("no_longer_needed")}
             />
-
-            {/* Честное предупреждение о последствиях (паттерн Avito при снятии).
-              Это не subtitle под H1, а сноска внизу списка вариантов. */}
-            <AppText className="mt-2 text-caption text-mute" style={{ lineHeight: 18 }}>
-              Исполнители перестанут видеть задание и не смогут откликнуться. Контакты тех, кто уже
-              откликнулся, останутся у вас.
-            </AppText>
           </View>
         )}
       </View>

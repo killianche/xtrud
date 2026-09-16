@@ -67,7 +67,6 @@ export default function AccountScreen() {
       <InsetGroup title="Специалист">
         <InsetRow
           title="Я специалист"
-          subtitle="Категории, о себе, фото работ, контакты"
           icon={<Wrench size={18} weight="bold" color={tc["on-accent"]} />}
           iconAccent
           navigates
@@ -79,10 +78,7 @@ export default function AccountScreen() {
       <AvailabilityRows userId={userId} />
 
       {user?.is_admin ? (
-        <InsetGroup
-          title="Администратор"
-          footer="Жалобы, паспорта, рейтинг. Блокировка и скрытие — в меню «⋯» на страницах людей и заданий."
-        >
+        <InsetGroup title="Администратор">
           <InsetRow
             title="Панель администратора"
             icon={<ShieldCheck size={18} weight="bold" color={tc["on-accent"]} />}
@@ -97,7 +93,6 @@ export default function AccountScreen() {
       <InsetGroup title="Аккаунт">
         <InsetRow
           title="Уведомления"
-          subtitle="Отклики и новости по заданиям"
           icon={<BellSimple size={18} weight="bold" color={tc.ink} />}
           navigates
           onPress={() => router.push("/notifications" as never)}
@@ -110,7 +105,6 @@ export default function AccountScreen() {
         />
         <InsetRow
           title="Мой профиль"
-          subtitle="Как меня видят другие"
           icon={<UserCircle size={18} weight="bold" color={tc.ink} />}
           navigates
           onPress={() => router.push(`/master/${userId}` as never)}

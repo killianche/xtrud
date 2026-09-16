@@ -61,7 +61,7 @@ export function Settings() {
   };
 
   return (
-    <div>
+    <div className="stack" style={{ gap: 24 }}>
       <div className="page-header">
         <div>
           <p className="mono-eyebrow">Площадка</p>
@@ -126,6 +126,75 @@ export function Settings() {
           </div>
         </form>
       )}
+      <FindScreenCard />
+    </div>
+  );
+}
+
+/** Вид экрана «Найти задание» в приложении — откат без новой сборки (0205). */
+function FindScreenCard() {
+  const [variant, setVariant] = useState<"category_first" | "classic" | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    api
+      .appFlags()
+      .then((f) => setVariant(f.find_screen))
+      .catch((e: Error) => setError(e.message));
+  }, []);
+
+  const choose = async (next: "category_first" | "classic") => {
+    if (busy || next === variant) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const f = await api.setFindScreen(next);
+      setVariant(f.find_screen);
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const option = (id: "category_first" | "classic", title: string, text: string) => (
+    <label className="row" style={{ gap: 10, alignItems: "flex-start", cursor: "pointer" }}>
+      <input
+        type="radio"
+        name="find-screen"
+        checked={variant === id}
+        disabled={busy || variant === null}
+        onChange={() => void choose(id)}
+        style={{ marginTop: 4 }}
+      />
+      <span>
+        <span className="body-md" style={{ color: "var(--ink)", fontWeight: 600 }}>
+          {title}
+        </span>
+        <br />
+        <span className="body-sm text-mute">{text}</span>
+      </span>
+    </label>
+  );
+
+  return (
+    <div className="card stack" style={{ maxWidth: 520 }}>
+      <p className="mono-eyebrow">Экран «Найти задание»</p>
+      <p className="body-md text-mute">
+        Меняется у всех при следующем открытии приложения, новая сборка не нужна.
+      </p>
+      {option(
+        "category_first",
+        "Новый",
+        "Поиск и пилюли «Категория», «Место»; при входе — разделы и три свежих задания.",
+      )}
+      {option("classic", "Прежний", "Сразу вся лента, круглые кнопки фильтра и места.")}
+      {error ? (
+        <div className="banner-error body-md" role="alert">
+          {error}
+        </div>
+      ) : null}
     </div>
   );
 }

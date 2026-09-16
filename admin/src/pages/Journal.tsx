@@ -14,6 +14,7 @@ const ACTION_LABEL: Record<string, string> = {
   warn: "Предупреждение",
   hide_review: "Скрытие отзыва",
   set_order_limits: "Лимиты публикации",
+  set_find_screen: "Вид экрана поиска",
 };
 
 export function Journal() {

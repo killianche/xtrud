@@ -19,6 +19,7 @@ import { shouldHideDemo } from "@/lib/demo-mode";
 import { cityIdsOfDistrictName, districtNameOfCityId } from "@/lib/location-config";
 import { supabase } from "@/lib/supabase";
 import { orderCategoryFilter } from "./order-categories";
+import { searchTerm } from "./search-term";
 
 type Page = { rows: OrderWithRefs[]; nextCursor: FeedCursor | null };
 
@@ -30,9 +31,18 @@ interface UseAllOpenOrdersInput {
    *  («Вся Ингушетия»). cityId и district взаимоисключающие (см. фильтр-стор). */
   cityId?: string | null;
   district?: string | null;
+  /** Поиск по названию и описанию; пусто — без поиска. */
+  query?: string | null;
 }
 
-export function useAllOpenOrders({ userId, l2Ids, cityId, district }: UseAllOpenOrdersInput) {
+export function useAllOpenOrders({
+  userId,
+  l2Ids,
+  cityId,
+  district,
+  query,
+}: UseAllOpenOrdersInput) {
+  const term = searchTerm(query);
   // Нормализуем пустые строки в null — чтобы queryKey и условия были стабильны.
   const cityFilter = cityId ? cityId : null;
   const districtFilter = district ? district : null;
@@ -43,6 +53,7 @@ export function useAllOpenOrders({ userId, l2Ids, cityId, district }: UseAllOpen
       l2Ids ?? null,
       cityFilter,
       districtFilter,
+      term,
     ] as const,
     initialPageParam: null as FeedCursor | null,
     queryFn: async ({ pageParam }) => {
@@ -99,6 +110,11 @@ export function useAllOpenOrders({ userId, l2Ids, cityId, district }: UseAllOpen
         q = cities.length
           ? q.or(`district.eq."${districtFilter}",city_id.in.(${cities.join(",")})`)
           : q.eq("district", districtFilter);
+      }
+
+      if (term) {
+        // Кавычки — чтобы пробелы в запросе не ломали синтаксис фильтра.
+        q = q.or(`title.ilike."*${term}*",description.ilike."*${term}*"`);
       }
 
       q = q.order("created_at", { ascending: false }).order("id", { ascending: false });

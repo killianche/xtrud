@@ -30,7 +30,9 @@ import { OrderRow } from "@/components/OrderRow";
 import { OrderRowsSkeleton } from "@/components/OrderRowsSkeleton";
 import { LargeTitleBar, NavCircleButton, useLargeTitle } from "@/components/ui";
 import { SystemIcon } from "@/components/ui/SystemIcon";
+import { useAppFlags } from "@/features/app-flags/use-app-flags";
 import { useAuthSession } from "@/features/auth/use-auth-session";
+import { CategoryFirstFindScreen } from "@/features/orders/find/CategoryFirstFindScreen";
 import {
   countActiveFilters,
   useOrdersSearchFiltersStore,
@@ -47,7 +49,16 @@ import { useThemeColor } from "@/lib/use-theme-color";
 
 const EMPTY_IDS: ReadonlySet<string> = new Set();
 
+/**
+ * Вид экрана — флаг из админки (0205): новый «сначала выбор» или прежняя
+ * лента (ниже, без изменений) — откат без новой сборки.
+ */
 export default function FindScreen() {
+  const { findScreen } = useAppFlags();
+  return findScreen === "classic" ? <ClassicFindScreen /> : <CategoryFirstFindScreen />;
+}
+
+function ClassicFindScreen() {
   const tabBarSpace = useTabBarSpace();
   // Строки навигации в покое нет — стартовая высота 0, без прыжка (QA).
   const large = useLargeTitle(0);

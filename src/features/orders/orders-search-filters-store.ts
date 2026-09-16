@@ -26,6 +26,12 @@ interface OrdersSearchFiltersState {
    */
   cityId: string;
   district: string;
+  /** Текст поиска по названию и описанию задания (экран 2026-09-16). */
+  query: string;
+  /** Нажато «Все задания» на стартовом экране — показать ленту без фильтров. */
+  browseAll: boolean;
+  setQuery: (next: string) => void;
+  setBrowseAll: (next: boolean) => void;
   setL2Ids: (next: string[]) => void;
   toggleL2: (id: string) => void;
   /** Выставить локацию-фильтр. cityId+district взаимоисключающие — передавай
@@ -38,6 +44,10 @@ export const useOrdersSearchFiltersStore = create<OrdersSearchFiltersState>((set
   l2Ids: [],
   cityId: "",
   district: "",
+  query: "",
+  browseAll: false,
+  setQuery: (next) => set({ query: next }),
+  setBrowseAll: (next) => set({ browseAll: next }),
   setL2Ids: (next) => set({ l2Ids: next }),
   toggleL2: (id) => {
     const cur = new Set(get().l2Ids);
@@ -46,7 +56,7 @@ export const useOrdersSearchFiltersStore = create<OrdersSearchFiltersState>((set
     set({ l2Ids: Array.from(cur) });
   },
   setLocation: (cityId, district) => set({ cityId, district }),
-  clearAll: () => set({ l2Ids: [], cityId: "", district: "" }),
+  clearAll: () => set({ l2Ids: [], cityId: "", district: "", query: "", browseAll: false }),
 }));
 
 /** Helper: подсчёт активных фильтров для бейджа на кнопке «Фильтры». */

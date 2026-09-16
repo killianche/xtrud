@@ -1805,6 +1805,7 @@ export type Database = {
         Returns: string | null
       }
       get_order_limits: { Args: never; Returns: Json }
+      get_app_flags: { Args: never; Returns: Json }
       admin_set_order_limits: {
         Args: { p_active: number; p_daily: number; p_reason?: string }
         Returns: Json

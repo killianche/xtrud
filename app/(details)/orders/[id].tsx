@@ -1583,7 +1583,9 @@ function MasterResponseSection({
   const tc = useThemeColors(["ink", "on-accent"]);
   if (!myResponse || (myResponse.status === "withdrawn" && orderStatus === "open")) return null;
 
-  const isPickedMaster = pickedMasterId === masterId;
+  // Выбрали меня: отклик принят или я исполнитель задания (старые закрытия
+  // «нашёл исполнителя» оставляли отклик отозванным, но исполнителя — мной).
+  const isPickedMaster = myResponse.status === "accepted" || pickedMasterId === masterId;
   const canWithdraw =
     orderStatus === "open" && (myResponse.status === "sent" || myResponse.status === "viewed");
   const onWithdrawPress = async () => {
@@ -1605,31 +1607,23 @@ function MasterResponseSection({
     );
   };
 
-  const otherPicked =
-    !isPickedMaster &&
-    (orderStatus === "in_progress" ||
-      orderStatus === "awaiting_confirmation" ||
-      orderStatus === "completed");
+  // Отклик как сообщение (DECISION владельца 2026-09-16, ORDER_STATUS_DESIGN
+  // §0.4): плашка — «Отклик отправлен» или «Вас выбрали»; что стало с
+  // заданием — только тихой строкой ниже, без цвета и без оценки отклика.
   const statusView = orderStatusView({
     role: "master",
     order: { status: orderStatus },
-    myResponseStatus: myResponse.status,
+    myResponseStatus: isPickedMaster ? "accepted" : myResponse.status,
   });
   const hint = isPickedMaster
     ? orderStatus === "completed"
-      ? "Клиент отметил работу выполненной. Спасибо!"
+      ? "Работа отмечена выполненной. Спасибо!"
       : orderStatus === "cancelled" || orderStatus === "expired"
-        ? "Клиент отменил задание."
-        : "Клиент выбрал вас исполнителем и свяжется по номеру из отклика. Когда работа будет готова, он отметит её выполненной."
-    : otherPicked
-      ? "Клиент выбрал другого исполнителя. Посмотрите другие задания."
-      : myResponse.status === "rejected"
-        ? "Клиент отклонил отклик. Посмотрите другие задания."
-        : myResponse.status === "withdrawn"
-          ? orderStatus === "open"
-            ? "Вы отозвали отклик."
-            : "Задание закрыто."
-          : "Клиент видит ваш отклик и свяжется сам, если выберет вас.";
+        ? "Клиент закрыл задание после того, как выбрал вас."
+        : "Клиент выбрал вас исполнителем. Он свяжется по номеру из отклика."
+    : orderStatus === "open"
+      ? "Клиент увидит ваш отклик и свяжется, если выберет вас."
+      : "Задание больше не активно.";
 
   // Отдельный блок на сером фоне (владелец, 2026-09-11: «отделить дизайном
   // от остального»). Раньше это была InsetGroup — белая плашка на белом

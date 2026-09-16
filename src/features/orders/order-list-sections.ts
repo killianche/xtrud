@@ -63,22 +63,31 @@ export function buildOrderSections(orders: OrderWithRefs[]): OrderListSectionIte
   );
 }
 
-/** «Мои задания» → «Как мастер». */
-export function buildResponseSections(
+/**
+ * «Мои задания» → «Как мастер» (§0.3, 2026-09-16): один плоский список без
+ * архива и приглушения — отклик как отправленное сообщение. «Вас выбрали»
+ * сверху, дальше по дате отклика.
+ */
+export function buildResponseList(
   responses: MyResponseWithOrder[],
 ): OrderListSectionItem<MyResponseWithOrder>[] {
-  return buildSections(
-    responses.map((r) => ({
-      id: r.response.id,
-      sortKey: new Date(r.response.created_at).getTime(),
-      statusView: orderStatusView({
-        role: "master",
-        order: r.order,
-        myResponseStatus: r.response.status,
-      }),
-      data: r,
-    })),
-  );
+  const items = responses.map((r) => ({
+    id: r.response.id,
+    sortKey: new Date(r.response.created_at).getTime(),
+    statusView: orderStatusView({
+      role: "master",
+      order: r.order,
+      // Исполнитель задания — я: старые закрытия «нашёл исполнителя»
+      // оставляли отклик отозванным, но выбран был именно я.
+      myResponseStatus:
+        r.order.picked_master_id === r.response.master_id ? "accepted" : r.response.status,
+    }),
+    data: r,
+  }));
+  const rank = (i: (typeof items)[number]) => (i.statusView.pillTone === "confirmed" ? 0 : 1);
+  return [...items]
+    .sort((x, y) => rank(x) - rank(y) || y.sortKey - x.sortKey)
+    .map((i) => ({ kind: "row" as const, id: i.id, statusView: i.statusView, data: i.data }));
 }
 
 /** Счётчик сегмента «Как клиент» — DECISION владельца §4.2: только активные;
@@ -91,12 +100,12 @@ export function countActiveOrders(orders: OrderWithRefs[]): number | null {
   return n > 0 ? n : null;
 }
 
-/** Счётчик сегмента «Как мастер» — та же логика (§4.2). */
-export function countActiveResponses(responses: MyResponseWithOrder[]): number | null {
+/** Счётчик сегмента «Как мастер» (§0.6): отклики, которые ещё ждут решения
+ *  клиента — задание открыто, отклик не отклонён и не отозван. */
+export function countPendingResponses(responses: MyResponseWithOrder[]): number | null {
   const n = responses.filter(
     (r) =>
-      !orderStatusView({ role: "master", order: r.order, myResponseStatus: r.response.status })
-        .cardArchived,
+      r.order.status === "open" && (r.response.status === "sent" || r.response.status === "viewed"),
   ).length;
   return n > 0 ? n : null;
 }

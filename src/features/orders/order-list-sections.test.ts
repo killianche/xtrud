@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
   buildOrderSections,
-  buildResponseSections,
+  buildResponseList,
   countActiveOrders,
-  countActiveResponses,
+  countPendingResponses,
 } from "./order-list-sections";
 import type { OrderWithRefs } from "./use-my-orders";
 import type { MyResponseWithOrder } from "./use-my-responses";
@@ -24,7 +24,7 @@ function response(
   createdAt: string,
 ): MyResponseWithOrder {
   return {
-    response: { id, status: responseStatus, created_at: createdAt } as never,
+    response: { id, status: responseStatus, created_at: createdAt, master_id: "me" } as never,
     order: { id: orderId, status: orderStatus, picked_master_id: null } as never,
   } as MyResponseWithOrder;
 }
@@ -69,18 +69,27 @@ describe("buildOrderSections — «Как клиент»", () => {
   });
 });
 
-describe("buildResponseSections — «Как мастер»", () => {
-  it("выбрали меня (confirmed) — выше неопределившихся (neutral) в активных", () => {
+describe("buildResponseList — «Как мастер» (§0.3)", () => {
+  it("один плоский список: «Вас выбрали» сверху, дальше по дате, без заголовка архива", () => {
     const list = [
       response("r1", "o1", "sent", "open", "2026-01-05T00:00:00Z"),
-      response("r2", "o2", "accepted", "in_progress", "2026-01-01T00:00:00Z"),
+      response("r2", "o2", "accepted", "completed", "2026-01-01T00:00:00Z"),
+      response("r3", "o3", "withdrawn", "cancelled", "2026-01-07T00:00:00Z"),
     ];
-    const sections = buildResponseSections(list);
-    expect(sections.map((s) => (s.kind === "row" ? s.id : null))).toEqual(["r2", "r1"]);
+    const items = buildResponseList(list);
+    expect(items.every((i) => i.kind === "row")).toBe(true);
+    expect(items.map((i) => (i.kind === "row" ? i.id : null))).toEqual(["r2", "r3", "r1"]);
+  });
+
+  it("исполнитель задания — я, даже если отклик отозван старой схемой закрытия", () => {
+    const r = response("r1", "o1", "withdrawn", "cancelled", "2026-01-01T00:00:00Z");
+    (r.order as { picked_master_id: string | null }).picked_master_id = "me";
+    const [item] = buildResponseList([r]);
+    expect(item?.kind === "row" && item.statusView.label).toBe("Вас выбрали");
   });
 });
 
-describe("countActiveOrders / countActiveResponses (§4.2)", () => {
+describe("countActiveOrders / countPendingResponses", () => {
   it("считает только активные (cardArchived === false)", () => {
     const list = [
       order("a", "open", "2026-01-01T00:00:00Z"),
@@ -99,11 +108,15 @@ describe("countActiveOrders / countActiveResponses (§4.2)", () => {
     expect(countActiveOrders([])).toBeNull();
   });
 
-  it("отклики: выбрали другого — не активно, не считается", () => {
+  it("отклики: считаются только ждущие решения клиента (задание открыто, отклик живой)", () => {
     const list = [
       response("r1", "o1", "sent", "open", "2026-01-01T00:00:00Z"),
-      response("r2", "o2", "sent", "in_progress", "2026-01-01T00:00:00Z"),
+      response("r2", "o2", "viewed", "open", "2026-01-01T00:00:00Z"),
+      response("r3", "o3", "sent", "in_progress", "2026-01-01T00:00:00Z"),
+      response("r4", "o4", "rejected", "open", "2026-01-01T00:00:00Z"),
+      response("r5", "o5", "accepted", "completed", "2026-01-01T00:00:00Z"),
     ];
-    expect(countActiveResponses(list)).toBe(1);
+    expect(countPendingResponses(list)).toBe(2);
+    expect(countPendingResponses([])).toBeNull();
   });
 });

@@ -17,44 +17,6 @@ export function myResponsesKey(userId: string | undefined) {
   return ["my-responses", userId] as const;
 }
 
-/**
- * Активный отклик = клиент ещё может выбрать мастера (заказ открыт, отклик живой).
- *
- * Отклик НЕ активен (= уходит в «Историю откликов») если:
- *   - заказ в терминальном/закрытом статусе (completed / cancelled / expired /
- *     disputed / awaiting_confirmation), ИЛИ
- *   - сам отклик отклонён / отозван (rejected / withdrawn).
- * `in_progress` считается активным (поведение совпадает с лентой «Ваши отклики»).
- *
- * Единый источник истины — используют и MasterDashboardOrders (показывает
- * активные), и экран /orders/responses-history (показывает инверсию). Не
- * дублировать предикат копипастой (правило connect-the-dots.md).
- */
-export function isActiveResponse(r: MyResponseWithOrder): boolean {
-  const orderStatus = r.order.status;
-  const respStatus = r.response.status;
-  if (
-    orderStatus === "completed" ||
-    orderStatus === "cancelled" ||
-    orderStatus === "expired" ||
-    orderStatus === "disputed" ||
-    orderStatus === "awaiting_confirmation"
-  ) {
-    return false;
-  }
-  if (respStatus === "rejected" || respStatus === "withdrawn") {
-    return false;
-  }
-  // Исполнитель выбран (0196): активно только у того, кого выбрали.
-  if (orderStatus === "in_progress") return respStatus === "accepted";
-  return true;
-}
-
-/** Инверсия isActiveResponse — отклик попал в «Историю» (закрытый/завершённый). */
-export function isHistoryResponse(r: MyResponseWithOrder): boolean {
-  return !isActiveResponse(r);
-}
-
 export function useMyResponses(userId: string | undefined) {
   return useQuery<MyResponseWithOrder[]>({
     queryKey: myResponsesKey(userId),
@@ -76,26 +38,34 @@ export function useMyResponses(userId: string | undefined) {
       };
       const rows = (data ?? []) as unknown as Row[];
 
-      return rows
-        .filter((r): r is Row & { order: NonNullable<Row["order"]> } => r.order !== null)
-        .map((r) => ({
-          response: {
-            id: r.id,
-            order_id: r.order_id,
-            master_id: r.master_id,
-            l2_id: r.l2_id,
-            price_kind: r.price_kind,
-            price_value: r.price_value,
-            lead_time: r.lead_time,
-            message: r.message,
-            contact_phone: r.contact_phone,
-            whatsapp_phone: r.whatsapp_phone,
-            status: r.status,
-            created_at: r.created_at,
-            updated_at: r.updated_at,
-          },
-          order: r.order,
-        }));
+      return (
+        rows
+          .filter((r): r is Row & { order: NonNullable<Row["order"]> } => r.order !== null)
+          // Отозванный самим специалистом отклик исчезает, как отменённая
+          // отправка (2026-09-16). Отличаем по заданию: сам отозвать можно только
+          // открытое, а при закрытии, истечении или завершении с другим
+          // исполнителем «отозван» ставит база — такие отклики остаются в
+          // списке обычной строкой «Отклик отправлен».
+          .filter((r) => !(r.status === "withdrawn" && r.order.status === "open"))
+          .map((r) => ({
+            response: {
+              id: r.id,
+              order_id: r.order_id,
+              master_id: r.master_id,
+              l2_id: r.l2_id,
+              price_kind: r.price_kind,
+              price_value: r.price_value,
+              lead_time: r.lead_time,
+              message: r.message,
+              contact_phone: r.contact_phone,
+              whatsapp_phone: r.whatsapp_phone,
+              status: r.status,
+              created_at: r.created_at,
+              updated_at: r.updated_at,
+            },
+            order: r.order,
+          }))
+      );
     },
     enabled: !!userId,
     staleTime: 30_000,

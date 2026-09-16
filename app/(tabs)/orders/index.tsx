@@ -61,9 +61,9 @@ import {
 } from "@/features/notifications/use-notifications";
 import {
   buildOrderSections,
-  buildResponseSections,
+  buildResponseList,
   countActiveOrders,
-  countActiveResponses,
+  countPendingResponses,
   type OrderListSectionItem,
 } from "@/features/orders/order-list-sections";
 import { type OrderWithRefs, useMyOrders } from "@/features/orders/use-my-orders";
@@ -116,7 +116,7 @@ export default function OrdersScreen() {
   // рендер незачем, orderStatusView() гоняется по всему списку.
   const activeOrdersCount = useMemo(() => countActiveOrders(myOrders ?? []), [myOrders]);
   const activeResponsesCount = useMemo(
-    () => countActiveResponses(myResponses ?? []),
+    () => countPendingResponses(myResponses ?? []),
     [myResponses],
   );
 
@@ -350,7 +350,7 @@ function ResponsesList({ userId, contentTop, onScroll, header }: ListProps) {
   const refresh = usePullToRefresh();
   const { data: myResponses, isLoading, error, refetch } = useMyResponses(userId);
 
-  const sections = useMemo(() => buildResponseSections(myResponses ?? []), [myResponses]);
+  const sections = useMemo(() => buildResponseList(myResponses ?? []), [myResponses]);
 
   // Fade-in списка после скелетона (UI_PATTERNS §3.7).
 

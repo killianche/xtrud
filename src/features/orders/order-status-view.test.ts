@@ -65,108 +65,54 @@ describe("orderStatusView — заказчик (§2.1)", () => {
   });
 });
 
-describe("orderStatusView — специалист (§2.2)", () => {
+describe("orderStatusView — специалист: отклик как сообщение (§0.2, 2026-09-16)", () => {
   const order = (status: string) => ({ status: status as never });
+  const all = [
+    "open",
+    "in_progress",
+    "awaiting_confirmation",
+    "completed",
+    "cancelled",
+    "expired",
+    "draft",
+    "disputed",
+    "some_future_status",
+  ];
 
-  it("open + sent — «Отклик отправлен», без цвета", () => {
-    expect(
-      orderStatusView({ role: "master", order: order("open"), myResponseStatus: "sent" }),
-    ).toMatchObject({ label: "Отклик отправлен", pillTone: "neutral", cardArchived: false });
-  });
-
-  it("open + viewed — «Клиент прочитал», без цвета", () => {
-    expect(
-      orderStatusView({ role: "master", order: order("open"), myResponseStatus: "viewed" }),
-    ).toMatchObject({ label: "Клиент прочитал", pillTone: "neutral", cardArchived: false });
-  });
-
-  it("open + rejected — «Отклонён», архив", () => {
-    expect(
-      orderStatusView({ role: "master", order: order("open"), myResponseStatus: "rejected" }),
-    ).toMatchObject({ label: "Отклонён", pillTone: "archive", cardArchived: true });
-  });
-
-  it("open + withdrawn — «Отозван», архив, иконка ArrowUUpLeft (bold)", () => {
-    const v = orderStatusView({
-      role: "master",
-      order: order("open"),
-      myResponseStatus: "withdrawn",
-    });
-    expect(v).toMatchObject({ label: "Отозван", pillTone: "archive", cardArchived: true });
-    expect(v.iconWeight).toBe("bold");
-  });
-
-  it("in_progress, выбрали меня — «Вы исполнитель», зелёная, НЕ архив", () => {
-    expect(
-      orderStatusView({
-        role: "master",
-        order: order("in_progress"),
-        myResponseStatus: "accepted",
-      }),
-    ).toMatchObject({ label: "Вы исполнитель", pillTone: "confirmed", cardArchived: false });
-  });
-
-  it("in_progress, выбрали другого — «Выбран другой», архив", () => {
-    expect(
-      orderStatusView({ role: "master", order: order("in_progress"), myResponseStatus: "sent" }),
-    ).toMatchObject({ label: "Выбран другой", pillTone: "archive", cardArchived: true });
-  });
-
-  it("completed, выбрали меня — «Вы выполнили», архивная карточка, зелёная плашка", () => {
-    expect(
-      orderStatusView({ role: "master", order: order("completed"), myResponseStatus: "accepted" }),
-    ).toMatchObject({ label: "Вы выполнили", pillTone: "confirmed", cardArchived: true });
-  });
-
-  it("completed, выбрали другого — «Выбран другой», архив, серая", () => {
-    expect(
-      orderStatusView({ role: "master", order: order("completed"), myResponseStatus: "sent" }),
-    ).toMatchObject({ label: "Выбран другой", pillTone: "archive", cardArchived: true });
-  });
-
-  it("cancelled/expired, был выбран я — «Отменено», архив, НЕ зелёная (серая, не cancelled-тон)", () => {
-    for (const status of ["cancelled", "expired"]) {
-      expect(
-        orderStatusView({ role: "master", order: order(status), myResponseStatus: "accepted" }),
-      ).toMatchObject({ label: "Отменено", pillTone: "archive", cardArchived: true });
+  it("не выбрали — всегда «Отклик отправлен», нейтрально, без архива, при любом статусе задания", () => {
+    for (const status of all) {
+      for (const resp of ["sent", "viewed", "rejected", "withdrawn"]) {
+        const v = orderStatusView({
+          role: "master",
+          order: order(status),
+          myResponseStatus: resp as never,
+        });
+        expect(v).toMatchObject({
+          label: "Отклик отправлен",
+          pillTone: "neutral",
+          cardArchived: false,
+        });
+        expect(v.iconKey).toBeUndefined();
+      }
     }
   });
 
-  it("cancelled, не был выбран — «Задание закрыто», архив, серая (не красная — привилегия заказчика)", () => {
+  it("выбрали — «Вас выбрали», зелёная с галочкой, при любом статусе задания", () => {
+    for (const status of all) {
+      expect(
+        orderStatusView({ role: "master", order: order(status), myResponseStatus: "accepted" }),
+      ).toMatchObject({
+        label: "Вас выбрали",
+        pillTone: "confirmed",
+        cardArchived: false,
+        iconKey: "check",
+      });
+    }
+  });
+
+  it("выбрали, потом отказались (accepted → rejected) — снова нейтрально, без архивного тона", () => {
     expect(
-      orderStatusView({ role: "master", order: order("cancelled"), myResponseStatus: "sent" }),
-    ).toMatchObject({ label: "Задание закрыто", pillTone: "archive", cardArchived: true });
-  });
-
-  it("expired, не был выбран — «Истекло», архив", () => {
-    expect(
-      orderStatusView({ role: "master", order: order("expired"), myResponseStatus: "sent" }),
-    ).toMatchObject({ label: "Истекло", pillTone: "archive", cardArchived: true });
-  });
-
-  it("draft — «Черновик», архив, без иконки", () => {
-    const v = orderStatusView({ role: "master", order: order("draft"), myResponseStatus: "sent" });
-    expect(v).toMatchObject({ label: "Черновик", pillTone: "archive", cardArchived: true });
-    expect(v.iconKey).toBeUndefined();
-  });
-
-  it("disputed (легаси) — «Закрыто», архив, без иконки, НЕ «Черновик»", () => {
-    const v = orderStatusView({
-      role: "master",
-      order: order("disputed"),
-      myResponseStatus: "sent",
-    });
-    expect(v).toMatchObject({ label: "Закрыто", pillTone: "archive", cardArchived: true });
-    expect(v.iconKey).toBeUndefined();
-  });
-
-  it("неизвестная строка статуса — тот же честный дефолт «Закрыто»", () => {
-    const v = orderStatusView({
-      role: "master",
-      order: order("some_future_status"),
-      myResponseStatus: "sent",
-    });
-    expect(v).toMatchObject({ label: "Закрыто", pillTone: "archive", cardArchived: true });
-    expect(v.iconKey).toBeUndefined();
+      orderStatusView({ role: "master", order: order("open"), myResponseStatus: "rejected" }),
+    ).toMatchObject({ label: "Отклик отправлен", pillTone: "neutral" });
   });
 });

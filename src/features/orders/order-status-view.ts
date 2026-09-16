@@ -22,8 +22,10 @@
  * .ts-модулях иконки поэтому не жили (order-card-tone.ts хранил только
  * className), здесь по той же причине — ключ, а не компонент.
  *
- * Таблицы состояний — DECISION владельца 2026-09-13/2026-09-14:
- *   §2.1 (заказчик), §2.2 (специалист) в docs/ORDER_STATUS_DESIGN.md.
+ * Таблицы состояний — DECISION владельца: заказчик — §2.1 (2026-09-13/14),
+ *   специалист — §0.2 «отклик как сообщение» (2026-09-16): только «Отклик
+ *   отправлен» или «Вас выбрали», статус задания на плашку не влияет;
+ *   docs/ORDER_STATUS_DESIGN.md.
  *
  * Тон пилюли — 4 значения, не 3, как в черновике §3.4: спецификация сначала
  * предложила «neutral/confirmed/archive» (+ зарезервированный «problem»), но
@@ -44,8 +46,8 @@ export type PillTone = "neutral" | "confirmed" | "archive" | "cancelled";
 
 /** 4 уникальных глифа системы (§3.1.1) — CheckCircle / XCircle /
  *  ClockCountdown / ArrowUUpLeft. Цвет решает `pillTone`, не иконка: один и
- *  тот же XCircle бывает и красным («Закрыто» у заказчика), и серым
- *  («Отклонён», «Выбран другой» у специалиста). */
+ *  тот же XCircle бывает красным («Закрыто») и серым; у специалиста с
+ *  2026-09-16 иконка только одна — галочка «Вас выбрали». */
 export type StatusIconKey = "check" | "cancel" | "expired" | "undo";
 
 export interface OrderStatusView {
@@ -124,46 +126,12 @@ export function orderStatusView(input: OrderStatusViewInput): OrderStatusView {
     }
   }
 
-  // role === "master"
-  //
-  // "Выбрали меня" определяется ТОЛЬКО статусом своего отклика: `accepted`
-  // ставится сервером (pick_order_master, 0196) исключительно тому отклику,
-  // который клиент выбрал — сравнивать `order.picked_master_id` с id мастера
-  // не нужно, входной интерфейс (§3.4) его для этого и не передаёт.
-  const myResponseStatus = input.myResponseStatus;
-  const chosenMe = myResponseStatus === "accepted";
-
-  switch (order.status) {
-    case "in_progress":
-    case "awaiting_confirmation":
-      if (chosenMe) return view(false, "confirmed", "Вы исполнитель", "check");
-      // Выбрали другого — моё дело здесь закрыто, даже если заказ ещё идёт.
-      return view(true, "archive", "Выбран другой", "cancel");
-    case "completed":
-      if (chosenMe) return view(true, "confirmed", "Вы выполнили", "check");
-      return view(true, "archive", "Выбран другой", "cancel");
-    case "cancelled":
-    case "expired":
-      if (chosenMe) {
-        // Единый лейбл «Отменено» для обеих причин (§2.2), иконка отличает
-        // истечение срока от явной отмены — серая в обоих случаях
-        // (красный XCircle — привилегия заказчика, не специалиста).
-        return view(true, "archive", "Отменено", order.status === "expired" ? "expired" : "cancel");
-      }
-      return order.status === "expired"
-        ? view(true, "archive", "Истекло", "expired")
-        : view(true, "archive", "Задание закрыто", "cancel");
-    case "open":
-      if (myResponseStatus === "rejected") return view(true, "archive", "Отклонён", "cancel");
-      if (myResponseStatus === "withdrawn") return view(true, "archive", "Отозван", "undo");
-      if (myResponseStatus === "viewed") return view(false, "neutral", "Клиент прочитал");
-      return view(false, "neutral", "Отклик отправлен");
-    case "draft":
-      // Черновик — не опубликован, специалист не может иметь на него отклик;
-      // сюда попадает только по ошибке рендера, тон/подпись — как у клиента.
-      return view(true, "archive", "Черновик");
-    default:
-      // Легаси/непредвиденный статус — та же логика честности, что у клиента.
-      return view(true, "archive", "Закрыто");
-  }
+  // role === "master" — отклик как сообщение (DECISION владельца 2026-09-16,
+  // docs/ORDER_STATUS_DESIGN.md §0.2): статус задания на плашку не влияет,
+  // важен только факт «меня выбрали». `accepted` ставит сервер
+  // (pick_order_master, 0196) только выбранному отклику.
+  const chosenMe = input.myResponseStatus === "accepted";
+  return chosenMe
+    ? view(false, "confirmed", "Вас выбрали", "check")
+    : view(false, "neutral", "Отклик отправлен");
 }

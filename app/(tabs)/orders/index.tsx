@@ -63,7 +63,6 @@ import {
   buildOrderSections,
   buildResponseList,
   countActiveOrders,
-  countPendingResponses,
   type OrderListSectionItem,
 } from "@/features/orders/order-list-sections";
 import { type OrderWithRefs, useMyOrders } from "@/features/orders/use-my-orders";
@@ -112,13 +111,10 @@ export default function OrdersScreen() {
   }, [tab, myOrders, myResponses]);
   const resolved: Segment = tab ?? "orders";
 
-  // Счётчики сегментов — только активные (§4.2); пересчитывать на каждый
-  // рендер незачем, orderStatusView() гоняется по всему списку.
+  // Счётчик — только у «Как клиент»: активные задания (§4.2). У «Как мастер»
+  // счётчика нет: отклик — отправленное сообщение, «ждать» там нечего
+  // (DECISION владельца 2026-09-16).
   const activeOrdersCount = useMemo(() => countActiveOrders(myOrders ?? []), [myOrders]);
-  const activeResponsesCount = useMemo(
-    () => countPendingResponses(myResponses ?? []),
-    [myResponses],
-  );
 
   // Крупный заголовок первым, под ним сегменты — как у Apple под large
   // title (Фитнес, Здоровье). Уезжают вместе со списком; в закреплённой строке
@@ -187,7 +183,6 @@ export default function OrdersScreen() {
               {
                 id: "responses",
                 label: "Как мастер",
-                count: activeResponsesCount,
                 tone: "primary",
               },
             ]}

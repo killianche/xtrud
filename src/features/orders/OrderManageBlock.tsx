@@ -177,7 +177,7 @@ export function OrderManageBlock(props: OrderManageBlockProps) {
               "link",
               Handshake,
               "Нашли исполнителя?",
-              "Выберите того, с кем договорились: задание уйдёт из ленты, остальные узнают, что выбран другой.",
+              "Выберите того, с кем договорились: задание уйдёт из ленты, исполнитель получит уведомление.",
             )}
             {primary("Выбрать исполнителя", props.onChooseMaster)}
             {secondary("Закрыть задание", props.onClose)}

@@ -1,10 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  buildOrderSections,
-  buildResponseList,
-  countActiveOrders,
-  countPendingResponses,
-} from "./order-list-sections";
+import { buildOrderSections, buildResponseList, countActiveOrders } from "./order-list-sections";
 import type { OrderWithRefs } from "./use-my-orders";
 import type { MyResponseWithOrder } from "./use-my-responses";
 
@@ -89,7 +84,7 @@ describe("buildResponseList — «Как мастер» (§0.3)", () => {
   });
 });
 
-describe("countActiveOrders / countPendingResponses", () => {
+describe("countActiveOrders", () => {
   it("считает только активные (cardArchived === false)", () => {
     const list = [
       order("a", "open", "2026-01-01T00:00:00Z"),
@@ -106,17 +101,5 @@ describe("countActiveOrders / countPendingResponses", () => {
 
   it("пустой список → null", () => {
     expect(countActiveOrders([])).toBeNull();
-  });
-
-  it("отклики: считаются только ждущие решения клиента (задание открыто, отклик живой)", () => {
-    const list = [
-      response("r1", "o1", "sent", "open", "2026-01-01T00:00:00Z"),
-      response("r2", "o2", "viewed", "open", "2026-01-01T00:00:00Z"),
-      response("r3", "o3", "sent", "in_progress", "2026-01-01T00:00:00Z"),
-      response("r4", "o4", "rejected", "open", "2026-01-01T00:00:00Z"),
-      response("r5", "o5", "accepted", "completed", "2026-01-01T00:00:00Z"),
-    ];
-    expect(countPendingResponses(list)).toBe(2);
-    expect(countPendingResponses([])).toBeNull();
   });
 });

@@ -99,13 +99,3 @@ export function countActiveOrders(orders: OrderWithRefs[]): number | null {
   ).length;
   return n > 0 ? n : null;
 }
-
-/** Счётчик сегмента «Как мастер» (§0.6): отклики, которые ещё ждут решения
- *  клиента — задание открыто, отклик не отклонён и не отозван. */
-export function countPendingResponses(responses: MyResponseWithOrder[]): number | null {
-  const n = responses.filter(
-    (r) =>
-      r.order.status === "open" && (r.response.status === "sent" || r.response.status === "viewed"),
-  ).length;
-  return n > 0 ? n : null;
-}

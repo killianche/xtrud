@@ -13,6 +13,7 @@ export const RPC_ALLOWLIST = new Set([
   "enable_master_mode",
   "finalize_master_onboarding",
   "get_master_phone",
+  "get_order_limits",
   "get_popular_queries",
   "get_response_limit_today",
   "get_unread_responses_count",
@@ -55,6 +56,7 @@ export const RPC_ALLOWLIST = new Set([
   "admin_list_verifications",
   "admin_review_verification",
   "admin_hide_order",
+  "admin_set_order_limits",
 ]);
 
 const NAME_RE = /^[a-z_][a-z0-9_]*$/;

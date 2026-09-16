@@ -15,15 +15,12 @@
  */
 
 import { useRef, useState } from "react";
-import {
-  ActiveOrderLimitError,
-  getOrderPublishCapacity,
-} from "@/features/orders/order-publish-capacity";
+import { ActiveOrderLimitError } from "@/features/orders/order-publish-capacity";
 import { orderPublishFailureMessage } from "@/features/orders/order-publish-error";
 import { createOrderPublishFlightGate } from "@/features/orders/order-publish-flight";
 import { resolveCommittedOrderPublishOwner } from "@/features/orders/order-publish-owner";
 import { useCreateOrder } from "@/features/orders/use-create-order";
-import { fetchActiveOrderCount } from "@/features/orders/use-order-publish-capacity";
+import { fetchOrderPublishCapacity } from "@/features/orders/use-order-publish-capacity";
 import { useUpdateOrder } from "@/features/orders/use-update-order";
 import {
   validateOrderPublishCategory,
@@ -96,7 +93,7 @@ export function usePublishTask(mode: ComposerMode, activeUserId: string | undefi
         return;
       }
       if (mode.kind === "create") {
-        const capacity = getOrderPublishCapacity(await fetchActiveOrderCount(uid));
+        const capacity = await fetchOrderPublishCapacity(uid);
         if (!capacity.canPublish) throw new ActiveOrderLimitError(capacity.limit);
       }
 

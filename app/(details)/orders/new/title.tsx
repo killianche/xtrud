@@ -6,7 +6,6 @@
  */
 
 import { Redirect } from "expo-router";
-import { useVisibleCategories } from "@/features/categories/use-visible-categories";
 import { taskDetailsPrompt } from "@/features/orders/task-details-prompt";
 import { ComposerField } from "@/features/task-composer/ComposerFields";
 import { ComposerScreen } from "@/features/task-composer/ComposerScreen";
@@ -24,11 +23,9 @@ import { useStepNavigation } from "@/features/task-composer/use-step-navigation"
 export default function TaskTitleScreen() {
   const { values, patch, photos, setPhotos } = useComposer();
   const nav = useStepNavigation("title");
-  const categories = useVisibleCategories();
   if (nav.notReady) return null;
   if (nav.needsCategory) return <Redirect href="/orders/new" />;
 
-  const category = categories.data?.find((c) => c.id === values.l2Id);
   const trimmed = normalizeTitle(values.title);
   const titleError =
     trimmed.length > 0 && trimmed.length < TITLE_MIN ? `Минимум ${TITLE_MIN} символов` : null;
@@ -37,7 +34,6 @@ export default function TaskTitleScreen() {
     <ComposerScreen
       step="title"
       title="Что нужно сделать?"
-      subtitle={`Одной фразой, как сказали бы мастеру${category ? ` по категории «${category.name_ru}»` : ""}.`}
       onBack={nav.goBack}
       onClose={nav.close}
       primaryLabel={nav.primaryLabel}
@@ -57,7 +53,6 @@ export default function TaskTitleScreen() {
         returnKeyType="done"
         maxLength={TITLE_MAX}
         error={titleError}
-        hint="Так задание будет называться в ленте у мастеров."
         accessibilityLabel="Название задания"
       />
       <ComposerField
@@ -69,7 +64,7 @@ export default function TaskTitleScreen() {
         hint={
           values.description.length > DESCRIPTION_MAX - 200
             ? `${values.description.length} из ${DESCRIPTION_MAX}`
-            : "Чем точнее описание, тем точнее цена в откликах."
+            : undefined
         }
         accessibilityLabel="Описание задания"
       />

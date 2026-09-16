@@ -125,9 +125,8 @@ export function isStepValid(step: ComposerStep, v: ComposerValues): boolean {
     case "when":
       return v.urgency !== null && (v.urgency !== "by_date" || !!v.preferredDate);
     case "budget":
-      // Пусто — цена договорная (DECISION владельца 2026-09-12), шаг пройден.
-      // Введённая сумма должна быть положительной и не больше предела.
-      if (v.budgetValue === null) return true;
+      // Сумма или явная кнопка «Договорная» (владелец, 2026-09-16).
+      if (v.budgetValue === null) return v.budgetKind === "negotiable";
       return v.budgetValue > 0 && v.budgetValue <= BUDGET_MAX;
     case "contacts":
       if (v.contactMode === "chat_only") return true;

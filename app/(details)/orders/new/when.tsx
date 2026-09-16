@@ -31,7 +31,6 @@ export default function TaskWhenScreen() {
     <ComposerScreen
       step="when"
       title="Когда?"
-      subtitle="Срок виден в карточке задания."
       onBack={nav.goBack}
       onClose={nav.close}
       primaryLabel={nav.primaryLabel}

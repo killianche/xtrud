@@ -54,7 +54,6 @@ export default function TaskContactsScreen() {
     <ComposerScreen
       step="contacts"
       title="Как с вами связаться?"
-      subtitle="Выберите, как мастера будут выходить на связь."
       onBack={nav.goBack}
       onClose={nav.close}
       primaryLabel={nav.primaryLabel}
@@ -101,16 +100,9 @@ export default function TaskContactsScreen() {
             autoComplete="tel"
             autoFocus={!values.contactPhone && !values.whatsappPhone}
             error={isPhoneAcceptable(values.contactPhone) ? null : PHONE_ERROR}
-            hint="Можно указать не тот номер, что в аккаунте."
             accessibilityLabel="Телефон для связи"
           />
-          <ChoiceGroup
-            footer={
-              values.whatsappSameAsPhone
-                ? "Мастера смогут написать в WhatsApp на этот же номер."
-                : undefined
-            }
-          >
+          <ChoiceGroup>
             <ChoiceRow
               title="WhatsApp — тот же номер"
               toggle={{

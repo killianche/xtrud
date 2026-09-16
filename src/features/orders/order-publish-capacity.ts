@@ -8,6 +8,9 @@
 
 export const MAX_ACTIVE_ORDERS = 3;
 
+/** Лимит активных задаётся в админке (0203); 0 — без ограничения. */
+export const UNLIMITED = 0;
+
 export interface OrderPublishCapacity {
   activeCount: number;
   limit: number;
@@ -21,6 +24,14 @@ export function getOrderPublishCapacity(
 ): OrderPublishCapacity {
   const safeLimit = Math.max(0, Math.floor(limit));
   const safeCount = Math.max(0, Math.floor(activeCount));
+  if (safeLimit === UNLIMITED) {
+    return {
+      activeCount: safeCount,
+      limit: UNLIMITED,
+      remaining: Number.POSITIVE_INFINITY,
+      canPublish: true,
+    };
+  }
   const remaining = Math.max(0, safeLimit - safeCount);
 
   return {

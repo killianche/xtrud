@@ -253,6 +253,13 @@ function describe(error: { message?: string; code?: string } | null): string {
   return "Сервис не ответил. Попробуйте ещё раз.";
 }
 
+export interface OrderLimits {
+  /** Заданий в сутки; 0 — без ограничения. */
+  daily: number;
+  /** Активных одновременно; 0 — без ограничения. */
+  active: number;
+}
+
 async function rpc<T>(name: string, args?: Record<string, unknown>): Promise<T> {
   let token = await accessToken();
   let res = await postJson(`/v2/rpc/${name}`, args ?? {}, token ?? undefined);
@@ -365,6 +372,14 @@ export const api = {
       p_user_id: userId,
       p_reason: reason,
       p_report_id: reportId ?? null,
+    }),
+  /** Лимиты публикации заданий (0203). */
+  orderLimits: () => rpc<OrderLimits>("get_order_limits"),
+  setOrderLimits: (daily: number, active: number) =>
+    rpc<OrderLimits>("admin_set_order_limits", {
+      p_daily: daily,
+      p_active: active,
+      p_reason: "Лимиты публикации заданий",
     }),
   listActions: (limit = 50, offset = 0) =>
     rpc<ActionRow[]>("admin_list_actions", { p_limit: limit, p_offset: offset }),

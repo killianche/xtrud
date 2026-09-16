@@ -24,7 +24,7 @@ import { GlassButton, InsetGroup, InsetRow } from "@/components/ui";
 import { useUserRecord } from "@/features/auth/use-user-record";
 import { digitsOnly, normalizePhone } from "@/features/auth/validation";
 import { useMasterPublicProfile } from "@/features/master-view/use-master-public";
-import { formatPrice, type OrderPriceKind } from "@/features/orders/order-schema";
+import type { OrderPriceKind } from "@/features/orders/order-schema";
 import { useSubmitResponse } from "@/features/orders/use-order-responses";
 import { isDailyLimitError, useResponseLimit } from "@/features/orders/use-response-limit";
 import { ComposerField } from "@/features/task-composer/ComposerFields";
@@ -129,8 +129,6 @@ export function RespondSheet({
     onDone();
   };
 
-  const budgetLabel = budgetKind ? formatPrice(budgetKind, budgetValue) : null;
-
   return (
     <View>
       <ComposerField
@@ -142,11 +140,6 @@ export function RespondSheet({
         suffix="₽"
         keyboardType="number-pad"
         returnKeyType="done"
-        hint={
-          budgetLabel && budgetKind !== "negotiable"
-            ? `Клиент указал ${budgetLabel}. Можно предложить свою; пусто — договорная.`
-            : "Пусто — цена договорная."
-        }
         accessibilityLabel="Ваша цена"
       />
 
@@ -215,13 +208,7 @@ export function RespondSheet({
         </View>
       ) : null}
 
-      <InsetGroup
-        footer={
-          sameWa
-            ? "Клиент сможет написать в WhatsApp на этот же номер."
-            : "Без WhatsApp клиент сможет только позвонить."
-        }
-      >
+      <InsetGroup>
         <InsetRow
           title="WhatsApp — тот же номер"
           toggle={{ value: sameWa, onChange: setSameWa }}

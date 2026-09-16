@@ -9,6 +9,7 @@ import { Journal } from "./pages/Journal";
 import { Login } from "./pages/Login";
 import { Masters } from "./pages/Masters";
 import { Reports } from "./pages/Reports";
+import { Settings } from "./pages/Settings";
 import { UserCard } from "./pages/UserCard";
 import { Users } from "./pages/Users";
 import { Verifications } from "./pages/Verifications";
@@ -99,7 +100,9 @@ export function App() {
           ? "reports"
           : route.startsWith("/journal")
             ? "journal"
-            : "overview";
+            : route.startsWith("/settings")
+              ? "settings"
+              : "overview";
 
   return (
     <>
@@ -154,6 +157,14 @@ export function App() {
           >
             Журнал
           </button>
+          <button
+            type="button"
+            className="nav-link"
+            aria-current={section === "settings" ? "page" : undefined}
+            onClick={() => navigate("/settings")}
+          >
+            Настройки
+          </button>
         </div>
         <span className="nav-spacer" />
         <button type="button" className="btn btn-ghost" onClick={signOut}>
@@ -174,6 +185,8 @@ export function App() {
           <Reports />
         ) : section === "journal" ? (
           <Journal />
+        ) : section === "settings" ? (
+          <Settings />
         ) : (
           <Dashboard />
         )}

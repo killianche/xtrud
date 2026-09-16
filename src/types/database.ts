@@ -1804,6 +1804,11 @@ export type Database = {
         Args: { p_response_id: string; p_archived: boolean }
         Returns: string | null
       }
+      get_order_limits: { Args: never; Returns: Json }
+      admin_set_order_limits: {
+        Args: { p_active: number; p_daily: number; p_reason?: string }
+        Returns: Json
+      }
       reopen_order: { Args: { p_order_id: string }; Returns: undefined }
       resolve_login_email: { Args: { p_login: string }; Returns: string }
       search_categories: {

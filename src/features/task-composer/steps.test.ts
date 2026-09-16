@@ -54,8 +54,11 @@ describe("composer steps", () => {
     expect(
       isStepValid("when", { ...complete, urgency: "by_date", preferredDate: "2026-09-10" }),
     ).toBe(true);
-    // DECISION владельца 2026-09-12: одно поле суммы, пусто — договорная.
-    expect(isStepValid("budget", { ...complete, budgetKind: null, budgetValue: null })).toBe(true);
+    // 2026-09-16: сумма или отдельная кнопка «Договорная»; пустое поле без выбора — не готово.
+    expect(isStepValid("budget", { ...complete, budgetKind: null, budgetValue: null })).toBe(false);
+    expect(
+      isStepValid("budget", { ...complete, budgetKind: "negotiable", budgetValue: null }),
+    ).toBe(true);
     expect(isStepValid("budget", { ...complete, budgetKind: "fixed", budgetValue: 5000 })).toBe(
       true,
     );

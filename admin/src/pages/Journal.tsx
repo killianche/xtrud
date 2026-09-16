@@ -13,6 +13,7 @@ const ACTION_LABEL: Record<string, string> = {
   unblock: "Снятие санкции",
   warn: "Предупреждение",
   hide_review: "Скрытие отзыва",
+  set_order_limits: "Лимиты публикации",
 };
 
 export function Journal() {

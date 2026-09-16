@@ -24,7 +24,6 @@ export default function TaskWhereScreen() {
     <ComposerScreen
       step="where"
       title="Где нужно выполнить?"
-      subtitle="Мастера ищут задания рядом с собой."
       onBack={nav.goBack}
       onClose={nav.close}
       primaryLabel={nav.primaryLabel}
@@ -48,7 +47,6 @@ export default function TaskWhereScreen() {
           value={values.address}
           onChangeText={(t) => patch({ address: t.slice(0, ADDRESS_MAX) })}
           placeholder="Улица, дом — по желанию"
-          hint="Поможет мастеру понять, далеко ли ехать. Квартиру и подъезд писать не нужно."
           returnKeyType="done"
           textContentType="fullStreetAddress"
           accessibilityLabel="Адрес"

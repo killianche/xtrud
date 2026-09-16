@@ -14,7 +14,6 @@ import { usePreventRemove } from "expo-router/react-navigation";
 import { CheckCircle } from "phosphor-react-native";
 import { useEffect, useRef } from "react";
 import { View } from "react-native";
-import { AppText } from "@/components/AppText";
 import { Button } from "@/components/ui";
 import { SystemIcon } from "@/components/ui/SystemIcon";
 import { useAuthSession } from "@/features/auth/use-auth-session";
@@ -201,7 +200,6 @@ export default function TaskReviewScreen() {
     <ComposerScreen
       step="review"
       title={mode.kind === "edit" ? "Проверьте изменения" : "Проверьте задание"}
-      subtitle="Нажмите строку, чтобы изменить ответ."
       onBack={() => router.back()}
       onClose={mode.kind === "edit" ? undefined : close}
       primaryLabel={mode.kind === "edit" ? "Сохранить" : "Опубликовать"}
@@ -253,15 +251,6 @@ export default function TaskReviewScreen() {
         />
         <ChoiceRow title="Связь" value={contacts} navigates onPress={() => open("contacts")} last />
       </ChoiceGroup>
-      <View className="px-9">
-        <AppText className="text-ios-footnote text-mute">
-          {mode.kind === "edit"
-            ? "Изменения увидят мастера, которые уже откликнулись."
-            : values.contactMode === "phone_open"
-              ? "Задание увидят мастера выбранной категории. Они позвонят или напишут вам напрямую."
-              : "Задание увидят мастера выбранной категории. Отклики бесплатны."}
-        </AppText>
-      </View>
     </ComposerScreen>
   );
 }

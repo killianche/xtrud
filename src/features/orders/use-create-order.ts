@@ -3,14 +3,11 @@
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { digitsOnly, normalizePhone } from "@/features/auth/validation";
-import {
-  ActiveOrderLimitError,
-  getOrderPublishCapacity,
-} from "@/features/orders/order-publish-capacity";
+import { ActiveOrderLimitError } from "@/features/orders/order-publish-capacity";
 import { ALL_INGUSHETIA_CITY } from "@/features/orders/order-schema";
 import { myOrdersKey } from "@/features/orders/use-my-orders";
 import {
-  fetchActiveOrderCount,
+  fetchOrderPublishCapacity,
   orderPublishCapacityKey,
 } from "@/features/orders/use-order-publish-capacity";
 import { supabase } from "@/lib/supabase";
@@ -65,7 +62,7 @@ export function useCreateOrder() {
       // UX precheck directly before insert. It closes the ordinary app path,
       // but is intentionally not presented as authoritative: two devices can
       // still race until the reviewed backend quota trigger/RPC is deployed.
-      const capacity = getOrderPublishCapacity(await fetchActiveOrderCount(input.clientId));
+      const capacity = await fetchOrderPublishCapacity(input.clientId);
       if (!capacity.canPublish) throw new ActiveOrderLimitError(capacity.limit);
 
       // Description опционально (UI помечен «необязательно»). Если пустая

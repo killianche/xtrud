@@ -33,6 +33,7 @@ import {
   Plus,
   SignIn,
   WarningCircle,
+  Wrench,
 } from "phosphor-react-native";
 import type { RefObject } from "react";
 import { type ReactElement, useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -179,11 +180,17 @@ export default function OrdersScreen() {
             value={resolved}
             onChange={setTab}
             items={[
-              { id: "orders", label: "Как клиент", count: activeOrdersCount },
+              {
+                id: "orders",
+                label: "Как клиент",
+                count: activeOrdersCount,
+                icon: ClipboardText,
+              },
               {
                 id: "responses",
                 label: "Как мастер",
                 tone: "primary",
+                icon: Wrench,
               },
             ]}
           />

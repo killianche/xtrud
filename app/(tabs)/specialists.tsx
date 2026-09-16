@@ -7,7 +7,7 @@
  */
 
 import { useRouter } from "expo-router";
-import { CaretDown, SignIn } from "phosphor-react-native";
+import { CaretDown, MagnifyingGlass, SignIn, UserCircle } from "phosphor-react-native";
 import { type RefObject, useEffect, useMemo, useRef, useState } from "react";
 import {
   Animated,
@@ -245,8 +245,14 @@ export default function SpecialistsCategoriesScreen() {
             value={segment}
             onChange={setSegment}
             items={[
-              { id: "find", label: "Найти специалиста" },
-              { id: "me", label: "Я специалист", tone: "primary", count: unreadReviews },
+              { id: "find", label: "Найти специалиста", icon: MagnifyingGlass },
+              {
+                id: "me",
+                label: "Я специалист",
+                tone: "primary",
+                count: unreadReviews,
+                icon: UserCircle,
+              },
             ]}
           />
         }

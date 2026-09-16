@@ -151,10 +151,10 @@ export default function TabsLayout() {
         </NativeTabs.Trigger>
 
         {/* Видна всем: откликнуться может любой аккаунт. */}
-        {/* Подписи короткие: на iOS 26 выбранная вкладка разворачивается
-            в «пилюлю» и отнимает ширину у соседей — «Мои задания» и
-            «Найти задание» обрезались многоточием (владелец,
-            2026-09-12). Короткое слово помещается при любой раскладке. */}
+        {/* «Мои» и «Найти задание» (владелец, 2026-09-16). На iOS 26
+            выбранная вкладка разворачивается в «пилюлю» и отнимает ширину у
+            соседей; 2026-09-12 «Мои задания» и «Найти задание» обрезались
+            многоточием — «Мои» короче, «Найти задание» проверить на iPhone. */}
         <NativeTabs.Trigger name="orders" listeners={scrollToTopOnReselect("orders")}>
           {/* sf — iOS, md — Android: SF Symbols на Android не рисуются, и
               без md вкладка оставалась пустой (эмулятор, 2026-09-13). */}
@@ -162,12 +162,12 @@ export default function TabsLayout() {
             sf={{ default: "checkmark.circle", selected: "checkmark.circle.fill" }}
             md="check_circle"
           />
-          <NativeTabs.Trigger.Label>Задания</NativeTabs.Trigger.Label>
+          <NativeTabs.Trigger.Label>Мои</NativeTabs.Trigger.Label>
           {ordersBadge ? <NativeTabs.Trigger.Badge>{ordersBadge}</NativeTabs.Trigger.Badge> : null}
         </NativeTabs.Trigger>
         <NativeTabs.Trigger name="find" listeners={scrollToTopOnReselect("find")}>
           <NativeTabs.Trigger.Icon sf="magnifyingglass" md="search" />
-          <NativeTabs.Trigger.Label>Найти</NativeTabs.Trigger.Label>
+          <NativeTabs.Trigger.Label>Найти задание</NativeTabs.Trigger.Label>
           {findBadge ? <NativeTabs.Trigger.Badge>{findBadge}</NativeTabs.Trigger.Badge> : null}
         </NativeTabs.Trigger>
 

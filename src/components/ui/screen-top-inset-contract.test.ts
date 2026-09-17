@@ -33,6 +33,10 @@ const INSET_AWARE_WRAPPERS = [
 ];
 const SATISFIES = [
   "insets.top",
+  // Системная шапка (Stack с headerShown, 2026-09-17 — поиск заданий как у
+  // Apple): отступ под шапку и чёлку ставит UIKit, список только разрешает
+  // ему это сделать.
+  'contentInsetAdjustmentBehavior="automatic"',
   "useLargeTitle(",
   "<Redirect",
   "SafeAreaView",

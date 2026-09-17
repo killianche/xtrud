@@ -32,7 +32,7 @@ import { LargeTitleBar, NavCircleButton, useLargeTitle } from "@/components/ui";
 import { SystemIcon } from "@/components/ui/SystemIcon";
 import { useAppFlags } from "@/features/app-flags/use-app-flags";
 import { useAuthSession } from "@/features/auth/use-auth-session";
-import { CategoryFirstFindScreen } from "@/features/orders/find/CategoryFirstFindScreen";
+import { FindSearchHome } from "@/features/orders/find/FindSearchHome";
 import {
   countActiveFilters,
   useOrdersSearchFiltersStore,
@@ -55,7 +55,7 @@ const EMPTY_IDS: ReadonlySet<string> = new Set();
  */
 export default function FindScreen() {
   const { findScreen } = useAppFlags();
-  return findScreen === "classic" ? <ClassicFindScreen /> : <CategoryFirstFindScreen />;
+  return findScreen === "classic" ? <ClassicFindScreen /> : <FindSearchHome />;
 }
 
 function ClassicFindScreen() {

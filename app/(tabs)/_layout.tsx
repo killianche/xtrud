@@ -6,7 +6,6 @@ import {
 import { NativeTabs } from "expo-router/unstable-native-tabs";
 import { useMemo } from "react";
 import { LIQUID_GLASS } from "@/components/ui/GlassSurface";
-import { useAppFlags } from "@/features/app-flags/use-app-flags";
 import { useAuthSession } from "@/features/auth/use-auth-session";
 import { useTouchLastActive } from "@/features/auth/use-touch-last-active";
 import { useUserRecord } from "@/features/auth/use-user-record";
@@ -42,8 +41,6 @@ function scrollToTopOnReselect(tabName: string) {
 }
 
 export default function TabsLayout() {
-  const { findScreen } = useAppFlags();
-  const classicFind = findScreen === "classic";
   const { session } = useAuthSession();
   const userId = session?.user?.id;
   const { data: user } = useUserRecord(userId);
@@ -168,13 +165,11 @@ export default function TabsLayout() {
           <NativeTabs.Trigger.Label>Мои</NativeTabs.Trigger.Label>
           {ordersBadge ? <NativeTabs.Trigger.Badge>{ordersBadge}</NativeTabs.Trigger.Badge> : null}
         </NativeTabs.Trigger>
-        {classicFind ? (
-          <NativeTabs.Trigger name="find" listeners={scrollToTopOnReselect("find")}>
-            <NativeTabs.Trigger.Icon sf="magnifyingglass" md="search" />
-            <NativeTabs.Trigger.Label>Найти задание</NativeTabs.Trigger.Label>
-            {findBadge ? <NativeTabs.Trigger.Badge>{findBadge}</NativeTabs.Trigger.Badge> : null}
-          </NativeTabs.Trigger>
-        ) : null}
+        <NativeTabs.Trigger name="find" listeners={scrollToTopOnReselect("find")}>
+          <NativeTabs.Trigger.Icon sf="magnifyingglass" md="search" />
+          <NativeTabs.Trigger.Label>Найти задание</NativeTabs.Trigger.Label>
+          {findBadge ? <NativeTabs.Trigger.Badge>{findBadge}</NativeTabs.Trigger.Badge> : null}
+        </NativeTabs.Trigger>
 
         {/* Каталог людей. Открыт всем, включая гостя: посмотреть, кто есть в
             республике, можно до регистрации — как и ленту заданий. */}
@@ -192,19 +187,6 @@ export default function TabsLayout() {
         {/* Профиль — через аватар в правом верхнем углу главной. Скрытые
             вкладки остаются маршрутами: на них push'ят напрямую. «Сохранённые
             мастера» удалены целиком 2026-09-02. */}
-        {/* Поиск как у Apple в iOS 26 (владелец, 2026-09-17: «в точности как
-            делает Apple»): отдельная круглая вкладка справа, поле поиска —
-            системное, внизу над панелью (App Store, Музыка). На Android роль
-            не поддерживается — обычная последняя вкладка. Прежний вид —
-            флаг find_screen = classic в админке. */}
-        {classicFind ? null : (
-          <NativeTabs.Trigger name="find" role="search" listeners={scrollToTopOnReselect("find")}>
-            <NativeTabs.Trigger.Icon sf="magnifyingglass" md="search" />
-            <NativeTabs.Trigger.Label>Найти задание</NativeTabs.Trigger.Label>
-            {findBadge ? <NativeTabs.Trigger.Badge>{findBadge}</NativeTabs.Trigger.Badge> : null}
-          </NativeTabs.Trigger>
-        )}
-
         <NativeTabs.Trigger name="profile" hidden />
         <NativeTabs.Trigger name="cases" hidden />
       </NativeTabs>

@@ -1,16 +1,16 @@
 /**
- * «Найти задание» — поиск как у Apple в iOS 26 (владелец, 2026-09-17: «поиск и
- * пилюли сверху занимают много места; сделай в точности, как делает Apple»).
+ * «Найти задание» — обычная вкладка с системным поиском (владелец, 2026-09-19:
+ * «верни четыре кнопки внизу подряд, без всплывающего поиска; сверху поиск и
+ * фильтры в стиле Apple»).
  *
- * Образец — вкладка «Поиск» в App Store и Музыке:
- *   - вкладка — отдельная круглая кнопка справа в панели (role="search");
- *   - поле поиска системное (Stack.SearchBar): в iOS 26 оно внизу, над
- *     панелью, и ничего не занимает сверху;
- *   - сверху — крупный заголовок, сворачивается при прокрутке; справа —
- *     системное меню «Место» с галочкой у выбранного;
- *   - до ввода — разделы каталога и новые задания; раздел открывается
- *     отдельным экраном с заголовком и «назад» (/find/category);
- *   - при вводе — подходящие категории и задания.
+ * Как в «Почте» и «Заметках» iOS: крупный заголовок, под ним системная строка
+ * поиска (`Stack.SearchBar`, placement "stacked"), которая уезжает при
+ * прокрутке и возвращается при оттягивании вниз; фильтры — системные меню
+ * «Категория» и «Место» справа в шапке, с галочкой у выбранного.
+ *
+ * До ввода — разделы каталога и новые задания; раздел открывается отдельным
+ * экраном с заголовком и «назад» (/find/category). При вводе — подходящие
+ * категории и задания.
  */
 
 import { FlashList } from "@shopify/flash-list";
@@ -91,13 +91,42 @@ export function FindSearchHome() {
 
   return (
     <>
+      {/* placement="stacked" — строка под заголовком, как у Apple; при
+          прокрутке уезжает вместе с ним и не занимает место постоянно. */}
       <Stack.SearchBar
         placeholder="Название задания"
+        placement="stacked"
+        hideWhenScrolling
         onChangeText={(e) => setText(e.nativeEvent.text)}
         onCancelButtonPress={() => setText("")}
         autoCapitalize="none"
       />
-      <Stack.Toolbar placement="right">{LocationMenuItems(location)}</Stack.Toolbar>
+      <Stack.Toolbar placement="right">
+        <Stack.Toolbar.Menu
+          icon="line.3.horizontal.decrease.circle"
+          title="Категория"
+          accessibilityLabel="Категория"
+        >
+          {sections.map((s) => (
+            <Stack.Toolbar.MenuAction
+              key={s.id}
+              onPress={() =>
+                router.push({ pathname: "/find/category", params: { section: s.id } } as never)
+              }
+            >
+              {s.name_ru}
+            </Stack.Toolbar.MenuAction>
+          ))}
+          <Stack.Toolbar.MenuAction
+            onPress={() =>
+              router.push({ pathname: "/find/category", params: { all: "1" } } as never)
+            }
+          >
+            Все задания
+          </Stack.Toolbar.MenuAction>
+        </Stack.Toolbar.Menu>
+        {LocationMenuItems(location)}
+      </Stack.Toolbar>
 
       {term ? (
         <FlashList

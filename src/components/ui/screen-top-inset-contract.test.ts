@@ -30,6 +30,9 @@ const INSET_AWARE_WRAPPERS = [
   "<PublishAuthSheet",
   "<RespondAuthSheet",
   "<PickerSheetPage",
+  // Лента «Найти задание»: список внутри неё стоит под системной шапкой и
+  // просит UIKit сам поставить отступ (contentInsetAdjustmentBehavior).
+  "<FindFeed",
 ];
 const SATISFIES = [
   "insets.top",

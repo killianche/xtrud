@@ -373,12 +373,6 @@ export const api = {
       p_reason: reason,
       p_report_id: reportId ?? null,
     }),
-  /** Флаги интерфейса приложения (0205). */
-  appFlags: () => rpc<{ find_screen: "category_first" | "classic" }>("get_app_flags"),
-  setFindScreen: (variant: "category_first" | "classic") =>
-    rpc<{ find_screen: "category_first" | "classic" }>("admin_set_find_screen", {
-      p_variant: variant,
-    }),
   /** Лимиты публикации заданий (0203). */
   orderLimits: () => rpc<OrderLimits>("get_order_limits"),
   setOrderLimits: (daily: number, active: number) =>

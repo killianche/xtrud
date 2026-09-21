@@ -1,30 +1,17 @@
 /**
- * Стек вкладки «Найти задание».
+ * Стек вкладки «Найти задание» (docs/FIND_SCREEN_REDESIGN.md §7).
  *
- * Новый вид (2026-09-17, как у Apple в iOS 26): системная шапка с крупным
- * заголовком, системная строка поиска (в iOS 26 — внизу, над панелью) и
- * системные меню справа; раздел — отдельный экран с «назад».
- * Прежний вид (флаг find_screen = classic в админке) — без системной шапки,
- * экран рисует свою.
+ * index — системная шапка с крупным заголовком: он схлопывается сам при
+ * прокрутке, а поиск и фильтры живут внутри списка.
+ * filters — обычный экран с «назад»; заголовок рисует ScreenHeader, поэтому
+ * системная шапка здесь выключена.
  */
 
 import { Stack } from "expo-router";
-import { useAppFlags } from "@/features/app-flags/use-app-flags";
 import { useThemeColors } from "@/lib/use-theme-color";
 
 export default function FindStackLayout() {
-  const { findScreen } = useAppFlags();
-  const tc = useThemeColors(["canvas", "surface-page", "ink", "accent"]);
-  const classic = findScreen === "classic";
-
-  if (classic) {
-    return (
-      <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: tc.canvas } }}>
-        <Stack.Screen name="index" options={{ animation: "none" }} />
-        <Stack.Screen name="category" options={{ headerShown: true, title: "" }} />
-      </Stack>
-    );
-  }
+  const tc = useThemeColors(["surface-page", "ink", "accent"]);
 
   return (
     <Stack
@@ -43,7 +30,7 @@ export default function FindStackLayout() {
       }}
     >
       <Stack.Screen name="index" options={{ title: "Найти задание", animation: "none" }} />
-      <Stack.Screen name="category" options={{ title: "" }} />
+      <Stack.Screen name="filters" options={{ headerShown: false }} />
     </Stack>
   );
 }

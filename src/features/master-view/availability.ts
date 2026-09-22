@@ -31,20 +31,6 @@ export const AVAILABILITY_SHORT: Record<AvailabilityStatus, string> = {
   unavailable: "не доступен",
 };
 
-/** Цвет dot/chip для каждого статуса. Hex чтобы работало inline в RN.
- *  Палитра по решению user 2026-05-14:
- *    today + this_week  → зелёный (мастер «реально доступен»)
- *    next_week          → жёлто-оранжевый (придётся подождать)
- *    unspecified        → нейтральный серый (готов, срок не указан; клиенту скрыт)
- *    unavailable        → приглушённый серый (явно недоступен; клиенту скрыт) */
-export const AVAILABILITY_DOT: Record<AvailabilityStatus, string> = {
-  today: "#10b981", // emerald-500 — bright green «онлайн»
-  this_week: "#10b981", // emerald-500 — тот же зелёный, разные подписи
-  next_week: "#f59e0b", // amber-500 — мягкое предупреждение
-  unspecified: "#94a3b8", // slate-400 — нейтральный (готов без срока)
-  unavailable: "#94a3b8", // slate-400 — приглушённый (недоступен)
-};
-
 /** Должен ли клиент видеть значок статуса. Скрываем И 'unavailable' (негативный
  *  сигнал), И 'unspecified' (срок не указан — нечего показывать). Значок виден
  *  только для срочных статусов today / this_week / next_week. */

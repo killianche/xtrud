@@ -38,17 +38,17 @@ export function pluralizeYears(count: number): string {
 
 export function pluralizeClosedDeals(count: number): string {
   return `${count} ${pluralizeRu(count, {
-    one: "заказ выполнен",
-    few: "заказа выполнено",
-    many: "заказов выполнено",
+    one: "задание выполнено",
+    few: "задания выполнено",
+    many: "заданий выполнено",
   })}`;
 }
 
 export function pluralizeClosedOrders(count: number): string {
   return `${count} ${pluralizeRu(count, {
-    one: "заказ закрыт",
-    few: "заказа закрыто",
-    many: "заказов закрыто",
+    one: "задание закрыто",
+    few: "задания закрыто",
+    many: "заданий закрыто",
   })}`;
 }
 

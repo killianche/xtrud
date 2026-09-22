@@ -11,6 +11,8 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { sortResponses } from "@/features/orders/sort-responses";
+import { myRespondedOrderIdsKey } from "@/features/orders/use-my-responded-order-ids";
+import { myResponsesKey } from "@/features/orders/use-my-responses";
 import { orderDetailKey } from "@/features/orders/use-order-detail";
 import { supabase } from "@/lib/supabase";
 import type { Database, Tables } from "@/types/database";
@@ -120,6 +122,11 @@ export function useSubmitResponse() {
       queryClient.invalidateQueries({ queryKey: orderResponsesKey(orderId) });
       queryClient.invalidateQueries({ queryKey: myResponseKey(orderId, masterId) });
       queryClient.invalidateQueries({ queryKey: orderDetailKey(orderId) });
+      // «Мои → Как специалист» и отметка «Вы откликнулись» в ленте — сразу,
+      // иначе человек думает, что отклик не ушёл (аудит 2026-09-22; отзыв
+      // отклика эти ключи обновлял, отправка — нет).
+      queryClient.invalidateQueries({ queryKey: myResponsesKey(masterId) });
+      queryClient.invalidateQueries({ queryKey: myRespondedOrderIdsKey(masterId) });
       // P0-5: после успешного отклика обновляем бейдж лимита в шапке master-главной.
       queryClient.invalidateQueries({ queryKey: ["response-limit-today"] });
     },

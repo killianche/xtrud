@@ -253,7 +253,9 @@ export default function OrderDetailScreen() {
       confirmText: "Выбрать",
       cancelText: "Отмена",
     });
-    if (confirmed) pickResponse(responseId);
+    // Повторное нажатие, пока первый выбор ещё уходит на сервер, — не второй
+    // запрос и не ложная ошибка «Не удалось выбрать» (аудит 2026-09-22).
+    if (confirmed && !pickMaster.isPending) pickResponse(responseId);
   };
 
   const openReview = () => {
@@ -686,6 +688,7 @@ export default function OrderDetailScreen() {
               orderId={id}
               order={order}
               onPick={(responseId, masterName) => void handlePickFromCard(responseId, masterName)}
+              picking={pickMaster.isPending}
             />
           ) : null}
           {isOwner && order.contact_mode === "phone_open" ? (
@@ -1045,9 +1048,11 @@ interface ClientResponsesSectionProps {
   order: OrderDetail;
   /** «Выбрать исполнителем» на карточке (0196) — только в открытом задании. */
   onPick: (responseId: string, masterName: string) => void;
+  /** Выбор уже уходит на сервер — кнопки «Выбрать» заблокированы. */
+  picking: boolean;
 }
 
-function ClientResponsesSection({ orderId, order, onPick }: ClientResponsesSectionProps) {
+function ClientResponsesSection({ orderId, order, onPick, picking }: ClientResponsesSectionProps) {
   const tc = useThemeColors(["muted-soft"]);
   const router = useRouter();
   const {
@@ -1176,7 +1181,7 @@ function ClientResponsesSection({ orderId, order, onPick }: ClientResponsesSecti
                 Пока никто не откликнулся
               </AppText>
               <AppText className="mt-1 text-body-sm text-mute">
-                Так бывает — спрос на разные услуги разный. Чтобы заявкой заинтересовались,
+                Так бывает — спрос на разные услуги разный. Чтобы заданием заинтересовались,
                 попробуйте дополнить описание, добавить фото или указать бюджет. Можно также найти
                 исполнителя самому в каталоге.
               </AppText>
@@ -1238,6 +1243,7 @@ function ClientResponsesSection({ orderId, order, onPick }: ClientResponsesSecti
                       )
                   : undefined
               }
+              picking={picking}
               isRejecting={pendingRejectResponseId === r.id}
               onReject={
                 isOpen
@@ -1332,6 +1338,8 @@ interface ClientMasterResponseCardProps {
   rejected?: boolean;
   /** «Выбрать исполнителем» (0196). Нет — кнопки нет. */
   onPick?: () => void;
+  /** Выбор уходит на сервер — кнопка заблокирована. */
+  picking?: boolean;
   /** Выбранный исполнитель — статус заказа глазами заказчика, показывается
    *  пилюлей рядом с ценой (§3.2: обводок цветом карточек больше нет — весь
    *  смысл несёт пилюля, как везде в приложении). */
@@ -1344,6 +1352,7 @@ function ClientMasterResponseCard({
   onReject,
   rejected,
   onPick,
+  picking = false,
   statusView,
 }: ClientMasterResponseCardProps) {
   const router = useRouter();
@@ -1504,12 +1513,14 @@ function ClientMasterResponseCard({
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={`Выбрать исполнителем: ${masterName}`}
+          accessibilityState={{ disabled: picking, busy: picking }}
           onPress={onPick}
-          className="mt-2.5 min-h-12 flex-row items-center justify-center gap-2 rounded-pill border-2 border-accent bg-canvas px-3 active:bg-accent-soft"
+          disabled={picking}
+          className={`mt-2.5 min-h-12 flex-row items-center justify-center gap-2 rounded-pill border-2 border-accent bg-canvas px-3 active:bg-accent-soft ${picking ? "opacity-60" : ""}`}
         >
           <CheckCircle size={18} weight="bold" color={tc.accent} />
           <AppText weight="semibold" className="text-body-md text-accent">
-            Выбрать исполнителем
+            {picking ? "Выбираем…" : "Выбрать исполнителем"}
           </AppText>
         </Pressable>
       ) : null}

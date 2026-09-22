@@ -26,12 +26,14 @@ import Animated, {
 } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
+import { lightColors } from "@/lib/colors";
 import { cdnBlur, cdnImage } from "@/lib/image-cdn";
 import { useAppWidth } from "@/lib/use-app-width";
 
 // Белый поверх чёрного фона лайтбокса (крестик/стрелки/счётчик). Константа, не
 // литерал в JSX — легальный overlay-кейс (§B) и не триггерит enforcement grep.
-const OVERLAY_WHITE = "#ffffff";
+// Белый поверх фото — токен on-dark, одинаковый в обеих темах.
+const OVERLAY_WHITE = lightColors["on-dark"];
 
 /**
  * Минимальная форма элемента для лайтбокса — только то, что он реально читает.

@@ -39,6 +39,8 @@ const TABLE_ALLOWLIST = new Set([
   // Словарь поисковых терминов: публичный, нужен генератору каталога при
   // сборке. Раньше тот ходил за ним в /rest/v1 Supabase (2026-09-10).
   "category_terms",
+  // Рекламные баннеры Главной: чтение включённых (RLS, 0206).
+  "promo_banners",
 ]);
 const FORWARD_RESPONSE_HEADERS = [
   "content-type",

@@ -221,8 +221,8 @@ export default function RegisterScreen() {
           {prefill ? (
             <View className="mt-4 rounded-xl bg-canvas-soft px-4 py-3">
               <AppText accessibilityRole="alert" className="text-body-md text-body">
-                Аккаунта с номером +7 {formatRuPhone(prefill.phone)} ещё нет. Укажите имя и фамилию
-                — и он будет создан.
+                Аккаунта с номером +7 {formatRuPhone(prefill.phone)} ещё нет. Укажите имя — и он
+                будет создан.
               </AppText>
             </View>
           ) : null}
@@ -261,7 +261,7 @@ export default function RegisterScreen() {
                     value={value}
                     onBlur={onBlur}
                     onChangeText={onChange}
-                    placeholder="Чербижев"
+                    placeholder="Необязательно"
                     autoCapitalize="words"
                     autoComplete="family-name"
                     textContentType="familyName"

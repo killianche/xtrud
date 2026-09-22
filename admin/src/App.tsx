@@ -8,6 +8,7 @@ import { Dashboard } from "./pages/Dashboard";
 import { Journal } from "./pages/Journal";
 import { Login } from "./pages/Login";
 import { Masters } from "./pages/Masters";
+import { Promo } from "./pages/Promo";
 import { Reports } from "./pages/Reports";
 import { Settings } from "./pages/Settings";
 import { UserCard } from "./pages/UserCard";
@@ -102,7 +103,9 @@ export function App() {
             ? "journal"
             : route.startsWith("/settings")
               ? "settings"
-              : "overview";
+              : route.startsWith("/promo")
+                ? "promo"
+                : "overview";
 
   return (
     <>
@@ -160,6 +163,14 @@ export function App() {
           <button
             type="button"
             className="nav-link"
+            aria-current={section === "promo" ? "page" : undefined}
+            onClick={() => navigate("/promo")}
+          >
+            Реклама
+          </button>
+          <button
+            type="button"
+            className="nav-link"
             aria-current={section === "settings" ? "page" : undefined}
             onClick={() => navigate("/settings")}
           >
@@ -187,6 +198,8 @@ export function App() {
           <Journal />
         ) : section === "settings" ? (
           <Settings />
+        ) : section === "promo" ? (
+          <Promo />
         ) : (
           <Dashboard />
         )}

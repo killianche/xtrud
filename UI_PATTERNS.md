@@ -72,16 +72,24 @@
 
 Если сомневаешься «как сделать» — посмотри **код этих экранов**. Они приняты как стандарт.
 
+> Обновлено 2026-09-22 (аудит): прежняя таблица ссылалась на 5 удалённых
+> файлов (`orders/search/*`, `tabs/master/[id]`), поэтому верх экранов
+> переизобретали заново. Все пути ниже проверены — файлы существуют.
+
 | Экран | Файл | Что эталонно |
 |---|---|---|
-| `/orders/search` (master) | `app/(tabs)/orders/search/index.tsx` | Tab-screen header, list-style OrderRow, accent-pill rightAction, scope-фильтр L1 |
-| `/orders/search/filters` | `app/(tabs)/orders/search/filters.tsx` | Filter screen с back+sticky-CTA «Применить · N», SortChip, button-trigger «Выберите категории» |
-| `/orders/search/category-select` | `app/(tabs)/orders/search/category-select.tsx` | Multi-select picker, search-input, accent checkbox-индикатор, sticky CTA |
-| `/orders` (master) | `app/(tabs)/orders/index.tsx` (`MasterOrdersView`) | Tab-screen с TabPills, скрытый «Новые» (= /orders/search), responded/assigned секции |
-| `/profile` (master) | `app/(tabs)/profile/index.tsx` | Tab-screen без back, опц. rightAction Pencil, навигационные карточки секций, ghost-link «Посмотреть глазами клиента», compact theme-segmented |
-| `/master/[id]` | `app/(tabs)/master/[id].tsx` | Detail-screen ScreenHeader с back, hero-photo карусель 4:5, sticky bottom CTA |
+| Вкладка со списком — «Найти задание» | `app/(tabs)/find/index.tsx` + `src/features/orders/find/FindFeed.tsx` | Верх вкладки: `useLargeTitle(0)` + `LargeTitleBar` (крупный заголовок в списке, компактный при прокрутке); поиск и строка «Фильтры» — первые строки списка, без закреплённой шапки; пустое состояние с одним действием |
+| Вкладка с переключателем — «Мои» | `app/(tabs)/orders/index.tsx` | `LargeTitleBar belowFloating` + `SegmentedControl bare`: плавающая стеклянная капсула; секции «Активные / Архив»; плавающая «+» |
+| Экран фильтров | `app/(tabs)/find/filters.tsx` | Detail-экран: `ScreenHeader` с «назад» и «Сбросить», `InsetGroup`/`InsetRow` со значениями, выбор в шторках без «Применить» |
+| Шторка выбора | `app/(details)/find/category-select.tsx`, `app/(details)/find/location-select.tsx` | formSheet-выбор, применяется сразу и закрывается сам |
+| Профиль специалиста | `app/(details)/master/[id].tsx` | Detail-экран: `LargeTitleBar` с «назад» и действиями, фото-карусель, отзывы |
+| Экран задания | `app/(details)/orders/[id].tsx` | Статус пилюлей, карточки откликов, блок управления заданием; действия блокируются на время запроса |
+| Каталог специалистов | `src/features/master-view/SpecialistsListScreen.tsx` | Пустое состояние: одна строка и одно действие («Опубликовать задание» с категорией) |
 | `ServiceAreasSection` | `src/features/master-profile/ServiceAreasSection.tsx` | Toggle-карточка «Вся Ингушетия» сверху + accent chips город/район ниже |
-| `/index` (Home client) | `app/(tabs)/index.tsx` | Hero-illustrations с tinted-bg + декоративные фигуры, animated fade-in, color-icons, mt-10 section gap |
+| Главная | `app/(tabs)/index.tsx` | Фото-герой от верха экрана, «Актуальные задания», реклама из админки (скрыта, если баннеров нет), разделы каталога |
+
+Тени — только `CARD_SHADOW` / `SHADOW_COLOR` из `src/lib/shadows.ts`; цвета — только
+токены `src/lib/colors.ts` (включая `shadow`, `avatar-1…8`, `on-avatar`, `on-dark`).
 
 **Если делаешь новый screen — открой ОДИН из этих, скопируй структуру, поменяй контент.** Не изобретай.
 

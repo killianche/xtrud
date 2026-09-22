@@ -59,6 +59,12 @@ export const RPC_ALLOWLIST = new Set([
   "admin_hide_order",
   "admin_set_order_limits",
   "admin_set_find_screen",
+  // Рекламные баннеры Главной (0206).
+  "admin_list_promo_banners",
+  "admin_add_promo_banner",
+  "admin_update_promo_banner",
+  "admin_move_promo_banner",
+  "admin_delete_promo_banner",
 ]);
 
 const NAME_RE = /^[a-z_][a-z0-9_]*$/;

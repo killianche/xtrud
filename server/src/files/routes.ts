@@ -27,11 +27,14 @@ export interface FilesConfig {
   s3?: S3Storage | null;
 }
 
-const BUCKETS: Record<string, { public: boolean; mastersOnly?: boolean }> = {
+const BUCKETS: Record<string, { public: boolean; mastersOnly?: boolean; adminOnly?: boolean }> = {
   avatars: { public: true },
   portfolio: { public: true, mastersOnly: true },
   "order-photos": { public: true },
   "master-verifications": { public: false },
+  // Рекламные баннеры Главной (0206): публичное чтение, загрузка — только
+  // администратор, в свою папку. Строки баннеров — в public.promo_banners.
+  promo: { public: true, adminOnly: true },
 };
 const ALLOWED_TYPES: Record<string, string[]> = {
   "image/jpeg": [".jpg", ".jpeg"],
@@ -114,6 +117,15 @@ export function registerFilesRoutes(
         if (existing.length >= MAX_FILES_PER_FOLDER && !existing.includes(fileName)) {
           return reply.code(429).send({ error: "Слишком много файлов. Удалите ненужные." });
         }
+      }
+      if (bucket.adminOnly) {
+        // Та же проверка, что у admin_*-функций базы: is_admin_session().
+        const isAdmin = await db.asUser(claims, async (c) => {
+          const r = await c.query<{ ok: boolean }>("SELECT public.is_admin_session() AS ok");
+          return r.rows[0]?.ok === true;
+        });
+        if (!isAdmin)
+          return reply.code(403).send({ error: "Загружать может только администратор" });
       }
       if (bucket.mastersOnly) {
         const isMaster = await db.asUser(claims, async (c) => {

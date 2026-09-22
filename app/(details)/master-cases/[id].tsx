@@ -67,7 +67,7 @@ export default function MasterCasesScreen() {
             Работ пока нет
           </AppText>
           <AppText className="mt-2 text-body-md text-mute text-center">
-            После завершённых заказов работы появятся здесь автоматически.
+            После завершённых заданий работы появятся здесь автоматически.
           </AppText>
         </View>
       ) : (

@@ -83,7 +83,7 @@ export default function BlockedUsersScreen() {
                   [item.firstName, item.lastName].filter(Boolean).join(" ") || "Пользователь";
                 const confirmed = await confirmAsync({
                   title: "Разблокировать пользователя?",
-                  message: `Вы снова увидите заказы, отклики и профиль «${fullName}». Ему снова станут доступны ваши заказы и отклики — это снимет сервер.`,
+                  message: `Вы снова увидите задания, отклики и профиль «${fullName}». Ему снова станут доступны ваши задания и отклики — это снимет сервер.`,
                   confirmText: "Разблокировать",
                   cancelText: "Отмена",
                 });
@@ -134,7 +134,7 @@ function BlockedUserCard({ item, pending, onUnblock }: BlockedUserCardProps) {
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={`Разблокировать ${fullName}`}
-        accessibilityHint="Вернёт вам его заказы, отклики и профиль"
+        accessibilityHint="Вернёт вам его задания, отклики и профиль"
         onPress={onUnblock}
         disabled={pending}
         className="mt-3 min-h-11 self-start flex-row items-center justify-center rounded-pill border border-hairline px-4 active:bg-canvas-soft"

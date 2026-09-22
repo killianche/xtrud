@@ -86,8 +86,6 @@ export function ActiveOrdersShowcase({ userId }: { userId: string | undefined })
         ) : null}
       </View>
 
-      <AppText className="mt-1 px-5 text-body-md text-mute">Что сейчас ищут люди рядом</AppText>
-
       <View className="mt-4">
         {isLoading ? (
           <OrderRowsSkeleton count={3} />

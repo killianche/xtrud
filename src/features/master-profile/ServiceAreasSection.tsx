@@ -111,7 +111,7 @@ export function ServiceAreasSection({ masterId }: ServiceAreasSectionProps) {
             Где работаете
           </AppText>
           <AppText className="mt-1 text-caption text-muted">
-            Отметьте города и/или районы. Заявки из этих локаций будут показываться в вашей ленте.
+            Отметьте города и/или районы. Задания из этих мест будут показываться в вашей ленте.
           </AppText>
           <AppText className="mt-1 text-caption text-muted-soft">Выбрано: {totalSelected}</AppText>
         </View>
@@ -157,7 +157,7 @@ export function ServiceAreasSection({ masterId }: ServiceAreasSectionProps) {
             Вся Ингушетия
           </AppText>
           <AppText className="mt-0.5 text-caption text-mute">
-            Получать заявки со всей республики, без фильтра по городу
+            Получать задания со всей республики, без фильтра по городу
           </AppText>
         </View>
         {isAllIngushetia ? <Check size={20} weight="fill" color={accentColor} /> : null}

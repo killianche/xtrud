@@ -118,11 +118,11 @@ export default function DeleteAccountScreen() {
               <View className="rounded-lg border border-hairline bg-canvas-soft p-4">
                 <ConsequenceRow text="Профиль скроется от других пользователей." />
                 <ConsequenceRow text="Имя, телефон, фото и личные данные будут удалены." />
-                <ConsequenceRow text="Открытые заявки будут отменены, специалисты и клиенты получат уведомления." />
+                <ConsequenceRow text="Открытые задания будут отменены, специалисты и клиенты получат уведомления." />
                 {isMaster ? (
                   <>
                     <ConsequenceRow text="Категории, прайс-лист, портфолио и данные верификации будут удалены." />
-                    <ConsequenceRow text="Активные заказы, где вы выбраны специалистом, будут отменены." />
+                    <ConsequenceRow text="Активные задания, где вы выбраны специалистом, будут отменены." />
                   </>
                 ) : null}
                 <ConsequenceRow text="Чаты и отзывы останутся у второй стороны как «Удалённый пользователь»." />

@@ -46,6 +46,7 @@ import { responsesLabel } from "@/features/orders/plural-ru";
 import type { OrderPriceKind, OrderUrgency } from "@/features/orders/use-create-order";
 import { getCategoryIcon } from "@/lib/category-icons";
 import { cdnBlur, cdnImage } from "@/lib/image-cdn";
+import { CARD_SHADOW } from "@/lib/shadows";
 import { useThemeColors } from "@/lib/use-theme-color";
 
 /** Визуальный variant для контекста списка (исторический prop, оставлен для
@@ -144,13 +145,7 @@ const DIMMED_STATUS: Partial<Record<OrderStatusValue, string>> = {
 // фоне страницы (surface-page = systemGroupedBackground), без тёмной обводки
 // и с едва заметной тенью (владелец, 2026-09-08: «чёрная обводка — не в
 // дизайне, сделай как в iOS»).
-const CARD_SHADOW = {
-  shadowColor: "#000000",
-  shadowOpacity: 0.04,
-  shadowRadius: 6,
-  shadowOffset: { width: 0, height: 2 },
-  elevation: 2,
-} as const;
+// Значения — src/lib/shadows.ts.
 
 /** Размер миниатюры задания. 68 — как аватар исполнителя у референса: видно,
  *  что на фото, и не отбирает ширину у заголовка. */

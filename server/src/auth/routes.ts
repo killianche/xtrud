@@ -12,7 +12,8 @@ import { canonicalPhone, isPhoneLogin, phoneKey, phoneToAuthEmail } from "./phon
 
 const registerSchema = z.object({
   firstName: z.string().trim().min(1).max(60),
-  lastName: z.string().trim().min(1).max(60),
+  // Фамилия необязательна (DECISION владельца 2026-09-22); пустая → NULL.
+  lastName: z.string().trim().max(60).optional().default(""),
   phone: z.string().trim().min(10).max(20),
   // 8 знаков — как в приложении (2026-09-12). Вход старых паролей
   // не ломается: при входе длина не проверяется.
@@ -115,7 +116,7 @@ export function registerAuthRoutes(
         // телефон (0177). Роль API имеет только EXECUTE на неё.
         const r = await c.query<{ register_account: string }>(
           "SELECT xtrud_api.register_account($1, $2, $3, $4, $5)",
-          [email, hash, phone, input.firstName, input.lastName],
+          [email, hash, phone, input.firstName, input.lastName || null],
         );
         const id = r.rows[0]?.register_account;
         if (!id) throw new Error("register failed");

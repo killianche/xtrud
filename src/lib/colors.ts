@@ -102,6 +102,21 @@ export const lightColors = {
   // а сам акцент затемнён до #e11d48, чтобы белый прошёл AA. Итог: белый на
   // акценте — 4.7:1 в обеих темах (норма для текста кнопки 4.5:1).
   "on-accent": "#ffffff",
+  // Тень карточек и плавающих кнопок — чёрная в обеих темах, как в iOS;
+  // заметность задаёт shadowOpacity (аудит 2026-09-22: цвета — только токены).
+  shadow: "#000000",
+  // Фоны кружка с инициалами — приглушённые пастели, одинаковые в обеих
+  // темах: цвет закреплён за человеком и не должен меняться со сменой темы.
+  // Текст на них — on-avatar, контраст AA 7+.
+  "avatar-1": "#f1f5f9",
+  "avatar-2": "#e7e5e4",
+  "avatar-3": "#dbeafe",
+  "avatar-4": "#d1fae5",
+  "avatar-5": "#fce7f3",
+  "avatar-6": "#fef3c7",
+  "avatar-7": "#e0e7ff",
+  "avatar-8": "#ede9fe",
+  "on-avatar": "#1f2937",
 } as const;
 
 export const darkColors = {
@@ -186,6 +201,16 @@ export const darkColors = {
   accent: "#e11d48",
   "accent-soft": "#4a1f29", // тёмно-розовый приглушённый фон
   "on-accent": "#ffffff", // см. светлую тему: белый на акценте в обеих (DECISION 2026-09-03)
+  shadow: "#000000",
+  "avatar-1": "#f1f5f9",
+  "avatar-2": "#e7e5e4",
+  "avatar-3": "#dbeafe",
+  "avatar-4": "#d1fae5",
+  "avatar-5": "#fce7f3",
+  "avatar-6": "#fef3c7",
+  "avatar-7": "#e0e7ff",
+  "avatar-8": "#ede9fe",
+  "on-avatar": "#1f2937",
 } as const;
 
 export type ColorToken = keyof typeof lightColors;

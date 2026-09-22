@@ -52,12 +52,12 @@ describe("pluralize concrete words", () => {
     expect(pluralizeYears(12)).toBe("12 лет");
   });
 
-  it("заказ закрыт vs выполнен", () => {
-    expect(pluralizeClosedDeals(1)).toBe("1 заказ выполнен");
-    expect(pluralizeClosedDeals(3)).toBe("3 заказа выполнено");
-    expect(pluralizeClosedDeals(10)).toBe("10 заказов выполнено");
-    expect(pluralizeClosedOrders(1)).toBe("1 заказ закрыт");
-    expect(pluralizeClosedOrders(3)).toBe("3 заказа закрыто");
+  it("задание закрыто vs выполнено", () => {
+    expect(pluralizeClosedDeals(1)).toBe("1 задание выполнено");
+    expect(pluralizeClosedDeals(3)).toBe("3 задания выполнено");
+    expect(pluralizeClosedDeals(10)).toBe("10 заданий выполнено");
+    expect(pluralizeClosedOrders(1)).toBe("1 задание закрыто");
+    expect(pluralizeClosedOrders(3)).toBe("3 задания закрыто");
   });
 
   it("услуга: 1, 2, 5, 11", () => {

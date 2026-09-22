@@ -57,8 +57,10 @@ describe("registerFormSchema", () => {
     expect(registerFormSchema.safeParse({ ...valid, phone: "89281234567" }).success).toBe(false);
   });
 
-  it("требует имя и фамилию", () => {
+  it("требует имя; фамилия — по желанию, но не из одной буквы", () => {
     expect(registerFormSchema.safeParse({ ...valid, firstName: "" }).success).toBe(false);
+    expect(registerFormSchema.safeParse({ ...valid, lastName: "" }).success).toBe(true);
+    expect(registerFormSchema.safeParse({ ...valid, lastName: "   " }).success).toBe(true);
     expect(registerFormSchema.safeParse({ ...valid, lastName: "Ч" }).success).toBe(false);
   });
 

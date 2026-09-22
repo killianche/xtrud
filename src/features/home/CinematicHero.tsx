@@ -37,18 +37,19 @@ import { Image as ExpoImage } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import { BellSimple, CaretDown, MapPin, Plus, User as UserIcon } from "phosphor-react-native";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { Animated, Easing, Platform, Pressable, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
 import { Avatar } from "@/components/Avatar";
-import { CITIES } from "@/components/CitySelector";
 import { XtrudWordmark } from "@/components/XtrudWordmark";
 import { useAuthSession } from "@/features/auth/use-auth-session";
 import { useUserRecord } from "@/features/auth/use-user-record";
 import { useCategoryFilterPickerStore } from "@/features/categories/category-filter-picker-store";
 import { useUnreadNotificationsCount } from "@/features/notifications/use-notifications";
 import { useReducedMotion } from "@/hooks/use-reduced-motion";
+import { lightColors } from "@/lib/colors";
+import { SHADOW_COLOR } from "@/lib/shadows";
 import { useAppWidth } from "@/lib/use-app-width";
 import { useThemeColor } from "@/lib/use-theme-color";
 import { useUserCity } from "@/lib/use-user-city";
@@ -68,7 +69,8 @@ const FADE_MS = 1200;
 // Белый для элементов ПОВЕРХ фото. Константа (не литерал в JSX) — обходит
 // grep `color="#"` design-enforcement; это легальный photo-overlay §B case.
 const ON_PHOTO_INK = "#0a0a0a"; // = surface-dark, одинаков в обеих темах
-const ON_PHOTO = "#ffffff";
+// Белый поверх фото — токен on-dark, одинаковый в обеих темах.
+const ON_PHOTO = lightColors["on-dark"];
 
 export function CinematicHero({ onCreateTask }: { onCreateTask: () => void }) {
   const insets = useSafeAreaInsets();
@@ -338,7 +340,7 @@ export function CinematicHero({ onCreateTask }: { onCreateTask: () => void }) {
               boxShadow: Platform.OS === "web" ? "0 8px 24px rgba(0,0,0,0.18)" : undefined,
               ...(Platform.OS !== "web"
                 ? {
-                    shadowColor: "#000",
+                    shadowColor: SHADOW_COLOR,
                     shadowOpacity: 0.18,
                     shadowRadius: 14,
                     shadowOffset: { width: 0, height: 6 },

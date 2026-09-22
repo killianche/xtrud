@@ -10,6 +10,7 @@ import { useState } from "react";
 import { Alert, Image, Pressable, View } from "react-native";
 import { AppText } from "@/components/AppText";
 import { SystemIcon } from "@/components/ui/SystemIcon";
+import { lightColors } from "@/lib/colors";
 import { hapticSelection } from "@/lib/haptics";
 import { pickMultipleImages } from "@/lib/image-upload";
 import { useThemeColors } from "@/lib/use-theme-color";
@@ -17,7 +18,8 @@ import type { ComposerPhoto } from "./composer-store";
 
 export const MAX_TASK_PHOTOS = 5;
 /** Белый поверх фотографии — именованная константа, не литерал в JSX. */
-const ON_PHOTO = "#ffffff";
+// Белый поверх фото — токен on-dark, одинаковый в обеих темах.
+const ON_PHOTO = lightColors["on-dark"];
 const GAP = 8;
 
 function makeId(): string {

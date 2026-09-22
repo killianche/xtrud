@@ -51,22 +51,25 @@ const SIZE_MAP: Record<AvatarSize, { px: number; text: string }> = {
 // Приглушённые фоны (tailwind-100) + тёмный текст #1f2937 → AA-контраст 7+.
 // Стиль Notion / Linear / Google Workspace: нейтрально-десатурированные с
 // лёгким оттенком, никаких кричащих amber/pink/orange.
+// Значения — токены avatar-1…8 в src/lib/colors.ts.
 const PLACEHOLDER_PALETTE = [
-  "#f1f5f9", // slate-100 — холодно-нейтральный серый
-  "#e7e5e4", // stone-200 — тёпло-нейтральный серый
-  "#dbeafe", // blue-100 — очень светлый синий
-  "#d1fae5", // emerald-100 — мягкий зелёный
-  "#fce7f3", // pink-100 — приглушённый розовый
-  "#fef3c7", // amber-100 — мягкий бежевый (вместо кричащего amber-200)
-  "#e0e7ff", // indigo-100 — приглушённый лавандовый
-  "#ede9fe", // violet-100 — приглушённый сиреневый
-];
+  "avatar-1",
+  "avatar-2",
+  "avatar-3",
+  "avatar-4",
+  "avatar-5",
+  "avatar-6",
+  "avatar-7",
+  "avatar-8",
+] as const;
+type AvatarToken = (typeof PLACEHOLDER_PALETTE)[number];
 
 export function Avatar({ url, name, seed, size = "md", contentFit = "cover" }: AvatarProps) {
   const dims = SIZE_MAP[size];
   const initials = useMemo(() => extractInitials(name), [name]);
-  const bgColor = useMemo(() => pickColor(seed ?? name ?? ""), [seed, name]);
-  const tc = useThemeColors(["surface-2", "muted"]);
+  const bgToken = useMemo(() => pickColor(seed ?? name ?? ""), [seed, name]);
+  const tc = useThemeColors(["surface-2", "muted", "on-avatar", ...PLACEHOLDER_PALETTE]);
+  const bgColor = tc[bgToken];
   // Реальное фото = только загрузка в Storage. DiceBear-заглушки → null →
   // показываем инициалы (решение владельца 2026-05-23, src/lib/avatar.ts).
   const resolvedUrl = useMemo(() => realAvatarUrl(url), [url]);
@@ -123,7 +126,7 @@ export function Avatar({ url, name, seed, size = "md", contentFit = "cover" }: A
       }}
       className="items-center justify-center"
     >
-      <AppText weight="semibold" className={`${dims.text} text-slate-800`}>
+      <AppText weight="semibold" className={dims.text} style={{ color: tc["on-avatar"] }}>
         {initials}
       </AppText>
     </View>
@@ -144,9 +147,9 @@ function extractInitials(name?: string | null): string {
   return (first + last).toUpperCase();
 }
 
-function pickColor(seed: string): string {
+function pickColor(seed: string): AvatarToken {
   if (!seed) {
-    return PLACEHOLDER_PALETTE[0] as string;
+    return PLACEHOLDER_PALETTE[0];
   }
   let hash = 0;
   for (let i = 0; i < seed.length; i++) {
@@ -154,5 +157,5 @@ function pickColor(seed: string): string {
     hash |= 0;
   }
   const idx = Math.abs(hash) % PLACEHOLDER_PALETTE.length;
-  return PLACEHOLDER_PALETTE[idx] as string;
+  return PLACEHOLDER_PALETTE[idx] ?? PLACEHOLDER_PALETTE[0];
 }

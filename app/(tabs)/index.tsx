@@ -19,14 +19,13 @@
  */
 
 import { FlashList, type FlashListRef } from "@shopify/flash-list";
-import { Image as ExpoImage } from "expo-image";
 import { useRouter } from "expo-router";
-import { CaretRight, Drop, Lightning, Sparkle } from "phosphor-react-native";
+import { CaretRight } from "phosphor-react-native";
 import type { RefObject } from "react";
 import { useEffect, useRef, useState } from "react";
-import { Animated, FlatList, Pressable, View } from "react-native";
+import { type FlatList, Pressable, View } from "react-native";
 import { AppText } from "@/components/AppText";
-import { Avatar, Card, FloatingActionButton, Skeleton } from "@/components/ui";
+import { FloatingActionButton } from "@/components/ui";
 import { useAuthSession } from "@/features/auth/use-auth-session";
 import { type CategoryL1, useCategoriesL1 } from "@/features/categories/use-categories-l1";
 import { ActiveOrdersShowcase } from "@/features/home/ActiveOrdersShowcase";
@@ -36,13 +35,6 @@ import {
   HomeStatusBarCover,
 } from "@/features/home/HomeStatusBarCover";
 import { PromoBannerCarousel } from "@/features/home/PromoBannerCarousel";
-import {
-  AVAILABILITY_DOT,
-  effectiveStatus,
-  isAvailabilityVisible,
-} from "@/features/master-view/availability";
-import { useRecordMasterView } from "@/features/master-view/use-record-view";
-import { useTopMasters } from "@/features/master-view/use-top-masters";
 import { usePullToRefresh } from "@/hooks/use-pull-to-refresh";
 import { getCategoryIcon } from "@/lib/category-icons";
 import { useTabBarSpace } from "@/lib/tab-bar-space";
@@ -75,7 +67,6 @@ export default function HomeTab() {
       onCategoryPress={(id) =>
         router.push({ pathname: "/specialists/section", params: { l1: id } } as never)
       }
-      onMasterPress={(id) => router.push(`/master/${id}` as never)}
       onDescribeTask={(draft) => {
         // Передаём текст черновика в визард — orders/new подхватит его как
         // начальное значение поля description.
@@ -114,7 +105,6 @@ interface ClientHomeProps {
   userId: string | undefined;
   refresh: ReturnType<typeof usePullToRefresh>;
   onCategoryPress: (id: string) => void;
-  onMasterPress: (id: string) => void;
   /** Принимает черновик описания задачи (если пользователь начал писать в hero-input). */
   onDescribeTask: (draft?: string) => void;
 }
@@ -131,13 +121,7 @@ const HOME_FAB_OFFSET = 320;
 /** Порог скрытия ниже порога показа — без мигания у границы (QA). */
 const HOME_FAB_HIDE_OFFSET = 240;
 
-function ClientHome({
-  userId,
-  refresh,
-  onCategoryPress,
-  onMasterPress,
-  onDescribeTask,
-}: ClientHomeProps) {
+function ClientHome({ userId, refresh, onCategoryPress, onDescribeTask }: ClientHomeProps) {
   const tabBarSpace = useTabBarSpace();
   // DECISION владельца 2026-09-05: на главной — крупные разделы («Ремонт и
   // отделка», «Сантехника и электрика»…), а детальные категории внутри.
@@ -215,7 +199,6 @@ function ClientHome({
             <ActiveOrdersShowcase userId={userId} />
             {/* Promo-баннеры партнёров (рекламные фото-баннеры 16:9). */}
             <PromoBannerCarousel />
-            <TopMasters onMasterPress={onMasterPress} />
             <View className="mt-10 px-5">
               <AppText weight="bold" className="text-display-sm text-ink">
                 Категории специалистов
@@ -282,205 +265,6 @@ function ClientHome({
 // Hero вынесен в `src/features/home/CinematicHero.tsx` (2026-05-21):
 // full-bleed фото-герой (Farce-style) вместо «H1 + поиск + квадратная картинка».
 // ----------------------------------------------------------------------------
-
-// ----------------------------------------------------------------------------
-// Top masters — горизонтальная карусель, рендерится только если ≥ 3 карточки
-// ----------------------------------------------------------------------------
-
-function TopMasters({ onMasterPress }: { onMasterPress: (id: string) => void }) {
-  const { data: masters, isLoading } = useTopMasters(7);
-
-  // Fade-in данных при появлении (skeleton → real cards) — переход плавный,
-  // 280ms, без stagger внутри (естественный stagger между секциями возникает
-  // из-за разного времени fetch'а каждой). Решает фидбэк user 2026-05-14
-  // «блок резко появляется», когда useTopMasters заканчивает запрос.
-  const opacity = useRef(new Animated.Value(0)).current;
-  useEffect(() => {
-    if (!isLoading && masters && masters.length >= 3) {
-      Animated.timing(opacity, {
-        toValue: 1,
-        duration: 280,
-        useNativeDriver: true,
-      }).start();
-    }
-  }, [isLoading, masters, opacity]);
-
-  // Prefetch первых 4-6 аватаров — это критичные above-the-fold картинки
-  // в карусели Top Masters. Native: expo-image.prefetch ставит их в memory-
-  // кэш ДО viewport visibility, ощущается «мгновенно» при свайпе. На web
-  // это безопасный nop (expo-image на web игнорирует prefetch). Defer'им
-  // через useEffect, чтобы не блокировать первый paint.
-  useEffect(() => {
-    if (!masters || masters.length === 0) return;
-    const urls = masters
-      .slice(0, 6)
-      .map((m) => m.user?.avatar_url)
-      .filter((u): u is string => !!u);
-    if (urls.length > 0) {
-      // expo-image.prefetch принимает массив URLs; sync API на web,
-      // async на native. Без await — fire-and-forget.
-      ExpoImage.prefetch(urls);
-    }
-  }, [masters]);
-
-  // Не показываем секцию если данных нет или их слишком мало (по правилу
-  // "пустую витрину не показываем" из аудита).
-  if (!isLoading && (!masters || masters.length < 3)) return null;
-
-  return (
-    <View className="mt-10">
-      <View className="px-5">
-        <AppText weight="bold" className="text-display-sm text-ink">
-          Исполнители рядом
-        </AppText>
-        <AppText className="mt-1 text-body-md text-mute">По рейтингу и отзывам</AppText>
-      </View>
-
-      {isLoading ? (
-        // Skeleton-карусель: 4 заглушки повторяющие реальный MasterMiniCard
-        // (180×180 avatar-area + 3 строки текста), чтобы пользователь сразу
-        // видел секцию и понимал что здесь будет.
-        <View className="flex-row gap-3" style={{ paddingHorizontal: 20, paddingTop: 12 }}>
-          {[0, 1, 2, 3].map((i) => (
-            <View key={i} style={{ width: 180 }}>
-              <Skeleton width={180} height={180} className="rounded-lg" />
-              <Skeleton height={16} width={140} className="mt-3 rounded" />
-              <Skeleton height={12} width={110} className="mt-2 rounded" />
-              <Skeleton height={12} width={70} className="mt-2 rounded" />
-            </View>
-          ))}
-        </View>
-      ) : (
-        <Animated.View style={{ opacity }}>
-          <FlatList
-            data={masters ?? []}
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={{ paddingHorizontal: 20, gap: 12, paddingTop: 12 }}
-            keyExtractor={(m) => m.user.id}
-            renderItem={({ item }) => (
-              <MasterMiniCard
-                id={item.user.id}
-                avatarUrl={item.user.avatar_url}
-                firstName={item.user.first_name}
-                lastName={item.user.last_name}
-                rating={item.profile.rating_overall_avg}
-                ratingCount={item.profile.rating_overall_count}
-                cityName={item.city?.name ?? null}
-                categories={item.categories}
-                availabilityStatus={effectiveStatus(
-                  item.profile.availability_status,
-                  item.profile.availability_until,
-                )}
-                onPress={() => onMasterPress(item.user.id)}
-              />
-            )}
-          />
-        </Animated.View>
-      )}
-    </View>
-  );
-}
-
-interface MasterMiniCardProps {
-  id: string;
-  avatarUrl: string | null;
-  firstName: string | null;
-  lastName: string | null;
-  rating: number | null;
-  ratingCount: number | null;
-  cityName: string | null;
-  categories: string[];
-  availabilityStatus: ReturnType<typeof effectiveStatus>;
-  onPress: () => void;
-}
-
-function MasterMiniCard({
-  id,
-  avatarUrl,
-  firstName,
-  lastName,
-  rating,
-  ratingCount,
-  cityName,
-  categories,
-  availabilityStatus,
-  onPress,
-}: MasterMiniCardProps) {
-  // Обводка точки — цветом поверхности карточки (вырез), не белым (обе темы).
-  const dotRing = useThemeColor("canvas");
-  const fullName = [firstName, lastName].filter(Boolean).join(" ") || "Исполнитель";
-  // 1-2 категории через · разделитель — больше не помещается в w-180
-  const categoriesText = categories.slice(0, 2).join(" · ");
-
-  // Telemetry: impression при появлении карточки в Top Masters карусели.
-  // Server-side dedup в RPC (24h по session_id) защищает от накрутки.
-  const recordView = useRecordMasterView();
-  useEffect(() => {
-    if (id) recordView(id, "impression");
-  }, [id, recordView]);
-
-  return (
-    <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={fullName}>
-      <Card variant="default" padding="none" style={{ width: 180 }}>
-        <View
-          style={{
-            width: 180,
-            height: 180,
-            backgroundColor: "transparent",
-            alignItems: "center",
-            justifyContent: "center",
-            position: "relative",
-          }}
-        >
-          <Avatar url={avatarUrl} name={fullName} seed={fullName} size="xl" />
-          {/* Availability dot — «онлайн»-индикатор в правом-нижнем углу аватара. */}
-          {isAvailabilityVisible(availabilityStatus) ? (
-            <View
-              style={{
-                position: "absolute",
-                bottom: 36,
-                right: 36,
-                width: 16,
-                height: 16,
-                borderRadius: 8,
-                backgroundColor: AVAILABILITY_DOT[availabilityStatus],
-                borderWidth: 2,
-                borderColor: dotRing,
-              }}
-            />
-          ) : null}
-        </View>
-        <View className="px-3 pb-3">
-          <AppText weight="semibold" className="text-body-md text-ink" numberOfLines={1}>
-            {fullName}
-          </AppText>
-          {/* Категории — главный сигнал «чем занимается»: ставим выше рейтинга */}
-          {categoriesText ? (
-            <AppText className="mt-1 text-caption text-ink" numberOfLines={1}>
-              {categoriesText}
-            </AppText>
-          ) : null}
-          {rating !== null && ratingCount !== null && ratingCount > 0 ? (
-            <View className="mt-1 flex-row items-center gap-1">
-              <AppText weight="mono" className="text-mono-caption text-ink">
-                ★ {rating.toFixed(1)}
-              </AppText>
-              <AppText weight="mono" className="text-mono-caption text-mute">
-                ({ratingCount})
-              </AppText>
-            </View>
-          ) : null}
-          {cityName ? (
-            <AppText className="mt-1 text-caption text-mute" numberOfLines={1}>
-              {cityName}
-            </AppText>
-          ) : null}
-        </View>
-      </Card>
-    </Pressable>
-  );
-}
 
 // ----------------------------------------------------------------------------
 // Категории — элемент FlashList (ClientHome). Grid-плитка (desktop, numColumns

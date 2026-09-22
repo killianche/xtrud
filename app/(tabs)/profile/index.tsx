@@ -691,8 +691,8 @@ function GuestProfileScreen({ insets, themeColors, onLogin }: GuestProfileScreen
             className="mt-2 max-w-xs text-body-sm text-mute text-center"
             style={{ lineHeight: 20 }}
           >
-            Создавайте заказы, общайтесь со специалистами и оставляйте отзывы. Регистрация по номеру
-            телефона — 30 секунд.
+            Создавайте задания, общайтесь со специалистами и оставляйте отзывы. Регистрация по
+            номеру телефона — 30 секунд.
           </AppText>
 
           <View className="mt-5 w-full max-w-xs">

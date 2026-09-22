@@ -28,10 +28,12 @@ import {
 } from "react-native";
 import { AppText } from "@/components/AppText";
 import { PortfolioLightbox } from "@/features/profile/PortfolioLightbox";
+import { lightColors } from "@/lib/colors";
 import { cdnBlur, cdnImage } from "@/lib/image-cdn";
 import { useAppWidth } from "@/lib/use-app-width";
 
-const OVERLAY_WHITE = "#ffffff";
+// Белый поверх фото — токен on-dark, одинаковый в обеих темах.
+const OVERLAY_WHITE = lightColors["on-dark"];
 const ORDER_PHOTO_RATIO = 4 / 3; // height = width / ratio
 
 export function OrderPhotoCarousel({ urls }: { urls: string[] }) {
@@ -130,7 +132,8 @@ export function OrderPhotoCarousel({ urls }: { urls: string[] }) {
                   width: i === index ? 24 : 6,
                   height: 6,
                   borderRadius: 3,
-                  backgroundColor: i === index ? OVERLAY_WHITE : "rgba(255,255,255,0.5)",
+                  backgroundColor: OVERLAY_WHITE,
+                  opacity: i === index ? 1 : 0.5,
                 }}
               />
             ))}

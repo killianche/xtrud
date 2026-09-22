@@ -33,11 +33,13 @@ import { useCaseDetail } from "@/features/profile/use-portfolio-cases";
 import { cdnImage } from "@/lib/image-cdn";
 import { useAppWidth } from "@/lib/use-app-width";
 import { useSafeBack } from "@/lib/use-safe-back";
+import { useThemeColor } from "@/lib/use-theme-color";
 
 const HERO_RATIO = 4 / 5;
 
 export default function PublicCaseScreen() {
   const insets = useSafeAreaInsets();
+  const onDark = useThemeColor("on-dark");
   const params = useLocalSearchParams<{ caseId: string }>();
   const caseId = typeof params.caseId === "string" ? params.caseId : null;
   const viewportWidth = useAppWidth();
@@ -138,7 +140,9 @@ export default function PublicCaseScreen() {
                       width: i === photoIndex ? 24 : 6,
                       height: 6,
                       borderRadius: 3,
-                      backgroundColor: i === photoIndex ? "#ffffff" : "rgba(255,255,255,0.5)",
+                      // Поверх фото — белые в обеих темах (токен on-dark).
+                      backgroundColor: onDark,
+                      opacity: i === photoIndex ? 1 : 0.5,
                     }}
                   />
                 ))}

@@ -48,6 +48,7 @@ import {
   useCreateCase,
   useMasterCases,
 } from "@/features/profile/use-portfolio-cases";
+import { lightColors } from "@/lib/colors";
 import { cdnBlur, cdnImage } from "@/lib/image-cdn";
 import { type PickedImage, pickMultipleImages, uploadPortfolioBatch } from "@/lib/image-upload";
 import { useTabBarSpace } from "@/lib/tab-bar-space";
@@ -57,7 +58,8 @@ import { useThemeColors } from "@/lib/use-theme-color";
 // Белый поверх тёмного overlay на обложке — фиксированная константа, не токен
 // (правило §B: для текста/иконок поверх фото заводим КОНСТАНТУ, не inline-hex
 // в каждом месте). Тут белый одинаков в обеих темах — это слой над фото.
-const OVERLAY_WHITE = "#ffffff";
+// Белый поверх фото — токен on-dark, одинаковый в обеих темах.
+const OVERLAY_WHITE = lightColors["on-dark"];
 
 /** Название новой работы по умолчанию (фидбэк владельца 2026-05-24: ставить
  *  «Без имени», а не «Работа · дата»). Хук useCreateCase требует непустой

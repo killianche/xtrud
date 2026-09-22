@@ -46,6 +46,7 @@ import {
   pickMultiplePortfolioImages,
   uploadPortfolioBatch,
 } from "@/lib/image-upload";
+import { SHADOW_COLOR } from "@/lib/shadows";
 import { useAppWidth } from "@/lib/use-app-width";
 import { useSafeBack } from "@/lib/use-safe-back";
 import { useThemeColors } from "@/lib/use-theme-color";
@@ -525,10 +526,9 @@ function PhotoTile({
         hitSlop={6}
         className="absolute top-1.5 right-1.5 h-8 w-8 items-center justify-center rounded-full bg-canvas active:opacity-70"
         style={{
-          // shadow остаётся технической — RN style требует цвет в shadowColor
-          shadowColor: "rgba(0,0,0,0.15)",
+          shadowColor: SHADOW_COLOR,
           shadowOffset: { width: 0, height: 1 },
-          shadowOpacity: 1,
+          shadowOpacity: 0.15,
           shadowRadius: 3,
           elevation: 2,
         }}

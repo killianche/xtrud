@@ -7,6 +7,7 @@
 import { GlassView } from "expo-glass-effect";
 import { ActivityIndicator, Pressable, View } from "react-native";
 import { AppText } from "@/components/AppText";
+import { SHADOW_COLOR } from "@/lib/shadows";
 import { useThemeColors } from "@/lib/use-theme-color";
 import { LIQUID_GLASS } from "./GlassSurface";
 
@@ -79,7 +80,7 @@ export function GlassButton({
               ? null
               : {
                   backgroundColor: tc.accent,
-                  shadowColor: "#000",
+                  shadowColor: SHADOW_COLOR,
                   shadowOpacity: 0.16,
                   shadowRadius: 10,
                   shadowOffset: { width: 0, height: 4 },

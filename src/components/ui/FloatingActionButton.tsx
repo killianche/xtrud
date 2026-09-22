@@ -20,6 +20,7 @@ import { Plus } from "phosphor-react-native";
 import { useEffect, useRef } from "react";
 import { Animated, Pressable } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { SHADOW_COLOR } from "@/lib/shadows";
 import { useThemeColors } from "@/lib/use-theme-color";
 import type { IconComponent } from "@/types/icon";
 import { type SFSymbol, SystemIcon } from "./SystemIcon";
@@ -84,7 +85,7 @@ export function FloatingActionButton({
           backgroundColor: tc.canvas,
           // Без обводки и с мягкой тенью (владелец, 2026-09-07: «убери
           // чёрную обводку, тень сделай слабее»).
-          shadowColor: "#000",
+          shadowColor: SHADOW_COLOR,
           shadowOpacity: 0.12,
           shadowRadius: 10,
           shadowOffset: { width: 0, height: 4 },

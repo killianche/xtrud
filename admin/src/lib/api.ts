@@ -237,6 +237,14 @@ function describe(error: { message?: string; code?: string } | null): string {
   if (code === "42501" || message.includes("forbidden")) {
     return "Нет прав администратора для этого действия.";
   }
+  // Тексты функций баннеров (0206) уже человеческие — показываем как есть.
+  if (
+    /^(Баннер не найден|Ссылка должна|Сначала загрузите фото|Не больше 20 баннеров|Название — до 80)/.test(
+      message,
+    )
+  ) {
+    return message;
+  }
   if (code === "P0002" || message.includes("user_not_found")) {
     return "Пользователь не найден.";
   }
@@ -272,6 +280,70 @@ async function rpc<T>(name: string, args?: Record<string, unknown>): Promise<T> 
     throw new Error(describe({ message: body.error ?? body.message, code: body.code }));
   }
   return res.json as T;
+}
+
+/** Рекламный баннер Главной (promo_banners, 0206). */
+export interface PromoBannerRow {
+  id: string;
+  image_path: string;
+  image_url: string;
+  link_url: string | null;
+  title: string | null;
+  is_active: boolean;
+  sort_order: number;
+  created_at: string;
+}
+
+/** id администратора из токена: сервер пускает файлы только в свою папку. */
+async function currentUserId(): Promise<string> {
+  const token = await accessToken();
+  const payload = token?.split(".")[1];
+  if (!payload) throw new Error("Войдите заново.");
+  const json = JSON.parse(atob(payload.replace(/-/g, "+").replace(/_/g, "/"))) as { sub?: string };
+  if (!json.sub) throw new Error("Войдите заново.");
+  return json.sub;
+}
+
+const PROMO_TYPES: Record<string, string> = {
+  "image/jpeg": "jpg",
+  "image/png": "png",
+  "image/webp": "webp",
+};
+/** Тот же предел, что у сервера (server/src/files/routes.ts). */
+const PROMO_MAX_BYTES = 20 * 1024 * 1024;
+
+/** Загрузить фото баннера в хранилище «promo»; вернуть путь для admin_add_promo_banner. */
+async function uploadPromoImage(file: File): Promise<string> {
+  const ext = PROMO_TYPES[file.type];
+  if (!ext) throw new Error("Нужна картинка JPEG, PNG или WebP.");
+  if (file.size > PROMO_MAX_BYTES) throw new Error("Файл больше 20 МБ. Уменьшите картинку.");
+  const uid = await currentUserId();
+  const path = `${uid}/${crypto.randomUUID()}.${ext}`;
+  const put = async (token: string | null) =>
+    fetch(`${await baseUrl()}/v2/files/promo/${path}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": file.type,
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: file,
+    });
+  let res = await put(await accessToken());
+  if (res.status === 401) res = await put(await refreshToken());
+  if (!res.ok) {
+    const body = (await res.json().catch(() => ({}))) as { error?: string };
+    throw new Error(body.error ?? "Не удалось загрузить фото.");
+  }
+  return path;
+}
+
+/** Удалить файл баннера; ошибку не показываем — строка в базе уже удалена. */
+async function deletePromoImage(path: string): Promise<void> {
+  const token = await accessToken();
+  await fetch(`${await baseUrl()}/v2/files/promo/${path}`, {
+    method: "DELETE",
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  }).catch(() => undefined);
 }
 
 export const api = {
@@ -383,4 +455,33 @@ export const api = {
     }),
   listActions: (limit = 50, offset = 0) =>
     rpc<ActionRow[]>("admin_list_actions", { p_limit: limit, p_offset: offset }),
+  /** Рекламные баннеры Главной (0206). */
+  listPromoBanners: () => rpc<PromoBannerRow[]>("admin_list_promo_banners"),
+  addPromoBanner: async (file: File, linkUrl: string, title: string) => {
+    const path = await uploadPromoImage(file);
+    try {
+      return await rpc<PromoBannerRow>("admin_add_promo_banner", {
+        p_image_path: path,
+        p_link_url: linkUrl.trim() === "" ? null : linkUrl.trim(),
+        p_title: title.trim() === "" ? null : title.trim(),
+      });
+    } catch (e) {
+      // Строка не создалась — не оставляем осиротевший файл.
+      await deletePromoImage(path);
+      throw e;
+    }
+  },
+  updatePromoBanner: (b: Pick<PromoBannerRow, "id" | "link_url" | "title" | "is_active">) =>
+    rpc<PromoBannerRow>("admin_update_promo_banner", {
+      p_id: b.id,
+      p_link_url: b.link_url?.trim() ? b.link_url.trim() : null,
+      p_title: b.title?.trim() ? b.title.trim() : null,
+      p_is_active: b.is_active,
+    }),
+  movePromoBanner: (id: string, up: boolean) =>
+    rpc<null>("admin_move_promo_banner", { p_id: id, p_up: up }),
+  deletePromoBanner: async (id: string) => {
+    const path = await rpc<string>("admin_delete_promo_banner", { p_id: id });
+    if (path) await deletePromoImage(path);
+  },
 };

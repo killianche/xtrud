@@ -77,6 +77,16 @@
     --accent: 225 29 72;
     --accent-soft: 255 228 234;
     --on-accent: 255 255 255;
+    --shadow: 0 0 0;
+    --avatar-1: 241 245 249;
+    --avatar-2: 231 229 228;
+    --avatar-3: 219 234 254;
+    --avatar-4: 209 250 229;
+    --avatar-5: 252 231 243;
+    --avatar-6: 254 243 199;
+    --avatar-7: 224 231 255;
+    --avatar-8: 237 233 254;
+    --on-avatar: 31 41 55;
   }
 
   .dark:root,
@@ -133,6 +143,16 @@
     --accent: 225 29 72;
     --accent-soft: 74 31 41;
     --on-accent: 255 255 255;
+    --shadow: 0 0 0;
+    --avatar-1: 241 245 249;
+    --avatar-2: 231 229 228;
+    --avatar-3: 219 234 254;
+    --avatar-4: 209 250 229;
+    --avatar-5: 252 231 243;
+    --avatar-6: 254 243 199;
+    --avatar-7: 224 231 255;
+    --avatar-8: 237 233 254;
+    --on-avatar: 31 41 55;
   }
 }
 /* @generated:tokens-end */

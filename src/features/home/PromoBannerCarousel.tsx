@@ -1,31 +1,20 @@
 /**
- * PromoBannerCarousel — рекламный слот на главной клиента.
+ * PromoBannerCarousel — рекламный слот на Главной.
  *
- * Зачем: место для монетизации. Реклама здесь — не наше содержимое, поэтому
- * блок называется «Реклама», и на самом баннере есть такая же метка. Обещания
- * подбора («Специально для вас») убраны 2026-09-04: подбора нет, баннер один
- * и одинаковый для всех (design-quality §5).
+ * Баннеры — фото рекламодателей 16:9 из таблицы promo_banners (0206), их
+ * загружает и включает владелец в веб-админке. Нет ни одного включённого —
+ * блок не показывается: пустой рекламный слот и заглушки не нужны
+ * (DECISION владельца 2026-09-22: «баннер с кроссовками отключить, потом
+ * скину свои»). Пока грузится или сеть упала — тоже ничего: реклама не
+ * повод держать скелетон на Главной.
  *
- * Баннер бывает двух видов — фото рекламодателя (`kind: "image"`) и
- * нарисованный приложением (`kind: "art"`). Второй нужен, пока живого
- * рекламодателя нет: слот не должен стоять пустым. Оба вида — 16:9, вся
- * карточка кликабельна.
- *
- * Про цвет: градиент баннера — ФИКСИРОВАННАЯ пара, а не токены темы. Бренд
- * рекламодателя не переворачивается вместе с темой приложения (красный баннер
- * не становится светлым в тёмной теме), а белый текст на тёмном градиенте
- * читается в обеих. Текст поверх градиента берёт `on-dark` / `surface-dark` —
- * это токены, одинаковые в обеих темах, поэтому правило «только токены»
- * соблюдено.
- *
- * Карусель: горизонтальный ScrollView со снапом и точками-индикаторами.
- * Индикаторы показываются только когда баннеров больше одного.
+ * Честность (design-quality §5): блок называется «Реклама», и на каждом
+ * баннере та же метка — чтобы рекламу не путали с нашим содержимым.
+ * Тап открывает ссылку рекламодателя; без ссылки баннер не кнопка.
  */
 
 import { Image as ExpoImage } from "expo-image";
-import { LinearGradient } from "expo-linear-gradient";
-import { Sneaker } from "phosphor-react-native";
-import { useRef, useState } from "react";
+import { useState } from "react";
 import {
   type NativeScrollEvent,
   type NativeSyntheticEvent,
@@ -34,113 +23,45 @@ import {
   View,
 } from "react-native";
 import { AppText } from "@/components/AppText";
+import { cdnImage } from "@/lib/image-cdn";
 import { openExternalUrl } from "@/lib/open-link";
 import { useAppWidth } from "@/lib/use-app-width";
-import { useThemeColor } from "@/lib/use-theme-color";
+import { type PromoBanner, usePromoBanners } from "./use-promo-banners";
 
-// Готовое фото рекламодателя подключается так:
-//   { kind: "image", id: "...", store: "...", url: "...",
-//     image: require("../../../assets/illustrations/teplodom-banner.png") }
-// Файл ТЕПЛЫЙ ДОМ лежит в assets/illustrations и ждёт возврата рекламодателя.
-
-// Баннер бывает двух видов.
-//
-//  - `image` — готовое фото рекламодателя. Так выглядит реальная реклама: в
-//    партнёрской системе картинка приходит из promo_banners.image_url.
-//  - `art` — баннер, нарисованный самим приложением из текста и цвета. Нужен,
-//    пока рекламодателя нет: слот не должен стоять пустым или показывать
-//    чужой бренд.
-//
-// DECISION владельца 2026-09-04: поставить в слот рекламу кроссовок.
-// Название и логотип реальной марки я не ставлю: это чужой товарный знак, а
-// баннер в приложении из App Store выглядит как настоящая реклама этой марки.
-// Когда появится живой рекламодатель — его фото встаёт сюда одной строкой
-// данных, вид баннера при этом не меняется.
-interface PromoImage {
-  kind: "image";
-  id: string;
-  /** Название партнёра — для accessibility label (на самом фото уже всё есть). */
-  store: string;
-  /** Фото-баннер рекламодателя (require демо-ассета или {uri} из БД). */
-  image: number;
-  url: string;
-}
-
-interface PromoArt {
-  kind: "art";
-  id: string;
-  store: string;
-  /** Крупная строка — то, ради чего баннер существует. */
-  headline: string;
-  /** Пояснение под ней. */
-  subline: string;
-  /** Надпись на кнопке. */
-  cta: string;
-  /** Пара цветов фона. Не токены темы: бренд рекламодателя не меняется вместе
-   *  с темой приложения, а белый текст обязан оставаться читаемым в обеих. */
-  gradient: readonly [string, string];
-  url: string;
-}
-
-type Promo = PromoImage | PromoArt;
-
-// Баннеры. Пока один реальный (ТЕПЛЫЙ ДОМ). Остальные слоты добавим, когда
-// подключим партнёрку (из таблицы promo_banners: image_url + url + valid_until).
-// Тап по баннеру — звонок на номер с него (tel:), это реальное действие (§F).
-const PROMOS: Promo[] = [
-  {
-    kind: "art",
-    id: "ad-sneakers",
-    store: "Кроссовки — скидка 20%",
-    headline: "Кроссовки\nсо скидкой 20%",
-    subline: "Спортивная обувь · доставка по Ингушетии",
-    cta: "Смотреть",
-    gradient: ["#1f2937", "#0f172a"],
-    url: "https://xtrud.pro",
-  },
-];
+const SIDE_INSET = 20;
+const CARD_GAP = 12;
 
 export function PromoBannerCarousel() {
+  const { data: banners } = usePromoBanners();
   const viewportWidth = useAppWidth();
   const [activeIndex, setActiveIndex] = useState(0);
-  const scrollRef = useRef<ScrollView>(null);
 
-  // Ширина одного баннера = ширина контента минус горизонтальные поля (px-5 = 20
-  // с каждой стороны). Карусель — full-bleed ScrollView (без mx-5), а отступ
-  // создаётся paddingHorizontal у contentContainer, чтобы соседние карточки
-  // «выглядывали» краем (Costco/PayPal peeking-паттерн).
-  const sideInset = 20;
-  const cardGap = 12;
+  if (!banners || banners.length === 0) return null;
+
+  // Один баннер — во всю ширину контента; несколько — следующий выглядывает
+  // краем справа, чтобы было видно, что их можно листать.
   const contentWidth = Math.min(viewportWidth, 720);
-  // Карточка чуть уже контента — чтобы следующий баннер подсматривался справа.
-  const cardWidth = contentWidth - sideInset * 2;
-  const snapInterval = cardWidth + cardGap;
+  const single = banners.length === 1;
+  const cardWidth = contentWidth - SIDE_INSET * 2 - (single ? 0 : 24);
+  const snapInterval = cardWidth + CARD_GAP;
 
-  function onScroll(e: NativeSyntheticEvent<NativeScrollEvent>) {
-    const x = e.nativeEvent.contentOffset.x;
-    const idx = Math.round(x / snapInterval);
-    if (idx !== activeIndex && idx >= 0 && idx < PROMOS.length) {
-      setActiveIndex(idx);
-    }
-  }
-
-  function openPromo(url: string) {
-    // CTA не пустой (правило §F) — открываем сайт партнёра во внешней вкладке
-    // (openExternalUrl: на web — новая вкладка, не перезагружает SPA).
-    openExternalUrl(url);
-  }
+  const onScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const idx = Math.round(e.nativeEvent.contentOffset.x / snapInterval);
+    if (idx !== activeIndex && idx >= 0 && idx < banners.length) setActiveIndex(idx);
+  };
 
   return (
     <View className="mt-8">
-      {/* Заголовок секции. Было «Специально для вас» — это обещание подбора,
-          которого нет: баннер один и одинаковый для всех (design-quality §5,
-          честность интерфейса). Реклама называется рекламой. */}
-      <AppText weight="bold" className="mb-3 px-4 text-title-lg text-ink">
+      <AppText
+        accessibilityRole="header"
+        weight="bold"
+        className="mb-3 px-5 text-title-lg text-ink"
+      >
         Реклама
       </AppText>
       <ScrollView
-        ref={scrollRef}
         horizontal
+        scrollEnabled={!single}
         showsHorizontalScrollIndicator={false}
         decelerationRate="fast"
         snapToInterval={snapInterval}
@@ -148,126 +69,80 @@ export function PromoBannerCarousel() {
         disableIntervalMomentum
         onScroll={onScroll}
         scrollEventThrottle={16}
-        contentContainerStyle={{
-          paddingHorizontal: sideInset,
-          gap: cardGap,
-        }}
+        contentContainerStyle={{ paddingHorizontal: SIDE_INSET, gap: CARD_GAP }}
       >
-        {PROMOS.map((promo) => (
-          <PromoCard
-            key={promo.id}
-            promo={promo}
-            width={cardWidth}
-            onPress={() => openPromo(promo.url)}
-          />
+        {banners.map((banner) => (
+          <PromoCard key={banner.id} banner={banner} width={cardWidth} />
         ))}
       </ScrollView>
 
-      {/* Точки-индикаторы. Активная — accent (link), шире (rounded pill).
-          Неактивные — приглушённые узкие точки. Паттерн themepack/Costco. */}
-      {PROMOS.length > 1 ? (
-        <View className="mt-3 flex-row items-center justify-center gap-1.5">
-          {PROMOS.map((promo, idx) => {
-            const isActive = idx === activeIndex;
-            return (
-              <View
-                key={promo.id}
-                className={`h-1.5 rounded-full ${isActive ? "bg-link" : "bg-hairline-strong/40"}`}
-                style={{ width: isActive ? 18 : 6 }}
-              />
-            );
-          })}
+      {banners.length > 1 ? (
+        <View
+          className="mt-3 flex-row items-center justify-center gap-1.5"
+          accessibilityElementsHidden
+          importantForAccessibility="no-hide-descendants"
+        >
+          {banners.map((banner, idx) => (
+            <View
+              key={banner.id}
+              className={`h-1.5 rounded-full ${idx === activeIndex ? "bg-link" : "bg-hairline-strong/40"}`}
+              style={{ width: idx === activeIndex ? 18 : 6 }}
+            />
+          ))}
         </View>
       ) : null}
     </View>
   );
 }
 
-function PromoCard({
-  promo,
-  width,
-  onPress,
-}: {
-  promo: Promo;
-  width: number;
-  onPress: () => void;
-}) {
-  // Соотношение баннера 16:9 — фидбэк владельца. height = width*9/16.
+function PromoCard({ banner, width }: { banner: PromoBanner; width: number }) {
+  // 16:9 — формат баннера (фидбэк владельца).
   const height = Math.round((width * 9) / 16);
+  const label = banner.title ? `Реклама: ${banner.title}` : "Реклама";
+  const link = banner.link_url;
+
+  const body = (
+    <>
+      <ExpoImage
+        source={{ uri: cdnImage(banner.image_url, { width, quality: 80 }) }}
+        style={{ width: "100%", height: "100%" }}
+        contentFit="cover"
+        transition={150}
+        accessibilityIgnoresInvertColors
+      />
+      {/* Метка на самом баннере — рекламу не путают с нашим содержимым. */}
+      <View className="absolute top-2.5 left-2.5 rounded-pill bg-surface-dark/60 px-2 py-0.5">
+        <AppText weight="semibold" className="text-caption text-on-dark">
+          Реклама
+        </AppText>
+      </View>
+    </>
+  );
+
+  if (!link) {
+    return (
+      <View
+        accessible
+        accessibilityRole="image"
+        accessibilityLabel={label}
+        className="overflow-hidden rounded-2xl bg-surface-2"
+        style={{ width, height }}
+      >
+        {body}
+      </View>
+    );
+  }
 
   return (
     <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={`Реклама: ${promo.store}`}
-      onPress={onPress}
+      accessibilityRole="link"
+      accessibilityLabel={label}
+      accessibilityHint="Откроется сайт рекламодателя"
+      onPress={() => openExternalUrl(link)}
       className="overflow-hidden rounded-2xl bg-surface-2 active:opacity-90"
       style={{ width, height }}
     >
-      {promo.kind === "image" ? (
-        <ExpoImage
-          source={promo.image}
-          style={{ width: "100%", height: "100%" }}
-          contentFit="cover"
-          transition={150}
-        />
-      ) : (
-        <PromoArtwork promo={promo} height={height} />
-      )}
+      {body}
     </Pressable>
-  );
-}
-
-/**
- * Нарисованный баннер. Строится по тому же правилу, что карточка задания:
- * держится на типографике, а не на украшениях. Крупная строка, пояснение,
- * одна светлая кнопка и большой полупрозрачный предмет справа вместо
- * стокового фото.
- */
-function PromoArtwork({ promo, height }: { promo: PromoArt; height: number }) {
-  const onDark = useThemeColor("on-dark");
-
-  return (
-    <LinearGradient
-      colors={promo.gradient}
-      start={{ x: 0, y: 0 }}
-      end={{ x: 1, y: 1 }}
-      style={{ width: "100%", height: "100%" }}
-    >
-      {/* Предмет рекламы — крупно и приглушённо, как подложка. Он уходит за
-          правый край: так баннер выглядит кадром, а не наклейкой. */}
-      <View
-        pointerEvents="none"
-        style={{
-          position: "absolute",
-          right: -height * 0.18,
-          bottom: -height * 0.22,
-          opacity: 0.16,
-          transform: [{ rotate: "-12deg" }],
-        }}
-      >
-        <Sneaker size={height * 0.95} weight="fill" color={onDark} />
-      </View>
-
-      <View className="flex-1 justify-center px-5 py-4">
-        {/* Слово «Реклама» на самом баннере — чтобы её не путали с нашим
-            содержимым. Требование честности интерфейса, не украшение. */}
-        <View className="self-start rounded-pill bg-on-dark/15 px-2 py-0.5">
-          <AppText weight="semibold" className="text-caption text-on-dark">
-            Реклама
-          </AppText>
-        </View>
-        <AppText weight="bold" className="mt-2 text-display-sm text-on-dark">
-          {promo.headline}
-        </AppText>
-        <AppText className="mt-1 text-body-sm text-on-dark-soft" numberOfLines={1}>
-          {promo.subline}
-        </AppText>
-        <View className="mt-3 self-start rounded-pill bg-on-dark px-4 py-2">
-          <AppText weight="semibold" className="text-body-sm text-surface-dark">
-            {promo.cta}
-          </AppText>
-        </View>
-      </View>
-    </LinearGradient>
   );
 }

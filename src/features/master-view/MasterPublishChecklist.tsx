@@ -129,7 +129,7 @@ export function MasterPublishChecklist({ progress }: MasterPublishChecklistProps
           (MASTER_RANKING_PLAN.md §3.5 — прозрачность для мастера). */}
       <View className="mt-3 border-t border-hairline pt-3">
         <AppText className="text-caption text-mute" style={{ lineHeight: 18 }}>
-          Нажимайте «Готов сегодня» и отвечайте на заказы — активные специалисты показываются выше.
+          Нажимайте «Готов сегодня» и отвечайте на задания — активные специалисты показываются выше.
         </AppText>
       </View>
     </View>

@@ -40,17 +40,11 @@ import {
 } from "@/features/master-view/use-search-masters";
 import { specialistsLabel } from "@/features/orders/plural-ru";
 import { describeQueryError } from "@/lib/describe-query-error";
+import { CARD_SHADOW } from "@/lib/shadows";
 import { useDebouncedValue } from "@/lib/use-debounced-value";
 import { useThemeColors } from "@/lib/use-theme-color";
 
-/** Та же тень, что у карточки задания: край читается без опоры на линию. */
-const CARD_SHADOW = {
-  shadowColor: "#000000",
-  shadowOpacity: 0.05,
-  shadowRadius: 8,
-  shadowOffset: { width: 0, height: 2 },
-  elevation: 2,
-} as const;
+// Тень карточки — та же, что у карточки задания (src/lib/shadows.ts).
 
 function fullName(first: string | null, last: string | null): string {
   const name = [first, last].filter(Boolean).join(" ").trim();
@@ -270,6 +264,14 @@ export function SpecialistsListScreen() {
                 setQuery("");
                 clearFilters();
               }}
+              // Пустой раздел — не тупик: задание увидят специалисты, которые
+              // придут позже; категория уже выбрана (аудит 2026-09-22).
+              onPublish={() =>
+                router.push({
+                  pathname: "/orders/new",
+                  params: l2Id ? { l2: l2Id } : {},
+                } as never)
+              }
             />
           )
         }
@@ -336,12 +338,14 @@ function EmptyBlock({
   inSection,
   accent,
   onReset,
+  onPublish,
 }: {
   hasQuery: boolean;
   /** Открыт раздел, и в нём просто нет специалистов — это не «не нашли». */
   inSection: boolean;
   accent: string;
   onReset: () => void;
+  onPublish: () => void;
 }) {
   // Пусто — значит пусто: одна строка и одно действие (DECISION владельца
   // 2026-09-08: «просто напиши, что не нашли, и кнопку — без лишних текстов»).
@@ -368,7 +372,18 @@ function EmptyBlock({
             Сбросить фильтры
           </AppText>
         </Pressable>
-      ) : null}
+      ) : (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Опубликовать задание"
+          onPress={onPublish}
+          className="mt-6 min-h-12 items-center justify-center rounded-pill bg-accent px-6 active:opacity-80"
+        >
+          <AppText weight="semibold" className="text-body-md text-on-accent">
+            Опубликовать задание
+          </AppText>
+        </Pressable>
+      )}
     </View>
   );
 }

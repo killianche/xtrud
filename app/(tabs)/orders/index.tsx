@@ -175,8 +175,10 @@ export default function OrdersScreen() {
         onLayoutHeight={large.setBarHeight}
         hideTitle
         alwaysCompact
+        belowFloating
         below={
           <SegmentedControl<Segment>
+            bare
             value={resolved}
             onChange={setTab}
             items={[
@@ -188,7 +190,7 @@ export default function OrdersScreen() {
               },
               {
                 id: "responses",
-                label: "Как мастер",
+                label: "Как специалист",
                 tone: "primary",
                 icon: Wrench,
               },

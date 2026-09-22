@@ -691,10 +691,10 @@ export default function OrderDetailScreen() {
           {isOwner && order.contact_mode === "phone_open" ? (
             <View className="mx-5 mt-6 rounded-2xl bg-canvas-soft p-4">
               <AppText weight="semibold" className="text-ios-body text-ink">
-                Мастера свяжутся напрямую
+                Специалисты свяжутся напрямую
               </AppText>
               <AppText className="mt-1 text-ios-subheadline text-mute">
-                Вы выбрали связь по номеру: откликов в приложении не будет, мастера позвонят или
+                Вы выбрали связь по номеру: откликов в приложении не будет, специалисты позвонят или
                 напишут в WhatsApp.
               </AppText>
             </View>

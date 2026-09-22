@@ -74,7 +74,7 @@ export default function MasterReviewScreen() {
   const masterId = typeof params.masterId === "string" ? params.masterId : undefined;
   // Задание, по которому отзыв (0196): без него сервер отзыв не примет.
   const orderId = typeof params.orderId === "string" ? params.orderId : undefined;
-  const masterName = params.masterName || "Мастер";
+  const masterName = params.masterName || "Специалист";
   const { session } = useAuthSession();
   const authorId = session?.user?.id;
 
@@ -139,7 +139,7 @@ export default function MasterReviewScreen() {
 
         <View className="flex-1 px-5 pb-6">
           <AppText className="text-body-md text-mute">
-            Ваша оценка мастера{" "}
+            Ваша оценка специалиста{" "}
             <AppText weight="semibold" className="text-ink">
               {masterName}
             </AppText>

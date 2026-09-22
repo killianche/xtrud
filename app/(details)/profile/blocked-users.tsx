@@ -115,7 +115,7 @@ interface BlockedUserCardProps {
 
 function BlockedUserCard({ item, pending, onUnblock }: BlockedUserCardProps) {
   const fullName = [item.firstName, item.lastName].filter(Boolean).join(" ") || "Пользователь";
-  const roleLabel = item.isMaster ? "Мастер" : "Клиент";
+  const roleLabel = item.isMaster ? "Специалист" : "Клиент";
 
   return (
     <View className="rounded-lg border border-hairline bg-canvas-soft p-3">
@@ -163,7 +163,8 @@ function EmptyState() {
         Никого не заблокировано
       </AppText>
       <AppText className="mt-2 text-body-md text-body text-center">
-        Заблокировать можно из меню «Действия» в профиле мастера, клиента или на странице задания.
+        Заблокировать можно из меню «Действия» в профиле специалиста, клиента или на странице
+        задания.
       </AppText>
     </View>
   );

@@ -240,8 +240,10 @@ export default function SpecialistsCategoriesScreen() {
         onLayoutHeight={large.setBarHeight}
         hideTitle
         alwaysCompact
+        belowFloating
         below={
           <SegmentedControl<Segment>
+            bare
             value={segment}
             onChange={setSegment}
             items={[

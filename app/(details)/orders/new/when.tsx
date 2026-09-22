@@ -17,7 +17,7 @@ const OPTIONS: Array<{ id: OrderUrgencyValue; title: string; subtitle: string }>
   { id: "urgent", title: "Срочно", subtitle: "Сегодня или завтра" },
   { id: "this_week", title: "На неделе", subtitle: "В ближайшие 7 дней" },
   { id: "this_month", title: "В этом месяце", subtitle: "В ближайшие 30 дней" },
-  { id: "flexible", title: "Не срочно", subtitle: "Когда будет удобно мастеру" },
+  { id: "flexible", title: "Не срочно", subtitle: "Когда будет удобно специалисту" },
   { id: "by_date", title: "К дате", subtitle: "Выбрать день" },
 ];
 

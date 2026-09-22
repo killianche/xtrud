@@ -161,6 +161,13 @@ export interface LargeTitleBarProps {
   compactRow?: boolean;
   /** Без строки заголовка: закреплена только панель `below` (сегменты). */
   hideTitle?: boolean;
+  /**
+   * Панель `below` — плавающая стеклянная капсула, как нижнее меню iOS 26:
+   * отступ от краёв и от чёлки, полное скругление, содержимое проезжает под
+   * ней (DECISION владельца 2026-09-22: «сделать плавающим, как нижнее меню»).
+   * Общий фон полосы при этом не рисуется — капсула сама себе материал.
+   */
+  belowFloating?: boolean;
 }
 
 export function LargeTitleBar({
@@ -173,6 +180,7 @@ export function LargeTitleBar({
   alwaysCompact = false,
   compactRow,
   hideTitle = false,
+  belowFloating = false,
 }: LargeTitleBarProps) {
   const insets = useSafeAreaInsets();
   const tc = useThemeColors(["ink"]);
@@ -184,23 +192,26 @@ export function LargeTitleBar({
       pointerEvents="box-none"
       style={{ position: "absolute", top: 0, left: 0, right: 0, zIndex: 10 }}
     >
-      {/* Фон строки — только когда содержимое уехало под неё. */}
-      <Animated.View
-        pointerEvents="none"
-        style={{
-          position: "absolute",
-          top: 0,
-          left: 0,
-          right: 0,
-          ...(hasRow ? { bottom: 0 } : { height: insets.top + NAV_ROW_HEIGHT }),
-          opacity: barOpacity,
-        }}
-      >
-        <GlassSurface style={{ flex: 1 }} fallbackClassName="bg-canvas">
-          <View className="flex-1" />
-          {LIQUID_GLASS ? null : <View className="h-px bg-hairline" />}
-        </GlassSurface>
-      </Animated.View>
+      {/* Фон строки — только когда содержимое уехало под неё. У плавающей
+          капсулы фона полосы нет: материал у самой капсулы. */}
+      {belowFloating ? null : (
+        <Animated.View
+          pointerEvents="none"
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            right: 0,
+            ...(hasRow ? { bottom: 0 } : { height: insets.top + NAV_ROW_HEIGHT }),
+            opacity: barOpacity,
+          }}
+        >
+          <GlassSurface style={{ flex: 1 }} fallbackClassName="bg-canvas">
+            <View className="flex-1" />
+            {LIQUID_GLASS ? null : <View className="h-px bg-hairline" />}
+          </GlassSurface>
+        </Animated.View>
+      )}
 
       {hasRow ? null : (
         // Строки в покое нет: полоса с компактным заголовком живёт поверх
@@ -215,6 +226,7 @@ export function LargeTitleBar({
         >
           <View className="justify-center" style={{ height: NAV_ROW_HEIGHT }}>
             <AppText
+              accessibilityRole="header"
               weight="semibold"
               className="text-center text-ios-title text-ink"
               numberOfLines={1}
@@ -325,7 +337,18 @@ export function LargeTitleBar({
           </View>
         ) : null}
 
-        {below}
+        {belowFloating && below ? (
+          <View pointerEvents="box-none" style={{ paddingTop: 8, paddingHorizontal: 16 }}>
+            <GlassSurface
+              fallbackClassName="border border-hairline bg-canvas"
+              style={{ borderRadius: 999, overflow: "hidden" }}
+            >
+              {below}
+            </GlassSurface>
+          </View>
+        ) : (
+          below
+        )}
       </View>
     </View>
   );
@@ -340,7 +363,7 @@ export interface LargeTitleBlockProps {
 export function LargeTitleBlock({ title, subtitle }: LargeTitleBlockProps) {
   return (
     <View className="px-5 pt-3 pb-4">
-      <AppText weight="bold" className="text-ios-large-title text-ink">
+      <AppText accessibilityRole="header" weight="bold" className="text-ios-large-title text-ink">
         {title}
       </AppText>
       {subtitle ? (

@@ -113,7 +113,7 @@ export default function AdminRatingsScreen() {
           <CaretLeft size={28} weight="bold" color={tc.ink} />
         </Pressable>
         <AppText weight="bold" className="flex-1 text-title-lg text-ink">
-          Рейтинг мастеров
+          Рейтинг специалистов
         </AppText>
       </View>
 
@@ -137,7 +137,7 @@ export default function AdminRatingsScreen() {
 
         {data && data.length === 0 && !isLoading && (
           <View className="mt-16">
-            <EmptyState icon={Star} title="Пока пусто" hint="Нет мастеров с категориями." />
+            <EmptyState icon={Star} title="Пока пусто" hint="Нет специалистов с категориями." />
           </View>
         )}
 

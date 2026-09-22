@@ -107,7 +107,7 @@ export function PublishAuthSheet({ onClose }: PublishAuthSheetProps) {
         </View>
 
         <AppText className="text-center text-caption text-mute">
-          Ваш номер скрыт. С мастером связываетесь только вы.
+          Ваш номер скрыт. Со специалистом связываетесь только вы.
         </AppText>
       </View>
     </View>

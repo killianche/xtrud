@@ -118,8 +118,8 @@ export default function AdminHubScreen() {
         <View className="gap-3 px-6 pt-2">
           <HubCard
             icon={ChartBar}
-            title="Рейтинг мастеров"
-            hint="Внутренний балл мастеров по категориям — кто выше в выдаче."
+            title="Рейтинг специалистов"
+            hint="Внутренний балл специалистов по категориям — кто выше в выдаче."
             onPress={() => router.push("/admin/ratings" as never)}
           />
           <HubCard

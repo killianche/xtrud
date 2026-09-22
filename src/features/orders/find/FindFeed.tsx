@@ -16,9 +16,16 @@ import { FlashList } from "@shopify/flash-list";
 import { useRouter } from "expo-router";
 import { CaretRight, MagnifyingGlass, SlidersHorizontal, Tray, X } from "phosphor-react-native";
 import { useEffect, useMemo, useState } from "react";
-import { Pressable, TextInput, View } from "react-native";
+import {
+  type NativeScrollEvent,
+  type NativeSyntheticEvent,
+  Pressable,
+  TextInput,
+  View,
+} from "react-native";
 import { AppText } from "@/components/AppText";
 import { OrderRowsSkeleton } from "@/components/OrderRowsSkeleton";
+import { LargeTitleBlock } from "@/components/ui/LargeTitle";
 import { useAuthSession } from "@/features/auth/use-auth-session";
 import { useCategoriesL1 } from "@/features/categories/use-categories-l1";
 import { useVisibleCategories } from "@/features/categories/use-visible-categories";
@@ -30,14 +37,23 @@ import { useMyRespondedOrderIds } from "@/features/orders/use-my-responded-order
 import { useMarkFeedSeen } from "@/features/orders/use-unread-feed";
 import { describeQueryError } from "@/lib/describe-query-error";
 import { hapticSelection } from "@/lib/haptics";
+import { useTabBarSpace } from "@/lib/tab-bar-space";
 import { useThemeColors } from "@/lib/use-theme-color";
 import { FindOrderRow } from "./FindOrderRow";
 import { filtersSummary } from "./filters-summary";
 
 const EMPTY_IDS: ReadonlySet<string> = new Set();
 
-export function FindFeed() {
+export function FindFeed({
+  contentTop,
+  onScroll,
+}: {
+  /** Отступ под закреплённую строку заголовка — из useLargeTitle(). */
+  contentTop: number;
+  onScroll: (event: NativeSyntheticEvent<NativeScrollEvent>) => void;
+}) {
   const router = useRouter();
+  const tabBarSpace = useTabBarSpace();
   const { session } = useAuthSession();
   const userId = session?.user?.id;
   const tc = useThemeColors(["ink", "mute", "accent", "muted-soft"]);
@@ -97,7 +113,10 @@ export function FindFeed() {
   };
 
   const header = (
-    <View className="gap-3 px-4 pb-3 pt-2">
+    <View className="gap-3 px-4 pb-3">
+      <View className="-mx-1">
+        <LargeTitleBlock title="Найти задание" />
+      </View>
       <View className="min-h-11 flex-row items-center gap-2 rounded-pill bg-surface-2 px-4 py-2">
         <MagnifyingGlass size={18} weight="bold" color={tc.mute} />
         <TextInput
@@ -164,7 +183,9 @@ export function FindFeed() {
       <FlashList
         data={[]}
         renderItem={() => null}
-        contentInsetAdjustmentBehavior="automatic"
+        contentContainerStyle={{ paddingTop: contentTop, paddingBottom: tabBarSpace }}
+        onScroll={onScroll}
+        scrollEventThrottle={16}
         keyboardDismissMode="on-drag"
         keyboardShouldPersistTaps="handled"
         ListHeaderComponent={
@@ -200,7 +221,9 @@ export function FindFeed() {
       data={rows}
       keyExtractor={(o) => o.id}
       extraData={responded}
-      contentInsetAdjustmentBehavior="automatic"
+      contentContainerStyle={{ paddingTop: contentTop, paddingBottom: tabBarSpace }}
+      onScroll={onScroll}
+      scrollEventThrottle={16}
       keyboardDismissMode="on-drag"
       keyboardShouldPersistTaps="handled"
       ListHeaderComponent={header}

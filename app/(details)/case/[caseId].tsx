@@ -56,7 +56,7 @@ export default function PublicCaseScreen() {
   if (detail.isLoading) {
     return (
       <View className="flex-1 bg-canvas" style={{ paddingTop: insets.top }}>
-        <ScreenHeader title="Работа мастера" onBack={goBack} />
+        <ScreenHeader title="Работа специалиста" onBack={goBack} />
         <View className="px-5 pt-3 gap-3">
           <Skeleton style={{ width: "100%", height: heroHeight, borderRadius: 12 }} />
           <Skeleton style={{ width: "60%", height: 24, borderRadius: 6 }} />
@@ -69,13 +69,13 @@ export default function PublicCaseScreen() {
   if (!data) {
     return (
       <View className="flex-1 bg-canvas" style={{ paddingTop: insets.top }}>
-        <ScreenHeader title="Работа мастера" onBack={goBack} />
+        <ScreenHeader title="Работа специалиста" onBack={goBack} />
         <View className="flex-1 items-center justify-center px-8">
           <AppText weight="semibold" className="text-title-lg text-ink text-center">
             Кейс не найден
           </AppText>
           <AppText className="mt-2 text-body-md text-mute text-center">
-            Возможно, мастер удалил эту работу из портфолио.
+            Возможно, специалист удалил эту работу из портфолио.
           </AppText>
         </View>
       </View>
@@ -87,7 +87,7 @@ export default function PublicCaseScreen() {
 
   return (
     <View className="flex-1 bg-canvas" style={{ paddingTop: insets.top }}>
-      <ScreenHeader title="Работа мастера" onBack={goBack} />
+      <ScreenHeader title="Работа специалиста" onBack={goBack} />
       <ScrollView
         contentContainerStyle={{ paddingBottom: insets.bottom + 32 }}
         showsVerticalScrollIndicator={false}

@@ -40,11 +40,14 @@ export default function MasterCasesScreen() {
 
   const fullName =
     [profile.data?.user?.first_name, profile.data?.user?.last_name].filter(Boolean).join(" ") ||
-    "Мастер";
+    "Специалист";
 
   return (
     <View className="flex-1 bg-canvas" style={{ paddingTop: insets.top }}>
-      <ScreenHeader title={fullName ? `Работы — ${fullName}` : "Работы мастера"} onBack={goBack} />
+      <ScreenHeader
+        title={fullName ? `Работы — ${fullName}` : "Работы специалиста"}
+        onBack={goBack}
+      />
 
       {cases.isLoading ? (
         <View className="px-5 pt-3 gap-3">

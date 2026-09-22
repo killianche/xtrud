@@ -111,7 +111,7 @@ export default function TaskCategoryScreen() {
       subtitle={
         params.stale === "1"
           ? "Категория изменилась в каталоге — выберите её заново."
-          : `Можно отметить до ${MAX_TASK_CATEGORIES} — задание увидят мастера каждой. Первая — основная.`
+          : `Можно отметить до ${MAX_TASK_CATEGORIES} — задание увидят специалисты каждой. Первая — основная.`
       }
       onBack={nav.fromReview ? nav.goBack : undefined}
       onClose={nav.close}

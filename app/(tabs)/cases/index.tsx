@@ -97,8 +97,8 @@ export default function CasesScreen() {
             Войдите в аккаунт
           </AppText>
           <AppText className="mt-2 text-body-sm text-mute text-center">
-            «Ваши работы» — портфолио мастера. Войдите по телефону, чтобы добавить фото своих работ
-            и привлечь клиентов.
+            «Ваши работы» — портфолио специалиста. Войдите по телефону, чтобы добавить фото своих
+            работ и привлечь клиентов.
           </AppText>
           <Pressable
             accessibilityRole="button"
@@ -496,7 +496,7 @@ function CasesEmptyState({
         Покажите ваши работы
       </AppText>
       <AppText className="mt-2 text-body-sm text-mute text-center">
-        Добавьте фото — клиенты доверяют мастерам с портфолио в разы чаще.
+        Добавьте фото — клиенты доверяют специалистам с портфолио в разы чаще.
       </AppText>
       <Pressable
         accessibilityRole="button"

@@ -63,8 +63,8 @@ export default function TaskContactsScreen() {
       <ChoiceGroup
         footer={
           direct
-            ? "Номер увидят все, кто откроет задание. Откликов в приложении не будет — мастера свяжутся сами."
-            : "Ваш номер скрыт. Мастера пришлют цену и срок, а вы сами решите, кому позвонить или написать."
+            ? "Номер увидят все, кто откроет задание. Откликов в приложении не будет — специалисты свяжутся сами."
+            : "Ваш номер скрыт. Специалисты пришлют цену и срок, а вы сами решите, кому позвонить или написать."
         }
       >
         <ChoiceRow
@@ -79,7 +79,7 @@ export default function TaskContactsScreen() {
         />
         <ChoiceRow
           title="Звонок или WhatsApp напрямую"
-          subtitle="Оставляете номер — мастера звонят и пишут сразу"
+          subtitle="Оставляете номер — специалисты звонят и пишут сразу"
           icon={<Phone size={18} weight="bold" color={direct ? tc["on-accent"] : tc.ink} />}
           iconAccent={direct}
           selected={direct}

@@ -156,7 +156,7 @@ export default function TaskReviewScreen() {
         subtitle={
           outcome.kind === "saved"
             ? undefined
-            : "Мастера из этой категории уже получают уведомление. Отклики придут в «Мои задания»."
+            : "Специалисты из этой категории уже получают уведомление. Отклики придут в «Мои задания»."
         }
         onClose={() => router.replace("/(tabs)/orders" as never)}
         primaryLabel=""

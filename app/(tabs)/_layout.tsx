@@ -91,7 +91,15 @@ export default function TabsLayout() {
   const { data: unreadReviews = 0 } = useUnreadReviewsCount(userId ?? undefined);
   const specialistsBadge = badgeLabel(unreadReviews);
 
-  const tc = useThemeColors(["error", "canvas", "hairline", "ink", "accent", "mute"]);
+  const tc = useThemeColors([
+    "error",
+    "canvas",
+    "hairline",
+    "ink",
+    "accent",
+    "mute",
+    "accent-soft",
+  ]);
   // Бейдж всегда на цветном фоне → текст фиксировано белый в обоих режимах.
 
   const { colorScheme } = useColorScheme();
@@ -136,6 +144,10 @@ export default function TabsLayout() {
       <NativeTabs
         disableTransparentOnScrollEdge={!LIQUID_GLASS}
         tintColor={tc.accent}
+        // Пилюля выбранной вкладки — системный индикатор iOS 26; по умолчанию
+        // серый, у нас — тот же мягкий акцент, что у выбранных чипов
+        // (владелец, 2026-09-22: «плашка серая, непонятная»).
+        indicatorColor={tc["accent-soft"]}
         iconColor={{ default: tc.mute, selected: tc.accent }}
         badgeBackgroundColor={tc.error}
         labelStyle={{ default: { color: tc.mute }, selected: { color: tc.accent } }}

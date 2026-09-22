@@ -254,7 +254,7 @@ export default function ProfileScreen() {
           <View className="mt-2 flex-row items-center gap-2">
             <View className="rounded-full bg-canvas-soft-2 px-2.5 py-0.5">
               <AppText weight="medium" className="text-caption text-body">
-                {isClient ? "Клиент" : "Мастер"}
+                {isClient ? "Клиент" : "Специалист"}
               </AppText>
             </View>
             {/* Рейтинг показываем ТОЛЬКО мастеру. У клиента рейтинга нет
@@ -691,7 +691,7 @@ function GuestProfileScreen({ insets, themeColors, onLogin }: GuestProfileScreen
             className="mt-2 max-w-xs text-body-sm text-mute text-center"
             style={{ lineHeight: 20 }}
           >
-            Создавайте заказы, общайтесь с мастерами и оставляйте отзывы. Регистрация по номеру
+            Создавайте заказы, общайтесь со специалистами и оставляйте отзывы. Регистрация по номеру
             телефона — 30 секунд.
           </AppText>
 

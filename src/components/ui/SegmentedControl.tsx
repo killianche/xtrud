@@ -1,6 +1,6 @@
 /**
- * SegmentedControl — переключатель контекста в закреплённой шапке вкладки
- * («Как клиент / Как мастер», «Найти специалиста / Я специалист»). Один
+ * SegmentedControl — переключатель контекста в шапке вкладки
+ * («Как клиент / Как специалист», «Найти специалиста / Я специалист»). Один
  * компонент для всех вкладок — одинаковый вид (DECISION владельца 2026-09-08:
  * «в специалистах такой же переключатель, как в моих заданиях»).
  *
@@ -30,14 +30,18 @@ export function SegmentedControl<T extends string>({
   items,
   value,
   onChange,
+  bare = false,
 }: {
   items: ReadonlyArray<SegmentItem<T>>;
   value: T;
   onChange: (next: T) => void;
+  /** Без собственного фона и отступов: форму и материал даёт капсула снаружи
+   *  (плавающая панель `LargeTitleBar belowFloating`). */
+  bare?: boolean;
 }) {
   const tc = useThemeColors(["mute", "on-accent", "on-primary"]);
   return (
-    <View className="mx-4 mb-3 flex-row rounded-xl bg-canvas-soft p-1">
+    <View className={bare ? "flex-row p-1" : "mx-4 mb-3 flex-row rounded-xl bg-canvas-soft p-1"}>
       {items.map((item) => {
         const active = value === item.id;
         const title =
@@ -62,13 +66,14 @@ export function SegmentedControl<T extends string>({
               hapticSelection();
               onChange(item.id);
             }}
-            className={`min-h-12 flex-1 flex-row items-center justify-center gap-1.5 rounded-lg px-2 ${
-              active ? activeClass : ""
-            }`}
+            className={`min-h-12 flex-1 flex-row items-center justify-center gap-1.5 px-2 ${
+              bare ? "rounded-full" : "rounded-lg"
+            } ${active ? activeClass : ""}`}
           >
             {Icon ? <Icon size={18} weight={active ? "fill" : "bold"} color={iconColor} /> : null}
             <AppText
               weight="semibold"
+              numberOfLines={1}
               className={`shrink text-body-md ${active ? activeText : "text-mute"}`}
             >
               {title}

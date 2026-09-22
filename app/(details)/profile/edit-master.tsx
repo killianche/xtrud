@@ -179,7 +179,7 @@ export default function EditMasterScreen() {
           </AppText>
         </Pressable>
         <AppText weight="semibold" className="text-title-md text-ink">
-          Профиль мастера
+          Профиль специалиста
         </AppText>
         <Pressable
           accessibilityRole="button"
@@ -218,7 +218,7 @@ export default function EditMasterScreen() {
       {userId && !profileLoading && user && !isMaster && (
         <View className="flex-1 items-center justify-center px-6">
           <AppText className="text-center text-body-md text-error">
-            Этот экран доступен только мастерам.
+            Этот экран доступен только специалистам.
           </AppText>
         </View>
       )}
@@ -226,7 +226,7 @@ export default function EditMasterScreen() {
       {userId && !profileLoading && user && isMaster && !masterProfile && (
         <View className="flex-1 items-center justify-center px-6">
           <AppText className="text-center text-body-md text-muted">
-            Профиль мастера ещё не создан. Завершите онбординг.
+            Профиль специалиста ещё не создан. Завершите онбординг.
           </AppText>
         </View>
       )}
@@ -296,7 +296,7 @@ function EditMasterGuestState({ onLogin }: { onLogin: () => void }) {
         Войдите в аккаунт
       </AppText>
       <AppText className="mt-2 text-body-sm text-mute text-center">
-        Редактирование профиля мастера доступно только после входа по номеру телефона.
+        Редактирование профиля специалиста доступно только после входа по номеру телефона.
       </AppText>
       <Pressable
         accessibilityRole="button"

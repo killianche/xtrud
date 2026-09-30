@@ -362,7 +362,7 @@ export interface LargeTitleBlockProps {
 /** Крупный заголовок в начале списка. Уезжает вместе с содержимым. */
 export function LargeTitleBlock({ title, subtitle }: LargeTitleBlockProps) {
   return (
-    <View className="px-5 pt-3 pb-4">
+    <View className="px-4 pt-3 pb-4">
       <AppText accessibilityRole="header" weight="bold" className="text-ios-large-title text-ink">
         {title}
       </AppText>

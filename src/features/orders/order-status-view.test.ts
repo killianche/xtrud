@@ -24,9 +24,13 @@ describe("orderStatusView — заказчик (§2.1)", () => {
     });
   });
 
-  it("completed — «Завершено», архивная карточка, зелёная плашка", () => {
+  it("completed — «Исполнитель выбран», архивная карточка, зелёная плашка", () => {
     const v = orderStatusView({ role: "client", order: order("completed") });
-    expect(v).toMatchObject({ label: "Завершено", pillTone: "confirmed", cardArchived: true });
+    expect(v).toMatchObject({
+      label: "Исполнитель выбран",
+      pillTone: "confirmed",
+      cardArchived: true,
+    });
     expect(v.iconKey).toBe("check");
   });
 

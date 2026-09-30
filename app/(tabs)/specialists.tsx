@@ -51,7 +51,7 @@ export default function SpecialistsCategoriesScreen() {
   // Строки навигации в покое нет — стартовая высота 0, без прыжка (QA).
   const large = useLargeTitle();
   const tabBarSpace = useTabBarSpace();
-  const tc = useThemeColors(["ink", "on-accent", "mute"]);
+  const tc = useThemeColors(["ink", "on-accent", "mute", "accent"]);
   const [query, setQuery] = useState("");
   // Переключатель «Найти специалиста / Я специалист» — как «Как клиент / Как
   // мастер» в «Моих заданиях» (DECISION владельца 2026-09-08).
@@ -129,7 +129,7 @@ export default function SpecialistsCategoriesScreen() {
             <SpecialistHubBody userId={userId} />
           )
         ) : null}
-        <View className={segment === "find" ? "mb-6 px-4" : "hidden"}>
+        <View className={segment === "find" ? "mb-6 mt-3 px-4" : "hidden"}>
           <SearchField
             value={query}
             onChangeText={setQuery}
@@ -176,13 +176,16 @@ export default function SpecialistsCategoriesScreen() {
                       onPress={() => toggle(section.id)}
                       className="flex-row items-center gap-3 px-4 py-4 active:bg-canvas-soft"
                     >
-                      <View className="h-11 w-11 items-center justify-center rounded-xl bg-accent">
-                        <SectionIcon size={22} weight="bold" color={tc["on-accent"]} />
+                      {/* Плитка на тинте, как у разделов на Главной: сплошная
+                          заливка accent — только активный сегмент и цена
+                          (DESIGN_POLISH A5). */}
+                      <View className="h-11 w-11 items-center justify-center rounded-xl bg-accent-soft">
+                        <SectionIcon size={22} weight="bold" color={tc.accent} />
                       </View>
                       <View className="min-w-0 flex-1">
                         <AppText
-                          weight="bold"
-                          className="text-ios-title2 text-ink"
+                          weight="semibold"
+                          className="text-body-lg text-ink"
                           numberOfLines={2}
                         >
                           {section.name_ru}

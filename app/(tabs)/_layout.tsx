@@ -22,10 +22,6 @@ import { useColorScheme } from "@/hooks/use-color-scheme";
 import { triggerTabScrollReset } from "@/lib/tab-scroll-reset";
 import { useThemeColors } from "@/lib/use-theme-color";
 
-// Знак xtrud для вкладки «Главная»: assets/images/tab-home[@2x|@3x].png —
-// монохромный, из splash-icon.png (25 pt, как системные иконки вкладок).
-const HOME_TAB_ICON = require("../../assets/images/tab-home.png");
-
 function badgeLabel(n: number): string | undefined {
   if (n <= 0) return undefined;
   return n > 99 ? "99+" : String(n);
@@ -156,9 +152,14 @@ export default function TabsLayout() {
         labelVisibilityMode="labeled"
       >
         <NativeTabs.Trigger name="index" listeners={scrollToTopOnReselect("index")}>
-          {/* Знак xtrud вместо домика (владелец, 2026-09-07). Шаблонная
-              картинка: система красит её цветом вкладки, как SF Symbol. */}
-          <NativeTabs.Trigger.Icon src={HOME_TAB_ICON} renderingMode="template" />
+          {/* Системная иконка, не картинка-логотип: на iOS 26 вкладка с
+              иконкой-картинкой ломает всю панель — подписи обрезаются «Гла…»,
+              «Специа…» и съезжают вниз (скриншот владельца 2026-09-30;
+              react-navigation#12908, react-native-screens#4749 — исправления
+              в библиотеке ещё нет). С SF Symbols ошибки нет. Логотип
+              (DECISION 2026-09-07) вернуть, когда библиотеку исправят;
+              файл assets/images/tab-home.png оставлен. */}
+          <NativeTabs.Trigger.Icon sf={{ default: "house", selected: "house.fill" }} md="home" />
           <NativeTabs.Trigger.Label>Главная</NativeTabs.Trigger.Label>
         </NativeTabs.Trigger>
 
@@ -174,7 +175,7 @@ export default function TabsLayout() {
             sf={{ default: "checkmark.circle", selected: "checkmark.circle.fill" }}
             md="check_circle"
           />
-          <NativeTabs.Trigger.Label>Мои</NativeTabs.Trigger.Label>
+          <NativeTabs.Trigger.Label>Мои задания</NativeTabs.Trigger.Label>
           {ordersBadge ? <NativeTabs.Trigger.Badge>{ordersBadge}</NativeTabs.Trigger.Badge> : null}
         </NativeTabs.Trigger>
         <NativeTabs.Trigger name="find" listeners={scrollToTopOnReselect("find")}>

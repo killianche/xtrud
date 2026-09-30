@@ -12,8 +12,7 @@ import { useRouter } from "expo-router";
 import { MapPin, SquaresFour } from "phosphor-react-native";
 import { useMemo } from "react";
 import { View } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { InsetGroup, InsetRow, ScreenHeader } from "@/components/ui";
+import { InsetGroup, InsetRow, LargeTitleBar, useLargeTitle } from "@/components/ui";
 import { useCategoriesL1 } from "@/features/categories/use-categories-l1";
 import { useVisibleCategories } from "@/features/categories/use-visible-categories";
 import { useCities } from "@/features/cities/use-cities";
@@ -24,8 +23,10 @@ import { useSafeBack } from "@/lib/use-safe-back";
 import { useThemeColors } from "@/lib/use-theme-color";
 
 export default function FindFiltersScreen() {
-  const insets = useSafeAreaInsets();
   const router = useRouter();
+  // Верх — тот же LargeTitleBar, что у вкладок: без белой полосы
+  // ScreenHeader (владелец 2026-09-30, docs/DESIGN_POLISH_2026-10.md C.1).
+  const large = useLargeTitle();
   const goBack = useSafeBack("/(tabs)/find" as const);
   const tc = useThemeColors(["ink"]);
 
@@ -55,23 +56,8 @@ export default function FindFiltersScreen() {
   const hasActive = l2Ids.length > 0 || !!cityId || !!district;
 
   return (
-    <View className="flex-1 bg-surface-page" style={{ paddingTop: insets.top }}>
-      <ScreenHeader
-        title="Фильтры"
-        onBack={goBack}
-        rightAction={
-          hasActive
-            ? {
-                label: "Сбросить",
-                onPress: () => {
-                  hapticSelection();
-                  clearAll();
-                },
-              }
-            : undefined
-        }
-      />
-      <View className="pt-2">
+    <View className="flex-1 bg-surface-page">
+      <View style={{ paddingTop: large.contentTop + 12 }}>
         <InsetGroup>
           <InsetRow
             title="Категория"
@@ -90,6 +76,26 @@ export default function FindFiltersScreen() {
           />
         </InsetGroup>
       </View>
+      <LargeTitleBar
+        title="Фильтры"
+        compactTitleOpacity={large.compactTitleOpacity}
+        onLayoutHeight={large.setBarHeight}
+        onBack={goBack}
+        alwaysCompact
+        actions={
+          hasActive
+            ? [
+                {
+                  label: "Сбросить",
+                  onPress: () => {
+                    hapticSelection();
+                    clearAll();
+                  },
+                },
+              ]
+            : []
+        }
+      />
     </View>
   );
 }

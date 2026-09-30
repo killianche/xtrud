@@ -106,7 +106,9 @@ export function orderStatusView(input: OrderStatusViewInput): OrderStatusView {
       case "completed":
         // Карточка архивная (прошлое), пилюля зелёная (единственный случай
         // «архив снаружи + цветная плашка внутри», §3.1).
-        return view(true, "confirmed", "Завершено", "check");
+        // С 0208 выбор исполнителя сразу закрывает задание (DECISION
+        // 2026-09-30) — «Завершено» обещало бы, что работа сделана.
+        return view(true, "confirmed", "Исполнитель выбран", "check");
       case "cancelled":
         // Красный XCircle — только у заказчика (DECISION 2026-09-14).
         return view(true, "cancelled", "Закрыто", "cancel");

@@ -233,7 +233,7 @@ interface ListProps {
  *  Файлы): просто подпись, задающая смысл всему, что ниже. */
 function ArchiveSectionHeader() {
   return (
-    <View className="mb-2 mt-6 px-5">
+    <View className="mb-2 mt-6 px-4">
       <AppText
         accessibilityRole="header"
         weight="semibold"

@@ -113,8 +113,10 @@ export function FindFeed({
   };
 
   const header = (
-    <View className="gap-3 px-4 pb-3">
-      <View className="-mx-1">
+    <View className="gap-3 px-4 pb-4">
+      {/* Заголовок без своей обёртки: отступ задаёт родитель (px-4), иначе
+          заголовок съезжал вправо от поля поиска (DESIGN_POLISH C.2). */}
+      <View className="-mx-4">
         <LargeTitleBlock title="Найти задание" />
       </View>
       <View className="min-h-11 flex-row items-center gap-2 rounded-pill bg-surface-2 px-4 py-2">

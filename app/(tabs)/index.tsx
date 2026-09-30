@@ -199,12 +199,9 @@ function ClientHome({ userId, refresh, onCategoryPress, onDescribeTask }: Client
             <ActiveOrdersShowcase userId={userId} />
             {/* Promo-баннеры партнёров (рекламные фото-баннеры 16:9). */}
             <PromoBannerCarousel />
-            <View className="mt-10 px-5">
+            <View className="mt-10 px-4">
               <AppText weight="bold" className="text-display-sm text-ink">
                 Категории специалистов
-              </AppText>
-              <AppText className="mt-1 text-body-md text-mute">
-                Выберите раздел — внутри все специалисты по нему
               </AppText>
             </View>
             <View style={{ height: 16 }} />
@@ -222,7 +219,7 @@ function ClientHome({ userId, refresh, onCategoryPress, onDescribeTask }: Client
           isLoading ? (
             <CategoriesSkeleton style={gridCancelStyle} />
           ) : error ? (
-            <View className="px-5" style={gridCancelStyle}>
+            <View className="px-4" style={gridCancelStyle}>
               <AppText className="text-body-sm text-error">Не удалось загрузить категории.</AppText>
               <Pressable
                 accessibilityRole="button"
@@ -236,7 +233,7 @@ function ClientHome({ userId, refresh, onCategoryPress, onDescribeTask }: Client
               </Pressable>
             </View>
           ) : (
-            <View className="px-5" style={gridCancelStyle}>
+            <View className="px-4" style={gridCancelStyle}>
               <AppText className="text-body-sm text-mute">
                 Категории услуг ещё не настроены. Свяжитесь с поддержкой.
               </AppText>
@@ -333,7 +330,7 @@ function CategoryItem({ category, isGrid, isLast, onPress }: CategoryItemProps) 
       onPress={onPress}
       accessibilityRole="button"
       accessibilityLabel={category.name_ru}
-      className={`flex-row items-center gap-4 px-5 py-3.5 active:bg-canvas-soft-2 ${
+      className={`flex-row items-center gap-4 px-4 py-3.5 active:bg-canvas-soft-2 ${
         isLast ? "" : "border-b border-hairline"
       }`}
     >
@@ -358,7 +355,7 @@ function CategoriesSkeleton({ style }: { style?: { marginHorizontal: number } })
     <View style={style}>
       {Array.from({ length: 10 }).map((_, i) => (
         // biome-ignore lint/suspicious/noArrayIndexKey: stable position-based key
-        <View key={i} className="px-5 py-3 flex-row items-center gap-3">
+        <View key={i} className="px-4 py-3 flex-row items-center gap-3">
           <View className="h-10 w-10 rounded-full bg-canvas-soft-2" />
           <View className="h-4 flex-1 max-w-[200px] rounded bg-canvas-soft-2" />
         </View>

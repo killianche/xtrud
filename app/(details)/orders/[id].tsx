@@ -46,7 +46,6 @@ import { useVisibleCategories } from "@/features/categories/use-visible-categori
 import { useMasterPhone, useMasterPublicProfile } from "@/features/master-view/use-master-public";
 import { useMarkOrderNotificationsRead } from "@/features/notifications/use-notifications";
 import { useCloseReasonPickerStore } from "@/features/orders/close-reason-picker-store";
-import { OrderManageBlock } from "@/features/orders/OrderManageBlock";
 import { OrderPhotoCarousel } from "@/features/orders/OrderPhotoCarousel";
 import { orderCategoryIds } from "@/features/orders/order-categories";
 import { formatOrderTiming, formatPrice } from "@/features/orders/order-schema";
@@ -55,11 +54,7 @@ import { type OrderStatusView, orderStatusView } from "@/features/orders/order-s
 import { type CancelReason, useCancelOrder } from "@/features/orders/use-cancel-order";
 import { useDeleteOrder } from "@/features/orders/use-delete-order";
 import { type OrderDetail, useOrderDetail } from "@/features/orders/use-order-detail";
-import {
-  useCompleteOrder,
-  usePickOrderMaster,
-  useUnpickOrderMaster,
-} from "@/features/orders/use-order-lifecycle";
+import { usePickOrderMaster } from "@/features/orders/use-order-lifecycle";
 import {
   type OrderResponseWithMaster,
   useMyResponseForOrder,
@@ -172,15 +167,11 @@ export default function OrderDetailScreen() {
   const deleteOrder = useDeleteOrder();
   const reopenOrder = useReopenOrder();
   const blockUser = useBlockUser();
-  // Выбор исполнителя и завершение (0196).
+  // Выбор исполнителя сразу закрывает задание (0208, DECISION 2026-09-30).
   const pickMaster = usePickOrderMaster();
-  const unpickMaster = useUnpickOrderMaster();
-  const completeOrder = useCompleteOrder();
+  const accentColor = useThemeColors(["accent"]).accent;
   const ownerResponsesQ = useOrderResponses(isOwner ? id : undefined);
   const ownerResponses = ownerResponsesQ.data ?? [];
-  const activeResponsesCount = ownerResponses.filter(
-    (r) => r.status === "sent" || r.status === "viewed",
-  ).length;
   const pickedResponse =
     order?.picked_master_id != null
       ? (ownerResponses.find((r) => r.master_id === order.picked_master_id) ?? null)
@@ -248,8 +239,7 @@ export default function OrderDetailScreen() {
   const handlePickFromCard = async (responseId: string, masterName: string) => {
     const confirmed = await confirmAsync({
       title: `Выбрать исполнителем: ${masterName}?`,
-      message:
-        "Задание уйдёт из ленты, исполнитель получит уведомление. Не договоритесь — откажитесь от исполнителя, и задание снова откроется.",
+      message: "Задание закроется, остальные отклики снимутся. Исполнитель получит уведомление.",
       confirmText: "Выбрать",
       cancelText: "Отмена",
     });
@@ -268,72 +258,6 @@ export default function OrderDetailScreen() {
         orderId: id,
       },
     } as never);
-  };
-
-  const handleComplete = async () => {
-    if (!id || !userId) return;
-    const confirmed = await confirmAsync({
-      title: "Работа выполнена?",
-      message: "Задание завершится, и вы сможете оставить отзыв исполнителю.",
-      confirmText: "Да, выполнена",
-      cancelText: "Отмена",
-    });
-    if (!confirmed) return;
-    completeOrder.mutate(
-      { orderId: id, clientId: userId },
-      {
-        onSuccess: () => {
-          hapticSuccess();
-          // Сразу предлагаем отзыв — пока впечатление свежее.
-          openReview();
-        },
-        onError: (e) => {
-          hapticError();
-          Alert.alert("Не удалось завершить", describeServerError(e, "Попробуйте ещё раз."));
-        },
-      },
-    );
-  };
-
-  const handleUnpick = async () => {
-    if (!id || !userId) return;
-    const confirmed = await confirmAsync({
-      title: "Отказаться от исполнителя?",
-      message: `Задание снова откроется для откликов, ${pickedName} получит уведомление.`,
-      confirmText: "Отказаться",
-      cancelText: "Отмена",
-      destructive: true,
-    });
-    if (!confirmed) return;
-    unpickMaster.mutate(
-      { orderId: id, clientId: userId },
-      {
-        onSuccess: () => hapticSuccess(),
-        onError: (e) => {
-          hapticError();
-          Alert.alert("Не получилось", describeServerError(e, "Попробуйте ещё раз."));
-        },
-      },
-    );
-  };
-
-  const handleCancelInProgress = async () => {
-    if (!id || !userId) return;
-    const confirmed = await confirmAsync({
-      title: "Отменить задание?",
-      message: "Задание закроется без исполнителя, выбранный специалист получит уведомление.",
-      confirmText: "Отменить задание",
-      cancelText: "Не отменять",
-      destructive: true,
-    });
-    if (!confirmed) return;
-    cancelMutate(
-      { orderId: id, clientId: userId, reason: "no_longer_needed" },
-      {
-        onSuccess: () => hapticSuccess(),
-        onError: (e) => Alert.alert("Не удалось отменить", e.message),
-      },
-    );
   };
 
   useEffect(() => {
@@ -408,18 +332,6 @@ export default function OrderDetailScreen() {
       },
     );
   };
-
-  const manageBusy = completeOrder.isPending
-    ? ("complete" as const)
-    : unpickMaster.isPending
-      ? ("unpick" as const)
-      : cancelOrder.isPending
-        ? ("cancel" as const)
-        : reopenOrder.isPending
-          ? ("reopen" as const)
-          : deleteOrder.isPending
-            ? ("delete" as const)
-            : null;
 
   // Меню «Действия с заданием» — нативный ActionSheetIOS вместо самописной
   // шторки (docs/IOS_FOUNDATION.md §2.8). Набор действий зависит от статуса
@@ -640,32 +552,6 @@ export default function OrderDetailScreen() {
             myResponseStatus={myMasterResponseQ.data?.status}
           />
 
-          {/* Что дальше с заданием — один блок по состоянию (0196). */}
-          {isOwner && id && userId ? (
-            <OrderManageBlock
-              status={order.status}
-              activeResponsesCount={order.contact_mode === "phone_open" ? 0 : activeResponsesCount}
-              canReopen={canReopen}
-              myReviewRating={myReview.isLoading ? undefined : (myReview.data?.rating ?? null)}
-              busyAction={manageBusy}
-              onChooseMaster={() =>
-                router.push({
-                  pathname: "/orders/close-reason",
-                  params: { orderId: id, step: "who" },
-                } as never)
-              }
-              onClose={() =>
-                router.push({ pathname: "/orders/close-reason", params: { orderId: id } } as never)
-              }
-              onComplete={() => void handleComplete()}
-              onUnpick={() => void handleUnpick()}
-              onCancel={() => void handleCancelInProgress()}
-              onReview={openReview}
-              onReopen={handleReopen}
-              onDelete={() => void handleDelete()}
-            />
-          ) : null}
-
           {/* Выбранный исполнитель — отдельно, над остальными откликами. */}
           {isOwner && pickedResponse && order.status !== "open" ? (
             <View className="mt-8 px-5">
@@ -680,6 +566,27 @@ export default function OrderDetailScreen() {
                   statusView={orderStatusView({ role: "client", order })}
                 />
               </View>
+              {/* Отзыв — здесь, у выбранного исполнителя: отдельного блока
+                  «Работа выполнена» больше нет (DECISION 2026-09-30). */}
+              {order.status === "completed" && !myReview.isLoading ? (
+                myReview.data ? (
+                  <AppText className="mt-3 text-ios-subheadline text-mute">
+                    Вы оставили отзыв
+                  </AppText>
+                ) : (
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={`Оставить отзыв: ${pickedName}`}
+                    onPress={openReview}
+                    className="mt-3 min-h-12 flex-row items-center justify-center gap-2 rounded-pill border-2 border-accent bg-canvas px-4 active:bg-accent-soft"
+                  >
+                    <Star size={18} weight="bold" color={accentColor} />
+                    <AppText weight="semibold" className="text-body-md text-accent">
+                      Оставить отзыв
+                    </AppText>
+                  </Pressable>
+                )
+              ) : null}
             </View>
           ) : null}
 

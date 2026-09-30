@@ -214,8 +214,8 @@ export default function OrderDetailScreen() {
   const handleCloseWithReason = useCallback(
     (reason: CancelReason, pickedMasterId: string | null = null) => {
       if (!id || !userId) return;
-      // «Нашёл исполнителя» среди откликнувшихся — это выбор, а не закрытие
-      // (0196): задание ждёт «Работа выполнена», после неё — отзыв.
+      // «Нашёл исполнителя» среди откликнувшихся — это выбор: с 0208 он сразу
+      // закрывает задание, отзыв доступен сразу (DECISION 2026-09-30).
       if (reason === "found_master" && pickedMasterId) {
         const response = ownerResponses.find(
           (r) => r.master_id === pickedMasterId && (r.status === "sent" || r.status === "viewed"),
@@ -239,7 +239,8 @@ export default function OrderDetailScreen() {
   const handlePickFromCard = async (responseId: string, masterName: string) => {
     const confirmed = await confirmAsync({
       title: `Выбрать исполнителем: ${masterName}?`,
-      message: "Задание закроется, остальные отклики снимутся. Исполнитель получит уведомление.",
+      message:
+        "Задание закроется, остальные отклики снимутся, исполнитель получит уведомление. Отменить выбор будет нельзя.",
       confirmText: "Выбрать",
       cancelText: "Отмена",
     });

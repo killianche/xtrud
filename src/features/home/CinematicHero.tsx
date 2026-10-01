@@ -5,8 +5,9 @@
  *   - Фото-фон идёт от САМОГО верха экрана (под статус-бар), включая зону
  *     шапки. Шапка (логотип xtrud + город) лежит ПОВЕРХ фото белым (как Farce
  *     landing — логотип в углу поверх фото).
- *   - primary CTA «Чем вам помочь?» с лупой — внутри фото-блока; заголовка
- *     над ним нет (владелец, 2026-10-01).
+ *   - H1 «Создайте задание» + розовая кнопка «Создать задание» — внутри
+ *     фото-блока (владелец, 2026-10-01: «верни как было, кнопку — фирменного
+ *     розового цвета»).
  *   - Фото-блок заканчивается ниже CTA со скруглёнными нижними углами
  *     (rounded-b). Дальше (баннеры и т.д.) идёт обычный canvas-контент.
  *   - Eyebrow «Мастера Ингушетии» УБРАН (фидбэк юзера).
@@ -37,13 +38,7 @@
 import { Image as ExpoImage } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
-import {
-  BellSimple,
-  CaretDown,
-  MagnifyingGlass,
-  MapPin,
-  User as UserIcon,
-} from "phosphor-react-native";
+import { BellSimple, CaretDown, MapPin, Plus, User as UserIcon } from "phosphor-react-native";
 import { useEffect, useRef } from "react";
 import { Animated, Easing, Platform, Pressable, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -82,7 +77,7 @@ const ON_PHOTO = lightColors["on-dark"];
 export function CinematicHero({ onCreateTask }: { onCreateTask: () => void }) {
   const insets = useSafeAreaInsets();
   const viewportWidth = useAppWidth();
-  const inkColor = useThemeColor("ink");
+  const onAccentColor = useThemeColor("on-accent");
 
   // Город — из user-city store (то же, что было в TopBar).
   const { cityId, cityName, setCity } = useUserCity();
@@ -323,19 +318,24 @@ export function CinematicHero({ onCreateTask }: { onCreateTask: () => void }) {
           </Pressable>
         </View>
 
-        {/* ── Низ фото-блока: главное действие. Заголовок «Создайте задание»
-            убран (владелец, 2026-10-01): кнопка сама говорит, что делать. ── */}
+        {/* ── Низ фото-блока: крупный H1 + главный conversion action ── */}
         <View className="absolute left-0 right-0 bottom-0 px-4 pb-5">
+          <AppText
+            accessibilityRole="header"
+            weight="display"
+            className="tracking-tight text-white"
+            style={{ fontSize: 44, lineHeight: 46 }}
+          >
+            Создайте{"\n"}задание
+          </AppText>
+
           {/* Создание задания — единственное primary-действие клиентского hero. */}
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="Чем вам помочь? Создать задание"
+            accessibilityLabel="Создать задание"
             onPress={onCreateTask}
-            // dark:border + dark:border-white/15 — тонкое серое свечение по краю
-            // плашки в тёмной теме (фидбэк владельца 2026-05-27: поиск сливался с
-            // тёмным hero, нужна обводка чтобы выделить). В light режиме граница
-            // прозрачная — там работает обычная тень снизу.
-            className="flex-row items-center gap-3 min-h-14 rounded-2xl bg-canvas px-5 border border-transparent dark:border-white/15 active:opacity-80"
+            // Фирменный розовый, белый текст — 4.7:1, AA (владелец, 2026-10-01).
+            className="mt-4 flex-row items-center gap-3 min-h-14 rounded-2xl bg-accent px-5 active:opacity-85"
             style={{
               boxShadow: Platform.OS === "web" ? "0 8px 24px rgba(0,0,0,0.18)" : undefined,
               ...(Platform.OS !== "web"
@@ -349,9 +349,9 @@ export function CinematicHero({ onCreateTask }: { onCreateTask: () => void }) {
                 : {}),
             }}
           >
-            <MagnifyingGlass size={22} weight="bold" color={inkColor} />
-            <AppText weight="semibold" className="flex-1 text-body-lg text-ink">
-              Чем вам помочь?
+            <Plus size={22} weight="bold" color={onAccentColor} />
+            <AppText weight="semibold" className="flex-1 text-body-lg text-on-accent">
+              Создать задание
             </AppText>
           </Pressable>
         </View>

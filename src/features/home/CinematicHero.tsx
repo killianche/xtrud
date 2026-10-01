@@ -5,7 +5,8 @@
  *   - Фото-фон идёт от САМОГО верха экрана (под статус-бар), включая зону
  *     шапки. Шапка (логотип xtrud + город) лежит ПОВЕРХ фото белым (как Farce
  *     landing — логотип в углу поверх фото).
- *   - H1 «Создайте задание» + primary CTA — внутри фото-блока.
+ *   - primary CTA «Чем вам помочь?» с лупой — внутри фото-блока; заголовка
+ *     над ним нет (владелец, 2026-10-01).
  *   - Фото-блок заканчивается ниже CTA со скруглёнными нижними углами
  *     (rounded-b). Дальше (баннеры и т.д.) идёт обычный canvas-контент.
  *   - Eyebrow «Мастера Ингушетии» УБРАН (фидбэк юзера).
@@ -36,7 +37,13 @@
 import { Image as ExpoImage } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
-import { BellSimple, CaretDown, MapPin, Plus, User as UserIcon } from "phosphor-react-native";
+import {
+  BellSimple,
+  CaretDown,
+  MagnifyingGlass,
+  MapPin,
+  User as UserIcon,
+} from "phosphor-react-native";
 import { useEffect, useRef } from "react";
 import { Animated, Easing, Platform, Pressable, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -316,26 +323,19 @@ export function CinematicHero({ onCreateTask }: { onCreateTask: () => void }) {
           </Pressable>
         </View>
 
-        {/* ── Низ фото-блока: крупный H1 + главный conversion action ── */}
+        {/* ── Низ фото-блока: главное действие. Заголовок «Создайте задание»
+            убран (владелец, 2026-10-01): кнопка сама говорит, что делать. ── */}
         <View className="absolute left-0 right-0 bottom-0 px-4 pb-5">
-          <AppText
-            weight="display"
-            className="tracking-tight text-white"
-            style={{ fontSize: 44, lineHeight: 46 }}
-          >
-            Создайте{"\n"}задание
-          </AppText>
-
           {/* Создание задания — единственное primary-действие клиентского hero. */}
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="Создать задание бесплатно"
+            accessibilityLabel="Чем вам помочь? Создать задание"
             onPress={onCreateTask}
             // dark:border + dark:border-white/15 — тонкое серое свечение по краю
             // плашки в тёмной теме (фидбэк владельца 2026-05-27: поиск сливался с
             // тёмным hero, нужна обводка чтобы выделить). В light режиме граница
             // прозрачная — там работает обычная тень снизу.
-            className="mt-4 flex-row items-center gap-3 min-h-14 rounded-2xl bg-canvas px-5 border border-transparent dark:border-white/15 active:opacity-80"
+            className="flex-row items-center gap-3 min-h-14 rounded-2xl bg-canvas px-5 border border-transparent dark:border-white/15 active:opacity-80"
             style={{
               boxShadow: Platform.OS === "web" ? "0 8px 24px rgba(0,0,0,0.18)" : undefined,
               ...(Platform.OS !== "web"
@@ -349,9 +349,9 @@ export function CinematicHero({ onCreateTask }: { onCreateTask: () => void }) {
                 : {}),
             }}
           >
-            <Plus size={22} weight="bold" color={inkColor} />
+            <MagnifyingGlass size={22} weight="bold" color={inkColor} />
             <AppText weight="semibold" className="flex-1 text-body-lg text-ink">
-              Создать бесплатно
+              Чем вам помочь?
             </AppText>
           </Pressable>
         </View>

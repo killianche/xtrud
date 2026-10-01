@@ -8,13 +8,13 @@
  * вместе с лентой и возвращаются, когда человек прокручивает назад. Сверху —
  * обычный крупный заголовок вкладки, он схлопывается сам.
  *
- * Категория и место выбираются на отдельном экране «Фильтры» (/find/filters)
- * прежними шторками; выбранное видно в самой строке, «×» сбрасывает всё.
+ * Категория и место — две подписанные капсулы под поиском; каждая сразу
+ * открывает свою шторку (владелец, 2026-10-01). Выбранное видно на капсуле.
  */
 
 import { FlashList } from "@shopify/flash-list";
 import { useRouter } from "expo-router";
-import { CaretRight, MagnifyingGlass, SlidersHorizontal, Tray, X } from "phosphor-react-native";
+import { MagnifyingGlass, MapPin, SquaresFour, Tray } from "phosphor-react-native";
 import { useEffect, useMemo, useState } from "react";
 import {
   type NativeScrollEvent,
@@ -25,6 +25,7 @@ import {
 } from "react-native";
 import { AppText } from "@/components/AppText";
 import { OrderRowsSkeleton } from "@/components/OrderRowsSkeleton";
+import { FilterChip } from "@/components/ui/FilterChip";
 import { LargeTitleBlock } from "@/components/ui/LargeTitle";
 import { useAuthSession } from "@/features/auth/use-auth-session";
 import { useCategoriesL1 } from "@/features/categories/use-categories-l1";
@@ -90,19 +91,22 @@ export function FindFeed({
   const categories = useVisibleCategories();
   const l1 = useCategoriesL1();
   const cities = useCities();
-  const summary = useMemo(
+  // Подписи капсул: выбранное значение, а не имя фильтра.
+  const categoryLabel = useMemo(
     () =>
       filtersSummary({
         l2Ids,
-        cityId,
-        district,
+        cityId: "",
+        district: "",
         categories: categories.data ?? [],
         sections: l1.data ?? [],
-        cityName: cities.data?.find((c) => c.id === cityId)?.name,
       }),
-    [l2Ids, cityId, district, categories.data, l1.data, cities.data],
+    [l2Ids, categories.data, l1.data],
   );
-  const filtersActive = summary !== null;
+  const placeLabel = cityId
+    ? (cities.data?.find((c) => c.id === cityId)?.name ?? null)
+    : district || null;
+  const filtersActive = categoryLabel !== null || placeLabel !== null;
   const canReset = filtersActive || text.length > 0;
 
   const resetAll = () => {
@@ -137,45 +141,26 @@ export function FindFeed({
         />
       </View>
 
-      <View className="flex-row items-center gap-2">
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={filtersActive ? `Фильтры: ${summary}` : "Фильтры"}
-          onPress={() => router.push("/find/filters" as never)}
-          className={`min-h-12 flex-1 flex-row items-center gap-2.5 rounded-xl border px-4 py-2 ${
-            filtersActive ? "border-accent bg-accent-soft" : "border-hairline bg-canvas"
-          } active:opacity-70`}
-        >
-          <SlidersHorizontal size={18} weight="bold" color={filtersActive ? tc.accent : tc.mute} />
-          <View className="min-w-0 flex-1">
-            {filtersActive ? (
-              <>
-                <AppText className="text-caption text-mute">Фильтры</AppText>
-                <AppText weight="medium" numberOfLines={1} className="text-body-md text-ink">
-                  {summary}
-                </AppText>
-              </>
-            ) : (
-              <AppText className="text-body-md text-mute">Фильтры</AppText>
-            )}
-          </View>
-          <CaretRight
-            size={16}
-            weight="bold"
-            color={filtersActive ? tc.accent : tc["muted-soft"]}
-          />
-        </Pressable>
-        {filtersActive ? (
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Сбросить фильтры"
-            onPress={resetAll}
-            hitSlop={8}
-            className="h-11 w-11 items-center justify-center rounded-full bg-surface-2 active:opacity-70"
-          >
-            <X size={18} weight="bold" color={tc.mute} />
-          </Pressable>
-        ) : null}
+      {/* Фильтры — две подписанные капсулы, каждая сразу открывает свой
+          выбор (владелец, 2026-10-01: «нормальные клавиши»). Промежуточного
+          экрана «Фильтры» больше нет. */}
+      <View className="flex-row flex-wrap gap-2">
+        <FilterChip
+          label={categoryLabel ?? "Все категории"}
+          Icon={SquaresFour}
+          active={categoryLabel !== null}
+          accessibilityLabel={
+            categoryLabel ? `Категория: ${categoryLabel}. Изменить` : "Выбрать категорию"
+          }
+          onPress={() => router.push("/find/category-select" as never)}
+        />
+        <FilterChip
+          label={placeLabel ?? "Вся Ингушетия"}
+          Icon={MapPin}
+          active={placeLabel !== null}
+          accessibilityLabel={placeLabel ? `Место: ${placeLabel}. Изменить` : "Выбрать место"}
+          onPress={() => router.push("/find/location-select" as never)}
+        />
       </View>
     </View>
   );

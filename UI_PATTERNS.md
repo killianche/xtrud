@@ -78,9 +78,9 @@
 
 | Экран | Файл | Что эталонно |
 |---|---|---|
-| Вкладка со списком — «Найти задание» | `app/(tabs)/find/index.tsx` + `src/features/orders/find/FindFeed.tsx` | Верх вкладки: `useLargeTitle(0)` + `LargeTitleBar` (крупный заголовок в списке, компактный при прокрутке); поиск и строка «Фильтры» — первые строки списка, без закреплённой шапки; пустое состояние с одним действием |
+| Вкладка со списком — «Найти задание» | `app/(tabs)/find/index.tsx` + `src/features/orders/find/FindFeed.tsx` | Верх вкладки: `useLargeTitle(0)` + `LargeTitleBar` (крупный заголовок в списке, компактный при прокрутке); поиск и капсулы «категория / место» — первые строки списка, без закреплённой шапки; пустое состояние с одним действием |
 | Вкладка с переключателем — «Мои» | `app/(tabs)/orders/index.tsx` | `LargeTitleBar belowFloating` + `SegmentedControl bare`: плавающая стеклянная капсула; секции «Активные / Архив»; плавающая «+» |
-| Экран фильтров | `app/(tabs)/find/filters.tsx` | Detail-экран: `ScreenHeader` с «назад» и «Сбросить», `InsetGroup`/`InsetRow` со значениями, выбор в шторках без «Применить» |
+| Фильтры-капсулы | `src/components/ui/FilterChip.tsx` (в `FindFeed.tsx`, `SpecialistsListScreen.tsx`) | Подписанная капсула под поиском: выбранное значение, стрелка вниз, выбранная — `border-accent bg-accent-soft`; не круглая кнопка-иконка в шапке (владелец 2026-10-01) |
 | Шторка выбора | `app/(details)/find/category-select.tsx`, `app/(details)/find/location-select.tsx` | formSheet-выбор, применяется сразу и закрывается сам |
 | Профиль специалиста | `app/(details)/master/[id].tsx` | Detail-экран: `LargeTitleBar` с «назад» и действиями, фото-карусель, отзывы |
 | Экран задания | `app/(details)/orders/[id].tsx` | Статус пилюлей, карточки откликов, блок управления заданием; действия блокируются на время запроса |

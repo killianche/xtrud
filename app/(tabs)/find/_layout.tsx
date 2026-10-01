@@ -6,7 +6,6 @@
  * сверху, FACT со скриншота владельца 2026-09-22). Заголовок рисует тот же
  * useLargeTitle()/LargeTitleBar, что на «Мои» и «Специалисты» — один
  * механизм верха на все вкладки (docs/TAB_TOPS_REDESIGN.md §1–2).
- * На «Фильтры» заголовок рисует ScreenHeader.
  */
 
 import { Stack } from "expo-router";
@@ -23,7 +22,6 @@ export default function FindStackLayout() {
       }}
     >
       <Stack.Screen name="index" options={{ animation: "none" }} />
-      <Stack.Screen name="filters" />
     </Stack>
   );
 }

@@ -1,26 +1,24 @@
 /**
- * FilterChip — капсула фильтра в стиле iOS 26 Liquid Glass.
+ * FilterChip — капсула фильтра под поиском: «📍 Вся Ингушетия ▾».
  *
- * DECISION владельца 2026-09-07: «фильтры, пилюли, строки поиска — полностью
- * как в последнем iOS, Liquid Glass». У Apple в iOS 26 фильтры под
- * заголовком (Почта: категории) — стеклянные капсулы; выбранная — с оттенком.
+ * Владелец, 2026-10-01: «нормальные клавиши, а не непонятные клавиши с
+ * непонятной иконкой». Поэтому фильтр — это подписанная капсула в
+ * содержимом экрана, а не круглая кнопка-иконка в шапке.
  *
  * Правила:
- *  - капсула 44 pt, текст Callout 16, иконка 17, стрелка вниз (chevron.down:
- *    чип открывает выбор, а не переключает);
- *  - материал: стекло; применённый фильтр — стекло с фирменным оттенком и
- *    белым текстом. Без стекла (iOS до 26) — поверхность с волосяной границей
- *    и акцентная заливка;
- *  - чип показывает выбранное значение («Сантехника»), а не имя фильтра.
+ *  - высота от 44 pt (растёт с крупным шрифтом), текст 16, иконка 17,
+ *    стрелка вниз: чип открывает выбор, а не переключает;
+ *  - чип показывает выбранное значение («Назрань»), а не имя фильтра;
+ *  - без стекла: стекло — только навигационный слой (IOS_FOUNDATION §4.5);
+ *  - выбранный — как все выбранные чипы проекта: border-accent bg-accent-soft,
+ *    текст и иконка accent (UI_PATTERNS §3.4).
  */
 
-import { GlassView } from "expo-glass-effect";
 import { CaretDown } from "phosphor-react-native";
 import { Pressable, View } from "react-native";
 import { AppText } from "@/components/AppText";
 import { useThemeColors } from "@/lib/use-theme-color";
 import type { IconComponent } from "@/types/icon";
-import { LIQUID_GLASS } from "./GlassSurface";
 import { SystemIcon } from "./SystemIcon";
 
 export const FILTER_CHIP_HEIGHT = 44;
@@ -35,54 +33,36 @@ export interface FilterChipProps {
 }
 
 export function FilterChip({ label, Icon, active, onPress, accessibilityLabel }: FilterChipProps) {
-  const tc = useThemeColors(["accent", "on-accent", "ink", "mute"]);
-  const fg = active ? tc["on-accent"] : tc.ink;
-  const content = (
-    <View className="h-full flex-row items-center gap-1.5 pl-4 pr-3">
-      {Icon ? <Icon size={17} weight="bold" color={fg} /> : null}
-      <AppText
-        weight="semibold"
-        className="text-ios-callout"
-        style={{ color: fg }}
-        numberOfLines={1}
-      >
-        {label}
-      </AppText>
-      <SystemIcon
-        sf="chevron.down"
-        fallback={CaretDown}
-        size={12}
-        weight="semibold"
-        color={active ? tc["on-accent"] : tc.mute}
-      />
-    </View>
-  );
-  const shape = {
-    height: FILTER_CHIP_HEIGHT,
-    borderRadius: FILTER_CHIP_HEIGHT / 2,
-    overflow: "hidden" as const,
-  };
+  const tc = useThemeColors(["accent", "ink", "mute"]);
+  const fg = active ? tc.accent : tc.ink;
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityState={{ selected: active }}
       accessibilityLabel={accessibilityLabel ?? label}
       onPress={onPress}
-      className="active:opacity-70"
+      className={`min-h-11 max-w-full flex-row items-center gap-1.5 rounded-pill border pl-3.5 pr-3 py-2 active:opacity-70 ${
+        active ? "border-accent bg-accent-soft" : "border-hairline bg-canvas"
+      }`}
     >
-      {LIQUID_GLASS ? (
-        <GlassView
-          glassEffectStyle="regular"
-          tintColor={active ? tc.accent : undefined}
-          style={shape}
-        >
-          {content}
-        </GlassView>
-      ) : (
-        <View className={active ? "bg-accent" : "border border-hairline bg-canvas"} style={shape}>
-          {content}
-        </View>
-      )}
+      {Icon ? <Icon size={17} weight="bold" color={active ? tc.accent : tc.mute} /> : null}
+      <AppText
+        weight="semibold"
+        className="shrink text-ios-callout"
+        style={{ color: fg }}
+        numberOfLines={1}
+      >
+        {label}
+      </AppText>
+      <View>
+        <SystemIcon
+          sf="chevron.down"
+          fallback={CaretDown}
+          size={12}
+          weight="semibold"
+          color={active ? tc.accent : tc.mute}
+        />
+      </View>
     </Pressable>
   );
 }

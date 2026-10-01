@@ -16,7 +16,7 @@
 
 import { FlashList } from "@shopify/flash-list";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { MapPin, SlidersHorizontal, Star, UsersThree } from "phosphor-react-native";
+import { MapPin, SquaresFour, Star, UsersThree } from "phosphor-react-native";
 import { useEffect, useMemo, useState } from "react";
 import { Animated, Pressable, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -24,6 +24,7 @@ import { AppText } from "@/components/AppText";
 import { CITIES } from "@/components/CitySelector";
 import {
   Avatar,
+  FilterChip,
   LargeTitleBar,
   LargeTitleBlock,
   SearchField,
@@ -68,7 +69,9 @@ function MasterCard({ master, onPress }: { master: MasterSearchResult; onPress: 
       accessibilityRole="button"
       accessibilityLabel={`${name}${master.is_verified ? ", проверенный специалист" : ""}. ${master.categories.join(", ")}`}
       onPress={onPress}
-      className="mx-4 mb-3 rounded-2xl border border-hairline bg-surface-card p-4 active:opacity-90"
+      // Как карточка задания: белая на сером фоне, мягкая тень без рамки
+      // (владелец 2026-09-08: «чёрная обводка — не в дизайне»).
+      className="mx-4 mb-3 rounded-2xl bg-surface-card p-4 active:opacity-90"
       style={CARD_SHADOW}
     >
       <View className="flex-row items-center gap-3">
@@ -228,7 +231,7 @@ export function SpecialistsListScreen() {
                   : `${specialistsLabel(list.length)}${hasNextPage ? " и ещё" : ""}`
               }
             />
-            <View className="px-4 pt-1 pb-3">
+            <View className="gap-3 px-4 pt-1 pb-4">
               <SearchField
                 value={query}
                 onChangeText={setQuery}
@@ -237,6 +240,36 @@ export function SpecialistsListScreen() {
                 }
                 accessibilityLabel="Поиск специалистов"
               />
+              {/* Фильтры — подписанными капсулами под поиском, не круглыми
+                  кнопками-иконками в шапке (владелец, 2026-10-01). Категория
+                  уже выбрана разделом — её капсулы нет; есть только место. */}
+              <View className="flex-row flex-wrap gap-2">
+                {hasCategoryFilter ? null : (
+                  <FilterChip
+                    label="Все категории"
+                    Icon={SquaresFour}
+                    active={false}
+                    accessibilityLabel="Выбрать категорию"
+                    onPress={() =>
+                      router.push({
+                        pathname: "/specialists/category-select",
+                        params: { l1: l1Id ?? "", l2: l2Id ?? "" },
+                      } as never)
+                    }
+                  />
+                )}
+                <FilterChip
+                  label={cityId !== "all" ? cityLabel : "Вся Ингушетия"}
+                  Icon={MapPin}
+                  active={cityId !== "all"}
+                  accessibilityLabel={
+                    cityId !== "all" ? `Место: ${cityLabel}. Изменить` : "Выбрать место"
+                  }
+                  onPress={() =>
+                    router.push({ pathname: "/category/city-select", params: { cityId } } as never)
+                  }
+                />
+              </View>
             </View>
           </>
         }
@@ -282,33 +315,6 @@ export function SpecialistsListScreen() {
         compactTitleOpacity={large.compactTitleOpacity}
         onLayoutHeight={large.setBarHeight}
         onBack={() => router.back()}
-        // Две кнопки: категория и город — каждая открывает свою шторку
-        // (DECISION владельца 2026-09-08: «фильтр — только категории,
-        // геолокацию отдельной кнопкой рядом»). Сортировку владелец убрал
-        // 2026-09-10.
-        actions={[
-          {
-            label: hasCategoryFilter ? `Категория: ${categoryLabel}` : "Категория",
-            sf: "line.3.horizontal.decrease",
-            Icon: SlidersHorizontal,
-            iconOnly: true,
-            active: hasCategoryFilter,
-            onPress: () =>
-              router.push({
-                pathname: "/specialists/category-select",
-                params: { l1: l1Id ?? "", l2: l2Id ?? "" },
-              } as never),
-          },
-          {
-            label: cityId !== "all" ? `Город: ${cityLabel}` : "Город",
-            sf: "mappin.and.ellipse",
-            Icon: MapPin,
-            iconOnly: true,
-            active: cityId !== "all",
-            onPress: () =>
-              router.push({ pathname: "/category/city-select", params: { cityId } } as never),
-          },
-        ]}
       />
     </View>
   );

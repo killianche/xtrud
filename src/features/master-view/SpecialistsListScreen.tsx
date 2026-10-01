@@ -324,7 +324,7 @@ function SpecialistsSkeleton() {
   return (
     <View className="pt-1">
       {[0, 1, 2, 3].map((i) => (
-        <View key={i} className="mx-4 mb-3 rounded-2xl border border-hairline bg-surface-card p-4">
+        <View key={i} className="mx-4 mb-3 rounded-2xl bg-surface-card p-4" style={CARD_SHADOW}>
           <View className="flex-row items-center gap-3">
             <View className="h-12 w-12 rounded-full bg-canvas-soft-2" />
             <View className="flex-1 gap-2">

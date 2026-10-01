@@ -24,7 +24,7 @@
     },
     {
       "id": "home-services",
-      "name_ru": "Дом и быт",
+      "name_ru": "Уборка и помощь по хозяйству",
       "icon": "Broom",
       "sort_order": 4,
       "is_active": true
@@ -45,9 +45,79 @@
     },
     {
       "id": "handyman-moving",
-      "name_ru": "Мастер на час и переезды",
+      "name_ru": "Мастер на час и разнорабочие",
       "icon": "Wrench",
       "sort_order": 7,
+      "is_active": true
+    },
+    {
+      "id": "cargo",
+      "name_ru": "Грузоперевозки",
+      "icon": "Truck",
+      "sort_order": 8,
+      "is_active": true
+    },
+    {
+      "id": "courier",
+      "name_ru": "Курьерские услуги",
+      "icon": "Moped",
+      "sort_order": 9,
+      "is_active": true
+    },
+    {
+      "id": "computer-help",
+      "name_ru": "Компьютерная помощь",
+      "icon": "Laptop",
+      "sort_order": 10,
+      "is_active": true
+    },
+    {
+      "id": "auto",
+      "name_ru": "Ремонт транспорта",
+      "icon": "Car",
+      "sort_order": 11,
+      "is_active": true
+    },
+    {
+      "id": "beauty",
+      "name_ru": "Красота и здоровье",
+      "icon": "Scissors",
+      "sort_order": 12,
+      "is_active": true
+    },
+    {
+      "id": "tutors",
+      "name_ru": "Репетиторы и обучение",
+      "icon": "GraduationCap",
+      "sort_order": 13,
+      "is_active": true
+    },
+    {
+      "id": "events",
+      "name_ru": "Мероприятия и промоакции",
+      "icon": "Confetti",
+      "sort_order": 14,
+      "is_active": true
+    },
+    {
+      "id": "photo-video",
+      "name_ru": "Фото, видео и аудио",
+      "icon": "Camera",
+      "sort_order": 15,
+      "is_active": true
+    },
+    {
+      "id": "virtual-assistant",
+      "name_ru": "Виртуальный помощник",
+      "icon": "Headset",
+      "sort_order": 16,
+      "is_active": true
+    },
+    {
+      "id": "legal-accounting",
+      "name_ru": "Юридическая и бухгалтерская помощь",
+      "icon": "Scales",
+      "sort_order": 17,
       "is_active": true
     }
   ],
@@ -103,6 +173,66 @@
       "is_featured": false
     },
     {
+      "id": "car-repair",
+      "l1_id": "auto",
+      "name_ru": "Автосервис и ремонт",
+      "icon": "Engine",
+      "sort_order": 10,
+      "is_active": true,
+      "is_visible": true,
+      "is_featured": false
+    },
+    {
+      "id": "event-hosts",
+      "l1_id": "events",
+      "name_ru": "Ведущие и тамада",
+      "icon": "Microphone",
+      "sort_order": 10,
+      "is_active": true,
+      "is_visible": true,
+      "is_featured": false
+    },
+    {
+      "id": "cargo-transport",
+      "l1_id": "cargo",
+      "name_ru": "Грузоперевозки",
+      "icon": "Truck",
+      "sort_order": 10,
+      "is_active": true,
+      "is_visible": true,
+      "is_featured": false
+    },
+    {
+      "id": "courier-delivery",
+      "l1_id": "courier",
+      "name_ru": "Доставка документов и посылок",
+      "icon": "Package",
+      "sort_order": 10,
+      "is_active": true,
+      "is_visible": true,
+      "is_featured": false
+    },
+    {
+      "id": "hairdresser",
+      "l1_id": "beauty",
+      "name_ru": "Парикмахеры",
+      "icon": "Scissors",
+      "sort_order": 10,
+      "is_active": true,
+      "is_visible": true,
+      "is_featured": false
+    },
+    {
+      "id": "pc-repair",
+      "l1_id": "computer-help",
+      "name_ru": "Ремонт компьютеров и ноутбуков",
+      "icon": "Laptop",
+      "sort_order": 10,
+      "is_active": true,
+      "is_visible": true,
+      "is_featured": false
+    },
+    {
       "id": "plumbing",
       "l1_id": "utilities",
       "name_ru": "Сантехника",
@@ -111,6 +241,46 @@
       "is_active": true,
       "is_visible": true,
       "is_featured": true
+    },
+    {
+      "id": "texts-docs",
+      "l1_id": "virtual-assistant",
+      "name_ru": "Тексты и документы",
+      "icon": "Keyboard",
+      "sort_order": 10,
+      "is_active": true,
+      "is_visible": true,
+      "is_featured": false
+    },
+    {
+      "id": "photographer",
+      "l1_id": "photo-video",
+      "name_ru": "Фотографы",
+      "icon": "Camera",
+      "sort_order": 10,
+      "is_active": true,
+      "is_visible": true,
+      "is_featured": false
+    },
+    {
+      "id": "school-subjects",
+      "l1_id": "tutors",
+      "name_ru": "Школьные предметы",
+      "icon": "BookOpen",
+      "sort_order": 10,
+      "is_active": true,
+      "is_visible": true,
+      "is_featured": false
+    },
+    {
+      "id": "lawyers",
+      "l1_id": "legal-accounting",
+      "name_ru": "Юристы",
+      "icon": "Gavel",
+      "sort_order": 10,
+      "is_active": true,
+      "is_visible": true,
+      "is_featured": false
     },
     {
       "id": "materials-delivery",
@@ -133,11 +303,251 @@
       "is_featured": false
     },
     {
+      "id": "auto-electric",
+      "l1_id": "auto",
+      "name_ru": "Автоэлектрик",
+      "icon": "Lightning",
+      "sort_order": 20,
+      "is_active": true,
+      "is_visible": true,
+      "is_featured": false
+    },
+    {
+      "id": "animators",
+      "l1_id": "events",
+      "name_ru": "Аниматоры",
+      "icon": "Balloon",
+      "sort_order": 20,
+      "is_active": true,
+      "is_visible": true,
+      "is_featured": false
+    },
+    {
+      "id": "accountants",
+      "l1_id": "legal-accounting",
+      "name_ru": "Бухгалтеры",
+      "icon": "Calculator",
+      "sort_order": 20,
+      "is_active": true,
+      "is_visible": true,
+      "is_featured": false
+    },
+    {
+      "id": "videographer",
+      "l1_id": "photo-video",
+      "name_ru": "Видеосъёмка",
+      "icon": "VideoCamera",
+      "sort_order": 20,
+      "is_active": true,
+      "is_visible": true,
+      "is_featured": false
+    },
+    {
+      "id": "movers",
+      "l1_id": "cargo",
+      "name_ru": "Грузчики и переезды",
+      "icon": "Truck",
+      "sort_order": 20,
+      "is_active": true,
+      "is_visible": true,
+      "is_featured": false
+    },
+    {
+      "id": "buy-deliver",
+      "l1_id": "courier",
+      "name_ru": "Купить и доставить",
+      "icon": "ShoppingBag",
+      "sort_order": 20,
+      "is_active": true,
+      "is_visible": true,
+      "is_featured": false
+    },
+    {
+      "id": "manicure",
+      "l1_id": "beauty",
+      "name_ru": "Маникюр и педикюр",
+      "icon": "Sparkle",
+      "sort_order": 20,
+      "is_active": true,
+      "is_visible": true,
+      "is_featured": false
+    },
+    {
+      "id": "software-setup",
+      "l1_id": "computer-help",
+      "name_ru": "Настройка Windows и программ",
+      "icon": "Desktop",
+      "sort_order": 20,
+      "is_active": true,
+      "is_visible": true,
+      "is_featured": false
+    },
+    {
+      "id": "exam-prep",
+      "l1_id": "tutors",
+      "name_ru": "Подготовка к ЕГЭ и ОГЭ",
+      "icon": "GraduationCap",
+      "sort_order": 20,
+      "is_active": true,
+      "is_visible": true,
+      "is_featured": false
+    },
+    {
+      "id": "info-search",
+      "l1_id": "virtual-assistant",
+      "name_ru": "Поиск информации",
+      "icon": "Compass",
+      "sort_order": 20,
+      "is_active": true,
+      "is_visible": true,
+      "is_featured": false
+    },
+    {
+      "id": "makeup",
+      "l1_id": "beauty",
+      "name_ru": "Визажисты",
+      "icon": "Sparkle",
+      "sort_order": 30,
+      "is_active": true,
+      "is_visible": true,
+      "is_featured": false
+    },
+    {
+      "id": "food-delivery",
+      "l1_id": "courier",
+      "name_ru": "Доставка еды",
+      "icon": "ForkKnife",
+      "sort_order": 30,
+      "is_active": true,
+      "is_visible": true,
+      "is_featured": false
+    },
+    {
+      "id": "languages",
+      "l1_id": "tutors",
+      "name_ru": "Иностранные языки",
+      "icon": "Translate",
+      "sort_order": 30,
+      "is_active": true,
+      "is_visible": true,
+      "is_featured": false
+    },
+    {
+      "id": "internet-setup",
+      "l1_id": "computer-help",
+      "name_ru": "Интернет и Wi‑Fi",
+      "icon": "Broadcast",
+      "sort_order": 30,
+      "is_active": true,
+      "is_visible": true,
+      "is_featured": false
+    },
+    {
+      "id": "video-editing",
+      "l1_id": "photo-video",
+      "name_ru": "Монтаж видео и звука",
+      "icon": "FilmSlate",
+      "sort_order": 30,
+      "is_active": true,
+      "is_visible": true,
+      "is_featured": false
+    },
+    {
+      "id": "music-dj",
+      "l1_id": "events",
+      "name_ru": "Музыканты и диджеи",
+      "icon": "MusicNotes",
+      "sort_order": 30,
+      "is_active": true,
+      "is_visible": true,
+      "is_featured": false
+    },
+    {
+      "id": "calls-messages",
+      "l1_id": "virtual-assistant",
+      "name_ru": "Обзвон и переписка",
+      "icon": "Phone",
+      "sort_order": 30,
+      "is_active": true,
+      "is_visible": true,
+      "is_featured": false
+    },
+    {
+      "id": "documents-help",
+      "l1_id": "legal-accounting",
+      "name_ru": "Помощь с документами",
+      "icon": "Briefcase",
+      "sort_order": 30,
+      "is_active": true,
+      "is_visible": true,
+      "is_featured": false
+    },
+    {
+      "id": "tire-service",
+      "l1_id": "auto",
+      "name_ru": "Шиномонтаж",
+      "icon": "Tire",
+      "sort_order": 30,
+      "is_active": true,
+      "is_visible": true,
+      "is_featured": false
+    },
+    {
+      "id": "tow-truck",
+      "l1_id": "cargo",
+      "name_ru": "Эвакуатор",
+      "icon": "CarProfile",
+      "sort_order": 30,
+      "is_active": true,
+      "is_visible": true,
+      "is_featured": false
+    },
+    {
       "id": "electrical",
       "l1_id": "utilities",
       "name_ru": "Электрика",
       "icon": "Lightning",
       "sort_order": 30,
+      "is_active": true,
+      "is_visible": true,
+      "is_featured": false
+    },
+    {
+      "id": "driving-instructor",
+      "l1_id": "tutors",
+      "name_ru": "Автоинструкторы",
+      "icon": "Car",
+      "sort_order": 40,
+      "is_active": true,
+      "is_visible": true,
+      "is_featured": false
+    },
+    {
+      "id": "body-repair",
+      "l1_id": "auto",
+      "name_ru": "Кузовной ремонт и покраска",
+      "icon": "PaintBucket",
+      "sort_order": 40,
+      "is_active": true,
+      "is_visible": true,
+      "is_featured": false
+    },
+    {
+      "id": "massage",
+      "l1_id": "beauty",
+      "name_ru": "Массаж",
+      "icon": "HandHeart",
+      "sort_order": 40,
+      "is_active": true,
+      "is_visible": true,
+      "is_featured": false
+    },
+    {
+      "id": "event-staff",
+      "l1_id": "events",
+      "name_ru": "Официанты и повара",
+      "icon": "ForkKnife",
+      "sort_order": 40,
       "is_active": true,
       "is_visible": true,
       "is_featured": false
@@ -153,11 +563,71 @@
       "is_featured": true
     },
     {
+      "id": "phone-repair",
+      "l1_id": "computer-help",
+      "name_ru": "Ремонт телефонов и планшетов",
+      "icon": "DeviceMobile",
+      "sort_order": 40,
+      "is_active": true,
+      "is_visible": true,
+      "is_featured": false
+    },
+    {
+      "id": "spreadsheets",
+      "l1_id": "virtual-assistant",
+      "name_ru": "Таблицы и базы",
+      "icon": "Rows",
+      "sort_order": 40,
+      "is_active": true,
+      "is_visible": true,
+      "is_featured": false
+    },
+    {
+      "id": "car-wash",
+      "l1_id": "auto",
+      "name_ru": "Автомойка и химчистка",
+      "icon": "Drop",
+      "sort_order": 50,
+      "is_active": true,
+      "is_visible": true,
+      "is_featured": false
+    },
+    {
       "id": "handyman",
       "l1_id": "handyman-moving",
       "name_ru": "Мастер на час",
       "icon": "Wrench",
       "sort_order": 50,
+      "is_active": true,
+      "is_visible": true,
+      "is_featured": false
+    },
+    {
+      "id": "event-decor",
+      "l1_id": "events",
+      "name_ru": "Оформление праздников",
+      "icon": "Cake",
+      "sort_order": 50,
+      "is_active": true,
+      "is_visible": true,
+      "is_featured": false
+    },
+    {
+      "id": "music-lessons",
+      "l1_id": "tutors",
+      "name_ru": "Уроки музыки",
+      "icon": "MusicNotes",
+      "sort_order": 50,
+      "is_active": true,
+      "is_visible": true,
+      "is_featured": false
+    },
+    {
+      "id": "promoters",
+      "l1_id": "events",
+      "name_ru": "Промоутеры",
+      "icon": "Megaphone",
+      "sort_order": 60,
       "is_active": true,
       "is_visible": true,
       "is_featured": false
@@ -193,10 +663,30 @@
       "is_featured": false
     },
     {
+      "id": "housekeeping",
+      "l1_id": "home-services",
+      "name_ru": "Помощь по хозяйству",
+      "icon": "House",
+      "sort_order": 70,
+      "is_active": true,
+      "is_visible": true,
+      "is_featured": false
+    },
+    {
       "id": "doors",
       "l1_id": "repair-finishing",
       "name_ru": "Двери",
       "icon": "Door",
+      "sort_order": 80,
+      "is_active": true,
+      "is_visible": true,
+      "is_featured": false
+    },
+    {
+      "id": "caregivers",
+      "l1_id": "home-services",
+      "name_ru": "Няни и сиделки",
+      "icon": "Baby",
       "sort_order": 80,
       "is_active": true,
       "is_visible": true,
@@ -463,16 +953,6 @@
       "is_featured": false
     },
     {
-      "id": "movers",
-      "l1_id": "handyman-moving",
-      "name_ru": "Грузчики и переезды",
-      "icon": "Truck",
-      "sort_order": 330,
-      "is_active": true,
-      "is_visible": true,
-      "is_featured": false
-    },
-    {
       "id": "appliance-repair",
       "l1_id": "tech-security",
       "name_ru": "Ремонт бытовой техники",
@@ -504,6 +984,41 @@
     }
   ],
   "services": [
+    {
+      "id": "acc-declaration",
+      "l2_id": "accountants",
+      "name_ru": "Налоговая декларация",
+      "sort_order": 10,
+      "is_active": true
+    },
+    {
+      "id": "acc-ip",
+      "l2_id": "accountants",
+      "name_ru": "Бухгалтерия для ИП",
+      "sort_order": 20,
+      "is_active": true
+    },
+    {
+      "id": "acc-reports",
+      "l2_id": "accountants",
+      "name_ru": "Сдать отчётность",
+      "sort_order": 30,
+      "is_active": true
+    },
+    {
+      "id": "anim-kids",
+      "l2_id": "animators",
+      "name_ru": "Детский праздник",
+      "sort_order": 10,
+      "is_active": true
+    },
+    {
+      "id": "anim-birthday",
+      "l2_id": "animators",
+      "name_ru": "Аниматор на день рождения",
+      "sort_order": 20,
+      "is_active": true
+    },
     {
       "id": "appl-washing",
       "l2_id": "appliance-repair",
@@ -561,6 +1076,27 @@
       "is_active": true
     },
     {
+      "id": "car-no-start",
+      "l2_id": "auto-electric",
+      "name_ru": "Машина не заводится",
+      "sort_order": 10,
+      "is_active": true
+    },
+    {
+      "id": "car-alarm",
+      "l2_id": "auto-electric",
+      "name_ru": "Установить сигнализацию",
+      "sort_order": 20,
+      "is_active": true
+    },
+    {
+      "id": "car-wiring",
+      "l2_id": "auto-electric",
+      "name_ru": "Ремонт проводки",
+      "sort_order": 30,
+      "is_active": true
+    },
+    {
       "id": "bath-turnkey",
       "l2_id": "baths-pools",
       "name_ru": "Баня под ключ",
@@ -614,6 +1150,146 @@
       "l2_id": "baths-pools",
       "name_ru": "Гидроизоляция бассейна",
       "sort_order": 80,
+      "is_active": true
+    },
+    {
+      "id": "body-dents",
+      "l2_id": "body-repair",
+      "name_ru": "Убрать вмятины",
+      "sort_order": 10,
+      "is_active": true
+    },
+    {
+      "id": "body-paint",
+      "l2_id": "body-repair",
+      "name_ru": "Покрасить автомобиль",
+      "sort_order": 20,
+      "is_active": true
+    },
+    {
+      "id": "body-polish",
+      "l2_id": "body-repair",
+      "name_ru": "Полировка",
+      "sort_order": 30,
+      "is_active": true
+    },
+    {
+      "id": "buy-groceries",
+      "l2_id": "buy-deliver",
+      "name_ru": "Купить и привезти продукты",
+      "sort_order": 10,
+      "is_active": true
+    },
+    {
+      "id": "buy-pharmacy",
+      "l2_id": "buy-deliver",
+      "name_ru": "Купить в аптеке",
+      "sort_order": 20,
+      "is_active": true
+    },
+    {
+      "id": "buy-store",
+      "l2_id": "buy-deliver",
+      "name_ru": "Купить в магазине",
+      "sort_order": 30,
+      "is_active": true
+    },
+    {
+      "id": "va-calls",
+      "l2_id": "calls-messages",
+      "name_ru": "Обзвонить клиентов",
+      "sort_order": 10,
+      "is_active": true
+    },
+    {
+      "id": "va-replies",
+      "l2_id": "calls-messages",
+      "name_ru": "Отвечать на сообщения",
+      "sort_order": 20,
+      "is_active": true
+    },
+    {
+      "id": "car-diagnostics",
+      "l2_id": "car-repair",
+      "name_ru": "Диагностика автомобиля",
+      "sort_order": 10,
+      "is_active": true
+    },
+    {
+      "id": "car-engine",
+      "l2_id": "car-repair",
+      "name_ru": "Ремонт двигателя",
+      "sort_order": 20,
+      "is_active": true
+    },
+    {
+      "id": "car-suspension",
+      "l2_id": "car-repair",
+      "name_ru": "Ремонт ходовой",
+      "sort_order": 30,
+      "is_active": true
+    },
+    {
+      "id": "car-oil",
+      "l2_id": "car-repair",
+      "name_ru": "Замена масла",
+      "sort_order": 40,
+      "is_active": true
+    },
+    {
+      "id": "wash-interior",
+      "l2_id": "car-wash",
+      "name_ru": "Химчистка салона",
+      "sort_order": 10,
+      "is_active": true
+    },
+    {
+      "id": "wash-mobile",
+      "l2_id": "car-wash",
+      "name_ru": "Выездная мойка",
+      "sort_order": 20,
+      "is_active": true
+    },
+    {
+      "id": "care-nanny",
+      "l2_id": "caregivers",
+      "name_ru": "Няня",
+      "sort_order": 10,
+      "is_active": true
+    },
+    {
+      "id": "care-elderly",
+      "l2_id": "caregivers",
+      "name_ru": "Сиделка для пожилых",
+      "sort_order": 20,
+      "is_active": true
+    },
+    {
+      "id": "cargo-gazelle",
+      "l2_id": "cargo-transport",
+      "name_ru": "Газель с водителем",
+      "sort_order": 10,
+      "is_active": true
+    },
+    {
+      "id": "cargo-furniture",
+      "l2_id": "cargo-transport",
+      "name_ru": "Перевезти мебель и технику",
+      "sort_order": 20,
+      "is_active": true
+    },
+    {
+      "id": "cargo-materials",
+      "l2_id": "cargo-transport",
+      "name_ru": "Перевезти стройматериалы",
+      "sort_order": 30,
+      "is_active": true
+    },
+    {
+      "id": "cargo-intercity",
+      "l2_id": "cargo-transport",
+      "name_ru": "Перевозка в другой город",
+      "sort_order": 40,
       "is_active": true
     },
     {
@@ -876,6 +1552,27 @@
       "is_active": true
     },
     {
+      "id": "courier-docs",
+      "l2_id": "courier-delivery",
+      "name_ru": "Доставить документы",
+      "sort_order": 10,
+      "is_active": true
+    },
+    {
+      "id": "courier-parcel",
+      "l2_id": "courier-delivery",
+      "name_ru": "Доставить посылку",
+      "sort_order": 20,
+      "is_active": true
+    },
+    {
+      "id": "courier-day",
+      "l2_id": "courier-delivery",
+      "name_ru": "Курьер на день",
+      "sort_order": 30,
+      "is_active": true
+    },
+    {
       "id": "cornice-install",
       "l2_id": "curtains-blinds",
       "name_ru": "Установка карнизов",
@@ -1023,6 +1720,20 @@
       "is_active": true
     },
     {
+      "id": "docs-mfc",
+      "l2_id": "documents-help",
+      "name_ru": "Оформить документы",
+      "sort_order": 10,
+      "is_active": true
+    },
+    {
+      "id": "docs-company",
+      "l2_id": "documents-help",
+      "name_ru": "Зарегистрировать ИП или ООО",
+      "sort_order": 20,
+      "is_active": true
+    },
+    {
       "id": "door-entry",
       "l2_id": "doors",
       "name_ru": "Установка входной двери",
@@ -1125,6 +1836,20 @@
       "l2_id": "drilling-wells",
       "name_ru": "Анализ воды",
       "sort_order": 80,
+      "is_active": true
+    },
+    {
+      "id": "drive-beginner",
+      "l2_id": "driving-instructor",
+      "name_ru": "Вождение для начинающих",
+      "sort_order": 10,
+      "is_active": true
+    },
+    {
+      "id": "drive-refresh",
+      "l2_id": "driving-instructor",
+      "name_ru": "Восстановить навыки вождения",
+      "sort_order": 20,
       "is_active": true
     },
     {
@@ -1251,6 +1976,62 @@
       "l2_id": "electrical",
       "name_ru": "Установка УЗО / автоматов",
       "sort_order": 100,
+      "is_active": true
+    },
+    {
+      "id": "decor-balloons",
+      "l2_id": "event-decor",
+      "name_ru": "Оформление шарами",
+      "sort_order": 10,
+      "is_active": true
+    },
+    {
+      "id": "decor-hall",
+      "l2_id": "event-decor",
+      "name_ru": "Оформление зала",
+      "sort_order": 20,
+      "is_active": true
+    },
+    {
+      "id": "host-wedding",
+      "l2_id": "event-hosts",
+      "name_ru": "Ведущий на свадьбу",
+      "sort_order": 10,
+      "is_active": true
+    },
+    {
+      "id": "host-party",
+      "l2_id": "event-hosts",
+      "name_ru": "Ведущий на праздник",
+      "sort_order": 20,
+      "is_active": true
+    },
+    {
+      "id": "staff-waiters",
+      "l2_id": "event-staff",
+      "name_ru": "Официанты на мероприятие",
+      "sort_order": 10,
+      "is_active": true
+    },
+    {
+      "id": "staff-cook",
+      "l2_id": "event-staff",
+      "name_ru": "Повар на мероприятие",
+      "sort_order": 20,
+      "is_active": true
+    },
+    {
+      "id": "exam-ege",
+      "l2_id": "exam-prep",
+      "name_ru": "Подготовка к ЕГЭ",
+      "sort_order": 10,
+      "is_active": true
+    },
+    {
+      "id": "exam-oge",
+      "l2_id": "exam-prep",
+      "name_ru": "Подготовка к ОГЭ",
+      "sort_order": 20,
       "is_active": true
     },
     {
@@ -1436,6 +2217,20 @@
       "is_active": true
     },
     {
+      "id": "food-cafe",
+      "l2_id": "food-delivery",
+      "name_ru": "Доставка из кафе",
+      "sort_order": 10,
+      "is_active": true
+    },
+    {
+      "id": "food-lunches",
+      "l2_id": "food-delivery",
+      "name_ru": "Доставка обедов",
+      "sort_order": 20,
+      "is_active": true
+    },
+    {
       "id": "furniture-assembly",
       "l2_id": "furniture",
       "name_ru": "Сборка корпусной мебели",
@@ -1576,6 +2371,27 @@
       "is_active": true
     },
     {
+      "id": "hair-cut",
+      "l2_id": "hairdresser",
+      "name_ru": "Стрижка",
+      "sort_order": 10,
+      "is_active": true
+    },
+    {
+      "id": "hair-color",
+      "l2_id": "hairdresser",
+      "name_ru": "Окрашивание",
+      "sort_order": 20,
+      "is_active": true
+    },
+    {
+      "id": "hair-event",
+      "l2_id": "hairdresser",
+      "name_ru": "Причёска на торжество",
+      "sort_order": 30,
+      "is_active": true
+    },
+    {
       "id": "mount-tv",
       "l2_id": "handyman",
       "name_ru": "Повесить телевизор / полку",
@@ -1629,6 +2445,41 @@
       "l2_id": "handyman",
       "name_ru": "Прочий мелкий ремонт",
       "sort_order": 80,
+      "is_active": true
+    },
+    {
+      "id": "house-help",
+      "l2_id": "housekeeping",
+      "name_ru": "Домработница",
+      "sort_order": 10,
+      "is_active": true
+    },
+    {
+      "id": "house-cooking",
+      "l2_id": "housekeeping",
+      "name_ru": "Помощь с готовкой",
+      "sort_order": 20,
+      "is_active": true
+    },
+    {
+      "id": "house-ironing",
+      "l2_id": "housekeeping",
+      "name_ru": "Глажка белья",
+      "sort_order": 30,
+      "is_active": true
+    },
+    {
+      "id": "va-research",
+      "l2_id": "info-search",
+      "name_ru": "Найти информацию",
+      "sort_order": 10,
+      "is_active": true
+    },
+    {
+      "id": "va-compare",
+      "l2_id": "info-search",
+      "name_ru": "Сравнить цены",
+      "sort_order": 20,
       "is_active": true
     },
     {
@@ -1720,6 +2571,20 @@
       "l2_id": "interior-design",
       "name_ru": "Перепланировка / зонирование",
       "sort_order": 70,
+      "is_active": true
+    },
+    {
+      "id": "net-router",
+      "l2_id": "internet-setup",
+      "name_ru": "Настроить роутер",
+      "sort_order": 10,
+      "is_active": true
+    },
+    {
+      "id": "net-cable",
+      "l2_id": "internet-setup",
+      "name_ru": "Провести интернет-кабель",
+      "sort_order": 20,
       "is_active": true
     },
     {
@@ -1828,6 +2693,27 @@
       "is_active": true
     },
     {
+      "id": "lang-english",
+      "l2_id": "languages",
+      "name_ru": "Английский",
+      "sort_order": 10,
+      "is_active": true
+    },
+    {
+      "id": "lang-arabic",
+      "l2_id": "languages",
+      "name_ru": "Арабский",
+      "sort_order": 20,
+      "is_active": true
+    },
+    {
+      "id": "lang-other",
+      "l2_id": "languages",
+      "name_ru": "Другие языки",
+      "sort_order": 30,
+      "is_active": true
+    },
+    {
       "id": "laundry-service",
       "l2_id": "laundry",
       "name_ru": "Стирка белья",
@@ -1860,6 +2746,27 @@
       "l2_id": "laundry",
       "name_ru": "Чистка и ремонт обуви",
       "sort_order": 5,
+      "is_active": true
+    },
+    {
+      "id": "law-consult",
+      "l2_id": "lawyers",
+      "name_ru": "Консультация юриста",
+      "sort_order": 10,
+      "is_active": true
+    },
+    {
+      "id": "law-contract",
+      "l2_id": "lawyers",
+      "name_ru": "Составить договор",
+      "sort_order": 20,
+      "is_active": true
+    },
+    {
+      "id": "law-court",
+      "l2_id": "lawyers",
+      "name_ru": "Представительство в суде",
+      "sort_order": 30,
       "is_active": true
     },
     {
@@ -1926,6 +2833,41 @@
       "is_active": true
     },
     {
+      "id": "makeup-event",
+      "l2_id": "makeup",
+      "name_ru": "Макияж на торжество",
+      "sort_order": 10,
+      "is_active": true
+    },
+    {
+      "id": "makeup-wedding",
+      "l2_id": "makeup",
+      "name_ru": "Свадебный макияж",
+      "sort_order": 20,
+      "is_active": true
+    },
+    {
+      "id": "nails-manicure",
+      "l2_id": "manicure",
+      "name_ru": "Маникюр",
+      "sort_order": 10,
+      "is_active": true
+    },
+    {
+      "id": "nails-pedicure",
+      "l2_id": "manicure",
+      "name_ru": "Педикюр",
+      "sort_order": 20,
+      "is_active": true
+    },
+    {
+      "id": "nails-extension",
+      "l2_id": "manicure",
+      "name_ru": "Наращивание ногтей",
+      "sort_order": 30,
+      "is_active": true
+    },
+    {
       "id": "masonry-brick",
       "l2_id": "masonry",
       "name_ru": "Кладка кирпича",
@@ -1972,6 +2914,20 @@
       "l2_id": "masonry",
       "name_ru": "Перегородки",
       "sort_order": 70,
+      "is_active": true
+    },
+    {
+      "id": "massage-classic",
+      "l2_id": "massage",
+      "name_ru": "Классический массаж",
+      "sort_order": 10,
+      "is_active": true
+    },
+    {
+      "id": "massage-home",
+      "l2_id": "massage",
+      "name_ru": "Массаж на дому",
+      "sort_order": 20,
       "is_active": true
     },
     {
@@ -2049,6 +3005,41 @@
       "l2_id": "movers",
       "name_ru": "Газель с грузчиками",
       "sort_order": 60,
+      "is_active": true
+    },
+    {
+      "id": "dj",
+      "l2_id": "music-dj",
+      "name_ru": "Диджей",
+      "sort_order": 10,
+      "is_active": true
+    },
+    {
+      "id": "musicians-wedding",
+      "l2_id": "music-dj",
+      "name_ru": "Музыканты на свадьбу",
+      "sort_order": 20,
+      "is_active": true
+    },
+    {
+      "id": "music-guitar",
+      "l2_id": "music-lessons",
+      "name_ru": "Гитара",
+      "sort_order": 10,
+      "is_active": true
+    },
+    {
+      "id": "music-piano",
+      "l2_id": "music-lessons",
+      "name_ru": "Фортепиано",
+      "sort_order": 20,
+      "is_active": true
+    },
+    {
+      "id": "music-vocal",
+      "l2_id": "music-lessons",
+      "name_ru": "Вокал",
+      "sort_order": 30,
       "is_active": true
     },
     {
@@ -2164,6 +3155,34 @@
       "is_active": true
     },
     {
+      "id": "pc-diagnostics",
+      "l2_id": "pc-repair",
+      "name_ru": "Диагностика",
+      "sort_order": 10,
+      "is_active": true
+    },
+    {
+      "id": "pc-cleaning",
+      "l2_id": "pc-repair",
+      "name_ru": "Чистка от пыли",
+      "sort_order": 20,
+      "is_active": true
+    },
+    {
+      "id": "pc-parts",
+      "l2_id": "pc-repair",
+      "name_ru": "Замена комплектующих",
+      "sort_order": 30,
+      "is_active": true
+    },
+    {
+      "id": "pc-data",
+      "l2_id": "pc-repair",
+      "name_ru": "Восстановление данных",
+      "sort_order": 40,
+      "is_active": true
+    },
+    {
       "id": "pest-insects",
       "l2_id": "pest-control",
       "name_ru": "Обработка от насекомых",
@@ -2203,6 +3222,55 @@
       "l2_id": "pest-control",
       "name_ru": "Обработка от плесени",
       "sort_order": 6,
+      "is_active": true
+    },
+    {
+      "id": "phone-screen",
+      "l2_id": "phone-repair",
+      "name_ru": "Заменить экран",
+      "sort_order": 10,
+      "is_active": true
+    },
+    {
+      "id": "phone-battery",
+      "l2_id": "phone-repair",
+      "name_ru": "Заменить аккумулятор",
+      "sort_order": 20,
+      "is_active": true
+    },
+    {
+      "id": "phone-dead",
+      "l2_id": "phone-repair",
+      "name_ru": "Не включается",
+      "sort_order": 30,
+      "is_active": true
+    },
+    {
+      "id": "photo-event",
+      "l2_id": "photographer",
+      "name_ru": "Фотосъёмка мероприятия",
+      "sort_order": 10,
+      "is_active": true
+    },
+    {
+      "id": "photo-wedding",
+      "l2_id": "photographer",
+      "name_ru": "Свадебная съёмка",
+      "sort_order": 20,
+      "is_active": true
+    },
+    {
+      "id": "photo-session",
+      "l2_id": "photographer",
+      "name_ru": "Фотосессия",
+      "sort_order": 30,
+      "is_active": true
+    },
+    {
+      "id": "photo-product",
+      "l2_id": "photographer",
+      "name_ru": "Предметная съёмка",
+      "sort_order": 40,
       "is_active": true
     },
     {
@@ -2287,6 +3355,20 @@
       "l2_id": "plumbing",
       "name_ru": "Прочистка засоров",
       "sort_order": 100,
+      "is_active": true
+    },
+    {
+      "id": "promo-flyers",
+      "l2_id": "promoters",
+      "name_ru": "Раздать листовки",
+      "sort_order": 10,
+      "is_active": true
+    },
+    {
+      "id": "promo-instore",
+      "l2_id": "promoters",
+      "name_ru": "Промоакция в магазине",
+      "sort_order": 20,
       "is_active": true
     },
     {
@@ -2444,6 +3526,34 @@
       "is_active": true
     },
     {
+      "id": "tutor-math",
+      "l2_id": "school-subjects",
+      "name_ru": "Математика",
+      "sort_order": 10,
+      "is_active": true
+    },
+    {
+      "id": "tutor-russian",
+      "l2_id": "school-subjects",
+      "name_ru": "Русский язык",
+      "sort_order": 20,
+      "is_active": true
+    },
+    {
+      "id": "tutor-science",
+      "l2_id": "school-subjects",
+      "name_ru": "Физика и химия",
+      "sort_order": 30,
+      "is_active": true
+    },
+    {
+      "id": "tutor-primary",
+      "l2_id": "school-subjects",
+      "name_ru": "Начальная школа",
+      "sort_order": 40,
+      "is_active": true
+    },
+    {
       "id": "cctv-install-pro",
       "l2_id": "security-systems",
       "name_ru": "Установка видеокамер",
@@ -2483,6 +3593,41 @@
       "l2_id": "security-systems",
       "name_ru": "Домофоны",
       "sort_order": 60,
+      "is_active": true
+    },
+    {
+      "id": "sw-windows",
+      "l2_id": "software-setup",
+      "name_ru": "Установить Windows",
+      "sort_order": 10,
+      "is_active": true
+    },
+    {
+      "id": "sw-virus",
+      "l2_id": "software-setup",
+      "name_ru": "Удалить вирусы",
+      "sort_order": 20,
+      "is_active": true
+    },
+    {
+      "id": "sw-programs",
+      "l2_id": "software-setup",
+      "name_ru": "Установить программы",
+      "sort_order": 30,
+      "is_active": true
+    },
+    {
+      "id": "va-tables",
+      "l2_id": "spreadsheets",
+      "name_ru": "Заполнить таблицы",
+      "sort_order": 10,
+      "is_active": true
+    },
+    {
+      "id": "va-database",
+      "l2_id": "spreadsheets",
+      "name_ru": "Вести базу",
+      "sort_order": 20,
       "is_active": true
     },
     {
@@ -2535,6 +3680,27 @@
       "is_active": true
     },
     {
+      "id": "va-typing",
+      "l2_id": "texts-docs",
+      "name_ru": "Набрать текст",
+      "sort_order": 10,
+      "is_active": true
+    },
+    {
+      "id": "va-docs",
+      "l2_id": "texts-docs",
+      "name_ru": "Оформить документ",
+      "sort_order": 20,
+      "is_active": true
+    },
+    {
+      "id": "va-translate",
+      "l2_id": "texts-docs",
+      "name_ru": "Перевести текст",
+      "sort_order": 30,
+      "is_active": true
+    },
+    {
       "id": "tile-bathroom",
       "l2_id": "tiling",
       "name_ru": "Облицовка ванной / санузла",
@@ -2581,6 +3747,76 @@
       "l2_id": "tiling",
       "name_ru": "Демонтаж старой плитки",
       "sort_order": 70,
+      "is_active": true
+    },
+    {
+      "id": "tire-season",
+      "l2_id": "tire-service",
+      "name_ru": "Сезонная замена шин",
+      "sort_order": 10,
+      "is_active": true
+    },
+    {
+      "id": "tire-puncture",
+      "l2_id": "tire-service",
+      "name_ru": "Ремонт прокола",
+      "sort_order": 20,
+      "is_active": true
+    },
+    {
+      "id": "tire-mobile",
+      "l2_id": "tire-service",
+      "name_ru": "Выездной шиномонтаж",
+      "sort_order": 30,
+      "is_active": true
+    },
+    {
+      "id": "tow-car",
+      "l2_id": "tow-truck",
+      "name_ru": "Эвакуировать автомобиль",
+      "sort_order": 10,
+      "is_active": true
+    },
+    {
+      "id": "tow-machinery",
+      "l2_id": "tow-truck",
+      "name_ru": "Перевезти спецтехнику",
+      "sort_order": 20,
+      "is_active": true
+    },
+    {
+      "id": "edit-video",
+      "l2_id": "video-editing",
+      "name_ru": "Смонтировать видео",
+      "sort_order": 10,
+      "is_active": true
+    },
+    {
+      "id": "edit-audio",
+      "l2_id": "video-editing",
+      "name_ru": "Обработать звук",
+      "sort_order": 20,
+      "is_active": true
+    },
+    {
+      "id": "video-event",
+      "l2_id": "videographer",
+      "name_ru": "Видеосъёмка мероприятия",
+      "sort_order": 10,
+      "is_active": true
+    },
+    {
+      "id": "video-wedding",
+      "l2_id": "videographer",
+      "name_ru": "Свадебное видео",
+      "sort_order": 20,
+      "is_active": true
+    },
+    {
+      "id": "video-drone",
+      "l2_id": "videographer",
+      "name_ru": "Съёмка с дрона",
+      "sort_order": 30,
       "is_active": true
     },
     {
@@ -2823,10 +4059,76 @@
       "weight": 90
     },
     {
+      "term": "авто",
+      "l2_id": "car-repair",
+      "l3_id": null,
+      "weight": 70
+    },
+    {
+      "term": "автоинструктор",
+      "l2_id": "driving-instructor",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "автомеханик",
+      "l2_id": "car-repair",
+      "l3_id": null,
+      "weight": 80
+    },
+    {
+      "term": "автомойка",
+      "l2_id": "car-wash",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "автосервис",
+      "l2_id": "car-repair",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "автоэлектрик",
+      "l2_id": "auto-electric",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "адвокат",
+      "l2_id": "lawyers",
+      "l3_id": null,
+      "weight": 90
+    },
+    {
+      "term": "айфон",
+      "l2_id": "phone-repair",
+      "l3_id": null,
+      "weight": 80
+    },
+    {
+      "term": "английский",
+      "l2_id": "languages",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "аниматор",
+      "l2_id": "animators",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
       "term": "антенна",
       "l2_id": "satellite-tv",
       "l3_id": null,
       "weight": 100
+    },
+    {
+      "term": "арабский",
+      "l2_id": "languages",
+      "l3_id": null,
+      "weight": 90
     },
     {
       "term": "армопояс",
@@ -2845,6 +4147,12 @@
       "l2_id": null,
       "l3_id": "plaster-microcement",
       "weight": 100
+    },
+    {
+      "term": "база данных",
+      "l2_id": "spreadsheets",
+      "l3_id": null,
+      "weight": 80
     },
     {
       "term": "баня",
@@ -2901,8 +4209,26 @@
       "weight": 100
     },
     {
+      "term": "бухгалтер",
+      "l2_id": "accountants",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "вайфай",
+      "l2_id": "internet-setup",
+      "l3_id": null,
+      "weight": 80
+    },
+    {
       "term": "ванна",
       "l2_id": "plumbing",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "ведущий",
+      "l2_id": "event-hosts",
       "l3_id": null,
       "weight": 100
     },
@@ -2916,6 +4242,18 @@
       "term": "венецианская",
       "l2_id": null,
       "l3_id": "plaster-venetian",
+      "weight": 100
+    },
+    {
+      "term": "видео",
+      "l2_id": "videographer",
+      "l3_id": null,
+      "weight": 80
+    },
+    {
+      "term": "видеограф",
+      "l2_id": "videographer",
+      "l3_id": null,
       "weight": 100
     },
     {
@@ -2937,6 +4275,18 @@
       "weight": 100
     },
     {
+      "term": "видеосъёмка",
+      "l2_id": "videographer",
+      "l3_id": null,
+      "weight": 90
+    },
+    {
+      "term": "визажист",
+      "l2_id": "makeup",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
       "term": "винил",
       "l2_id": null,
       "l3_id": "wallpaper-vinyl",
@@ -2947,6 +4297,18 @@
       "l2_id": null,
       "l3_id": "wallpaper-vinyl",
       "weight": 100
+    },
+    {
+      "term": "вирусы",
+      "l2_id": "software-setup",
+      "l3_id": null,
+      "weight": 80
+    },
+    {
+      "term": "вмятина",
+      "l2_id": "body-repair",
+      "l3_id": null,
+      "weight": 80
     },
     {
       "term": "водонагреватель",
@@ -2971,6 +4333,18 @@
       "l2_id": "roofing",
       "l3_id": null,
       "weight": 90
+    },
+    {
+      "term": "вождение",
+      "l2_id": "driving-instructor",
+      "l3_id": null,
+      "weight": 90
+    },
+    {
+      "term": "вокал",
+      "l2_id": "music-lessons",
+      "l3_id": null,
+      "weight": 70
     },
     {
       "term": "ворота",
@@ -3009,6 +4383,12 @@
       "weight": 100
     },
     {
+      "term": "газель",
+      "l2_id": "cargo-transport",
+      "l3_id": null,
+      "weight": 90
+    },
+    {
       "term": "газоблок",
       "l2_id": "masonry",
       "l3_id": null,
@@ -3039,8 +4419,38 @@
       "weight": 100
     },
     {
+      "term": "гитара",
+      "l2_id": "music-lessons",
+      "l3_id": null,
+      "weight": 90
+    },
+    {
       "term": "гкл",
       "l2_id": "drywall",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "глажка",
+      "l2_id": "housekeeping",
+      "l3_id": null,
+      "weight": 70
+    },
+    {
+      "term": "готовка",
+      "l2_id": "housekeeping",
+      "l3_id": null,
+      "weight": 80
+    },
+    {
+      "term": "грузовое такси",
+      "l2_id": "cargo-transport",
+      "l3_id": null,
+      "weight": 80
+    },
+    {
+      "term": "грузоперевозки",
+      "l2_id": "cargo-transport",
       "l3_id": null,
       "weight": 100
     },
@@ -3069,6 +4479,18 @@
       "weight": 80
     },
     {
+      "term": "декларация",
+      "l2_id": "accountants",
+      "l3_id": null,
+      "weight": 90
+    },
+    {
+      "term": "декор",
+      "l2_id": "event-decor",
+      "l3_id": null,
+      "weight": 80
+    },
+    {
       "term": "декор стен снаружи",
       "l2_id": "facade",
       "l3_id": null,
@@ -3093,6 +4515,24 @@
       "weight": 100
     },
     {
+      "term": "день рождения",
+      "l2_id": "animators",
+      "l3_id": null,
+      "weight": 80
+    },
+    {
+      "term": "детский праздник",
+      "l2_id": "animators",
+      "l3_id": null,
+      "weight": 90
+    },
+    {
+      "term": "диджей",
+      "l2_id": "music-dj",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
       "term": "дизайн",
       "l2_id": "interior-design",
       "l3_id": null,
@@ -3103,6 +4543,18 @@
       "l2_id": "interior-design",
       "l3_id": null,
       "weight": 100
+    },
+    {
+      "term": "договор",
+      "l2_id": "lawyers",
+      "l3_id": null,
+      "weight": 80
+    },
+    {
+      "term": "документы",
+      "l2_id": "texts-docs",
+      "l3_id": null,
+      "weight": 90
     },
     {
       "term": "дом",
@@ -3117,8 +4569,32 @@
       "weight": 100
     },
     {
+      "term": "домработница",
+      "l2_id": "housekeeping",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
       "term": "дорожки",
       "l2_id": "landscape",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "доставить",
+      "l2_id": "courier-delivery",
+      "l3_id": null,
+      "weight": 80
+    },
+    {
+      "term": "доставка",
+      "l2_id": "courier-delivery",
+      "l3_id": null,
+      "weight": 90
+    },
+    {
+      "term": "доставка еды",
+      "l2_id": "food-delivery",
       "l3_id": null,
       "weight": 100
     },
@@ -3129,10 +4605,28 @@
       "weight": 100
     },
     {
+      "term": "егэ",
+      "l2_id": "exam-prep",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "еда",
+      "l2_id": "food-delivery",
+      "l3_id": null,
+      "weight": 90
+    },
+    {
       "term": "жалюзи",
       "l2_id": "curtains-blinds",
       "l3_id": null,
       "weight": 100
+    },
+    {
+      "term": "живая музыка",
+      "l2_id": "music-dj",
+      "l3_id": null,
+      "weight": 80
     },
     {
       "term": "жидкие обои",
@@ -3207,6 +4701,18 @@
       "weight": 100
     },
     {
+      "term": "звонки",
+      "l2_id": "calls-messages",
+      "l3_id": null,
+      "weight": 90
+    },
+    {
+      "term": "звук",
+      "l2_id": "video-editing",
+      "l3_id": null,
+      "weight": 80
+    },
+    {
       "term": "изоляция",
       "l2_id": "insulation",
       "l3_id": null,
@@ -3217,6 +4723,24 @@
       "l2_id": "furniture",
       "l3_id": null,
       "weight": 90
+    },
+    {
+      "term": "иностранный язык",
+      "l2_id": "languages",
+      "l3_id": null,
+      "weight": 80
+    },
+    {
+      "term": "инструктор",
+      "l2_id": "driving-instructor",
+      "l3_id": null,
+      "weight": 80
+    },
+    {
+      "term": "интернет",
+      "l2_id": "internet-setup",
+      "l3_id": null,
+      "weight": 100
     },
     {
       "term": "интерьер",
@@ -3291,6 +4815,12 @@
       "weight": 90
     },
     {
+      "term": "кейтеринг",
+      "l2_id": "event-staff",
+      "l3_id": null,
+      "weight": 80
+    },
+    {
       "term": "кирпич",
       "l2_id": "masonry",
       "l3_id": null,
@@ -3309,8 +4839,20 @@
       "weight": 100
     },
     {
+      "term": "колесо",
+      "l2_id": "tire-service",
+      "l3_id": null,
+      "weight": 80
+    },
+    {
       "term": "колодец",
       "l2_id": "drilling-wells",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "компьютер",
+      "l2_id": "pc-repair",
       "l3_id": null,
       "weight": 100
     },
@@ -3319,6 +4861,12 @@
       "l2_id": "climate",
       "l3_id": null,
       "weight": 100
+    },
+    {
+      "term": "консультация",
+      "l2_id": "lawyers",
+      "l3_id": null,
+      "weight": 70
     },
     {
       "term": "короб",
@@ -3399,6 +4947,30 @@
       "weight": 100
     },
     {
+      "term": "кузовной ремонт",
+      "l2_id": "body-repair",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "купить",
+      "l2_id": "buy-deliver",
+      "l3_id": null,
+      "weight": 80
+    },
+    {
+      "term": "купить и доставить",
+      "l2_id": "buy-deliver",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "курьер",
+      "l2_id": "courier-delivery",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
       "term": "кухня",
       "l2_id": "furniture",
       "l3_id": null,
@@ -3429,16 +5001,52 @@
       "weight": 100
     },
     {
+      "term": "листовки",
+      "l2_id": "promoters",
+      "l3_id": null,
+      "weight": 90
+    },
+    {
       "term": "люстра",
       "l2_id": "electrical",
       "l3_id": null,
       "weight": 100
     },
     {
+      "term": "макияж",
+      "l2_id": "makeup",
+      "l3_id": null,
+      "weight": 90
+    },
+    {
+      "term": "маникюр",
+      "l2_id": "manicure",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "массаж",
+      "l2_id": "massage",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "массажист",
+      "l2_id": "massage",
+      "l3_id": null,
+      "weight": 90
+    },
+    {
       "term": "мастер на час",
       "l2_id": "handyman",
       "l3_id": null,
       "weight": 100
+    },
+    {
+      "term": "математика",
+      "l2_id": "school-subjects",
+      "l3_id": null,
+      "weight": 90
     },
     {
       "term": "мебель",
@@ -3489,6 +5097,24 @@
       "weight": 100
     },
     {
+      "term": "мойка",
+      "l2_id": "car-wash",
+      "l3_id": null,
+      "weight": 80
+    },
+    {
+      "term": "монтаж",
+      "l2_id": "video-editing",
+      "l3_id": null,
+      "weight": 90
+    },
+    {
+      "term": "монтаж видео",
+      "l2_id": "video-editing",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
       "term": "москитная сетка",
       "l2_id": "windows",
       "l3_id": null,
@@ -3501,10 +5127,22 @@
       "weight": 100
     },
     {
+      "term": "музыканты",
+      "l2_id": "music-dj",
+      "l3_id": null,
+      "weight": 90
+    },
+    {
       "term": "мусор",
       "l2_id": "disposal",
       "l3_id": null,
       "weight": 90
+    },
+    {
+      "term": "мфц",
+      "l2_id": "documents-help",
+      "l3_id": null,
+      "weight": 80
     },
     {
       "term": "мытьё",
@@ -3513,8 +5151,20 @@
       "weight": 80
     },
     {
+      "term": "набор текста",
+      "l2_id": "texts-docs",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
       "term": "навесной фасад",
       "l2_id": "facade",
+      "l3_id": null,
+      "weight": 90
+    },
+    {
+      "term": "найти",
+      "l2_id": "info-search",
       "l3_id": null,
       "weight": 90
     },
@@ -3531,10 +5181,22 @@
       "weight": 100
     },
     {
+      "term": "налоги",
+      "l2_id": "accountants",
+      "l3_id": null,
+      "weight": 70
+    },
+    {
       "term": "напольное покрытие",
       "l2_id": "floors",
       "l3_id": null,
       "weight": 90
+    },
+    {
+      "term": "настройка компьютера",
+      "l2_id": "software-setup",
+      "l3_id": null,
+      "weight": 70
     },
     {
       "term": "натяжной потолок",
@@ -3567,8 +5229,38 @@
       "weight": 100
     },
     {
+      "term": "ногти",
+      "l2_id": "manicure",
+      "l3_id": null,
+      "weight": 80
+    },
+    {
+      "term": "ноутбук",
+      "l2_id": "pc-repair",
+      "l3_id": null,
+      "weight": 90
+    },
+    {
       "term": "нтв плюс",
       "l2_id": "satellite-tv",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "няня",
+      "l2_id": "caregivers",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "обеды",
+      "l2_id": "food-delivery",
+      "l3_id": null,
+      "weight": 80
+    },
+    {
+      "term": "обзвон",
+      "l2_id": "calls-messages",
       "l3_id": null,
       "weight": 100
     },
@@ -3589,6 +5281,12 @@
       "l2_id": "wallpaper",
       "l3_id": null,
       "weight": 100
+    },
+    {
+      "term": "огэ",
+      "l2_id": "exam-prep",
+      "l3_id": null,
+      "weight": 90
     },
     {
       "term": "оклейка",
@@ -3639,8 +5337,38 @@
       "weight": 100
     },
     {
+      "term": "отчётность",
+      "l2_id": "accountants",
+      "l3_id": null,
+      "weight": 80
+    },
+    {
+      "term": "официант",
+      "l2_id": "event-staff",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "оформление документов",
+      "l2_id": "documents-help",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "оформление праздника",
+      "l2_id": "event-decor",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
       "term": "охрана",
       "l2_id": "security-systems",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "парикмахер",
+      "l2_id": "hairdresser",
       "l3_id": null,
       "weight": 100
     },
@@ -3663,6 +5391,12 @@
       "weight": 100
     },
     {
+      "term": "педикюр",
+      "l2_id": "manicure",
+      "l3_id": null,
+      "weight": 90
+    },
+    {
       "term": "пеноблок",
       "l2_id": "masonry",
       "l3_id": null,
@@ -3681,6 +5415,24 @@
       "weight": 100
     },
     {
+      "term": "перевезти",
+      "l2_id": "cargo-transport",
+      "l3_id": null,
+      "weight": 70
+    },
+    {
+      "term": "перевод",
+      "l2_id": "texts-docs",
+      "l3_id": null,
+      "weight": 80
+    },
+    {
+      "term": "перевозка",
+      "l2_id": "cargo-transport",
+      "l3_id": null,
+      "weight": 60
+    },
+    {
       "term": "перегородка",
       "l2_id": "drywall",
       "l3_id": null,
@@ -3697,6 +5449,18 @@
       "l2_id": "wallpaper",
       "l3_id": null,
       "weight": 100
+    },
+    {
+      "term": "переписка",
+      "l2_id": "calls-messages",
+      "l3_id": null,
+      "weight": 80
+    },
+    {
+      "term": "планшет",
+      "l2_id": "phone-repair",
+      "l3_id": null,
+      "weight": 70
     },
     {
       "term": "пластиковые окна",
@@ -3735,6 +5499,12 @@
       "weight": 100
     },
     {
+      "term": "повар",
+      "l2_id": "event-staff",
+      "l3_id": null,
+      "weight": 90
+    },
+    {
       "term": "поверка счётчиков",
       "l2_id": "plumbing",
       "l3_id": null,
@@ -3765,6 +5535,12 @@
       "weight": 100
     },
     {
+      "term": "подготовка к экзамену",
+      "l2_id": "exam-prep",
+      "l3_id": null,
+      "weight": 80
+    },
+    {
       "term": "подсобник",
       "l2_id": "laborers",
       "l3_id": null,
@@ -3775,6 +5551,12 @@
       "l2_id": "laborers",
       "l3_id": null,
       "weight": 90
+    },
+    {
+      "term": "поиск информации",
+      "l2_id": "info-search",
+      "l3_id": null,
+      "weight": 100
     },
     {
       "term": "поклеить",
@@ -3799,6 +5581,12 @@
       "l2_id": "painting",
       "l3_id": null,
       "weight": 100
+    },
+    {
+      "term": "покраска авто",
+      "l2_id": "body-repair",
+      "l3_id": null,
+      "weight": 90
     },
     {
       "term": "пол",
@@ -3831,6 +5619,12 @@
       "weight": 100
     },
     {
+      "term": "помощь по хозяйству",
+      "l2_id": "housekeeping",
+      "l3_id": null,
+      "weight": 90
+    },
+    {
       "term": "помыть окна",
       "l2_id": "cleaning-post-renovation",
       "l3_id": null,
@@ -3847,6 +5641,12 @@
       "l2_id": "appliance-repair",
       "l3_id": null,
       "weight": 100
+    },
+    {
+      "term": "посылка",
+      "l2_id": "courier-delivery",
+      "l3_id": null,
+      "weight": 70
     },
     {
       "term": "потолки",
@@ -3885,6 +5685,18 @@
       "weight": 100
     },
     {
+      "term": "привезти продукты",
+      "l2_id": "buy-deliver",
+      "l3_id": null,
+      "weight": 90
+    },
+    {
+      "term": "причёска",
+      "l2_id": "hairdresser",
+      "l3_id": null,
+      "weight": 80
+    },
+    {
       "term": "пробурить",
       "l2_id": "drilling-wells",
       "l3_id": null,
@@ -3903,10 +5715,28 @@
       "weight": 100
     },
     {
+      "term": "программы",
+      "l2_id": "software-setup",
+      "l3_id": null,
+      "weight": 90
+    },
+    {
       "term": "проект",
       "l2_id": "interior-design",
       "l3_id": null,
       "weight": 80
+    },
+    {
+      "term": "промоакция",
+      "l2_id": "promoters",
+      "l3_id": null,
+      "weight": 80
+    },
+    {
+      "term": "промоутер",
+      "l2_id": "promoters",
+      "l3_id": null,
+      "weight": 100
     },
     {
       "term": "протечка",
@@ -3963,6 +5793,12 @@
       "weight": 90
     },
     {
+      "term": "регистрация ип",
+      "l2_id": "documents-help",
+      "l3_id": null,
+      "weight": 90
+    },
+    {
       "term": "реечный потолок",
       "l2_id": "ceilings",
       "l3_id": null,
@@ -3987,6 +5823,12 @@
       "weight": 100
     },
     {
+      "term": "ремонт компьютера",
+      "l2_id": "pc-repair",
+      "l3_id": null,
+      "weight": 80
+    },
+    {
       "term": "ремонт кровли",
       "l2_id": "roofing",
       "l3_id": null,
@@ -3997,6 +5839,18 @@
       "l2_id": "renovation",
       "l3_id": null,
       "weight": 100
+    },
+    {
+      "term": "ремонт машины",
+      "l2_id": "car-repair",
+      "l3_id": null,
+      "weight": 90
+    },
+    {
+      "term": "ремонт ноутбука",
+      "l2_id": "pc-repair",
+      "l3_id": null,
+      "weight": 70
     },
     {
       "term": "ремонт обоев",
@@ -4011,6 +5865,12 @@
       "weight": 100
     },
     {
+      "term": "ремонт телефона",
+      "l2_id": "phone-repair",
+      "l3_id": null,
+      "weight": 60
+    },
+    {
       "term": "ремонт техники",
       "l2_id": "appliance-repair",
       "l3_id": null,
@@ -4019,6 +5879,12 @@
     {
       "term": "ремонт холодильника",
       "l2_id": "appliance-repair",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "репетитор",
+      "l2_id": "school-subjects",
       "l3_id": null,
       "weight": 100
     },
@@ -4041,10 +5907,22 @@
       "weight": 100
     },
     {
+      "term": "роутер",
+      "l2_id": "internet-setup",
+      "l3_id": null,
+      "weight": 70
+    },
+    {
       "term": "рулонные шторы",
       "l2_id": "curtains-blinds",
       "l3_id": null,
       "weight": 100
+    },
+    {
+      "term": "русский язык",
+      "l2_id": "school-subjects",
+      "l3_id": null,
+      "weight": 80
     },
     {
       "term": "сайдинг",
@@ -4081,6 +5959,12 @@
       "l2_id": "furniture",
       "l3_id": null,
       "weight": 100
+    },
+    {
+      "term": "свадьба",
+      "l2_id": "event-hosts",
+      "l3_id": null,
+      "weight": 80
     },
     {
       "term": "сварка",
@@ -4120,6 +6004,12 @@
     },
     {
       "term": "сигнализация",
+      "l2_id": "auto-electric",
+      "l3_id": null,
+      "weight": 90
+    },
+    {
+      "term": "сигнализация",
       "l2_id": "locks-security",
       "l3_id": null,
       "weight": 100
@@ -4129,6 +6019,12 @@
       "l2_id": "security-systems",
       "l3_id": null,
       "weight": 100
+    },
+    {
+      "term": "сиделка",
+      "l2_id": "caregivers",
+      "l3_id": null,
+      "weight": 90
     },
     {
       "term": "скважина",
@@ -4141,6 +6037,12 @@
       "l2_id": "demolition",
       "l3_id": null,
       "weight": 100
+    },
+    {
+      "term": "смартфон",
+      "l2_id": "phone-repair",
+      "l3_id": null,
+      "weight": 90
     },
     {
       "term": "смеситель",
@@ -4221,6 +6123,12 @@
       "weight": 100
     },
     {
+      "term": "стрижка",
+      "l2_id": "hairdresser",
+      "l3_id": null,
+      "weight": 90
+    },
+    {
       "term": "строительство дома",
       "l2_id": "general-construction",
       "l3_id": null,
@@ -4263,6 +6171,18 @@
       "weight": 100
     },
     {
+      "term": "таблицы",
+      "l2_id": "spreadsheets",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "тамада",
+      "l2_id": "event-hosts",
+      "l3_id": null,
+      "weight": 90
+    },
+    {
       "term": "тарелка",
       "l2_id": "satellite-tv",
       "l3_id": null,
@@ -4279,6 +6199,12 @@
       "l2_id": "appliance-repair",
       "l3_id": null,
       "weight": 90
+    },
+    {
+      "term": "телефон",
+      "l2_id": "phone-repair",
+      "l3_id": null,
+      "weight": 100
     },
     {
       "term": "тёплый пол",
@@ -4407,6 +6333,12 @@
       "weight": 100
     },
     {
+      "term": "уроки музыки",
+      "l2_id": "music-lessons",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
       "term": "установить дверь",
       "l2_id": "doors",
       "l3_id": null,
@@ -4467,6 +6399,12 @@
       "weight": 70
     },
     {
+      "term": "уход",
+      "l2_id": "caregivers",
+      "l3_id": null,
+      "weight": 80
+    },
+    {
       "term": "фактурка",
       "l2_id": null,
       "l3_id": "paint-decorative",
@@ -4503,6 +6441,18 @@
       "weight": 100
     },
     {
+      "term": "фортепиано",
+      "l2_id": "music-lessons",
+      "l3_id": null,
+      "weight": 80
+    },
+    {
+      "term": "фотограф",
+      "l2_id": "photographer",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
       "term": "фотообои",
       "l2_id": null,
       "l3_id": "wallpaper-photo",
@@ -4513,6 +6463,18 @@
       "l2_id": "wallpaper",
       "l3_id": null,
       "weight": 100
+    },
+    {
+      "term": "фотосессия",
+      "l2_id": "photographer",
+      "l3_id": null,
+      "weight": 80
+    },
+    {
+      "term": "фотосъёмка",
+      "l2_id": "photographer",
+      "l3_id": null,
+      "weight": 90
     },
     {
       "term": "фундамент",
@@ -4533,6 +6495,12 @@
       "weight": 90
     },
     {
+      "term": "химчистка салона",
+      "l2_id": "car-wash",
+      "l3_id": null,
+      "weight": 90
+    },
+    {
       "term": "холодильник",
       "l2_id": "appliance-repair",
       "l3_id": null,
@@ -4545,16 +6513,40 @@
       "weight": 90
     },
     {
+      "term": "шары",
+      "l2_id": "event-decor",
+      "l3_id": null,
+      "weight": 90
+    },
+    {
       "term": "шёлковая штукатурка",
       "l2_id": null,
       "l3_id": "plaster-silk",
       "weight": 100
     },
     {
+      "term": "шиномонтаж",
+      "l2_id": "tire-service",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "шины",
+      "l2_id": "tire-service",
+      "l3_id": null,
+      "weight": 90
+    },
+    {
       "term": "шкаф",
       "l2_id": "furniture",
       "l3_id": null,
       "weight": 100
+    },
+    {
+      "term": "школа",
+      "l2_id": "school-subjects",
+      "l3_id": null,
+      "weight": 70
     },
     {
       "term": "штакетник",
@@ -4581,6 +6573,18 @@
       "weight": 100
     },
     {
+      "term": "эвакуатор",
+      "l2_id": "tow-truck",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "эвакуация",
+      "l2_id": "tow-truck",
+      "l3_id": null,
+      "weight": 90
+    },
+    {
       "term": "эковата",
       "l2_id": "insulation",
       "l3_id": null,
@@ -4599,11 +6603,35 @@
       "weight": 90
     },
     {
+      "term": "юрист",
+      "l2_id": "lawyers",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
       "term": "cctv",
       "l2_id": "security-systems",
       "l3_id": null,
       "weight": 100
+    },
+    {
+      "term": "excel",
+      "l2_id": "spreadsheets",
+      "l3_id": null,
+      "weight": 90
+    },
+    {
+      "term": "wi-fi",
+      "l2_id": "internet-setup",
+      "l3_id": null,
+      "weight": 90
+    },
+    {
+      "term": "windows",
+      "l2_id": "software-setup",
+      "l3_id": null,
+      "weight": 100
     }
   ],
-  "content_sha256": "3db94535c46cb58688c3e9734dbec95ff99d4c647d72615fbd841380b4334cbb"
+  "content_sha256": "20af2e1821a9b6766589e4f14710fa7ab0bdb90b3df9c9c681a9a8abb35a8a91"
 }

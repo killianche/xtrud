@@ -28,3 +28,8 @@ export function responsesLabel(count: number): string {
 export function specialistsLabel(count: number): string {
   return `${count} ${pluralRu(count, "специалист", "специалиста", "специалистов")}`;
 }
+
+/** «5 заданий» — сколько открытых заданий найдётся (поиск заданий). */
+export function tasksLabel(count: number): string {
+  return `${count} ${pluralRu(count, "задание", "задания", "заданий")}`;
+}

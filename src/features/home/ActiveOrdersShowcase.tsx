@@ -132,7 +132,7 @@ export function ActiveOrdersShowcase({ userId }: { userId: string | undefined })
               categoryName={o.l2?.name_ru ?? o.l2_id}
               categoryIcon={o.l2?.icon ?? null}
               categoryL2Id={o.l2_id}
-              cityName={o.city?.name ?? o.city_id ?? "Вся Ингушетия"}
+              cityName={o.city?.name ?? o.city_id ?? null}
               district={o.district}
               urgency={o.urgency}
               preferredDate={o.preferred_date}

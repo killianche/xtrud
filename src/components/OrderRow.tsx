@@ -72,7 +72,8 @@ export interface OrderRowProps {
   categoryIcon?: string | null;
   /** L2 id (исторический prop, сохранён для совместимости вызовов). */
   categoryL2Id?: string | null;
-  cityName: string;
+  /** Город; null — задание без города (на весь район или республику). */
+  cityName: string | null;
   district?: string | null;
   urgency: OrderUrgency;
   /** Точная дата (yyyy-mm-dd) для urgency='by_date' — строка «К 12 июня». */
@@ -164,18 +165,19 @@ export function OrderRow(props: OrderRowProps) {
 
   const Icon = getCategoryIcon(props.categoryIcon);
   const statusView = props.statusView ?? null;
-  // DECISION основного агента 2026-09-14: плашка видна ВСЕГДА, когда есть
-  // statusView — и в списке, и на экране задания. "neutral" ("Открыто",
-  // "Отклик отправлен"…) рисуется серой плашкой без иконки, а не пропадает —
-  // иначе VoiceOver в карточке терял статус, а один и тот же факт выглядел
-  // по-разному в списке и внутри задания. Время публикации не теряется —
-  // уходит под плашку (см. разметку ниже), не заменяется ею.
+  // Статус читается VoiceOver всегда (ariaLabel ниже). Видимой плашкой — только
+  // особый статус (выбрали, закрыто, истекло); обычный «Открыто» / «Отклик
+  // отправлен» в списке не рисуется (редизайн 2026-10-03 заменил решение
+  // 2026-09-14 «плашка всегда»: плашка с датой столбиком раздували карточку).
+  // На экране задания плашка остаётся.
   const pillLabel = statusView
     ? statusView.label
     : props.status
       ? DIMMED_STATUS[props.status]
       : undefined;
   const pillTone = statusView?.pillTone ?? "archive";
+  // Плашка — только для особого статуса; обычный (neutral) не рисуется.
+  const showPill = !!pillLabel && pillTone !== "neutral";
   const pillIconKey = statusView?.iconKey;
   const pillIconWeight = statusView?.iconWeight;
   const isDimmed = statusView ? statusView.cardArchived : !!pillLabel;
@@ -183,7 +185,10 @@ export function OrderRow(props: OrderRowProps) {
 
   const timingLabel = formatOrderTiming(props.urgency, props.preferredDate);
   const isUrgent = props.urgency === "urgent" && !isDimmed;
-  const locationLabel = `${props.cityName}${props.district ? ` · ${props.district}` : ""}`;
+  // «Вся Ингушетия · Назрановский район» противоречило само себе (скриншот
+  // владельца 2026-10-03): без города показываем только район.
+  const locationLabel =
+    [props.cityName, props.district].filter(Boolean).join(" · ") || "Вся Ингушетия";
   const priceLabel = props.budgetKind
     ? formatPrice(props.budgetKind, props.budgetValue ?? null)
     : null;
@@ -221,16 +226,14 @@ export function OrderRow(props: OrderRowProps) {
       style={[CARD_SHADOW, isDimmed ? { opacity: 0.65 } : null]}
     >
       <View className="p-4">
-        {/* Строка категории. Иконка — в размер текста и без подложки: цвет
-            категории сохранён, а плитка, из-за которой карточка выглядела
-            блочной, убрана. Справа — плашка статуса (если есть) и под ней
-            время публикации: раньше время стояло НА МЕСТЕ плашки, но с
-            2026-09-14 плашка видна всегда, поэтому оба факта уместились друг
-            под другом, а не один вместо другого (QA BLOCKER — плашка на
-            Dynamic Type AX5 переносится на 2-3 строки; `items-start` +
-            `max-w` на колонке справа не дают многострочной плашке вытолкнуть
-            иконку/название категории или разъехаться на всю ширину). */}
-        <View className="flex-row items-start gap-2">
+        {/* Строка категории — всегда одна строка (редизайн 2026-10-03,
+            docs/CARD_AND_SEGMENTS_REDESIGN_2026-10.md §1). Справа ЛИБО время
+            публикации, ЛИБО плашка особого статуса — не оба: раньше плашка
+            и дата стояли столбиком, строка раздувалась и заголовок уезжал
+            вниз (скриншот владельца). Обычное состояние («Открыто»,
+            «Отклик отправлен») плашкой не рисуется — его и так говорит место
+            в списке; VoiceOver читает статус из ariaLabel по-прежнему. */}
+        <View className="flex-row items-center gap-2">
           {<Icon size={18} weight="bold" color={tc.accent} />}
           <AppText
             weight="semibold"
@@ -239,17 +242,14 @@ export function OrderRow(props: OrderRowProps) {
           >
             {props.categoryName}
           </AppText>
-          {pillLabel ? (
-            <View className="max-w-[55%] items-end gap-1">
+          {showPill ? (
+            <View className="max-w-[55%] shrink-0">
               <StatusPill
                 tone={pillTone}
-                label={pillLabel}
+                label={pillLabel as string}
                 iconKey={pillIconKey}
                 iconWeight={pillIconWeight}
               />
-              <AppText weight="mono" className="text-mono-caption text-mute">
-                {timeAgoShort(props.createdAt)}
-              </AppText>
             </View>
           ) : (
             <AppText weight="mono" className="text-mono-body text-mute">
@@ -364,11 +364,12 @@ export function OrderRow(props: OrderRowProps) {
         ) : null}
       </View>
 
-      {/* Подвал. Здесь живёт всё, что относится не к описанию задания, а к
-          отклику на него, поэтому он отделён линией и лежит на своей
-          поверхности. */}
+      {/* Подвал — то, что относится к откликам, а не к описанию задания.
+          Отделён только линией с отступами от краёв, как разделитель списка
+          iOS: вторая серая поверхность внутри карточки «не сочеталась»
+          (владелец, 2026-10-03). */}
       {hasFooter ? (
-        <View className="border-hairline border-t bg-canvas-soft-2 px-4 py-3">
+        <View className="mx-4 border-hairline border-t pt-3 pb-4">
           {props.showResponsesCount ? (
             <View className="flex-row items-center gap-2">
               <ChatCenteredText

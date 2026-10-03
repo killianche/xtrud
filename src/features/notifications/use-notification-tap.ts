@@ -11,14 +11,21 @@
 import * as Notifications from "expo-notifications";
 import { useRootNavigationState, useRouter } from "expo-router";
 import { useEffect, useRef } from "react";
+import { Platform } from "react-native";
 import { mergePushData, notificationTargetFromData } from "./notification-target";
 import { RUSTORE_ON_OPENED, rustorePush } from "./rustore-push";
+
+// В веб-сборке у expo-notifications нет этого метода — приложение падало
+// на старте в AppErrorBoundary. Выбор делается один раз на платформу, порядок
+// хуков не меняется.
+const useLastNotificationResponse: () => Notifications.NotificationResponse | null | undefined =
+  Platform.OS === "web" ? () => null : Notifications.useLastNotificationResponse;
 
 export function useNotificationTapNavigation(
   userId: string | null | undefined,
   authReady: boolean,
 ): void {
-  const response = Notifications.useLastNotificationResponse();
+  const response = useLastNotificationResponse();
   const router = useRouter();
   const navReady = !!useRootNavigationState()?.key;
   const handled = useRef<string | null>(null);

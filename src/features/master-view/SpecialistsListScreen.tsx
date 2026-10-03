@@ -297,14 +297,6 @@ export function SpecialistsListScreen() {
                 setQuery("");
                 clearFilters();
               }}
-              // Пустой раздел — не тупик: задание увидят специалисты, которые
-              // придут позже; категория уже выбрана (аудит 2026-09-22).
-              onPublish={() =>
-                router.push({
-                  pathname: "/orders/new",
-                  params: l2Id ? { l2: l2Id } : {},
-                } as never)
-              }
             />
           )
         }
@@ -344,17 +336,17 @@ function EmptyBlock({
   inSection,
   accent,
   onReset,
-  onPublish,
 }: {
   hasQuery: boolean;
   /** Открыт раздел, и в нём просто нет специалистов — это не «не нашли». */
   inSection: boolean;
   accent: string;
   onReset: () => void;
-  onPublish: () => void;
 }) {
   // Пусто — значит пусто: одна строка и одно действие (DECISION владельца
   // 2026-09-08: «просто напиши, что не нашли, и кнопку — без лишних текстов»).
+  // В пустом разделе кнопки нет вовсе (владелец, 2026-10-03: «убери
+  // „Опубликовать задание“»).
   return (
     <View className="mt-12 items-center px-8">
       <View className="h-16 w-16 items-center justify-center rounded-full bg-accent-soft">
@@ -378,18 +370,7 @@ function EmptyBlock({
             Сбросить фильтры
           </AppText>
         </Pressable>
-      ) : (
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Опубликовать задание"
-          onPress={onPublish}
-          className="mt-6 min-h-12 items-center justify-center rounded-pill bg-accent px-6 active:opacity-80"
-        >
-          <AppText weight="semibold" className="text-body-md text-on-accent">
-            Опубликовать задание
-          </AppText>
-        </Pressable>
-      )}
+      ) : null}
     </View>
   );
 }

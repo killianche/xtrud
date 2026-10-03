@@ -55,6 +55,7 @@ import {
   SegmentedControl,
   useLargeTitle,
 } from "@/components/ui";
+import { SegmentPager } from "@/components/ui/SegmentPager";
 import { useAuthSession } from "@/features/auth/use-auth-session";
 import {
   useMarkOrderEventsRead,
@@ -153,21 +154,29 @@ export default function OrdersScreen() {
 
   return (
     <View className="flex-1 bg-surface-page">
-      {resolved === "responses" ? (
-        <ResponsesList
-          userId={userId}
-          contentTop={large.contentTop}
-          onScroll={large.onScroll}
-          header={header}
-        />
-      ) : (
+      {/* Две роли — две страницы: переключаются и сегментом, и свайпом по
+          экрану (владелец, 2026-10-03). Пейджер — системный
+          UIPageViewController (react-native-pager-view), а не свой жест:
+          инерция и упругость — как в приложениях Apple. */}
+      <SegmentPager
+        page={resolved === "responses" ? 1 : 0}
+        onPageChange={(index) => setTab(index === 1 ? "responses" : "orders")}
+      >
         <OrdersList
+          key="orders"
           userId={userId}
           contentTop={large.contentTop}
           onScroll={large.onScroll}
           header={header}
         />
-      )}
+        <ResponsesList
+          key="responses"
+          userId={userId}
+          contentTop={large.contentTop}
+          onScroll={large.onScroll}
+          header={header}
+        />
+      </SegmentPager>
 
       <LargeTitleBar
         title="Мои задания"
@@ -301,7 +310,7 @@ function OrdersList({ userId, contentTop, onScroll, header }: ListProps) {
             categoryName={o.l2?.name_ru ?? o.l2_id}
             categoryIcon={o.l2?.icon ?? null}
             categoryL2Id={o.l2_id}
-            cityName={o.city?.name ?? o.city_id ?? "Вся Ингушетия"}
+            cityName={o.city?.name ?? o.city_id ?? null}
             district={o.district}
             urgency={o.urgency}
             preferredDate={o.preferred_date}
@@ -394,7 +403,7 @@ function ResponsesList({ userId, contentTop, onScroll, header }: ListProps) {
               categoryName={r.order.l2?.name_ru ?? r.order.l2_id}
               categoryIcon={r.order.l2?.icon ?? null}
               categoryL2Id={r.order.l2_id}
-              cityName={r.order.city?.name ?? r.order.city_id ?? "Вся Ингушетия"}
+              cityName={r.order.city?.name ?? r.order.city_id ?? null}
               district={r.order.district}
               urgency={r.order.urgency}
               preferredDate={r.order.preferred_date}

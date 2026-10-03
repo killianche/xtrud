@@ -60,6 +60,8 @@ export interface InsetRowProps {
   disabled?: boolean;
   /** Текст и плитка в цвете ошибки/удаления. */
   destructive?: boolean;
+  /** Подпись для VoiceOver, когда значение справа без слов непонятно («4»). */
+  accessibilityLabel?: string;
 }
 
 export function InsetRow({
@@ -77,6 +79,7 @@ export function InsetRow({
   last = false,
   disabled = false,
   destructive = false,
+  accessibilityLabel,
 }: InsetRowProps) {
   const tc = useThemeColors(["accent", "mute", "error", "hairline-strong"]);
   const interactive = !!onPress && !toggle;
@@ -84,7 +87,10 @@ export function InsetRow({
     <Pressable
       accessibilityRole={toggle ? "switch" : "button"}
       accessibilityState={{ selected: selected || checked, disabled, checked: toggle?.value }}
-      accessibilityLabel={subtitle ? `${title}, ${subtitle}` : value ? `${title}, ${value}` : title}
+      accessibilityLabel={
+        accessibilityLabel ??
+        (subtitle ? `${title}, ${subtitle}` : value ? `${title}, ${value}` : title)
+      }
       disabled={disabled || (!onPress && !toggle)}
       onPress={() => {
         if (toggle) {

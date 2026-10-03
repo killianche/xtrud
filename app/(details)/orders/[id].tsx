@@ -73,6 +73,7 @@ import { describeServerError } from "@/lib/describe-server-error";
 import { hapticError, hapticSuccess } from "@/lib/haptics";
 import { openExternalUrl } from "@/lib/open-link";
 import { promptAsync } from "@/lib/prompt";
+import { CARD_SHADOW } from "@/lib/shadows";
 import { useSafeBack } from "@/lib/use-safe-back";
 import { useThemeColors } from "@/lib/use-theme-color";
 import { normalizeWhatsappDigits, resolveWhatsappDigits } from "@/lib/whatsapp";
@@ -1314,10 +1315,13 @@ function ClientMasterResponseCard({
 
   return (
     <View
-      className="rounded-2xl border border-hairline bg-canvas p-4"
-      style={rejected ? { opacity: 0.6 } : undefined}
+      className="rounded-2xl bg-surface-card p-4"
+      style={[CARD_SHADOW, rejected ? { opacity: 0.6 } : null]}
     >
-      {/* Кто и за сколько. Тап — профиль специалиста. */}
+      {/* Кто и за сколько. Тап — профиль специалиста; шеврон у имени говорит
+          об этом, отдельной кнопки «Профиль» нет (владелец, 2026-10-03:
+          «зачем она, если тап по аккаунту и так туда ведёт»). Материал —
+          как у карточек списков: тень без рамки. */}
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={profileAccessibilityLabel}
@@ -1336,6 +1340,7 @@ function ClientMasterResponseCard({
               {masterName}
             </AppText>
             {verified ? <VerifiedBadge size={16} /> : null}
+            <CaretRight size={14} weight="bold" color={tc.mute} />
           </View>
           {ratingText || response.lead_time ? (
             <View className="mt-0.5 flex-row flex-wrap items-center gap-x-3">
@@ -1416,56 +1421,47 @@ function ClientMasterResponseCard({
       )}
 
       {/* Выбор исполнителя — контурная капсула: главное на карточке всё же
-          связь, а выбирают после разговора (0196). */}
-      {onPick ? (
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={`Выбрать исполнителем: ${masterName}`}
-          accessibilityState={{ disabled: picking, busy: picking }}
-          onPress={onPick}
-          disabled={picking}
-          className={`mt-2.5 min-h-12 flex-row items-center justify-center gap-2 rounded-pill border-2 border-accent bg-canvas px-3 active:bg-accent-soft ${picking ? "opacity-60" : ""}`}
-        >
-          <CheckCircle size={18} weight="bold" color={tc.accent} />
-          <AppText weight="semibold" className="text-body-md text-accent">
-            {picking ? "Выбираем…" : "Выбрать исполнителем"}
-          </AppText>
-        </Pressable>
-      ) : null}
-
-      {/* Второстепенное — тихой строкой под линией, а не кнопками во всю
-          ширину: профиль и скрыть нужны реже, чем связь. */}
-      <View className="mt-3 flex-row items-center justify-between border-t border-hairline">
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={`Открыть профиль ${masterName}`}
-          onPress={onProfile}
-          className="min-h-11 flex-row items-center gap-1 pt-2 active:opacity-60"
-        >
-          <AppText weight="semibold" className="text-body-md text-accent">
-            Профиль
-          </AppText>
-          <CaretRight size={14} weight="bold" color={tc.accent} />
-        </Pressable>
-        {onReject ? (
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={`Скрыть отклик: ${masterName}`}
-            accessibilityState={{ disabled: isRejecting, busy: isRejecting }}
-            onPress={onReject}
-            disabled={isRejecting}
-            className="min-h-11 items-center justify-center pl-4 pt-2 active:opacity-60"
-          >
-            {isRejecting ? (
-              <ActivityIndicator size="small" color={tc.mute} />
-            ) : (
-              <AppText weight="medium" className="text-body-md text-mute">
-                Скрыть
+          связь, а выбирают после разговора (0196). «Скрыть» — тихая ссылка
+          в той же строке, без отдельной полосы под линией. */}
+      {onPick || onReject ? (
+        <View className="mt-2.5 flex-row items-center gap-2">
+          {onPick ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={`Выбрать исполнителем: ${masterName}`}
+              accessibilityState={{ disabled: picking, busy: picking }}
+              onPress={onPick}
+              disabled={picking}
+              className={`min-h-12 flex-1 flex-row items-center justify-center gap-2 rounded-pill border-2 border-accent bg-canvas px-3 active:bg-accent-soft ${picking ? "opacity-60" : ""}`}
+            >
+              <CheckCircle size={18} weight="bold" color={tc.accent} />
+              <AppText weight="semibold" className="text-body-md text-accent">
+                {picking ? "Выбираем…" : "Выбрать исполнителем"}
               </AppText>
-            )}
-          </Pressable>
-        ) : null}
-      </View>
+            </Pressable>
+          ) : (
+            <View className="flex-1" />
+          )}
+          {onReject ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={`Скрыть отклик: ${masterName}`}
+              accessibilityState={{ disabled: isRejecting, busy: isRejecting }}
+              onPress={onReject}
+              disabled={isRejecting}
+              className="min-h-12 items-center justify-center px-3 active:opacity-60"
+            >
+              {isRejecting ? (
+                <ActivityIndicator size="small" color={tc.mute} />
+              ) : (
+                <AppText weight="medium" className="text-body-md text-mute">
+                  Скрыть
+                </AppText>
+              )}
+            </Pressable>
+          ) : null}
+        </View>
+      ) : null}
     </View>
   );
 }
@@ -1499,7 +1495,7 @@ function MasterResponseSection({
 }: MasterResponseSectionProps) {
   const { data: myResponse } = useMyResponseForOrder(orderId, masterId);
   const withdrawResponse = useWithdrawResponse();
-  const tc = useThemeColors(["ink", "on-accent"]);
+  const tc = useThemeColors(["ink", "accent"]);
   if (!myResponse || (myResponse.status === "withdrawn" && orderStatus === "open")) return null;
 
   // Выбрали меня: отклик принят или я исполнитель задания (старые закрытия
@@ -1541,22 +1537,26 @@ function MasterResponseSection({
         ? "Клиент закрыл задание после того, как выбрал вас."
         : "Клиент выбрал вас исполнителем. Он свяжется по номеру из отклика."
     : orderStatus === "open"
-      ? "Клиент увидит ваш отклик и свяжется, если выберет вас."
+      ? // Обычное ожидание — без пояснения (владелец запрещает подсказки,
+        // которые повторяют очевидное; статус уже на плашке).
+        null
       : "Задание больше не активно.";
 
   // Отдельный блок на сером фоне (владелец, 2026-09-11: «отделить дизайном
   // от остального»). Раньше это была InsetGroup — белая плашка на белом
   // экране: от карточки оставались одни линии, а статус висел справа.
   return (
-    <View className="mx-5 mt-8 rounded-2xl bg-canvas-soft p-4">
+    <View className="mx-4 mt-8 rounded-2xl bg-canvas-soft p-4">
       <View className="flex-row items-center gap-3">
-        <View className="h-9 w-9 items-center justify-center rounded-lg bg-accent">
+        {/* Плитка — на тинте: сплошной accent только у главного действия,
+            активного сегмента и цены (xtrud-design). */}
+        <View className="h-9 w-9 items-center justify-center rounded-lg bg-accent-soft">
           <SystemIcon
             sf={isPickedMaster ? "checkmark.seal.fill" : "paperplane.fill"}
             fallback={isPickedMaster ? CheckCircle : PaperPlaneTilt}
             size={18}
             weight="regular"
-            color={tc["on-accent"]}
+            color={tc.accent}
           />
         </View>
         <AppText
@@ -1587,7 +1587,7 @@ function MasterResponseSection({
         <AppText className="mt-2 text-body-md text-body">{myResponse.message}</AppText>
       ) : null}
 
-      <AppText className="mt-4 text-body-sm text-mute">{hint}</AppText>
+      {hint ? <AppText className="mt-4 text-body-sm text-mute">{hint}</AppText> : null}
 
       {canWithdraw ? (
         <Pressable

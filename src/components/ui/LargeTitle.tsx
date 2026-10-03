@@ -35,7 +35,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
 import { useThemeColors } from "@/lib/use-theme-color";
 import type { IconComponent } from "@/types/icon";
-import { GlassSurface, LIQUID_GLASS } from "./GlassSurface";
+import { GlassSurface } from "./GlassSurface";
+import { EDGE_FADE, ScrollEdgeEffect } from "./ScrollEdgeEffect";
 import { type SFSymbol, SystemIcon } from "./SystemIcon";
 
 /** Высота строки навигации — системные 44 pt. */
@@ -165,7 +166,7 @@ export interface LargeTitleBarProps {
    * Панель `below` — плавающая стеклянная капсула, как нижнее меню iOS 26:
    * отступ от краёв и от чёлки, полное скругление, содержимое проезжает под
    * ней (DECISION владельца 2026-09-22: «сделать плавающим, как нижнее меню»).
-   * Общий фон полосы при этом не рисуется — капсула сама себе материал.
+   * Под капсулой — то же размытие края, капсула — свой материал поверх него.
    */
   belowFloating?: boolean;
 }
@@ -192,26 +193,31 @@ export function LargeTitleBar({
       pointerEvents="box-none"
       style={{ position: "absolute", top: 0, left: 0, right: 0, zIndex: 10 }}
     >
-      {/* Фон строки — только когда содержимое уехало под неё. У плавающей
-          капсулы фона полосы нет: материал у самой капсулы. */}
-      {belowFloating ? null : (
-        <Animated.View
-          pointerEvents="none"
-          style={{
-            position: "absolute",
-            top: 0,
-            left: 0,
-            right: 0,
-            ...(hasRow ? { bottom: 0 } : { height: insets.top + NAV_ROW_HEIGHT }),
-            opacity: barOpacity,
-          }}
-        >
-          <GlassSurface style={{ flex: 1 }} fallbackClassName="bg-canvas">
-            <View className="flex-1" />
-            {LIQUID_GLASS ? null : <View className="h-px bg-hairline" />}
-          </GlassSurface>
-        </Animated.View>
-      )}
+      {/* Фон строки — только когда содержимое уехало под неё: размытие с
+          растворением вниз, как scroll edge effect в iOS 26 (владелец,
+          2026-10-03: «под заголовком нет затемнения — сделай градиентное
+          размытие на всех страницах»). Раньше здесь была стеклянная полоса:
+          Liquid Glass без содержимого почти прозрачен, и компактный
+          заголовок висел прямо поверх карточек. Под плавающей капсулой —
+          то же размытие: капсула остаётся своим материалом поверх него. */}
+      <Animated.View
+        pointerEvents="none"
+        style={{
+          position: "absolute",
+          top: 0,
+          left: 0,
+          right: 0,
+          ...(hasRow
+            ? { bottom: -EDGE_FADE }
+            : { height: insets.top + NAV_ROW_HEIGHT + EDGE_FADE }),
+          // Только когда содержимое уехало под верх — и на экранах с
+          // постоянным компактным заголовком тоже (QA 2026-10-03: в покое
+          // размытие лежало на первой карточке).
+          opacity: compactTitleOpacity,
+        }}
+      >
+        <ScrollEdgeEffect />
+      </Animated.View>
 
       {hasRow ? null : (
         // Строки в покое нет: полоса с компактным заголовком живёт поверх
@@ -338,7 +344,14 @@ export function LargeTitleBar({
         ) : null}
 
         {belowFloating && below ? (
-          <View pointerEvents="box-none" style={{ paddingTop: 8, paddingHorizontal: 16 }}>
+          <View
+            pointerEvents="box-none"
+            // Снизу 12 pt: список начинался вплотную к капсуле (владелец,
+            // 2026-10-03: «контент слишком близко к переключателю, на всех
+            // страницах»). Отступ входит в измеряемую высоту полосы, значит
+            // в contentTop — каждый экран с капсулой получает его сам.
+            style={{ paddingTop: 8, paddingHorizontal: 16, paddingBottom: 12 }}
+          >
             <GlassSurface
               fallbackClassName="border border-hairline bg-canvas"
               style={{ borderRadius: 999, overflow: "hidden" }}

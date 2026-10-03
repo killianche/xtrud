@@ -4,7 +4,6 @@ const PUBLIC_DETAIL_ROUTES = new Set([
   "category/city-select",
   "category/l3-select",
   "client/[id]",
-  "find/category-select",
   "find/location-select",
   "master/[id]",
   "master-cases/[id]",

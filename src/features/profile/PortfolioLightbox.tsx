@@ -1,53 +1,54 @@
 /**
- * Full-screen lightbox для просмотра фото портфолио.
+ * Полноэкранный просмотр фото — работы специалиста, фото задания.
  *
- * Sprint 12.5 — добавлены жесты:
- *  - Pinch-to-zoom (1x–4x)
- *  - Pan (только когда zoomed > 1x)
- *  - Double-tap toggle 1x ↔ 2.5x
- *  - При смене index — zoom сбрасывается
+ * Переписан 2026-10-03 (владелец: «свайп очень странно работает: сам
+ * переключает, плохо работает на свайп, на кнопки»). Раньше листание было
+ * своим жестом (Gesture.Pan + Reanimated): картинка уезжала анимацией,
+ * потом возвращалась на место и только затем менялся источник — фото
+ * «прыгало» и будто листалось само; касания и стрелки конфликтовали с
+ * жестом. Теперь — как в «Фото» iOS: горизонтальный список с постраничной
+ * прокруткой (системная инерция и доводка до страницы), у каждой страницы
+ * своё увеличение щипком — родной зум UIScrollView (только iOS; на Android
+ * зума нет). Стрелки прокручивают список к соседнему фото, по кругу не
+ * листается — как в «Фото». Своих жестов нет.
  *
- * Старый UI:
- *  - Modal на чёрном фоне, contentFit="contain"
- *  - Стрелки prev/next (wrap-around), счётчик, X-кнопка
- *  - Caption снизу если есть
+ * Сохранено: чёрный фон, счётчик «3 / 4», крестик, стрелки, подпись, фото
+ * зажато в телефонную колонку на вебе (useAppWidth).
  */
 
 import { Image } from "expo-image";
 import { CaretLeft, CaretRight, X } from "phosphor-react-native";
-import { useEffect } from "react";
-import { Modal, Pressable, useWindowDimensions, View } from "react-native";
-import { Gesture, GestureDetector, GestureHandlerRootView } from "react-native-gesture-handler";
-import Animated, {
-  runOnJS,
-  useAnimatedStyle,
-  useSharedValue,
-  withTiming,
-} from "react-native-reanimated";
+import { useRef } from "react";
+import {
+  FlatList,
+  Modal,
+  type NativeScrollEvent,
+  type NativeSyntheticEvent,
+  Platform,
+  Pressable,
+  ScrollView,
+  useWindowDimensions,
+  View,
+} from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
+import { useReducedMotion } from "@/hooks/use-reduced-motion";
 import { lightColors } from "@/lib/colors";
 import { cdnBlur, cdnImage } from "@/lib/image-cdn";
 import { useAppWidth } from "@/lib/use-app-width";
 
-// Белый поверх чёрного фона лайтбокса (крестик/стрелки/счётчик). Константа, не
-// литерал в JSX — легальный overlay-кейс (§B) и не триггерит enforcement grep.
-// Белый поверх фото — токен on-dark, одинаковый в обеих темах.
+// Белый поверх чёрного фона лайтбокса (крестик/стрелки/счётчик) — токен
+// on-dark, одинаковый в обеих темах.
 const OVERLAY_WHITE = lightColors["on-dark"];
 
 /**
  * Минимальная форма элемента для лайтбокса — только то, что он реально читает.
- * `PortfolioItem` (полная строка БД) структурно совместим, поэтому прежние
- * вызывающие (профиль/мастер) работают без изменений. Заодно лайтбокс
- * переиспользуется для фото заказа (OrderPhotoCarousel), где нет полной строки.
+ * `PortfolioItem` (полная строка БД) структурно совместим; фото задания
+ * (OrderPhotoCarousel) передают ту же форму.
  */
 export type LightboxItem = { id: string; url: string; caption?: string | null };
 
-const MIN_SCALE = 1;
-const MAX_SCALE = 4;
-const DOUBLE_TAP_SCALE = 2.5;
-/** Сдвиг пальца (pt), после которого это уже свайп, а не касание. */
-const TAP_MAX_DISTANCE = 10;
+const MAX_ZOOM = 4;
 
 interface PortfolioLightboxProps {
   items: LightboxItem[];
@@ -63,143 +64,7 @@ export function PortfolioLightbox({
   onClose,
   onChangeIndex,
 }: PortfolioLightboxProps) {
-  const insets = useSafeAreaInsets();
-  // width зажат в телефонную колонку (≤PHONE_MAX_WIDTH на web) — иначе на web
-  // RN <Modal> рендерится в портал вне <PhoneFrame> и фото растягивалось на всю
-  // ширину браузера. height — реальная (фото на всю высоту). На native обе
-  // величины = реальный экран, поведение не меняется. (Фидбэк владельца 2026-05-24.)
-  const { height } = useWindowDimensions();
-  const width = useAppWidth();
-
   const visible = index !== null && index >= 0 && index < items.length;
-  const item = visible ? items[index as number] : null;
-
-  const total = items.length;
-  const canNav = total > 1;
-  const goPrev = () => {
-    if (index == null) return;
-    onChangeIndex((index - 1 + total) % total);
-  };
-  const goNext = () => {
-    if (index == null) return;
-    onChangeIndex((index + 1) % total);
-  };
-
-  // Animated values для pinch + pan.
-  const scale = useSharedValue(1);
-  const baseScale = useSharedValue(1);
-  const translateX = useSharedValue(0);
-  const translateY = useSharedValue(0);
-  const baseTranslateX = useSharedValue(0);
-  const baseTranslateY = useSharedValue(0);
-
-  // Сброс zoom + pan + swipe при смене index или закрытии.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: index — намеренный trigger; shared values стабильны.
-  useEffect(() => {
-    scale.value = withTiming(1, { duration: 200 });
-    baseScale.value = 1;
-    translateX.value = withTiming(0, { duration: 200 });
-    translateY.value = withTiming(0, { duration: 200 });
-    baseTranslateX.value = 0;
-    baseTranslateY.value = 0;
-    swipeX.value = 0;
-  }, [index]);
-
-  const pinchGesture = Gesture.Pinch()
-    .onUpdate((e) => {
-      const next = baseScale.value * e.scale;
-      scale.value = Math.min(Math.max(next, MIN_SCALE), MAX_SCALE);
-    })
-    .onEnd(() => {
-      baseScale.value = scale.value;
-      if (scale.value <= MIN_SCALE) {
-        translateX.value = withTiming(0);
-        translateY.value = withTiming(0);
-        baseTranslateX.value = 0;
-        baseTranslateY.value = 0;
-      }
-    });
-
-  // Swipe-translation для visual feedback при перелистывании (scale=1x).
-  const swipeX = useSharedValue(0);
-
-  const panGesture = Gesture.Pan()
-    .minPointers(1)
-    .maxPointers(2)
-    .onUpdate((e) => {
-      if (scale.value > MIN_SCALE) {
-        // Zoomed — двигаем картинку внутри.
-        translateX.value = baseTranslateX.value + e.translationX;
-        translateY.value = baseTranslateY.value + e.translationY;
-      } else {
-        // Scale=1 — горизонтальный swipe для prev/next с follow-finger feedback.
-        swipeX.value = e.translationX;
-      }
-    })
-    .onEnd((e) => {
-      if (scale.value > MIN_SCALE) {
-        baseTranslateX.value = translateX.value;
-        baseTranslateY.value = translateY.value;
-        return;
-      }
-      const threshold = width * 0.18;
-      if (e.translationX < -threshold && canNav) {
-        swipeX.value = withTiming(-width, { duration: 180 }, () => {
-          runOnJS(onChangeIndex)((index ?? 0) + 1 < total ? (index ?? 0) + 1 : 0);
-          swipeX.value = 0;
-        });
-      } else if (e.translationX > threshold && canNav) {
-        swipeX.value = withTiming(width, { duration: 180 }, () => {
-          runOnJS(onChangeIndex)((index ?? 0) - 1 >= 0 ? (index ?? 0) - 1 : total - 1);
-          swipeX.value = 0;
-        });
-      } else {
-        swipeX.value = withTiming(0, { duration: 180 });
-      }
-    });
-
-  // Касание — только если палец почти не сдвинулся. У Tap на iOS по
-  // умолчанию нет предела сдвига: быстрый свайп (< 0,5 с) засчитывался как
-  // одиночное касание и закрывал просмотр (владелец, 2026-10-03).
-  const doubleTap = Gesture.Tap()
-    .numberOfTaps(2)
-    .maxDistance(TAP_MAX_DISTANCE)
-    .onEnd(() => {
-      if (scale.value > MIN_SCALE) {
-        scale.value = withTiming(MIN_SCALE);
-        baseScale.value = MIN_SCALE;
-        translateX.value = withTiming(0);
-        translateY.value = withTiming(0);
-        baseTranslateX.value = 0;
-        baseTranslateY.value = 0;
-      } else {
-        scale.value = withTiming(DOUBLE_TAP_SCALE);
-        baseScale.value = DOUBLE_TAP_SCALE;
-      }
-    });
-
-  // Single tap — закрывает только при scale==1 (чтобы не мешать zoom-юзеру).
-  const singleTap = Gesture.Tap()
-    .numberOfTaps(1)
-    .maxDistance(TAP_MAX_DISTANCE)
-    .onEnd(() => {
-      if (scale.value <= MIN_SCALE) runOnJS(onClose)();
-    });
-
-  const composed = Gesture.Simultaneous(
-    pinchGesture,
-    panGesture,
-    Gesture.Exclusive(doubleTap, singleTap),
-  );
-
-  const animatedStyle = useAnimatedStyle(() => ({
-    transform: [
-      { translateX: translateX.value + (scale.value <= MIN_SCALE ? swipeX.value : 0) },
-      { translateY: translateY.value },
-      { scale: scale.value },
-    ],
-  }));
-
   return (
     <Modal
       visible={visible}
@@ -208,94 +73,185 @@ export function PortfolioLightbox({
       onRequestClose={onClose}
       statusBarTranslucent
     >
-      {item && (
-        <GestureHandlerRootView style={{ flex: 1 }}>
-          {/* Корень чёрный на всю ширину браузера; контент (фото + контролы)
-              зажат в телефонную колонку шириной `width` по центру. */}
-          <View className="flex-1 bg-black items-center">
-            <View style={{ flex: 1, width }}>
-              {/* Image with gestures */}
-              <GestureDetector gesture={composed}>
-                <Animated.View
-                  style={[
-                    { width, height, alignItems: "center", justifyContent: "center" },
-                    animatedStyle,
-                  ]}
-                >
-                  <Image
-                    source={{ uri: cdnImage(item.url, { width: Math.round(width), quality: 80 }) }}
-                    placeholder={cdnBlur(item.url) ? { uri: cdnBlur(item.url) } : undefined}
-                    placeholderContentFit="contain"
-                    style={{ width: "100%", height: "100%" }}
-                    contentFit="contain"
-                    transition={200}
-                    cachePolicy="memory-disk"
-                  />
-                </Animated.View>
-              </GestureDetector>
-
-              {/* Top bar: counter + close */}
-              <View
-                className="absolute top-0 right-0 left-0 flex-row items-center justify-between px-4"
-                style={{ paddingTop: insets.top + 8 }}
-                pointerEvents="box-none"
-              >
-                <View className="rounded-full bg-black/40 px-3 py-1">
-                  <AppText weight="medium" className="text-caption text-on-dark">
-                    {(index ?? 0) + 1} / {total}
-                  </AppText>
-                </View>
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel="Закрыть"
-                  onPress={onClose}
-                  hitSlop={12}
-                  className="h-10 w-10 items-center justify-center rounded-full bg-black/40 active:opacity-70"
-                >
-                  <X size={22} weight="bold" color={OVERLAY_WHITE} />
-                </Pressable>
-              </View>
-
-              {/* Prev / Next arrows */}
-              {canNav && (
-                <>
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel="Предыдущее фото"
-                    onPress={goPrev}
-                    hitSlop={12}
-                    className="absolute top-1/2 left-3 h-11 w-11 items-center justify-center rounded-full bg-black/40 active:opacity-70"
-                    style={{ transform: [{ translateY: -22 }] }}
-                  >
-                    <CaretLeft size={26} weight="bold" color={OVERLAY_WHITE} />
-                  </Pressable>
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel="Следующее фото"
-                    onPress={goNext}
-                    hitSlop={12}
-                    className="absolute top-1/2 right-3 h-11 w-11 items-center justify-center rounded-full bg-black/40 active:opacity-70"
-                    style={{ transform: [{ translateY: -22 }] }}
-                  >
-                    <CaretRight size={26} weight="bold" color={OVERLAY_WHITE} />
-                  </Pressable>
-                </>
-              )}
-
-              {/* Caption */}
-              {item.caption && (
-                <View
-                  className="absolute right-0 bottom-0 left-0 bg-black/55 px-6 py-4"
-                  style={{ paddingBottom: insets.bottom + 16 }}
-                  pointerEvents="box-none"
-                >
-                  <AppText className="text-body-sm text-on-dark">{item.caption}</AppText>
-                </View>
-              )}
-            </View>
-          </View>
-        </GestureHandlerRootView>
-      )}
+      {visible ? (
+        <LightboxBody
+          items={items}
+          index={index as number}
+          onClose={onClose}
+          onChangeIndex={onChangeIndex}
+        />
+      ) : null}
     </Modal>
+  );
+}
+
+function LightboxBody({
+  items,
+  index,
+  onClose,
+  onChangeIndex,
+}: {
+  items: LightboxItem[];
+  index: number;
+  onClose: () => void;
+  onChangeIndex: (index: number) => void;
+}) {
+  const insets = useSafeAreaInsets();
+  // width зажат в телефонную колонку на вебе (Modal рендерится вне
+  // PhoneFrame); height — реальная высота экрана.
+  const { height } = useWindowDimensions();
+  const width = useAppWidth();
+  const reducedMotion = useReducedMotion();
+  const listRef = useRef<FlatList<LightboxItem>>(null);
+  const total = items.length;
+  const canNav = total > 1;
+  const item = items[index];
+
+  // Текущая страница — и из пропса, и из последней прокрутки: стрелка,
+  // нажатая во время свайпа, считает от того, что на экране (QA 2026-10-03).
+  const current = useRef(index);
+  current.current = index;
+
+  // По кругу не листаем — как «Фото» iOS: со стрелки на последнем фото
+  // список проезжал бы через все снимки к первому (QA 2026-10-03).
+  const goTo = (next: number) => {
+    if (next < 0 || next >= total) return;
+    current.current = next;
+    listRef.current?.scrollToIndex({ index: next, animated: !reducedMotion });
+    onChangeIndex(next);
+  };
+
+  // Страница досчитана после окончания прокрутки — источник правды для
+  // счётчика; программная прокрутка стрелками уже выставила тот же индекс.
+  const onMomentumEnd = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const page = Math.round(e.nativeEvent.contentOffset.x / width);
+    if (page < 0 || page >= total) return;
+    current.current = page;
+    if (page !== index) onChangeIndex(page);
+  };
+
+  return (
+    <View className="flex-1 items-center bg-black">
+      <View style={{ flex: 1, width }}>
+        <FlatList
+          ref={listRef}
+          data={items}
+          keyExtractor={(p) => p.id}
+          horizontal
+          pagingEnabled
+          showsHorizontalScrollIndicator={false}
+          initialScrollIndex={index}
+          getItemLayout={(_, i) => ({ length: width, offset: width * i, index: i })}
+          onMomentumScrollEnd={onMomentumEnd}
+          // Только соседние страницы держим отрисованными — фото тяжёлые.
+          windowSize={3}
+          initialNumToRender={1}
+          maxToRenderPerBatch={2}
+          renderItem={({ item: photo }) => <ZoomPage photo={photo} width={width} height={height} />}
+        />
+
+        {/* Счётчик и крестик */}
+        <View
+          className="absolute top-0 right-0 left-0 flex-row items-center justify-between px-4"
+          style={{ paddingTop: insets.top + 8 }}
+          pointerEvents="box-none"
+        >
+          <View className="rounded-full bg-black/40 px-3 py-1">
+            <AppText
+              weight="medium"
+              className="text-caption text-on-dark"
+              accessibilityLabel={`Фото ${index + 1} из ${total}`}
+            >
+              {index + 1} / {total}
+            </AppText>
+          </View>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Закрыть"
+            onPress={onClose}
+            hitSlop={12}
+            className="h-11 w-11 items-center justify-center rounded-full bg-black/40 active:opacity-70"
+          >
+            <X size={22} weight="bold" color={OVERLAY_WHITE} />
+          </Pressable>
+        </View>
+
+        {/* Стрелки — прокручивают список к соседнему фото */}
+        {canNav && index > 0 ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Предыдущее фото"
+            onPress={() => goTo(current.current - 1)}
+            hitSlop={12}
+            className="absolute top-1/2 left-3 h-11 w-11 items-center justify-center rounded-full bg-black/40 active:opacity-70"
+            style={{ transform: [{ translateY: -22 }] }}
+          >
+            <CaretLeft size={26} weight="bold" color={OVERLAY_WHITE} />
+          </Pressable>
+        ) : null}
+        {canNav && index < total - 1 ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Следующее фото"
+            onPress={() => goTo(current.current + 1)}
+            hitSlop={12}
+            className="absolute top-1/2 right-3 h-11 w-11 items-center justify-center rounded-full bg-black/40 active:opacity-70"
+            style={{ transform: [{ translateY: -22 }] }}
+          >
+            <CaretRight size={26} weight="bold" color={OVERLAY_WHITE} />
+          </Pressable>
+        ) : null}
+
+        {/* Подпись */}
+        {item?.caption ? (
+          <View
+            className="absolute right-0 bottom-0 left-0 bg-black/55 px-6 py-4"
+            style={{ paddingBottom: insets.bottom + 16 }}
+            pointerEvents="box-none"
+          >
+            <AppText className="text-body-sm text-on-dark">{item.caption}</AppText>
+          </View>
+        ) : null}
+      </View>
+    </View>
+  );
+}
+
+/** Одна страница: на iOS — родной зум щипком (UIScrollView), иначе — фото. */
+function ZoomPage({
+  photo,
+  width,
+  height,
+}: {
+  photo: LightboxItem;
+  width: number;
+  height: number;
+}) {
+  const image = (
+    <Image
+      source={{ uri: cdnImage(photo.url, { width: Math.round(width), quality: 80 }) }}
+      placeholder={cdnBlur(photo.url) ? { uri: cdnBlur(photo.url) } : undefined}
+      placeholderContentFit="contain"
+      style={{ width, height }}
+      contentFit="contain"
+      transition={150}
+      cachePolicy="memory-disk"
+      accessibilityLabel={photo.caption ?? "Фото"}
+    />
+  );
+  if (Platform.OS !== "ios") return <View style={{ width, height }}>{image}</View>;
+  return (
+    <ScrollView
+      style={{ width, height }}
+      contentContainerStyle={{ width, height }}
+      maximumZoomScale={MAX_ZOOM}
+      minimumZoomScale={1}
+      bouncesZoom
+      centerContent
+      showsHorizontalScrollIndicator={false}
+      showsVerticalScrollIndicator={false}
+    >
+      {image}
+    </ScrollView>
   );
 }

@@ -17,13 +17,15 @@
  * Тап по кейсу → /profile/portfolio/[caseId] (детальный экран с grid'ом фото).
  */
 
+import { Image as ExpoImage } from "expo-image";
 import { useRouter } from "expo-router";
 import { CaretLeft, Image as ImageIcon, Plus } from "phosphor-react-native";
-import { Image, Pressable, ScrollView, View } from "react-native";
+import { Pressable, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
 import { useAuthSession } from "@/features/auth/use-auth-session";
 import { type CaseWithPreview, useMasterCases } from "@/features/profile/use-portfolio-cases";
+import { cdnBlur, cdnImage } from "@/lib/image-cdn";
 import { useAppWidth } from "@/lib/use-app-width";
 import { useSafeBack } from "@/lib/use-safe-back";
 import { useThemeColors } from "@/lib/use-theme-color";
@@ -185,10 +187,13 @@ export function CaseCard({
           className="overflow-hidden rounded-xl bg-canvas-soft-2"
           style={{ height: heroHeight, position: "relative" }}
         >
-          <Image
-            source={{ uri: heroItem.url }}
+          <ExpoImage
+            source={{ uri: cdnImage(heroItem.url, { width: 480 }) }}
+            placeholder={cdnBlur(heroItem.url) ? { uri: cdnBlur(heroItem.url) } : undefined}
             style={{ width: "100%", height: "100%" }}
-            resizeMode="cover"
+            contentFit="cover"
+            transition={120}
+            cachePolicy="memory-disk"
           />
           {/* Счётчик доп. фото в углу — если фото больше 1. */}
           {photoCount > 1 ? (

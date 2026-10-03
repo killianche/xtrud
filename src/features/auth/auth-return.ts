@@ -2,8 +2,9 @@
  * Безопасный return-intent после входа или регистрации.
  *
  * В URL и persisted state нельзя принимать произвольный redirect: иначе auth
- * превратится в open-redirect. Поэтому здесь один allowlist-маршрут для формы
- * задания, короткий TTL и pure consume, который всегда обнуляет intent.
+ * превратится в open-redirect. Поэтому здесь allowlist: форма задания,
+ * экран задания и профиль специалиста по UUID, короткий TTL и pure consume,
+ * который всегда обнуляет intent.
  */
 
 declare const authReturnToBrand: unique symbol;
@@ -27,7 +28,13 @@ export function parseAuthReturnTo(raw: string | string[] | null | undefined): Au
   const match = value?.match(
     /^\/(?:\(tabs\)\/)?orders\/([0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})$/i,
   );
-  return match ? (`/orders/${match[1]}` as AuthReturnTo) : null;
+  if (match) return `/orders/${match[1]}` as AuthReturnTo;
+  // Профиль специалиста: гость входит, чтобы увидеть контакты, и
+  // возвращается туда же (владелец, 2026-10-03). Только UUID — не open redirect.
+  const master = value?.match(
+    /^\/master\/([0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})$/i,
+  );
+  return master ? (`/master/${master[1]}` as AuthReturnTo) : null;
 }
 
 export function createAuthReturnIntent(returnTo: AuthReturnTo, now = Date.now()): AuthReturnIntent {

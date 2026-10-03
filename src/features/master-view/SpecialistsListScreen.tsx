@@ -39,7 +39,6 @@ import {
   type MasterSearchResult,
   useSearchMasters,
 } from "@/features/master-view/use-search-masters";
-import { specialistsLabel } from "@/features/orders/plural-ru";
 import { describeQueryError } from "@/lib/describe-query-error";
 import { CARD_SHADOW } from "@/lib/shadows";
 import { useDebouncedValue } from "@/lib/use-debounced-value";
@@ -221,16 +220,9 @@ export function SpecialistsListScreen() {
           // large title (Настройки, Почта). DECISION владельца 2026-09-06,
           // вечер: «заголовок — в самом верху, где пустое место».
           <>
-            <LargeTitleBlock
-              title={title}
-              subtitle={
-                // Пока идёт запрос, счётчика нет — «0 специалистов» над
-                // скелетоном было ложью (владелец, 2026-09-07).
-                isLoading || (isFetching && !isFetchingNextPage)
-                  ? null
-                  : `${specialistsLabel(list.length)}${hasNextPage ? " и ещё" : ""}`
-              }
-            />
+            {/* Без счётчика «N специалистов» под заголовком (владелец,
+                2026-10-03: «вообще не нужно») — список и так виден. */}
+            <LargeTitleBlock title={title} />
             <View className="gap-3 px-4 pt-1 pb-4">
               <SearchField
                 value={query}

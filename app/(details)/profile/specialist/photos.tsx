@@ -4,10 +4,11 @@
  * портфолио (bucket portfolio), как «Work Photos» у TaskRabbit.
  */
 
+import { Image as ExpoImage } from "expo-image";
 import { useRouter } from "expo-router";
 import { Camera, XCircle } from "phosphor-react-native";
 import { useState } from "react";
-import { Alert, Image, Pressable, View } from "react-native";
+import { Alert, Pressable, View } from "react-native";
 import { AppText } from "@/components/AppText";
 import { FormScreen } from "@/components/ui";
 import { SystemIcon } from "@/components/ui/SystemIcon";
@@ -20,6 +21,7 @@ import {
 import { useInvalidateSpecialistCounts } from "@/features/specialist/use-specialist";
 import { confirmAsync } from "@/lib/confirm";
 import { hapticSelection } from "@/lib/haptics";
+import { cdnBlur, cdnImage } from "@/lib/image-cdn";
 import { pickMultipleImages, uploadPortfolioBatch } from "@/lib/image-upload";
 import { useThemeColors } from "@/lib/use-theme-color";
 
@@ -118,10 +120,14 @@ export default function SpecialistPhotosScreen() {
               className="overflow-hidden rounded-2xl"
               style={{ width: tile, height: tile }}
             >
-              <Image
-                source={{ uri: p.url }}
+              <ExpoImage
+                source={{ uri: cdnImage(p.url, { width: tile }) }}
+                placeholder={cdnBlur(p.url) ? { uri: cdnBlur(p.url) } : undefined}
                 style={{ width: tile, height: tile }}
-                resizeMode="cover"
+                contentFit="cover"
+                transition={120}
+                cachePolicy="memory-disk"
+                recyclingKey={p.id}
                 accessibilityIgnoresInvertColors
               />
               <Pressable

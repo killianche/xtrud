@@ -11,10 +11,11 @@
  * после входа. Автор профиля вместо контактов видит «Редактировать профиль».
  */
 
+import { Image as ExpoImage } from "expo-image";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { DotsThree, Image as ImageIcon, LinkSimple, Star } from "phosphor-react-native";
+import { DotsThree, LinkSimple, Star } from "phosphor-react-native";
 import { useEffect, useMemo, useState } from "react";
-import { ActionSheetIOS, Alert, Animated, Image, Pressable, View } from "react-native";
+import { ActionSheetIOS, Alert, Animated, Pressable, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
 import { Avatar } from "@/components/Avatar";
@@ -30,6 +31,7 @@ import {
 } from "@/components/ui";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { useAdminSetUserStatus, useIsAdmin } from "@/features/admin/use-admin-actions";
+import { GuestContactGate } from "@/features/auth/GuestContactGate";
 import { useAuthSession } from "@/features/auth/use-auth-session";
 import { blockConfirmMessage } from "@/features/blocking/blocking-copy";
 import { blockingActionFailureMessage } from "@/features/blocking/blocking-error-message";
@@ -38,7 +40,7 @@ import {
   formatServicePrice,
   useMasterServices,
 } from "@/features/master-services/use-master-services";
-import { ReviewsSection } from "@/features/master-view/ReviewsSection";
+import { formatRating, ReviewsSection } from "@/features/master-view/ReviewsSection";
 import {
   useMasterCategoriesPublic,
   useMasterPhone,
@@ -60,9 +62,12 @@ import { useColorScheme } from "@/hooks/use-color-scheme";
 import { getCategoryIcon } from "@/lib/category-icons";
 import { confirmAsync } from "@/lib/confirm";
 import { hapticSuccess } from "@/lib/haptics";
+import { cdnBlur, cdnImage } from "@/lib/image-cdn";
 import { getCityName } from "@/lib/location-config";
 import { openExternalUrl } from "@/lib/open-link";
+import { pluralizeReviews } from "@/lib/pluralize";
 import { promptAsync } from "@/lib/prompt";
+import { useAppWidth } from "@/lib/use-app-width";
 import { useSafeBack } from "@/lib/use-safe-back";
 import { useThemeColors } from "@/lib/use-theme-color";
 import { resolveWhatsappDigits } from "@/lib/whatsapp";
@@ -121,6 +126,8 @@ export default function MasterPublicScreen() {
   const ratingAvg = m?.rating_overall_avg ?? null;
   const ratingCount = m?.rating_overall_count ?? 0;
   const place = u?.district ? u.district : u?.city_id ? getCityName(u.city_id) : null;
+  // Одна тихая строка фактов под оценкой: место и опыт.
+  const facts = [place, experienceLabel(m?.experience_years)].filter(Boolean).join(" · ");
   const phoneTel = masterPhone.data?.replace(/[^\d+]/g, "") || null;
   const phoneWa = resolveWhatsappDigits({
     whatsappPhone: m?.whatsapp_phone,
@@ -132,12 +139,26 @@ export default function MasterPublicScreen() {
     [portfolio.data],
   );
   const tile = gridWidth > 0 ? Math.floor((gridWidth - GAP * 2) / 3) : 0;
+  // Фото для полноэкранного просмотра — заранее, в фоне: просмотр
+  // открывается сразу, без ожидания (2026-10-03).
+  const screenWidth = useAppWidth();
+  useEffect(() => {
+    if (photos.length === 0) return;
+    void ExpoImage.prefetch(
+      photos.map((p) => cdnImage(p.url, { width: Math.round(screenWidth), quality: 80 })),
+      "memory-disk",
+    ).catch(() => {
+      // Не успели — просмотр загрузит сам.
+    });
+  }, [photos, screenWidth]);
   const showReviewCta = !!masterId && !isOwn && !!reviewable.data;
   const hasContacts = !!phoneTel || !!phoneWa;
   // У своего профиля нижней панели нет: сюда попадают из редактора
   // «Я специалист», и кнопка «Редактировать профиль» вернула бы туда,
   // откуда пришли (владелец, 2026-09-09: «обе кнопки удали»).
-  const bottomBar = !isOwn && hasContacts;
+  // Гостю контакты не показываются — вместо них блок входа (2026-10-03).
+  const isGuest = !currentUserId;
+  const bottomBar = !isOwn && !isGuest && hasContacts;
   const bottomSpace = insets.bottom + 16 + (bottomBar ? GLASS_BUTTON_HEIGHT + 12 : 0);
 
   const handleBlock = async () => {
@@ -242,51 +263,65 @@ export default function MasterPublicScreen() {
           </View>
         ) : (
           <>
-            {/* Шапка: аватар, имя, рейтинг, место */}
-            <View className="flex-row items-center gap-4 px-5 pt-3 pb-6">
+            {/* Шапка — по центру, как карточка в «Контактах» iOS 26: аватар,
+                имя, одна строка оценки, одна тихая строка фактов (редизайн
+                2026-10-03, docs/MASTER_PROFILE_REDESIGN_2026-10.md). */}
+            <View className="items-center px-4 pt-2 pb-6">
               <Avatar url={u?.avatar_url} name={name} seed={masterId} size="xl" />
-              <View className="min-w-0 flex-1">
-                <View className="flex-row items-center gap-2">
-                  <AppText
-                    weight="bold"
-                    className="min-w-0 shrink text-ios-title1 text-ink"
-                    numberOfLines={2}
-                  >
-                    {name}
-                  </AppText>
-                  {isVerifiedLevel(m?.verification_level) ? <VerifiedBadge size={22} /> : null}
-                </View>
-                <View className="mt-1 flex-row items-center gap-1.5">
-                  {ratingCount > 0 ? (
-                    <>
-                      <Star size={16} weight="fill" color={tc.warning} />
-                      <AppText weight="semibold" className="text-ios-subheadline text-ink">
-                        {Number(ratingAvg ?? 0).toFixed(1)}
-                      </AppText>
-                      <AppText className="text-ios-subheadline text-mute">
-                        · {ratingCount} отзывов
-                      </AppText>
-                    </>
-                  ) : (
-                    <AppText className="text-ios-subheadline text-mute">Отзывов пока нет</AppText>
-                  )}
-                </View>
-                {place ? (
-                  <AppText className="mt-0.5 text-ios-subheadline text-mute" numberOfLines={1}>
-                    {place}
-                  </AppText>
-                ) : null}
-                {m?.availability_status && m.availability_status !== "unspecified" ? (
-                  <AppText
-                    weight="medium"
-                    className={`mt-1 text-ios-subheadline ${m.availability_status === "unavailable" ? "text-mute" : "text-success"}`}
-                    numberOfLines={1}
-                  >
-                    {availabilityTitle(m.availability_status)}
-                  </AppText>
-                ) : null}
+              <View className="mt-4 max-w-full flex-row items-center justify-center gap-2">
+                <AppText
+                  accessibilityRole="header"
+                  weight="bold"
+                  className="min-w-0 shrink text-center text-ios-title1 text-ink"
+                  numberOfLines={2}
+                >
+                  {name}
+                </AppText>
+                {isVerifiedLevel(m?.verification_level) ? <VerifiedBadge size={22} /> : null}
               </View>
+              <View className="mt-1.5 flex-row items-center gap-1.5">
+                {ratingCount > 0 ? (
+                  <>
+                    <Star size={16} weight="fill" color={tc.warning} />
+                    <AppText weight="semibold" className="text-ios-subheadline text-ink">
+                      {formatRating(ratingAvg)}
+                    </AppText>
+                    <AppText className="text-ios-subheadline text-mute">
+                      · {pluralizeReviews(ratingCount)}
+                    </AppText>
+                  </>
+                ) : (
+                  <AppText className="text-ios-subheadline text-mute">Отзывов пока нет</AppText>
+                )}
+              </View>
+              {facts ? (
+                <AppText
+                  className="mt-1 text-center text-ios-subheadline text-mute"
+                  numberOfLines={2}
+                >
+                  {facts}
+                </AppText>
+              ) : null}
+              {m?.availability_status && m.availability_status !== "unspecified" ? (
+                <AppText
+                  weight="medium"
+                  className={`mt-1 text-center text-ios-subheadline ${m.availability_status === "unavailable" ? "text-mute" : "text-success"}`}
+                  numberOfLines={1}
+                >
+                  {availabilityTitle(m.availability_status)}
+                </AppText>
+              ) : null}
             </View>
+
+            {/* Гость: контакты — только после входа (владелец, 2026-10-03). */}
+            {isGuest && !isOwn ? (
+              <View className="mx-4 mb-7 rounded-2xl bg-surface-card px-4 pb-4">
+                <GuestContactGate
+                  returnPath={`/master/${masterId}`}
+                  title="Войдите, чтобы позвонить или написать специалисту"
+                />
+              </View>
+            ) : null}
 
             {/* Чем занимается */}
             {(categories.data ?? []).length > 0 ? (
@@ -308,25 +343,12 @@ export default function MasterPublicScreen() {
               </InsetGroup>
             ) : null}
 
-            {/* О себе */}
-            {m?.bio?.trim() || experienceLabel(m?.experience_years) ? (
-              <View className="mb-7 px-4">
-                <AppText className="mb-1.5 ml-4 text-ios-footnote uppercase text-mute">
-                  О себе
-                </AppText>
-                <View className="rounded-2xl bg-canvas px-4 py-3.5">
-                  {m?.bio?.trim() ? (
-                    <AppText className="text-ios-body text-ink">{m.bio.trim()}</AppText>
-                  ) : null}
-                  {experienceLabel(m?.experience_years) ? (
-                    <AppText
-                      className={`text-ios-subheadline text-mute ${m?.bio?.trim() ? "mt-2" : ""}`}
-                    >
-                      {experienceLabel(m?.experience_years)}
-                    </AppText>
-                  ) : null}
-                </View>
-              </View>
+            {/* О себе — только когда есть текст: опыт стоит в шапке, и
+                секция с одним опытом обещала больше, чем в ней было. */}
+            {m?.bio?.trim() ? (
+              <InsetGroup title="О себе">
+                <AppText className="px-4 py-3.5 text-ios-body text-ink">{m.bio.trim()}</AppText>
+              </InsetGroup>
             ) : null}
 
             {/* Ссылка на соцсеть или сайт (0188). Показываем адрес целиком
@@ -346,12 +368,12 @@ export default function MasterPublicScreen() {
             {/* Фото работ */}
             {photos.length > 0 ? (
               <View className="mb-7 px-4">
-                <View className="mb-1.5 ml-4 flex-row items-center gap-1.5">
-                  <ImageIcon size={14} weight="bold" color={tc.mute} />
-                  <AppText className="text-ios-footnote uppercase text-mute">
-                    Фото работ · {photos.length}
-                  </AppText>
-                </View>
+                <AppText
+                  accessibilityRole="header"
+                  className="mb-1.5 ml-4 text-ios-footnote uppercase text-mute"
+                >
+                  Фото работ · {photos.length}
+                </AppText>
                 <View
                   className="flex-row flex-wrap"
                   style={{ gap: GAP }}
@@ -369,10 +391,17 @@ export default function MasterPublicScreen() {
                         className="overflow-hidden rounded-2xl active:opacity-80"
                         style={{ width: tile, height: tile }}
                       >
-                        <Image
-                          source={{ uri: p.url }}
+                        {/* Копия под размер плитки (~8 КБ вместо оригинала
+                            ~120 КБ), кэш на диске, размытая заглушка сразу
+                            (владелец, 2026-10-03: «фото грузятся супер долго»). */}
+                        <ExpoImage
+                          source={{ uri: cdnImage(p.url, { width: tile }) }}
+                          placeholder={cdnBlur(p.url) ? { uri: cdnBlur(p.url) } : undefined}
                           style={{ width: tile, height: tile }}
-                          resizeMode="cover"
+                          contentFit="cover"
+                          transition={120}
+                          cachePolicy="memory-disk"
+                          recyclingKey={p.id}
                           accessibilityIgnoresInvertColors
                         />
                         {isLast ? (
@@ -408,18 +437,18 @@ export default function MasterPublicScreen() {
             ) : null}
 
             {/* Отзывы */}
-            <View className="px-4">
-              <ReviewsSection
-                title="Отзывы"
-                emptyText="Отзывов пока нет. Отзыв оставляет клиент после завершённого задания."
-                query={reviews}
-              />
-              {showReviewCta ? (
-                <View className="mt-3">
-                  <GlassButton label="Оставить отзыв" onPress={handleReview} secondary neutral />
-                </View>
-              ) : null}
-            </View>
+            <ReviewsSection
+              title="Отзывы"
+              emptyText="Отзывов пока нет. Отзыв оставляет клиент после завершённого задания."
+              query={reviews}
+              ratingAvg={ratingAvg}
+              ratingCount={ratingCount}
+            />
+            {showReviewCta ? (
+              <View className="px-4">
+                <GlassButton label="Оставить отзыв" onPress={handleReview} secondary neutral />
+              </View>
+            ) : null}
           </>
         )}
       </Animated.ScrollView>

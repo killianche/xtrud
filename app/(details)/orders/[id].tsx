@@ -38,6 +38,7 @@ import {
 } from "@/components/ui";
 import { SystemIcon } from "@/components/ui/SystemIcon";
 import { useAdminHideOrder, useIsAdmin } from "@/features/admin/use-admin-actions";
+import { GuestContactGate } from "@/features/auth/GuestContactGate";
 import { useAuthSession } from "@/features/auth/use-auth-session";
 import { blockConfirmMessage, blockSuccessMessage } from "@/features/blocking/blocking-copy";
 import { blockingActionFailureMessage } from "@/features/blocking/blocking-error-message";
@@ -551,6 +552,7 @@ export default function OrderDetailScreen() {
           <OrderInfoBlock
             order={order}
             isOwner={isOwner}
+            isGuest={!userId}
             myResponseStatus={myMasterResponseQ.data?.status}
           />
 
@@ -675,12 +677,14 @@ interface OrderInfoBlockProps {
   /** Клиент сам же видит свой заказ? Тогда «Заказчик»-карточка не показывается
    *  (не показывать себе себя). */
   isOwner: boolean;
+  /** Гость без входа — контакты клиента скрыты за входом (2026-10-03). */
+  isGuest: boolean;
   /** Статус СВОЕГО отклика — для взгляда специалиста (orderStatusView). У
    *  заказчика и у того, кто ещё не откликнулся, не задан. */
   myResponseStatus?: Tables<"order_responses">["status"];
 }
 
-function OrderInfoBlock({ order, isOwner, myResponseStatus }: OrderInfoBlockProps) {
+function OrderInfoBlock({ order, isOwner, isGuest, myResponseStatus }: OrderInfoBlockProps) {
   // Единый статус (docs/ORDER_STATUS_DESIGN.md §3.4): для заказчика — его
   // взгляд; для специалиста со своим откликом — его взгляд; для любого другого
   // читателя (гость, ещё не откликнувшийся специалист) — нейтральный взгляд
@@ -823,9 +827,9 @@ function OrderInfoBlock({ order, isOwner, myResponseStatus }: OrderInfoBlockProp
       {!isOwner ? (
         <View className="mt-6">
           <AppText weight="bold" className="text-title-md text-ink">
-            Заказчик
+            Клиент
           </AppText>
-          <View className="mt-3 rounded-2xl border border-hairline bg-canvas p-4">
+          <View className="mt-3 rounded-2xl bg-surface-card p-4" style={CARD_SHADOW}>
             <View className="flex-row items-center gap-3">
               <Avatar
                 url={order.client?.avatar_url ?? null}
@@ -844,14 +848,20 @@ function OrderInfoBlock({ order, isOwner, myResponseStatus }: OrderInfoBlockProp
             </View>
             {order.contact_mode === "phone_open" ? (
               <AppText className="mt-3 text-body-sm text-mute">
-                Заказчик ждёт звонка или сообщения — откликов в приложении здесь нет.
+                Клиент ждёт звонка или сообщения — откликов в приложении здесь нет.
               </AppText>
             ) : null}
             {/* Номер клиента — только в режиме «напрямую»: в обычном режиме
                 приложение обещает «Ваш номер скрыт» (владелец, 2026-10-03;
                 база обнуляет такие номера — 0211). */}
-            {order.contact_mode === "phone_open" &&
-            (order.contact_phone || order.whatsapp_phone) ? (
+            {order.contact_mode === "phone_open" && isGuest ? (
+              // Гость — только после входа (владелец, 2026-10-03).
+              <GuestContactGate
+                returnPath={`/orders/${order.id}`}
+                title="Войдите, чтобы позвонить или написать клиенту"
+              />
+            ) : order.contact_mode === "phone_open" &&
+              (order.contact_phone || order.whatsapp_phone) ? (
               <ContactButtons
                 phoneTel={order.contact_phone?.replace(/[^\d+]/g, "") || null}
                 whatsappDigits={

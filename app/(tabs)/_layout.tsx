@@ -86,6 +86,16 @@ export default function TabsLayout() {
   // (владелец, 2026-09-11: «получил отзыв и нигде не увидел»).
   const { data: unreadReviews = 0 } = useUnreadReviewsCount(userId ?? undefined);
   const specialistsBadge = badgeLabel(unreadReviews);
+  // Подпись вкладки аккаунта: имя (до 12 знаков — подписи вкладок узкие)
+  // или «Войти» у гостя.
+  const firstName = user?.first_name?.trim() ?? "";
+  const profileLabel = userId
+    ? firstName
+      ? firstName.length > 12
+        ? `${firstName.slice(0, 11)}…`
+        : firstName
+      : "Профиль"
+    : "Войти";
 
   const tc = useThemeColors([
     "error",
@@ -197,10 +207,19 @@ export default function TabsLayout() {
           ) : null}
         </NativeTabs.Trigger>
 
-        {/* Профиль — через аватар в правом верхнем углу главной. Скрытые
-            вкладки остаются маршрутами: на них push'ят напрямую. «Сохранённые
-            мастера» удалены целиком 2026-09-02. */}
-        <NativeTabs.Trigger name="profile" hidden />
+        {/* Пятая вкладка — аккаунт (владелец, 2026-10-03): гость видит
+            «Войти», вошедший — своё имя. Иконка — системный значок, не
+            аватар: картинка во вкладке на iOS 26 ломает подписи всей панели
+            (UIKit FB24250687, react-native-screens#4749, исправление #4750
+            не выпущено) — аватар вернуть, когда библиотеку исправят. */}
+        <NativeTabs.Trigger name="profile" listeners={scrollToTopOnReselect("profile")}>
+          <NativeTabs.Trigger.Icon
+            sf={{ default: "person.crop.circle", selected: "person.crop.circle.fill" }}
+            md="account_circle"
+          />
+          <NativeTabs.Trigger.Label>{profileLabel}</NativeTabs.Trigger.Label>
+        </NativeTabs.Trigger>
+        {/* «Сохранённые мастера» удалены целиком 2026-09-02. */}
         <NativeTabs.Trigger name="cases" hidden />
       </NativeTabs>
     </NavThemeProvider>

@@ -23,6 +23,7 @@ import { AppText } from "@/components/AppText";
 import { ScreenHeader, Skeleton } from "@/components/ui";
 import { useMasterPublicProfile } from "@/features/master-view/use-master-public";
 import { type CaseWithPreview, useMasterCases } from "@/features/profile/use-portfolio-cases";
+import { cdnBlur, cdnImage } from "@/lib/image-cdn";
 import { useSafeBack } from "@/lib/use-safe-back";
 import { useThemeColors } from "@/lib/use-theme-color";
 
@@ -109,7 +110,8 @@ function CaseCard({ data, onPress }: CaseCardProps) {
       {cover ? (
         <View style={{ width: "100%", aspectRatio: 16 / 10, position: "relative" }}>
           <Image
-            source={{ uri: cover.url }}
+            source={{ uri: cdnImage(cover.url, { width: 640 }) }}
+            placeholder={cdnBlur(cover.url) ? { uri: cdnBlur(cover.url) } : undefined}
             style={{ width: "100%", height: "100%" }}
             contentFit="cover"
             transition={200}

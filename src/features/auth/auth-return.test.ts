@@ -13,6 +13,12 @@ describe("auth return intent", () => {
     const legacyOrderDetail = "/(tabs)/orders/4fd91df3-bb3d-4ec7-9ce0-0fddd1f6d7ab";
     expect(parseAuthReturnTo(ORDER_CREATE_RETURN_TO)).toBe(ORDER_CREATE_RETURN_TO);
     expect(parseAuthReturnTo(orderDetail)).toBe(orderDetail);
+    const master = "/master/11111111-2222-4333-8444-555555555555";
+    expect(parseAuthReturnTo(master)).toBe(master);
+    expect(parseAuthReturnTo("/master/not-a-uuid")).toBeNull();
+    expect(
+      parseAuthReturnTo("https://evil.example/master/11111111-2222-4333-8444-555555555555"),
+    ).toBeNull();
     expect(parseAuthReturnTo("/(tabs)/orders/new")).toBe(ORDER_CREATE_RETURN_TO);
     expect(parseAuthReturnTo(legacyOrderDetail)).toBe(orderDetail);
     expect(parseAuthReturnTo([ORDER_CREATE_RETURN_TO, "https://evil.example"])).toBe(

@@ -46,6 +46,8 @@ export type LightboxItem = { id: string; url: string; caption?: string | null };
 const MIN_SCALE = 1;
 const MAX_SCALE = 4;
 const DOUBLE_TAP_SCALE = 2.5;
+/** Сдвиг пальца (pt), после которого это уже свайп, а не касание. */
+const TAP_MAX_DISTANCE = 10;
 
 interface PortfolioLightboxProps {
   items: LightboxItem[];
@@ -156,8 +158,12 @@ export function PortfolioLightbox({
       }
     });
 
+  // Касание — только если палец почти не сдвинулся. У Tap на iOS по
+  // умолчанию нет предела сдвига: быстрый свайп (< 0,5 с) засчитывался как
+  // одиночное касание и закрывал просмотр (владелец, 2026-10-03).
   const doubleTap = Gesture.Tap()
     .numberOfTaps(2)
+    .maxDistance(TAP_MAX_DISTANCE)
     .onEnd(() => {
       if (scale.value > MIN_SCALE) {
         scale.value = withTiming(MIN_SCALE);
@@ -175,6 +181,7 @@ export function PortfolioLightbox({
   // Single tap — закрывает только при scale==1 (чтобы не мешать zoom-юзеру).
   const singleTap = Gesture.Tap()
     .numberOfTaps(1)
+    .maxDistance(TAP_MAX_DISTANCE)
     .onEnd(() => {
       if (scale.value <= MIN_SCALE) runOnJS(onClose)();
     });

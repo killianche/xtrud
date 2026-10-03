@@ -13,7 +13,7 @@
    на gitflic нет.
 2. `npm ci` каждой сборки — включая iPhone — не должен зависеть от gitflic.
 
-Изменения относительно источника — два. Первое: из `package.json` убраны
+Изменения относительно источника — три. Первое: из `package.json` убраны
 поля сборки самого SDK (`devDependencies`, `scripts`, `packageManager` и
 настройки инструментов) — для локальной копии npm ставит и dev-зависимости,
 и без этой правки в проект приезжало 1426 лишних пакетов. Второе: сигнатура `onNewIntent` в
@@ -21,6 +21,11 @@
 комментарием `xtrud:`). Каталоги `ios/` и `example/` не скопированы: модуль
 только для Android и исключён из автоподключения iOS (`package.json` →
 `expo.autolinking`).
+
+Третье (2026-10-03): адрес Maven-репозитория в `android/build.gradle`
+заменён на `https://nexus-external.rustore.ru/repository/maven-rustore-exposed`.
+RuStore перенёс SDK; старый `artifactory-external.vkpartner.ru` отвечает 404
+с 01.10.2026, и сборка Android 20 не нашла `ru.rustore.sdk:pushclient:6.9.1`.
 
 Обновление: взять новую версию из источника, перенести пометку `xtrud:`,
 если она ещё нужна, и прогнать сборку Android.

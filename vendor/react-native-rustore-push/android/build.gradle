@@ -89,7 +89,9 @@ rootProject.allprojects {
     repositories {
         mavenLocal()
         maven {
-            url = uri("https://artifactory-external.vkpartner.ru/artifactory/maven")
+            // RuStore перенёс репозиторий SDK: старый artifactory-external.vkpartner.ru
+            // отдаёт 404 с 01.10.2026, сборка Android 20 упала на pushclient 6.9.1.
+            url = uri("https://nexus-external.rustore.ru/repository/maven-rustore-exposed")
         }
         google()
         mavenCentral()

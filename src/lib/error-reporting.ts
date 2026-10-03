@@ -158,6 +158,32 @@ export function installGlobalErrorHandlers(): void {
   }
 
   // --- 2. Необработанные promise-rejections --------------------------------
+  // На Hermes Promise нативные, и модуль promise/… ниже их не видит (аудит
+  // 2026-10-03): сначала — собственный трекер Hermes, если он есть.
+  const onUnhandled = (_id: number, error: unknown) => {
+    reportClientError(error, { fatal: false, context: "unhandled-rejection" });
+    if (__DEV__) {
+      console.warn("[error-reporting] unhandled promise rejection:", error);
+    }
+  };
+  try {
+    const hermes = (
+      globalThis as {
+        HermesInternal?: {
+          enablePromiseRejectionTracker?: (opts: {
+            allRejections: boolean;
+            onUnhandled: (id: number, error: unknown) => void;
+          }) => void;
+        };
+      }
+    ).HermesInternal;
+    if (hermes?.enablePromiseRejectionTracker) {
+      hermes.enablePromiseRejectionTracker({ allRejections: true, onUnhandled });
+      return;
+    }
+  } catch {
+    /* трекер Hermes недоступен — пробуем модуль promise */
+  }
   try {
     // Тот же модуль, которым RN включает предупреждения о rejections.
     // Ленивый require: на web/Hermes структура может отличаться — всё в try.
@@ -167,15 +193,7 @@ export function installGlobalErrorHandlers(): void {
         onUnhandled: (id: number, error: unknown) => void;
       }) => void;
     };
-    tracking.enable({
-      allRejections: true,
-      onUnhandled: (_id, error) => {
-        reportClientError(error, { fatal: false, context: "unhandled-rejection" });
-        if (__DEV__) {
-          console.warn("[error-reporting] unhandled promise rejection:", error);
-        }
-      },
-    });
+    tracking.enable({ allRejections: true, onUnhandled });
   } catch {
     /* трекинг недоступен — пропускаем */
   }

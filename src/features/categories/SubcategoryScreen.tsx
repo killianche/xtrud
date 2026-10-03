@@ -116,7 +116,9 @@ export function SubcategoryScreen({
         title={title}
         compactTitleOpacity={large.compactTitleOpacity}
         onLayoutHeight={large.setBarHeight}
-        onBack={() => router.back()}
+        onBack={() =>
+          router.canGoBack() ? router.back() : router.replace("/(tabs)/find" as never)
+        }
       />
     </View>
   );

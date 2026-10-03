@@ -17,8 +17,14 @@ export default function FindSectionRoute() {
   const router = useRouter();
   const { session } = useAuthSession();
   const facets = useOpenOrderFacets(session?.user?.id);
-  const counts = useMemo(() => countByCategory(facets.data ?? []), [facets.data]);
   const setL2Ids = useOrdersSearchFiltersStore((s) => s.setL2Ids);
+  // Число — в выбранном месте, как в списке заданий (аудит 2026-10-03).
+  const cityId = useOrdersSearchFiltersStore((s) => s.cityId);
+  const district = useOrdersSearchFiltersStore((s) => s.district);
+  const counts = useMemo(
+    () => countByCategory(facets.data ?? [], { cityId, district }),
+    [facets.data, cityId, district],
+  );
   return (
     <SubcategoryScreen
       valueFor={(id) => (facets.data && counts.get(id) ? String(counts.get(id)) : undefined)}

@@ -306,7 +306,7 @@ export default function OrderDetailScreen() {
     const clientDisplay =
       [order.client?.first_name, order.client?.last_name].filter(Boolean).join(" ") || "Клиент";
     const confirmed = await confirmAsync({
-      title: "Заблокировать заказчика?",
+      title: "Заблокировать клиента?",
       message: blockConfirmMessage(clientDisplay),
       confirmText: "Заблокировать",
       cancelText: "Отмена",
@@ -316,7 +316,7 @@ export default function OrderDetailScreen() {
     blockUser.mutate(order.client_id, {
       onSuccess: () => {
         hapticSuccess();
-        Alert.alert("Заказчик заблокирован", blockSuccessMessage());
+        Alert.alert("Клиент заблокирован", blockSuccessMessage());
       },
       onError: (e) => Alert.alert("Не удалось заблокировать", blockingActionFailureMessage(e)),
     });
@@ -398,7 +398,7 @@ export default function OrderDetailScreen() {
     }
     if (!isOwner) {
       items.push({
-        label: "Заблокировать заказчика",
+        label: "Заблокировать клиента",
         destructive: true,
         onPress: handleBlockClient,
       });

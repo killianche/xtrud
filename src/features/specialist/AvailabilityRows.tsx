@@ -28,7 +28,7 @@ const OPTIONS: Array<{ id: AvailabilityStatus; title: string; subtitle?: string 
   { id: "next_week", title: "На следующей неделе" },
   {
     id: "unavailable",
-    title: "Не принимаю заказы",
+    title: "Не принимаю задания",
     subtitle: "Профиль остаётся в каталоге с пометкой",
   },
 ];
@@ -36,15 +36,15 @@ const OPTIONS: Array<{ id: AvailabilityStatus; title: string; subtitle?: string 
 export function availabilityTitle(status: AvailabilityStatus | null | undefined): string {
   switch (status) {
     case "today":
-      return "Принимает заказы сегодня";
+      return "Принимает задания сегодня";
     case "this_week":
-      return "Принимает заказы на этой неделе";
+      return "Принимает задания на этой неделе";
     case "next_week":
-      return "Принимает заказы на следующей неделе";
+      return "Принимает задания на следующей неделе";
     case "unavailable":
-      return "Сейчас не принимает заказы";
+      return "Сейчас не принимает задания";
     default:
-      return "Принимает заказы";
+      return "Принимает задания";
   }
 }
 
@@ -57,7 +57,7 @@ export function AvailabilityRows({ userId }: { userId: string }) {
   const current = locked ? "unspecified" : (mine.data?.availability_status ?? "unspecified");
   return (
     <InsetGroup
-      title="Принимаю заказы"
+      title="Принимаю задания"
       footer={
         locked
           ? "Включится после выбора категории: без неё вас нет в списке специалистов."

@@ -39,6 +39,11 @@ export function FindHome({
   const { session } = useAuthSession();
   const userId = session?.user?.id;
   const setL2Ids = useOrdersSearchFiltersStore((s) => s.setL2Ids);
+  // Числа — в том месте, что выбрано на экране заданий, иначе карточка
+  // обещала «3», а список показывал «1» (аудит 2026-10-03).
+  const cityId = useOrdersSearchFiltersStore((s) => s.cityId);
+  const district = useOrdersSearchFiltersStore((s) => s.district);
+  const place = useMemo(() => ({ cityId, district }), [cityId, district]);
   const [query, setQuery] = useState("");
 
   // Вход на вкладку снимает бейдж новых заданий.
@@ -50,7 +55,7 @@ export function FindHome({
   const l1 = useCategoriesL1();
   const categories = useVisibleCategories();
   const facets = useOpenOrderFacets(userId);
-  const counts = useMemo(() => countByCategory(facets.data ?? []), [facets.data]);
+  const counts = useMemo(() => countByCategory(facets.data ?? [], place), [facets.data, place]);
 
   const tiles = useMemo(() => {
     const all = categories.data ?? [];
@@ -58,7 +63,7 @@ export function FindHome({
       (l1.data ?? [])
         .map((s) => {
           const ids = new Set(all.filter((c) => c.l1_id === s.id).map((c) => c.id));
-          const n = facets.data ? countInCategories(facets.data, ids) : null;
+          const n = facets.data ? countInCategories(facets.data, ids, place) : null;
           return { s, ids, n };
         })
         .filter(({ ids }) => ids.size > 0)
@@ -72,7 +77,7 @@ export function FindHome({
           meta: n === null ? null : n > 0 ? tasksLabel(n) : "Пока нет заданий",
         }))
     );
-  }, [l1.data, categories.data, facets.data]);
+  }, [l1.data, categories.data, facets.data, place]);
 
   const openResults = (l2Id: string) => {
     setL2Ids([l2Id]);

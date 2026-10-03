@@ -411,7 +411,7 @@ export default function MasterPublicScreen() {
             <View className="px-4">
               <ReviewsSection
                 title="Отзывы"
-                emptyText="Отзывов пока нет. Отзыв оставляет заказчик после завершённого задания."
+                emptyText="Отзывов пока нет. Отзыв оставляет клиент после завершённого задания."
                 query={reviews}
               />
               {showReviewCta ? (

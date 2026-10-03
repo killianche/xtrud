@@ -126,6 +126,11 @@
         "exclude": [
           "react-native-rustore-push"
         ]
+      },
+      "android": {
+        "exclude": [
+          "react-native-rustore-push"
+        ]
       }
     }
   },

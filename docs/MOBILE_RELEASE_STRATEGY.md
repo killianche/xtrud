@@ -13,6 +13,13 @@ release ledger.
 > уровне качества. Android-сборка делается с того же коммита, что и iOS;
 > платформенные ветки (`Platform.OS`/`Platform.select`) сверяются перед каждым
 > выпуском. Заморозка ниже снята этим решением.
+>
+> **DECISION владельца (2026-10-03):** сейчас Android выпускается в Google Play,
+> не в RuStore. SDK RuStore Push исключён из автоподключения Android
+> (`package.json` → `expo.autolinking.android.exclude`): его зависимости
+> (`ru.ok.tracer`) больше не доступны из официальных репозиториев RuStore, а
+> Google Play он не нужен. Код push на Android при отсутствии модуля молча
+> пропускает регистрацию. Push для Google Play — через FCM, отдельной задачей.
 
 **Android заморожен** (DECISION владельца, 2026-08-30) до полного завершения
 iOS. Это отменяет прежнее правило про обязательный Android preview/device smoke

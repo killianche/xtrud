@@ -119,7 +119,7 @@ export function PickerSections({
         ) : null}
         <View
           className={`min-h-11 flex-1 flex-row items-center py-2.5 pr-4 ${
-            isLast ? "" : "border-b border-hairline"
+            isLast ? "" : "border-b border-b-hairline"
           }`}
         >
           <View className="min-w-0 flex-1">
@@ -161,7 +161,7 @@ export function PickerSections({
   let body: ReactNode;
   if (loading) {
     body = (
-      <View className="mx-4 overflow-hidden rounded-2xl bg-canvas">
+      <View className="mx-4 overflow-hidden rounded-2xl bg-surface-card">
         {Array.from({ length: LOADING_ROW_COUNT }, (_, i) => (
           // biome-ignore lint/suspicious/noArrayIndexKey: фиксированный набор строк-заглушек
           <View key={i} className="flex-row items-center gap-3 px-4 py-2.5">
@@ -205,7 +205,7 @@ export function PickerSections({
             {section.title}
           </AppText>
         ) : null}
-        <View className="mx-4 overflow-hidden rounded-2xl bg-canvas">
+        <View className="mx-4 overflow-hidden rounded-2xl bg-surface-card">
           {section.options.map((opt, i) => renderRow(opt, i === section.options.length - 1))}
         </View>
       </View>

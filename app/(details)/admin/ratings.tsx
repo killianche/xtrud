@@ -28,7 +28,7 @@ function MasterRatingRow({ m, rank }: { m: AdminMasterRating; rank: number }) {
   const available = eff === "today" || eff === "this_week";
 
   return (
-    <View className="flex-row items-center gap-3 border-b border-hairline py-3">
+    <View className="flex-row items-center gap-3 border-b border-b-hairline py-3">
       {/* Балл — крупно, mono. */}
       <View className="w-12 items-center">
         <AppText weight="mono" className="text-title-md text-ink">

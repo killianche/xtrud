@@ -30,7 +30,10 @@ export function InsetGroup({
       {title ? (
         <AppText className="mb-1.5 ml-4 text-ios-footnote uppercase text-mute">{title}</AppText>
       ) : null}
-      <View className="overflow-hidden rounded-2xl bg-canvas">{children}</View>
+      {/* surface-card, а не canvas: в тёмной теме canvas совпадает с фоном
+          страницы, и группа пропадала — строки висели на чёрном (снимок
+          2026-10-03). В светлой оба белые. */}
+      <View className="overflow-hidden rounded-2xl bg-surface-card">{children}</View>
       {footer ? (
         <AppText className="mt-1.5 ml-4 text-ios-footnote text-mute">{footer}</AppText>
       ) : null}
@@ -101,21 +104,21 @@ export function InsetRow({
         if (!navigates) hapticSelection();
         onPress?.();
       }}
-      className={`flex-row items-center pl-4 ${interactive || toggle ? "active:bg-canvas-soft" : ""} ${
+      className={`flex-row items-center pl-4 ${interactive || toggle ? "active:bg-canvas-soft-2" : ""} ${
         selected ? "bg-accent-soft" : ""
       }`}
     >
       {icon ? (
         <View
           className={`mr-3 h-9 w-9 items-center justify-center rounded-lg ${
-            iconAccent ? "bg-accent" : "bg-canvas-soft"
+            iconAccent ? "bg-accent" : "bg-canvas-soft-2"
           }`}
         >
           {icon}
         </View>
       ) : null}
       <View
-        className={`min-h-14 flex-1 flex-row items-center py-3 pr-4 ${last ? "" : "border-b border-hairline"}`}
+        className={`min-h-14 flex-1 flex-row items-center py-3 pr-4 ${last ? "" : "border-b border-b-hairline"}`}
       >
         <View className="min-w-0 flex-1">
           <AppText

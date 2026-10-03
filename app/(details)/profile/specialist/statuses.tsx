@@ -100,7 +100,7 @@ export default function SpecialistStatusesSheet() {
                 accessible
                 accessibilityLabel={`${s.label}. ${s.text}`}
                 className={`flex-row gap-3 px-4 py-3.5 ${
-                  i < STATUSES.length - 1 ? "border-b border-hairline" : ""
+                  i < STATUSES.length - 1 ? "border-b border-b-hairline" : ""
                 }`}
               >
                 <View

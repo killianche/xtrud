@@ -1,6 +1,6 @@
 /**
- * Стек вкладки «Найти задание»: выбор работы и места (index) → задания
- * (results).
+ * Стек вкладки «Найти задание»: разделы (index) → подразделы (section) →
+ * задания (results).
  *
  * Системная шапка выключена на обоих экранах: внутри NativeTabs крупный
  * заголовок нативного стека не отрисовался (сборка 103 — пустое место
@@ -23,6 +23,7 @@ export default function FindStackLayout() {
       }}
     >
       <Stack.Screen name="index" options={{ animation: "none" }} />
+      <Stack.Screen name="section" />
       <Stack.Screen name="results" />
     </Stack>
   );

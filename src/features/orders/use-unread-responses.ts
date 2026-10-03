@@ -47,6 +47,43 @@ export function useUnreadResponsesCount(userId: string | null | undefined) {
   });
 }
 
+/**
+ * Новые (непросмотренные) отклики по каждому заданию — чтобы бейдж «Мои
+ * задания» было где увидеть: карточка показывает «N новых» (владелец,
+ * 2026-10-03: «красная точка, а непонятно где»). Тот же запрос, что у
+ * счётчика, и ключ под ним — обновляются и гаснут вместе.
+ */
+export function useNewResponsesByOrder(userId: string | null | undefined) {
+  return useQuery<Map<string, number>>({
+    queryKey: [...unreadResponsesKey(userId ?? undefined), "by-order"],
+    queryFn: async () => {
+      const result = new Map<string, number>();
+      if (!userId) return result;
+      const { data: myOrders, error: ordersErr } = await supabase
+        .from("orders")
+        .select("id")
+        .eq("client_id", userId)
+        .in("status", ["open", "in_progress"]);
+      if (ordersErr) throw ordersErr;
+      const orderIds = (myOrders ?? []).map((o) => o.id);
+      if (orderIds.length === 0) return result;
+      const { data, error } = await supabase
+        .from("order_responses")
+        .select("order_id")
+        .in("order_id", orderIds)
+        .eq("status", "sent");
+      if (error) throw error;
+      for (const row of data ?? []) {
+        result.set(row.order_id, (result.get(row.order_id) ?? 0) + 1);
+      }
+      return result;
+    },
+    enabled: !!userId,
+    staleTime: 15_000,
+    refetchOnWindowFocus: true,
+  });
+}
+
 export function useMarkResponsesViewed(userId: string | undefined) {
   const qc = useQueryClient();
   return useMutation({

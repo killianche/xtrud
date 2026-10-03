@@ -10,6 +10,7 @@ describe("isPublicDetailsRoute", () => {
     // 2026-09-08: общие шторки фильтров удалены — фильтры выбираются
     // отдельными шторками категории и места.
     expect(isPublicDetailsRoute(["(details)", "find", "location-select"])).toBe(true);
+    expect(isPublicDetailsRoute(["(details)", "specialists", "category"])).toBe(true);
     expect(isPublicDetailsRoute(["(details)", "useful", "[slug]"])).toBe(true);
   });
 

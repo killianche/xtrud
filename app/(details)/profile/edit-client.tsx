@@ -170,7 +170,7 @@ export default function EditClientScreen() {
       style={{ paddingTop: insets.top }}
     >
       {/* Header navbar — Cancel / Title / Save */}
-      <View className="flex-row items-center justify-between border-hairline border-b bg-canvas px-4 py-3">
+      <View className="flex-row items-center justify-between border-b-hairline border-b bg-canvas px-4 py-3">
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Отмена"

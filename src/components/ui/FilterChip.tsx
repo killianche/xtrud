@@ -30,21 +30,9 @@ export interface FilterChipProps {
   onPress: () => void;
   /** Подпись для VoiceOver, если отличается от label. */
   accessibilityLabel?: string;
-  /**
-   * Стрелка «▾» — капсула открывает выбор. Без стрелки капсула сама и есть
-   * вариант выбора (место в поиске заданий).
-   */
-  chevron?: boolean;
 }
 
-export function FilterChip({
-  label,
-  Icon,
-  active,
-  onPress,
-  accessibilityLabel,
-  chevron = true,
-}: FilterChipProps) {
+export function FilterChip({ label, Icon, active, onPress, accessibilityLabel }: FilterChipProps) {
   const tc = useThemeColors(["accent", "ink", "mute"]);
   const fg = active ? tc.accent : tc.ink;
   return (
@@ -53,7 +41,7 @@ export function FilterChip({
       accessibilityState={{ selected: active }}
       accessibilityLabel={accessibilityLabel ?? label}
       onPress={onPress}
-      className={`min-h-11 max-w-full flex-row items-center gap-1.5 rounded-pill border pl-3.5 py-2 active:opacity-70 ${chevron ? "pr-3" : "pr-3.5"} ${
+      className={`min-h-11 max-w-full flex-row items-center gap-1.5 rounded-pill border pl-3.5 pr-3 py-2 active:opacity-70 ${
         active ? "border-accent bg-accent-soft" : "border-hairline bg-canvas"
       }`}
     >
@@ -66,17 +54,15 @@ export function FilterChip({
       >
         {label}
       </AppText>
-      {chevron ? (
-        <View>
-          <SystemIcon
-            sf="chevron.down"
-            fallback={CaretDown}
-            size={12}
-            weight="semibold"
-            color={active ? tc.accent : tc.mute}
-          />
-        </View>
-      ) : null}
+      <View>
+        <SystemIcon
+          sf="chevron.down"
+          fallback={CaretDown}
+          size={12}
+          weight="semibold"
+          color={active ? tc.accent : tc.mute}
+        />
+      </View>
     </Pressable>
   );
 }

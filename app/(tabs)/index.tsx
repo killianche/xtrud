@@ -331,7 +331,7 @@ function CategoryItem({ category, isGrid, isLast, onPress }: CategoryItemProps) 
       accessibilityRole="button"
       accessibilityLabel={category.name_ru}
       className={`flex-row items-center gap-4 px-4 py-3.5 active:bg-canvas-soft-2 ${
-        isLast ? "" : "border-b border-hairline"
+        isLast ? "" : "border-b border-b-hairline"
       }`}
     >
       <View className="h-11 w-11 items-center justify-center rounded-xl bg-canvas-soft text-ink">

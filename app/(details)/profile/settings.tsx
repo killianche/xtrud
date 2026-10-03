@@ -198,7 +198,7 @@ function Section({ icon: Icon, title, children }: SectionProps) {
 
 function ReadOnlyRow({ label, value }: { label: string; value: string }) {
   return (
-    <View className="px-5 py-4 border-b border-hairline-soft flex-row items-center justify-between">
+    <View className="px-5 py-4 border-b border-b-hairline-soft flex-row items-center justify-between">
       <AppText className="text-body-md text-mute">{label}</AppText>
       <AppText weight="medium" className="text-body-md text-ink">
         {value}
@@ -228,7 +228,7 @@ function ActionRow({ label, icon: Icon, destructive, count, chevron, onPress }: 
     <Pressable
       accessibilityRole="button"
       onPress={onPress}
-      className="px-5 py-4 border-b border-hairline-soft flex-row items-center gap-3 active:bg-canvas-soft"
+      className="px-5 py-4 border-b border-b-hairline-soft flex-row items-center gap-3 active:bg-canvas-soft"
     >
       {Icon ? <Icon size={18} weight="bold" color={destructive ? tc.error : tc.ink} /> : null}
       <AppText

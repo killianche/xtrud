@@ -9,6 +9,21 @@ import { extname, join } from "node:path";
 // playwright-core ставится вне проекта: PLAYWRIGHT_CORE=<путь к пакету>.
 const { chromium } = await import(process.env.PLAYWRIGHT_CORE ?? "playwright-core");
 
+// Веб-обёртка NativeTabs и стека оставляет контейнерам нулевую высоту (на
+// iOS это нативные контроллеры) — растягиваем их на экран перед снимком и
+// после каждого перехода.
+async function stretch(page) {
+  await page.evaluate(() => {
+    for (const el of document.querySelectorAll("#root div")) {
+      const r = el.getBoundingClientRect();
+      if (r.height === 0 && el.scrollHeight > 0 && el.children.length) {
+        el.style.flex = "1 1 auto";
+        el.style.minHeight = "100vh";
+      }
+    }
+  });
+}
+
 const [dist, outDir, routesArg, ...rest] = process.argv.slice(2);
 const clicks = [];
 let wheel = 0;
@@ -103,15 +118,7 @@ for (const scheme of ["light", "dark"]) {
     await page.waitForTimeout(2500);
     // Веб-обёртка NativeTabs оставляет контейнерам вкладки нулевую высоту
     // (на iOS это нативный UITabBarController) — растягиваем их на экран.
-    await page.evaluate(() => {
-      for (const el of document.querySelectorAll("#root div")) {
-        const r = el.getBoundingClientRect();
-        if (r.height === 0 && el.scrollHeight > 0 && el.children.length) {
-          el.style.flex = "1 1 auto";
-          el.style.minHeight = "100vh";
-        }
-      }
-    });
+    await stretch(page);
     await page.waitForTimeout(500);
     for (const text of clicks) {
       await page
@@ -121,6 +128,7 @@ for (const scheme of ["light", "dark"]) {
         .click({ timeout: 5000 })
         .catch((e) => console.log("click fail", text, e.message.split("\n")[0]));
       await page.waitForTimeout(1500);
+      await stretch(page);
     }
     if (wheel) {
       await page.mouse.move(196, 500);

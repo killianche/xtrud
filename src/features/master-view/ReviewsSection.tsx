@@ -91,7 +91,7 @@ function ReviewRow({
     [review.author?.first_name, review.author?.last_name].filter(Boolean).join(" ") || "Клиент";
 
   return (
-    <View className="border-hairline-soft border-b pb-4">
+    <View className="border-b-hairline-soft border-b pb-4">
       <View className="flex-row items-start gap-3">
         <Avatar
           url={review.author?.avatar_url ?? null}

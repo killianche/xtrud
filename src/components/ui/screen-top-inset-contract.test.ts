@@ -32,6 +32,8 @@ const INSET_AWARE_WRAPPERS = [
   "<PickerSheetPage",
   // Задания выбранной категории: внутри useLargeTitle + LargeTitleBar.
   "<FindResults",
+  // Подразделы каталога: внутри useLargeTitle + LargeTitleBar.
+  "<SubcategoryScreen",
 ];
 const SATISFIES = [
   "insets.top",

@@ -130,7 +130,7 @@ export default function SpecialistCategoriesScreen() {
                   <Icon size={18} weight="bold" color={on ? tc["on-accent"] : tc.ink} />
                 </View>
                 <View
-                  className={`min-h-14 flex-1 flex-row items-center py-3 pr-4 ${i === s.rows.length - 1 ? "" : "border-b border-hairline"}`}
+                  className={`min-h-14 flex-1 flex-row items-center py-3 pr-4 ${i === s.rows.length - 1 ? "" : "border-b border-b-hairline"}`}
                 >
                   <AppText
                     weight={on ? "semibold" : "regular"}

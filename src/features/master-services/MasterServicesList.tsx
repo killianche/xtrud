@@ -69,8 +69,8 @@ export function MasterServicesList({
         className={
           compact
             ? hideTitle
-              ? "border-t border-hairline-soft"
-              : "mt-3 border-t border-hairline-soft"
+              ? "border-t border-t-hairline-soft"
+              : "mt-3 border-t border-t-hairline-soft"
             : hideTitle
               ? "gap-3"
               : "mt-4 gap-3"
@@ -103,7 +103,7 @@ export function MasterServicesList({
             return (
               <View
                 key={service.id}
-                className="flex-row items-center justify-between gap-3 border-b border-hairline-soft py-3"
+                className="flex-row items-center justify-between gap-3 border-b border-b-hairline-soft py-3"
               >
                 <View className="flex-1 min-w-0">
                   <AppText weight="medium" className="text-ink text-body-md" numberOfLines={1}>

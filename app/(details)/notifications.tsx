@@ -98,7 +98,7 @@ export default function NotificationsScreen() {
                   style={{ backgroundColor: unread ? tc.accent : "transparent" }}
                 />
                 <View
-                  className={`min-w-0 flex-1 py-3.5 pr-4 ${i === items.length - 1 ? "" : "border-b border-hairline"}`}
+                  className={`min-w-0 flex-1 py-3.5 pr-4 ${i === items.length - 1 ? "" : "border-b border-b-hairline"}`}
                 >
                   <View className="flex-row items-baseline justify-between gap-3">
                     <AppText

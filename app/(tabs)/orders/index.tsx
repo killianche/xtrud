@@ -69,6 +69,7 @@ import {
 } from "@/features/orders/order-list-sections";
 import { type OrderWithRefs, useMyOrders } from "@/features/orders/use-my-orders";
 import { type MyResponseWithOrder, useMyResponses } from "@/features/orders/use-my-responses";
+import { useNewResponsesByOrder } from "@/features/orders/use-unread-responses";
 import { usePullToRefresh } from "@/hooks/use-pull-to-refresh";
 import { describeQueryError } from "@/lib/describe-query-error";
 import { useTabBarSpace } from "@/lib/tab-bar-space";
@@ -271,6 +272,8 @@ function OrdersList({ userId, contentTop, onScroll, header }: ListProps) {
   const tabBarSpace = useTabBarSpace(FAB_LIST_SPACE);
   const router = useRouter();
   const { data: orders, isLoading, error, refetch } = useMyOrders(userId);
+  // Где новые отклики — чтобы бейдж вкладки было видно на карточке.
+  const { data: newByOrder } = useNewResponsesByOrder(userId);
   const refresh = usePullToRefresh();
 
   const sections = useMemo(() => buildOrderSections(orders ?? []), [orders]);
@@ -291,6 +294,7 @@ function OrdersList({ userId, contentTop, onScroll, header }: ListProps) {
       style={{ flex: 1 }}
       ref={listRef}
       data={hasItems ? sections : []}
+      extraData={newByOrder}
       keyExtractor={sectionItemKey}
       getItemType={sectionItemType}
       contentContainerStyle={{ paddingTop: contentTop, paddingBottom: tabBarSpace }}
@@ -317,6 +321,7 @@ function OrdersList({ userId, contentTop, onScroll, header }: ListProps) {
             responsesCount={o.responses_count}
             // Счётчик откликов важен, пока исполнитель не выбран.
             showResponsesCount={o.status === "open"}
+            newResponsesCount={newByOrder?.get(o.id) ?? 0}
             createdAt={o.created_at}
             status={o.status}
             statusView={item.statusView}

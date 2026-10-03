@@ -258,7 +258,7 @@ export default function CasesScreen() {
           работа. Во время создания/загрузки показываем прогресс. */}
       {hasCases ? (
         <View
-          className="absolute left-0 right-0 bg-canvas border-t border-hairline px-5 pt-3"
+          className="absolute left-0 right-0 bg-canvas border-t border-t-hairline px-5 pt-3"
           style={{ bottom: 0, paddingBottom: insets.bottom + 12 }}
         >
           {creating ? (

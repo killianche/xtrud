@@ -1,25 +1,16 @@
 /**
  * Вкладка «Специалисты» — сначала категория, потом люди (DECISION владельца
  * 2026-09-07: «когда кликаем на специалисты, пусть открывается список
- * категорий; выбрал — открываются сами специалисты»). Разделы каталога
- * группами, первая строка — «Весь раздел», внутри — категории. Тап ведёт на
- * /specialists/section (экран стека — свайп назад работает).
+ * категорий; выбрал — открываются сами специалисты»). С 2026-10-03 (№158) —
+ * три уровня, как в «Найти задание»: разделы карточками → /specialists/category
+ * (подразделы, первой строкой «Все специалисты раздела») →
+ * /specialists/section (люди). Каждый уровень — экран стека со свайпом назад.
  */
 
 import { useRouter } from "expo-router";
-import { CaretDown, MagnifyingGlass, SignIn, UserCircle } from "phosphor-react-native";
+import { MagnifyingGlass, SignIn, UserCircle } from "phosphor-react-native";
 import { type RefObject, useEffect, useMemo, useRef, useState } from "react";
-import {
-  Animated,
-  type FlatList,
-  LayoutAnimation,
-  Platform,
-  Pressable,
-  type ScrollView,
-  UIManager,
-  View,
-} from "react-native";
-import { AppText } from "@/components/AppText";
+import { Animated, type FlatList, type ScrollView, View } from "react-native";
 import { EmptyState } from "@/components/EmptyState";
 import {
   InsetGroup,
@@ -30,29 +21,22 @@ import {
   useLargeTitle,
 } from "@/components/ui";
 import { SegmentPager } from "@/components/ui/SegmentPager";
-import { Skeleton } from "@/components/ui/Skeleton";
-import { SystemIcon } from "@/components/ui/SystemIcon";
 import { useAuthSession } from "@/features/auth/use-auth-session";
+import { CategoryMatches } from "@/features/categories/CategoryMatches";
+import { SectionGrid, SectionGridSkeleton } from "@/features/categories/SectionGrid";
 import { useCategoriesL1 } from "@/features/categories/use-categories-l1";
 import { useVisibleCategories } from "@/features/categories/use-visible-categories";
 import { useUnreadReviewsCount } from "@/features/notifications/use-notifications";
+import { pluralRu } from "@/features/orders/plural-ru";
 import { SpecialistHubBody } from "@/features/specialist/SpecialistHubBody";
-import { getCategoryIcon } from "@/lib/category-icons";
-import { hapticSelection } from "@/lib/haptics";
 import { useTabBarSpace } from "@/lib/tab-bar-space";
 import { scrollViewToTop, useTabScrollResetCounter } from "@/lib/tab-scroll-reset";
-import { useThemeColors } from "@/lib/use-theme-color";
-
-if (Platform.OS === "android" && UIManager.setLayoutAnimationEnabledExperimental) {
-  UIManager.setLayoutAnimationEnabledExperimental(true);
-}
 
 export default function SpecialistsCategoriesScreen() {
   const router = useRouter();
   // Строки навигации в покое нет — стартовая высота 0, без прыжка (QA).
   const large = useLargeTitle();
   const tabBarSpace = useTabBarSpace();
-  const tc = useThemeColors(["ink", "on-accent", "mute", "accent"]);
   const [query, setQuery] = useState("");
   // Переключатель «Найти специалиста / Я специалист» — как «Как клиент / Как
   // мастер» в «Моих заданиях» (DECISION владельца 2026-09-08).
@@ -62,20 +46,6 @@ export default function SpecialistsCategoriesScreen() {
   const userId = session?.user?.id;
   // Новый отзыв — счётчик на «Я специалист», как у бейджа вкладки.
   const unreadReviews = useUnreadReviewsCount(userId).data ?? 0;
-  // Раздел раскрывается по тапу — как DisclosureGroup в iOS (DECISION
-  // владельца 2026-09-07: «крупные категории большими, мелкие скрыты и
-  // раскрываются»). Поиск раскрывает совпавшие разделы сам.
-  const [open, setOpen] = useState<Set<string>>(() => new Set());
-  const toggle = (id: string) => {
-    hapticSelection();
-    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-    setOpen((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  };
   const l1 = useCategoriesL1();
   const categories = useVisibleCategories();
 
@@ -90,22 +60,23 @@ export default function SpecialistsCategoriesScreen() {
     scrollViewToTop(meScrollRef as unknown as RefObject<FlatList | null>);
   }, [resetCounter]);
 
-  const sections = useMemo(() => {
-    const q = query.trim().toLowerCase();
+  // Разделы карточками; тап — экран подразделов (владелец, 2026-10-03,
+  // №158: раскрытие на месте «получше, но не идеально» — нужен переход).
+  const tiles = useMemo(() => {
+    const all = categories.data ?? [];
     return (l1.data ?? [])
-      .map((s) => ({
-        section: s,
-        rows: (categories.data ?? []).filter(
-          (c) =>
-            c.l1_id === s.id &&
-            (!q || c.name_ru.toLowerCase().includes(q) || s.name_ru.toLowerCase().includes(q)),
-        ),
-      }))
-      .filter((s) => s.rows.length > 0);
-  }, [l1.data, categories.data, query]);
+      .map((s) => ({ s, n: all.filter((c) => c.l1_id === s.id).length }))
+      .filter(({ n }) => n > 0)
+      .map(({ s, n }) => ({
+        id: s.id,
+        name: s.name_ru,
+        icon: s.icon,
+        meta: `${n} ${pluralRu(n, "категория", "категории", "категорий")}`,
+      }));
+  }, [l1.data, categories.data]);
 
   const openSection = (l1Id: string) =>
-    router.push({ pathname: "/specialists/section", params: { l1: l1Id } } as never);
+    router.push({ pathname: "/specialists/category", params: { l1: l1Id } } as never);
   const openCategory = (l2Id: string) =>
     router.push({ pathname: "/specialists/section", params: { l2: l2Id } } as never);
 
@@ -133,15 +104,10 @@ export default function SpecialistsCategoriesScreen() {
               placeholder="Например, электрик или уборка"
             />
           </View>
-          {l1.isLoading || categories.isLoading ? (
-            <View className="mx-4 overflow-hidden rounded-2xl bg-canvas">
-              {[0, 1, 2, 3, 4].map((i) => (
-                <View key={i} className="flex-row items-center gap-3 px-4 py-3.5">
-                  <Skeleton width={36} height={36} className="rounded-lg" />
-                  <Skeleton height={17} className="flex-1 rounded" />
-                </View>
-              ))}
-            </View>
+          {query.trim().length > 0 ? (
+            <CategoryMatches query={query} onPick={openCategory} />
+          ) : l1.isLoading || categories.isLoading ? (
+            <SectionGridSkeleton />
           ) : l1.error || categories.error ? (
             <InsetGroup footer="Не удалось загрузить категории. Проверьте связь.">
               <InsetRow
@@ -153,84 +119,9 @@ export default function SpecialistsCategoriesScreen() {
                 last
               />
             </InsetGroup>
-          ) : sections.length === 0 ? (
-            <InsetGroup footer="Ничего не нашли. Попробуйте другое слово.">
-              <View className="h-1" />
-            </InsetGroup>
-          ) : null}
-          {sections.map(({ section, rows }) => {
-            const SectionIcon = getCategoryIcon(section.icon);
-            const expanded = open.has(section.id) || query.trim().length > 0;
-            return (
-              <View key={section.id} className="mb-3 px-4">
-                <View className="overflow-hidden rounded-2xl bg-canvas">
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityState={{ expanded }}
-                    accessibilityLabel={`${section.name_ru}, ${rows.length} категорий`}
-                    onPress={() => toggle(section.id)}
-                    className="flex-row items-center gap-3 px-4 py-4 active:bg-canvas-soft"
-                  >
-                    {/* Плитка на тинте, как у разделов на Главной: сплошная
-                          заливка accent — только активный сегмент и цена
-                          (DESIGN_POLISH A5). */}
-                    <View className="h-11 w-11 items-center justify-center rounded-xl bg-accent-soft">
-                      <SectionIcon size={22} weight="bold" color={tc.accent} />
-                    </View>
-                    <View className="min-w-0 flex-1">
-                      <AppText
-                        weight="semibold"
-                        className="text-body-lg text-ink"
-                        numberOfLines={2}
-                      >
-                        {section.name_ru}
-                      </AppText>
-                      <AppText className="mt-0.5 text-ios-footnote text-mute">
-                        {rows.length}{" "}
-                        {rows.length === 1
-                          ? "категория"
-                          : rows.length < 5
-                            ? "категории"
-                            : "категорий"}
-                      </AppText>
-                    </View>
-                    <View style={{ transform: [{ rotate: expanded ? "180deg" : "0deg" }] }}>
-                      <SystemIcon
-                        sf="chevron.down"
-                        fallback={CaretDown}
-                        size={16}
-                        weight="semibold"
-                        color={tc.mute}
-                      />
-                    </View>
-                  </Pressable>
-                  {expanded ? (
-                    <View className="border-t border-hairline">
-                      <InsetRow
-                        title="Весь раздел"
-                        subtitle={`Все специалисты: ${section.name_ru.toLowerCase()}`}
-                        navigates
-                        onPress={() => openSection(section.id)}
-                      />
-                      {rows.map((c, i) => {
-                        const Icon = getCategoryIcon(c.icon);
-                        return (
-                          <InsetRow
-                            key={c.id}
-                            title={c.name_ru}
-                            icon={<Icon size={18} weight="bold" color={tc.ink} />}
-                            navigates
-                            onPress={() => openCategory(c.id)}
-                            last={i === rows.length - 1}
-                          />
-                        );
-                      })}
-                    </View>
-                  ) : null}
-                </View>
-              </View>
-            );
-          })}
+          ) : (
+            <SectionGrid tiles={tiles} onPress={openSection} />
+          )}
         </Animated.ScrollView>
         <Animated.ScrollView
           ref={meScrollRef}

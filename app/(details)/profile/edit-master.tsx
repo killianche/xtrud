@@ -164,7 +164,7 @@ export default function EditMasterScreen() {
       {/* Навбар «Отмена / Профиль мастера / Сохранить» — единый паттерн с
           edit-client (Lazyweb: Bluesky / Lawfully). Save закреплён сверху и
           всегда доступен — у мастера длинная форма, нижняя кнопка уезжала. */}
-      <View className="flex-row items-center justify-between border-hairline border-b bg-canvas px-4 py-3">
+      <View className="flex-row items-center justify-between border-b-hairline border-b bg-canvas px-4 py-3">
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Отмена"

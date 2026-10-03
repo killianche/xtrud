@@ -358,7 +358,7 @@ export default function ServicesSuggestScreen() {
 
                   {/* Inline price form — раскрывается когда L3 выбрана. */}
                   {isSel ? (
-                    <View className="px-4 pb-3 border-t border-hairline">
+                    <View className="px-4 pb-3 border-t border-t-hairline">
                       <View className="mt-3 flex-row flex-wrap gap-1.5">
                         {PRICE_KIND_CHOICES.map((k) => {
                           const active = sel.priceKind === k;
@@ -414,7 +414,7 @@ export default function ServicesSuggestScreen() {
 
       {/* Sticky CTA */}
       <View
-        className="absolute left-0 right-0 bg-canvas border-t border-hairline px-5 pt-3"
+        className="absolute left-0 right-0 bg-canvas border-t border-t-hairline px-5 pt-3"
         style={{ bottom: 0, paddingBottom: insets.bottom + 12 }}
       >
         <Pressable

@@ -42,7 +42,7 @@ import { AppText } from "@/components/AppText";
 import { StatusPill } from "@/components/StatusPill";
 import { formatOrderTiming, formatPrice } from "@/features/orders/order-schema";
 import type { OrderStatusValue, OrderStatusView } from "@/features/orders/order-status-view";
-import { responsesLabel } from "@/features/orders/plural-ru";
+import { pluralRu, responsesLabel } from "@/features/orders/plural-ru";
 import type { OrderPriceKind, OrderUrgency } from "@/features/orders/use-create-order";
 import { getCategoryIcon } from "@/lib/category-icons";
 import { cdnBlur, cdnImage } from "@/lib/image-cdn";
@@ -74,6 +74,9 @@ export interface OrderRowProps {
   categoryL2Id?: string | null;
   /** Город; null — задание без города (на весь район или республику). */
   cityName: string | null;
+  /** Новые (непросмотренные) отклики — «N новых» в подвале, где бейдж
+   *  вкладки и находит своё место. */
+  newResponsesCount?: number;
   district?: string | null;
   urgency: OrderUrgency;
   /** Точная дата (yyyy-mm-dd) для urgency='by_date' — строка «К 12 июня». */
@@ -193,6 +196,7 @@ export function OrderRow(props: OrderRowProps) {
     ? formatPrice(props.budgetKind, props.budgetValue ?? null)
     : null;
   const hasResponses = props.responsesCount > 0;
+  const newCount = props.newResponsesCount ?? 0;
   const isNegotiable = props.budgetKind === "negotiable" || props.budgetValue == null;
   const myResponseLabel = props.myResponse
     ? [
@@ -211,6 +215,9 @@ export function OrderRow(props: OrderRowProps) {
     locationLabel,
     priceLabel ? `Бюджет ${priceLabel}` : null,
     `Опубликовано ${timeAgoShort(props.createdAt)}`,
+    props.showResponsesCount && (props.newResponsesCount ?? 0) > 0
+      ? `Новых откликов: ${props.newResponsesCount}`
+      : null,
     myResponseLabel ? `Ваш отклик ${myResponseLabel}` : null,
     props.alreadyResponded && !myResponseLabel ? "Вы откликнулись" : null,
   ]
@@ -369,21 +376,32 @@ export function OrderRow(props: OrderRowProps) {
           iOS: вторая серая поверхность внутри карточки «не сочеталась»
           (владелец, 2026-10-03). */}
       {hasFooter ? (
-        <View className="mx-4 border-hairline border-t pt-3 pb-4">
+        <View className="mx-4 border-t-hairline border-t pt-3 pb-4">
           {props.showResponsesCount ? (
             <View className="flex-row items-center gap-2">
-              <ChatCenteredText
-                size={18}
-                weight="bold"
-                color={hasResponses ? tc.accent : tc.mute}
-              />
+              {newCount > 0 ? (
+                // Точка — тот же сигнал, что бейдж на вкладке: здесь новое.
+                <View className="h-2.5 w-2.5 rounded-full bg-accent" />
+              ) : (
+                <ChatCenteredText
+                  size={18}
+                  weight="bold"
+                  color={hasResponses ? tc.accent : tc.mute}
+                />
+              )}
               <AppText
                 weight={hasResponses ? "semibold" : "medium"}
                 className={`min-w-0 flex-1 text-body-md ${
                   hasResponses ? "text-accent" : "text-mute"
                 }`}
               >
-                {hasResponses ? responsesLabel(props.responsesCount) : "Откликов пока нет"}
+                {hasResponses
+                  ? `${responsesLabel(props.responsesCount)}${
+                      newCount > 0
+                        ? ` · ${newCount} ${pluralRu(newCount, "новый", "новых", "новых")}`
+                        : ""
+                    }`
+                  : "Откликов пока нет"}
               </AppText>
               {hasResponses ? <ArrowRight size={16} weight="bold" color={tc.accent} /> : null}
             </View>

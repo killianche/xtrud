@@ -1599,7 +1599,7 @@ function MasterResponseSection({
           }}
           disabled={withdrawResponse.isPending}
           onPress={() => void onWithdrawPress()}
-          className="mt-3 min-h-11 items-center justify-center border-t border-hairline pt-1 active:opacity-60"
+          className="mt-3 min-h-11 items-center justify-center border-t border-t-hairline pt-1 active:opacity-60"
         >
           <AppText weight="semibold" className="text-body-md text-error">
             {withdrawResponse.isPending ? "Отзываем…" : "Отозвать отклик"}

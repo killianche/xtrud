@@ -123,7 +123,7 @@ export default function PortfolioCasesScreen() {
       {/* Sticky bottom CTA — показываем всегда, даже когда empty (там тоже
           inline-кнопка). Тап → modal с формой создания. */}
       <View
-        className="absolute left-0 right-0 bg-canvas border-t border-hairline px-5 pt-3"
+        className="absolute left-0 right-0 bg-canvas border-t border-t-hairline px-5 pt-3"
         style={{ bottom: 0, paddingBottom: insets.bottom + 12 }}
       >
         <Pressable

@@ -127,7 +127,7 @@ export function MasterPublishChecklist({ progress }: MasterPublishChecklistProps
       {/* Подсказка о «живых» факторах рейтинга (доступность + отклики), которые
           поднимают мастера сразу, помимо заполненности профиля
           (MASTER_RANKING_PLAN.md §3.5 — прозрачность для мастера). */}
-      <View className="mt-3 border-t border-hairline pt-3">
+      <View className="mt-3 border-t border-t-hairline pt-3">
         <AppText className="text-caption text-mute" style={{ lineHeight: 18 }}>
           Нажимайте «Готов сегодня» и отвечайте на задания — активные специалисты показываются выше.
         </AppText>

@@ -269,7 +269,7 @@ export default function MasterCategoriesScreen() {
 
       {/* Sticky bottom CTA. В onboarding — обязательный выбор ≥1 категории. */}
       <View
-        className="border-hairline-soft border-t bg-canvas px-6 pt-3"
+        className="border-t-hairline-soft border-t bg-canvas px-6 pt-3"
         style={{ paddingBottom: insets.bottom + 12 }}
       >
         <Pressable

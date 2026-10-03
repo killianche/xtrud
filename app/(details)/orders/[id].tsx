@@ -847,7 +847,11 @@ function OrderInfoBlock({ order, isOwner, myResponseStatus }: OrderInfoBlockProp
                 Заказчик ждёт звонка или сообщения — откликов в приложении здесь нет.
               </AppText>
             ) : null}
-            {order.contact_phone || order.whatsapp_phone ? (
+            {/* Номер клиента — только в режиме «напрямую»: в обычном режиме
+                приложение обещает «Ваш номер скрыт» (владелец, 2026-10-03;
+                база обнуляет такие номера — 0211). */}
+            {order.contact_mode === "phone_open" &&
+            (order.contact_phone || order.whatsapp_phone) ? (
               <ContactButtons
                 phoneTel={order.contact_phone?.replace(/[^\d+]/g, "") || null}
                 whatsappDigits={

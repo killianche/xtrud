@@ -42,6 +42,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
+import { keyboardDoneId } from "@/components/ui/KeyboardDone";
 import { useAuthSession } from "@/features/auth/use-auth-session";
 import { digitsOnly, formatPhoneMask, normalizePhone } from "@/features/auth/validation";
 import { useUpdateMyPhone, useUserPrivate } from "@/features/profile/use-user-private";
@@ -146,6 +147,7 @@ export default function ChangePhoneScreen() {
               placeholder="+7 ___ ___-__-__"
               placeholderTextColor={tc["muted-soft"]}
               keyboardType="phone-pad"
+              inputAccessoryViewID={keyboardDoneId("phone-pad")}
               inputMode="tel"
               autoFocus
               editable={!isBusy}

@@ -13,6 +13,7 @@ import type { Control, FieldErrors, FieldPath } from "react-hook-form";
 import { Controller } from "react-hook-form";
 import { TextInput, View } from "react-native";
 import { AppText } from "@/components/AppText";
+import { keyboardDoneId } from "@/components/ui/KeyboardDone";
 import type { MasterProfileFormValues } from "@/features/auth/master-profile-schema";
 import { useThemeColor } from "@/lib/use-theme-color";
 
@@ -161,6 +162,7 @@ function ContactPhoneSection({ control, errors, isBusy }: ContactPhoneSectionPro
               placeholder="+7 999 123-45-67"
               placeholderTextColor={mutedSoftColor}
               keyboardType="phone-pad"
+              inputAccessoryViewID={keyboardDoneId("phone-pad")}
               inputMode="tel"
               maxLength={20}
               className={`min-h-12 rounded-md border bg-canvas px-3 py-3 text-field-md text-ink ${
@@ -219,6 +221,7 @@ function WhatsappSection({ control, errors, isBusy }: WhatsappSectionProps) {
               placeholder="+7 999 123-45-67 (опционально)"
               placeholderTextColor={mutedSoftColor}
               keyboardType="phone-pad"
+              inputAccessoryViewID={keyboardDoneId("phone-pad")}
               inputMode="tel"
               maxLength={20}
               className={`min-h-12 rounded-md border bg-canvas px-3 py-3 text-field-md text-ink ${
@@ -324,6 +327,7 @@ function NumberField(props: NumberFieldProps) {
             placeholder={props.placeholder}
             placeholderTextColor={mutedSoftColor}
             keyboardType="number-pad"
+            inputAccessoryViewID={keyboardDoneId("number-pad")}
             inputMode="numeric"
             className={`mt-2 min-h-12 rounded-md border bg-canvas px-3 py-3 text-field-md text-ink ${
               props.error ? "border-error" : "border-hairline"

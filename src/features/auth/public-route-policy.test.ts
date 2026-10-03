@@ -11,6 +11,7 @@ describe("isPublicDetailsRoute", () => {
     // отдельными шторками категории и места.
     expect(isPublicDetailsRoute(["(details)", "find", "location-select"])).toBe(true);
     expect(isPublicDetailsRoute(["(details)", "specialists", "category"])).toBe(true);
+    expect(isPublicDetailsRoute(["(details)", "orders", "new", "account"])).toBe(true);
     expect(isPublicDetailsRoute(["(details)", "useful", "[slug]"])).toBe(true);
   });
 

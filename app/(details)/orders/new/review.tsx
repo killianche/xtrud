@@ -3,19 +3,16 @@
  * открывает свой шаг (TaskRabbit: «изменить любой ответ в любой момент»).
  * Внизу — «Опубликовать» (или «Сохранить» при редактировании).
  *
- * Гость нажимает «Опубликовать» → системная шторка входа (orders/publish-auth);
- * после входа auth-return приводит на /orders/new, а полный черновик — сюда.
+ * Гость видит «Далее» → шаг «Ваш аккаунт» (orders/new/account): регистрация
+ * и публикация одним действием (владелец, 2026-10-03). Есть аккаунт — вход
+ * с возвратом к черновику.
  * Пока идёт публикация, «назад» и свайп заблокированы; после успеха экран
  * показывает результат и не даёт опубликовать второй раз.
  */
 
 import { Redirect, useRouter } from "expo-router";
 import { usePreventRemove } from "expo-router/react-navigation";
-import { CheckCircle } from "phosphor-react-native";
 import { useEffect, useRef } from "react";
-import { View } from "react-native";
-import { Button } from "@/components/ui";
-import { SystemIcon } from "@/components/ui/SystemIcon";
 import { useAuthSession } from "@/features/auth/use-auth-session";
 import { useVisibleCategories } from "@/features/categories/use-visible-categories";
 import { ActiveOrdersLimitState } from "@/features/orders/ActiveOrdersLimitState";
@@ -28,6 +25,11 @@ import {
   useComposer,
   useComposerSession,
 } from "@/features/task-composer/composer-store";
+import {
+  COMPOSER_ACCOUNT_ROUTE,
+  PublishOutcomeScreen,
+  PublishProgressScreen,
+} from "@/features/task-composer/PublishOutcomeScreens";
 import {
   COMPOSER_ROUTE,
   type ComposerStep,
@@ -52,7 +54,7 @@ export default function TaskReviewScreen() {
   const categories = useVisibleCategories();
   const endEdit = useComposerSession((s) => s.endEdit);
   const editDirty = useComposerSession((s) => (s.mode.kind === "edit" ? isEditDirty(s) : false));
-  const tc = useThemeColors(["success"]);
+  const _tc = useThemeColors(["success"]);
   const close = useComposerClose();
 
   // Сессия редактирования живёт, пока открыт этот экран.
@@ -60,6 +62,19 @@ export default function TaskReviewScreen() {
     if (mode.kind !== "edit") return;
     return () => endEdit();
   }, [mode.kind, endEdit]);
+
+  // Фото начинают загружаться, пока человек проверяет задание: к нажатию
+  // «Опубликовать» они уже на сервере (владелец, 2026-10-03: «5–10 секунд»).
+  const prefetchPhotos = publish.prefetchPhotos;
+  const discardPrefetched = publish.discardPrefetched;
+  const photoIds = photos.map((p) => p.id).join(",");
+  // biome-ignore lint/correctness/useExhaustiveDependencies: перезапуск — по составу фото (photoIds), не по ссылке массива.
+  useEffect(() => {
+    if (userId && composer.ready) prefetchPhotos(userId, photos);
+  }, [userId, composer.ready, photoIds]);
+  // Ушли, не опубликовав, — заранее загруженное удаляется.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: только при размонтировании.
+  useEffect(() => () => discardPrefetched(), []);
 
   const done = publish.outcome !== null;
   const limitReached =
@@ -122,7 +137,9 @@ export default function TaskReviewScreen() {
 
   const onPrimary = () => {
     if (!userId) {
-      router.push("/orders/publish-auth" as never);
+      // Гость: регистрация — следующий шаг создания задания, а не отдельная
+      // шторка входа (владелец, 2026-10-03).
+      router.push(COMPOSER_ACCOUNT_ROUTE as never);
       return;
     }
     void publish.run(userId, values, photos);
@@ -147,54 +164,12 @@ export default function TaskReviewScreen() {
     );
   }
 
-  if (publish.outcome) {
-    const outcome = publish.outcome;
-    return (
-      <ComposerScreen
-        step="review"
-        title={outcome.kind === "saved" ? "Изменения сохранены" : "Задание опубликовано"}
-        subtitle={
-          outcome.kind === "saved"
-            ? undefined
-            : "Специалисты из этой категории уже получают уведомление. Отклики придут в «Мои задания»."
-        }
-        onClose={() => router.replace("/(tabs)/orders" as never)}
-        primaryLabel=""
-        onPrimary={() => undefined}
-        hideActions
-      >
-        <View className="items-center px-5 pt-6">
-          <SystemIcon
-            sf="checkmark.circle.fill"
-            fallback={CheckCircle}
-            size={72}
-            weight="regular"
-            color={tc.success}
-          />
-          <View className="mt-8 w-full gap-3">
-            {outcome.orderId ? (
-              <Button
-                variant="accent"
-                size="lg"
-                fullWidth
-                onPress={() => router.replace(`/orders/${outcome.orderId}` as never)}
-              >
-                Открыть задание
-              </Button>
-            ) : null}
-            <Button
-              variant="secondary"
-              size="lg"
-              fullWidth
-              onPress={() => router.replace("/(tabs)/orders" as never)}
-            >
-              К моим заданиям
-            </Button>
-          </View>
-        </View>
-      </ComposerScreen>
-    );
+  // Нажали «Опубликовать» — экран сразу говорит, что задание уходит, а не
+  // крутит кнопку (владелец, 2026-10-03). Через мгновение — результат.
+  if (publish.busy && !publish.outcome && mode.kind === "create") {
+    return <PublishProgressScreen />;
   }
+  if (publish.outcome) return <PublishOutcomeScreen outcome={publish.outcome} />;
 
   return (
     <ComposerScreen
@@ -202,7 +177,7 @@ export default function TaskReviewScreen() {
       title={mode.kind === "edit" ? "Проверьте изменения" : "Проверьте задание"}
       onBack={() => router.back()}
       onClose={mode.kind === "edit" ? undefined : close}
-      primaryLabel={mode.kind === "edit" ? "Сохранить" : "Опубликовать"}
+      primaryLabel={mode.kind === "edit" ? "Сохранить" : userId ? "Опубликовать" : "Далее"}
       onPrimary={onPrimary}
       busy={publish.busy}
       error={publish.error}

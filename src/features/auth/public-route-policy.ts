@@ -9,6 +9,7 @@ const PUBLIC_DETAIL_ROUTES = new Set([
   "master-cases/[id]",
   "orders/[id]",
   "orders/new",
+  "orders/new/account",
   "orders/new/budget",
   "orders/new/contacts",
   "orders/new/details",

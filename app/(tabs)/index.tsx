@@ -27,6 +27,7 @@ import {
   HOME_STATUS_BAR_COVER_OFFSET,
   HomeStatusBarCover,
 } from "@/features/home/HomeStatusBarCover";
+import { MyOrdersShowcase } from "@/features/home/MyOrdersShowcase";
 import { PromoBannerCarousel } from "@/features/home/PromoBannerCarousel";
 import { usePullToRefresh } from "@/hooks/use-pull-to-refresh";
 import { useTabBarSpace } from "@/lib/tab-bar-space";
@@ -148,6 +149,8 @@ function ClientHome({ userId, refresh, onDescribeTask }: ClientHomeProps) {
         contentContainerStyle={{ paddingBottom: tabBarSpace }}
       >
         <CinematicHero onCreateTask={() => onDescribeTask()} />
+        {/* Свои открытые задания — первыми, если есть (владелец, 2026-10-03). */}
+        <MyOrdersShowcase userId={userId} />
         <ActiveOrdersShowcase userId={userId} />
         {/* Promo-баннеры партнёров (рекламные фото-баннеры 16:9). */}
         <PromoBannerCarousel />

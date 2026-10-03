@@ -51,9 +51,13 @@ export const MAJOR_CITIES: readonly CityRecord[] = [
   { id: "karabulak", name: "Карабулак" },
   { id: "malgobek", name: "Малгобек" },
   { id: "sunzha", name: "Сунжа" },
-  { id: "ordzhonikidzevskaya", name: "Орджоникидзевская" },
-  { id: "sernovodskaya", name: "Серноводская" },
-  { id: "nesterovskaya", name: "Нестеровская" },
+  // Скрыты из выбора (владелец, 2026-10-03: «это небольшие сёла, они
+  // входят в район»). Записи остаются для старых заданий и зон специалистов
+  // (docs/LOCATION_MODEL_2026-10.md): Орджоникидзевская — прежнее название
+  // Сунжи, Нестеровская — станица Сунженского района.
+  { id: "ordzhonikidzevskaya", name: "Орджоникидзевская", hiddenInPicker: true },
+  { id: "sernovodskaya", name: "Серноводская", hiddenInPicker: true },
+  { id: "nesterovskaya", name: "Нестеровская", hiddenInPicker: true },
 ] as const;
 
 /** Города для отображения в picker'ах (city-selector, location-sheet,
@@ -179,7 +183,7 @@ export const DISTRICTS: readonly DistrictRecord[] = [
   {
     id: "sunzhensky",
     name: "Сунженский район",
-    villages: ["Алхасты", "Аршты", "Берд-Юрт", "Галашки", "Даттых", "Чемульга"],
+    villages: ["Алхасты", "Аршты", "Берд-Юрт", "Галашки", "Даттых", "Нестеровская", "Чемульга"],
   },
   {
     id: "malgobeksky",

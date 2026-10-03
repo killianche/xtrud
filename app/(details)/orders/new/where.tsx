@@ -1,7 +1,8 @@
 /**
  * /orders/new/where — «Где нужно выполнить?»: город или район одним тапом.
- * Либо город (включая «Вся Ингушетия»), либо район — взаимоисключающе,
- * как в фильтрах ленты.
+ * Либо город (включая «Вся Ингушетия»), либо район — как в фильтрах ленты;
+ * район включает свои города (они отмечены «входит»). Выбор села — после
+ * решения владельца по модели места (docs/LOCATION_MODEL_2026-10.md).
  */
 
 import { Redirect } from "expo-router";
@@ -11,7 +12,12 @@ import { ComposerScreen } from "@/features/task-composer/ComposerScreen";
 import { useComposer } from "@/features/task-composer/composer-store";
 import { ADDRESS_MAX, isStepValid } from "@/features/task-composer/steps";
 import { useStepNavigation } from "@/features/task-composer/use-step-navigation";
-import { ALL_INGUSHETIA_CITY_ID, DISTRICTS, PICKER_CITIES } from "@/lib/location-config";
+import {
+  ALL_INGUSHETIA_CITY_ID,
+  CITY_IDS_BY_DISTRICT_ID,
+  DISTRICTS,
+  PICKER_CITIES,
+} from "@/lib/location-config";
 
 export default function TaskWhereScreen() {
   const { values, patch } = useComposer();
@@ -20,6 +26,13 @@ export default function TaskWhereScreen() {
   if (nav.needsCategory) return <Redirect href="/orders/new" />;
 
   const cities = [{ id: ALL_INGUSHETIA_CITY_ID, name: "Вся Ингушетия" }, ...PICKER_CITIES];
+  // Район включает свои города (владелец, 2026-10-03: «район не должен
+  // вычёркивать город, он должен его включать»): выбран район — его город
+  // отмечен галочкой «входит», выбранным остаётся сам район.
+  const selectedDistrict = DISTRICTS.find((d) => d.name === values.district);
+  const includedCityIds = selectedDistrict
+    ? (CITY_IDS_BY_DISTRICT_ID[selectedDistrict.id] ?? [])
+    : [];
   return (
     <ComposerScreen
       step="where"
@@ -35,7 +48,9 @@ export default function TaskWhereScreen() {
           <ChoiceRow
             key={c.id}
             title={c.name}
+            subtitle={includedCityIds.includes(c.id) ? `Входит в ${values.district}` : undefined}
             selected={values.cityId === c.id}
+            checked={includedCityIds.includes(c.id)}
             onPress={() => patch({ cityId: c.id, district: "" })}
             last={i === cities.length - 1}
           />

@@ -26,6 +26,7 @@ import { useMemo, useState } from "react";
 import { Pressable, ScrollView, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
+import { keyboardDoneId } from "@/components/ui/KeyboardDone";
 import { useAuthSession } from "@/features/auth/use-auth-session";
 import {
   type CategoryL3,
@@ -389,6 +390,7 @@ export default function ServicesSuggestScreen() {
                             value={sel.priceValue == null ? "" : String(sel.priceValue)}
                             onChangeText={(v) => updateValue(l3.id, v)}
                             keyboardType="numeric"
+                            inputAccessoryViewID={keyboardDoneId("numeric")}
                             placeholder="Цена"
                             placeholderTextColor={tc["muted-soft"]}
                             className="flex-1 min-h-11 rounded-md border border-hairline bg-canvas px-3 text-field-md text-ink"
@@ -566,6 +568,7 @@ function CustomServicePanel({
             value={value}
             onChangeText={onValueChange}
             keyboardType="numeric"
+            inputAccessoryViewID={keyboardDoneId("numeric")}
             placeholder="Цена"
             placeholderTextColor={tc["muted-soft"]}
             maxLength={7}

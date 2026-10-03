@@ -226,3 +226,11 @@ export function hexToRgbTriplet(hex: string): string {
   const b = Number.parseInt(cleaned.slice(4, 6), 16);
   return `${r} ${g} ${b}`;
 }
+
+/** «#rrggbb» → «rgba(r,g,b,a)» — прозрачность к токену-хексу. Иное — как есть. */
+export function withAlpha(color: string, alpha: number): string {
+  const m = /^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(color);
+  if (!m) return color;
+  const [r, g, b] = [m[1], m[2], m[3]].map((h) => Number.parseInt(h as string, 16));
+  return `rgba(${r},${g},${b},${alpha})`;
+}

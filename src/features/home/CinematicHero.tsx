@@ -39,9 +39,9 @@
 import { Image as ExpoImage } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
-import { BellSimple, CaretDown, MapPin, Plus, User as UserIcon } from "phosphor-react-native";
+import { BellSimple, CaretDown, MapPin, User as UserIcon } from "phosphor-react-native";
 import { useEffect, useRef } from "react";
-import { Animated, Easing, Platform, Pressable, View } from "react-native";
+import { Animated, Easing, Pressable, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
 import { Avatar } from "@/components/Avatar";
@@ -49,10 +49,10 @@ import { XtrudWordmark } from "@/components/XtrudWordmark";
 import { useAuthSession } from "@/features/auth/use-auth-session";
 import { useUserRecord } from "@/features/auth/use-user-record";
 import { useCategoryFilterPickerStore } from "@/features/categories/category-filter-picker-store";
+import { CreateTaskButton } from "@/features/home/CreateTaskButton";
 import { useUnreadNotificationsCount } from "@/features/notifications/use-notifications";
 import { useReducedMotion } from "@/hooks/use-reduced-motion";
 import { lightColors } from "@/lib/colors";
-import { SHADOW_COLOR } from "@/lib/shadows";
 import { useAppWidth } from "@/lib/use-app-width";
 import { useThemeColor } from "@/lib/use-theme-color";
 import { useUserCity } from "@/lib/use-user-city";
@@ -78,7 +78,7 @@ const ON_PHOTO = lightColors["on-dark"];
 export function CinematicHero({ onCreateTask }: { onCreateTask: () => void }) {
   const insets = useSafeAreaInsets();
   const viewportWidth = useAppWidth();
-  const onAccentColor = useThemeColor("on-accent");
+  const _onAccentColor = useThemeColor("on-accent");
 
   // Город — из user-city store (то же, что было в TopBar).
   const { cityId, cityName, setCity } = useUserCity();
@@ -264,7 +264,10 @@ export function CinematicHero({ onCreateTask }: { onCreateTask: () => void }) {
                 accessibilityRole="button"
                 accessibilityLabel={currentUserId ? "Профиль" : "Войти"}
                 accessibilityHint={currentUserId ? "Откроет ваш профиль" : "Откроет экран входа"}
-                onPress={() => router.push((currentUserId ? "/account" : "/(auth)/phone") as never)}
+                // Аватар ведёт во вкладку «Аккаунт» — один экран на оба входа (2026-10-03).
+                onPress={() =>
+                  router.navigate((currentUserId ? "/(tabs)/profile" : "/(auth)/phone") as never)
+                }
                 hitSlop={8}
                 className="active:opacity-70"
               >
@@ -330,31 +333,9 @@ export function CinematicHero({ onCreateTask }: { onCreateTask: () => void }) {
             Найдите{"\n"}исполнителя
           </AppText>
 
-          {/* Создание задания — единственное primary-действие клиентского hero. */}
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Создать задание"
-            onPress={onCreateTask}
-            // Фирменный розовый, белый текст — 4.7:1, AA (владелец, 2026-10-01).
-            className="mt-4 flex-row items-center gap-3 min-h-14 rounded-2xl bg-accent px-5 active:opacity-85"
-            style={{
-              boxShadow: Platform.OS === "web" ? "0 8px 24px rgba(0,0,0,0.18)" : undefined,
-              ...(Platform.OS !== "web"
-                ? {
-                    shadowColor: SHADOW_COLOR,
-                    shadowOpacity: 0.18,
-                    shadowRadius: 14,
-                    shadowOffset: { width: 0, height: 6 },
-                    elevation: 6,
-                  }
-                : {}),
-            }}
-          >
-            <Plus size={22} weight="bold" color={onAccentColor} />
-            <AppText weight="semibold" className="flex-1 text-body-lg text-on-accent">
-              Создать задание
-            </AppText>
-          </Pressable>
+          {/* Создание задания — единственное primary-действие клиентского
+              hero; со световым бликом (владелец, 2026-10-03: «вау-эффект»). */}
+          <CreateTaskButton onPress={onCreateTask} />
         </View>
       </View>
     </View>

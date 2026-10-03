@@ -17,7 +17,7 @@ import { BlurView } from "expo-blur";
 import { LinearGradient } from "expo-linear-gradient";
 import { Platform, View } from "react-native";
 import { useColorScheme } from "@/hooks/use-color-scheme";
-import { darkColors, lightColors } from "@/lib/colors";
+import { darkColors, lightColors, withAlpha } from "@/lib/colors";
 
 /** На сколько pt ниже панели размытие сходит на нет. */
 export const EDGE_FADE = 28;
@@ -25,14 +25,6 @@ export const EDGE_FADE = 28;
 /** Сила блюра ступеней растворения, сверху вниз. */
 const FADE_STEPS = [44, 30, 18, 8] as const;
 const BODY_INTENSITY = 60;
-
-/** «#rrggbb» → «rgba(r,g,b,a)». Для токенов-хексов; иное возвращаем как есть. */
-function withAlpha(color: string, alpha: number): string {
-  const m = /^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(color);
-  if (!m) return color;
-  const [r, g, b] = [m[1], m[2], m[3]].map((h) => Number.parseInt(h as string, 16));
-  return `rgba(${r},${g},${b},${alpha})`;
-}
 
 export function ScrollEdgeEffect({ fade = EDGE_FADE }: { fade?: number }) {
   const { colorScheme } = useColorScheme();

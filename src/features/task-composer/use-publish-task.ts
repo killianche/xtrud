@@ -12,6 +12,12 @@
  *   5. владелец результата сверяется с активной сессией: результат аккаунта A
  *      не показывается в сессии B.
  * Редактирование: новые локальные фото загружаются, старые URL остаются.
+ *
+ * Скорость (владелец, 2026-10-03: «выкладывается 5–10 секунд, должно
+ * уходить моментально»): фото начинают загружаться заранее — экран
+ * «Проверьте задание» вызывает prefetchPhotos при открытии; при публикации
+ * проверки 1–2 идут параллельно с загрузкой, а не перед ней. Неиспользованные
+ * заранее загруженные фото удаляются (discardPrefetched / после публикации).
  */
 
 import { useRef, useState } from "react";
@@ -37,8 +43,14 @@ export type PublishOutcome =
   | { kind: "published"; orderId: string | null }
   | { kind: "saved"; orderId: string };
 
+type UploadResult = { ok: true; path: string; publicUrl: string } | { ok: false; error: string };
+
 export interface PublishTask {
   run: (userId: string, values: ComposerValues, photos: ComposerPhoto[]) => Promise<void>;
+  /** Начать загрузку локальных фото заранее (экран проверки). */
+  prefetchPhotos: (userId: string, photos: ComposerPhoto[]) => void;
+  /** Удалить заранее загруженные и не опубликованные фото. */
+  discardPrefetched: () => void;
   busy: boolean;
   error: string | null;
   outcome: PublishOutcome | null;
@@ -61,6 +73,33 @@ export function usePublishTask(mode: ComposerMode, activeUserId: string | undefi
   const gateRef = useRef(createOrderPublishFlightGate());
   const activeRef = useRef(activeUserId);
   activeRef.current = activeUserId;
+  // Заранее начатые загрузки: ключ — владелец и id фото.
+  const preUploads = useRef(new Map<string, Promise<UploadResult>>());
+  const photoKey = (uid: string, id: string) => `${uid}:${id}`;
+
+  const prefetchPhotos = (uid: string, photos: ComposerPhoto[]) => {
+    for (const p of photos) {
+      if (isRemotePhoto(p.uri)) continue;
+      const key = photoKey(uid, p.id);
+      if (preUploads.current.has(key)) continue;
+      preUploads.current.set(
+        key,
+        uploadOrderPhotosBatch(uid, [{ uri: p.uri, width: p.width, height: p.height }]).then(
+          (r) => r[0] ?? { ok: false, error: "no result" },
+          (e: unknown) => ({ ok: false, error: e instanceof Error ? e.message : String(e) }),
+        ),
+      );
+    }
+  };
+
+  /** Удалить загруженное заранее, кроме путей keep (их уже владеет задание). */
+  const discardPrefetchedExcept = (keep: ReadonlySet<string>) => {
+    const pending = [...preUploads.current.values()];
+    preUploads.current.clear();
+    void Promise.all(pending).then((results) =>
+      cleanupUploaded(results.flatMap((r) => (r.ok && !keep.has(r.path) ? [r.path] : []))),
+    );
+  };
 
   const run = async (uid: string, values: ComposerValues, photos: ComposerPhoto[]) => {
     if (!gateRef.current.tryEnter()) return;
@@ -76,12 +115,26 @@ export function usePublishTask(mode: ComposerMode, activeUserId: string | undefi
         setError("Заполните обязательные ответы.");
         return;
       }
-      const [categoryOk, locationOk] = await Promise.all([
-        // Все категории задания должны быть живыми, не только основная.
-        Promise.all(
-          [values.l2Id, ...values.extraL2Ids].map((id) => validateOrderPublishCategory(id)),
-        ).then((results) => results.every(Boolean)),
-        validateOrderPublishLocation(values.cityId, values.district),
+      // Проверки и загрузка фото — одновременно (раньше загрузка ждала проверок).
+      const local = photos.filter((p) => !isRemotePhoto(p.uri));
+      prefetchPhotos(uid, local);
+      const uploadsPromise = Promise.all(
+        local.map(
+          (p) =>
+            preUploads.current.get(photoKey(uid, p.id)) ??
+            Promise.resolve<UploadResult>({ ok: false, error: "missing upload" }),
+        ),
+      );
+      const [[categoryOk, locationOk], capacity, results] = await Promise.all([
+        Promise.all([
+          // Все категории задания должны быть живыми, не только основная.
+          Promise.all(
+            [values.l2Id, ...values.extraL2Ids].map((id) => validateOrderPublishCategory(id)),
+          ).then((r) => r.every(Boolean)),
+          validateOrderPublishLocation(values.cityId, values.district),
+        ]),
+        mode.kind === "create" ? fetchOrderPublishCapacity(uid) : Promise.resolve(null),
+        uploadsPromise,
       ]);
       if (!categoryOk) {
         setCategoryStale(true);
@@ -92,30 +145,24 @@ export function usePublishTask(mode: ComposerMode, activeUserId: string | undefi
         setError("Место задания изменилось. Выберите его заново.");
         return;
       }
-      if (mode.kind === "create") {
-        const capacity = await fetchOrderPublishCapacity(uid);
-        if (!capacity.canPublish) throw new ActiveOrderLimitError(capacity.limit);
-      }
+      if (capacity && !capacity.canPublish) throw new ActiveOrderLimitError(capacity.limit);
 
-      const local = photos.filter((p) => !isRemotePhoto(p.uri));
       const uploadedUrlById = new Map<string, string>();
-      if (local.length > 0) {
-        const results = await uploadOrderPhotosBatch(
-          uid,
-          local.map((p) => ({ uri: p.uri, width: p.width, height: p.height })),
-        );
-        uploadedPaths = results.flatMap((r) => (r.ok ? [r.path] : []));
-        if (results.some((r) => !r.ok)) {
-          await cleanupUploaded(uploadedPaths);
-          uploadedPaths = [];
-          setError("Не удалось загрузить фото. Попробуйте ещё раз.");
-          return;
-        }
+      uploadedPaths = results.flatMap((r) => (r.ok ? [r.path] : []));
+      if (results.some((r) => !r.ok)) {
+        // Неудачные — забыть, чтобы «Опубликовать» ещё раз загрузил их заново.
         results.forEach((r, i) => {
           const photo = local[i];
-          if (r.ok && photo) uploadedUrlById.set(photo.id, r.publicUrl);
+          if (!r.ok && photo) preUploads.current.delete(photoKey(uid, photo.id));
         });
+        setError("Не удалось загрузить фото. Попробуйте ещё раз.");
+        uploadedPaths = [];
+        return;
       }
+      results.forEach((r, i) => {
+        const photo = local[i];
+        if (r.ok && photo) uploadedUrlById.set(photo.id, r.publicUrl);
+      });
       const photoUrls = photos
         .map((p) => (isRemotePhoto(p.uri) ? p.uri : (uploadedUrlById.get(p.id) ?? "")))
         .filter(Boolean);
@@ -143,6 +190,7 @@ export function usePublishTask(mode: ComposerMode, activeUserId: string | undefi
       if (mode.kind === "edit") {
         await updateOrder.mutateAsync({ orderId: mode.orderId, ...common });
         committed = true;
+        discardPrefetchedExcept(new Set(uploadedPaths));
         hapticSuccess();
         setOutcome({ kind: "saved", orderId: mode.orderId });
         return;
@@ -150,6 +198,7 @@ export function usePublishTask(mode: ComposerMode, activeUserId: string | undefi
 
       const created = await createOrder.mutateAsync(common);
       committed = true;
+      discardPrefetchedExcept(new Set(uploadedPaths));
       hapticSuccess();
       uploadedPaths = [];
       useOrderDraftStore.getState().clearDraftForOwner(uid);
@@ -173,7 +222,8 @@ export function usePublishTask(mode: ComposerMode, activeUserId: string | undefi
         }
         return;
       }
-      if (uploadedPaths.length > 0) await cleanupUploaded(uploadedPaths);
+      // Загруженные фото остаются в кэше предзагрузки: повторная попытка
+      // возьмёт их, а уход с экрана удалит (discardPrefetched).
       hapticError();
       setError(
         e instanceof ActiveOrderLimitError
@@ -186,5 +236,14 @@ export function usePublishTask(mode: ComposerMode, activeUserId: string | undefi
     }
   };
 
-  return { run, busy, error, outcome, categoryStale, clearError: () => setError(null) };
+  return {
+    run,
+    prefetchPhotos,
+    discardPrefetched: () => discardPrefetchedExcept(new Set()),
+    busy,
+    error,
+    outcome,
+    categoryStale,
+    clearError: () => setError(null),
+  };
 }

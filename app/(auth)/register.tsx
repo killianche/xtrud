@@ -17,16 +17,17 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useLocalSearchParams, useNavigation, useRouter } from "expo-router";
-import { CaretLeft, Check, Eye, EyeSlash } from "phosphor-react-native";
+import { CaretLeft } from "phosphor-react-native";
 import { useCallback, useEffect, useState } from "react";
-import { Controller, useForm } from "react-hook-form";
+import { useForm } from "react-hook-form";
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
-import { Button, Input } from "@/components/ui";
+import { Button } from "@/components/ui";
 import { NavCircleButton } from "@/components/ui/LargeTitle";
 import { SystemIcon } from "@/components/ui/SystemIcon";
 import { ORDER_CREATE_RETURN_TO, parseAuthReturnTo } from "@/features/auth/auth-return";
+import { formatRuPhone, RegisterFormFields } from "@/features/auth/RegisterFormFields";
 import { clearRegisterPrefill, peekRegisterPrefill } from "@/features/auth/register-prefill";
 import { useRegister } from "@/features/auth/use-auth-mutations";
 import {
@@ -46,18 +47,6 @@ import { useBackGestureLock } from "@/lib/use-back-gesture-lock";
 import { useSafeBack } from "@/lib/use-safe-back";
 import { useThemeColors } from "@/lib/use-theme-color";
 
-/** Показываем 10 цифр как `XXX XXX-XX-XX`. В форме при этом хранятся ровно
- *  цифры — маска только для чтения глазами. */
-function formatRuPhone(digits: string): string {
-  const d = digits.slice(0, 10);
-  let result = "";
-  if (d.length > 0) result += d.slice(0, 3);
-  if (d.length > 3) result += ` ${d.slice(3, 6)}`;
-  if (d.length > 6) result += `-${d.slice(6, 8)}`;
-  if (d.length > 8) result += `-${d.slice(8, 10)}`;
-  return result;
-}
-
 export default function RegisterScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
@@ -76,7 +65,7 @@ export default function RegisterScreen() {
     rawAuthOrigin === "phone" || rawAuthOrigin === "sheet" ? rawAuthOrigin : null;
   const register = useRegister();
   const [serverError, setServerError] = useState<string | null>(null);
-  const [showPassword, setShowPassword] = useState(false);
+  const [_showPassword, _setShowPassword] = useState(false);
   // Галочка стоит сразу (DECISION владельца 2026-09-12: «ставь»): человек
   // видит ссылки на условия рядом с кнопкой и может снять отметку.
   const [acceptedTerms, setAcceptedTerms] = useState(true);
@@ -227,193 +216,15 @@ export default function RegisterScreen() {
             </View>
           ) : null}
 
-          <View className="mt-8 flex-row gap-3">
-            <View className="flex-1">
-              <Controller
-                control={control}
-                name="firstName"
-                render={({ field: { value, onChange, onBlur } }) => (
-                  <Input
-                    size="lg"
-                    label="Имя"
-                    value={value}
-                    onBlur={onBlur}
-                    onChangeText={onChange}
-                    placeholder="Руслан"
-                    autoCapitalize="words"
-                    autoComplete="given-name"
-                    textContentType="givenName"
-                    autoFocus={!!prefill}
-                    editable={!isBusy}
-                    error={errors.firstName?.message}
-                  />
-                )}
-              />
-            </View>
-            <View className="flex-1">
-              <Controller
-                control={control}
-                name="lastName"
-                render={({ field: { value, onChange, onBlur } }) => (
-                  <Input
-                    size="lg"
-                    label="Фамилия"
-                    value={value}
-                    onBlur={onBlur}
-                    onChangeText={onChange}
-                    placeholder="Необязательно"
-                    autoCapitalize="words"
-                    autoComplete="family-name"
-                    textContentType="familyName"
-                    editable={!isBusy}
-                    error={errors.lastName?.message}
-                  />
-                )}
-              />
-            </View>
-          </View>
-
-          {/* Номер — единственный формат: +7 и десять цифр. Код страны не
-              выбирается и не вводится, поэтому «8» и «7» в начале больше не
-              создают два разных аккаунта (DECISION владельца 2026-09-03). */}
-          <View className="mt-5">
-            <AppText weight="semibold" className="mb-2 text-body-md text-ink">
-              Номер телефона
-            </AppText>
-            <View className="flex-row items-start gap-2">
-              <View
-                className="flex-row items-center rounded-xl border-hairline-strong bg-canvas-soft px-4"
-                style={{ minHeight: 54, borderWidth: 1.5 }}
-              >
-                <AppText weight="semibold" className="text-body-lg text-ink">
-                  +7
-                </AppText>
-              </View>
-              <View className="flex-1">
-                <Controller
-                  control={control}
-                  name="phone"
-                  render={({ field: { value, onChange, onBlur } }) => (
-                    <Input
-                      size="lg"
-                      value={formatRuPhone(value)}
-                      onBlur={onBlur}
-                      // Нормализуем на каждый ввод: вставка «8 928…» или
-                      // «+7 928…» из буфера превращается в те же 10 цифр.
-                      onChangeText={(raw) => onChange(normalizeRuPhoneDigits(raw))}
-                      placeholder="928 123-45-67"
-                      keyboardType="phone-pad"
-                      autoComplete="tel-national"
-                      textContentType="telephoneNumber"
-                      inputMode="tel"
-                      editable={!isBusy}
-                      error={errors.phone?.message}
-                    />
-                  )}
-                />
-              </View>
-            </View>
-          </View>
-
-          {/* «Минимум 8 символов» — лейбл ПОЛЯ (не subtitle под H1), §G не
-              нарушается. */}
-          <View className="mt-5">
-            <Controller
-              control={control}
-              name="password"
-              render={({ field: { value, onChange, onBlur } }) => (
-                <Input
-                  size="lg"
-                  label="Пароль · минимум 8 символов"
-                  value={value}
-                  onBlur={onBlur}
-                  onChangeText={onChange}
-                  placeholder="Придумайте пароль"
-                  secureTextEntry={!showPassword}
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  autoComplete="new-password"
-                  editable={!isBusy}
-                  error={errors.password?.message}
-                  rightIcon={
-                    <Pressable
-                      accessibilityRole="button"
-                      accessibilityLabel={showPassword ? "Скрыть пароль" : "Показать пароль"}
-                      onPress={() => setShowPassword((v) => !v)}
-                      hitSlop={12}
-                      className="h-11 w-11 items-center justify-center"
-                    >
-                      {showPassword ? (
-                        <EyeSlash size={22} weight="bold" color={tc.mute} />
-                      ) : (
-                        <Eye size={22} weight="bold" color={tc.mute} />
-                      )}
-                    </Pressable>
-                  }
-                />
-              )}
-            />
-          </View>
-
-          {/* Согласие с условиями — отмечено по умолчанию, без него кнопка неактивна. */}
-          <Pressable
-            accessibilityRole="checkbox"
-            accessibilityState={{ checked: acceptedTerms }}
-            accessibilityLabel="Я согласен с условиями использования и политикой конфиденциальности"
-            onPress={() => setAcceptedTerms((v) => !v)}
-            className="mt-6 min-h-11 flex-row items-start gap-3 active:opacity-70"
-            hitSlop={4}
-          >
-            <View
-              className={`mt-0.5 h-6 w-6 items-center justify-center rounded-md border-2 ${
-                acceptedTerms ? "border-accent bg-accent" : "border-hairline-strong bg-canvas-soft"
-              }`}
-            >
-              {acceptedTerms ? <Check size={16} weight="bold" color={tc["on-accent"]} /> : null}
-            </View>
-            {/* Ссылки — Pressable с ролью link и вертикальным hitSlop: строка
-                текста 24 pt, зона касания добирается до 44 pt (QA 2026-09-02). */}
-            <View className="flex-1 flex-row flex-wrap items-center">
-              <AppText className="text-body-md text-body">Я согласен с </AppText>
-              <Pressable
-                accessibilityRole="link"
-                accessibilityLabel="Условия использования"
-                disabled={isBusy}
-                hitSlop={{ top: 10, bottom: 10, left: 4, right: 4 }}
-                onPress={() => router.push("/legal/terms" as never)}
-              >
-                <AppText weight="semibold" className="text-body-md text-accent">
-                  Условиями использования
-                </AppText>
-              </Pressable>
-              <AppText className="text-body-md text-body"> и </AppText>
-              <Pressable
-                accessibilityRole="link"
-                accessibilityLabel="Политика конфиденциальности"
-                disabled={isBusy}
-                hitSlop={{ top: 10, bottom: 10, left: 4, right: 4 }}
-                onPress={() => router.push("/legal/privacy" as never)}
-              >
-                <AppText weight="semibold" className="text-body-md text-accent">
-                  Политикой конфиденциальности
-                </AppText>
-              </Pressable>
-              <AppText className="text-body-md text-body">.</AppText>
-            </View>
-          </Pressable>
-
-          {serverError && (
-            <View className="mt-4 rounded-xl bg-error-soft px-4 py-3">
-              <AppText
-                accessibilityRole="alert"
-                accessibilityLiveRegion="polite"
-                weight="medium"
-                className="text-body-md text-error-deep"
-              >
-                {serverError}
-              </AppText>
-            </View>
-          )}
+          <RegisterFormFields
+            control={control}
+            errors={errors}
+            isBusy={isBusy}
+            acceptedTerms={acceptedTerms}
+            onToggleTerms={() => setAcceptedTerms((v) => !v)}
+            serverError={serverError}
+            autoFocusName={!!prefill}
+          />
         </View>
 
         <View className="px-6 pb-8 pt-8">

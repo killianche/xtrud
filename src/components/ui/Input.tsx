@@ -46,6 +46,7 @@ import { Platform, TextInput, type TextInputProps, View } from "react-native";
 import { AppText } from "@/components/AppText";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useThemeColors } from "@/lib/use-theme-color";
+import { keyboardDoneId } from "./KeyboardDone";
 
 export type InputSize = "md" | "lg";
 
@@ -131,6 +132,8 @@ export const Input = forwardRef<TextInput, InputProps>(function Input(
           cursorColor={tc.accent}
           keyboardAppearance={colorScheme === "dark" ? "dark" : "light"}
           clearButtonMode={clearButtonMode}
+          // У цифровой клавиатуры iOS нет Return — галочка над ней (2026-10-03).
+          inputAccessoryViewID={keyboardDoneId(props.keyboardType)}
           {...props}
           onFocus={(e) => {
             setFocused(true);

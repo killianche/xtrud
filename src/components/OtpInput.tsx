@@ -13,6 +13,7 @@
 import { forwardRef, useImperativeHandle, useRef, useState } from "react";
 import { Pressable, TextInput, View } from "react-native";
 import { AppText } from "@/components/AppText";
+import { keyboardDoneId } from "@/components/ui/KeyboardDone";
 
 const LENGTH = 6;
 
@@ -93,6 +94,7 @@ export const OtpInput = forwardRef<OtpInputHandle, OtpInputProps>(function OtpIn
         onFocus={() => setFocused(true)}
         onBlur={() => setFocused(false)}
         keyboardType="number-pad"
+        inputAccessoryViewID={keyboardDoneId("number-pad")}
         inputMode="numeric"
         autoComplete="sms-otp"
         textContentType="oneTimeCode"

@@ -15,6 +15,7 @@
  *   - отступ от чёлки обязателен.
  */
 
+import { LinearGradient } from "expo-linear-gradient";
 import { CaretLeft, X } from "phosphor-react-native";
 import type { ReactNode } from "react";
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, View } from "react-native";
@@ -23,6 +24,8 @@ import { AppText } from "@/components/AppText";
 import { GLASS_BUTTON_HEIGHT, GlassButton } from "@/components/ui/GlassButton";
 import { NAV_BUTTON_SIZE, NAV_ROW_HEIGHT, NavCircleButton } from "@/components/ui/LargeTitle";
 import { SystemIcon } from "@/components/ui/SystemIcon";
+import { useColorScheme } from "@/hooks/use-color-scheme";
+import { darkColors, lightColors, withAlpha } from "@/lib/colors";
 import { useThemeColors } from "@/lib/use-theme-color";
 import { type ComposerStep, stepPosition } from "./steps";
 
@@ -68,6 +71,9 @@ export function ComposerScreen({
 }: ComposerScreenProps) {
   const insets = useSafeAreaInsets();
   const tc = useThemeColors(["ink"]);
+  const { colorScheme } = useColorScheme();
+  // Хекс фона из палитры (в вебе useThemeColor отдаёт CSS-переменную).
+  const pageColor = (colorScheme === "dark" ? darkColors : lightColors)["surface-page"];
   const { index, total } = stepPosition(step);
   const bottomSpace = insets.bottom + 16;
   const actionsHeight = hideActions
@@ -137,6 +143,23 @@ export function ComposerScreen({
         {children}
       </ScrollView>
 
+      {hideActions ? null : (
+        // Подложка под нижними кнопками: список уходит под них и растворяется
+        // в цвет фона, а не просвечивает сквозь неактивную кнопку (скриншот
+        // владельца 2026-10-03, «Далее» поверх «Джейрахского района»).
+        <LinearGradient
+          pointerEvents="none"
+          colors={[withAlpha(pageColor, 0), withAlpha(pageColor, 0.96), pageColor]}
+          locations={[0, 0.35, 1]}
+          style={{
+            position: "absolute",
+            left: 0,
+            right: 0,
+            bottom: 0,
+            height: actionsHeight + bottomSpace + 32,
+          }}
+        />
+      )}
       {hideActions ? null : (
         <View
           pointerEvents="box-none"

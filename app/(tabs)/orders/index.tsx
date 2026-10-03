@@ -64,7 +64,6 @@ import {
 import {
   buildOrderSections,
   buildResponseList,
-  countActiveOrders,
   type OrderListSectionItem,
 } from "@/features/orders/order-list-sections";
 import { type OrderWithRefs, useMyOrders } from "@/features/orders/use-my-orders";
@@ -113,11 +112,6 @@ export default function OrdersScreen() {
     setTab(myOrders.length === 0 && myResponses.length > 0 ? "responses" : "orders");
   }, [tab, myOrders, myResponses]);
   const resolved: Segment = tab ?? "orders";
-
-  // Счётчик — только у «Как клиент»: активные задания (§4.2). У «Как мастер»
-  // счётчика нет: отклик — отправленное сообщение, «ждать» там нечего
-  // (DECISION владельца 2026-09-16).
-  const activeOrdersCount = useMemo(() => countActiveOrders(myOrders ?? []), [myOrders]);
 
   // Крупный заголовок первым, под ним сегменты — как у Apple под large
   // title (Фитнес, Здоровье). Уезжают вместе со списком; в закреплённой строке
@@ -192,15 +186,16 @@ export default function OrdersScreen() {
             value={resolved}
             onChange={setTab}
             items={[
+              // «Ваши задания» / «Я специалист», без счётчика (владелец,
+              // 2026-10-03) — новое видно на карточках («N новых»).
               {
                 id: "orders",
-                label: "Как клиент",
-                count: activeOrdersCount,
+                label: "Ваши задания",
                 icon: ClipboardText,
               },
               {
                 id: "responses",
-                label: "Как специалист",
+                label: "Я специалист",
                 tone: "primary",
                 icon: Wrench,
               },

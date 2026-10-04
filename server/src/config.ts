@@ -52,6 +52,21 @@ const schema = z.object({
   S3_BUCKET: z.string().min(1).optional(),
   S3_ACCESS_KEY: z.string().min(16).optional(),
   S3_SECRET_KEY: z.string().min(16).optional(),
+  /**
+   * SMS-коды через SMS.ru (2026-10-04). Без ключа сервер работает, а
+   * подтверждение номера и восстановление пароля по SMS выключены.
+   */
+  SMSRU_API_ID: z.string().min(20).optional(),
+  SMSRU_FROM: z.string().min(1).max(11).default("xtrud.pro"),
+  /** test=1 у SMS.ru: отправка имитируется, баланс не тратится. */
+  SMSRU_TEST: z.enum(["true", "false"]).default("false"),
+  /**
+   * Требовать код при регистрации. Включать, только когда у отправителя
+   * подключены все операторы: на 2026-10-04 — только Билайн.
+   */
+  SMS_REGISTRATION_REQUIRED: z.enum(["true", "false"]).default("false"),
+  /** Потолок отправок на весь сервер в сутки — защита баланса. */
+  SMS_DAILY_CAP: z.coerce.number().int().min(1).default(100),
 });
 
 export type Config = z.infer<typeof schema>;
@@ -95,6 +110,11 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     cfg.S3_SECRET_KEY,
   ];
   const s3Filled = s3Parts.filter((v) => v !== undefined).length;
+  if (cfg.SMS_REGISTRATION_REQUIRED === "true" && cfg.SMSRU_API_ID === undefined) {
+    throw new Error(
+      "Некорректная конфигурация: SMS_REGISTRATION_REQUIRED без SMSRU_API_ID — регистрация стала бы невозможной",
+    );
+  }
   if (s3Filled > 0 && s3Filled < s3Parts.length) {
     throw new Error(
       "Некорректная конфигурация: хранилище задано наполовину — нужны S3_ENDPOINT, S3_REGION, S3_BUCKET, S3_ACCESS_KEY и S3_SECRET_KEY вместе",

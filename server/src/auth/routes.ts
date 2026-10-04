@@ -6,9 +6,11 @@ import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import type { Config } from "../config.js";
 import { type Db, pgErrorToHttp } from "../db.js";
+import type { SmsSender } from "../sms/smsru.js";
 import { hashRefresh, newRefreshToken, type Tokens } from "./jwt.js";
 import { LoginAttempts, loginAttemptKey } from "./login-attempts.js";
 import { canonicalPhone, isPhoneLogin, phoneKey, phoneToAuthEmail } from "./phone.js";
+import { type CodePurpose, PhoneCodes } from "./phone-codes.js";
 
 const registerSchema = z.object({
   firstName: z.string().trim().min(1).max(60),
@@ -18,7 +20,46 @@ const registerSchema = z.object({
   // 8 знаков — как в приложении (2026-09-12). Вход старых паролей
   // не ломается: при входе длина не проверяется.
   password: z.string().min(8).max(200),
+  /** Подтверждение номера кодом из SMS (/auth/code/verify), если требуется. */
+  verificationToken: z.string().min(20).max(100).optional(),
 });
+const purposeSchema = z.enum(["register", "reset"]);
+const sendCodeSchema = z.object({
+  phone: z.string().trim().min(10).max(20),
+  purpose: purposeSchema,
+});
+const verifyCodeSchema = z.object({
+  phone: z.string().trim().min(10).max(20),
+  purpose: purposeSchema,
+  code: z
+    .string()
+    .trim()
+    .regex(/^\d{6}$/),
+});
+const resetSchema = z.object({
+  phone: z.string().trim().min(10).max(20),
+  verificationToken: z.string().min(20).max(100),
+  newPassword: z.string().min(8).max(200),
+});
+/** SMS-код — только на мобильные номера России: защита от отправок за рубеж за наш счёт. */
+const RU_MOBILE = /^\+79\d{9}$/;
+const SEND_LIMIT_TEXT: Record<"phone_daily" | "ip_hourly" | "global_daily", string> = {
+  phone_daily: "На этот номер сегодня уже отправлено много кодов. Попробуйте завтра.",
+  ip_hourly: "Слишком много запросов кода. Попробуйте через час.",
+  global_daily: "Отправка SMS временно недоступна. Попробуйте позже.",
+};
+/** Общий текст: статус бана или удаления по одному номеру не раскрываем (L1). */
+const RESET_BLOCKED_TEXT = "Восстановить доступ не получится. Напишите в поддержку — поможем.";
+const RESET_UNAVAILABLE = {
+  error:
+    "Восстановить пароль по SMS для этого номера не получится. Напишите в поддержку — поможем.",
+  code: "reset_unavailable",
+};
+const VERIFY_TEXT: Record<"invalid" | "expired" | "too_many", string> = {
+  invalid: "Неверный код",
+  expired: "Код истёк — запросите новый",
+  too_many: "Слишком много попыток — запросите новый код",
+};
 const loginSchema = z.object({
   login: z.string().trim().min(3).max(120),
   password: z.string().min(1).max(200),
@@ -61,7 +102,10 @@ export function registerAuthRoutes(
   tokens: Tokens,
   cfg: Config,
   loginAttempts: LoginAttempts = new LoginAttempts(),
+  sms: SmsSender | null = null,
+  codes: PhoneCodes = new PhoneCodes(cfg.SMS_DAILY_CAP),
 ) {
+  const codeAtRegistration = sms !== null && cfg.SMS_REGISTRATION_REQUIRED === "true";
   const issueSession = async (user: AuthUserRow) => {
     const refresh = newRefreshToken();
     const sessionId = await db.asService(async (c) => {
@@ -108,6 +152,24 @@ export function registerAuthRoutes(
     const phone = canonicalPhone(input.phone);
     const key = phoneKey(phone);
     if (!key) return reply.code(422).send({ error: "Введите номер полностью" });
+    if (codeAtRegistration && !RU_MOBILE.test(phone)) {
+      return reply.code(422).send({
+        error: "Регистрация — по мобильному номеру России",
+        code: "phone_not_supported",
+      });
+    }
+    // Подтверждение — для полного номера, не для последних 10 цифр (H1).
+    if (
+      codeAtRegistration &&
+      !(input.verificationToken && codes.consumeToken(input.verificationToken, phone, "register"))
+    ) {
+      // Новые сборки подтверждают номер до этого запроса; сюда без токена
+      // приходят только старые — им нужен текст про обновление.
+      return reply.code(428).send({
+        error: "Подтвердите номер кодом из SMS. Если кода не было — обновите приложение.",
+        code: "phone_verification_required",
+      });
+    }
     const email = phoneToAuthEmail(phone, cfg.PHONE_EMAIL_DOMAIN);
     const hash = await bcrypt.hash(input.password, 10);
     try {
@@ -166,6 +228,146 @@ export function registerAuthRoutes(
     loginAttempts.succeed(attemptKey, req.ip);
     const blocked = blockedMessage(user);
     if (blocked) return reply.code(403).send({ error: blocked });
+    return reply.send(await issueSession(user));
+  });
+
+  /** Что включено на сервере — приложение по этому решает, спрашивать ли код. */
+  app.get("/auth/options", async () => ({
+    phoneCodeAtRegistration: codeAtRegistration,
+    passwordResetBySms: sms !== null,
+  }));
+
+  app.post("/auth/code/send", async (req, reply) => {
+    if (!sms) {
+      return reply
+        .code(503)
+        .send({ error: "Отправка SMS сейчас недоступна", code: "sms_disabled" });
+    }
+    const parsed = sendCodeSchema.safeParse(req.body);
+    if (!parsed.success) return reply.code(422).send({ error: "Введите номер полностью" });
+    const phone = canonicalPhone(parsed.data.phone);
+    const key = phoneKey(phone);
+    if (!key || !RU_MOBILE.test(phone)) {
+      return reply.code(422).send({
+        error: "Код отправляем только на мобильные номера России",
+        code: "phone_not_supported",
+      });
+    }
+    const purpose: CodePurpose = parsed.data.purpose;
+    const user = await findByLogin(phone);
+    // Что номер занят или свободен, и так видно по регистрации и входу
+    // (409 / account_not_found), поэтому здесь ответ тот же — а SMS на
+    // заведомо бесполезный номер не тратится.
+    if (purpose === "register" && user) {
+      return reply
+        .code(409)
+        .send({ error: "Этот номер уже зарегистрирован. Войдите.", code: "phone_taken" });
+    }
+    if (purpose === "reset") {
+      if (!user) {
+        return reply
+          .code(404)
+          .send({ error: "Аккаунта с этим номером нет", code: "account_not_found" });
+      }
+      if (blockedMessage(user)) return reply.code(403).send({ error: RESET_BLOCKED_TEXT });
+      // Аккаунт находится по последним 10 цифрам, а SMS уходит на номер из
+      // запроса — поэтому номер аккаунта обязан совпасть полностью: иначе код
+      // на +7 917… открыл бы аккаунт с номером +1 917… (ревью H1, 2026-10-04).
+      if (canonicalPhone(user.phone ?? "") !== phone) {
+        return reply.code(422).send(RESET_UNAVAILABLE);
+      }
+    }
+    const check = codes.check(phone, purpose, req.ip);
+    if (!check.ok) {
+      return reply.code(429).send(
+        check.reason === "cooldown"
+          ? {
+              error: `Новый код можно запросить через ${check.retryInSec} с`,
+              code: "code_cooldown",
+              retryInSec: check.retryInSec,
+            }
+          : { error: SEND_LIMIT_TEXT[check.reason], code: "code_rate_limited" },
+      );
+    }
+    const code = codes.issue(phone, purpose, req.ip);
+    if (codes.usage(purpose) === Math.ceil(cfg.SMS_DAILY_CAP * 0.8)) {
+      req.log.warn({ purpose, cap: cfg.SMS_DAILY_CAP }, "sms daily cap 80% reached");
+    }
+    const sent = await sms.send(phone, `Код xtrud: ${code}. Никому его не сообщайте.`);
+    if (!sent.ok) {
+      codes.discard(phone, purpose);
+      // Номер в журнал не пишем — только последние две цифры.
+      req.log.warn({ reason: sent.reason, tail: key.slice(-2) }, "sms send failed");
+      if (sent.reason === "invalid_number") {
+        return reply
+          .code(422)
+          .send({ error: "Проверьте номер — на него нельзя отправить SMS", code: "phone_invalid" });
+      }
+      if (sent.reason === "unreachable") {
+        return reply.code(502).send({
+          error: "Не получилось отправить SMS на этот номер. Напишите в поддержку — поможем.",
+          code: "sms_unreachable",
+        });
+      }
+      return reply.code(503).send({
+        error: "Отправка SMS временно недоступна. Попробуйте позже.",
+        code: "sms_unavailable",
+      });
+    }
+    return reply.send({ sent: true, resendInSec: 60 });
+  });
+
+  app.post("/auth/code/verify", async (req, reply) => {
+    const parsed = verifyCodeSchema.safeParse(req.body);
+    if (!parsed.success) return reply.code(422).send({ error: "Введите 6 цифр из SMS" });
+    const phone = canonicalPhone(parsed.data.phone);
+    if (!RU_MOBILE.test(phone)) return reply.code(422).send({ error: "Введите номер полностью" });
+    const result = codes.verify(phone, parsed.data.purpose, parsed.data.code);
+    if (!result.ok) {
+      return reply
+        .code(result.reason === "invalid" ? 400 : 410)
+        .send({ error: VERIFY_TEXT[result.reason], code: `code_${result.reason}` });
+    }
+    return reply.send({ verificationToken: result.token });
+  });
+
+  /** Новый пароль по коду из SMS — «Забыли пароль?». */
+  app.post("/auth/password/reset", async (req, reply) => {
+    if (!sms) {
+      return reply
+        .code(503)
+        .send({ error: "Отправка SMS сейчас недоступна", code: "sms_disabled" });
+    }
+    const parsed = resetSchema.safeParse(req.body);
+    if (!parsed.success) return reply.code(422).send({ error: "Новый пароль — от 8 символов" });
+    const phone = canonicalPhone(parsed.data.phone);
+    if (!RU_MOBILE.test(phone)) return reply.code(422).send({ error: "Введите номер полностью" });
+    if (!codes.consumeToken(parsed.data.verificationToken, phone, "reset")) {
+      return reply.code(400).send({
+        error: "Подтверждение устарело — запросите код заново",
+        code: "verification_invalid",
+      });
+    }
+    const user = await findByLogin(phone);
+    if (!user) {
+      return reply
+        .code(404)
+        .send({ error: "Аккаунта с этим номером нет", code: "account_not_found" });
+    }
+    if (blockedMessage(user)) return reply.code(403).send({ error: RESET_BLOCKED_TEXT });
+    if (canonicalPhone(user.phone ?? "") !== phone) {
+      return reply.code(422).send(RESET_UNAVAILABLE);
+    }
+    const hash = await bcrypt.hash(parsed.data.newPassword, 10);
+    await db.asService(async (c) => {
+      await c.query("SELECT xtrud_api.set_password_hash($1, $2)", [user.id, hash]);
+      // Все прежние сессии — вон: пароль меняют, когда доступ потерян.
+      await c.query(
+        "UPDATE xtrud_api.refresh_tokens SET revoked_at = now() WHERE user_id = $1 AND revoked_at IS NULL",
+        [user.id],
+      );
+    });
+    loginAttempts.succeed(loginAttemptKey(phone), req.ip);
     return reply.send(await issueSession(user));
   });
 

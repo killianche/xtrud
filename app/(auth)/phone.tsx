@@ -20,7 +20,12 @@ import { SystemIcon } from "@/components/ui/SystemIcon";
 import { ORDER_CREATE_RETURN_TO, parseAuthReturnTo } from "@/features/auth/auth-return";
 import { setRegisterPrefill } from "@/features/auth/register-prefill";
 import { useLogin } from "@/features/auth/use-auth-mutations";
-import { type LoginFormValues, loginFormSchema } from "@/features/auth/validation";
+import {
+  type LoginFormValues,
+  loginFormSchema,
+  looksLikeEmail,
+  normalizeRuPhoneDigits,
+} from "@/features/auth/validation";
 import { useAuthReturnUrlStore } from "@/lib/auth-return-url-store";
 import {
   applyGuestDraftAuthAbandonment,
@@ -97,6 +102,7 @@ export default function LoginScreen() {
   const {
     control,
     handleSubmit,
+    getValues,
     formState: { errors, isValid },
   } = useForm<LoginFormValues>({
     resolver: zodResolver(loginFormSchema),
@@ -250,7 +256,14 @@ export default function LoginScreen() {
               disabled={isBusy}
               onPress={() => {
                 abandonDraftJourney(true);
-                router.push("/(auth)/forgot-password" as never);
+                // Номер из поля входа — сразу в «Забыли пароль?», чтобы не
+                // вводить его второй раз.
+                const login = getValues("login").trim();
+                const digits = login && !looksLikeEmail(login) ? normalizeRuPhoneDigits(login) : "";
+                router.push({
+                  pathname: "/(auth)/forgot-password",
+                  params: digits.length === 10 ? { phone: digits } : {},
+                } as never);
               }}
               hitSlop={8}
               className={`mt-3 min-h-11 justify-center self-start ${isBusy ? "opacity-30" : "active:opacity-70"}`}

@@ -3,10 +3,10 @@
  * список по разделам с поиском, галочки-кружки. Сохранение — «Готово».
  */
 
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { Check } from "phosphor-react-native";
 import { useEffect, useMemo, useState } from "react";
-import { Pressable, View } from "react-native";
+import { Alert, Pressable, View } from "react-native";
 import { AppText } from "@/components/AppText";
 import { FormScreen, InsetGroup, SearchField } from "@/components/ui";
 import { SystemIcon } from "@/components/ui/SystemIcon";
@@ -34,10 +34,23 @@ export default function SpecialistCategoriesScreen() {
   const setCategories = useSetMasterCategories();
   const invalidate = useInvalidateSpecialistCounts();
   const [query, setQuery] = useState("");
+  // ?add=<l2> — пришли из задания: «Нужна категория…» (№203). Её сразу
+  // отмечаем — остаётся нажать «Готово».
+  const { add } = useLocalSearchParams<{ add?: string }>();
   const [selected, setSelected] = useState<string[] | null>(null);
   useEffect(() => {
-    if (selected === null && mine.data) setSelected(mine.data.map((c) => c.l2_id));
-  }, [mine.data, selected]);
+    if (selected !== null || !mine.data) return;
+    const current = mine.data.map((c) => c.l2_id);
+    const canAdd = !!add && !current.includes(add) && current.length < MAX;
+    setSelected(canAdd ? [...current, add as string] : current);
+    if (add && !current.includes(add) && current.length >= MAX) {
+      // Лимит заполнен — объяснить, почему нужная категория не отмечена.
+      Alert.alert(
+        `В профиле уже ${MAX} категорий`,
+        "Снимите одну из них — и отметьте нужную. Больше пяти категорий выбрать нельзя.",
+      );
+    }
+  }, [mine.data, selected, add]);
   const chosen = selected ?? [];
 
   const sections = useMemo(() => {

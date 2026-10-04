@@ -1844,6 +1844,10 @@ export type Database = {
         Returns: string | null
       }
       get_order_limits: { Args: never; Returns: Json }
+      /** Флаги интерфейса (0205, 0216): find_screen — старые сборки, find_tiles — плитки «Найти задание». */
+      get_app_flags: { Args: never; Returns: Json }
+      /** Можно ли откликнуться: категория открыта всем или есть в профиле (0217). */
+      can_respond_to_order: { Args: { p_order_id: string }; Returns: Json }
       admin_set_order_limits: {
         Args: { p_active: number; p_daily: number; p_reason?: string }
         Returns: Json

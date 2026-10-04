@@ -1,0 +1,152 @@
+/**
+ * CategoryPickerTwoStep — содержимое шага «Какая категория?» в два этапа:
+ * раздел → подраздел (владелец, 2026-10-04, см. `category-picker.ts`).
+ *
+ * Без поиска — список разделов, как в «Настройках» (`ChoiceGroup`/
+ * `ChoiceRow`, inset grouped); тап открывает подкатегории раздела тут же —
+ * «Назад» к разделам даёт верхняя кнопка конструктора (её переключает
+ * `app/(details)/orders/new.tsx`, а не этот компонент). Строка раздела
+ * показывает уже выбранную в нём подкатегорию значением справа.
+ *
+ * С поиском — подкатегории сразу (и по названию раздела тоже), подпись —
+ * раздел, тап выбирает. Переиспользует тот же `ChoiceRow`, что и остальные
+ * шаги конструктора (`where.tsx`), и те же состояния загрузки/ошибки, что
+ * `SubcategoryScreen` («Найти задание»).
+ */
+
+import { useMemo } from "react";
+import { View } from "react-native";
+import { AppText } from "@/components/AppText";
+import { Skeleton } from "@/components/ui/Skeleton";
+import type { CategoryL1 } from "@/features/categories/use-categories-l1";
+import type { VisibleCategory } from "@/features/categories/use-visible-categories";
+import { getCategoryIcon } from "@/lib/category-icons";
+import { useThemeColors } from "@/lib/use-theme-color";
+import { ChoiceGroup, ChoiceRow } from "./ComposerRows";
+import { groupCategoriesByL1, searchCategories } from "./category-picker";
+
+export interface CategoryPickerTwoStepProps {
+  sections: readonly CategoryL1[];
+  categories: readonly VisibleCategory[];
+  selectedL2Id: string;
+  /** Раздел, чьи подкатегории сейчас открыты; null — список разделов. */
+  openSectionId: string | null;
+  onOpenSection: (id: string) => void;
+  /** Текст поиска сверху — ищет сразу по подкатегориям и разделам. */
+  query: string;
+  onPick: (id: string) => void;
+  loading?: boolean;
+  errorMessage?: string;
+  onRetry?: () => void;
+}
+
+export function CategoryPickerTwoStep({
+  sections,
+  categories,
+  selectedL2Id,
+  openSectionId,
+  onOpenSection,
+  query,
+  onPick,
+  loading = false,
+  errorMessage,
+  onRetry,
+}: CategoryPickerTwoStepProps) {
+  const tc = useThemeColors(["ink"]);
+  const groups = useMemo(() => groupCategoriesByL1(sections, categories), [sections, categories]);
+  const hits = useMemo(
+    () => (query.trim() ? searchCategories(sections, categories, query) : []),
+    [sections, categories, query],
+  );
+
+  if (loading) {
+    return (
+      <View className="mx-4 overflow-hidden rounded-2xl bg-surface-card">
+        {[0, 1, 2, 3, 4].map((i) => (
+          <View key={i} className="flex-row items-center gap-3 px-4 py-3.5">
+            <Skeleton width={36} height={36} className="rounded-lg" />
+            <Skeleton height={17} className="flex-1 rounded" />
+          </View>
+        ))}
+      </View>
+    );
+  }
+
+  if (errorMessage) {
+    return (
+      <ChoiceGroup footer={errorMessage}>
+        <ChoiceRow title="Повторить" onPress={() => onRetry?.()} last />
+      </ChoiceGroup>
+    );
+  }
+
+  if (query.trim()) {
+    if (hits.length === 0) {
+      return (
+        <AppText className="px-8 pt-4 text-center text-ios-body text-mute">
+          Ничего не нашлось. Попробуйте другое слово.
+        </AppText>
+      );
+    }
+    return (
+      <ChoiceGroup>
+        {hits.map(({ category, sectionName }, i) => {
+          const Icon = getCategoryIcon(category.icon);
+          return (
+            <ChoiceRow
+              key={category.id}
+              title={category.name_ru}
+              subtitle={sectionName}
+              icon={<Icon size={18} weight="bold" color={tc.ink} />}
+              selected={category.id === selectedL2Id}
+              onPress={() => onPick(category.id)}
+              last={i === hits.length - 1}
+            />
+          );
+        })}
+      </ChoiceGroup>
+    );
+  }
+
+  const openGroup = openSectionId ? groups.find((g) => g.section.id === openSectionId) : undefined;
+
+  if (!openGroup) {
+    return (
+      <ChoiceGroup>
+        {groups.map((group, i) => {
+          const Icon = getCategoryIcon(group.section.icon);
+          const current = group.items.find((c) => c.id === selectedL2Id);
+          return (
+            <ChoiceRow
+              key={group.section.id}
+              title={group.section.name_ru}
+              value={current?.name_ru}
+              icon={<Icon size={18} weight="bold" color={tc.ink} />}
+              navigates
+              onPress={() => onOpenSection(group.section.id)}
+              last={i === groups.length - 1}
+            />
+          );
+        })}
+      </ChoiceGroup>
+    );
+  }
+
+  return (
+    <ChoiceGroup>
+      {openGroup.items.map((category, i) => {
+        const Icon = getCategoryIcon(category.icon);
+        return (
+          <ChoiceRow
+            key={category.id}
+            title={category.name_ru}
+            icon={<Icon size={18} weight="bold" color={tc.ink} />}
+            selected={category.id === selectedL2Id}
+            onPress={() => onPick(category.id)}
+            last={i === openGroup.items.length - 1}
+          />
+        );
+      })}
+    </ChoiceGroup>
+  );
+}

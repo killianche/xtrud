@@ -24,6 +24,9 @@ const loginSchema = z.object({
   password: z.string().min(1).max(200),
 });
 const recoverySchema = z.object({ phone: z.string().trim().min(10).max(20) });
+const phoneStatusSchema = z.object({ phone: z.string().trim().min(10).max(20) });
+/** Проверок номера с одного адреса — не больше 30 в час. */
+const PHONE_STATUS_PER_IP = 30;
 /** Заявок с одного адреса — не больше 5 в час: форма без входа. */
 const RECOVERY_PER_IP = 5;
 const RECOVERY_WINDOW_MS = 60 * 60_000;
@@ -66,6 +69,7 @@ export function registerAuthRoutes(
   cfg: Config,
   loginAttempts: LoginAttempts = new LoginAttempts(),
   recoveryWindow: FailureWindow = new FailureWindow(RECOVERY_PER_IP, RECOVERY_WINDOW_MS),
+  phoneStatusWindow: FailureWindow = new FailureWindow(PHONE_STATUS_PER_IP, RECOVERY_WINDOW_MS),
 ) {
   const issueSession = async (user: AuthUserRow) => {
     const refresh = newRefreshToken();
@@ -211,6 +215,28 @@ export function registerAuthRoutes(
       });
     }
     return reply.send({ ok: true, alreadyRequested: result === "exists" });
+  });
+
+  /**
+   * Первый шаг входа (№202, 2026-10-04): «Ваш номер» → есть аккаунт —
+   * пароль, нет — регистрация. Что номер занят, и так видно по входу
+   * (account_not_found) и регистрации (409); здесь — тот же ответ без
+   * пароля, под своим лимитом на адрес.
+   */
+  app.post("/auth/phone-status", async (req, reply) => {
+    const parsed = phoneStatusSchema.safeParse(req.body);
+    if (!parsed.success) return reply.code(422).send({ error: "Введите номер полностью" });
+    const phone = canonicalPhone(parsed.data.phone);
+    if (!phoneKey(phone)) return reply.code(422).send({ error: "Введите номер полностью" });
+    if (phoneStatusWindow.blocked(req.ip)) {
+      return reply.code(429).send({
+        error: "Слишком много попыток. Попробуйте через час.",
+        code: "phone_status_rate_limited",
+      });
+    }
+    phoneStatusWindow.fail(req.ip);
+    const user = await findByLogin(phone);
+    return reply.send({ exists: user !== null });
   });
 
   app.post("/auth/refresh", async (req, reply) => {

@@ -22,6 +22,7 @@ import {
   useRuStoreNotificationTapNavigation,
 } from "@/features/notifications/use-notification-tap";
 import { useRegisterPushToken } from "@/features/notifications/use-register-push-token";
+import { useAppFlagsQuery } from "@/features/settings/use-app-flags";
 import { useAuthReturnUrlStore } from "@/lib/auth-return-url-store";
 import { installGlobalErrorHandlers } from "@/lib/error-reporting";
 import { NavHistoryTracker } from "@/lib/nav-history";
@@ -103,6 +104,10 @@ function AuthGate({ children }: { children: React.ReactNode }) {
 
   const segments = useSegments();
   const router = useRouter();
+  const flagsQ = useAppFlagsQuery();
+  const requireLogin = flagsQ.data?.requireLogin === true;
+  // Флаг ещё не пришёл: для гостя не решаем, показывать ли приложение.
+  const flagsPending = status !== "authenticated" && flagsQ.isPending;
 
   useEffect(() => {
     if (status === "loading") return;
@@ -125,6 +130,14 @@ function AuthGate({ children }: { children: React.ReactNode }) {
     const inReset = group === "reset-password";
 
     // ============ АНОН ============
+    // Обязательный вход (№202, флаг require_login из админки): гостю —
+    // только экраны входа, условия и смена пароля; всё остальное → «Ваш
+    // номер». Пока флаг не пришёл, ничего не решаем (см. ниже — экран пуст).
+    if (status === "unauthenticated" && requireLogin) {
+      if (inAuth || inLegal || inReset) return;
+      router.replace("/(auth)/welcome" as never);
+      return;
+    }
     if (status === "unauthenticated") {
       // Анон в (tabs) / (auth) / legal / reset-password — пропускаем.
       // Анон в (onboarding) — невозможно без сессии, отправляем в (tabs).
@@ -184,16 +197,24 @@ function AuthGate({ children }: { children: React.ReactNode }) {
       router.replace("/(onboarding)/client-name");
     }
     // Иначе — оставляем где есть.
-  }, [status, userLoading, userRecord, segments, router]);
+  }, [status, userLoading, userRecord, segments, router, requireLogin]);
 
   const unauthenticatedPrivateDetails =
     status === "unauthenticated" && segments[0] === "(details)" && !isPublicDetailsRoute(segments);
+  // Гость при обязательном входе не видит приложение ни кадра до «Ваш номер».
+  const group0 = segments[0] as string | undefined;
+  // Пока сессия читается (loading) — тоже не показываем: иначе на холодном
+  // старте мелькнули бы вкладки (QA 2026-10-04).
+  const walled =
+    (status === "unauthenticated" || (status === "loading" && (flagsPending || requireLogin))) &&
+    (flagsPending ||
+      (requireLogin && group0 !== "(auth)" && group0 !== "legal" && group0 !== "reset-password"));
 
   // Prevent a one-frame render of settings/edit/history while the redirect
   // effect moves an anonymous cold deep link back to the public tabs.
   // Р3: заблокированный аккаунт не видит приложение вовсе.
   if (userRecord?.status === "banned") return <BannedScreen />;
-  return unauthenticatedPrivateDetails ? null : children;
+  return unauthenticatedPrivateDetails || walled ? null : children;
 }
 
 /** Публичные списки, которые стоит показать сразу после запуска. */

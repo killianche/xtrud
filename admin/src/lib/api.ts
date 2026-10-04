@@ -288,6 +288,20 @@ export interface CategoryRow {
   sort_order: number;
   open_orders: number;
   masters: number;
+  /** Откликаться может любой (простые работы), иначе — только специалист с категорией (0217). */
+  open_responses?: boolean;
+}
+
+export type BroadcastAudience = "all" | "clients" | "masters";
+
+export interface BroadcastRow {
+  id: string;
+  created_at: string;
+  title: string;
+  body: string;
+  audience: BroadcastAudience;
+  recipients: number;
+  created_by_label: string | null;
 }
 
 /** Заявка «Забыли пароль?» — перезвонить и задать временный пароль (0214). */
@@ -402,6 +416,14 @@ function describe(error: { message?: string; code?: string } | null): string {
   if (message.includes("bad_visible")) return "Не указано, показать или скрыть.";
   if (message.includes("category_not_found")) return "Подраздел не найден.";
   if (message.includes("request_not_open")) return "Заявка уже закрыта.";
+  if (message.includes("broadcast_too_soon")) {
+    return "Рассылку можно отправлять не чаще раза в 10 минут.";
+  }
+  if (message.includes("broadcast_daily_limit")) return "Не больше 5 рассылок за сутки.";
+  if (message.includes("broadcast_no_recipients")) return "В этой аудитории никого нет.";
+  if (message.includes("bad_title")) return "Заголовок — от 3 до 60 символов, в одну строку.";
+  if (message.includes("bad_body")) return "Текст — от 3 до 200 символов.";
+  if (message.includes("bad_audience")) return "Выберите, кому отправить.";
   if (!message) return "Не удалось выполнить запрос.";
   return "Сервис не ответил. Попробуйте ещё раз.";
 }
@@ -595,6 +617,29 @@ export const api = {
       p_reason: reason,
     }),
   listCategories: () => rpc<CategoryRow[]>("admin_list_categories"),
+  setCategoryOpenResponses: (l2Id: string, open: boolean, reason: string) =>
+    rpc<void>("admin_set_category_open_responses", {
+      p_l2_id: l2Id,
+      p_open: open,
+      p_reason: reason,
+    }),
+  appFlags: () =>
+    rpc<{ find_screen?: string; find_tiles?: string; require_login?: boolean }>("get_app_flags"),
+  setRequireLogin: (enabled: boolean) =>
+    rpc<{ require_login?: boolean }>("admin_set_require_login", { p_enabled: enabled }),
+  setFindTiles: (variant: "mosaic" | "grid") =>
+    rpc<{ find_tiles?: string }>("admin_set_find_tiles", { p_variant: variant }),
+  broadcastPreview: (audience: BroadcastAudience) =>
+    rpc<{ recipients: number; with_push: number }>("admin_broadcast_preview", {
+      p_audience: audience,
+    }),
+  broadcastPush: (title: string, body: string, audience: BroadcastAudience) =>
+    rpc<{ id: string; recipients: number }>("admin_broadcast_push", {
+      p_title: title,
+      p_body: body,
+      p_audience: audience,
+    }),
+  listBroadcasts: (limit = 20) => rpc<BroadcastRow[]>("admin_list_broadcasts", { p_limit: limit }),
   setCategoryVisible: (l2Id: string, visible: boolean, reason: string) =>
     rpc<void>("admin_set_category_visible", {
       p_l2_id: l2Id,

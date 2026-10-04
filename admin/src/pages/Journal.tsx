@@ -34,6 +34,10 @@ export const ACTION_LABEL: Record<string, string> = {
   resolve_recovery_request: "Заявка на звонок закрыта",
   category_show: "Подраздел показан",
   category_hide: "Подраздел скрыт",
+  category_open_responses: "Кто может откликаться",
+  set_find_tiles: "Плитки «Найти задание»",
+  broadcast_push: "Рассылка push",
+  set_require_login: "Обязательный вход",
 };
 
 export function Journal() {

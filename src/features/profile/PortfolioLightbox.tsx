@@ -284,6 +284,17 @@ function LightboxBody({
   );
 }
 
+/** Вписать фото в экран с сохранением пропорций; до загрузки — весь экран. */
+export function fitBox(
+  aspect: number | null,
+  width: number,
+  height: number,
+): { width: number; height: number } {
+  if (!aspect || !Number.isFinite(aspect) || aspect <= 0) return { width, height };
+  if (aspect > width / height) return { width, height: Math.round(width / aspect) };
+  return { width: Math.round(height * aspect), height };
+}
+
 /** Одна страница: на iOS — родной зум щипком (UIScrollView), иначе — фото. */
 function ZoomPage({
   photo,
@@ -297,23 +308,39 @@ function ZoomPage({
   /** Увеличено ли фото — пока да, свайп вниз не закрывает. */
   onZoomChange: (zoomed: boolean) => void;
 }) {
+  // Размер под экран считаем сами по пропорциям загруженного фото и задаём
+  // картинке явно. Владелец, 2026-10-04: «все фото растянуты» — внутри
+  // масштабируемого ScrollView на iOS подгонка contentFit не держала
+  // пропорции, и фото растягивалось на весь экран. С точным размером
+  // искажать нечего; до загрузки — весь экран (размытое превью).
+  const [aspect, setAspect] = useState<number | null>(null);
+  const box = fitBox(aspect, width, height);
   const image = (
     <Image
       source={{ uri: cdnImage(photo.url, { width: Math.round(width), quality: 80 }) }}
       placeholder={cdnBlur(photo.url) ? { uri: cdnBlur(photo.url) } : undefined}
       placeholderContentFit="contain"
-      style={{ width, height }}
+      style={box}
       contentFit="contain"
       transition={150}
       cachePolicy="memory-disk"
+      onLoad={(e) => {
+        const w = e.source?.width ?? 0;
+        const h = e.source?.height ?? 0;
+        if (w > 0 && h > 0) setAspect(w / h);
+      }}
       accessibilityLabel={photo.caption ?? "Фото"}
     />
   );
-  if (Platform.OS !== "ios") return <View style={{ width, height }}>{image}</View>;
+  if (Platform.OS !== "ios") {
+    return (
+      <View style={{ width, height, alignItems: "center", justifyContent: "center" }}>{image}</View>
+    );
+  }
   return (
     <ScrollView
       style={{ width, height }}
-      contentContainerStyle={{ width, height }}
+      contentContainerStyle={{ width, height, alignItems: "center", justifyContent: "center" }}
       maximumZoomScale={MAX_ZOOM}
       minimumZoomScale={1}
       bouncesZoom

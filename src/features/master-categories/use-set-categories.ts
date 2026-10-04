@@ -23,6 +23,8 @@ export function useSetMasterCategories() {
     },
     onSuccess: (_data, { userId }) => {
       queryClient.invalidateQueries({ queryKey: myCategoriesKey(userId) });
+      // Новая категория может открыть отклик на задание (№203, 0217).
+      queryClient.invalidateQueries({ queryKey: ["respond-eligibility"] });
     },
   });
 }

@@ -710,3 +710,40 @@ button.link {
 button.link:hover {
   text-decoration: underline;
 }
+
+/* Предпросмотр push на экране блокировки (раздел «Рассылка»). */
+.push-preview {
+  display: flex;
+  gap: 10px;
+  padding: 12px;
+  border-radius: 18px;
+  background: var(--hairline-soft);
+  border: 1px solid var(--hairline);
+}
+.push-preview-icon {
+  flex: none;
+  width: 36px;
+  height: 36px;
+  border-radius: 9px;
+  background: var(--accent-brand);
+  color: var(--on-accent);
+  display: grid;
+  place-items: center;
+  font-weight: 700;
+}
+.push-preview-app {
+  font-size: 11px;
+  color: var(--mute);
+}
+.push-preview-title {
+  font-weight: 600;
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+.push-preview-body {
+  color: var(--body);
+  font-size: 13px;
+  line-height: 18px;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}

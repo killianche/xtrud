@@ -14,6 +14,31 @@ export function Catalog() {
   const [error, setError] = useState<string | null>(null);
   // id строки, по которой идёт действие: её кнопка заблокирована.
   const [busyId, setBusyId] = useState<string | null>(null);
+
+  const toggleOpen = async (r: CategoryRow) => {
+    const opening = !r.open_responses;
+    const reason = await confirm({
+      title: opening
+        ? `«${r.l2_name}»: откликаться может любой?`
+        : `«${r.l2_name}»: только специалисты категории?`,
+      text: opening
+        ? "Простые работы: откликнуться сможет любой вошедший, без категории в профиле."
+        : "Откликаться смогут только специалисты, у которых эта категория в профиле. Остальным приложение предложит её добавить.",
+      confirmLabel: "Сохранить",
+      reason: true,
+    });
+    if (!reason) return;
+    setBusyId(r.l2_id);
+    try {
+      await api.setCategoryOpenResponses(r.l2_id, opening, reason);
+      toast(opening ? "Отклик открыт всем" : "Отклик — только специалистам");
+      load();
+    } catch (e) {
+      toast(e instanceof Error ? e.message : "Не удалось изменить подраздел", true);
+    } finally {
+      setBusyId(null);
+    }
+  };
   const [search, setSearch] = useState("");
 
   const load = useCallback(() => {
@@ -77,9 +102,10 @@ export function Catalog() {
         />
       </div>
       <p className="body-sm text-mute" style={{ margin: "0 0 16px" }}>
-        Скрытый подраздел сразу пропадает из каталога и из выбора при создании задания. В старых
-        версиях приложения он может остаться в списке до обновления, но опубликовать задание в нём
-        не получится.
+        «Отклик: любой» — простые работы, откликнуться может любой вошедший. «Отклик: специалисты» —
+        только те, у кого эта категория в профиле. Скрытый подраздел пропадает из каталога и из
+        выбора при создании задания (в старых версиях приложения может остаться до обновления, но
+        опубликовать в нём не получится).
       </p>
       {error ? (
         <ErrorState message={error} onRetry={load} />
@@ -99,7 +125,7 @@ export function Catalog() {
                   <div
                     key={r.l2_id}
                     className="list-row"
-                    style={{ gridTemplateColumns: "minmax(0,1fr) 120px 120px auto" }}
+                    style={{ gridTemplateColumns: "minmax(0,1fr) 110px 120px auto auto" }}
                   >
                     <div style={{ minWidth: 0 }}>
                       <div
@@ -116,6 +142,19 @@ export function Catalog() {
                     <span className="cell-sub col-hide-sm">
                       {plural(r.masters, "специалист", "специалиста", "специалистов")}
                     </span>
+                    {r.open_responses === undefined ? (
+                      <span />
+                    ) : (
+                      <button
+                        type="button"
+                        className="btn btn-ghost"
+                        disabled={busyId === r.l2_id}
+                        onClick={() => void toggleOpen(r)}
+                        title="Кто может откликаться на задания этого подраздела"
+                      >
+                        {r.open_responses ? "Отклик: любой" : "Отклик: специалисты"}
+                      </button>
+                    )}
                     <button
                       type="button"
                       className={`btn ${r.is_visible ? "btn-ghost" : "btn-primary"}`}

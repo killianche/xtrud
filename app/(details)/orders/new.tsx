@@ -2,9 +2,17 @@
  * /orders/new — первый вопрос конструктора: «Какая категория?».
  *
  * DECISION владельца 2026-09-07: «в самом начале должен стоять выбор
- * категории». Как у TaskRabbit: сначала категория, потом описание. Список —
- * inset grouped по разделам каталога с поиском; выбранная строка — галочка.
- * Дальше — по одному вопросу на экран (src/features/task-composer/steps.ts).
+ * категории». Как у TaskRabbit: сначала категория, потом описание. Дальше —
+ * по одному вопросу на экран (src/features/task-composer/steps.ts).
+ *
+ * DECISION владельца 2026-10-04 (скриншот): единый длинный список всех
+ * подкатегорий со всех разделов и подпись «можно отметить до 3» — убраны.
+ * Выбор теперь в два этапа, как в «Настройках»: сначала раздел, тап по нему
+ * раскрывает его подкатегории на месте, тап по подкатегории выбирает её и
+ * сразу ведёт на следующий шаг. Категория — одна (см.
+ * `CategoryPickerTwoStep`, `category-picker.ts`); дополнительные категории
+ * (`extraL2Ids`, 0195) очищаются при выборе здесь, но остаются в данных
+ * для совместимости с публикацией и проверкой задания.
  *
  * Вход с главной приносит `?draft=` (текст из поля «Что нужно сделать») —
  * он станет названием. Возврат после входа гостя (auth-return) приводит
@@ -12,16 +20,17 @@
  */
 
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { View } from "react-native";
-import { PickerSections, type PickerSheetSection, SearchField } from "@/components/ui";
+import { SearchField } from "@/components/ui";
 import { ORDER_CREATE_RETURN_TO } from "@/features/auth/auth-return";
 import { useAuthSession } from "@/features/auth/use-auth-session";
 import { useUserRecord } from "@/features/auth/use-user-record";
 import { useCategoriesL1 } from "@/features/categories/use-categories-l1";
 import { useVisibleCategories } from "@/features/categories/use-visible-categories";
-import { MAX_TASK_CATEGORIES, toggleTaskCategory } from "@/features/orders/order-categories";
+import { CategoryPickerTwoStep } from "@/features/task-composer/CategoryPickerTwoStep";
 import { ComposerScreen } from "@/features/task-composer/ComposerScreen";
+import { findSectionIdForCategory } from "@/features/task-composer/category-picker";
 import { useComposer } from "@/features/task-composer/composer-store";
 import {
   COMPOSER_ROUTE,
@@ -31,9 +40,6 @@ import {
 } from "@/features/task-composer/steps";
 import { useStepNavigation } from "@/features/task-composer/use-step-navigation";
 import { useAuthReturnUrlStore } from "@/lib/auth-return-url-store";
-import { getCategoryIcon } from "@/lib/category-icons";
-import { hapticSelection, hapticWarning } from "@/lib/haptics";
-import { useThemeColors } from "@/lib/use-theme-color";
 
 export default function TaskCategoryScreen() {
   const router = useRouter();
@@ -41,12 +47,11 @@ export default function TaskCategoryScreen() {
   const composer = useComposer();
   const { values, patch } = composer;
   const nav = useStepNavigation("category");
-  const tc = useThemeColors(["ink"]);
   const { session } = useAuthSession();
   const userId = session?.user?.id;
   const { data: user } = useUserRecord(userId);
   const [query, setQuery] = useState("");
-  const [limitHint, setLimitHint] = useState(false);
+  const [openSectionId, setOpenSectionId] = useState<string | null>(null);
 
   // Текст с главной и категория из каталога применяются один раз.
   const appliedParamsRef = useRef(false);
@@ -78,51 +83,57 @@ export default function TaskCategoryScreen() {
 
   const l1 = useCategoriesL1();
   const categories = useVisibleCategories();
-  // Тот же список, что в шторках выбора категории (PickerSections): плитки
-  // иконок, галочка, поиск. Разделы каталога — группы; без «Весь раздел»:
-  // заданию нужна конкретная категория.
-  const sections = useMemo<PickerSheetSection[]>(() => {
-    const list: PickerSheetSection[] = [];
-    for (const section of l1.data ?? []) {
-      const inSection = (categories.data ?? []).filter((c) => c.l1_id === section.id);
-      if (inSection.length === 0) continue;
-      list.push({
-        id: section.id,
-        title: section.name_ru,
-        options: inSection.map((c) => {
-          const Icon = getCategoryIcon(c.icon);
-          return {
-            id: c.id,
-            title: c.name_ru,
-            icon: <Icon size={17} weight="bold" color={tc.ink} />,
-          };
-        }),
-      });
+
+  // Возврат к уже выбранной категории (редактирование, стала устаревшей) —
+  // её раздел раскрыт сразу, а не список разделов с нуля. Один раз: дальше
+  // разделом распоряжается сам человек.
+  const openedInitiallyRef = useRef(false);
+  useEffect(() => {
+    if (openedInitiallyRef.current || !composer.ready) return;
+    // values.l2Id ещё не дождался применения ?l2= из параметров (эффект
+    // выше) — смотрим и туда, чтобы не открыть список разделов на кадр
+    // раньше патча.
+    const initialL2Id = values.l2Id || (typeof params.l2 === "string" ? params.l2 : "");
+    if (!initialL2Id) {
+      openedInitiallyRef.current = true;
+      return;
     }
-    return list;
-  }, [categories.data, l1.data, tc.ink]);
+    const sectionId = findSectionIdForCategory(categories.data ?? [], initialL2Id);
+    if (!sectionId) return; // категории ещё не загрузились — подождём
+    openedInitiallyRef.current = true;
+    setOpenSectionId(sectionId);
+  }, [composer.ready, values.l2Id, params.l2, categories.data]);
+
+  const openSection = openSectionId ? (l1.data ?? []).find((s) => s.id === openSectionId) : null;
+
+  // Выбор подкатегории — сразу следующий шаг (владелец, 2026-10-04): «одно
+  // действие вместо отметить + Далее». Дополнительные категории (0195)
+  // очищаются — этот экран больше не предлагает их.
+  const onPick = (id: string) => {
+    patch({ l2Id: id, extraL2Ids: [] });
+    nav.goNext();
+  };
 
   if (!composer.ready) return null;
 
   return (
     <ComposerScreen
       step="category"
-      title="Какая категория?"
+      title={openSection?.name_ru ?? "Какая категория?"}
       subtitle={
-        params.stale === "1"
-          ? "Категория изменилась в каталоге — выберите её заново."
-          : `Можно отметить до ${MAX_TASK_CATEGORIES} — задание увидят специалисты каждой. Первая — основная.`
+        params.stale === "1" ? "Категория изменилась в каталоге — выберите её заново." : undefined
       }
-      onBack={nav.fromReview ? nav.goBack : undefined}
+      // Внутри раздела «Назад» возвращает к списку разделов, а не к
+      // предыдущему шагу — тот же круглый значок, без второй кнопки.
+      onBack={
+        openSectionId ? () => setOpenSectionId(null) : nav.fromReview ? nav.goBack : undefined
+      }
       onClose={nav.close}
+      // Кнопки «Далее» нет: выбор подраздела сам ведёт на следующий шаг.
+      hideActions
       primaryLabel={nav.primaryLabel}
       primaryDisabled={!isStepValid("category", values)}
       onPrimary={nav.goNext}
-      error={
-        limitHint
-          ? `Не больше ${MAX_TASK_CATEGORIES} категорий. Снимите одну, чтобы выбрать другую.`
-          : null
-      }
     >
       <View className="mb-5 px-4">
         <SearchField
@@ -133,26 +144,14 @@ export default function TaskCategoryScreen() {
           accessibilityLabel="Поиск категории"
         />
       </View>
-      {/* До трёх категорий (владелец, 2026-09-13): первая отмеченная —
-          основная, остальные — дополнительные (0195). */}
-      <PickerSections
-        sections={sections}
-        selectedId={values.l2Id || null}
-        multiSelect
-        selectedIds={[values.l2Id, ...values.extraL2Ids].filter(Boolean)}
-        onSelect={() => {}}
-        onToggle={(id) => {
-          const next = toggleTaskCategory(values, id);
-          if (!next) {
-            hapticWarning();
-            setLimitHint(true);
-            return;
-          }
-          hapticSelection();
-          setLimitHint(false);
-          patch(next);
-        }}
+      <CategoryPickerTwoStep
+        sections={l1.data ?? []}
+        categories={categories.data ?? []}
+        selectedL2Id={values.l2Id}
+        openSectionId={openSectionId}
+        onOpenSection={setOpenSectionId}
         query={query}
+        onPick={onPick}
         loading={categories.isLoading || l1.isLoading}
         errorMessage={
           categories.error || l1.error
@@ -163,7 +162,6 @@ export default function TaskCategoryScreen() {
           void categories.refetch();
           void l1.refetch();
         }}
-        emptyText="Ничего не нашли. Попробуйте другое слово."
       />
     </ComposerScreen>
   );

@@ -158,6 +158,14 @@ export function createXtrudClient(opts: XtrudClientOptions) {
       await sessions.set(session, "SIGNED_IN");
       return { data: { session, user: session.user }, error: null };
     },
+    /** Первый шаг входа: есть ли аккаунт с этим номером (№202). */
+    async phoneStatus(phone: string): Promise<{ exists: boolean | null; error: ApiError | null }> {
+      const { status, json } = await postJson("/v2/auth/phone-status", { phone }, false);
+      if (failed(status)) {
+        return { exists: null, error: toApiError(status, json, "Не удалось проверить номер") };
+      }
+      return { exists: (json as { exists?: unknown } | null)?.exists === true, error: null };
+    },
     /** «Забыли пароль?»: заявка «перезвоните мне» — без входа. */
     async requestRecovery(
       phone: string,

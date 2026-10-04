@@ -7,6 +7,7 @@ import { type ReactNode, useCallback, useEffect, useState } from "react";
 import { FeedbackProvider } from "./components/feedback";
 import { type Section, Shell, sectionLabel } from "./components/Shell";
 import { api, hasSession, logout } from "./lib/api";
+import { Broadcast } from "./pages/Broadcast";
 import { Catalog } from "./pages/Catalog";
 import { Journal } from "./pages/Journal";
 import { Login } from "./pages/Login";
@@ -111,6 +112,7 @@ export function App() {
     recovery: "recovery",
     catalog: "catalog",
     promo: "promo",
+    broadcast: "broadcast",
     settings: "settings",
     journal: "journal",
   };
@@ -162,6 +164,9 @@ export function App() {
         break;
       case "promo":
         page = <Promo />;
+        break;
+      case "broadcast":
+        page = <Broadcast />;
         break;
       default:
         page = <Overview navigate={navigate} />;

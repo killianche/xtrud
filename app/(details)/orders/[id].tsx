@@ -65,6 +65,7 @@ import {
 } from "@/features/orders/use-order-responses";
 import { useRejectResponse } from "@/features/orders/use-reject-response";
 import { canReopenOrder, useReopenOrder } from "@/features/orders/use-reopen-order";
+import { useRespondEligibility } from "@/features/orders/use-respond-eligibility";
 import { useMarkResponsesViewed } from "@/features/orders/use-unread-responses";
 import { useWithdrawResponse } from "@/features/orders/use-withdraw-response";
 import { ReportModal } from "@/features/reports/ReportModal";
@@ -124,6 +125,9 @@ export default function OrderDetailScreen() {
     order.status === "open" &&
     order.contact_mode !== "phone_open" &&
     (!userId || !myMasterResponseQ.data || myMasterResponseQ.data.status === "withdrawn");
+  // Право откликнуться по категории (0217): спрашиваем заранее, база всё
+  // равно проверит при отклике.
+  const eligibilityQ = useRespondEligibility(id, canRespond && !!userId);
   const [reportOpen, setReportOpen] = useState(false);
   // Шит выбора причины закрытия заказа («нашёл мастера» / «больше не нужно»).
   // Выбор причины закрытия («нашёл мастера» / «больше не нужно») теперь на
@@ -650,13 +654,35 @@ export default function OrderDetailScreen() {
             label={
               myMasterResponseQ.data?.status === "withdrawn" ? "Откликнуться снова" : "Откликнуться"
             }
-            onPress={() =>
+            onPress={() => {
+              // Специальная категория, которой нет в профиле, — системное
+              // окно с переходом к категориям (№203), а не ошибка после формы.
+              const e = eligibilityQ.data;
+              if (userId && e && !e.allowed) {
+                const name = e.categoryName ?? "этой категории";
+                Alert.alert(
+                  `Нужна категория «${name}»`,
+                  "Откликаться на такие задания могут специалисты этой категории. Добавьте её в профиль — это минута.",
+                  [
+                    { text: "Отмена", style: "cancel" },
+                    {
+                      text: "Добавить категорию",
+                      onPress: () =>
+                        router.push({
+                          pathname: "/profile/specialist/categories",
+                          params: e.categoryId ? { add: e.categoryId } : {},
+                        } as never),
+                    },
+                  ],
+                );
+                return;
+              }
               router.push(
                 (userId
                   ? { pathname: "/orders/respond", params: { orderId: id } }
                   : { pathname: "/orders/respond-auth", params: { orderId: id } }) as never,
-              )
-            }
+              );
+            }}
           />
         </View>
       ) : null}

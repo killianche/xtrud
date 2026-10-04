@@ -141,7 +141,8 @@ export default function RegisterScreen() {
     // Забираем один раз: следующий заход в регистрацию — с пустой формой.
     clearRegisterPrefill();
     // Пароль со входа короче 8 знаков — сразу показываем, что его поменять.
-    if (prefill) void trigger("password");
+    // С «Ваш номер» пароля ещё нет — ошибку до ввода не показываем.
+    if (prefill?.password) void trigger("password");
   }, [prefill, trigger]);
 
   const onSubmit = handleSubmit(async (values) => {
@@ -210,8 +211,10 @@ export default function RegisterScreen() {
           {prefill ? (
             <View className="mt-4 rounded-xl bg-canvas-soft px-4 py-3">
               <AppText accessibilityRole="alert" className="text-body-md text-body">
-                Аккаунта с номером +7 {formatRuPhone(prefill.phone)} ещё нет. Укажите имя — и он
-                будет создан.
+                Аккаунта с номером +7 {formatRuPhone(prefill.phone)} ещё нет.{" "}
+                {prefill.password
+                  ? "Укажите имя — и он будет создан."
+                  : "Укажите имя и придумайте пароль — и он будет создан."}
               </AppText>
             </View>
           ) : null}

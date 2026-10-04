@@ -18,6 +18,7 @@ export type Section =
   | "recovery"
   | "catalog"
   | "promo"
+  | "broadcast"
   | "settings"
   | "journal";
 
@@ -73,6 +74,7 @@ export const NAV: Array<{ title: string | null; items: NavItem[] }> = [
     items: [
       { id: "catalog", label: "Каталог", path: "/catalog", icon: Icon.grid },
       { id: "promo", label: "Реклама", path: "/promo", icon: Icon.image },
+      { id: "broadcast", label: "Рассылка", path: "/broadcast", icon: Icon.megaphone },
     ],
   },
   {

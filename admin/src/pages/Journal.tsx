@@ -38,6 +38,8 @@ export const ACTION_LABEL: Record<string, string> = {
   set_find_tiles: "Плитки «Найти задание»",
   broadcast_push: "Рассылка push",
   set_require_login: "Обязательный вход",
+  instagram_approve: "Instagram одобрен",
+  instagram_reject: "Instagram отклонён",
 };
 
 export function Journal() {

@@ -25,8 +25,8 @@ import { Pressable, View } from "react-native";
 import { AppText } from "@/components/AppText";
 import { ORDER_CREATE_RETURN_TO } from "@/features/auth/auth-return";
 import { RegisterFormFields } from "@/features/auth/RegisterFormFields";
-import { useRegister } from "@/features/auth/use-auth-mutations";
 import { useAuthSession } from "@/features/auth/use-auth-session";
+import { useRegisterWithCode } from "@/features/auth/use-register-with-code";
 import {
   normalizeRuPhoneDigits,
   type RegisterFormValues,
@@ -54,7 +54,8 @@ export default function TaskAccountScreen() {
   const { session } = useAuthSession();
   const userId = session?.user?.id;
   const publish = usePublishTask(mode, userId);
-  const register = useRegister();
+  // Подтверждение номера звонком — если сервер его требует (№206).
+  const register = useRegisterWithCode();
   const [serverError, setServerError] = useState<string | null>(null);
   const [acceptedTerms, setAcceptedTerms] = useState(true);
   const [started, setStarted] = useState(false);
@@ -110,12 +111,17 @@ export default function TaskAccountScreen() {
     const journey = beginGuestDraftAuthJourney();
     let registered = false;
     try {
-      const result = await register.mutateAsync({
+      const result = await register.run({
         phone: `+7${normalizeRuPhoneDigits(form.phone)}`,
         password: form.password,
         firstName: form.firstName,
         lastName: form.lastName,
       });
+      // Шторку звонка закрыли — форма снова доступна, черновик не трогаем.
+      if (!result) {
+        setStarted(false);
+        return;
+      }
       registered = true;
       registeredUid.current = result.userId;
       await completeGuestDraftAuthJourney(journey ?? undefined, result.userId);
@@ -183,6 +189,7 @@ export default function TaskAccountScreen() {
           </Pressable>
         </View>
       </View>
+      {register.sheet}
     </ComposerScreen>
   );
 }

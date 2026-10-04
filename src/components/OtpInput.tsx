@@ -76,7 +76,10 @@ export const OtpInput = forwardRef<OtpInputHandle, OtpInputProps>(function OtpIn
               key={i}
               className={`h-14 w-12 items-center justify-center rounded-md border bg-canvas ${boxBorder}`}
             >
-              <AppText weight="semibold" className="text-2xl text-ink">
+              {/* Ячейка фиксированного размера: без предела цифра на самых
+                  крупных accessibility-размерах вылезает за рамку. 24 pt × 1.6
+                  ≈ 38 pt — крупно и помещается (QA 2026-10-04). */}
+              <AppText weight="semibold" className="text-2xl text-ink" maxFontSizeMultiplier={1.6}>
                 {digit}
               </AppText>
             </View>

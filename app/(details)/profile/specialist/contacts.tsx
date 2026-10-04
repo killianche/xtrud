@@ -11,6 +11,12 @@ import { useAuthSession } from "@/features/auth/use-auth-session";
 import { useUserRecord } from "@/features/auth/use-user-record";
 import { normalizeLinkUrl } from "@/features/specialist/link-url";
 import {
+  isInstagramValid,
+  normalizeInstagram,
+  useMyInstagram,
+  useSubmitInstagram,
+} from "@/features/specialist/use-my-instagram";
+import {
   useMySpecialistProfile,
   useUpdateSpecialistContacts,
 } from "@/features/specialist/use-specialist";
@@ -36,6 +42,15 @@ export default function SpecialistContactsScreen() {
   const [same, setSame] = useState(false);
   // Соцсеть или сайт с работами (0188), по желанию.
   const [link, setLink] = useState("");
+  // Instagram — отдельно, с проверкой админом (0218, №207).
+  const insta = useMyInstagram(!!userId);
+  const submitInsta = useSubmitInstagram();
+  const [instagram, setInstagram] = useState<string | null>(null);
+  useEffect(() => {
+    if (instagram === null && insta.data) setInstagram(insta.data.handle ?? "");
+  }, [insta.data, instagram]);
+  const instaHandle = normalizeInstagram(instagram ?? "");
+  const instaChanged = instagram !== null && instaHandle !== (insta.data?.handle ?? "");
   useEffect(() => {
     if (phone === null && user && profile.data !== undefined) {
       setPhone(user.contact_phone ?? "");
@@ -54,15 +69,17 @@ export default function SpecialistContactsScreen() {
     phone.trim().length > 0 &&
     isPhoneAcceptable(phone) &&
     isPhoneAcceptable(wa) &&
-    linkUrl !== undefined;
+    linkUrl !== undefined &&
+    isInstagramValid(instaHandle);
   // Уйти с несохранёнными правками можно только осознанно (QA).
   const allowLeave = useUnsavedChangesGuard({
     hasUnsavedChanges:
       phone !== null &&
       (phone !== (user?.contact_phone ?? "") ||
         wa !== (profile.data?.whatsapp_phone ?? "") ||
-        link !== (profile.data?.link_url ?? "")),
-    isBusy: update.isPending,
+        link !== (profile.data?.link_url ?? "") ||
+        instaChanged),
+    isBusy: update.isPending || submitInsta.isPending,
   });
   const save = () => {
     if (!userId || phone === null || linkUrl === undefined) return;
@@ -75,7 +92,14 @@ export default function SpecialistContactsScreen() {
         linkUrl,
       },
       {
-        onSuccess: () => {
+        onSuccess: async () => {
+          if (instaChanged) {
+            try {
+              await submitInsta.mutateAsync(instaHandle);
+            } catch {
+              return; // ошибку покажет экран — остаёмся на нём
+            }
+          }
           allowLeave();
           router.back();
         },
@@ -90,8 +114,8 @@ export default function SpecialistContactsScreen() {
       primaryLabel="Готово"
       onPrimary={save}
       primaryDisabled={!valid}
-      busy={update.isPending}
-      error={update.error ? "Не удалось сохранить. Попробуйте ещё раз." : null}
+      busy={update.isPending || submitInsta.isPending}
+      error={update.error || submitInsta.error ? "Не удалось сохранить. Попробуйте ещё раз." : null}
     >
       <ComposerField
         label="Телефон"
@@ -124,17 +148,43 @@ export default function SpecialistContactsScreen() {
         />
       )}
       <ComposerField
+        label="Instagram*"
+        value={instagram ?? ""}
+        onChangeText={setInstagram}
+        placeholder="@ваш_профиль"
+        autoCapitalize="none"
+        autoCorrect={false}
+        error={isInstagramValid(instaHandle) ? null : "Только латиница, цифры, точка и «_»"}
+        hint={instagramHint(insta.data?.status, insta.data?.reason ?? null, instaChanged)}
+        accessibilityLabel="Instagram"
+      />
+      <ComposerField
         label="Ссылка"
         value={link}
         onChangeText={setLink}
-        placeholder="instagram.com/ваш_профиль"
+        placeholder="сайт с вашими работами"
         keyboardType="url"
         textContentType="URL"
         autoCapitalize="none"
         autoCorrect={false}
-        error={linkUrl === undefined ? "Проверьте ссылку: например, instagram.com/имя" : null}
+        error={linkUrl === undefined ? "Проверьте ссылку: например, site.ru" : null}
         accessibilityLabel="Ссылка на соцсеть или сайт"
       />
     </FormScreen>
   );
+}
+
+/** Статус проверки Instagram под полем; плюс обязательная пометка о Meta. */
+function instagramHint(
+  status: string | undefined,
+  reason: string | null,
+  changed: boolean,
+): string {
+  const meta =
+    "*Instagram принадлежит Meta — организация признана экстремистской и запрещена в России.";
+  if (changed) return `Покажем в профиле после проверки. ${meta}`;
+  if (status === "pending") return `На проверке — появится в профиле после неё. ${meta}`;
+  if (status === "approved") return `Проверен и показан в профиле. ${meta}`;
+  if (status === "rejected") return `Не прошёл проверку${reason ? `: ${reason}` : ""}. ${meta}`;
+  return `Добавьте — покажем в профиле, когда проверим. ${meta}`;
 }

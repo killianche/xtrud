@@ -9,6 +9,7 @@ import { type Section, Shell, sectionLabel } from "./components/Shell";
 import { api, hasSession, logout } from "./lib/api";
 import { Broadcast } from "./pages/Broadcast";
 import { Catalog } from "./pages/Catalog";
+import { Instagram } from "./pages/Instagram";
 import { Journal } from "./pages/Journal";
 import { Login } from "./pages/Login";
 import { Masters } from "./pages/Masters";
@@ -110,6 +111,7 @@ export function App() {
     reports: "reports",
     verifications: "verifications",
     recovery: "recovery",
+    instagram: "instagram",
     catalog: "catalog",
     promo: "promo",
     broadcast: "broadcast",
@@ -152,6 +154,9 @@ export function App() {
         break;
       case "recovery":
         page = <Recovery onOpen={openUser} />;
+        break;
+      case "instagram":
+        page = <Instagram onOpen={openUser} />;
         break;
       case "catalog":
         page = <Catalog />;

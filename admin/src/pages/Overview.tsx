@@ -49,6 +49,12 @@ export function Overview({ navigate }: { navigate: (path: string) => void }) {
           path: "/recovery",
         },
         {
+          label: "Instagram",
+          value: attention.instagram_pending ?? 0,
+          hint: "на проверке",
+          path: "/instagram",
+        },
+        {
           label: "Паспорта",
           value: attention.verifications_pending,
           hint: "на проверке",

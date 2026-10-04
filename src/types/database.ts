@@ -412,6 +412,7 @@ export type Database = {
           is_hidden_from_search: boolean
           languages: string[]
           legal_name: string | null
+          instagram: string | null
           link_url: string | null
           ogrn: string | null
           ranking_score: number
@@ -1846,6 +1847,9 @@ export type Database = {
       get_order_limits: { Args: never; Returns: Json }
       /** Флаги интерфейса (0205, 0216): find_screen — старые сборки, find_tiles — плитки «Найти задание». */
       get_app_flags: { Args: never; Returns: Json }
+      /** Instagram специалиста (0218). */
+      my_instagram: { Args: never; Returns: Json }
+      submit_instagram: { Args: { p_handle: string }; Returns: Json }
       /** Можно ли откликнуться: категория открыта всем или есть в профиле (0217). */
       can_respond_to_order: { Args: { p_order_id: string }; Returns: Json }
       admin_set_order_limits: {

@@ -52,6 +52,14 @@ const schema = z.object({
   S3_BUCKET: z.string().min(1).optional(),
   S3_ACCESS_KEY: z.string().min(16).optional(),
   S3_SECRET_KEY: z.string().min(16).optional(),
+  /**
+   * Подтверждение номера обратным звонком SMS.ru (№209): человек звонит на
+   * бесплатный номер. Без ключа регистрация идёт без подтверждения.
+   */
+  SMSRU_API_ID: z.string().min(20).optional(),
+  /** Потолок новых проверок на весь сервер — сутки и час (всплеск). */
+  CALLCHECK_DAILY_CAP: z.coerce.number().int().min(1).default(300),
+  CALLCHECK_HOURLY_CAP: z.coerce.number().int().min(1).default(60),
 });
 
 export type Config = z.infer<typeof schema>;

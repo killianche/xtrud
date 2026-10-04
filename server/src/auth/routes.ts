@@ -6,9 +6,11 @@ import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import type { Config } from "../config.js";
 import { type Db, pgErrorToHttp } from "../db.js";
+import { CallChecks, type PendingCheck } from "./call-checks.js";
 import { hashRefresh, newRefreshToken, type Tokens } from "./jwt.js";
 import { FailureWindow, LoginAttempts, loginAttemptKey } from "./login-attempts.js";
 import { canonicalPhone, isPhoneLogin, phoneKey, phoneToAuthEmail } from "./phone.js";
+import type { CallCheckProvider } from "./smsru-callcheck.js";
 
 const registerSchema = z.object({
   firstName: z.string().trim().min(1).max(60),
@@ -18,7 +20,24 @@ const registerSchema = z.object({
   // 8 знаков — как в приложении (2026-09-12). Вход старых паролей
   // не ломается: при входе длина не проверяется.
   password: z.string().min(8).max(200),
+  /** Подтверждение номера обратным звонком (/auth/call/status), если включено. */
+  verificationToken: z.string().min(20).max(100).optional(),
 });
+const callStartSchema = z.object({
+  phone: z.string().trim().min(10).max(20),
+  secret: z.string().max(64).optional(),
+});
+const callStatusSchema = z.object({
+  phone: z.string().trim().min(10).max(20),
+  secret: z.string().min(16).max(64),
+});
+/** Звонок — только на мобильные номера России. */
+const RU_MOBILE = /^\+79\d{9}$/;
+const CALL_LIMIT_TEXT: Record<"phone_daily" | "ip_hourly" | "global", string> = {
+  phone_daily: "Для этого номера сегодня уже много попыток. Попробуйте завтра.",
+  ip_hourly: "Слишком много запросов. Попробуйте через час.",
+  global: "Подтверждение звонком временно недоступно. Попробуйте позже.",
+};
 const loginSchema = z.object({
   login: z.string().trim().min(3).max(120),
   password: z.string().min(1).max(200),
@@ -70,7 +89,11 @@ export function registerAuthRoutes(
   loginAttempts: LoginAttempts = new LoginAttempts(),
   recoveryWindow: FailureWindow = new FailureWindow(RECOVERY_PER_IP, RECOVERY_WINDOW_MS),
   phoneStatusWindow: FailureWindow = new FailureWindow(PHONE_STATUS_PER_IP, RECOVERY_WINDOW_MS),
+  callProvider: CallCheckProvider | null = null,
+  calls: CallChecks = new CallChecks(cfg.CALLCHECK_DAILY_CAP, cfg.CALLCHECK_HOURLY_CAP),
 ) {
+  // С ключом SMS.ru регистрация требует подтверждения номера звонком.
+  const callRequired = callProvider !== null;
   const issueSession = async (user: AuthUserRow) => {
     const refresh = newRefreshToken();
     const sessionId = await db.asService(async (c) => {
@@ -117,6 +140,21 @@ export function registerAuthRoutes(
     const phone = canonicalPhone(input.phone);
     const key = phoneKey(phone);
     if (!key) return reply.code(422).send({ error: "Введите номер полностью" });
+    if (callRequired) {
+      if (!RU_MOBILE.test(phone)) {
+        return reply.code(422).send({
+          error: "Регистрация — по мобильному номеру России",
+          code: "phone_not_supported",
+        });
+      }
+      // Подтверждение — для полного номера; без него — только старые сборки.
+      if (!(input.verificationToken && calls.tokenValid(input.verificationToken, phone))) {
+        return reply.code(428).send({
+          error: "Подтвердите номер звонком. Если такого шага не было — обновите приложение.",
+          code: "phone_verification_required",
+        });
+      }
+    }
     const email = phoneToAuthEmail(phone, cfg.PHONE_EMAIL_DOMAIN);
     const hash = await bcrypt.hash(input.password, 10);
     try {
@@ -134,10 +172,16 @@ export function registerAuthRoutes(
         if (!row) throw new Error("register failed");
         return row;
       });
+      // Аккаунт записан — подтверждение номера израсходовано.
+      if (input.verificationToken) calls.consumeToken(input.verificationToken, phone);
       return reply.code(201).send(await issueSession(user));
     } catch (e) {
       const http = pgErrorToHttp(e);
       req.log.error({ err: e }, "register failed");
+      // Номер уже занят — подтверждение больше ни к чему.
+      if (http.status === 409 && input.verificationToken) {
+        calls.consumeToken(input.verificationToken, phone);
+      }
       // Наружу — только заготовленный текст «номер уже занят»; остальное общее.
       return reply
         .code(http.status)
@@ -238,6 +282,132 @@ export function registerAuthRoutes(
     const user = await findByLogin(phone);
     return reply.send({ exists: user !== null });
   });
+
+  /** Что включено: приложение по этому решает, спрашивать ли звонок. */
+  app.get("/auth/options", async () => ({ phoneCallAtRegistration: callRequired }));
+
+  /** Выдать номер, на который человек позвонит для подтверждения (№209). */
+  app.post("/auth/call/start", async (req, reply) => {
+    if (!callProvider) {
+      return reply
+        .code(503)
+        .send({ error: "Подтверждение звонком выключено", code: "call_disabled" });
+    }
+    const parsed = callStartSchema.safeParse(req.body);
+    if (!parsed.success) return reply.code(422).send({ error: "Введите номер полностью" });
+    const phone = canonicalPhone(parsed.data.phone);
+    if (!RU_MOBILE.test(phone)) {
+      return reply.code(422).send({
+        error: "Подтверждаем только мобильные номера России",
+        code: "phone_not_supported",
+      });
+    }
+    // Ответ «номер занят» — под тем же лимитом, что проверка номера (ревью L1).
+    if (phoneStatusWindow.blocked(req.ip)) {
+      return reply.code(429).send({
+        error: "Слишком много попыток. Попробуйте через час.",
+        code: "phone_status_rate_limited",
+      });
+    }
+    phoneStatusWindow.fail(req.ip);
+    if (await findByLogin(phone)) {
+      return reply
+        .code(409)
+        .send({ error: "Этот номер уже зарегистрирован. Войдите.", code: "phone_taken" });
+    }
+    const now = Date.now();
+    const toClient = (c: PendingCheck) => ({
+      secret: c.secret,
+      callPhone: c.callPhone,
+      callPhonePretty: c.callPhonePretty,
+      expiresInSec: Math.max(1, Math.round((c.expiresAt - now) / 1000)),
+    });
+    // Номер уже выдан и ещё действует: тому же клиенту — тот же номер, другому —
+    // отказ до конца срока (см. call-checks.ts, «привязка к тому, кто начал»).
+    const existing = calls.active(phone);
+    if (existing) {
+      if (calls.owns(existing, parsed.data.secret)) return reply.send(toClient(existing));
+      const retryInSec = Math.max(1, Math.ceil((existing.expiresAt - now) / 1000));
+      req.log.info({ tail: phone.slice(-2) }, "call check busy");
+      return reply.code(429).send({
+        error: `Этот номер уже ждёт звонка. Попробуйте через ${Math.ceil(retryInSec / 60)} мин.`,
+        code: "call_busy",
+        retryInSec,
+      });
+    }
+    const can = calls.canStart(phone, req.ip);
+    if (!can.ok) {
+      req.log.warn({ reason: can.reason, tail: phone.slice(-2) }, "call check limited");
+      return reply
+        .code(429)
+        .send({ error: CALL_LIMIT_TEXT[can.reason], code: "call_rate_limited" });
+    }
+    calls.countStart(phone, req.ip);
+    const added = await callProvider.add(phone, req.ip || null);
+    if (!added.ok) {
+      req.log.warn(
+        { reason: added.reason, code: added.code, tail: phone.slice(-2) },
+        "call check start failed",
+      );
+      calls.forget(phone);
+      return reply.code(added.reason === "invalid_number" ? 422 : 503).send({
+        error:
+          added.reason === "invalid_number"
+            ? "Этот номер не подходит. Проверьте его."
+            : "Подтверждение звонком сейчас недоступно. Попробуйте через минуту.",
+        code: added.reason === "invalid_number" ? "phone_invalid" : "call_unavailable",
+      });
+    }
+    const entry = calls.remember(phone, {
+      checkId: added.checkId,
+      callPhone: added.callPhone,
+      callPhonePretty: added.callPhonePretty,
+    });
+    return reply.send(toClient(entry));
+  });
+
+  /**
+   * Был ли звонок: приложение спрашивает раз в 3 с. Свой лимит: общий
+   * лимит /auth (20 в минуту с адреса) опрос выбрал бы за минуту и закрыл
+   * вход соседям за тем же адресом оператора (ревью M1). К SMS.ru — не чаще
+   * раза в 2 с на номер (shouldPoll).
+   */
+  app.post(
+    "/auth/call/status",
+    { config: { rateLimit: { max: 120, timeWindow: "1 minute" } } },
+    async (req, reply) => {
+      if (!callProvider) {
+        return reply
+          .code(503)
+          .send({ error: "Подтверждение звонком выключено", code: "call_disabled" });
+      }
+      const parsed = callStatusSchema.safeParse(req.body);
+      if (!parsed.success) return reply.code(422).send({ error: "Введите номер полностью" });
+      const phone = canonicalPhone(parsed.data.phone);
+      const entry = calls.active(phone);
+      if (!entry || !calls.owns(entry, parsed.data.secret)) {
+        return reply
+          .code(410)
+          .send({ error: "Время вышло — получите новый номер", code: "call_expired" });
+      }
+      if (!calls.shouldPoll(entry)) return reply.send({ confirmed: false });
+      const status = await callProvider.status(entry.checkId);
+      if (status === "confirmed") {
+        return reply.send({ confirmed: true, verificationToken: calls.confirm(phone) });
+      }
+      if (status === "expired") {
+        calls.forget(phone);
+        return reply
+          .code(410)
+          .send({ error: "Время вышло — получите новый номер", code: "call_expired" });
+      }
+      if (status === "provider_error") {
+        req.log.warn({ tail: phone.slice(-2) }, "call check status: provider error");
+      }
+      // Сбой провайдера — тоже «ждём»: следующий опрос спросит снова.
+      return reply.send({ confirmed: false });
+    },
+  );
 
   app.post("/auth/refresh", async (req, reply) => {
     const parsed = refreshSchema.safeParse(req.body);

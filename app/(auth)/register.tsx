@@ -29,7 +29,7 @@ import { SystemIcon } from "@/components/ui/SystemIcon";
 import { ORDER_CREATE_RETURN_TO, parseAuthReturnTo } from "@/features/auth/auth-return";
 import { formatRuPhone, RegisterFormFields } from "@/features/auth/RegisterFormFields";
 import { clearRegisterPrefill, peekRegisterPrefill } from "@/features/auth/register-prefill";
-import { useRegister } from "@/features/auth/use-auth-mutations";
+import { useRegisterWithCode } from "@/features/auth/use-register-with-code";
 import {
   normalizeRuPhoneDigits,
   type RegisterFormValues,
@@ -63,7 +63,8 @@ export default function RegisterScreen() {
   const rawAuthOrigin = Array.isArray(params.authOrigin) ? params.authOrigin[0] : params.authOrigin;
   const authOrigin: GuestDraftAuthOrigin =
     rawAuthOrigin === "phone" || rawAuthOrigin === "sheet" ? rawAuthOrigin : null;
-  const register = useRegister();
+  // Подтверждение номера звонком — если сервер его требует (№206).
+  const register = useRegisterWithCode();
   const [serverError, setServerError] = useState<string | null>(null);
   const [_showPassword, _setShowPassword] = useState(false);
   // Галочка стоит сразу (DECISION владельца 2026-09-12: «ставь»): человек
@@ -150,12 +151,14 @@ export default function RegisterScreen() {
     const phone = `+7${normalizeRuPhoneDigits(values.phone)}`;
     setServerError(null);
     try {
-      const result = await register.mutateAsync({
+      const result = await register.run({
         phone,
         password: values.password,
         firstName: values.firstName,
         lastName: values.lastName,
       });
+      // Шторку звонка закрыли — остаёмся на форме.
+      if (!result) return;
       await completeGuestDraftAuthJourney(draftJourney, result.userId);
       const returnUrl = useAuthReturnUrlStore.getState().peekReturnUrl();
       if (returnUrl) {
@@ -276,6 +279,7 @@ export default function RegisterScreen() {
           </View>
         </View>
       </ScrollView>
+      {register.sheet}
     </KeyboardAvoidingView>
   );
 }

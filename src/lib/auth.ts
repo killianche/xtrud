@@ -86,15 +86,17 @@ export async function registerWithCredentials(input: {
   password: string;
   firstName: string;
   lastName: string;
-}): Promise<{ ok: true; userId: string } | { ok: false; error: string }> {
+  verificationToken?: string;
+}): Promise<{ ok: true; userId: string } | { ok: false; error: string; code?: string }> {
   const { data, error } = await supabase.auth.register({
     firstName: input.firstName.trim(),
     lastName: input.lastName.trim(),
     phone: normalizePhone(input.phone),
     password: input.password,
+    ...(input.verificationToken ? { verificationToken: input.verificationToken } : {}),
   });
   if (error || !data.user) {
-    return { ok: false, error: error?.message ?? "Не удалось создать аккаунт" };
+    return { ok: false, error: error?.message ?? "Не удалось создать аккаунт", code: error?.code };
   }
   return { ok: true, userId: data.user.id };
 }

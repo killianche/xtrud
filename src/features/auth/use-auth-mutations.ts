@@ -28,6 +28,8 @@ export interface RegisterInput {
   password: string;
   firstName: string;
   lastName: string;
+  /** Подтверждение номера обратным звонком (CallConfirmSheet), если сервер требует. */
+  verificationToken?: string;
 }
 
 /** Регистрация: телефон + пароль. Адрес для auth строится из номера. */
@@ -36,7 +38,8 @@ export function useRegister() {
     mutationFn: async (input: RegisterInput): Promise<{ ok: true; userId: string }> => {
       const result = await registerWithCredentials(input);
       if (!result.ok) {
-        throw new Error(result.error);
+        // code нужен: phone_verification_required — сервер включил звонок.
+        throw Object.assign(new Error(result.error), { code: result.code });
       }
       return { ok: true, userId: result.userId };
     },

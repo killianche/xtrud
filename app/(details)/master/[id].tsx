@@ -13,7 +13,7 @@
 
 import { Image as ExpoImage } from "expo-image";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { DotsThree, LinkSimple, Star } from "phosphor-react-native";
+import { DotsThree, InstagramLogo, LinkSimple, Star } from "phosphor-react-native";
 import { useEffect, useMemo, useState } from "react";
 import { ActionSheetIOS, Alert, Animated, Pressable, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -349,6 +349,23 @@ export default function MasterPublicScreen() {
             {m?.bio?.trim() ? (
               <InsetGroup title="О себе">
                 <AppText className="px-4 py-3.5 text-ios-body text-ink">{m.bio.trim()}</AppText>
+              </InsetGroup>
+            ) : null}
+
+            {/* Instagram — только проверенный админом (0218, №207). Пометка о
+                Meta — обязательная при упоминании в России. */}
+            {m?.instagram ? (
+              <InsetGroup
+                title="Instagram*"
+                footer="*Instagram принадлежит Meta — организация признана экстремистской и запрещена в России."
+              >
+                <InsetRow
+                  title={`@${m.instagram}`}
+                  icon={<InstagramLogo size={18} weight="bold" color={tc.ink} />}
+                  navigates
+                  onPress={() => openExternalUrl(`https://instagram.com/${m.instagram}`)}
+                  last
+                />
               </InsetGroup>
             ) : null}
 

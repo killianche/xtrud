@@ -192,6 +192,18 @@ export interface Attention {
   verifications_pending: number;
   recovery_new: number;
   masters_pending: number;
+  /** Заявки Instagram на проверке (0218). */
+  instagram_pending?: number;
+}
+
+export interface InstagramRequestRow {
+  user_id: string;
+  user_label: string | null;
+  handle: string;
+  status: "pending" | "approved" | "rejected";
+  reason: string | null;
+  submitted_at: string;
+  reviewed_at: string | null;
 }
 
 /** Динамика по дням (admin_metrics_series, 0215). */
@@ -416,6 +428,9 @@ function describe(error: { message?: string; code?: string } | null): string {
   if (message.includes("bad_visible")) return "Не указано, показать или скрыть.";
   if (message.includes("category_not_found")) return "Подраздел не найден.";
   if (message.includes("request_not_open")) return "Заявка уже закрыта.";
+  if (message.includes("request_changed")) {
+    return "Специалист успел изменить Instagram — обновите список и проверьте новое имя.";
+  }
   if (message.includes("broadcast_too_soon")) {
     return "Рассылку можно отправлять не чаще раза в 10 минут.";
   }
@@ -597,6 +612,15 @@ export const api = {
       p_report_id: reportId,
     }),
   attention: () => rpc<Attention>("admin_attention"),
+  listInstagramRequests: (status: "pending" | null) =>
+    rpc<InstagramRequestRow[]>("admin_list_instagram_requests", { p_status: status, p_limit: 100 }),
+  reviewInstagram: (userId: string, handle: string, approve: boolean, reason: string) =>
+    rpc<void>("admin_review_instagram", {
+      p_user_id: userId,
+      p_handle: handle,
+      p_approve: approve,
+      p_reason: reason,
+    }),
   metricsSeries: (days = 30) => rpc<SeriesPoint[]>("admin_metrics_series", { p_days: days }),
   listOrders: (search: string, status: string | null, limit = 50, offset = 0) =>
     rpc<OrderRow[]>("admin_list_orders", {

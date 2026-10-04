@@ -70,6 +70,11 @@ export const RPC_ALLOWLIST = new Set([
   "admin_set_category_open_responses",
   "can_respond_to_order",
   "admin_set_require_login",
+  // 0218: Instagram специалиста.
+  "submit_instagram",
+  "my_instagram",
+  "admin_list_instagram_requests",
+  "admin_review_instagram",
   "admin_set_user_status",
   "admin_warn_user",
   "admin_set_user_password",

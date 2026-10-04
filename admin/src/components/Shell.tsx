@@ -16,6 +16,7 @@ export type Section =
   | "reports"
   | "verifications"
   | "recovery"
+  | "instagram"
   | "catalog"
   | "promo"
   | "broadcast"
@@ -66,6 +67,13 @@ export const NAV: Array<{ title: string | null; items: NavItem[] }> = [
         path: "/recovery",
         icon: Icon.phone,
         count: (a) => a.recovery_new,
+      },
+      {
+        id: "instagram",
+        label: "Instagram",
+        path: "/instagram",
+        icon: Icon.image,
+        count: (a) => a.instagram_pending ?? 0,
       },
     ],
   },
@@ -186,7 +194,10 @@ export function Shell({
     }
   };
   const totalQueue = attention
-    ? attention.reports_open + attention.verifications_pending + attention.recovery_new
+    ? attention.reports_open +
+      attention.verifications_pending +
+      attention.recovery_new +
+      (attention.instagram_pending ?? 0)
     : 0;
 
   return (

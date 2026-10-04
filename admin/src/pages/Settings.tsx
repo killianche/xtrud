@@ -156,54 +156,7 @@ function FlagCards() {
       </div>
     );
   }
-  return (
-    <>
-      <RequireLoginCard flags={flags} onChange={setFlags} />
-      <FindTilesCard flags={flags} onChange={setFlags} />
-    </>
-  );
-}
-
-/** Вид плиток «Найти задание» (флаг find_tiles): примерить мозаику и вернуть
- *  сетку одним нажатием — без новой сборки приложения. */
-function FindTilesCard({ flags, onChange }: { flags: Flags | null; onChange: (f: Flags) => void }) {
-  const { toast } = useFeedback();
-  const [busy, setBusy] = useState(false);
-  const variant = flags ? (flags.find_tiles === "mosaic" ? "mosaic" : "grid") : null;
-  const change = async (next: "mosaic" | "grid") => {
-    if (busy || next === variant) return;
-    setBusy(true);
-    try {
-      onChange({ ...flags, ...(await api.setFindTiles(next)) });
-      toast(next === "mosaic" ? "Включена мозаика" : "Включена сетка");
-    } catch (e) {
-      toast(e instanceof Error ? e.message : "Не удалось сохранить", true);
-    } finally {
-      setBusy(false);
-    }
-  };
-  return (
-    <div className="card stack" style={{ maxWidth: 520 }}>
-      <p className="mono-eyebrow">Плитки «Найти задание»</p>
-      <p className="body-md text-mute" style={{ margin: 0 }}>
-        Мозаика — первые шесть разделов крупно, остальные мельче. Сетка — все разделы одинаковыми
-        карточками. В приложении меняется при следующем открытии экрана; старые версии приложения
-        всегда показывают сетку.
-      </p>
-      {variant === null ? (
-        <SkeletonRows count={1} height={36} />
-      ) : (
-        <Segmented
-          value={variant}
-          options={[
-            { value: "mosaic", label: "Мозаика" },
-            { value: "grid", label: "Сетка" },
-          ]}
-          onChange={(v) => void change(v)}
-        />
-      )}
-    </div>
-  );
+  return <RequireLoginCard flags={flags} onChange={setFlags} />;
 }
 
 /** Обязательный вход (флаг require_login): приложение сразу просит номер и

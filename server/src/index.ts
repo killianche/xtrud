@@ -3,6 +3,7 @@ import rateLimit from "@fastify/rate-limit";
 import Fastify from "fastify";
 import { Tokens } from "./auth/jwt.js";
 import { registerAuthRoutes } from "./auth/routes.js";
+import { SmsRuCallCheck } from "./auth/smsru-callcheck.js";
 import { apnsConfigured, loadConfig, rustorePushConfigured, s3Configured } from "./config.js";
 import { Db } from "./db.js";
 import { EventHub } from "./events/hub.js";
@@ -94,6 +95,7 @@ app.get("/v2/health", async () => {
     push: apns !== null,
     pushAndroid: rustorePush !== null,
     storage: s3 === null ? "disk" : "s3",
+    phoneCall: cfg.SMSRU_API_ID !== undefined,
   };
 });
 
@@ -101,7 +103,10 @@ await app.register(
   async (scope) => {
     await scope.register(async (authScope) => {
       await authScope.register(rateLimit, { max: 20, timeWindow: "1 minute" });
-      registerAuthRoutes(authScope, db, tokens, cfg);
+      // Подтверждение номера обратным звонком — только с ключом SMS.ru (№209).
+      const callProvider =
+        cfg.SMSRU_API_ID !== undefined ? new SmsRuCallCheck(cfg.SMSRU_API_ID) : null;
+      registerAuthRoutes(authScope, db, tokens, cfg, undefined, undefined, undefined, callProvider);
     });
     registerRpcRoutes(scope, db, tokens);
     registerEventRoutes(scope, tokens, hub);

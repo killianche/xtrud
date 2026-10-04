@@ -18,12 +18,10 @@ import { SearchField } from "@/components/ui/SearchField";
 import { useAuthSession } from "@/features/auth/use-auth-session";
 import { CategoryMatches } from "@/features/categories/CategoryMatches";
 import { SectionGrid, SectionGridSkeleton } from "@/features/categories/SectionGrid";
-import { SectionMosaic } from "@/features/categories/SectionMosaic";
 import { useCategoriesL1 } from "@/features/categories/use-categories-l1";
 import { useVisibleCategories } from "@/features/categories/use-visible-categories";
 import { useOrdersSearchFiltersStore } from "@/features/orders/orders-search-filters-store";
 import { useMarkFeedSeen } from "@/features/orders/use-unread-feed";
-import { useAppFlags } from "@/features/settings/use-app-flags";
 import { useTabBarSpace } from "@/lib/tab-bar-space";
 
 export function FindHome({
@@ -46,8 +44,6 @@ export function FindHome({
     if (userId) markSeen();
   }, [userId, markSeen]);
 
-  // Вид плиток — флаг из админки (find_tiles): мозаика или прежняя сетка.
-  const { findTiles } = useAppFlags();
   const l1 = useCategoriesL1();
   const categories = useVisibleCategories();
 
@@ -101,15 +97,12 @@ export function FindHome({
           />
         </InsetGroup>
       ) : (
-        (() => {
-          const openSection = (l1Id: string) =>
-            router.push({ pathname: "/find/section", params: { l1: l1Id } } as never);
-          return findTiles === "mosaic" ? (
-            <SectionMosaic tiles={tiles} onPress={openSection} />
-          ) : (
-            <SectionGrid tiles={tiles} onPress={openSection} />
-          );
-        })()
+        <SectionGrid
+          tiles={tiles}
+          onPress={(l1Id) =>
+            router.push({ pathname: "/find/section", params: { l1: l1Id } } as never)
+          }
+        />
       )}
     </Animated.ScrollView>
   );

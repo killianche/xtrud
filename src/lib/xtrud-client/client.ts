@@ -146,6 +146,8 @@ export function createXtrudClient(opts: XtrudClientOptions) {
       lastName: string;
       phone: string;
       password: string;
+      /** Подтверждение номера звонком, если сервер его требует (№206). */
+      verificationToken?: string;
     }): Promise<AuthResult> {
       const { status, json } = await postJson("/v2/auth/register", input, false);
       if (failed(status)) {
@@ -157,6 +159,73 @@ export function createXtrudClient(opts: XtrudClientOptions) {
       const session = sessionFromTokens(json as Parameters<typeof sessionFromTokens>[0]);
       await sessions.set(session, "SIGNED_IN");
       return { data: { session, user: session.user }, error: null };
+    },
+    /** Что включено на сервере: подтверждение номера звонком при регистрации. */
+    async options(): Promise<{ phoneCallAtRegistration: boolean }> {
+      try {
+        const res = await fetchImpl(`${baseUrl}/v2/auth/options`);
+        if (!res.ok) throw new Error(String(res.status));
+        const j = (await res.json()) as Record<string, unknown>;
+        return { phoneCallAtRegistration: j.phoneCallAtRegistration === true };
+      } catch {
+        // Старый сервер или нет связи — как без подтверждения; если сервер
+        // всё же требует его, регистрация ответит 428 и шаг откроется.
+        return { phoneCallAtRegistration: false };
+      }
+    },
+    /**
+     * Обратный звонок (№209): номер, на который человек звонит со своего
+     * телефона. secret — от прошлого ответа: тот же клиент получает тот же
+     * номер, пока он действует.
+     */
+    async callStart(
+      phone: string,
+      secret?: string,
+    ): Promise<
+      | {
+          call: {
+            secret: string;
+            callPhone: string;
+            callPhonePretty: string;
+            expiresInSec: number;
+          };
+        }
+      | { call: null; error: ApiError; retryInSec?: number }
+    > {
+      const { status, json } = await postJson("/v2/auth/call/start", { phone, secret }, false);
+      const j = (json ?? {}) as Record<string, unknown>;
+      if (
+        failed(status) ||
+        typeof j.secret !== "string" ||
+        typeof j.callPhone !== "string" ||
+        typeof j.callPhonePretty !== "string"
+      ) {
+        return {
+          call: null,
+          error: toApiError(status, json, "Не удалось получить номер"),
+          retryInSec: typeof j.retryInSec === "number" ? j.retryInSec : undefined,
+        };
+      }
+      return {
+        call: {
+          secret: j.secret,
+          callPhone: j.callPhone,
+          callPhonePretty: j.callPhonePretty,
+          expiresInSec: typeof j.expiresInSec === "number" ? j.expiresInSec : 300,
+        },
+      };
+    },
+    /** Был ли звонок: при подтверждении — одноразовый токен для регистрации. */
+    async callStatus(
+      phone: string,
+      secret: string,
+    ): Promise<{ token: string | null; error: ApiError | null }> {
+      const { status, json } = await postJson("/v2/auth/call/status", { phone, secret }, false);
+      if (failed(status)) {
+        return { token: null, error: toApiError(status, json, "Не удалось проверить звонок") };
+      }
+      const token = (json as { verificationToken?: unknown } | null)?.verificationToken;
+      return { token: typeof token === "string" ? token : null, error: null };
     },
     /** Первый шаг входа: есть ли аккаунт с этим номером (№202). */
     async phoneStatus(phone: string): Promise<{ exists: boolean | null; error: ApiError | null }> {

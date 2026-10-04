@@ -23,9 +23,11 @@ import { AppText } from "@/components/AppText";
 import { Avatar } from "@/components/Avatar";
 import { InsetGroup, InsetRow } from "@/components/ui";
 import { useUserRecord } from "@/features/auth/use-user-record";
+import { useUnreadReviewsCount } from "@/features/notifications/use-notifications";
 import { AvailabilityRows } from "@/features/specialist/AvailabilityRows";
 import { signOut } from "@/lib/auth";
 import { confirmAsync } from "@/lib/confirm";
+import { pluralizeRu } from "@/lib/pluralize";
 import { useThemeColors } from "@/lib/use-theme-color";
 
 export function AccountBody({ userId }: { userId: string }) {
@@ -37,6 +39,16 @@ export function AccountBody({ userId }: { userId: string }) {
   // Каждый аккаунт — специалист (DECISION владельца 2026-09-11): «Я
   // специалист» есть у всех; профиль создаёт сам экран, если его нет.
   const openSpecialist = () => router.push("/profile/specialist" as never);
+  // Новые отзывы — сюда ведёт счётчик на вкладке профиля.
+  const unreadReviews = useUnreadReviewsCount(userId).data ?? 0;
+  const reviewsValue =
+    unreadReviews > 0
+      ? `${unreadReviews} ${pluralizeRu(unreadReviews, {
+          one: "новый отзыв",
+          few: "новых отзыва",
+          many: "новых отзывов",
+        })}`
+      : undefined;
   const logout = async () => {
     const ok = await confirmAsync({
       title: "Выйти из аккаунта?",
@@ -66,6 +78,7 @@ export function AccountBody({ userId }: { userId: string }) {
           title="Я специалист"
           icon={<Wrench size={18} weight="bold" color={tc["on-accent"]} />}
           iconAccent
+          value={reviewsValue}
           navigates
           onPress={openSpecialist}
           last

@@ -83,10 +83,11 @@ export default function TabsLayout() {
   const { data: unreadOrderEvents = 0 } = useUnreadOrderEventsCount(userId ?? undefined);
   const ordersBadge = badgeLabel(unreadResponses + unreadOrderEvents);
   const findBadge = badgeLabel(unreadFeed);
-  // «Специалисты»: новый отзыв мне — он виден в «Я специалист» и в профиле
-  // (владелец, 2026-09-11: «получил отзыв и нигде не увидел»).
+  // Новый отзыв мне (владелец, 2026-09-11: «получил отзыв и нигде не
+  // увидел») — на вкладке профиля: там «Я специалист» с отзывами. С
+  // 2026-10-04 во вкладке «Специалисты» переключателя «Я специалист» нет.
   const { data: unreadReviews = 0 } = useUnreadReviewsCount(userId ?? undefined);
-  const specialistsBadge = badgeLabel(unreadReviews);
+  const profileBadge = badgeLabel(unreadReviews);
   // Подпись вкладки аккаунта: имя (до 12 знаков — подписи вкладок узкие)
   // или «Войти» у гостя.
   const firstName = user?.first_name?.trim() ?? "";
@@ -208,9 +209,6 @@ export default function TabsLayout() {
             md="group"
           />
           <NativeTabs.Trigger.Label>Специалисты</NativeTabs.Trigger.Label>
-          {specialistsBadge ? (
-            <NativeTabs.Trigger.Badge>{specialistsBadge}</NativeTabs.Trigger.Badge>
-          ) : null}
         </NativeTabs.Trigger>
 
         {/* Пятая вкладка — аккаунт (владелец, 2026-10-03): гость видит
@@ -224,6 +222,9 @@ export default function TabsLayout() {
             md="account_circle"
           />
           <NativeTabs.Trigger.Label>{profileLabel}</NativeTabs.Trigger.Label>
+          {profileBadge ? (
+            <NativeTabs.Trigger.Badge>{profileBadge}</NativeTabs.Trigger.Badge>
+          ) : null}
         </NativeTabs.Trigger>
         {/* «Сохранённые мастера» удалены целиком 2026-09-02. */}
         <NativeTabs.Trigger name="cases" hidden />

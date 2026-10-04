@@ -13,8 +13,11 @@
  * `edit-client.tsx` сам подхватит новый номер при следующем фокусе — round-trip
  * через store не нужен (та же логика, что у `create-case` / `delete-account`).
  *
- * Один шаг (с 2026-06-06): поле «Новый номер» + кнопка «Сохранить» → прямой
- * UPDATE users_private.phone. БЕЗ SMS-кода (SMS-вход отменён 2026-06-05).
+ * С 2026-10-04 (№220): номер — это вход, поэтому новый номер подтверждается
+ * обратным звонком с него (CallConfirmSheet, цель change_phone), а сменяет
+ * его сервер (/v2/auth/phone): номер, адрес входа, отзыв прежних входов.
+ * Прямой записи users_private у приложения больше нет (0220). Звонок на
+ * сервере выключен — смена через поддержку.
  *
  * Проверки перед сохранением:
  *   - ровно 10 цифр (формат +7XXXXXXXXXX);
@@ -35,6 +38,7 @@ import { useState } from "react";
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
+  Linking,
   Platform,
   Pressable,
   TextInput,
@@ -43,11 +47,15 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
 import { keyboardDoneId } from "@/components/ui/KeyboardDone";
+import { SUPPORT_URL } from "@/features/auth/BannedScreen";
+import { useCallConfirm } from "@/features/auth/CallConfirmSheet";
+import { fetchAuthOptions } from "@/features/auth/use-auth-options";
 import { useAuthSession } from "@/features/auth/use-auth-session";
 import { digitsOnly, formatPhoneMask, normalizePhone } from "@/features/auth/validation";
 import { useUpdateMyPhone, useUserPrivate } from "@/features/profile/use-user-private";
 import { useMyVerification } from "@/features/specialist/use-verification";
 import { useThemeColors } from "@/lib/use-theme-color";
+import { useUnsavedChangesGuard } from "@/lib/use-unsaved-changes-guard";
 
 export default function ChangePhoneScreen() {
   const insets = useSafeAreaInsets();
@@ -65,6 +73,9 @@ export default function ChangePhoneScreen() {
 
   const [phone, setPhone] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [checking, setChecking] = useState(false);
+  const [viaSupport, setViaSupport] = useState(false);
+  const call = useCallConfirm();
 
   const updatePhone = useUpdateMyPhone(userId);
   const tc = useThemeColors(["muted-soft", "on-primary", "mute"]);
@@ -77,12 +88,18 @@ export default function ChangePhoneScreen() {
   // Запрет на смену «на тот же номер».
   const isSameAsCurrent = currentPhone === normalized;
 
-  const isBusy = updatePhone.isPending;
+  const isBusy = updatePhone.isPending || checking;
+  const allowLeave = useUnsavedChangesGuard({
+    hasUnsavedChanges: phoneDigits.length > 0,
+    isBusy,
+    title: "Номер не изменён",
+    message: "Выйти, не сохранив новый номер?",
+  });
   const canSave = phoneValid && !isDemoPhone && !isSameAsCurrent && !isBusy;
 
   const close = () => {
     if (isBusy) return;
-    router.back();
+    router.back(); // уход с введённым номером спросит гвард
   };
 
   const handleSave = async () => {
@@ -96,8 +113,20 @@ export default function ChangePhoneScreen() {
       return;
     }
     setError(null);
+    setChecking(true);
+    const options = await fetchAuthOptions();
+    setChecking(false);
+    if (!options.phoneCallPhoneChange) {
+      setViaSupport(true);
+      setError("Сейчас номер меняем через поддержку — напишите нам.");
+      return;
+    }
+    // Позвонить с нового номера — так видно, что он ваш.
+    const token = await call.confirm(normalized, "change_phone");
+    if (!token) return;
     try {
-      await updatePhone.mutateAsync({ phone: normalized });
+      await updatePhone.mutateAsync({ phone: normalized, verificationToken: token });
+      allowLeave();
       router.back();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Не удалось сохранить номер");
@@ -161,9 +190,21 @@ export default function ChangePhoneScreen() {
             </AppText>
           ) : (
             <AppText className="text-caption text-mute">
-              По этому номеру вы входите в приложение.
+              По этому номеру вы входите в приложение. Подтвердим его звонком с нового номера.
             </AppText>
           )}
+          {viaSupport ? (
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => void Linking.openURL(SUPPORT_URL)}
+              hitSlop={8}
+              className="min-h-11 justify-center self-start active:opacity-60"
+            >
+              <AppText weight="semibold" className="text-caption text-accent">
+                Написать в поддержку
+              </AppText>
+            </Pressable>
+          ) : null}
 
           {willLoseBadge ? (
             <AppText weight="medium" className="text-caption text-warning">
@@ -174,7 +215,7 @@ export default function ChangePhoneScreen() {
 
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="Сохранить номер"
+            accessibilityLabel="Подтвердить новый номер"
             disabled={!canSave}
             onPress={handleSave}
             className={`h-12 items-center justify-center rounded-pill ${
@@ -188,11 +229,12 @@ export default function ChangePhoneScreen() {
                 weight="semibold"
                 className={`text-button ${canSave ? "text-on-primary" : "text-muted"}`}
               >
-                Сохранить
+                Продолжить
               </AppText>
             )}
           </Pressable>
         </View>
+        {call.sheet}
       </KeyboardAvoidingView>
     </>
   );

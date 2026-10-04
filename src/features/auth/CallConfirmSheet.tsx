@@ -10,8 +10,9 @@
  * это сказано прямо, с самим номером.
  *
  * Использование: const call = useCallConfirm(); … const token = await
- * call.confirm(phone); {call.sheet} — в разметке экрана. Результат —
- * одноразовое подтверждение номера для регистрации, null — отмена.
+ * call.confirm(phone, purpose); {call.sheet} — в разметке экрана. Результат —
+ * одноразовое подтверждение номера для этой цели (регистрация, «Забыли
+ * пароль?», смена номера — №209, №215, №220), null — отмена.
  */
 
 import { CheckCircle, Phone, X } from "phosphor-react-native";
@@ -42,20 +43,39 @@ function secretFor(phone: string): string | undefined {
 }
 
 // Ошибки, которые повтор не исправит: человек меняет номер в форме или входит.
-const FINAL_ERRORS = new Set(["phone_taken", "phone_not_supported", "phone_invalid"]);
+const FINAL_ERRORS = new Set([
+  "phone_taken",
+  "phone_not_supported",
+  "phone_invalid",
+  "phone_same",
+  "account_not_found",
+  "account_blocked",
+]);
+
+export type CallPurpose = "register" | "recover" | "change_phone";
 
 interface Request {
   phone: string;
+  purpose: CallPurpose;
+  /** Номер не вводили (свой номер аккаунта) — «Закрыть» вместо «Изменить номер». */
+  fixedPhone: boolean;
   resolve: (token: string | null) => void;
 }
 
 export function useCallConfirm(): {
-  confirm: (phone: string) => Promise<string | null>;
+  confirm: (
+    phone: string,
+    purpose?: CallPurpose,
+    opts?: { fixedPhone?: boolean },
+  ) => Promise<string | null>;
   sheet: ReactNode;
 } {
   const [request, setRequest] = useState<Request | null>(null);
   const confirm = useCallback(
-    (phone: string) => new Promise<string | null>((resolve) => setRequest({ phone, resolve })),
+    (phone: string, purpose: CallPurpose = "register", opts?: { fixedPhone?: boolean }) =>
+      new Promise<string | null>((resolve) =>
+        setRequest({ phone, purpose, fixedPhone: opts?.fixedPhone === true, resolve }),
+      ),
     [],
   );
   const finish = useCallback(
@@ -75,7 +95,14 @@ export function useCallConfirm(): {
         allowSwipeDismissal
         onRequestClose={() => finish(null)}
       >
-        {request ? <CallConfirmBody phone={request.phone} onDone={finish} /> : null}
+        {request ? (
+          <CallConfirmBody
+            phone={request.phone}
+            purpose={request.purpose}
+            fixedPhone={request.fixedPhone}
+            onDone={finish}
+          />
+        ) : null}
       </Modal>
     ),
   };
@@ -89,9 +116,13 @@ interface Call {
 
 function CallConfirmBody({
   phone,
+  purpose,
+  fixedPhone,
   onDone,
 }: {
   phone: string;
+  purpose: CallPurpose;
+  fixedPhone: boolean;
   onDone: (token: string | null) => void;
 }) {
   const insets = useSafeAreaInsets();
@@ -116,14 +147,14 @@ function CallConfirmBody({
     setLoading(true);
     setError(null);
     setExpired(false);
-    let r = await supabase.auth.callStart(phone, secretFor(phone));
+    let r = await supabase.auth.callStart(phone, secretFor(phone), purpose);
     // Сервер ещё держит место под прошлый запрос (до 15 с) — дождаться и
     // спросить снова, а не пугать «номер уже ждёт звонка».
     const wait = !r.call && r.error.code === "call_busy" ? (r.retryInSec ?? 99) : 99;
     if (wait <= 15) {
       await new Promise((ok) => setTimeout(ok, (wait + 1) * 1000));
       if (!alive.current) return;
-      r = await supabase.auth.callStart(phone, secretFor(phone));
+      r = await supabase.auth.callStart(phone, secretFor(phone), purpose);
     }
     if (!alive.current) return;
     setLoading(false);
@@ -144,7 +175,7 @@ function CallConfirmBody({
       callPhonePretty: r.call.callPhonePretty,
       expiresAt: Date.now() + r.call.expiresInSec * 1000,
     });
-  }, [phone]);
+  }, [phone, purpose]);
 
   useEffect(() => {
     void start();
@@ -217,7 +248,7 @@ function CallConfirmBody({
       </View>
       <View className="flex-1 px-6">
         <AppText accessibilityRole="header" weight="bold" className="text-ios-title1 text-ink">
-          Подтвердите номер звонком
+          {purpose === "change_phone" ? "Подтвердите новый номер" : "Подтвердите номер звонком"}
         </AppText>
         <AppText className="mt-2 text-ios-body text-mute">
           Позвоните на этот номер с телефона{" "}
@@ -285,7 +316,7 @@ function CallConfirmBody({
           </Button>
         ) : !loading && error?.final && !expired ? (
           <Button variant="accent" size="lg" fullWidth onPress={() => onDone(null)}>
-            Изменить номер
+            {fixedPhone ? "Закрыть" : "Изменить номер"}
           </Button>
         ) : !loading ? (
           <Button variant="accent" size="lg" fullWidth onPress={() => void start()}>

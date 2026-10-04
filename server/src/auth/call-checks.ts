@@ -19,7 +19,9 @@
 //     старт получает «номер уже ждёт звонка», а не затирает первый;
 //   - к SMS.ru за статусом — не чаще раза в 2 секунды на номер, остальные
 //     опросы отвечают «ждём» без обращения к провайдеру;
-//   - результат — одноразовый токен на 15 минут для регистрации этого номера.
+//   - результат — одноразовый токен на 15 минут для этого номера и этой цели
+//     (регистрация, восстановление пароля, смена номера — №215, №220):
+//     подтверждение для одного не годится для другого.
 //
 // Привязка к тому, кто начал: звонок доказывает лишь «с номера X позвонили»,
 // поэтому статус отдаётся только по секрету, выданному при старте; пока
@@ -41,12 +43,21 @@ const HOUR_MS = 60 * 60_000;
 const MAX_ENTRIES = 50_000;
 const SWEEP_EVERY_MS = 60_000;
 
+/** Зачем подтверждают номер (владелец, 2026-10-04: №209, №215, №220). */
+export type CallPurpose = "register" | "recover" | "change_phone";
+
 export type StartCheck =
   | { ok: true }
   | { ok: false; reason: "phone_daily" | "ip_hourly" | "global" };
 
 export interface PendingCheck {
   secret: string;
+  purpose: CallPurpose;
+  /**
+   * Чей аккаунт: смена номера — кто начал (вход), восстановление — аккаунт
+   * этого номера на момент старта (ревью L4: номер не уйдёт к другому).
+   */
+  userId: string | null;
   checkId: string;
   callPhone: string;
   callPhonePretty: string;
@@ -76,7 +87,10 @@ export class CallChecks {
   private readonly pending = new Map<string, PendingCheck>();
   private readonly phoneDaily = new Map<string, Window>();
   private readonly ipHourly = new Map<string, Window>();
-  private readonly tokens = new Map<string, { phone: string; expiresAt: number }>();
+  private readonly tokens = new Map<
+    string,
+    { phone: string; purpose: CallPurpose; userId: string | null; expiresAt: number }
+  >();
   private confirmedDay: Window = { count: 0, resetAt: 0 };
   private confirmedHour: Window = { count: 0, resetAt: 0 };
   private startsHour: Window = { count: 0, resetAt: 0 };
@@ -124,7 +138,7 @@ export class CallChecks {
    * Попытка засчитывается до обращения к провайдеру — и удачная, и нет; место
    * под номер занято до ответа SMS.ru (снимается forget при сбое).
    */
-  countStart(phone: string, rawIp: string): void {
+  countStart(phone: string, rawIp: string, purpose: CallPurpose, userId: string | null): void {
     const t = this.now();
     const ip = ipBucket(rawIp);
     this.bump(this.phoneDaily, `${phone}|${ip}`, DAY_MS);
@@ -132,6 +146,8 @@ export class CallChecks {
     this.startsHour = this.tick(this.startsHour, HOUR_MS);
     this.pending.set(phone, {
       secret: "",
+      purpose,
+      userId,
       checkId: "",
       callPhone: "",
       callPhonePretty: "",
@@ -150,9 +166,13 @@ export class CallChecks {
 
   remember(
     phone: string,
-    check: Omit<PendingCheck, "secret" | "expiresAt" | "lastPollAt">,
+    check: Omit<PendingCheck, "secret" | "expiresAt" | "lastPollAt" | "purpose" | "userId"> &
+      Partial<Pick<PendingCheck, "purpose" | "userId">>,
   ): PendingCheck {
-    const entry = {
+    const held = this.pending.get(phone);
+    const entry: PendingCheck = {
+      purpose: held?.purpose ?? "register",
+      userId: held?.userId ?? null,
       ...check,
       secret: randomBytes(24).toString("base64url"),
       expiresAt: this.now() + CHECK_TTL_MS,
@@ -174,13 +194,24 @@ export class CallChecks {
     this.pending.delete(phone);
   }
 
-  /** Звонок был — выдать одноразовое подтверждение номера. */
-  confirm(phone: string): string {
+  /**
+   * Звонок был — выдать одноразовое подтверждение для той проверки, которую
+   * опрашивали. Пока шёл запрос к провайдеру, проверка номера могла смениться —
+   * тогда подтверждения нет (ревью L3), null.
+   */
+  confirm(phone: string, polled?: PendingCheck): string | null {
+    const held = this.pending.get(phone);
+    if (!held || (polled !== undefined && held !== polled)) return null;
     this.pending.delete(phone);
     this.confirmedDay = this.tick(this.confirmedDay, DAY_MS);
     this.confirmedHour = this.tick(this.confirmedHour, HOUR_MS);
     const token = randomBytes(32).toString("base64url");
-    this.tokens.set(token, { phone, expiresAt: this.now() + TOKEN_TTL_MS });
+    this.tokens.set(token, {
+      phone,
+      purpose: held.purpose,
+      userId: held.userId,
+      expiresAt: this.now() + TOKEN_TTL_MS,
+    });
     return token;
   }
 
@@ -189,17 +220,34 @@ export class CallChecks {
    * тратит после успешной записи (consumeToken) — сбой базы не заставляет
    * звонить снова (ревью L2). Чужой номер — подтверждение сгорает сразу.
    */
-  tokenValid(token: string, phone: string): boolean {
+  tokenValid(
+    token: string,
+    phone: string,
+    purpose: CallPurpose = "register",
+    userId: string | null = null,
+  ): boolean {
     const entry = this.tokens.get(token);
     if (!entry) return false;
-    if (entry.expiresAt > this.now() && entry.phone === phone) return true;
+    if (
+      entry.expiresAt > this.now() &&
+      entry.phone === phone &&
+      entry.purpose === purpose &&
+      (purpose === "register" || entry.userId === userId)
+    ) {
+      return true;
+    }
     this.tokens.delete(token);
     return false;
   }
 
-  /** Одноразово: подтверждение годится только для этого номера. */
-  consumeToken(token: string, phone: string): boolean {
-    const ok = this.tokenValid(token, phone);
+  /** Одноразово: подтверждение годится только для этого номера и цели. */
+  consumeToken(
+    token: string,
+    phone: string,
+    purpose: CallPurpose = "register",
+    userId: string | null = null,
+  ): boolean {
+    const ok = this.tokenValid(token, phone, purpose, userId);
     this.tokens.delete(token);
     return ok;
   }

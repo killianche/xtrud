@@ -5,7 +5,9 @@
 // Один вопрос на экране — как вход в банках и сервисах по номеру: поле
 // номера и «Продолжить». Сервер отвечает, есть ли аккаунт
 // (/v2/auth/phone-status): есть — экран пароля, нет — регистрация с этим
-// номером (останется имя и пароль). Пока включён обязательный вход
+// номером (останется имя и пароль). Новый номер сначала подтверждается
+// обратным звонком (№217, если на сервере включено), затем имя и пароль —
+// как у больших сервисов: номер → подтверждение → профиль. Пока включён обязательный вход
 // (флаг require_login, админка → «Настройки»), закрыть экран нельзя.
 
 import { useRouter } from "expo-router";
@@ -17,8 +19,10 @@ import { AppText } from "@/components/AppText";
 import { Button, Input } from "@/components/ui";
 import { NavCircleButton } from "@/components/ui/LargeTitle";
 import { SystemIcon } from "@/components/ui/SystemIcon";
+import { useCallConfirm } from "@/features/auth/CallConfirmSheet";
 import { formatRuPhone } from "@/features/auth/RegisterFormFields";
 import { setRegisterPrefill } from "@/features/auth/register-prefill";
+import { fetchAuthOptions } from "@/features/auth/use-auth-options";
 import { normalizeRuPhoneDigits } from "@/features/auth/validation";
 import { useAppFlags } from "@/features/settings/use-app-flags";
 import { supabase } from "@/lib/supabase";
@@ -34,6 +38,7 @@ export default function WelcomeScreen() {
   const [phone, setPhone] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const call = useCallConfirm();
 
   const next = async () => {
     setBusy(true);
@@ -48,8 +53,18 @@ export default function WelcomeScreen() {
       router.push({ pathname: "/(auth)/sign-in", params: { phone } } as never);
       return;
     }
-    // Новый человек — регистрация с этим номером: имя и пароль.
-    setRegisterPrefill(phone, "");
+    // Новый человек — сначала подтвердить номер звонком (если включено),
+    // потом регистрация с этим номером: имя и пароль.
+    setBusy(true);
+    const options = await fetchAuthOptions();
+    setBusy(false);
+    let token: string | undefined;
+    if (options.phoneCallAtRegistration) {
+      const t = await call.confirm(`+7${phone}`, "register");
+      if (!t) return; // шторку закрыли — остаёмся на номере
+      token = t;
+    }
+    setRegisterPrefill(phone, "", token);
     router.push("/(auth)/register" as never);
   };
 
@@ -136,6 +151,7 @@ export default function WelcomeScreen() {
           </AppText>
         </View>
       </ScrollView>
+      {call.sheet}
     </KeyboardAvoidingView>
   );
 }

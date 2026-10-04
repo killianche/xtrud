@@ -14,18 +14,27 @@ export interface RegisterPrefill {
   /** Десять цифр после +7. */
   phone: string;
   password: string;
+  /**
+   * Номер уже подтверждён звонком на экране «Ваш номер» (№217): регистрация
+   * берёт это подтверждение и второй раз звонить не просит.
+   */
+  verificationToken?: string;
 }
 
 let pending: RegisterPrefill | null = null;
 
 /** Запоминает введённое на входе. Номер не из 10 цифр — не запоминаем. */
-export function setRegisterPrefill(login: string, password: string): boolean {
+export function setRegisterPrefill(
+  login: string,
+  password: string,
+  verificationToken?: string,
+): boolean {
   const phone = normalizeRuPhoneDigits(login);
   if (login.includes("@") || phone.length !== 10) {
     pending = null;
     return false;
   }
-  pending = { phone, password };
+  pending = { phone, password, verificationToken };
   return true;
 }
 

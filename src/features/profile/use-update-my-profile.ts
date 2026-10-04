@@ -24,13 +24,13 @@ export function useUpdateMyProfile(userId: string | undefined) {
   return useMutation({
     mutationFn: async (input: UpdateMyProfileInput) => {
       if (!userId) throw new Error("Нет userId");
-      const { error } = await supabase
-        .from("users")
-        .update({
-          first_name: input.first_name.trim() || null,
-          last_name: input.last_name?.trim() || null,
-        })
-        .eq("id", userId);
+      // Фамилию не передали — не трогаем. Раньше undefined превращался в NULL,
+      // и правка имени стирала фамилию из регистрации (найдено 2026-10-04).
+      const patch: { first_name: string | null; last_name?: string | null } = {
+        first_name: input.first_name.trim() || null,
+      };
+      if (input.last_name !== undefined) patch.last_name = input.last_name?.trim() || null;
+      const { error } = await supabase.from("users").update(patch).eq("id", userId);
       if (error) throw error;
     },
     onSuccess: () => {

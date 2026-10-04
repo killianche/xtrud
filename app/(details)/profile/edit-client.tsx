@@ -26,6 +26,7 @@ import {
   Pressable,
   ScrollView,
   TextInput,
+  type TextInputProps,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -68,6 +69,8 @@ export default function EditClientScreen() {
   const goBack = useSafeBack("/(tabs)/profile" as const);
 
   const [firstName, setFirstName] = useState("");
+  // Фамилия необязательна, как при регистрации (DECISION владельца 2026-09-22).
+  const [lastName, setLastName] = useState("");
   const [usernameValue, setUsernameValue] = useState("");
   const [usernameValid, setUsernameValid] = useState(true);
   const [didInit, setDidInit] = useState(false);
@@ -77,12 +80,15 @@ export default function EditClientScreen() {
   useEffect(() => {
     if (!user || didInit) return;
     setFirstName(user.first_name ?? "");
+    setLastName(user.last_name ?? "");
     setUsernameValue(user.username ?? "");
     setDidInit(true);
   }, [user, didInit]);
 
-  // Фамилия убрана 2026-05-29 — везде только имя.
-  const nameChanged = didInit && (firstName ?? "") !== (user?.first_name ?? "");
+  const nameChanged =
+    didInit &&
+    ((firstName ?? "") !== (user?.first_name ?? "") ||
+      (lastName ?? "") !== (user?.last_name ?? ""));
   const usernameChanged = didInit && (usernameValue ?? "") !== (user?.username ?? "");
   const isDirty = nameChanged || usernameChanged;
   const nameOk = firstName.trim().length >= 2;
@@ -122,7 +128,7 @@ export default function EditClientScreen() {
         await setUsernameMut.mutateAsync({ username: usernameValue, userId: userId ?? "" });
       }
       if (nameChanged && !nameLocked) {
-        await update.mutateAsync({ first_name: firstName });
+        await update.mutateAsync({ first_name: firstName, last_name: lastName });
       }
       allowSavedNavigation();
       goBack();
@@ -276,9 +282,28 @@ export default function EditClientScreen() {
                 }}
                 placeholder="Алина"
                 autoCapitalize="words"
+                textContentType="givenName"
                 maxLength={50}
               />
             </FieldRow>
+          )}
+          {nameLocked ? null : (
+            <>
+              <View className="h-px bg-hairline" />
+              <FieldRow label="Фамилия">
+                <NakedInput
+                  value={lastName}
+                  onChangeText={(v) => {
+                    setSaveError(null);
+                    setLastName(v);
+                  }}
+                  placeholder="Необязательно"
+                  autoCapitalize="words"
+                  textContentType="familyName"
+                  maxLength={60}
+                />
+              </FieldRow>
+            </>
           )}
 
           <View className="h-px bg-hairline" />
@@ -297,6 +322,12 @@ export default function EditClientScreen() {
             />
           </View>
         </View>
+        {nameLocked ? (
+          <AppText className="mx-4 mt-2 text-ios-footnote text-mute">
+            Имя подтверждено паспортом и меняется только новой проверкой. Если имя изменилось —
+            напишите в поддержку.
+          </AppText>
+        ) : null}
 
         {nameLocked ? (
           <AppText className="mt-2 px-4 text-caption text-mute">
@@ -403,6 +434,7 @@ interface NakedInputProps {
   placeholder: string;
   autoCapitalize?: "none" | "sentences" | "words" | "characters";
   maxLength?: number;
+  textContentType?: TextInputProps["textContentType"];
 }
 
 function NakedInput({
@@ -411,6 +443,7 @@ function NakedInput({
   placeholder,
   autoCapitalize = "sentences",
   maxLength,
+  textContentType,
 }: NakedInputProps) {
   const tc = useThemeColors(["ink", "muted-soft"]);
   return (
@@ -421,6 +454,7 @@ function NakedInput({
       placeholderTextColor={tc["muted-soft"]}
       autoCapitalize={autoCapitalize}
       maxLength={maxLength}
+      textContentType={textContentType}
       className="text-field-md text-ink"
       style={
         // web-only: убираем синий focus outline у нативного <input>

@@ -43,44 +43,27 @@ export function useUserPrivate(userId: string | undefined) {
 }
 
 /**
- * Меняет phone в users_private простым UPDATE (без SMS-OTP).
- *
- * SMS-вход убран 2026-06-05 (был платным), поэтому смена номера больше не
- * требует кода из SMS — это прямой UPDATE под текущей сессией (RLS:
- * users_private_update_own). Телефон хранится в users_private.phone и
- * помечен UNIQUE — один номер не может принадлежать двум аккаунтам.
- *
- * Обработка занятого номера: при нарушении UNIQUE Postgres возвращает код
- * 23505. Ловим его и бросаем человекочитаемое сообщение, чтобы экран показал
- * «Этот номер уже зарегистрирован на другом аккаунте» вместо сырого SQL-текста.
+ * Смена номера — только после подтверждения звонком с нового номера (№220,
+ * 2026-10-04). Номер — это вход, поэтому прямой записи в users_private у
+ * приложения больше нет (0220): сервер проверяет подтверждение, меняет номер
+ * и адрес входа, отзывает прежние входы и выдаёт этому устройству новый.
  */
 export interface UpdatePhoneInput {
   phone: string;
+  /** Подтверждение нового номера звонком (CallConfirmSheet, change_phone). */
+  verificationToken: string;
 }
 
 export function useUpdateMyPhone(userId: string | undefined) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (input: UpdatePhoneInput) => {
-      if (!userId) throw new Error("Нет userId");
-      const { error } = await supabase
-        .from("users_private")
-        .update({ phone: input.phone, updated_at: new Date().toISOString() })
-        .eq("user_id", userId);
-      if (error) {
-        // 23505 = unique_violation. Также подстраховываемся по тексту, т.к.
-        // PostgREST может прислать сообщение без кода в некоторых конфигурациях.
-        const isUnique =
-          error.code === "23505" ||
-          /duplicate key|unique|already exists/i.test(error.message ?? "");
-        if (isUnique) {
-          throw new Error("Этот номер уже зарегистрирован на другом аккаунте.");
-        }
-        throw error;
-      }
+      if (!userId) throw new Error("Нужен вход");
+      const { error } = await supabase.auth.changePhone(input.phone, input.verificationToken);
+      if (error) throw Object.assign(new Error(error.message), { code: error.code });
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: userPrivateKey(userId) });
+      void qc.invalidateQueries({ queryKey: userPrivateKey(userId) });
     },
   });
 }

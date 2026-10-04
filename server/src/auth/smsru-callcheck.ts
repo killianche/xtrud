@@ -33,13 +33,16 @@ function str(v: unknown): string | null {
 
 /**
  * Разбор ответа callcheck/add. В примере JSON номер — `call_phone`, в
- * примере кода той же страницы — `call_number`: принимаются оба.
+ * примере кода той же страницы — `call_number`: принимаются оба. Живой ответ
+ * (FACT 2026-10-04): `call_phone: "+78007779999"`, `call_phone_pretty:
+ * "8-800-777-9999"`, `check_status` в статусе — число 400. Номер приводится
+ * к цифрам.
  */
 export function parseAdd(body: unknown): AddResult {
   const r = (body ?? {}) as Record<string, unknown>;
   const code = Number(r.status_code ?? 0);
   const checkId = str(r.check_id);
-  const callPhone = str(r.call_phone) ?? str(r.call_number);
+  const callPhone = (str(r.call_phone) ?? str(r.call_number))?.replace(/\D/g, "") ?? null;
   if (r.status === "OK" && code === 100 && checkId && callPhone && /^\d{10,15}$/.test(callPhone)) {
     const pretty = str(r.call_phone_pretty) ?? str(r.call_number_pretty) ?? `+${callPhone}`;
     return { ok: true, checkId, callPhone, callPhonePretty: pretty };

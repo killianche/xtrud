@@ -6,7 +6,7 @@ import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import type { Config } from "../config.js";
 import { type Db, pgErrorToHttp } from "../db.js";
-import { CallChecks, type PendingCheck } from "./call-checks.js";
+import { CallChecks, type CallPurpose, type PendingCheck } from "./call-checks.js";
 import { hashRefresh, newRefreshToken, type Tokens } from "./jwt.js";
 import { FailureWindow, LoginAttempts, loginAttemptKey } from "./login-attempts.js";
 import { canonicalPhone, isPhoneLogin, phoneKey, phoneToAuthEmail } from "./phone.js";
@@ -26,6 +26,17 @@ const registerSchema = z.object({
 const callStartSchema = z.object({
   phone: z.string().trim().min(10).max(20),
   secret: z.string().max(64).optional(),
+  /** Регистрация (по умолчанию), восстановление пароля, смена номера. */
+  purpose: z.enum(["register", "recover", "change_phone"]).optional().default("register"),
+});
+const recoverSchema = z.object({
+  phone: z.string().trim().min(10).max(20),
+  verificationToken: z.string().min(20).max(100),
+  newPassword: z.string().min(8).max(200),
+});
+const changePhoneSchema = z.object({
+  phone: z.string().trim().min(10).max(20),
+  verificationToken: z.string().min(20).max(100),
 });
 const callStatusSchema = z.object({
   phone: z.string().trim().min(10).max(20),
@@ -124,6 +135,18 @@ export function registerAuthRoutes(
       ]);
       return r.rows[0] ?? null;
     });
+  // Push владельцу «Пароль изменён / Номер изменён — если не вы, в
+  // поддержку» (ревью xtrud-security, M1: восстановление одним звонком).
+  // Тексты — в базе (0220); сбой уведомления не отменяет само действие.
+  const notifySecurity = async (userId: string, kind: "password_changed" | "phone_changed") => {
+    try {
+      await db.asService(async (c) => {
+        await c.query("SELECT xtrud_private.notify_security_event($1, $2)", [userId, kind]);
+      });
+    } catch (e) {
+      app.log.warn({ code: (e as { code?: string }).code, kind }, "security notify failed");
+    }
+  };
   const findById = async (id: string): Promise<AuthUserRow | null> =>
     db.asService(async (c) => {
       const r = await c.query<AuthUserRow>("SELECT * FROM xtrud_api.account_by_id($1)", [id]);
@@ -148,7 +171,9 @@ export function registerAuthRoutes(
         });
       }
       // Подтверждение — для полного номера; без него — только старые сборки.
-      if (!(input.verificationToken && calls.tokenValid(input.verificationToken, phone))) {
+      if (
+        !(input.verificationToken && calls.tokenValid(input.verificationToken, phone, "register"))
+      ) {
         return reply.code(428).send({
           error: "Подтвердите номер звонком. Если такого шага не было — обновите приложение.",
           code: "phone_verification_required",
@@ -173,14 +198,16 @@ export function registerAuthRoutes(
         return row;
       });
       // Аккаунт записан — подтверждение номера израсходовано.
-      if (input.verificationToken) calls.consumeToken(input.verificationToken, phone);
+      if (input.verificationToken) {
+        calls.consumeToken(input.verificationToken, phone, "register");
+      }
       return reply.code(201).send(await issueSession(user));
     } catch (e) {
       const http = pgErrorToHttp(e);
       req.log.error({ err: e }, "register failed");
       // Номер уже занят — подтверждение больше ни к чему.
       if (http.status === 409 && input.verificationToken) {
-        calls.consumeToken(input.verificationToken, phone);
+        calls.consumeToken(input.verificationToken, phone, "register");
       }
       // Наружу — только заготовленный текст «номер уже занят»; остальное общее.
       return reply
@@ -284,7 +311,14 @@ export function registerAuthRoutes(
   });
 
   /** Что включено: приложение по этому решает, спрашивать ли звонок. */
-  app.get("/auth/options", async () => ({ phoneCallAtRegistration: callRequired }));
+  app.get("/auth/options", async () => ({
+    phoneCallAtRegistration: callRequired,
+    // С тем же ключом SMS.ru — восстановление пароля и смена номера звонком
+    // (№215, №220); без него — заявка «Перезвоните мне» и смена номера
+    // недоступна.
+    phoneCallRecovery: callRequired,
+    phoneCallPhoneChange: callRequired,
+  }));
 
   /** Выдать номер, на который человек позвонит для подтверждения (№209). */
   app.post("/auth/call/start", async (req, reply) => {
@@ -310,10 +344,41 @@ export function registerAuthRoutes(
       });
     }
     phoneStatusWindow.fail(req.ip);
-    if (await findByLogin(phone)) {
+    const purpose: CallPurpose = parsed.data.purpose;
+    const account = await findByLogin(phone);
+    let userId: string | null = null;
+    if (purpose === "register" && account) {
       return reply
         .code(409)
         .send({ error: "Этот номер уже зарегистрирован. Войдите.", code: "phone_taken" });
+    }
+    if (purpose === "recover") {
+      if (!account) {
+        return reply.code(404).send({
+          error: "Аккаунта с этим номером нет. Зарегистрируйтесь.",
+          code: "account_not_found",
+        });
+      }
+      // Блокировку не раскрываем до звонка (ревью L5) — её проверит
+      // /auth/recover. Подтверждение — только этому аккаунту (ревью L4).
+      userId = account.id;
+    }
+    if (purpose === "change_phone") {
+      // Смена номера — только из своего аккаунта, на свободный номер.
+      const claims = await tokens.verify(bearer(req.headers.authorization));
+      if (!claims) return reply.code(401).send({ error: "Нужен вход" });
+      userId = claims.sub;
+      const me = await findById(userId);
+      const blocked = me ? blockedMessage(me) : "Нужен вход";
+      if (blocked) return reply.code(403).send({ error: blocked, code: "account_blocked" });
+      if (account && account.id === userId) {
+        return reply.code(422).send({ error: "Это ваш текущий номер.", code: "phone_same" });
+      }
+      if (account) {
+        return reply
+          .code(409)
+          .send({ error: "Этот номер уже занят другим аккаунтом.", code: "phone_taken" });
+      }
     }
     const now = Date.now();
     const toClient = (c: PendingCheck) => ({
@@ -326,14 +391,22 @@ export function registerAuthRoutes(
     // отказ до конца срока (см. call-checks.ts, «привязка к тому, кто начал»).
     const existing = calls.active(phone);
     if (existing) {
-      if (calls.owns(existing, parsed.data.secret)) return reply.send(toClient(existing));
-      const retryInSec = Math.max(1, Math.ceil((existing.expiresAt - now) / 1000));
-      req.log.info({ tail: phone.slice(-2) }, "call check busy");
-      return reply.code(429).send({
-        error: `Этот номер уже ждёт звонка. Попробуйте через ${Math.ceil(retryInSec / 60)} мин.`,
-        code: "call_busy",
-        retryInSec,
-      });
+      if (calls.owns(existing, parsed.data.secret)) {
+        // Тот же клиент, та же цель — тот же номер. Другая цель (передумал:
+        // не регистрация, а «Забыли пароль?») — прежняя проверка снимается.
+        if (existing.purpose === purpose && existing.userId === userId) {
+          return reply.send(toClient(existing));
+        }
+        calls.forget(phone);
+      } else {
+        const retryInSec = Math.max(1, Math.ceil((existing.expiresAt - now) / 1000));
+        req.log.info({ tail: phone.slice(-2) }, "call check busy");
+        return reply.code(429).send({
+          error: `Этот номер уже ждёт звонка. Попробуйте через ${Math.ceil(retryInSec / 60)} мин.`,
+          code: "call_busy",
+          retryInSec,
+        });
+      }
     }
     const can = calls.canStart(phone, req.ip);
     if (!can.ok) {
@@ -342,7 +415,7 @@ export function registerAuthRoutes(
         .code(429)
         .send({ error: CALL_LIMIT_TEXT[can.reason], code: "call_rate_limited" });
     }
-    calls.countStart(phone, req.ip);
+    calls.countStart(phone, req.ip, purpose, userId);
     const added = await callProvider.add(phone, req.ip || null);
     if (!added.ok) {
       req.log.warn(
@@ -393,7 +466,13 @@ export function registerAuthRoutes(
       if (!calls.shouldPoll(entry)) return reply.send({ confirmed: false });
       const status = await callProvider.status(entry.checkId);
       if (status === "confirmed") {
-        return reply.send({ confirmed: true, verificationToken: calls.confirm(phone) });
+        const verificationToken = calls.confirm(phone, entry);
+        if (!verificationToken) {
+          return reply
+            .code(410)
+            .send({ error: "Время вышло — получите новый номер", code: "call_expired" });
+        }
+        return reply.send({ confirmed: true, verificationToken });
       }
       if (status === "expired") {
         calls.forget(phone);
@@ -408,6 +487,106 @@ export function registerAuthRoutes(
       return reply.send({ confirmed: false });
     },
   );
+
+  /**
+   * Восстановление пароля после подтверждения номера звонком (№215):
+   * новый пароль, все прежние входы отзываются, человек сразу входит.
+   */
+  app.post("/auth/recover", async (req, reply) => {
+    if (!callProvider) {
+      return reply
+        .code(503)
+        .send({ error: "Подтверждение звонком выключено", code: "call_disabled" });
+    }
+    const parsed = recoverSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return reply.code(422).send({ error: "Новый пароль — от 8 символов" });
+    }
+    const phone = canonicalPhone(parsed.data.phone);
+    if (!RU_MOBILE.test(phone)) return reply.code(422).send({ error: "Введите номер полностью" });
+    const user = await findByLogin(phone);
+    if (!user || !calls.tokenValid(parsed.data.verificationToken, phone, "recover", user.id)) {
+      return reply.code(428).send({
+        error: "Подтвердите номер звонком ещё раз.",
+        code: "phone_verification_required",
+      });
+    }
+    const blocked = blockedMessage(user);
+    if (blocked) {
+      calls.consumeToken(parsed.data.verificationToken, phone, "recover", user.id);
+      return reply.code(403).send({ error: blocked, code: "account_blocked" });
+    }
+    const hash = await bcrypt.hash(parsed.data.newPassword, 10);
+    await db.asService(async (c) => {
+      await c.query("SELECT xtrud_api.set_password_hash($1, $2)", [user.id, hash]);
+      await c.query(
+        "UPDATE xtrud_api.refresh_tokens SET revoked_at = now() WHERE user_id = $1 AND revoked_at IS NULL",
+        [user.id],
+      );
+    });
+    calls.consumeToken(parsed.data.verificationToken, phone, "recover", user.id);
+    await notifySecurity(user.id, "password_changed");
+    // Счётчик неудачных входов с этого адреса — сброшен: пароль новый.
+    loginAttempts.succeed(loginAttemptKey(phone), req.ip);
+    req.log.info({ tail: phone.slice(-2) }, "password recovered by call");
+    return reply.send(await issueSession(user));
+  });
+
+  /**
+   * Смена номера после подтверждения звонком с нового номера (№220). Номер —
+   * это и вход: меняется вместе с синтетическим адресом входа, прежние входы
+   * отзываются, текущему устройству выдаётся новый вход.
+   */
+  app.post("/auth/phone", async (req, reply) => {
+    const claims = await tokens.verify(bearer(req.headers.authorization));
+    if (!claims) return reply.code(401).send({ error: "Нужен вход" });
+    if (!callProvider) {
+      return reply
+        .code(503)
+        .send({ error: "Подтверждение звонком выключено", code: "call_disabled" });
+    }
+    const parsed = changePhoneSchema.safeParse(req.body);
+    if (!parsed.success) return reply.code(422).send({ error: "Введите номер полностью" });
+    const phone = canonicalPhone(parsed.data.phone);
+    if (!RU_MOBILE.test(phone)) {
+      return reply.code(422).send({
+        error: "Подтверждаем только мобильные номера России",
+        code: "phone_not_supported",
+      });
+    }
+    if (!calls.tokenValid(parsed.data.verificationToken, phone, "change_phone", claims.sub)) {
+      return reply.code(428).send({
+        error: "Подтвердите новый номер звонком ещё раз.",
+        code: "phone_verification_required",
+      });
+    }
+    const user = await findById(claims.sub);
+    if (!user) return reply.code(401).send({ error: "Нужен вход" });
+    const blocked = blockedMessage(user);
+    if (blocked) return reply.code(403).send({ error: blocked, code: "account_blocked" });
+    try {
+      await db.asService(async (c) => {
+        await c.query("SELECT xtrud_private.change_account_phone($1, $2)", [user.id, phone]);
+      });
+    } catch (e) {
+      const http = pgErrorToHttp(e);
+      // Только код: текст ошибки индекса содержит номер (ревью L6).
+      req.log.warn(
+        { code: (e as { code?: string }).code, tail: phone.slice(-2) },
+        "change phone failed",
+      );
+      return reply.code(http.status).send({
+        error: http.status === 409 ? "Этот номер уже занят другим аккаунтом." : http.message,
+        code: http.status === 409 ? "phone_taken" : undefined,
+      });
+    }
+    calls.consumeToken(parsed.data.verificationToken, phone, "change_phone", claims.sub);
+    await notifySecurity(user.id, "phone_changed");
+    const updated = await findById(user.id);
+    if (!updated) return reply.code(500).send({ error: "Ошибка сервера" });
+    req.log.info({ tail: phone.slice(-2) }, "phone changed by call");
+    return reply.send(await issueSession(updated));
+  });
 
   app.post("/auth/refresh", async (req, reply) => {
     const parsed = refreshSchema.safeParse(req.body);
@@ -492,6 +671,7 @@ export function registerAuthRoutes(
         [user.id],
       );
     });
+    await notifySecurity(user.id, "password_changed");
     return reply.send(await issueSession(user));
   });
 }

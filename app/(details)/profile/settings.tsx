@@ -39,9 +39,11 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
 import { ThemeSwitcher } from "@/components/ThemeSwitcher";
 import { ScreenHeader } from "@/components/ui";
+import { SUPPORT_URL } from "@/features/auth/BannedScreen";
 import { useAuthSession } from "@/features/auth/use-auth-session";
 import { useUserRecord } from "@/features/auth/use-user-record";
 import { useBlockedUsers } from "@/features/blocking/use-user-blocks";
+import { useUserPrivate } from "@/features/profile/use-user-private";
 import { signOut } from "@/lib/auth";
 import { confirmAsync } from "@/lib/confirm";
 import { openExternalUrl } from "@/lib/open-link";
@@ -50,8 +52,7 @@ import { useThemeColors } from "@/lib/use-theme-color";
 
 // Почту не публикуем — для связи с пользователями её не используем
 // (правило проекта, см. CLAUDE.md). Поддержка — WhatsApp (владелец,
-// 2026-09-11): телеграм-адреса @xtrud_support не существует.
-const SUPPORT_WHATSAPP = "https://wa.me/79289204029";
+// 2026-09-11; адрес — SUPPORT_URL): телеграм-адреса @xtrud_support нет.
 
 export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
@@ -59,6 +60,7 @@ export default function SettingsScreen() {
   const { session } = useAuthSession();
   const userId = session?.user?.id;
   const { data: user } = useUserRecord(userId);
+  const { data: userPrivate } = useUserPrivate(userId);
   const goBack = useSafeBack("/(tabs)/profile" as const);
 
   const isMaster = user?.is_master === true;
@@ -101,8 +103,9 @@ export default function SettingsScreen() {
 
         {/* ============ Аккаунт ============ */}
         <Section icon={Gear} title="Аккаунт">
-          {session?.user?.phone ? (
-            <ReadOnlyRow label="Телефон" value={maskPhone(session.user.phone)} />
+          {/* Тот же источник, что в аккаунте: обновляется после смены номера. */}
+          {userPrivate?.phone ? (
+            <ReadOnlyRow label="Телефон" value={maskPhone(userPrivate.phone)} />
           ) : null}
           <ActionRow
             label="Выйти из аккаунта"
@@ -135,10 +138,7 @@ export default function SettingsScreen() {
 
         {/* ============ Поддержка ============ */}
         <Section icon={Headset} title="Поддержка">
-          <ActionRow
-            label="Написать в Telegram"
-            onPress={() => openExternalUrl(SUPPORT_WHATSAPP)}
-          />
+          <ActionRow label="Написать в поддержку" onPress={() => openExternalUrl(SUPPORT_URL)} />
         </Section>
 
         {/* ============ О приложении ============ */}

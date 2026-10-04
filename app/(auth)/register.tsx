@@ -126,6 +126,7 @@ export default function RegisterScreen() {
     control,
     handleSubmit,
     trigger,
+    watch,
     formState: { errors, isValid },
   } = useForm<RegisterFormValues>({
     resolver: zodResolver(registerFormSchema),
@@ -151,12 +152,17 @@ export default function RegisterScreen() {
     const phone = `+7${normalizeRuPhoneDigits(values.phone)}`;
     setServerError(null);
     try {
-      const result = await register.run({
-        phone,
-        password: values.password,
-        firstName: values.firstName,
-        lastName: values.lastName,
-      });
+      const result = await register.run(
+        {
+          phone,
+          password: values.password,
+          firstName: values.firstName,
+          lastName: values.lastName,
+        },
+        prefill?.verificationToken
+          ? { phone: `+7${prefill.phone}`, token: prefill.verificationToken }
+          : undefined,
+      );
       // Шторку звонка закрыли — остаёмся на форме.
       if (!result) return;
       await completeGuestDraftAuthJourney(draftJourney, result.userId);
@@ -214,10 +220,16 @@ export default function RegisterScreen() {
           {prefill ? (
             <View className="mt-4 rounded-xl bg-canvas-soft px-4 py-3">
               <AppText accessibilityRole="alert" className="text-body-md text-body">
-                Аккаунта с номером +7 {formatRuPhone(prefill.phone)} ещё нет.{" "}
-                {prefill.password
-                  ? "Укажите имя — и он будет создан."
-                  : "Укажите имя и придумайте пароль — и он будет создан."}
+                {/* «Подтверждён» — только пока в поле тот же номер (QA: поменяли
+                    номер — подтверждения для нового нет, спросим звонок). */}
+                {prefill.verificationToken &&
+                normalizeRuPhoneDigits(watch("phone") ?? "") === prefill.phone
+                  ? `Номер +7 ${formatRuPhone(prefill.phone)} подтверждён. Осталось имя и пароль.`
+                  : `Аккаунта с номером +7 ${formatRuPhone(prefill.phone)} ещё нет. ${
+                      prefill.password
+                        ? "Укажите имя — и он будет создан."
+                        : "Укажите имя и придумайте пароль — и он будет создан."
+                    }`}
               </AppText>
             </View>
           ) : null}

@@ -12,18 +12,24 @@ import { useRouter } from "expo-router";
 import {
   BellSimple,
   Gear,
+  Headset,
+  LockKey,
   PencilSimple,
+  Phone,
   ShieldCheck,
   SignOut,
   UserCircle,
   Wrench,
 } from "phosphor-react-native";
-import { Alert, View } from "react-native";
+import { Alert, Linking, View } from "react-native";
 import { AppText } from "@/components/AppText";
 import { Avatar } from "@/components/Avatar";
 import { InsetGroup, InsetRow } from "@/components/ui";
+import { SUPPORT_URL } from "@/features/auth/BannedScreen";
+import { formatRuPhone } from "@/features/auth/RegisterFormFields";
 import { useUserRecord } from "@/features/auth/use-user-record";
 import { useUnreadReviewsCount } from "@/features/notifications/use-notifications";
+import { useUserPrivate } from "@/features/profile/use-user-private";
 import { AvailabilityRows } from "@/features/specialist/AvailabilityRows";
 import { signOut } from "@/lib/auth";
 import { confirmAsync } from "@/lib/confirm";
@@ -33,6 +39,10 @@ import { useThemeColors } from "@/lib/use-theme-color";
 export function AccountBody({ userId }: { userId: string }) {
   const router = useRouter();
   const { data: user } = useUserRecord(userId);
+  const { data: userPrivate } = useUserPrivate(userId);
+  // Номер входа — маской, как в «Настройках» iOS у Apple ID.
+  const phoneDigits = (userPrivate?.phone ?? "").replace(/\D/g, "").slice(-10);
+  const phoneValue = phoneDigits.length === 10 ? `+7 ${formatRuPhone(phoneDigits)}` : undefined;
   const tc = useThemeColors(["ink", "on-accent", "error"]);
   const fullName = [user?.first_name, user?.last_name].filter(Boolean).join(" ") || "Вы";
 
@@ -100,18 +110,37 @@ export function AccountBody({ userId }: { userId: string }) {
         </InsetGroup>
       ) : null}
 
+      {/* Личные данные — как «Имя, телефон, пароль» у Apple ID и банков
+          (владелец, 2026-10-04, №218–№220). */}
+      <InsetGroup title="Личные данные">
+        <InsetRow
+          title="Имя и фото"
+          icon={<PencilSimple size={18} weight="bold" color={tc.ink} />}
+          navigates
+          onPress={() => router.push("/profile/edit-client" as never)}
+        />
+        <InsetRow
+          title="Телефон"
+          value={phoneValue}
+          icon={<Phone size={18} weight="bold" color={tc.ink} />}
+          navigates
+          onPress={() => router.push("/profile/change-phone" as never)}
+        />
+        <InsetRow
+          title="Пароль"
+          icon={<LockKey size={18} weight="bold" color={tc.ink} />}
+          navigates
+          onPress={() => router.push("/profile/change-password" as never)}
+          last
+        />
+      </InsetGroup>
+
       <InsetGroup title="Аккаунт">
         <InsetRow
           title="Уведомления"
           icon={<BellSimple size={18} weight="bold" color={tc.ink} />}
           navigates
           onPress={() => router.push("/notifications" as never)}
-        />
-        <InsetRow
-          title="Имя и фото"
-          icon={<PencilSimple size={18} weight="bold" color={tc.ink} />}
-          navigates
-          onPress={() => router.push("/profile/edit-client" as never)}
         />
         <InsetRow
           title="Мой профиль"
@@ -124,6 +153,16 @@ export function AccountBody({ userId }: { userId: string }) {
           icon={<Gear size={18} weight="bold" color={tc.ink} />}
           navigates
           onPress={() => router.push("/profile/settings" as never)}
+          last
+        />
+      </InsetGroup>
+
+      <InsetGroup>
+        <InsetRow
+          title="Написать в поддержку"
+          icon={<Headset size={18} weight="bold" color={tc.ink} />}
+          navigates
+          onPress={() => void Linking.openURL(SUPPORT_URL)}
           last
         />
       </InsetGroup>

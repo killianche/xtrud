@@ -1,5 +1,9 @@
 // Регистрация с подтверждением номера звонком (№206, 2026-10-04).
 //
+// Номер уже подтверждён на экране «Ваш номер» (№217) — регистрация берёт то
+// подтверждение (`verified`), если номер в форме тот же; устарело — сервер
+// ответит phone_verification_required, и звонок спросится ещё раз.
+//
 // Спрашивать ли звонок, решает сервер (GET /v2/auth/options): включается
 // токеном провайдера на сервере. Если его включили, пока экран был открыт,
 // сервер ответит phone_verification_required — тогда звонок спрашивается и
@@ -20,12 +24,13 @@ export function useRegisterWithCode() {
 
   const run = async (
     input: Omit<RegisterInput, "verificationToken">,
+    verified?: { phone: string; token: string },
   ): Promise<{ ok: true; userId: string } | null> => {
     if (running.current) return null;
     running.current = true;
     setBusy(true);
     try {
-      return await runOnce(input);
+      return await runOnce(input, verified?.phone === input.phone ? verified.token : undefined);
     } finally {
       running.current = false;
       setBusy(false);
@@ -34,19 +39,23 @@ export function useRegisterWithCode() {
 
   const runOnce = async (
     input: Omit<RegisterInput, "verificationToken">,
+    preToken?: string,
   ): Promise<{ ok: true; userId: string } | null> => {
-    let token: string | undefined;
-    const options = await fetchAuthOptions();
-    if (options.phoneCallAtRegistration) {
-      const t = await call.confirm(input.phone);
-      if (!t) return null;
-      token = t;
+    let token: string | undefined = preToken;
+    if (!token) {
+      const options = await fetchAuthOptions();
+      if (options.phoneCallAtRegistration) {
+        const t = await call.confirm(input.phone, "register");
+        if (!t) return null;
+        token = t;
+      }
     }
     try {
       return await register.mutateAsync({ ...input, verificationToken: token });
     } catch (e) {
-      if (!token && (e as { code?: string }).code === "phone_verification_required") {
-        const t = await call.confirm(input.phone);
+      // Подтверждения не было или оно устарело (15 минут) — спросить звонок.
+      if ((e as { code?: string }).code === "phone_verification_required") {
+        const t = await call.confirm(input.phone, "register");
         if (!t) return null;
         return await register.mutateAsync({ ...input, verificationToken: t });
       }

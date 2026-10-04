@@ -160,17 +160,32 @@ export function createXtrudClient(opts: XtrudClientOptions) {
       await sessions.set(session, "SIGNED_IN");
       return { data: { session, user: session.user }, error: null };
     },
-    /** Что включено на сервере: подтверждение номера звонком при регистрации. */
-    async options(): Promise<{ phoneCallAtRegistration: boolean }> {
+    /**
+     * Что включено на сервере: подтверждение номера звонком при регистрации,
+     * восстановлении пароля и смене номера (№209, №215, №220).
+     */
+    async options(): Promise<{
+      phoneCallAtRegistration: boolean;
+      phoneCallRecovery: boolean;
+      phoneCallPhoneChange: boolean;
+    }> {
       try {
         const res = await fetchImpl(`${baseUrl}/v2/auth/options`);
         if (!res.ok) throw new Error(String(res.status));
         const j = (await res.json()) as Record<string, unknown>;
-        return { phoneCallAtRegistration: j.phoneCallAtRegistration === true };
+        return {
+          phoneCallAtRegistration: j.phoneCallAtRegistration === true,
+          phoneCallRecovery: j.phoneCallRecovery === true,
+          phoneCallPhoneChange: j.phoneCallPhoneChange === true,
+        };
       } catch {
         // Старый сервер или нет связи — как без подтверждения; если сервер
         // всё же требует его, регистрация ответит 428 и шаг откроется.
-        return { phoneCallAtRegistration: false };
+        return {
+          phoneCallAtRegistration: false,
+          phoneCallRecovery: false,
+          phoneCallPhoneChange: false,
+        };
       }
     },
     /**
@@ -181,6 +196,7 @@ export function createXtrudClient(opts: XtrudClientOptions) {
     async callStart(
       phone: string,
       secret?: string,
+      purpose: "register" | "recover" | "change_phone" = "register",
     ): Promise<
       | {
           call: {
@@ -192,7 +208,12 @@ export function createXtrudClient(opts: XtrudClientOptions) {
         }
       | { call: null; error: ApiError; retryInSec?: number }
     > {
-      const { status, json } = await postJson("/v2/auth/call/start", { phone, secret }, false);
+      // Смена номера — со входом: сервер проверяет, чей это аккаунт.
+      const { status, json } = await postJson(
+        "/v2/auth/call/start",
+        { phone, secret, purpose },
+        purpose === "change_phone",
+      );
       const j = (json ?? {}) as Record<string, unknown>;
       if (
         failed(status) ||
@@ -226,6 +247,37 @@ export function createXtrudClient(opts: XtrudClientOptions) {
       }
       const token = (json as { verificationToken?: unknown } | null)?.verificationToken;
       return { token: typeof token === "string" ? token : null, error: null };
+    },
+    /** Новый пароль после подтверждения номера звонком — и сразу вход (№215). */
+    async recover(
+      phone: string,
+      verificationToken: string,
+      newPassword: string,
+    ): Promise<{ error: ApiError | null }> {
+      const { status, json } = await postJson(
+        "/v2/auth/recover",
+        { phone, verificationToken, newPassword },
+        false,
+      );
+      if (failed(status)) return { error: toApiError(status, json, "Не удалось сменить пароль") };
+      await sessions.set(
+        sessionFromTokens(json as Parameters<typeof sessionFromTokens>[0]),
+        "SIGNED_IN",
+      );
+      return { error: null };
+    },
+    /** Новый номер после подтверждения звонком с него (№220). */
+    async changePhone(
+      phone: string,
+      verificationToken: string,
+    ): Promise<{ error: ApiError | null }> {
+      const { status, json } = await postJson("/v2/auth/phone", { phone, verificationToken });
+      if (failed(status)) return { error: toApiError(status, json, "Не удалось сменить номер") };
+      await sessions.set(
+        sessionFromTokens(json as Parameters<typeof sessionFromTokens>[0]),
+        "TOKEN_REFRESHED",
+      );
+      return { error: null };
     },
     /** Первый шаг входа: есть ли аккаунт с этим номером (№202). */
     async phoneStatus(phone: string): Promise<{ exists: boolean | null; error: ApiError | null }> {

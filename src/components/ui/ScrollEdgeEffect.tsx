@@ -10,6 +10,11 @@
  * компонента для новой архитектуры RN (QA 2026-10-03), а expo-blur — модуль
  * Expo и работает на ней штатно.
  *
+ * `edge="bottom"` — то же у нижнего края под плавающими кнопками
+ * (BottomEdgeEffect): растворение сверху, сплошной слой снизу. Отдельный
+ * порядок слоёв, а не переворот transform'ом: системный блюр под
+ * отрицательным масштабом не гарантирован.
+ *
  * Слой декоративный: касания проходят насквозь, VoiceOver его не видит.
  */
 
@@ -26,7 +31,13 @@ export const EDGE_FADE = 28;
 const FADE_STEPS = [44, 30, 18, 8] as const;
 const BODY_INTENSITY = 60;
 
-export function ScrollEdgeEffect({ fade = EDGE_FADE }: { fade?: number }) {
+export function ScrollEdgeEffect({
+  fade = EDGE_FADE,
+  edge = "top",
+}: {
+  fade?: number;
+  edge?: "top" | "bottom";
+}) {
   const { colorScheme } = useColorScheme();
   // Хекс из палитры, а не useThemeColor: в вебе тот отдаёт CSS-переменную,
   // к которой нельзя добавить прозрачность.
@@ -36,6 +47,40 @@ export function ScrollEdgeEffect({ fade = EDGE_FADE }: { fade?: number }) {
   // Без системного блюра (Android, веб) читаемость держит одна заливка.
   const bodyAlpha = ios ? 0.6 : 0.94;
 
+  const bottom = edge === "bottom";
+  const body = (
+    <View style={{ flex: 1 }}>
+      {ios ? <BlurView intensity={BODY_INTENSITY} tint={tint} style={{ flex: 1 }} /> : null}
+      <View
+        style={{
+          position: "absolute",
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: withAlpha(page, bodyAlpha),
+        }}
+      />
+    </View>
+  );
+  // Ступени растворения — от сплошного слоя наружу.
+  const steps = bottom ? [...FADE_STEPS].reverse() : FADE_STEPS;
+  const fadeZone = (
+    <View style={{ height: fade }}>
+      {ios
+        ? steps.map((intensity) => (
+            <BlurView key={intensity} intensity={intensity} tint={tint} style={{ flex: 1 }} />
+          ))
+        : null}
+      <LinearGradient
+        colors={[withAlpha(page, bodyAlpha), withAlpha(page, 0)]}
+        start={{ x: 0.5, y: bottom ? 1 : 0 }}
+        end={{ x: 0.5, y: bottom ? 0 : 1 }}
+        style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }}
+      />
+    </View>
+  );
+
   return (
     <View
       pointerEvents="none"
@@ -43,30 +88,8 @@ export function ScrollEdgeEffect({ fade = EDGE_FADE }: { fade?: number }) {
       importantForAccessibility="no-hide-descendants"
       style={{ flex: 1 }}
     >
-      <View style={{ flex: 1 }}>
-        {ios ? <BlurView intensity={BODY_INTENSITY} tint={tint} style={{ flex: 1 }} /> : null}
-        <View
-          style={{
-            position: "absolute",
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundColor: withAlpha(page, bodyAlpha),
-          }}
-        />
-      </View>
-      <View style={{ height: fade }}>
-        {ios
-          ? FADE_STEPS.map((intensity) => (
-              <BlurView key={intensity} intensity={intensity} tint={tint} style={{ flex: 1 }} />
-            ))
-          : null}
-        <LinearGradient
-          colors={[withAlpha(page, bodyAlpha), withAlpha(page, 0)]}
-          style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }}
-        />
-      </View>
+      {bottom ? fadeZone : body}
+      {bottom ? body : fadeZone}
     </View>
   );
 }

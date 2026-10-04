@@ -6,6 +6,8 @@
  */
 
 import { Redirect } from "expo-router";
+import { useRef } from "react";
+import type { TextInput } from "react-native";
 import { taskDetailsPrompt } from "@/features/orders/task-details-prompt";
 import { ComposerField } from "@/features/task-composer/ComposerFields";
 import { ComposerScreen } from "@/features/task-composer/ComposerScreen";
@@ -18,11 +20,15 @@ import {
   TITLE_MAX,
   TITLE_MIN,
 } from "@/features/task-composer/steps";
+import { useFocusAfterTransition } from "@/features/task-composer/use-focus-after-transition";
 import { useStepNavigation } from "@/features/task-composer/use-step-navigation";
 
 export default function TaskTitleScreen() {
   const { values, patch, photos, setPhotos } = useComposer();
   const nav = useStepNavigation("title");
+  // Клавиатура — после того как экран доехал (иначе она серая в переходе).
+  const titleRef = useRef<TextInput>(null);
+  useFocusAfterTransition(titleRef, values.title.length === 0);
   if (nav.notReady) return null;
   if (nav.needsCategory) return <Redirect href="/orders/new" />;
 
@@ -49,7 +55,7 @@ export default function TaskTitleScreen() {
         value={values.title}
         onChangeText={(t) => patch({ title: t.slice(0, TITLE_MAX) })}
         placeholder="Например, заменить смеситель на кухне"
-        autoFocus={values.title.length === 0}
+        ref={titleRef}
         returnKeyType="done"
         maxLength={TITLE_MAX}
         error={titleError}

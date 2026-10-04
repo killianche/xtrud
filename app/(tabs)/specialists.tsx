@@ -27,7 +27,6 @@ import { SectionGrid, SectionGridSkeleton } from "@/features/categories/SectionG
 import { useCategoriesL1 } from "@/features/categories/use-categories-l1";
 import { useVisibleCategories } from "@/features/categories/use-visible-categories";
 import { useUnreadReviewsCount } from "@/features/notifications/use-notifications";
-import { pluralRu } from "@/features/orders/plural-ru";
 import { SpecialistHubBody } from "@/features/specialist/SpecialistHubBody";
 import { useTabBarSpace } from "@/lib/tab-bar-space";
 import { scrollViewToTop, useTabScrollResetCounter } from "@/lib/tab-scroll-reset";
@@ -64,15 +63,12 @@ export default function SpecialistsCategoriesScreen() {
   // №158: раскрытие на месте «получше, но не идеально» — нужен переход).
   const tiles = useMemo(() => {
     const all = categories.data ?? [];
-    return (l1.data ?? [])
-      .map((s) => ({ s, n: all.filter((c) => c.l1_id === s.id).length }))
-      .filter(({ n }) => n > 0)
-      .map(({ s, n }) => ({
-        id: s.id,
-        name: s.name_ru,
-        icon: s.icon,
-        meta: `${n} ${pluralRu(n, "категория", "категории", "категорий")}`,
-      }));
+    return (
+      (l1.data ?? [])
+        // Без счётчиков (владелец, 2026-10-03: «убери эти счётчики везде»).
+        .filter((s) => all.some((c) => c.l1_id === s.id))
+        .map((s) => ({ id: s.id, name: s.name_ru, icon: s.icon }))
+    );
   }, [l1.data, categories.data]);
 
   const openSection = (l1Id: string) =>

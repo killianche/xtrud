@@ -2,14 +2,13 @@
  * /find/results — задания выбранного подраздела (третий уровень каталога:
  * /find → /find/section → сюда). Шапка хранит выбор, как у Airbnb после поиска
  * («Дома в Сан-Франциско · 2–4 окт · 2 гостя»): крупный заголовок —
- * категория, под ним «N заданий», место — капсулой, она же его меняет;
+ * категория, место — капсулой, она же его меняет;
  * категория — «назад» к выбору.
  */
 
 import { FlashList } from "@shopify/flash-list";
 import { useRouter } from "expo-router";
 import { MapPin, Tray } from "phosphor-react-native";
-import { useMemo } from "react";
 import { Pressable, View } from "react-native";
 import { AppText } from "@/components/AppText";
 import { OrderRowsSkeleton } from "@/components/OrderRowsSkeleton";
@@ -19,15 +18,12 @@ import { useAuthSession } from "@/features/auth/use-auth-session";
 import { useVisibleCategories } from "@/features/categories/use-visible-categories";
 import { useCities } from "@/features/cities/use-cities";
 import { useOrdersSearchFiltersStore } from "@/features/orders/orders-search-filters-store";
-import { tasksLabel } from "@/features/orders/plural-ru";
 import { useAllOpenOrders } from "@/features/orders/use-all-open-orders";
 import { useMyRespondedOrderIds } from "@/features/orders/use-my-responded-order-ids";
 import { describeQueryError } from "@/lib/describe-query-error";
 import { useTabBarSpace } from "@/lib/tab-bar-space";
 import { useThemeColors } from "@/lib/use-theme-color";
 import { FindOrderRow } from "./FindOrderRow";
-import { countByCategory } from "./open-order-facets";
-import { useOpenOrderFacets } from "./use-open-order-facets";
 
 const EMPTY_IDS: ReadonlySet<string> = new Set();
 
@@ -45,7 +41,6 @@ export function FindResults() {
 
   const categories = useVisibleCategories();
   const cities = useCities();
-  const facets = useOpenOrderFacets(userId);
   const feed = useAllOpenOrders({
     userId,
     l2Ids: l2Ids.length > 0 ? l2Ids : null,
@@ -60,18 +55,11 @@ export function FindResults() {
   const placeLabel = cityId
     ? (cities.data?.find((c) => c.id === cityId)?.name ?? "Город")
     : district || "Вся Ингушетия";
-  const count = useMemo(() => {
-    if (!l2Id || !facets.data) return null;
-    return countByCategory(facets.data, { cityId, district }).get(l2Id) ?? 0;
-  }, [facets.data, l2Id, cityId, district]);
 
   const header = (
     <View className="pb-4">
-      <LargeTitleBlock
-        title={title}
-        // Место — на капсуле ниже, здесь не повторяется.
-        subtitle={count === null ? null : tasksLabel(count)}
-      />
+      {/* Без счётчика «N заданий» (владелец, 2026-10-03); место — на капсуле. */}
+      <LargeTitleBlock title={title} />
       <View className="flex-row px-4">
         <FilterChip
           label={placeLabel}

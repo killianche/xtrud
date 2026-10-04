@@ -1,36 +1,19 @@
 /**
  * /find/section?l1= — подразделы раздела (второй уровень каталога «Найти
- * задание»). Справа — сколько открытых заданий; тап — задания подраздела.
+ * задание»). Тап — задания подраздела. Без счётчиков (владелец, 2026-10-03:
+ * «эти цифры не нужны, полностью убери»).
  * Экран стека вкладки: нижняя панель остаётся, свайп от края — назад.
  */
 
 import { useRouter } from "expo-router";
-import { useMemo } from "react";
-import { useAuthSession } from "@/features/auth/use-auth-session";
 import { SubcategoryScreen } from "@/features/categories/SubcategoryScreen";
-import { countByCategory } from "@/features/orders/find/open-order-facets";
-import { useOpenOrderFacets } from "@/features/orders/find/use-open-order-facets";
 import { useOrdersSearchFiltersStore } from "@/features/orders/orders-search-filters-store";
-import { tasksLabel } from "@/features/orders/plural-ru";
 
 export default function FindSectionRoute() {
   const router = useRouter();
-  const { session } = useAuthSession();
-  const facets = useOpenOrderFacets(session?.user?.id);
   const setL2Ids = useOrdersSearchFiltersStore((s) => s.setL2Ids);
-  // Число — в выбранном месте, как в списке заданий (аудит 2026-10-03).
-  const cityId = useOrdersSearchFiltersStore((s) => s.cityId);
-  const district = useOrdersSearchFiltersStore((s) => s.district);
-  const counts = useMemo(
-    () => countByCategory(facets.data ?? [], { cityId, district }),
-    [facets.data, cityId, district],
-  );
   return (
     <SubcategoryScreen
-      valueFor={(id) => (facets.data && counts.get(id) ? String(counts.get(id)) : undefined)}
-      labelFor={(id, name) =>
-        facets.data ? `${name}, ${tasksLabel(counts.get(id) ?? 0)}` : undefined
-      }
       onPick={(l2Id) => {
         setL2Ids([l2Id]);
         router.push("/find/results" as never);

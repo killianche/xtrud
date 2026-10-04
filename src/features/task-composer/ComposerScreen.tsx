@@ -15,18 +15,17 @@
  *   - отступ от чёлки обязателен.
  */
 
-import { LinearGradient } from "expo-linear-gradient";
 import { CaretLeft, X } from "phosphor-react-native";
 import type { ReactNode } from "react";
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
+import { BottomEdgeEffect } from "@/components/ui/BottomEdgeEffect";
 import { GLASS_BUTTON_HEIGHT, GlassButton } from "@/components/ui/GlassButton";
 import { NAV_BUTTON_SIZE, NAV_ROW_HEIGHT, NavCircleButton } from "@/components/ui/LargeTitle";
 import { SystemIcon } from "@/components/ui/SystemIcon";
-import { useColorScheme } from "@/hooks/use-color-scheme";
-import { darkColors, lightColors, withAlpha } from "@/lib/colors";
 import { useThemeColors } from "@/lib/use-theme-color";
+import { useComposerSession } from "./composer-store";
 import { type ComposerStep, stepPosition } from "./steps";
 
 export const PRIMARY_HEIGHT = GLASS_BUTTON_HEIGHT;
@@ -71,11 +70,10 @@ export function ComposerScreen({
 }: ComposerScreenProps) {
   const insets = useSafeAreaInsets();
   const tc = useThemeColors(["ink"]);
-  const { colorScheme } = useColorScheme();
-  // Хекс фона из палитры (в вебе useThemeColor отдаёт CSS-переменную).
-  const pageColor = (colorScheme === "dark" ? darkColors : lightColors)["surface-page"];
   const { index, total } = stepPosition(step);
-  const bottomSpace = insets.bottom + 16;
+  const isEdit = useComposerSession((st) => st.mode.kind === "edit");
+  // Кнопки ближе к нижнему краю, на размытии (владелец, 2026-10-03).
+  const bottomSpace = insets.bottom + 8;
   const actionsHeight = hideActions
     ? 0
     : PRIMARY_HEIGHT + (secondaryLabel ? 48 : 0) + (error ? 44 : 0);
@@ -86,7 +84,9 @@ export function ComposerScreen({
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
       <View style={{ paddingTop: insets.top }}>
-        <View className="flex-row items-center px-3" style={{ height: NAV_ROW_HEIGHT + 8 }}>
+        {/* minHeight, не height: подпись по центру растёт с крупным шрифтом
+            (QA 2026-10-03) — ряд растёт вместе с ней. */}
+        <View className="flex-row items-center px-3 py-1" style={{ minHeight: NAV_ROW_HEIGHT + 8 }}>
           {onBack ? (
             <NavCircleButton label="Назад" onPress={onBack} disabled={busy}>
               <SystemIcon
@@ -100,20 +100,33 @@ export function ComposerScreen({
           ) : (
             <View style={{ width: NAV_BUTTON_SIZE }} />
           )}
-          <View
-            className="flex-1 flex-row items-center justify-center gap-1"
-            accessibilityRole="progressbar"
-            accessibilityLabel={`Шаг ${index} из ${total}`}
-            accessibilityValue={{ min: 1, max: total, now: index }}
-          >
-            {Array.from({ length: total }, (_, i) => (
-              <View
-                // biome-ignore lint/suspicious/noArrayIndexKey: фиксированный набор сегментов
-                key={i}
-                className={`h-1 rounded-full ${i < index ? "bg-accent" : "bg-hairline-strong"}`}
-                style={{ width: 16 }}
-              />
-            ))}
+          {/* По центру — что это за экран, как «Новое событие» в Календаре
+              (владелец, 2026-10-03: «сверху видеть, что это создание
+              задания»); под подписью — шаги. */}
+          <View className="min-w-0 flex-1 items-center gap-1.5">
+            <AppText
+              accessibilityRole="header"
+              weight="semibold"
+              className="text-ios-subheadline text-ink"
+              numberOfLines={1}
+            >
+              {isEdit ? "Изменение задания" : "Создание задания"}
+            </AppText>
+            <View
+              className="flex-row items-center justify-center gap-1"
+              accessibilityRole="progressbar"
+              accessibilityLabel={`Шаг ${index} из ${total}`}
+              accessibilityValue={{ min: 1, max: total, now: index }}
+            >
+              {Array.from({ length: total }, (_, i) => (
+                <View
+                  // biome-ignore lint/suspicious/noArrayIndexKey: фиксированный набор сегментов
+                  key={i}
+                  className={`h-1 rounded-full ${i < index ? "bg-accent" : "bg-hairline-strong"}`}
+                  style={{ width: 16 }}
+                />
+              ))}
+            </View>
           </View>
           {onClose ? (
             <NavCircleButton label="Закрыть" onPress={onClose} disabled={busy}>
@@ -147,18 +160,7 @@ export function ComposerScreen({
         // Подложка под нижними кнопками: список уходит под них и растворяется
         // в цвет фона, а не просвечивает сквозь неактивную кнопку (скриншот
         // владельца 2026-10-03, «Далее» поверх «Джейрахского района»).
-        <LinearGradient
-          pointerEvents="none"
-          colors={[withAlpha(pageColor, 0), withAlpha(pageColor, 0.96), pageColor]}
-          locations={[0, 0.35, 1]}
-          style={{
-            position: "absolute",
-            left: 0,
-            right: 0,
-            bottom: 0,
-            height: actionsHeight + bottomSpace + 32,
-          }}
-        />
+        <BottomEdgeEffect solid={actionsHeight + bottomSpace + 8} />
       )}
       {hideActions ? null : (
         <View

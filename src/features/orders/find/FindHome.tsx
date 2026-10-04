@@ -5,8 +5,8 @@
  * /find/results (задания; место — капсулой там). Разбор —
  * docs/CATALOG_NAVIGATION_2026-10.md.
  *
- * Под названием раздела — сколько в нём открытых заданий (число из данных,
- * open-order-facets.ts); порядок — как в каталоге.
+ * Без счётчиков заданий (владелец, 2026-10-03: «убери весь счётчик»);
+ * порядок — как в каталоге.
  */
 
 import { useRouter } from "expo-router";
@@ -21,11 +21,8 @@ import { SectionGrid, SectionGridSkeleton } from "@/features/categories/SectionG
 import { useCategoriesL1 } from "@/features/categories/use-categories-l1";
 import { useVisibleCategories } from "@/features/categories/use-visible-categories";
 import { useOrdersSearchFiltersStore } from "@/features/orders/orders-search-filters-store";
-import { tasksLabel } from "@/features/orders/plural-ru";
 import { useMarkFeedSeen } from "@/features/orders/use-unread-feed";
 import { useTabBarSpace } from "@/lib/tab-bar-space";
-import { countByCategory, countInCategories } from "./open-order-facets";
-import { useOpenOrderFacets } from "./use-open-order-facets";
 
 export function FindHome({
   contentTop,
@@ -39,11 +36,6 @@ export function FindHome({
   const { session } = useAuthSession();
   const userId = session?.user?.id;
   const setL2Ids = useOrdersSearchFiltersStore((s) => s.setL2Ids);
-  // Числа — в том месте, что выбрано на экране заданий, иначе карточка
-  // обещала «3», а список показывал «1» (аудит 2026-10-03).
-  const cityId = useOrdersSearchFiltersStore((s) => s.cityId);
-  const district = useOrdersSearchFiltersStore((s) => s.district);
-  const place = useMemo(() => ({ cityId, district }), [cityId, district]);
   const [query, setQuery] = useState("");
 
   // Вход на вкладку снимает бейдж новых заданий.
@@ -54,30 +46,13 @@ export function FindHome({
 
   const l1 = useCategoriesL1();
   const categories = useVisibleCategories();
-  const facets = useOpenOrderFacets(userId);
-  const counts = useMemo(() => countByCategory(facets.data ?? [], place), [facets.data, place]);
 
   const tiles = useMemo(() => {
     const all = categories.data ?? [];
-    return (
-      (l1.data ?? [])
-        .map((s) => {
-          const ids = new Set(all.filter((c) => c.l1_id === s.id).map((c) => c.id));
-          const n = facets.data ? countInCategories(facets.data, ids, place) : null;
-          return { s, ids, n };
-        })
-        .filter(({ ids }) => ids.size > 0)
-        // Порядок каталога, без пересортировки по числу заданий: число
-        // приходит отдельным запросом, и карточки менялись бы местами под
-        // пальцем (QA 2026-10-03).
-        .map(({ s, n }) => ({
-          id: s.id,
-          name: s.name_ru,
-          icon: s.icon,
-          meta: n === null ? null : n > 0 ? tasksLabel(n) : "Пока нет заданий",
-        }))
-    );
-  }, [l1.data, categories.data, facets.data, place]);
+    return (l1.data ?? [])
+      .filter((s) => all.some((c) => c.l1_id === s.id))
+      .map((s) => ({ id: s.id, name: s.name_ru, icon: s.icon }));
+  }, [l1.data, categories.data]);
 
   const openResults = (l2Id: string) => {
     setL2Ids([l2Id]);
@@ -107,14 +82,7 @@ export function FindHome({
       </View>
 
       {searching ? (
-        <CategoryMatches
-          query={query}
-          valueFor={(id) => (facets.data && counts.get(id) ? String(counts.get(id)) : undefined)}
-          labelFor={(id, name) =>
-            facets.data ? `${name}, ${tasksLabel(counts.get(id) ?? 0)}` : undefined
-          }
-          onPick={openResults}
-        />
+        <CategoryMatches query={query} onPick={openResults} />
       ) : loading ? (
         <SectionGridSkeleton />
       ) : failed ? (

@@ -29,6 +29,7 @@ import {
   useLargeTitle,
   VerifiedBadge,
 } from "@/components/ui";
+import { BottomEdgeEffect } from "@/components/ui/BottomEdgeEffect";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { useAdminSetUserStatus, useIsAdmin } from "@/features/admin/use-admin-actions";
 import { GuestContactGate } from "@/features/auth/GuestContactGate";
@@ -474,12 +475,15 @@ export default function MasterPublicScreen() {
         }
       />
 
-      {/* Связь — плавающие стеклянные кнопки внизу */}
+      {/* Связь — плавающие кнопки внизу, на размытии (2026-10-03). */}
+      {!loading && !notFound && bottomBar ? (
+        <BottomEdgeEffect solid={insets.bottom + 4 + GLASS_BUTTON_HEIGHT + 8} />
+      ) : null}
       {!loading && !notFound && bottomBar ? (
         <View
           pointerEvents="box-none"
           className="absolute left-0 right-0 flex-row gap-3 px-5"
-          style={{ bottom: insets.bottom + 16 }}
+          style={{ bottom: insets.bottom + 4 }}
         >
           {phoneTel ? (
             <View className="flex-1">

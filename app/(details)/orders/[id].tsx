@@ -30,12 +30,14 @@ import { AppText } from "@/components/AppText";
 import { Avatar } from "@/components/Avatar";
 import { StatusPill } from "@/components/StatusPill";
 import {
+  GLASS_BUTTON_HEIGHT,
   GlassButton,
   isVerifiedLevel,
   ScreenHeader,
   Skeleton,
   VerifiedBadge,
 } from "@/components/ui";
+import { BottomEdgeEffect } from "@/components/ui/BottomEdgeEffect";
 import { SystemIcon } from "@/components/ui/SystemIcon";
 import { useAdminHideOrder, useIsAdmin } from "@/features/admin/use-admin-actions";
 import { GuestContactGate } from "@/features/auth/GuestContactGate";
@@ -634,10 +636,15 @@ export default function OrderDetailScreen() {
       {/* Отклик — отдельная шторка; кнопка плавает внизу, как главное
           действие экрана (DECISION владельца 2026-09-07). Гость — через вход. */}
       {canRespond && id ? (
+        // Под кнопкой — размытие (владелец, 2026-10-03: кнопка сливалась с
+        // текстом и картинками); кнопка ближе к нижнему краю.
+        <BottomEdgeEffect solid={insets.bottom + 4 + GLASS_BUTTON_HEIGHT + 8} />
+      ) : null}
+      {canRespond && id ? (
         <View
           pointerEvents="box-none"
           className="absolute left-0 right-0 px-5"
-          style={{ bottom: insets.bottom + 16 }}
+          style={{ bottom: insets.bottom + 4 }}
         >
           <GlassButton
             label={

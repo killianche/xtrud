@@ -30,10 +30,10 @@ import {
   ChatCenteredText,
   ClipboardText,
   MagnifyingGlass,
+  PaperPlaneTilt,
   Plus,
   SignIn,
   WarningCircle,
-  Wrench,
 } from "phosphor-react-native";
 import type { RefObject } from "react";
 import { type ReactElement, useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -186,7 +186,7 @@ export default function OrdersScreen() {
             value={resolved}
             onChange={setTab}
             items={[
-              // «Ваши задания» / «Я специалист», без счётчика (владелец,
+              // «Ваши задания» / «Ваши отклики», без счётчика (владелец,
               // 2026-10-03) — новое видно на карточках («N новых»).
               {
                 id: "orders",
@@ -195,9 +195,11 @@ export default function OrdersScreen() {
               },
               {
                 id: "responses",
-                label: "Я специалист",
+                label: "Ваши отклики",
                 tone: "primary",
-                icon: Wrench,
+                // Отправленный отклик — самолётик, как блок «Ваш отклик» в
+                // задании (владелец, 2026-10-03: «инструмент поменять»).
+                icon: PaperPlaneTilt,
               },
             ]}
           />

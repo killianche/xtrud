@@ -25,8 +25,8 @@ import { Pressable, View } from "react-native";
 import { AppText } from "@/components/AppText";
 import { ORDER_CREATE_RETURN_TO } from "@/features/auth/auth-return";
 import { RegisterFormFields } from "@/features/auth/RegisterFormFields";
+import { useRegister } from "@/features/auth/use-auth-mutations";
 import { useAuthSession } from "@/features/auth/use-auth-session";
-import { useRegisterWithCode } from "@/features/auth/use-register-with-code";
 import {
   normalizeRuPhoneDigits,
   type RegisterFormValues,
@@ -54,8 +54,7 @@ export default function TaskAccountScreen() {
   const { session } = useAuthSession();
   const userId = session?.user?.id;
   const publish = usePublishTask(mode, userId);
-  // Код из SMS — если сервер его требует (use-register-with-code.ts).
-  const register = useRegisterWithCode();
+  const register = useRegister();
   const [serverError, setServerError] = useState<string | null>(null);
   const [acceptedTerms, setAcceptedTerms] = useState(true);
   const [started, setStarted] = useState(false);
@@ -111,17 +110,12 @@ export default function TaskAccountScreen() {
     const journey = beginGuestDraftAuthJourney();
     let registered = false;
     try {
-      const result = await register.run({
+      const result = await register.mutateAsync({
         phone: `+7${normalizeRuPhoneDigits(form.phone)}`,
         password: form.password,
         firstName: form.firstName,
         lastName: form.lastName,
       });
-      // Шторку кода закрыли — форма снова доступна, черновик не трогаем.
-      if (!result) {
-        setStarted(false);
-        return;
-      }
       registered = true;
       registeredUid.current = result.userId;
       await completeGuestDraftAuthJourney(journey ?? undefined, result.userId);
@@ -189,7 +183,6 @@ export default function TaskAccountScreen() {
           </Pressable>
         </View>
       </View>
-      {register.sheet}
     </ComposerScreen>
   );
 }

@@ -49,6 +49,9 @@ export const RPC_ALLOWLIST = new Set([
   "admin_set_master_visibility",
   "admin_list_reports",
   "admin_resolve_report",
+  // Заявки «Забыли пароль?» (0214); проверка админа — внутри функций.
+  "admin_list_recovery_requests",
+  "admin_resolve_recovery_request",
   "admin_set_user_status",
   "admin_warn_user",
   "admin_set_user_password",

@@ -256,8 +256,8 @@ export default function LoginScreen() {
               disabled={isBusy}
               onPress={() => {
                 abandonDraftJourney(true);
-                // Номер из поля входа — сразу в «Забыли пароль?», чтобы не
-                // вводить его второй раз.
+                // Номер из поля входа — сразу в заявку, чтобы не вводить
+                // его второй раз.
                 const login = getValues("login").trim();
                 const digits = login && !looksLikeEmail(login) ? normalizeRuPhoneDigits(login) : "";
                 router.push({

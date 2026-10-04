@@ -16,7 +16,6 @@ import { registerPushRoutes } from "./push/routes.js";
 import { RuStorePushClient } from "./push/rustore.js";
 import { registerRestProxy } from "./rest/routes.js";
 import { registerRpcRoutes } from "./rpc/routes.js";
-import { SmsRu } from "./sms/smsru.js";
 
 const cfg = loadConfig();
 const db = new Db(cfg.DATABASE_URL);
@@ -95,7 +94,6 @@ app.get("/v2/health", async () => {
     push: apns !== null,
     pushAndroid: rustorePush !== null,
     storage: s3 === null ? "disk" : "s3",
-    sms: cfg.SMSRU_API_ID !== undefined,
   };
 });
 
@@ -103,13 +101,7 @@ await app.register(
   async (scope) => {
     await scope.register(async (authScope) => {
       await authScope.register(rateLimit, { max: 20, timeWindow: "1 minute" });
-      // SMS-коды: без ключа SMS.ru подтверждение номера и восстановление
-      // пароля по SMS выключены (GET /v2/auth/options это сообщает).
-      const sms =
-        cfg.SMSRU_API_ID !== undefined
-          ? new SmsRu(cfg.SMSRU_API_ID, cfg.SMSRU_FROM, cfg.SMSRU_TEST === "true")
-          : null;
-      registerAuthRoutes(authScope, db, tokens, cfg, undefined, sms);
+      registerAuthRoutes(authScope, db, tokens, cfg);
     });
     registerRpcRoutes(scope, db, tokens);
     registerEventRoutes(scope, tokens, hub);

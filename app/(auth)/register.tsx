@@ -1,9 +1,9 @@
 // Экран РЕГИСТРАЦИИ (route /(auth)/register).
 //
-// DECISION владельца 2026-09-03: имя, фамилия, номер телефона и пароль.
-// Подтверждение номера кодом из SMS (2026-10-04) — когда сервер его требует
-// (GET /v2/auth/options): после «Зарегистрироваться» открывается шторка
-// кода, аккаунт создаётся после верного кода.
+// «Тестовая регистрация» — DECISION владельца 2026-09-03: имя, фамилия, номер
+// телефона и пароль. Ни SMS, ни почты, ни подтверждения: нажал «Создать
+// аккаунт» — аккаунт есть. Подтверждение номера по SMS вернём отдельным
+// этапом, когда будет провайдер.
 //
 // Номер — единственный формат: код страны зафиксирован на +7 и не
 // выбирается, в поле ровно 10 цифр. Раньше здесь был CountryCodeSelect, и
@@ -29,7 +29,7 @@ import { SystemIcon } from "@/components/ui/SystemIcon";
 import { ORDER_CREATE_RETURN_TO, parseAuthReturnTo } from "@/features/auth/auth-return";
 import { formatRuPhone, RegisterFormFields } from "@/features/auth/RegisterFormFields";
 import { clearRegisterPrefill, peekRegisterPrefill } from "@/features/auth/register-prefill";
-import { useRegisterWithCode } from "@/features/auth/use-register-with-code";
+import { useRegister } from "@/features/auth/use-auth-mutations";
 import {
   normalizeRuPhoneDigits,
   type RegisterFormValues,
@@ -63,8 +63,7 @@ export default function RegisterScreen() {
   const rawAuthOrigin = Array.isArray(params.authOrigin) ? params.authOrigin[0] : params.authOrigin;
   const authOrigin: GuestDraftAuthOrigin =
     rawAuthOrigin === "phone" || rawAuthOrigin === "sheet" ? rawAuthOrigin : null;
-  // Код из SMS — если сервер его требует (use-register-with-code.ts).
-  const register = useRegisterWithCode();
+  const register = useRegister();
   const [serverError, setServerError] = useState<string | null>(null);
   const [_showPassword, _setShowPassword] = useState(false);
   // Галочка стоит сразу (DECISION владельца 2026-09-12: «ставь»): человек
@@ -150,14 +149,12 @@ export default function RegisterScreen() {
     const phone = `+7${normalizeRuPhoneDigits(values.phone)}`;
     setServerError(null);
     try {
-      const result = await register.run({
+      const result = await register.mutateAsync({
         phone,
         password: values.password,
         firstName: values.firstName,
         lastName: values.lastName,
       });
-      // Шторку кода закрыли — остаёмся на форме.
-      if (!result) return;
       await completeGuestDraftAuthJourney(draftJourney, result.userId);
       const returnUrl = useAuthReturnUrlStore.getState().peekReturnUrl();
       if (returnUrl) {
@@ -276,7 +273,6 @@ export default function RegisterScreen() {
           </View>
         </View>
       </ScrollView>
-      {register.sheet}
     </KeyboardAvoidingView>
   );
 }

@@ -170,6 +170,18 @@ export interface UserCard {
   reviews: Array<{ id: string; rating: number | null; status: string; created_at: string }>;
 }
 
+/** Заявка «Забыли пароль?» — перезвонить и задать временный пароль (0214). */
+export interface RecoveryRequestRow {
+  id: string;
+  created_at: string;
+  status: "new" | "done" | "rejected";
+  phone: string;
+  user_id: string;
+  user_label: string | null;
+  note: string | null;
+  handled_at: string | null;
+}
+
 export interface ReportRow {
   id: string;
   created_at: string;
@@ -425,6 +437,18 @@ export const api = {
       p_order_id: orderId,
       p_reason: reason.trim(),
       p_report_id: reportId,
+    }),
+  listRecoveryRequests: (status: "new" | null, limit = 50, offset = 0) =>
+    rpc<RecoveryRequestRow[]>("admin_list_recovery_requests", {
+      p_status: status,
+      p_limit: limit,
+      p_offset: offset,
+    }),
+  resolveRecoveryRequest: (id: string, status: "done" | "rejected", note: string) =>
+    rpc<{ ok: boolean }>("admin_resolve_recovery_request", {
+      p_id: id,
+      p_status: status,
+      p_note: note,
     }),
   resolveReport: (reportId: string, status: string, note: string) =>
     rpc<{ ok: boolean }>("admin_resolve_report", {

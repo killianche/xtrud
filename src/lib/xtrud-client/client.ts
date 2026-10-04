@@ -146,8 +146,6 @@ export function createXtrudClient(opts: XtrudClientOptions) {
       lastName: string;
       phone: string;
       password: string;
-      /** Подтверждение номера кодом из SMS, если сервер его требует. */
-      verificationToken?: string;
     }): Promise<AuthResult> {
       const { status, json } = await postJson("/v2/auth/register", input, false);
       if (failed(status)) {
@@ -160,69 +158,17 @@ export function createXtrudClient(opts: XtrudClientOptions) {
       await sessions.set(session, "SIGNED_IN");
       return { data: { session, user: session.user }, error: null };
     },
-    /** Что включено на сервере: код при регистрации, новый пароль по SMS. */
-    async options(): Promise<{ phoneCodeAtRegistration: boolean; passwordResetBySms: boolean }> {
-      try {
-        const res = await fetchImpl(`${baseUrl}/v2/auth/options`);
-        if (!res.ok) throw new Error(String(res.status));
-        const j = (await res.json()) as Record<string, unknown>;
-        return {
-          phoneCodeAtRegistration: j.phoneCodeAtRegistration === true,
-          passwordResetBySms: j.passwordResetBySms === true,
-        };
-      } catch {
-        // Старый сервер или нет связи — ведём себя как без SMS.
-        return { phoneCodeAtRegistration: false, passwordResetBySms: false };
-      }
-    },
-    /** Отправить код из SMS (регистрация или новый пароль). */
-    async sendCode(
+    /** «Забыли пароль?»: заявка «перезвоните мне» — без входа. */
+    async requestRecovery(
       phone: string,
-      purpose: "register" | "reset",
-    ): Promise<{ error: ApiError | null; retryInSec?: number }> {
-      const { status, json } = await postJson("/v2/auth/code/send", { phone, purpose }, false);
-      if (failed(status)) {
-        const retry = (json as { retryInSec?: unknown } | null)?.retryInSec;
-        return {
-          error: toApiError(status, json, "Не удалось отправить код"),
-          retryInSec: typeof retry === "number" ? retry : undefined,
-        };
-      }
-      return { error: null };
-    },
-    /** Проверить код — в ответ одноразовое подтверждение номера. */
-    async verifyCode(
-      phone: string,
-      purpose: "register" | "reset",
-      code: string,
-    ): Promise<{ token: string | null; error: ApiError | null }> {
-      const { status, json } = await postJson(
-        "/v2/auth/code/verify",
-        { phone, purpose, code },
-        false,
-      );
-      const token = (json as { verificationToken?: unknown } | null)?.verificationToken;
-      if (failed(status) || typeof token !== "string") {
-        return { token: null, error: toApiError(status, json, "Не удалось проверить код") };
-      }
-      return { token, error: null };
-    },
-    /** Новый пароль по подтверждённому номеру — сразу со входом. */
-    async resetPassword(input: {
-      phone: string;
-      verificationToken: string;
-      newPassword: string;
-    }): Promise<AuthResult> {
-      const { status, json } = await postJson("/v2/auth/password/reset", input, false);
-      if (failed(status)) {
-        return {
-          data: { session: null, user: null },
-          error: toApiError(status, json, "Не удалось сменить пароль"),
-        };
-      }
-      const session = sessionFromTokens(json as Parameters<typeof sessionFromTokens>[0]);
-      await sessions.set(session, "SIGNED_IN");
-      return { data: { session, user: session.user }, error: null };
+    ): Promise<{ error: ApiError | null; alreadyRequested?: boolean }> {
+      const { status, json } = await postJson("/v2/auth/recovery-request", { phone }, false);
+      if (failed(status)) return { error: toApiError(status, json, "Не удалось отправить заявку") };
+      return {
+        error: null,
+        alreadyRequested:
+          (json as { alreadyRequested?: unknown } | null)?.alreadyRequested === true,
+      };
     },
     async changePassword(
       currentPassword: string,

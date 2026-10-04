@@ -9,6 +9,7 @@ import { Journal } from "./pages/Journal";
 import { Login } from "./pages/Login";
 import { Masters } from "./pages/Masters";
 import { Promo } from "./pages/Promo";
+import { Recovery } from "./pages/Recovery";
 import { Reports } from "./pages/Reports";
 import { Settings } from "./pages/Settings";
 import { UserCard } from "./pages/UserCard";
@@ -99,13 +100,15 @@ export function App() {
         ? "verifications"
         : route.startsWith("/reports")
           ? "reports"
-          : route.startsWith("/journal")
-            ? "journal"
-            : route.startsWith("/settings")
-              ? "settings"
-              : route.startsWith("/promo")
-                ? "promo"
-                : "overview";
+          : route.startsWith("/recovery")
+            ? "recovery"
+            : route.startsWith("/journal")
+              ? "journal"
+              : route.startsWith("/settings")
+                ? "settings"
+                : route.startsWith("/promo")
+                  ? "promo"
+                  : "overview";
 
   return (
     <>
@@ -155,6 +158,14 @@ export function App() {
           <button
             type="button"
             className="nav-link"
+            aria-current={section === "recovery" ? "page" : undefined}
+            onClick={() => navigate("/recovery")}
+          >
+            Восстановление
+          </button>
+          <button
+            type="button"
+            className="nav-link"
             aria-current={section === "journal" ? "page" : undefined}
             onClick={() => navigate("/journal")}
           >
@@ -194,6 +205,8 @@ export function App() {
           <Verifications onOpen={(id) => navigate(`/users/${id}`)} />
         ) : section === "reports" ? (
           <Reports />
+        ) : section === "recovery" ? (
+          <Recovery onOpen={(id) => navigate(`/users/${id}`)} />
         ) : section === "journal" ? (
           <Journal />
         ) : section === "settings" ? (

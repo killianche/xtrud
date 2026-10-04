@@ -86,38 +86,15 @@ export async function registerWithCredentials(input: {
   password: string;
   firstName: string;
   lastName: string;
-  verificationToken?: string;
-}): Promise<{ ok: true; userId: string } | { ok: false; error: string; code?: string }> {
+}): Promise<{ ok: true; userId: string } | { ok: false; error: string }> {
   const { data, error } = await supabase.auth.register({
     firstName: input.firstName.trim(),
     lastName: input.lastName.trim(),
     phone: normalizePhone(input.phone),
     password: input.password,
-    ...(input.verificationToken ? { verificationToken: input.verificationToken } : {}),
   });
   if (error || !data.user) {
-    return { ok: false, error: error?.message ?? "Не удалось создать аккаунт", code: error?.code };
-  }
-  return { ok: true, userId: data.user.id };
-}
-
-/**
- * Новый пароль по коду из SMS (2026-10-04): номер подтверждён токеном
- * /auth/code/verify, сервер меняет пароль, закрывает прежние сессии и
- * сразу входит.
- */
-export async function resetPasswordBySms(input: {
-  phone: string;
-  verificationToken: string;
-  newPassword: string;
-}): Promise<{ ok: true; userId: string } | { ok: false; error: string; code?: string }> {
-  const { data, error } = await supabase.auth.resetPassword({
-    phone: normalizePhone(input.phone),
-    verificationToken: input.verificationToken,
-    newPassword: input.newPassword,
-  });
-  if (error || !data.user) {
-    return { ok: false, error: error?.message ?? "Не удалось сменить пароль", code: error?.code };
+    return { ok: false, error: error?.message ?? "Не удалось создать аккаунт" };
   }
   return { ok: true, userId: data.user.id };
 }
@@ -149,6 +126,19 @@ export async function loginWithCredentials(input: {
   }
   await markMasterRole(data.user.id);
   return { ok: true, userId: data.user.id };
+}
+
+/**
+ * «Забыли пароль?» — заявка «перезвоните мне» (DECISION владельца
+ * 2026-10-04): админы получают push, перезванивают на номер аккаунта и
+ * задают временный пароль в админке.
+ */
+export async function requestPasswordRecovery(
+  phone: string,
+): Promise<{ ok: true; alreadyRequested: boolean } | { ok: false; error: string; code?: string }> {
+  const { error, alreadyRequested } = await supabase.auth.requestRecovery(normalizePhone(phone));
+  if (error) return { ok: false, error: error.message, code: error.code };
+  return { ok: true, alreadyRequested: alreadyRequested === true };
 }
 
 /** Писем восстановления нет: доступ возвращает администратор через панель. */

@@ -45,14 +45,30 @@ async function postJson(
   body: unknown,
   token?: string,
 ): Promise<{ status: number; json: unknown }> {
-  const res = await fetch(`${await baseUrl()}${path}`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
-    body: JSON.stringify(body ?? {}),
-  });
+  // Ожидание всегда конечно (design-quality §1.2): 15 с, затем понятная
+  // ошибка вместо вечной загрузки.
+  let res: Response;
+  try {
+    res = await fetch(`${await baseUrl()}${path}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify(body ?? {}),
+      signal: AbortSignal.timeout(15_000),
+    });
+  } catch (e) {
+    const timeout = e instanceof DOMException && e.name === "TimeoutError";
+    return {
+      status: 0,
+      json: {
+        error: timeout
+          ? "Сервер не ответил за 15 секунд. Попробуйте ещё раз."
+          : "Нет связи с сервером. Проверьте интернет.",
+      },
+    };
+  }
   const text = await res.text();
   let json: unknown = null;
   try {
@@ -170,6 +186,110 @@ export interface UserCard {
   reviews: Array<{ id: string; rating: number | null; status: string; created_at: string }>;
 }
 
+/** Очереди «Требует внимания» (admin_attention, 0215). */
+export interface Attention {
+  reports_open: number;
+  verifications_pending: number;
+  recovery_new: number;
+  masters_pending: number;
+}
+
+/** Динамика по дням (admin_metrics_series, 0215). */
+export interface SeriesPoint {
+  day: string;
+  signups: number;
+  orders: number;
+  responses: number;
+}
+
+export interface OrderRow {
+  id: string;
+  title: string;
+  status: string;
+  created_at: string;
+  city: string | null;
+  category: string | null;
+  client_id: string;
+  client_label: string | null;
+  responses_count: number;
+  picked_master_label: string | null;
+  cancel_reason: string | null;
+}
+
+export interface OrderCardData {
+  order: {
+    id: string;
+    title: string;
+    description: string | null;
+    status: string;
+    created_at: string;
+    updated_at: string | null;
+    city: string | null;
+    district: string | null;
+    category: string | null;
+    budget_kind: string | null;
+    budget_value: number | null;
+    contact_mode: string | null;
+    photo_urls: string[] | null;
+    preferred_date: string | null;
+    client_id: string;
+    client_label: string | null;
+    client_phone: string | null;
+    picked_master_id: string | null;
+    picked_master_label: string | null;
+    cancel_reason: string | null;
+    responses_count: number;
+    /** Скрыто админом и можно вернуть — решает сервер по журналу (0215, F1). */
+    restorable: boolean;
+  };
+  responses: Array<{
+    id: string;
+    master_id: string;
+    master_label: string | null;
+    status: string;
+    price_kind: string | null;
+    price_value: number | null;
+    message: string | null;
+    created_at: string;
+  }>;
+  reviews: Array<{
+    id: string;
+    rating: number | null;
+    text: string | null;
+    status: string;
+    direction: string;
+    author_label: string | null;
+    created_at: string;
+  }>;
+}
+
+export interface ReviewRow {
+  id: string;
+  created_at: string;
+  rating: number | null;
+  text: string | null;
+  status: string;
+  direction: string;
+  author_id: string;
+  author_label: string | null;
+  target_id: string;
+  target_label: string | null;
+  order_id: string | null;
+  order_title: string | null;
+}
+
+export interface CategoryRow {
+  l1_id: string;
+  l1_name: string;
+  l2_id: string;
+  l2_name: string;
+  is_active: boolean;
+  is_visible: boolean;
+  sort_order: number;
+  open_orders: number;
+  masters: number;
+}
+
 /** Заявка «Забыли пароль?» — перезвонить и задать временный пароль (0214). */
 export interface RecoveryRequestRow {
   id: string;
@@ -269,6 +389,19 @@ function describe(error: { message?: string; code?: string } | null): string {
   if (message.includes("report_not_found")) return "Жалоба не найдена.";
   if (message.includes("bad_status")) return "Недопустимое состояние.";
   if (message.includes("master_not_found")) return "Профиль специалиста не найден.";
+  if (message.includes("order_not_found")) return "Задание не найдено.";
+  if (message.includes("order_already_closed")) return "Задание уже закрыто.";
+  if (message.includes("order_not_restorable")) {
+    return "Вернуть можно только задание, скрытое модерацией.";
+  }
+  if (message.includes("review_not_found")) return "Отзыв не найден.";
+  if (message.includes("client_not_active")) {
+    return "Заказчик приостановлен или заблокирован — задание вернуть нельзя.";
+  }
+  if (message.includes("bad_days")) return "Период — от 1 до 365 дней.";
+  if (message.includes("bad_visible")) return "Не указано, показать или скрыть.";
+  if (message.includes("category_not_found")) return "Подраздел не найден.";
+  if (message.includes("request_not_open")) return "Заявка уже закрыта.";
   if (!message) return "Не удалось выполнить запрос.";
   return "Сервис не ответил. Попробуйте ещё раз.";
 }
@@ -286,6 +419,9 @@ async function rpc<T>(name: string, args?: Record<string, unknown>): Promise<T> 
   if (res.status === 401 && token) {
     token = await refreshToken();
     if (token) res = await postJson(`/v2/rpc/${name}`, args ?? {}, token);
+  }
+  if (res.status === 0) {
+    throw new Error((res.json as { error?: string } | null)?.error ?? "Нет связи с сервером.");
   }
   if (res.status >= 400) {
     const body = (res.json ?? {}) as { error?: string; message?: string; code?: string };
@@ -437,6 +573,33 @@ export const api = {
       p_order_id: orderId,
       p_reason: reason.trim(),
       p_report_id: reportId,
+    }),
+  attention: () => rpc<Attention>("admin_attention"),
+  metricsSeries: (days = 30) => rpc<SeriesPoint[]>("admin_metrics_series", { p_days: days }),
+  listOrders: (search: string, status: string | null, limit = 50, offset = 0) =>
+    rpc<OrderRow[]>("admin_list_orders", {
+      p_search: search.trim() === "" ? null : search.trim(),
+      p_status: status,
+      p_limit: limit,
+      p_offset: offset,
+    }),
+  orderCard: (orderId: string) => rpc<OrderCardData>("admin_order_card", { p_order_id: orderId }),
+  restoreOrder: (orderId: string, reason: string) =>
+    rpc<void>("admin_restore_order", { p_order_id: orderId, p_reason: reason }),
+  listReviews: (status: string | null, limit = 50, offset = 0) =>
+    rpc<ReviewRow[]>("admin_list_reviews", { p_status: status, p_limit: limit, p_offset: offset }),
+  setReviewStatus: (reviewId: string, status: "visible" | "hidden", reason: string) =>
+    rpc<void>("admin_set_review_status", {
+      p_review_id: reviewId,
+      p_status: status,
+      p_reason: reason,
+    }),
+  listCategories: () => rpc<CategoryRow[]>("admin_list_categories"),
+  setCategoryVisible: (l2Id: string, visible: boolean, reason: string) =>
+    rpc<void>("admin_set_category_visible", {
+      p_l2_id: l2Id,
+      p_visible: visible,
+      p_reason: reason,
     }),
   listRecoveryRequests: (status: "new" | null, limit = 50, offset = 0) =>
     rpc<RecoveryRequestRow[]>("admin_list_recovery_requests", {

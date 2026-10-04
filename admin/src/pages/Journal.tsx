@@ -6,15 +6,34 @@ import { useEffect, useState } from "react";
 import { EmptyState, ErrorState, formatDate, SkeletonRows } from "../components/ui";
 import { type ActionRow, api } from "../lib/api";
 
-const ACTION_LABEL: Record<string, string> = {
-  set_password: "Смена пароля",
-  suspend: "Приостановка",
-  block: "Блокировка",
-  unblock: "Снятие санкции",
+/** Подписи действий — полный список из ограничения admin_actions_action_check. */
+export const ACTION_LABEL: Record<string, string> = {
   warn: "Предупреждение",
-  hide_review: "Скрытие отзыва",
+  suspend: "Приостановка",
+  unsuspend: "Снятие приостановки",
+  ban: "Блокировка",
+  unban: "Снятие блокировки",
+  hide: "Скрытие",
+  unhide: "Возврат из скрытых",
+  hide_order: "Задание скрыто",
+  restore_order: "Задание возвращено",
+  dismiss_report: "Жалоба отклонена",
+  resolve_report: "Жалоба решена",
+  issue_signed_url: "Просмотр документа",
+  verification_approve: "Паспорт подтверждён",
+  verification_reject: "Паспорт отклонён",
+  master_show: "Специалист показан",
+  master_hide: "Специалист скрыт",
+  set_password: "Временный пароль",
+  set_phone: "Смена номера",
   set_order_limits: "Лимиты публикации",
   set_find_screen: "Вид экрана поиска",
+  promo_banner_add: "Баннер добавлен",
+  promo_banner_update: "Баннер изменён",
+  promo_banner_delete: "Баннер удалён",
+  resolve_recovery_request: "Заявка на звонок закрыта",
+  category_show: "Подраздел показан",
+  category_hide: "Подраздел скрыт",
 };
 
 export function Journal() {

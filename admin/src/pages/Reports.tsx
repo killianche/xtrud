@@ -186,8 +186,6 @@ export function Reports() {
       .then(setRows)
       .catch((e: Error) => setError(e.message));
   };
-
-  // biome-ignore lint/correctness/useExhaustiveDependencies: перезагрузка при смене фильтра
   useEffect(load, [onlyPending]);
 
   return (

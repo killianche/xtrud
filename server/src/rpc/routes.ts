@@ -52,6 +52,16 @@ export const RPC_ALLOWLIST = new Set([
   // Заявки «Забыли пароль?» (0214); проверка админа — внутри функций.
   "admin_list_recovery_requests",
   "admin_resolve_recovery_request",
+  // Админка 2026-10 (0215): сводка, задания, отзывы, каталог.
+  "admin_attention",
+  "admin_metrics_series",
+  "admin_list_orders",
+  "admin_order_card",
+  "admin_restore_order",
+  "admin_list_reviews",
+  "admin_set_review_status",
+  "admin_list_categories",
+  "admin_set_category_visible",
   "admin_set_user_status",
   "admin_warn_user",
   "admin_set_user_password",

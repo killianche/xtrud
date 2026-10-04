@@ -29,7 +29,7 @@
   color: var(--on-primary);
 }
 .btn-primary:hover:not(:disabled) {
-  background: #000000;
+  background: var(--primary-hover);
 }
 .btn-ghost {
   background: var(--canvas-elevated);
@@ -162,7 +162,14 @@
   align-items: flex-end;
   justify-content: space-between;
   gap: var(--space-md);
+  flex-wrap: wrap;
   margin-bottom: var(--space-lg);
+}
+/* На узком экране шапка каркаса уже называет раздел. */
+@media (max-width: 1024px) {
+  .page-header .mono-eyebrow {
+    display: none;
+  }
 }
 .stack {
   display: flex;

@@ -130,8 +130,6 @@ export function Recovery({ onOpen }: { onOpen: (userId: string) => void }) {
       .then(setRows)
       .catch((e: Error) => setError(e.message));
   };
-
-  // biome-ignore lint/correctness/useExhaustiveDependencies: перезагрузка при смене фильтра
   useEffect(load, [onlyNew]);
 
   return (

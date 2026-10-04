@@ -37,7 +37,6 @@
   --warning: #f5a623;
   --warning-soft: #fff4e0;
   --warning-deep: #a35200;
-  --success: #0070f3;
 
   /* Фирменные градиенты Vercel — только для декора на входе */
   --gradient-develop-start: #007cf0;
@@ -69,8 +68,49 @@
   --shadow-whisper: 0 1px 1px rgba(0, 0, 0, 0.04);
   --shadow-floating: 0 2px 2px rgba(0, 0, 0, 0.04), 0 8px 16px -4px rgba(0, 0, 0, 0.08);
 
+  /* Оболочка (редизайн 2026-10-04) */
+  --primary-hover: #000000;
+  --sidebar: #ffffff;
+  --overlay: rgba(0, 0, 0, 0.32);
+  --success-soft: #e3f8ea;
+  --success-deep: #0f7a3b;
+  --accent-brand: #e11d48;
+  --accent-brand-soft: #ffe4ea;
+  /* Текст на фирменном и красном фоне — белый в обеих темах */
+  --on-accent: #ffffff;
+
   --font-sans: "Geist", Inter, -apple-system, BlinkMacSystemFont, Arial, sans-serif;
   --font-mono: "Geist Mono", "JetBrains Mono", "SFMono-Regular", Menlo, monospace;
+}
+
+/* Тёмная тема (2026-10-04): системная настройка или переключатель в панели.
+   Та же лестница чернил, только наоборот; линия остаётся главной глубиной. */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --canvas: #0a0a0a;
+  --canvas-elevated: #141414;
+  --hairline-soft: #1f1f1f;
+  --ink: #ededed;
+  --body: #a1a1a1;
+  --mute: #8f8f8f;
+  --faint: #6b6b6b;
+  --on-primary: #0a0a0a;
+  --hairline: #2a2a2a;
+  --link: #3b8eff;
+  --link-deep: #6aa8ff;
+  --link-soft: #0f2a4d;
+  --error: #ff5c5c;
+  --error-deep: #ff8a8a;
+  --error-soft: #3a1414;
+  --warning-soft: #3a2a0d;
+  --warning-deep: #f5b54a;
+  --primary-hover: #ffffff;
+  --sidebar: #0f0f0f;
+  --overlay: rgba(0, 0, 0, 0.6);
+  --success-soft: #0d2e1a;
+  --success-deep: #5ad48a;
+  --accent-brand-soft: #4a1f29;
+  --shadow-floating: 0 2px 2px rgba(0, 0, 0, 0.4), 0 8px 24px -4px rgba(0, 0, 0, 0.6);
 }
 
 *,

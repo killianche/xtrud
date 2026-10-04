@@ -1,16 +1,23 @@
 // Оболочка панели: вход, проверка прав администратора и переключение
-// разделов. Маршрутизация — по хешу, отдельная библиотека ради пяти экранов
-// не нужна.
+// разделов. Маршрутизация — по хешу, отдельная библиотека не нужна.
+// Каркас (боковая панель, поиск ⌘K, тосты) — components/Shell.tsx,
+// docs/ADMIN_REDESIGN_2026-10.md.
 
-import { useCallback, useEffect, useState } from "react";
+import { type ReactNode, useCallback, useEffect, useState } from "react";
+import { FeedbackProvider } from "./components/feedback";
+import { type Section, Shell, sectionLabel } from "./components/Shell";
 import { api, hasSession, logout } from "./lib/api";
-import { Dashboard } from "./pages/Dashboard";
+import { Catalog } from "./pages/Catalog";
 import { Journal } from "./pages/Journal";
 import { Login } from "./pages/Login";
 import { Masters } from "./pages/Masters";
+import { OrderCard } from "./pages/OrderCard";
+import { Orders } from "./pages/Orders";
+import { Overview } from "./pages/Overview";
 import { Promo } from "./pages/Promo";
 import { Recovery } from "./pages/Recovery";
 import { Reports } from "./pages/Reports";
+import { Reviews } from "./pages/Reviews";
 import { Settings } from "./pages/Settings";
 import { UserCard } from "./pages/UserCard";
 import { Users } from "./pages/Users";
@@ -92,131 +99,85 @@ export function App() {
   }
 
   const userMatch = /^\/users\/(.+)$/.exec(route);
-  const section = route.startsWith("/users")
-    ? "users"
-    : route.startsWith("/masters")
-      ? "masters"
-      : route.startsWith("/verifications")
-        ? "verifications"
-        : route.startsWith("/reports")
-          ? "reports"
-          : route.startsWith("/recovery")
-            ? "recovery"
-            : route.startsWith("/journal")
-              ? "journal"
-              : route.startsWith("/settings")
-                ? "settings"
-                : route.startsWith("/promo")
-                  ? "promo"
-                  : "overview";
+  const orderMatch = /^\/orders\/(.+)$/.exec(route);
+  const first = route.split("/")[1] ?? "";
+  const known: Record<string, Section> = {
+    users: "users",
+    masters: "masters",
+    orders: "orders",
+    reviews: "reviews",
+    reports: "reports",
+    verifications: "verifications",
+    recovery: "recovery",
+    catalog: "catalog",
+    promo: "promo",
+    settings: "settings",
+    journal: "journal",
+  };
+  const section: Section = known[first] ?? "overview";
+  const openUser = (id: string) => navigate(`/users/${id}`);
+
+  let page: ReactNode;
+  if (userMatch?.[1]) {
+    page = <UserCard userId={userMatch[1]} onBack={() => window.history.back()} />;
+  } else if (orderMatch?.[1]) {
+    page = (
+      <OrderCard
+        orderId={orderMatch[1]}
+        onBack={() => window.history.back()}
+        onOpenUser={openUser}
+      />
+    );
+  } else {
+    switch (section) {
+      case "users":
+        page = <Users onOpen={openUser} />;
+        break;
+      case "masters":
+        page = <Masters onOpen={openUser} />;
+        break;
+      case "orders":
+        page = <Orders onOpen={(id) => navigate(`/orders/${id}`)} />;
+        break;
+      case "reviews":
+        page = <Reviews onOpenUser={openUser} />;
+        break;
+      case "verifications":
+        page = <Verifications onOpen={openUser} />;
+        break;
+      case "reports":
+        page = <Reports />;
+        break;
+      case "recovery":
+        page = <Recovery onOpen={openUser} />;
+        break;
+      case "catalog":
+        page = <Catalog />;
+        break;
+      case "journal":
+        page = <Journal />;
+        break;
+      case "settings":
+        page = <Settings />;
+        break;
+      case "promo":
+        page = <Promo />;
+        break;
+      default:
+        page = <Overview navigate={navigate} />;
+    }
+  }
 
   return (
-    <>
-      <nav className="nav-bar">
-        <span className="nav-wordmark">xtrud</span>
-        <div className="nav-links">
-          <button
-            type="button"
-            className="nav-link"
-            aria-current={section === "overview" ? "page" : undefined}
-            onClick={() => navigate("/")}
-          >
-            Обзор
-          </button>
-          <button
-            type="button"
-            className="nav-link"
-            aria-current={section === "users" ? "page" : undefined}
-            onClick={() => navigate("/users")}
-          >
-            Люди
-          </button>
-          <button
-            type="button"
-            className="nav-link"
-            aria-current={section === "masters" ? "page" : undefined}
-            onClick={() => navigate("/masters")}
-          >
-            Специалисты
-          </button>
-          <button
-            type="button"
-            className="nav-link"
-            aria-current={section === "verifications" ? "page" : undefined}
-            onClick={() => navigate("/verifications")}
-          >
-            Паспорта
-          </button>
-          <button
-            type="button"
-            className="nav-link"
-            aria-current={section === "reports" ? "page" : undefined}
-            onClick={() => navigate("/reports")}
-          >
-            Жалобы
-          </button>
-          <button
-            type="button"
-            className="nav-link"
-            aria-current={section === "recovery" ? "page" : undefined}
-            onClick={() => navigate("/recovery")}
-          >
-            Восстановление
-          </button>
-          <button
-            type="button"
-            className="nav-link"
-            aria-current={section === "journal" ? "page" : undefined}
-            onClick={() => navigate("/journal")}
-          >
-            Журнал
-          </button>
-          <button
-            type="button"
-            className="nav-link"
-            aria-current={section === "promo" ? "page" : undefined}
-            onClick={() => navigate("/promo")}
-          >
-            Реклама
-          </button>
-          <button
-            type="button"
-            className="nav-link"
-            aria-current={section === "settings" ? "page" : undefined}
-            onClick={() => navigate("/settings")}
-          >
-            Настройки
-          </button>
-        </div>
-        <span className="nav-spacer" />
-        <button type="button" className="btn btn-ghost" onClick={signOut}>
-          Выйти
-        </button>
-      </nav>
-
-      <main className="container">
-        {userMatch?.[1] ? (
-          <UserCard userId={userMatch[1]} onBack={() => navigate("/users")} />
-        ) : section === "users" ? (
-          <Users onOpen={(id) => navigate(`/users/${id}`)} />
-        ) : section === "masters" ? (
-          <Masters onOpen={(id) => navigate(`/users/${id}`)} />
-        ) : section === "verifications" ? (
-          <Verifications onOpen={(id) => navigate(`/users/${id}`)} />
-        ) : section === "reports" ? (
-          <Reports />
-        ) : section === "recovery" ? (
-          <Recovery onOpen={(id) => navigate(`/users/${id}`)} />
-        ) : section === "journal" ? (
-          <Journal />
-        ) : section === "settings" ? (
-          <Settings />
-        ) : section === "promo" ? (
-          <Promo />
-        ) : (
-          <Dashboard />
-        )}
-      </main>
-    </>
+    <FeedbackProvider>
+      <Shell
+        section={section}
+        title={sectionLabel(section)}
+        navigate={navigate}
+        onSignOut={() => void signOut()}
+      >
+        {page}
+      </Shell>
+    </FeedbackProvider>
   );
 }

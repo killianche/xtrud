@@ -6,9 +6,10 @@ import {
   Badge,
   EmptyState,
   ErrorState,
-  formatDate,
   formatPhone,
   fullName,
+  PageHead,
+  RelativeTime,
   SkeletonRows,
 } from "../components/ui";
 import { api, type UserRow } from "../lib/api";
@@ -39,18 +40,13 @@ export function Users({ onOpen }: { onOpen: (userId: string) => void }) {
     };
   }, [search]);
 
+  const COLS = "minmax(0,2fr) minmax(0,1.2fr) 130px 80px 80px 120px";
   return (
     <div>
-      <div className="page-header">
-        <div>
-          <p className="mono-eyebrow">Люди</p>
-          <h1 className="heading-lg" style={{ marginTop: 4 }}>
-            Пользователи
-          </h1>
-        </div>
+      <PageHead eyebrow="Площадка" title="Люди" />
+      <div className="toolbar">
         <input
           className="input"
-          style={{ maxWidth: 320 }}
           type="search"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
@@ -60,62 +56,56 @@ export function Users({ onOpen }: { onOpen: (userId: string) => void }) {
       </div>
 
       {error ? (
-        <ErrorState message={error} onRetry={() => setSearch((s) => s)} />
+        <ErrorState message={error} onRetry={() => setSearch((s) => `${s}`)} />
       ) : !rows ? (
-        <SkeletonRows count={6} />
+        <SkeletonRows count={6} height={52} />
       ) : rows.length === 0 ? (
         <EmptyState
           title="Никого не нашлось"
           hint={search ? "Проверьте номер или имя." : "В базе пока нет пользователей."}
         />
       ) : (
-        <div className="table-wrap">
-          <table className="table">
-            <thead>
-              <tr>
-                <th>Имя</th>
-                <th>Номер</th>
-                <th>Состояние</th>
-                <th>Задания</th>
-                <th>Отклики</th>
-                <th>Регистрация</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((row) => (
-                <tr
-                  key={row.id}
-                  className="clickable"
-                  onClick={() => onOpen(row.id)}
-                  tabIndex={0}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") onOpen(row.id);
-                  }}
-                >
-                  <td className="cell-ink">
-                    {fullName(row.first_name, row.last_name)}
-                    {row.is_admin ? (
-                      <span className="badge" style={{ marginLeft: 8 }}>
-                        админ
-                      </span>
-                    ) : null}
-                    {row.is_master ? (
-                      <span className="badge" style={{ marginLeft: 8 }}>
-                        исполнитель
-                      </span>
-                    ) : null}
-                  </td>
-                  <td className="cell-mono">{formatPhone(row.phone)}</td>
-                  <td>
-                    <Badge status={row.status} />
-                  </td>
-                  <td className="cell-mono">{row.orders_count}</td>
-                  <td className="cell-mono">{row.responses_count}</td>
-                  <td className="cell-mono">{formatDate(row.created_at)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="list">
+          <div className="list-row is-head" style={{ gridTemplateColumns: COLS }}>
+            <span>Имя</span>
+            <span>Номер</span>
+            <span>Состояние</span>
+            <span>Задания</span>
+            <span>Отклики</span>
+            <span>Регистрация</span>
+          </div>
+          {rows.map((row) => (
+            <a
+              key={row.id}
+              className="list-row is-link"
+              style={{ gridTemplateColumns: COLS }}
+              href={`#/users/${row.id}`}
+              onClick={(e) => {
+                if (e.metaKey || e.ctrlKey) return;
+                e.preventDefault();
+                onOpen(row.id);
+              }}
+            >
+              <div style={{ minWidth: 0 }}>
+                <div className="cell-title">{fullName(row.first_name, row.last_name)}</div>
+                <div className="cell-sub">
+                  {[row.is_admin ? "админ" : null, row.is_master ? "специалист" : "клиент"]
+                    .filter(Boolean)
+                    .join(" · ")}
+                  <span className="col-show-sm"> · {formatPhone(row.phone)}</span>
+                </div>
+              </div>
+              <span className="cell-num col-hide-sm">{formatPhone(row.phone)}</span>
+              <span>
+                <Badge status={row.status} />
+              </span>
+              <span className="cell-num col-hide-sm">{row.orders_count}</span>
+              <span className="cell-num col-hide-sm">{row.responses_count}</span>
+              <span className="cell-sub col-hide-sm">
+                <RelativeTime iso={row.created_at} />
+              </span>
+            </a>
+          ))}
         </div>
       )}
     </div>

@@ -8,8 +8,10 @@
  * DECISION владельца 2026-10-04 (скриншот): единый длинный список всех
  * подкатегорий со всех разделов и подпись «можно отметить до 3» — убраны.
  * Выбор теперь в два этапа, как в «Настройках»: сначала раздел, тап по нему
- * раскрывает его подкатегории на месте, тап по подкатегории выбирает её и
- * сразу ведёт на следующий шаг. Категория — одна (см.
+ * открывает его подкатегории отдельным экраном (`orders/new/section` —
+ * владелец, 2026-10-04: свайп «назад» возвращает к разделам, а не выкидывает
+ * из задания), тап по подкатегории выбирает её и сразу ведёт на следующий
+ * шаг. Категория — одна (см.
  * `CategoryPickerTwoStep`, `category-picker.ts`); дополнительные категории
  * (`extraL2Ids`, 0195) очищаются при выборе здесь, но остаются в данных
  * для совместимости с публикацией и проверкой задания.
@@ -30,10 +32,10 @@ import { useCategoriesL1 } from "@/features/categories/use-categories-l1";
 import { useVisibleCategories } from "@/features/categories/use-visible-categories";
 import { CategoryPickerTwoStep } from "@/features/task-composer/CategoryPickerTwoStep";
 import { ComposerScreen } from "@/features/task-composer/ComposerScreen";
-import { findSectionIdForCategory } from "@/features/task-composer/category-picker";
 import { useComposer } from "@/features/task-composer/composer-store";
 import {
   COMPOSER_ROUTE,
+  COMPOSER_SECTION_ROUTE,
   isComposerComplete,
   isStepValid,
   normalizeTitle,
@@ -43,7 +45,12 @@ import { useAuthReturnUrlStore } from "@/lib/auth-return-url-store";
 
 export default function TaskCategoryScreen() {
   const router = useRouter();
-  const params = useLocalSearchParams<{ draft?: string; l2?: string; stale?: string }>();
+  const params = useLocalSearchParams<{
+    draft?: string;
+    l2?: string;
+    stale?: string;
+    from?: string;
+  }>();
   const composer = useComposer();
   const { values, patch } = composer;
   const nav = useStepNavigation("category");
@@ -51,7 +58,6 @@ export default function TaskCategoryScreen() {
   const userId = session?.user?.id;
   const { data: user } = useUserRecord(userId);
   const [query, setQuery] = useState("");
-  const [openSectionId, setOpenSectionId] = useState<string | null>(null);
 
   // Текст с главной и категория из каталога применяются один раз.
   const appliedParamsRef = useRef(false);
@@ -84,27 +90,13 @@ export default function TaskCategoryScreen() {
   const l1 = useCategoriesL1();
   const categories = useVisibleCategories();
 
-  // Возврат к уже выбранной категории (редактирование, стала устаревшей) —
-  // её раздел раскрыт сразу, а не список разделов с нуля. Один раз: дальше
-  // разделом распоряжается сам человек.
-  const openedInitiallyRef = useRef(false);
-  useEffect(() => {
-    if (openedInitiallyRef.current || !composer.ready) return;
-    // values.l2Id ещё не дождался применения ?l2= из параметров (эффект
-    // выше) — смотрим и туда, чтобы не открыть список разделов на кадр
-    // раньше патча.
-    const initialL2Id = values.l2Id || (typeof params.l2 === "string" ? params.l2 : "");
-    if (!initialL2Id) {
-      openedInitiallyRef.current = true;
-      return;
-    }
-    const sectionId = findSectionIdForCategory(categories.data ?? [], initialL2Id);
-    if (!sectionId) return; // категории ещё не загрузились — подождём
-    openedInitiallyRef.current = true;
-    setOpenSectionId(sectionId);
-  }, [composer.ready, values.l2Id, params.l2, categories.data]);
-
-  const openSection = openSectionId ? (l1.data ?? []).find((s) => s.id === openSectionId) : null;
+  // Раздел — отдельный экран: системный жест «назад» с него возвращает сюда.
+  // «Из проверки» передаётся дальше, чтобы выбор вернул на проверку.
+  const openSection = (id: string) =>
+    router.push({
+      pathname: COMPOSER_SECTION_ROUTE,
+      params: nav.fromReview && params.from === "review" ? { id, from: "review" } : { id },
+    } as never);
 
   // Выбор подкатегории — сразу следующий шаг (владелец, 2026-10-04): «одно
   // действие вместо отметить + Далее». Дополнительные категории (0195)
@@ -119,15 +111,11 @@ export default function TaskCategoryScreen() {
   return (
     <ComposerScreen
       step="category"
-      title={openSection?.name_ru ?? "Какая категория?"}
+      title="Какая категория?"
       subtitle={
         params.stale === "1" ? "Категория изменилась в каталоге — выберите её заново." : undefined
       }
-      // Внутри раздела «Назад» возвращает к списку разделов, а не к
-      // предыдущему шагу — тот же круглый значок, без второй кнопки.
-      onBack={
-        openSectionId ? () => setOpenSectionId(null) : nav.fromReview ? nav.goBack : undefined
-      }
+      onBack={nav.fromReview ? nav.goBack : undefined}
       onClose={nav.close}
       // Кнопки «Далее» нет: выбор подраздела сам ведёт на следующий шаг.
       hideActions
@@ -148,8 +136,8 @@ export default function TaskCategoryScreen() {
         sections={l1.data ?? []}
         categories={categories.data ?? []}
         selectedL2Id={values.l2Id}
-        openSectionId={openSectionId}
-        onOpenSection={setOpenSectionId}
+        openSectionId={null}
+        onOpenSection={openSection}
         query={query}
         onPick={onPick}
         loading={categories.isLoading || l1.isLoading}

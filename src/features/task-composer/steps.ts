@@ -41,6 +41,14 @@ export const COMPOSER_ROUTE: Record<ComposerStep, string> = {
   review: "/orders/new/review",
 };
 
+/**
+ * Подкатегории раздела — отдельный экран шага «Какая категория?»
+ * (владелец, 2026-10-04: свайп «назад» должен возвращать к разделам, а не
+ * выкидывать из создания задания). `?id=` — раздел, `?from=review` — как у
+ * шагов.
+ */
+export const COMPOSER_SECTION_ROUTE = "/orders/new/section";
+
 export function nextStep(step: ComposerStep): ComposerStep | null {
   const i = COMPOSER_STEPS.indexOf(step);
   return i >= 0 && i < COMPOSER_STEPS.length - 1 ? (COMPOSER_STEPS[i + 1] ?? null) : null;

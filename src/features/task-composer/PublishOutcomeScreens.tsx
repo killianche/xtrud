@@ -36,6 +36,18 @@ export function PublishProgressScreen() {
 export function PublishOutcomeScreen({ outcome }: { outcome: PublishOutcome }) {
   const router = useRouter();
   const tc = useThemeColors(["success"]);
+  // Сначала снять весь стек конструктора, потом открыть нужное поверх
+  // вкладки (владелец, 2026-10-04: «посмотреть задание → назад выкидывает в
+  // создание задания, а надо на главную»). replace менял только этот экран —
+  // шаги конструктора оставались под заданием.
+  const leaveTo = (href: string) => {
+    if (router.canDismiss()) router.dismissAll();
+    router.push(href as never);
+  };
+  const toMyOrders = () => {
+    if (router.canDismiss()) router.dismissAll();
+    router.navigate("/(tabs)/orders" as never);
+  };
   return (
     <ComposerScreen
       step="review"
@@ -45,7 +57,7 @@ export function PublishOutcomeScreen({ outcome }: { outcome: PublishOutcome }) {
           ? undefined
           : "Специалисты из этой категории уже получают уведомление. Отклики придут в «Мои задания»."
       }
-      onClose={() => router.replace("/(tabs)/orders" as never)}
+      onClose={toMyOrders}
       primaryLabel=""
       onPrimary={() => undefined}
       hideActions
@@ -64,17 +76,12 @@ export function PublishOutcomeScreen({ outcome }: { outcome: PublishOutcome }) {
               variant="accent"
               size="lg"
               fullWidth
-              onPress={() => router.replace(`/orders/${outcome.orderId}` as never)}
+              onPress={() => leaveTo(`/orders/${outcome.orderId}`)}
             >
               Открыть задание
             </Button>
           ) : null}
-          <Button
-            variant="secondary"
-            size="lg"
-            fullWidth
-            onPress={() => router.replace("/(tabs)/orders" as never)}
-          >
+          <Button variant="secondary" size="lg" fullWidth onPress={toMyOrders}>
             К моим заданиям
           </Button>
         </View>

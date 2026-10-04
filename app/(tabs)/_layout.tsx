@@ -5,6 +5,7 @@ import {
 } from "expo-router/react-navigation";
 import { NativeTabs } from "expo-router/unstable-native-tabs";
 import { useMemo } from "react";
+import { Platform } from "react-native";
 import { LIQUID_GLASS } from "@/components/ui/GlassSurface";
 import { useAuthSession } from "@/features/auth/use-auth-session";
 import { useTouchLastActive } from "@/features/auth/use-touch-last-active";
@@ -190,7 +191,12 @@ export default function TabsLayout() {
         </NativeTabs.Trigger>
         <NativeTabs.Trigger name="find" listeners={scrollToTopOnReselect("find")}>
           <NativeTabs.Trigger.Icon sf="magnifyingglass" md="search" />
-          <NativeTabs.Trigger.Label>Найти задание</NativeTabs.Trigger.Label>
+          {/* Android: системное меню на пять пунктов обрезало «Найти задание»
+              до «Найти зада…» (эмулятор, сборка Android 23) — там «Поиск»
+              (владелец, 2026-10-04). На iPhone подпись прежняя. */}
+          <NativeTabs.Trigger.Label>
+            {Platform.OS === "android" ? "Поиск" : "Найти задание"}
+          </NativeTabs.Trigger.Label>
           {findBadge ? <NativeTabs.Trigger.Badge>{findBadge}</NativeTabs.Trigger.Badge> : null}
         </NativeTabs.Trigger>
 

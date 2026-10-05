@@ -23,6 +23,8 @@ export function notificationTargetFromData(
   }
   // Админ скрыл или вернул профиль — в «Я специалист», там виден статус.
   if (d.type === "master_hidden" || d.type === "master_shown") return "/profile/specialist";
+  // Значок «Большой опыт» (0225) — в свой профиль, где его видят клиенты.
+  if (d.type === "experience_badge") return userId ? `/master/${userId}` : null;
   const orderId = typeof d.order_id === "string" && UUID.test(d.order_id) ? d.order_id : null;
   return orderId ? `/orders/${orderId}` : null;
 }

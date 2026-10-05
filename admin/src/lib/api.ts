@@ -360,6 +360,10 @@ export interface MasterRow {
   rating_avg: number | null;
   rating_count: number | null;
   created_at: string;
+  /** Паспорт проверен (verification_level ≥ 2). Старая база не присылает. */
+  is_verified?: boolean;
+  /** Значок «Большой опыт» (0225). */
+  has_experience_badge?: boolean;
 }
 
 /** Заявка на подтверждение паспорта (admin_list_verifications, 0174). */
@@ -544,6 +548,13 @@ export const api = {
       p_user_id: userId,
       p_visible: visible,
       p_reason: reason.trim() === "" ? null : reason.trim(),
+    }),
+  /** Значок «Большой опыт»: выдать или снять (0225), причина — в журнал. */
+  setExperienceBadge: (userId: string, on: boolean, reason: string) =>
+    rpc<void>("admin_set_experience_badge", {
+      p_user_id: userId,
+      p_on: on,
+      p_reason: reason.trim(),
     }),
   listVerifications: (status: string, limit = 50, offset = 0) =>
     rpc<VerificationRow[]>("admin_list_verifications", {

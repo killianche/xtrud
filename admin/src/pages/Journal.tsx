@@ -39,6 +39,8 @@ export const ACTION_LABEL: Record<string, string> = {
   broadcast_push: "Рассылка push",
   set_require_login: "Обязательный вход",
   instagram_approve: "Instagram одобрен",
+  experience_badge_grant: "Выдан значок «Большой опыт»",
+  experience_badge_revoke: "Снят значок «Большой опыт»",
   instagram_reject: "Instagram отклонён",
 };
 

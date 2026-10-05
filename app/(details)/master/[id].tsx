@@ -20,6 +20,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
 import { Avatar } from "@/components/Avatar";
 import {
+  ExperienceBadge,
   GLASS_BUTTON_HEIGHT,
   GlassButton,
   InsetGroup,
@@ -295,6 +296,11 @@ export default function MasterPublicScreen() {
                   <AppText className="text-ios-subheadline text-mute">Отзывов пока нет</AppText>
                 )}
               </View>
+              {m?.experience_badge_at ? (
+                <View className="mt-2">
+                  <ExperienceBadge />
+                </View>
+              ) : null}
               {facts ? (
                 <AppText
                   className="mt-1 text-center text-ios-subheadline text-mute"

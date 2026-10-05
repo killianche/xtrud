@@ -24,6 +24,7 @@ import { AppText } from "@/components/AppText";
 import { CITIES } from "@/components/CitySelector";
 import {
   Avatar,
+  ExperienceBadge,
   FilterChip,
   LargeTitleBar,
   LargeTitleBlock,
@@ -66,7 +67,9 @@ function MasterCard({ master, onPress }: { master: MasterSearchResult; onPress: 
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={`${name}${master.is_verified ? ", проверенный специалист" : ""}. ${master.categories.join(", ")}`}
+      accessibilityLabel={`${name}${master.is_verified ? ", проверенный специалист" : ""}${
+        master.has_experience_badge ? ", большой опыт" : ""
+      }. ${master.categories.join(", ")}`}
       onPress={onPress}
       // Как карточка задания: белая на сером фоне, мягкая тень без рамки
       // (владелец 2026-09-08: «чёрная обводка — не в дизайне»).
@@ -90,6 +93,11 @@ function MasterCard({ master, onPress }: { master: MasterSearchResult; onPress: 
             <AppText className="mt-0.5 text-body-sm text-mute" numberOfLines={1}>
               {place}
             </AppText>
+          ) : null}
+          {master.has_experience_badge ? (
+            <View className="mt-1">
+              <ExperienceBadge compact />
+            </View>
           ) : null}
         </View>
         {hasRating ? (

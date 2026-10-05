@@ -69,6 +69,32 @@ export function Masters({ onOpen }: { onOpen: (userId: string) => void }) {
     }
   };
 
+  // Значок «Большой опыт» (владелец, 2026-10-05): выдаём по своему решению,
+  // бесплатно, бессрочно; снимаем вручную. Причина — в журнал.
+  const toggleBadge = async (m: MasterRow) => {
+    const on = !m.has_experience_badge;
+    const reason = window.prompt(
+      on
+        ? "За что выдаём «Большой опыт» (попадёт в журнал)"
+        : "Почему снимаем «Большой опыт» (попадёт в журнал)",
+      on ? "Проверили работы и опыт" : "",
+    );
+    if (reason === null) return;
+    if (reason.trim().length < 3) {
+      window.alert("Укажите причину — минимум три символа.");
+      return;
+    }
+    setBusyId(m.id);
+    try {
+      await api.setExperienceBadge(m.id, on, reason);
+      reload();
+    } catch (e) {
+      window.alert((e as Error).message);
+    } finally {
+      setBusyId(null);
+    }
+  };
+
   const block = async (m: MasterRow) => {
     const reason = window.prompt("Причина блокировки аккаунта (попадёт в журнал)", "");
     if (reason === null) return;
@@ -108,7 +134,8 @@ export function Masters({ onOpen }: { onOpen: (userId: string) => void }) {
       </div>
       <p className="body-md text-mute" style={{ marginTop: 8 }}>
         Профиль виден в каталоге, как только специалист выбрал категорию. «Скрыть» убирает его из
-        каталога без блокировки аккаунта; «Заблокировать» закрывает аккаунт целиком.
+        каталога без блокировки аккаунта; «Заблокировать» закрывает аккаунт целиком. «Большой опыт»
+        — значок в профиле по вашему решению; специалисты с паспортом и значком выше в поиске.
       </p>
       {error ? (
         <ErrorState message={error} onRetry={reload} />
@@ -129,6 +156,7 @@ export function Masters({ onOpen }: { onOpen: (userId: string) => void }) {
                 <th>Фото</th>
                 <th>Рейтинг</th>
                 <th>Состояние</th>
+                <th>Доверие</th>
                 <th>С</th>
                 <th aria-label="Действия" />
               </tr>
@@ -161,6 +189,11 @@ export function Masters({ onOpen }: { onOpen: (userId: string) => void }) {
                         {v.text}
                       </span>
                     </td>
+                    <td>
+                      {m.is_verified ? <span className="badge">паспорт</span> : null}{" "}
+                      {m.has_experience_badge ? <span className="badge">большой опыт</span> : null}
+                      {!m.is_verified && !m.has_experience_badge ? "—" : null}
+                    </td>
                     <td>{formatDate(m.created_at)}</td>
                     <td style={{ whiteSpace: "nowrap" }}>
                       {canShow ? (
@@ -181,6 +214,16 @@ export function Masters({ onOpen }: { onOpen: (userId: string) => void }) {
                           onClick={() => void setVisible(m, false)}
                         >
                           Скрыть
+                        </button>
+                      ) : null}
+                      {m.user_status !== "banned" ? (
+                        <button
+                          type="button"
+                          className="btn btn-ghost"
+                          disabled={busy}
+                          onClick={() => void toggleBadge(m)}
+                        >
+                          {m.has_experience_badge ? "Снять «Большой опыт»" : "Дать «Большой опыт»"}
                         </button>
                       ) : null}
                       {m.user_status !== "banned" ? (

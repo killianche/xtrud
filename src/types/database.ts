@@ -401,6 +401,7 @@ export type Database = {
           bio: string | null
           closed_deals: number
           created_at: string
+          experience_badge_at: string | null
           experience_years: number | null
           has_tools: boolean
           has_transport: boolean
@@ -435,6 +436,7 @@ export type Database = {
           bio?: string | null
           closed_deals?: number
           created_at?: string
+          experience_badge_at?: string | null
           experience_years?: number | null
           has_tools?: boolean
           has_transport?: boolean
@@ -468,6 +470,7 @@ export type Database = {
           bio?: string | null
           closed_deals?: number
           created_at?: string
+          experience_badge_at?: string | null
           experience_years?: number | null
           has_tools?: boolean
           has_transport?: boolean
@@ -1875,6 +1878,7 @@ export type Database = {
       search_masters: {
         Args: {
           p_city_id?: string | null
+          p_district?: string | null
           p_hide_demo?: boolean
           p_l1_id?: string | null
           p_l2_id?: string | null
@@ -1882,6 +1886,7 @@ export type Database = {
           p_offset?: number
           p_query?: string | null
           p_sort?: string | null
+          p_village?: string | null
         }
         Returns: {
           avatar_url: string | null
@@ -1892,7 +1897,9 @@ export type Database = {
           closed_deals: number | null
           district: string | null
           experience_years: number | null
+          has_experience_badge: boolean
           first_name: string | null
+          is_verified: boolean
           last_name: string | null
           rating_avg: number | null
           rating_count: number | null

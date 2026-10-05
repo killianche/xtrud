@@ -30,6 +30,8 @@ export interface MasterSearchResult {
   categories: string[];
   /** Паспорт подтверждён администратором (0174). */
   is_verified: boolean;
+  /** Значок «Большой опыт» (0225); старый сервер не присылает — false. */
+  has_experience_badge?: boolean;
 }
 
 export type MasterSort = "rating" | "experience" | "availability";

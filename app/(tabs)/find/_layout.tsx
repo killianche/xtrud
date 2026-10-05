@@ -1,6 +1,6 @@
 /**
- * Стек вкладки «Найти задание»: разделы (index) → подразделы (section) →
- * задания (results).
+ * Стек вкладки «Найти задание»: список заданий (index); фильтры — шторка
+ * /find-filters в корневом стеке (2026-10-05, №235).
  *
  * Системная шапка выключена на обоих экранах: внутри NativeTabs крупный
  * заголовок нативного стека не отрисовался (сборка 103 — пустое место
@@ -23,8 +23,6 @@ export default function FindStackLayout() {
       }}
     >
       <Stack.Screen name="index" options={{ animation: "none" }} />
-      <Stack.Screen name="section" />
-      <Stack.Screen name="results" />
     </Stack>
   );
 }

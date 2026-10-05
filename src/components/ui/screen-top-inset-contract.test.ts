@@ -30,8 +30,8 @@ const INSET_AWARE_WRAPPERS = [
   "<PublishAuthSheet",
   "<RespondAuthSheet",
   "<PickerSheetPage",
-  // Задания выбранной категории: внутри useLargeTitle + LargeTitleBar.
-  "<FindResults",
+  // Шторка «Фильтры» (pageSheet): отступ сверху задаёт сама шторка.
+  "<FilterSheetScreen",
   // Подразделы каталога: внутри useLargeTitle + LargeTitleBar.
   "<SubcategoryScreen",
 ];

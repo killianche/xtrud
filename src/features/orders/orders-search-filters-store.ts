@@ -19,10 +19,20 @@ import { create } from "zustand";
 interface OrdersSearchFiltersState {
   l2Ids: string[]; // выбранные L2 категории
   /**
+   * Раздел, выбранный в «Фильтры → Категория» (владелец, 2026-10-05, №235):
+   * «Весь раздел» — l2Ids = все его подкатегории; подкатегория — одна. Нужен
+   * для подписи фильтра; сам отбор — по l2Ids.
+   */
+  l1Id: string;
+  /** Выбран «Весь раздел» (явно, а не выведено из l2Ids — QA 2026-10-05). */
+  wholeSection: boolean;
+  /** Село района (0212): заполнено — задания этого села и всего района. */
+  village: string;
+  /**
    * Фильтр по локации. cityId="" и district="" = «Вся Ингушетия» (без фильтра).
    * Иначе выбран ЛИБО город (cityId), ЛИБО район (district) — взаимоисключающе
    * (выбор одного сбрасывает другой через setLocation). Выбирается на экране
-   * /find/location-select, применяется в ленте /find.
+   * шторке «Фильтры» (/find-filters), применяется в ленте /find.
    */
   cityId: string;
   district: string;
@@ -33,15 +43,20 @@ interface OrdersSearchFiltersState {
   setQuery: (next: string) => void;
   setBrowseAll: (next: boolean) => void;
   setL2Ids: (next: string[]) => void;
+  /** Категория из фильтров: раздел и его подкатегории (пусто — все). */
+  setCategory: (l1Id: string, l2Ids: string[], wholeSection?: boolean) => void;
   toggleL2: (id: string) => void;
   /** Выставить локацию-фильтр. cityId+district взаимоисключающие — передавай
    *  один непустой, второй "". Оба "" = снять фильтр («Вся Ингушетия»). */
-  setLocation: (cityId: string, district: string) => void;
+  setLocation: (cityId: string, district: string, village?: string) => void;
   clearAll: () => void;
 }
 
 export const useOrdersSearchFiltersStore = create<OrdersSearchFiltersState>((set, get) => ({
   l2Ids: [],
+  l1Id: "",
+  wholeSection: false,
+  village: "",
   cityId: "",
   district: "",
   query: "",
@@ -49,20 +64,34 @@ export const useOrdersSearchFiltersStore = create<OrdersSearchFiltersState>((set
   setQuery: (next) => set({ query: next }),
   setBrowseAll: (next) => set({ browseAll: next }),
   setL2Ids: (next) => set({ l2Ids: next }),
+  setCategory: (l1Id, l2Ids, wholeSection = false) =>
+    set({ l1Id, l2Ids, wholeSection: wholeSection && l2Ids.length > 0 }),
   toggleL2: (id) => {
     const cur = new Set(get().l2Ids);
     if (cur.has(id)) cur.delete(id);
     else cur.add(id);
     set({ l2Ids: Array.from(cur) });
   },
-  setLocation: (cityId, district) => set({ cityId, district }),
-  clearAll: () => set({ l2Ids: [], cityId: "", district: "", query: "", browseAll: false }),
+  setLocation: (cityId, district, village = "") =>
+    set({ cityId, district, village: district ? village : "" }),
+  clearAll: () =>
+    set({
+      l2Ids: [],
+      l1Id: "",
+      wholeSection: false,
+      village: "",
+      cityId: "",
+      district: "",
+      query: "",
+      browseAll: false,
+    }),
 }));
 
 /** Helper: подсчёт активных фильтров для бейджа на кнопке «Фильтры». */
 export function countActiveFilters(state: OrdersSearchFiltersState): number {
   let n = 0;
-  if (state.l2Ids.length > 0) n += state.l2Ids.length;
+  // Категория — один фильтр, даже если это весь раздел (много подкатегорий).
+  if (state.l2Ids.length > 0) n += 1;
   // Локация (город ИЛИ район) — один активный фильтр.
   if (state.cityId || state.district) n += 1;
   return n;

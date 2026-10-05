@@ -307,6 +307,8 @@ export default function RootLayout() {
                   options={{ animation: "none", gestureEnabled: false }}
                 />
                 <Stack.Screen name="(onboarding)" options={{ gestureEnabled: false }} />
+                {/* Шторка «Фильтры» «Найти задание» со своим стеком (№235). */}
+                <Stack.Screen name="(details)/find-filters" options={{ presentation: "modal" }} />
               </Stack>
             </AuthGate>
             <StatusBar style="auto" />

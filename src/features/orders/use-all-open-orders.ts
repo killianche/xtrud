@@ -31,6 +31,8 @@ interface UseAllOpenOrdersInput {
    *  («Вся Ингушетия»). cityId и district взаимоисключающие (см. фильтр-стор). */
   cityId?: string | null;
   district?: string | null;
+  /** Село района (0212): задания этого села и всего района, без других сёл. */
+  village?: string | null;
   /** Поиск по названию и описанию; пусто — без поиска. */
   query?: string | null;
 }
@@ -40,12 +42,14 @@ export function useAllOpenOrders({
   l2Ids,
   cityId,
   district,
+  village,
   query,
 }: UseAllOpenOrdersInput) {
   const term = searchTerm(query);
   // Нормализуем пустые строки в null — чтобы queryKey и условия были стабильны.
   const cityFilter = cityId ? cityId : null;
   const districtFilter = district ? district : null;
+  const villageFilter = districtFilter && village ? village : null;
   return useInfiniteQuery<Page>({
     queryKey: [
       "all-open-orders",
@@ -53,6 +57,7 @@ export function useAllOpenOrders({
       l2Ids ?? null,
       cityFilter,
       districtFilter,
+      villageFilter,
       term,
     ] as const,
     initialPageParam: null as FeedCursor | null,
@@ -107,6 +112,9 @@ export function useAllOpenOrders({
         q = districtOfCity
           ? q.or(`city_id.eq.${cityFilter},and(district.eq."${districtOfCity}",village.is.null)`)
           : q.eq("city_id", cityFilter);
+      } else if (districtFilter && villageFilter) {
+        // Село: задания в нём и задания на весь район (0212, §2.2).
+        q = q.eq("district", districtFilter).or(`village.eq."${villageFilter}",village.is.null`);
       } else if (districtFilter) {
         const cities = cityIdsOfDistrictName(districtFilter);
         q = cities.length

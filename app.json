@@ -153,7 +153,7 @@
     },
     "android": {
       "package": "com.xtrud.app",
-      "versionCode": 10,
+      "versionCode": 11,
       "blockedPermissions": [
         "android.permission.RECORD_AUDIO",
         "android.permission.SYSTEM_ALERT_WINDOW"

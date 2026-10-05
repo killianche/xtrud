@@ -13,6 +13,9 @@ services:
       # Ключ APNs (.p8) — только на чтение. В образ он не попадает, чтобы
       # не уехать вместе с ним куда-нибудь ещё.
       - /opt/xtrud/apns:/secrets/apns:ro
+      # Ключ служебного аккаунта Firebase (push на Android через FCM) —
+      # только на чтение; файл 640 root:1000, читает только пользователь node.
+      - /opt/xtrud/firebase:/secrets/firebase:ro
     networks:
       - supabase_default
   xtrud-imgproxy:

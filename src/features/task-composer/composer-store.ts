@@ -83,6 +83,11 @@ function draftToValues(draft: Partial<ComposerValues> & Record<string, unknown>)
     description: typeof draft.description === "string" ? draft.description : "",
     cityId: typeof draft.cityId === "string" ? draft.cityId : "",
     district: typeof draft.district === "string" ? draft.district : "",
+    // Село — только вместе со своим районом (черновик мог устареть).
+    village:
+      typeof draft.village === "string" && typeof draft.district === "string" && draft.district
+        ? draft.village
+        : "",
     urgency: draft.urgency ?? null,
     preferredDate: typeof draft.preferredDate === "string" ? draft.preferredDate : null,
     budgetKind: draft.budgetKind ?? null,

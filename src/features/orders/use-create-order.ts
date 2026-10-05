@@ -43,6 +43,8 @@ export interface CreateOrderInput {
   description: string;
   cityId: string;
   district: string;
+  /** Село района (0212); пусто — весь район или город. */
+  village?: string;
   urgency: OrderUrgency;
   /** Способ задания бюджета (fixed/from/up_to/negotiable). */
   budgetKind: OrderPriceKind;
@@ -96,6 +98,8 @@ export function useCreateOrder() {
         //     либо район» — territориальный фильтр по district).
         city_id: input.cityId === ALL_INGUSHETIA_CITY || !input.cityId ? null : input.cityId,
         district: input.district || null,
+        // Село — только при районе без города (CHECK orders_village_needs_district).
+        village: input.district && !input.cityId && input.village ? input.village : null,
         urgency: input.urgency,
         // Дата только для «к дате», иначе NULL (даже если что-то прилетело).
         preferred_date: input.urgency === "by_date" ? (input.preferredDate ?? null) : null,

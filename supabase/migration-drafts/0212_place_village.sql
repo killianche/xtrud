@@ -232,9 +232,11 @@ ALTER TABLE public.orders
   FOREIGN KEY (district, village)
   REFERENCES public.district_villages (district_name, village_name);
 
--- Колоночные гранты — как у city_id/district. SELECT у anon и authenticated
--- на orders табличный, новая колонка читается без отдельного гранта.
+-- Колоночные гранты — как у city_id/district. SELECT у authenticated на
+-- orders табличный; у anon с 0222 (2026-10-05) — по колонкам (без телефонов),
+-- поэтому село гостю выдаётся явно.
 GRANT INSERT (village), UPDATE (village) ON public.orders TO authenticated;
+GRANT SELECT (village) ON public.orders TO anon;
 
 -- ---------------------------------------------------------------------------
 -- 4. Нормализация места (одна точка правды для триггера и совпадений).
@@ -721,6 +723,12 @@ BEGIN
      OR has_table_privilege('authenticated', 'public.districts', 'UPDATE')
      OR has_table_privilege('authenticated', 'xtrud_private.backup_0212_place', 'SELECT')
      OR has_table_privilege('anon', 'xtrud_private.backup_0212_place', 'SELECT')
+     -- Ревью xtrud-security 2026-10-05 (Low-2): и PUBLIC, и роль моста.
+     OR has_table_privilege('xtrud_api', 'xtrud_private.backup_0212_place', 'SELECT')
+     OR has_function_privilege('public', 'xtrud_private.place_normalize(text,text,text)', 'EXECUTE')
+     OR has_function_privilege('public', 'xtrud_private.orders_normalize_place()', 'EXECUTE')
+     OR has_function_privilege('public', 'xtrud_private.place_matches(text,text,text,text,text,text)', 'EXECUTE')
+     OR has_function_privilege('public', 'xtrud_private.area_matches_place(text,text,text,text,text)', 'EXECUTE')
      OR has_function_privilege('authenticated', 'xtrud_private.place_normalize(text,text,text)', 'EXECUTE')
      OR has_function_privilege('service_role', 'xtrud_private.place_normalize(text,text,text)', 'EXECUTE')
      OR has_function_privilege('public', 'public.search_masters(text,text,text,boolean,integer,integer,text,text,text,text)', 'EXECUTE')

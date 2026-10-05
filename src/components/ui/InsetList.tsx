@@ -65,6 +65,8 @@ export interface InsetRowProps {
   destructive?: boolean;
   /** Подпись для VoiceOver, когда значение справа без слов непонятно («4»). */
   accessibilityLabel?: string;
+  /** Что произойдёт по тапу, если строка и выбор, и переход (VoiceOver). */
+  accessibilityHint?: string;
 }
 
 export function InsetRow({
@@ -83,6 +85,7 @@ export function InsetRow({
   disabled = false,
   destructive = false,
   accessibilityLabel,
+  accessibilityHint,
 }: InsetRowProps) {
   const tc = useThemeColors(["accent", "mute", "error", "hairline-strong"]);
   const interactive = !!onPress && !toggle;
@@ -94,6 +97,7 @@ export function InsetRow({
         accessibilityLabel ??
         (subtitle ? `${title}, ${subtitle}` : value ? `${title}, ${value}` : title)
       }
+      accessibilityHint={accessibilityHint}
       disabled={disabled || (!onPress && !toggle)}
       onPress={() => {
         if (toggle) {

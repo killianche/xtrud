@@ -131,7 +131,7 @@ export function usePublishTask(mode: ComposerMode, activeUserId: string | undefi
           Promise.all(
             [values.l2Id, ...values.extraL2Ids].map((id) => validateOrderPublishCategory(id)),
           ).then((r) => r.every(Boolean)),
-          validateOrderPublishLocation(values.cityId, values.district),
+          validateOrderPublishLocation(values.cityId, values.district, undefined, values.village),
         ]),
         mode.kind === "create" ? fetchOrderPublishCapacity(uid) : Promise.resolve(null),
         uploadsPromise,
@@ -180,6 +180,7 @@ export function usePublishTask(mode: ComposerMode, activeUserId: string | undefi
         description: values.description,
         cityId: values.cityId,
         district: values.district,
+        village: values.village,
         urgency: values.urgency,
         preferredDate: values.preferredDate,
         budgetKind: values.budgetValue === null ? "negotiable" : (values.budgetKind ?? "fixed"),

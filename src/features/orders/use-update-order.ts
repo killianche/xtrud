@@ -37,6 +37,8 @@ export interface UpdateOrderInput {
   description: string;
   cityId: string;
   district: string;
+  /** Село района (0212); пусто — весь район или город. */
+  village?: string;
   urgency: Database["public"]["Enums"]["order_urgency"];
   /** Способ задания бюджета (fixed/from/up_to/negotiable). */
   budgetKind: Database["public"]["Enums"]["order_price_kind"];
@@ -84,6 +86,8 @@ export function useUpdateOrder() {
         description: trimmedDesc.length === 0 ? null : trimmedDesc,
         city_id: input.cityId === ALL_INGUSHETIA_CITY || !input.cityId ? null : input.cityId,
         district: input.district || null,
+        // Село — только при районе без города (CHECK orders_village_needs_district).
+        village: input.district && !input.cityId && input.village ? input.village : null,
         urgency: input.urgency,
         preferred_date: input.urgency === "by_date" ? (input.preferredDate ?? null) : null,
         budget_kind: input.budgetKind,

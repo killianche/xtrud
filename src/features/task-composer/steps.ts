@@ -71,6 +71,8 @@ export interface ComposerValues {
   description: string;
   cityId: string;
   district: string;
+  /** Село района (0212): заполнено — задание в этом селе, пусто — весь район. */
+  village: string;
   urgency: OrderUrgencyValue | null;
   preferredDate: string | null;
   budgetKind: OrderPriceKind | null;
@@ -92,6 +94,7 @@ export const EMPTY_COMPOSER_VALUES: ComposerValues = {
   description: "",
   cityId: "",
   district: "",
+  village: "",
   urgency: null,
   preferredDate: null,
   budgetKind: null,

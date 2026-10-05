@@ -57,6 +57,7 @@ export function MyOrdersShowcase({ userId }: { userId: string | undefined }) {
             categoryL2Id={o.l2_id}
             cityName={o.city?.name ?? o.city_id ?? null}
             district={o.district}
+            village={o.village}
             urgency={o.urgency}
             preferredDate={o.preferred_date}
             responsesCount={o.responses_count}

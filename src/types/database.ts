@@ -949,6 +949,7 @@ export type Database = {
           dispute_reason: string | null
           disputed_at: string | null
           district: string | null
+          village: string | null
           extra_l2_ids: string[]
           executor_type: Database["public"]["Enums"]["order_executor_type"]
           expires_at: string
@@ -992,6 +993,7 @@ export type Database = {
           dispute_reason?: string | null
           disputed_at?: string | null
           district?: string | null
+          village?: string | null
           extra_l2_ids?: string[]
           executor_type?: Database["public"]["Enums"]["order_executor_type"]
           expires_at?: string
@@ -1035,6 +1037,7 @@ export type Database = {
           dispute_reason?: string | null
           disputed_at?: string | null
           district?: string | null
+          village?: string | null
           extra_l2_ids?: string[]
           executor_type?: Database["public"]["Enums"]["order_executor_type"]
           expires_at?: string

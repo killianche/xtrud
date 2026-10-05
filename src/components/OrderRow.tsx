@@ -46,6 +46,7 @@ import { pluralRu, responsesLabel } from "@/features/orders/plural-ru";
 import type { OrderPriceKind, OrderUrgency } from "@/features/orders/use-create-order";
 import { getCategoryIcon } from "@/lib/category-icons";
 import { cdnBlur, cdnImage } from "@/lib/image-cdn";
+import { formatOrderPlace } from "@/lib/location-config";
 import { CARD_SHADOW } from "@/lib/shadows";
 import { useThemeColors } from "@/lib/use-theme-color";
 
@@ -78,6 +79,8 @@ export interface OrderRowProps {
    *  вкладки и находит своё место. */
   newResponsesCount?: number;
   district?: string | null;
+  /** Село района (0212) — подпись «Экажево · Назрановский р-н». */
+  village?: string | null;
   urgency: OrderUrgency;
   /** Точная дата (yyyy-mm-dd) для urgency='by_date' — строка «К 12 июня». */
   preferredDate?: string | null;
@@ -190,8 +193,7 @@ export function OrderRow(props: OrderRowProps) {
   const isUrgent = props.urgency === "urgent" && !isDimmed;
   // «Вся Ингушетия · Назрановский район» противоречило само себе (скриншот
   // владельца 2026-10-03): без города показываем только район.
-  const locationLabel =
-    [props.cityName, props.district].filter(Boolean).join(" · ") || "Вся Ингушетия";
+  const locationLabel = formatOrderPlace(props.cityName, props.district, props.village);
   const priceLabel = props.budgetKind
     ? formatPrice(props.budgetKind, props.budgetValue ?? null)
     : null;

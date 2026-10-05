@@ -38,7 +38,7 @@ import {
 } from "@/features/task-composer/steps";
 import { useComposerClose } from "@/features/task-composer/use-composer-close";
 import { usePublishTask } from "@/features/task-composer/use-publish-task";
-import { ALL_INGUSHETIA_CITY_ID, getCityName } from "@/lib/location-config";
+import { ALL_INGUSHETIA_CITY_ID, formatOrderPlace, getCityName } from "@/lib/location-config";
 import { useBackGestureLock } from "@/lib/use-back-gesture-lock";
 import { useThemeColors } from "@/lib/use-theme-color";
 import { useUnsavedChangesGuard } from "@/lib/use-unsaved-changes-guard";
@@ -124,7 +124,7 @@ export default function TaskReviewScreen() {
   const open = (step: ComposerStep) =>
     router.push({ pathname: COMPOSER_ROUTE[step], params: { from: "review" } } as never);
   const place = values.district
-    ? values.district
+    ? formatOrderPlace(null, values.district, values.village)
     : values.cityId === ALL_INGUSHETIA_CITY_ID
       ? "Вся Ингушетия"
       : getCityName(values.cityId);

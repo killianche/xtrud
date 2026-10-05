@@ -1,11 +1,13 @@
 /**
- * /orders/new/where — «Где нужно выполнить?»: город или район одним тапом.
- * Либо город (включая «Вся Ингушетия»), либо район — как в фильтрах ленты;
- * район включает свои города (они отмечены «входит»). Выбор села — после
- * решения владельца по модели места (docs/LOCATION_MODEL_2026-10.md).
+ * /orders/new/where — «Где нужно выполнить?»: город одним тапом или район.
+ * Район включает свои города (они отмечены «входит»). Тап по району открывает
+ * его экран (`orders/new/district`) — «Весь район» или конкретное село
+ * (владелец, 2026-10-05: «надо, чтобы мог выбрать конкретное село»; модель —
+ * docs/LOCATION_MODEL_2026-10.md, 0212). Как в «Настройках» iOS: выбор
+ * виден значением справа у строки района.
  */
 
-import { Redirect } from "expo-router";
+import { Redirect, useLocalSearchParams, useRouter } from "expo-router";
 import { ComposerField } from "@/features/task-composer/ComposerFields";
 import { ChoiceGroup, ChoiceRow } from "@/features/task-composer/ComposerRows";
 import { ComposerScreen } from "@/features/task-composer/ComposerScreen";
@@ -20,6 +22,8 @@ import {
 } from "@/lib/location-config";
 
 export default function TaskWhereScreen() {
+  const router = useRouter();
+  const params = useLocalSearchParams<{ from?: string }>();
   const { values, patch } = useComposer();
   const nav = useStepNavigation("where");
   if (nav.notReady) return null;
@@ -30,9 +34,9 @@ export default function TaskWhereScreen() {
   // вычёркивать город, он должен его включать»): выбран район — его город
   // отмечен галочкой «входит», выбранным остаётся сам район.
   const selectedDistrict = DISTRICTS.find((d) => d.name === values.district);
-  const includedCityIds = selectedDistrict
-    ? (CITY_IDS_BY_DISTRICT_ID[selectedDistrict.id] ?? [])
-    : [];
+  // Выбрано село — район целиком не выбран, его город не «входит».
+  const includedCityIds =
+    selectedDistrict && !values.village ? (CITY_IDS_BY_DISTRICT_ID[selectedDistrict.id] ?? []) : [];
   return (
     <ComposerScreen
       step="where"
@@ -51,7 +55,7 @@ export default function TaskWhereScreen() {
             subtitle={includedCityIds.includes(c.id) ? `Входит в ${values.district}` : undefined}
             selected={values.cityId === c.id}
             checked={includedCityIds.includes(c.id)}
-            onPress={() => patch({ cityId: c.id, district: "" })}
+            onPress={() => patch({ cityId: c.id, district: "", village: "" })}
             last={i === cities.length - 1}
           />
         ))}
@@ -68,16 +72,26 @@ export default function TaskWhereScreen() {
         />
       ) : null}
       <ChoiceGroup title="Район">
-        {DISTRICTS.map((d, i) => (
-          <ChoiceRow
-            key={d.id}
-            title={d.name}
-            subtitle={d.villages.slice(0, 3).join(", ") + (d.villages.length > 3 ? "…" : "")}
-            selected={values.district === d.name}
-            onPress={() => patch({ cityId: "", district: d.name })}
-            last={i === DISTRICTS.length - 1}
-          />
-        ))}
+        {DISTRICTS.map((d, i) => {
+          const chosen = values.district === d.name;
+          return (
+            <ChoiceRow
+              key={d.id}
+              title={d.name}
+              // Выбранное — значением справа: село или «Весь район».
+              value={chosen ? values.village || "Весь район" : undefined}
+              navigates
+              accessibilityHint="Открывает выбор: весь район или село"
+              onPress={() =>
+                router.push({
+                  pathname: "/orders/new/district",
+                  params: params.from === "review" ? { id: d.id, from: "review" } : { id: d.id },
+                } as never)
+              }
+              last={i === DISTRICTS.length - 1}
+            />
+          );
+        })}
       </ChoiceGroup>
     </ComposerScreen>
   );

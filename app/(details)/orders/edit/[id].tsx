@@ -43,6 +43,7 @@ export default function EditOrderScreen() {
         description: order.description ?? "",
         cityId: order.city_id ?? (order.district ? "" : ALL_INGUSHETIA_CITY_ID),
         district: order.district ?? "",
+        village: order.village ?? "",
         urgency: order.urgency,
         preferredDate: order.preferred_date ?? null,
         budgetKind: order.budget_kind,

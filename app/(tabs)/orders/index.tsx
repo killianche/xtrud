@@ -313,6 +313,7 @@ function OrdersList({ userId, contentTop, onScroll, header }: ListProps) {
             categoryL2Id={o.l2_id}
             cityName={o.city?.name ?? o.city_id ?? null}
             district={o.district}
+            village={o.village}
             urgency={o.urgency}
             preferredDate={o.preferred_date}
             responsesCount={o.responses_count}
@@ -407,6 +408,7 @@ function ResponsesList({ userId, contentTop, onScroll, header }: ListProps) {
               categoryL2Id={r.order.l2_id}
               cityName={r.order.city?.name ?? r.order.city_id ?? null}
               district={r.order.district}
+              village={r.order.village}
               urgency={r.order.urgency}
               preferredDate={r.order.preferred_date}
               responsesCount={r.order.responses_count}

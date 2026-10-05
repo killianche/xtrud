@@ -1,4 +1,9 @@
-import { ALL_INGUSHETIA_CITY_ID, isDistrictName, isVillageName } from "@/lib/location-config";
+import {
+  ALL_INGUSHETIA_CITY_ID,
+  isDistrictName,
+  isVillageName,
+  isVillageOfDistrict,
+} from "@/lib/location-config";
 import { supabase } from "@/lib/supabase";
 
 export interface PublishCategoryRecord {
@@ -69,9 +74,19 @@ export async function validateOrderPublishLocation(
   cityId: string,
   district: string,
   lookup: PublishCityLookup = lookupCurrentPublishCity,
+  village = "",
 ): Promise<boolean> {
   const normalizedCityId = cityId.trim();
   const normalizedDistrict = district.trim();
+  const normalizedVillage = village.trim();
+  // Село — только внутри своего района и без города (как FK и CHECK в 0212).
+  if (normalizedVillage) {
+    return (
+      !normalizedCityId &&
+      isDistrictName(normalizedDistrict) &&
+      isVillageOfDistrict(normalizedVillage, normalizedDistrict)
+    );
+  }
 
   // The form contract makes city and district mutually exclusive. Recheck it
   // at the publish boundary instead of trusting restored draft data.

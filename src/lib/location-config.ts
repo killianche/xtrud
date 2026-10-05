@@ -98,6 +98,8 @@ export const DEFAULT_CITY_ID = "nazran-magas";
  *  работает на серверном уровне), это чисто display-нормализация. */
 export function normalizeCityId(id: string): string {
   if (id === "nazran" || id === "magas") return "nazran-magas";
+  // Орджоникидзевская — старое имя Сунжи (0212, решение Q1).
+  if (id === "ordzhonikidzevskaya") return "sunzha";
   return id;
 }
 
@@ -120,9 +122,8 @@ export const CITY_COORDINATES: Record<string, { lat: number; lng: number }> = {
   karabulak: { lat: 43.3105, lng: 44.8987 },
   malgobek: { lat: 43.5285, lng: 44.5926 },
   sunzha: { lat: 43.3262, lng: 45.0473 },
-  ordzhonikidzevskaya: { lat: 43.2034, lng: 45.1257 },
-  sernovodskaya: { lat: 43.3083, lng: 45.1531 },
-  nesterovskaya: { lat: 43.218, lng: 45.218 },
+  // Орджоникидзевская = Сунжа, Серноводская и Нестеровская — сёла района
+  // (0212): их точек нет, иначе getNearestCity вернул бы скрытый id.
 };
 
 /** Поиск ближайшего города по координатам. Haversine distance.
@@ -183,7 +184,18 @@ export const DISTRICTS: readonly DistrictRecord[] = [
   {
     id: "sunzhensky",
     name: "Сунженский район",
-    villages: ["Алхасты", "Аршты", "Берд-Юрт", "Галашки", "Даттых", "Нестеровская", "Чемульга"],
+    // Серноводская — село района (решение владельца Q2, 2026-10-03; 0212):
+    // порядок и написание совпадают с public.district_villages.
+    villages: [
+      "Алхасты",
+      "Аршты",
+      "Берд-Юрт",
+      "Галашки",
+      "Даттых",
+      "Нестеровская",
+      "Серноводская",
+      "Чемульга",
+    ],
   },
   {
     id: "malgobeksky",
@@ -224,7 +236,9 @@ export const villagesByDistrict: Record<string, readonly string[]> = Object.from
 export const CITY_IDS_BY_DISTRICT_ID: Record<string, readonly string[]> = {
   nazranovsky: ["nazran-magas", "nazran", "magas"],
   malgobeksky: ["malgobek"],
-  sunzhensky: ["sunzha", "ordzhonikidzevskaya", "sernovodskaya", "nesterovskaya"],
+  // Только настоящий город: Орджоникидзевская = Сунжа, Серноводская и
+  // Нестеровская — сёла (0212 переписала их в заданиях и district_cities).
+  sunzhensky: ["sunzha"],
   dzheirakhsky: [],
 };
 
@@ -282,6 +296,24 @@ export function isDistrictName(value: string): boolean {
 
 export function isVillageName(value: string): boolean {
   return value in _villageToDistrict;
+}
+
+/** Село принадлежит этому району (как FK orders → district_villages, 0212). */
+export function isVillageOfDistrict(village: string, districtName: string): boolean {
+  return _villageToDistrict[village] === districtName;
+}
+
+/**
+ * Подпись места задания: «Экажево · Назрановский р-н», «Сунжа»,
+ * «Сунженский район», «Вся Ингушетия». Село — со своим районом (0212).
+ */
+export function formatOrderPlace(
+  cityName: string | null | undefined,
+  district: string | null | undefined,
+  village?: string | null,
+): string {
+  if (village && district) return `${village} · ${district.replace(" район", " р-н")}`;
+  return [cityName, district].filter(Boolean).join(" · ") || "Вся Ингушетия";
 }
 
 /** Получить имя города по id из MAJOR_CITIES. Fallback на default.

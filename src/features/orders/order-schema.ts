@@ -142,6 +142,8 @@ export const createOrderSchema = z
     // Валидация «либо город, либо район» — в superRefine ниже.
     cityId: z.string(),
     district: z.string().max(60, "Максимум 60 символов"),
+    /** Село района (0212); пусто — весь район или город. */
+    village: z.string().max(60, "Максимум 60 символов").default(""),
     // urgency / budgetKind — nullable, чтобы поля не были предвыбраны.
     // До 2026-05-27 default был "flexible" / "negotiable" — пользователь видел
     // их активными и отправлял заказ не выбирая, что давало 90% заказов с

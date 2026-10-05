@@ -71,8 +71,8 @@ export function useAllOpenOrders({
         .select(
           hideDemo
             ? // Только то, что читают карточка и курсор ленты — не «*» (QA, 2026-09-07).
-              "id, client_id, l2_id, title, description, city_id, district, address, urgency, preferred_date, budget_kind, budget_value, photo_urls, status, responses_count, created_at, updated_at, expires_at, contact_mode, contact_name, picked_master_id, l2:categories_l2(id, name_ru, icon), city:cities(id, name), client:users!orders_client_id_fkey!inner(is_demo)"
-            : "id, client_id, l2_id, title, description, city_id, district, address, urgency, preferred_date, budget_kind, budget_value, photo_urls, status, responses_count, created_at, updated_at, expires_at, contact_mode, contact_name, picked_master_id, l2:categories_l2(id, name_ru, icon), city:cities(id, name), client:users!orders_client_id_fkey(is_demo)",
+              "id, client_id, l2_id, title, description, city_id, district, village, address, urgency, preferred_date, budget_kind, budget_value, photo_urls, status, responses_count, created_at, updated_at, expires_at, contact_mode, contact_name, picked_master_id, l2:categories_l2(id, name_ru, icon), city:cities(id, name), client:users!orders_client_id_fkey!inner(is_demo)"
+            : "id, client_id, l2_id, title, description, city_id, district, village, address, urgency, preferred_date, budget_kind, budget_value, photo_urls, status, responses_count, created_at, updated_at, expires_at, contact_mode, contact_name, picked_master_id, l2:categories_l2(id, name_ru, icon), city:cities(id, name), client:users!orders_client_id_fkey(is_demo)",
         )
         .eq("status", "open")
         .limit(FEED_PAGE_SIZE);
@@ -102,8 +102,10 @@ export function useAllOpenOrders({
       // таблица district_cities в базе (0192).
       if (cityFilter) {
         const districtOfCity = districtNameOfCityId(cityFilter);
+        // Задание в селе района к городу не относится (0212: город и село
+        // одного района не совпадают) — только «весь район».
         q = districtOfCity
-          ? q.or(`city_id.eq.${cityFilter},district.eq."${districtOfCity}"`)
+          ? q.or(`city_id.eq.${cityFilter},and(district.eq."${districtOfCity}",village.is.null)`)
           : q.eq("city_id", cityFilter);
       } else if (districtFilter) {
         const cities = cityIdsOfDistrictName(districtFilter);

@@ -64,6 +64,26 @@ node /tmp/.../scratchpad/asc48.mjs   # печатает «сборка: N | VALI
 2. Коммит `chore(release): сборка N выложена (ledger N)` и пуш.
 3. Сообщить владельцу: номер сборки, что в ней проверять, что не работает.
 
+## 3а. Подача версии в App Store (только по слову владельца)
+
+Инструмент — `node scripts/release/asc-api.mjs METHOD /v1/... [json]` (`{app}` в
+пути — id приложения). Порядок (так подана 1.0.4, сборка 130, 2026-10-05):
+
+1. Версия: `POST /v1/appStoreVersions` — `platform IOS`, `versionString`,
+   `releaseType AFTER_APPROVAL`, связи `app` и `build` (сборка VALID,
+   `usesNonExemptEncryption: false`).
+2. Тексты: `appStoreVersionLocalizations` (ru) — `whatsNew` обязателен,
+   описание переносится из прошлой версии — сверить с приложением.
+3. Проверка Apple: `appStoreReviewDetails` — демо-аккаунт (+79280000000) и
+   заметки о том, как войти сейчас; перед подачей проверить вход демо-аккаунта
+   через `/v2/auth/login`.
+4. Заявка: `POST /v1/reviewSubmissions` → `POST /v1/reviewSubmissionItems`
+   (appStoreVersion) → `PATCH reviewSubmissions/{id}` `submitted: true` →
+   `WAITING_FOR_REVIEW`.
+5. После одобрения: поезд версии закрыт — поднять `version` (app.json,
+   package.json, package-lock.json) и `latestPublishedVersion` в ledger до
+   следующей сборки (§4).
+
 ## 4. Грабли (все были на самом деле)
 
 | Что случилось | Почему | Как не повторить |

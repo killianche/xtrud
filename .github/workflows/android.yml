@@ -105,6 +105,23 @@ jobs:
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
 
+      # Firebase (push на Android через FCM): google-services.json в Git не
+      # лежит. Пишем его из секрета вне проекта и передаём путь в
+      # GOOGLE_SERVICES_JSON — его читает app.config.js. Без секрета сборка
+      # останавливается: версия без push не должна уйти в Google Play молча.
+      - name: Подготовить google-services.json (из секретов, не в Git)
+        run: |
+          set -euo pipefail
+          if [ -z "$GOOGLE_SERVICES_JSON_BASE64" ]; then
+            echo "::error::Нет секрета GOOGLE_SERVICES_JSON_BASE64 — push на Android не заработает"
+            exit 1
+          fi
+          echo "$GOOGLE_SERVICES_JSON_BASE64" | base64 --decode > "$RUNNER_TEMP/google-services.json"
+          node -e 'const c=require(process.argv[1]);if(c.client[0].client_info.android_client_info.package_name!=="com.xtrud.app")process.exit(1)' "$RUNNER_TEMP/google-services.json"
+          echo "GOOGLE_SERVICES_JSON=$RUNNER_TEMP/google-services.json" >> "$GITHUB_ENV"
+        env:
+          GOOGLE_SERVICES_JSON_BASE64: ${{ secrets.GOOGLE_SERVICES_JSON_BASE64 }}
+
       # Память Gradle. Стандартный шаблон Expo даёт демону MaxMetaspaceSize=512m,
       # и на сборке 2026-09-12 задача :expo-updates:kspReleaseKotlin упала с
       # OutOfMemoryError: Metaspace, после чего Gradle завис до конца отведённого

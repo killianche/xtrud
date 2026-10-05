@@ -43,6 +43,12 @@ const schema = z.object({
   RUSTORE_PUSH_PROJECT_ID: z.string().min(1).optional(),
   RUSTORE_PUSH_SERVICE_TOKEN: z.string().min(16).optional(),
   /**
+   * Push на Android через Firebase Cloud Messaging: путь к ключу служебного
+   * аккаунта Firebase (JSON). Канал Google Play — SDK RuStore в Android-сборку
+   * не входит (DECISION владельца 2026-10-03). Необязателен, как APNs.
+   */
+  FCM_SERVICE_ACCOUNT_PATH: z.string().min(1).optional(),
+  /**
    * Объектное хранилище S3. Как и push, настройка необязательна: без неё
    * файлы лежат на диске сервера. Половинчатая настройка отвергается —
    * иначе загрузка молча ушла бы не туда.
@@ -95,6 +101,11 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
       "Некорректная конфигурация: с RuStore push обязателен NOTIFY_SECRET — иначе отправку push мог бы вызвать кто угодно",
     );
   }
+  if (cfg.FCM_SERVICE_ACCOUNT_PATH !== undefined && cfg.NOTIFY_SECRET === undefined) {
+    throw new Error(
+      "Некорректная конфигурация: с FCM обязателен NOTIFY_SECRET — иначе отправку push мог бы вызвать кто угодно",
+    );
+  }
   const s3Parts = [
     cfg.S3_ENDPOINT,
     cfg.S3_REGION,
@@ -129,6 +140,11 @@ export function rustorePushConfigured(cfg: Config): boolean {
     cfg.RUSTORE_PUSH_SERVICE_TOKEN !== undefined &&
     cfg.NOTIFY_SECRET !== undefined
   );
+}
+
+/** Настроен ли push FCM. Без общего секрета запуск отвергается выше. */
+export function fcmConfigured(cfg: Config): boolean {
+  return cfg.FCM_SERVICE_ACCOUNT_PATH !== undefined && cfg.NOTIFY_SECRET !== undefined;
 }
 
 /** Настроен ли push целиком. Частичная настройка отвергается выше. */

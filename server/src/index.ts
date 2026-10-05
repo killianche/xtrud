@@ -4,7 +4,13 @@ import Fastify from "fastify";
 import { Tokens } from "./auth/jwt.js";
 import { registerAuthRoutes } from "./auth/routes.js";
 import { SmsRuCallCheck } from "./auth/smsru-callcheck.js";
-import { apnsConfigured, loadConfig, rustorePushConfigured, s3Configured } from "./config.js";
+import {
+  apnsConfigured,
+  fcmConfigured,
+  loadConfig,
+  rustorePushConfigured,
+  s3Configured,
+} from "./config.js";
 import { Db } from "./db.js";
 import { EventHub } from "./events/hub.js";
 import { startEventListener } from "./events/listener.js";
@@ -13,6 +19,7 @@ import { registerFilesRoutes } from "./files/routes.js";
 import { S3Storage } from "./files/s3.js";
 import { TRUSTED_PROXIES } from "./http/trust-proxy.js";
 import { ApnsClient } from "./push/apns.js";
+import { FcmClient, readFcmServiceAccount } from "./push/fcm.js";
 import { registerPushRoutes } from "./push/routes.js";
 import { RuStorePushClient } from "./push/rustore.js";
 import { registerRestProxy } from "./rest/routes.js";
@@ -41,8 +48,13 @@ const apns = apnsConfigured(cfg)
       topic: cfg.APNS_TOPIC,
     })
   : null;
-// Push на Android идёт через RuStore: там наш канал распространения, и он
-// работает на телефонах без сервисов Google.
+// Push на Android из Google Play идёт через FCM. Ключ читается на старте:
+// испорченный файл должен уронить деплой, а не первое уведомление.
+const fcm = fcmConfigured(cfg)
+  ? new FcmClient({ account: readFcmServiceAccount(cfg.FCM_SERVICE_ACCOUNT_PATH as string) })
+  : null;
+// Push на Android через RuStore — для сборок с SDK RuStore. Если настроены
+// оба, Android-токены идут в FCM (маршрут push).
 const rustorePush = rustorePushConfigured(cfg)
   ? new RuStorePushClient({
       projectId: cfg.RUSTORE_PUSH_PROJECT_ID as string,
@@ -94,6 +106,7 @@ app.get("/v2/health", async () => {
     version: "0.1.0",
     push: apns !== null,
     pushAndroid: rustorePush !== null,
+    pushFcm: fcm !== null,
     storage: s3 === null ? "disk" : "s3",
     phoneCall: cfg.SMSRU_API_ID !== undefined,
   };
@@ -111,7 +124,7 @@ await app.register(
     registerRpcRoutes(scope, db, tokens);
     registerEventRoutes(scope, tokens, hub);
     if (cfg.NOTIFY_SECRET !== undefined) {
-      registerPushRoutes(scope, db, apns, cfg.NOTIFY_SECRET, rustorePush);
+      registerPushRoutes(scope, db, apns, cfg.NOTIFY_SECRET, rustorePush, fcm);
     }
     registerRestProxy(scope, cfg.POSTGREST_URL);
     registerFilesRoutes(scope, db, tokens, {

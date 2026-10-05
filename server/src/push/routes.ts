@@ -8,6 +8,7 @@ import { timingSafeEqual } from "node:crypto";
 import type { FastifyInstance } from "fastify";
 import type { Db } from "../db.js";
 import type { ApnsClient, ApnsEnvironment, DeliveryResult } from "./apns.js";
+import type { FcmClient } from "./fcm.js";
 import type { RuStorePushClient } from "./rustore.js";
 
 interface PushRequestBody {
@@ -34,6 +35,7 @@ export function registerPushRoutes(
   apns: ApnsClient | null,
   notifySecret: string,
   rustore: RuStorePushClient | null = null,
+  fcm: FcmClient | null = null,
 ) {
   app.post<{ Body: PushRequestBody }>("/internal/push", async (req, reply) => {
     if (!secretMatches(req.headers["x-notify-secret"] as string | undefined, notifySecret)) {
@@ -42,7 +44,7 @@ export function registerPushRoutes(
     // Уведомление в приложении уже записано базой до этого вызова, поэтому
     // отсутствие ключа APNs не считается ошибкой сценария: пользователь
     // увидит его на экране «Уведомления», просто без звука на телефоне.
-    if (apns === null && rustore === null) {
+    if (apns === null && rustore === null && fcm === null) {
       return reply.code(200).send({ sent: 0, skipped: "push не настроен" });
     }
 
@@ -77,14 +79,16 @@ export function registerPushRoutes(
     if (tokens.length === 0) return { sent: 0, tokens: 0 };
 
     // Телефон получает уведомление там, где он зарегистрирован: iPhone — у
-    // Apple, Android — у RuStore. Токен платформы, отправитель которой не
-    // настроен, просто пропускаем: он живой и дождётся настройки.
+    // Apple, Android — у Google (FCM, сборка из Google Play без SDK RuStore),
+    // а если FCM не настроен — у RuStore. Токен платформы, отправитель которой
+    // не настроен, просто пропускаем: он живой и дождётся настройки.
     const message = { title, body: text, data, badge: unread };
     const results = (
       await Promise.all(
         tokens.map((t) => {
           if (t.platform === "android") {
-            return rustore === null ? null : rustore.send(t.device_token, message);
+            const android = fcm ?? rustore;
+            return android === null ? null : android.send(t.device_token, message);
           }
           return apns === null
             ? null

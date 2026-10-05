@@ -49,13 +49,16 @@ export function chooseAsync<T extends string>(opts: {
     return Promise.resolve(null);
   }
   return new Promise<T | null>((resolve) => {
+    // «Отмена» первой: на Android порядок кнопок фиксирован (последняя —
+    // самая заметная справа), а iOS сам ставит кнопку стиля cancel на её
+    // место (замечание Android-сессии 2026-10-05).
     Alert.alert(title, message, [
+      { text: cancelText, style: "cancel" as const, onPress: () => resolve(null) },
       ...options.map((o) => ({
         text: o.text,
         style: o.destructive ? ("destructive" as const) : ("default" as const),
         onPress: () => resolve(o.id),
       })),
-      { text: cancelText, style: "cancel" as const, onPress: () => resolve(null) },
     ]);
   });
 }

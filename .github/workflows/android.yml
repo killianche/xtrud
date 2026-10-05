@@ -147,9 +147,15 @@ jobs:
           else
             OUT=build/xtrud.apk
           fi
+          # Рабочий каталог EAS не удаляется после сборки: из него берём
+          # mapping.txt R8 (файл расшифровки падений для Google Play).
+          export EAS_LOCAL_BUILD_SKIP_CLEANUP=1
+          export EAS_LOCAL_BUILD_WORKINGDIR="$RUNNER_TEMP/eas-build"
           npx eas-cli build --platform android --profile "${{ github.event.inputs.profile }}" \
             --local --non-interactive --output "$OUT"
           ls -la "$OUT"
+          MAPPING="$(find "$RUNNER_TEMP/eas-build" -path '*outputs/mapping/release/mapping.txt' | head -1)"
+          if [ -n "$MAPPING" ]; then cp "$MAPPING" build/mapping.txt; ls -la build/mapping.txt; fi
           echo "ARTIFACT=$OUT" >> "$GITHUB_ENV"
 
       - name: Убрать ключ с раннера
@@ -161,5 +167,8 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: xtrud-android-${{ github.event.inputs.profile }}-${{ github.run_number }}
-          path: ${{ env.ARTIFACT }}
+          path: |
+            ${{ env.ARTIFACT }}
+            build/mapping.txt
+          if-no-files-found: warn
           retention-days: 14

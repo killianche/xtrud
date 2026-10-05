@@ -32,11 +32,12 @@
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { Star, X } from "phosphor-react-native";
 import { useState } from "react";
-import { Alert, KeyboardAvoidingView, Platform, Pressable, TextInput, View } from "react-native";
+import { KeyboardAvoidingView, Platform, Pressable, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
 import { useAuthSession } from "@/features/auth/use-auth-session";
 import { useSubmitMasterReview } from "@/features/reviews/use-reviews";
+import { showAlert } from "@/lib/alert";
 import { useThemeColors } from "@/lib/use-theme-color";
 
 // Константа модуля: объект, создаваемый на каждый рендер, заставлял систему
@@ -96,7 +97,7 @@ export default function MasterReviewScreen() {
       {
         onSuccess: () => {
           close();
-          Alert.alert("Отзыв отправлен", "Спасибо за оценку.");
+          showAlert("Отзыв отправлен", "Спасибо за оценку.");
         },
         onError: (e) => {
           // RPC возвращает понятный текст: «Вы уже оставили отзыв» /

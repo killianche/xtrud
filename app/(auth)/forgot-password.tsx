@@ -180,7 +180,7 @@ export default function ForgotPasswordScreen() {
             <AppText
               accessibilityRole="header"
               weight="bold"
-              className="mt-6 text-display-lg text-ink"
+              className="mt-6 text-ios-large-title text-ink"
             >
               Новый пароль
             </AppText>
@@ -238,7 +238,7 @@ export default function ForgotPasswordScreen() {
           <AppText
             accessibilityRole="header"
             weight="bold"
-            className="mt-6 text-display-lg text-ink"
+            className="mt-6 text-ios-large-title text-ink"
           >
             Восстановление пароля
           </AppText>
@@ -253,7 +253,7 @@ export default function ForgotPasswordScreen() {
               className="flex-row items-center rounded-xl border-hairline-strong bg-canvas-soft px-4"
               style={{ minHeight: 54, borderWidth: 1.5 }}
             >
-              <AppText weight="semibold" className="text-body-lg text-ink">
+              <AppText weight="semibold" className="text-ios-body text-ink">
                 +7
               </AppText>
             </View>

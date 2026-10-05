@@ -8,7 +8,7 @@ import { Image as ExpoImage } from "expo-image";
 import { useRouter } from "expo-router";
 import { Camera, XCircle } from "phosphor-react-native";
 import { useState } from "react";
-import { Alert, Pressable, View } from "react-native";
+import { Pressable, View } from "react-native";
 import { AppText } from "@/components/AppText";
 import { FormScreen } from "@/components/ui";
 import { SystemIcon } from "@/components/ui/SystemIcon";
@@ -19,6 +19,7 @@ import {
   useMasterPortfolio,
 } from "@/features/profile/use-my-portfolio";
 import { useInvalidateSpecialistCounts } from "@/features/specialist/use-specialist";
+import { showAlert } from "@/lib/alert";
 import { confirmAsync } from "@/lib/confirm";
 import { hapticSelection } from "@/lib/haptics";
 import { cdnBlur, cdnImage } from "@/lib/image-cdn";
@@ -57,11 +58,11 @@ export default function SpecialistPhotosScreen() {
         if (r.ok) await addItem.mutateAsync({ url: r.publicUrl, storagePath: r.path });
       }
       if (results.some((r) => !r.ok)) {
-        Alert.alert("Часть фото не загрузилась", "Проверьте связь и попробуйте ещё раз.");
+        showAlert("Часть фото не загрузилась", "Проверьте связь и попробуйте ещё раз.");
       }
       invalidate(userId);
     } catch {
-      Alert.alert("Не удалось открыть фото", "Проверьте доступ к фото в Настройках.");
+      showAlert("Не удалось открыть фото", "Проверьте доступ к фото в Настройках.");
     } finally {
       setUploading(null);
     }

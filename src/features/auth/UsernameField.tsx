@@ -69,7 +69,7 @@ export function UsernameField({
   // Состояние подсказки под полем.
   let hint: { text: string; tone: "mute" | "success" | "error" } | null = null;
   if (isUnchanged) {
-    hint = { text: "Это ваш текущий юзернейм", tone: "mute" };
+    hint = { text: "Это ваше текущее имя пользователя", tone: "mute" };
   } else if (value.length > 0 && !formatValid) {
     hint = {
       text: `Минимум ${USERNAME_MIN} символа. Можно латиницу, цифры, точку и _`,
@@ -102,7 +102,7 @@ export function UsernameField({
       <View>
         <View className="flex-row items-center gap-3">
           <AppText weight="medium" className="w-24 text-body-md text-mute">
-            Юзернейм
+            Имя пользователя
           </AppText>
           <View className="flex-1 flex-row items-center">
             <AppText weight="medium" className="text-body-md text-mute">
@@ -149,7 +149,7 @@ export function UsernameField({
   return (
     <View>
       <AppText weight="semibold" className="text-body-sm text-ink">
-        Юзернейм
+        Имя пользователя
       </AppText>
       <View
         className={`mt-2 min-h-12 flex-row items-center rounded-md border ${borderClass} bg-canvas px-3`}

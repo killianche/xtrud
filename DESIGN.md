@@ -69,7 +69,7 @@ xtrud — Expo + react-native-web. Все компоненты должны ре
 **Что:** компонент `<ScreenHeader>` из `@/components/ui` (`src/components/ui/ScreenHeader.tsx`).
 
 **Когда использовать:**
-- На **любом** full-screen экране, где есть back-кнопка и заголовок: master/[id], category/[id], orders/search, orders/[id], chats/[id], orders/category-select, profile/edit-master, useful/[slug], admin, и любых других detail-экранах.
+- На **любом** full-screen экране, где есть back-кнопка и заголовок: master/[id], category/[id], orders/search, orders/[id], chats/[id], orders/category-select, useful/[slug], admin, и любых других detail-экранах. Исключение — формы правки личности (`profile/edit-client`, `profile/edit-master`): стандарт «Отмена / Заголовок / Сохранить» (аудит 2026-10-05).
 - На табах (когда экран — корень таба): без `onBack`, только заголовок и опц. `rightAction`. Пример: `/orders/search`.
 
 **Когда НЕ использовать:** modal-overlay'и, tab-bar'ы, cards, in-flow секции — для них свои стандарты.
@@ -1405,6 +1405,14 @@ SF Symbols на iOS через `SystemIcon`, содержимое и катег�
   «Весь раздел», один выбор — галочка.
 - На корне вкладки без кнопок крупный заголовок начинается сразу под
   безопасной областью; компактная полоса — только при прокрутке.
+- Типографика (аудит 2026-10-05): для нового и трогаемого экрана — только
+  нативная шкала `text-ios-*` (Large Title / Title / Body / Callout /
+  Subheadline / Footnote), как в `docs/IOS_FOUNDATION.md` §0. Экраны входа
+  переведены целиком; `text-display-*` / `text-body-*` остаются на старых
+  экранах до их правки.
+- Формы правки личности (`profile/edit-client`, `profile/edit-master`) —
+  отдельный стандарт «Отмена / Заголовок / Сохранить» (форма в модальной
+  презентации iOS), а не `ScreenHeader`.
 - «Специалисты» — список категорий; список людей — экран стека
   `/specialists/section` (свайп назад). Заголовок — как у «Найти задание»,
   без переключателя «Я специалист» (владелец, 2026-10-04): настройки

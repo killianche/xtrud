@@ -7,9 +7,10 @@
 
 import { Camera, XCircle } from "phosphor-react-native";
 import { useState } from "react";
-import { Alert, Image, Pressable, View } from "react-native";
+import { Image, Pressable, View } from "react-native";
 import { AppText } from "@/components/AppText";
 import { SystemIcon } from "@/components/ui/SystemIcon";
+import { showAlert } from "@/lib/alert";
 import { lightColors } from "@/lib/colors";
 import { hapticSelection } from "@/lib/haptics";
 import { pickMultipleImages } from "@/lib/image-upload";
@@ -50,7 +51,7 @@ export function PhotoGrid({
         ...picked.map((p) => ({ id: makeId(), uri: p.uri, width: p.width, height: p.height })),
       ]);
     } catch {
-      Alert.alert("Не удалось открыть фото", "Проверьте доступ к фото в Настройках.");
+      showAlert("Не удалось открыть фото", "Проверьте доступ к фото в Настройках.");
     }
   };
 

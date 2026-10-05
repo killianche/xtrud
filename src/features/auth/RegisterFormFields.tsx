@@ -101,7 +101,7 @@ export function RegisterFormFields({
         выбирается и не вводится, поэтому «8» и «7» в начале больше не
         создают два разных аккаунта (DECISION владельца 2026-09-03). */}
       <View className="mt-5">
-        <AppText weight="semibold" className="mb-2 text-body-md text-ink">
+        <AppText weight="semibold" className="mb-2 text-ios-callout text-ink">
           Номер телефона
         </AppText>
         <View className="flex-row items-start gap-2">
@@ -109,7 +109,7 @@ export function RegisterFormFields({
             className="flex-row items-center rounded-xl border-hairline-strong bg-canvas-soft px-4"
             style={{ minHeight: 54, borderWidth: 1.5 }}
           >
-            <AppText weight="semibold" className="text-body-lg text-ink">
+            <AppText weight="semibold" className="text-ios-body text-ink">
               +7
             </AppText>
           </View>
@@ -198,7 +198,7 @@ export function RegisterFormFields({
         {/* Ссылки — Pressable с ролью link и вертикальным hitSlop: строка
           текста 24 pt, зона касания добирается до 44 pt (QA 2026-09-02). */}
         <View className="flex-1 flex-row flex-wrap items-center">
-          <AppText className="text-body-md text-body">Я согласен с </AppText>
+          <AppText className="text-ios-callout text-body">Я согласен с </AppText>
           <Pressable
             accessibilityRole="link"
             accessibilityLabel="Условия использования"
@@ -206,11 +206,11 @@ export function RegisterFormFields({
             hitSlop={{ top: 10, bottom: 10, left: 4, right: 4 }}
             onPress={() => router.push("/legal/terms" as never)}
           >
-            <AppText weight="semibold" className="text-body-md text-accent">
+            <AppText weight="semibold" className="text-ios-callout text-accent">
               Условиями использования
             </AppText>
           </Pressable>
-          <AppText className="text-body-md text-body"> и </AppText>
+          <AppText className="text-ios-callout text-body"> и </AppText>
           <Pressable
             accessibilityRole="link"
             accessibilityLabel="Политика конфиденциальности"
@@ -218,11 +218,11 @@ export function RegisterFormFields({
             hitSlop={{ top: 10, bottom: 10, left: 4, right: 4 }}
             onPress={() => router.push("/legal/privacy" as never)}
           >
-            <AppText weight="semibold" className="text-body-md text-accent">
+            <AppText weight="semibold" className="text-ios-callout text-accent">
               Политикой конфиденциальности
             </AppText>
           </Pressable>
-          <AppText className="text-body-md text-body">.</AppText>
+          <AppText className="text-ios-callout text-body">.</AppText>
         </View>
       </Pressable>
 
@@ -232,7 +232,7 @@ export function RegisterFormFields({
             accessibilityRole="alert"
             accessibilityLiveRegion="polite"
             weight="medium"
-            className="text-body-md text-error-deep"
+            className="text-ios-callout text-error-deep"
           >
             {serverError}
           </AppText>

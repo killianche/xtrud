@@ -15,7 +15,7 @@ import { Image as ExpoImage } from "expo-image";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { DotsThree, InstagramLogo, LinkSimple, Star } from "phosphor-react-native";
 import { useEffect, useMemo, useState } from "react";
-import { ActionSheetIOS, Alert, Animated, Pressable, View } from "react-native";
+import { ActionSheetIOS, Animated, Pressable, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
 import { Avatar } from "@/components/Avatar";
@@ -61,6 +61,7 @@ import { useReviewableOrderForMaster } from "@/features/reviews/use-reviews";
 import { availabilityTitle } from "@/features/specialist/AvailabilityRows";
 import { linkLabel } from "@/features/specialist/link-url";
 import { useColorScheme } from "@/hooks/use-color-scheme";
+import { showAlert } from "@/lib/alert";
 import { getCategoryIcon } from "@/lib/category-icons";
 import { confirmAsync } from "@/lib/confirm";
 import { hapticSuccess } from "@/lib/haptics";
@@ -178,7 +179,7 @@ export default function MasterPublicScreen() {
         hapticSuccess();
         goBack();
       },
-      onError: (e) => Alert.alert("Не удалось заблокировать", blockingActionFailureMessage(e)),
+      onError: (e) => showAlert("Не удалось заблокировать", blockingActionFailureMessage(e)),
     });
   };
   const isAdmin = useIsAdmin(currentUserId);
@@ -195,7 +196,7 @@ export default function MasterPublicScreen() {
       { userId: masterId, status, reason },
       {
         onSuccess: () => hapticSuccess(),
-        onError: (e) => Alert.alert("Не получилось", e.message),
+        onError: (e) => showAlert("Не получилось", e.message),
       },
     );
   };

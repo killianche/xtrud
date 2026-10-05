@@ -30,11 +30,12 @@
 import { Stack, useRouter } from "expo-router";
 import { X } from "phosphor-react-native";
 import { useState } from "react";
-import { Alert, KeyboardAvoidingView, Platform, Pressable, TextInput, View } from "react-native";
+import { KeyboardAvoidingView, Platform, Pressable, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
 import { useAuthSession } from "@/features/auth/use-auth-session";
 import { useCreateCase } from "@/features/profile/use-portfolio-cases";
+import { showAlert } from "@/lib/alert";
 import { useThemeColors } from "@/lib/use-theme-color";
 
 const MAX_TITLE_LEN = 120;
@@ -72,7 +73,7 @@ export default function CreateCaseScreen() {
       router.back();
       router.push(`/profile/portfolio/${created.id}` as never);
     } catch (e) {
-      Alert.alert("Не удалось создать кейс", e instanceof Error ? e.message : String(e));
+      showAlert("Не удалось создать кейс", e instanceof Error ? e.message : String(e));
     }
   };
 

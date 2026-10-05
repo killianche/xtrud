@@ -61,22 +61,6 @@ async function signInWithDemoPhone(
   return { ok: true, userId: data.user.id };
 }
 
-/** Вход по SMS отключён — функции оставлены для экрана verify (дормант). */
-export async function sendOtpToPhone(
-  phone: string,
-): Promise<{ ok: true } | { ok: false; error: string }> {
-  if (isDemoPhone(phone)) return { ok: true };
-  return { ok: false, error: "Вход по SMS отключён. Войдите по телефону и паролю." };
-}
-
-export async function verifyOtpCode(
-  phone: string,
-  _code: string,
-): Promise<{ ok: true } | { ok: false; error: string }> {
-  if (isDemoPhone(phone)) return signInWithDemoPhone(phone);
-  return { ok: false, error: "Вход по SMS отключён. Войдите по телефону и паролю." };
-}
-
 /**
  * Регистрация: имя, фамилия, телефон, пароль. xtrud-api создаёт аккаунт,
  * записывает имя и телефон, закрывает онбординг и сразу отдаёт сессию.

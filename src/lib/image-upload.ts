@@ -10,7 +10,9 @@
 
 import * as ImageManipulator from "expo-image-manipulator";
 import * as ImagePicker from "expo-image-picker";
-import { Alert, Platform } from "react-native";
+import { Platform } from "react-native";
+import { chooseAsync, showAlert } from "@/lib/alert";
+import { confirmAsync } from "@/lib/confirm";
 import { calcResizedDimensions } from "./image-resize";
 import { supabase } from "./supabase";
 
@@ -125,7 +127,7 @@ export async function pickImage(opts: {
   if (source === "camera") {
     const perm = await ImagePicker.requestCameraPermissionsAsync();
     if (!perm.granted) {
-      Alert.alert("Нет доступа к камере", "Разрешите доступ в настройках приложения.");
+      showAlert("Нет доступа к камере", "Разрешите доступ в настройках приложения.");
       return null;
     }
     const result = await ImagePicker.launchCameraAsync({
@@ -139,7 +141,7 @@ export async function pickImage(opts: {
 
   const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
   if (!perm.granted) {
-    Alert.alert("Нет доступа к фото", "Разрешите доступ в настройках приложения.");
+    showAlert("Нет доступа к фото", "Разрешите доступ в настройках приложения.");
     return null;
   }
   const result = await ImagePicker.launchImageLibraryAsync({
@@ -152,12 +154,12 @@ export async function pickImage(opts: {
 }
 
 function chooseSource(title?: string): Promise<PickSource | null> {
-  return new Promise((resolve) => {
-    Alert.alert(title ?? "Выберите источник", undefined, [
-      { text: "Камера", onPress: () => resolve("camera") },
-      { text: "Галерея", onPress: () => resolve("library") },
-      { text: "Отмена", style: "cancel", onPress: () => resolve(null) },
-    ]);
+  return chooseAsync<PickSource>({
+    title: title ?? "Выберите источник",
+    options: [
+      { id: "camera", text: "Камера" },
+      { id: "library", text: "Галерея" },
+    ],
   });
 }
 
@@ -224,7 +226,7 @@ function pickImageWeb(): Promise<PickedImage | null> {
       };
       img.onerror = () => {
         URL.revokeObjectURL(objectUrl);
-        Alert.alert("Не удалось прочитать изображение", "Попробуйте другой файл.");
+        showAlert("Не удалось прочитать изображение", "Попробуйте другой файл.");
         settle(null);
       };
       img.src = objectUrl;
@@ -400,15 +402,10 @@ export async function pickResizeUploadPortfolio(userId: string): Promise<{
 
   // Предупреждение о слабом разрешении — non-blocking.
   if (picked.width < PORTFOLIO_MIN_WIDTH || picked.height < PORTFOLIO_MIN_HEIGHT) {
-    const proceed = await new Promise<boolean>((resolve) => {
-      Alert.alert(
-        "Фото небольшое",
-        `Рекомендуем минимум ${PORTFOLIO_MIN_WIDTH}×${PORTFOLIO_MIN_HEIGHT} пикселей — иначе работа будет выглядеть размыто. Продолжить?`,
-        [
-          { text: "Отмена", style: "cancel", onPress: () => resolve(false) },
-          { text: "Продолжить", onPress: () => resolve(true) },
-        ],
-      );
+    const proceed = await confirmAsync({
+      title: "Фото небольшое",
+      message: `Рекомендуем минимум ${PORTFOLIO_MIN_WIDTH}×${PORTFOLIO_MIN_HEIGHT} пикселей — иначе работа будет выглядеть размыто. Продолжить?`,
+      confirmText: "Продолжить",
     });
     if (!proceed) return null;
   }
@@ -605,7 +602,7 @@ export async function pickMultipleImages(maxCount: number): Promise<PickedImage[
   }
   const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
   if (!perm.granted) {
-    Alert.alert("Нет доступа к фото", "Разрешите доступ в настройках приложения.");
+    showAlert("Нет доступа к фото", "Разрешите доступ в настройках приложения.");
     return [];
   }
   const result = await ImagePicker.launchImageLibraryAsync({

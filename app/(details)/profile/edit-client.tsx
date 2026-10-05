@@ -115,7 +115,7 @@ export default function EditClientScreen() {
     if (!nameOk) {
       disabledReason = "Впишите имя — минимум 2 символа.";
     } else if (usernameChanged && !usernameValid) {
-      disabledReason = "Выберите свободный юзернейм, чтобы сохранить.";
+      disabledReason = "Выберите свободное имя пользователя, чтобы сохранить.";
     }
   }
 

@@ -28,7 +28,7 @@ import { Image } from "expo-image";
 import { useLocalSearchParams } from "expo-router";
 import { CaretLeft, ImageSquare, Pencil, Plus, Trash } from "phosphor-react-native";
 import { useState } from "react";
-import { ActivityIndicator, Alert, Pressable, ScrollView, TextInput, View } from "react-native";
+import { ActivityIndicator, Pressable, ScrollView, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
 import { useAuthSession } from "@/features/auth/use-auth-session";
@@ -38,6 +38,7 @@ import {
   useDeleteCase,
   useUpdateCase,
 } from "@/features/profile/use-portfolio-cases";
+import { showAlert } from "@/lib/alert";
 import { confirmAsync } from "@/lib/confirm";
 import { hapticError, hapticSuccess } from "@/lib/haptics";
 import { cdnBlur, cdnImage } from "@/lib/image-cdn";
@@ -153,29 +154,28 @@ export default function OwnerCaseDetailScreen() {
 
     setProgress(null);
     if (failed.length > 0) {
-      Alert.alert("Часть фото не загрузилась", `Ошибки: ${failed.length}. Попробуйте ещё раз.`);
+      showAlert("Часть фото не загрузилась", `Ошибки: ${failed.length}. Попробуйте ещё раз.`);
     }
   };
 
-  const handleDeleteItem = (id: string, storagePath: string) => {
-    Alert.alert("Удалить фото?", "Действие нельзя отменить.", [
-      { text: "Отмена", style: "cancel" },
+  const handleDeleteItem = async (id: string, storagePath: string) => {
+    const ok = await confirmAsync({
+      title: "Удалить фото?",
+      message: "Действие нельзя отменить.",
+      confirmText: "Удалить",
+      destructive: true,
+    });
+    if (!ok) return;
+    deleteItem.mutate(
+      { id, storagePath },
       {
-        text: "Удалить",
-        style: "destructive",
-        onPress: () =>
-          deleteItem.mutate(
-            { id, storagePath },
-            {
-              onSuccess: () => hapticSuccess(),
-              onError: (e) => {
-                hapticError();
-                Alert.alert("Не удалось удалить", e.message);
-              },
-            },
-          ),
+        onSuccess: () => hapticSuccess(),
+        onError: (e) => {
+          hapticError();
+          showAlert("Не удалось удалить", e.message);
+        },
       },
-    ]);
+    );
   };
 
   const handleDeleteCase = async () => {
@@ -193,7 +193,7 @@ export default function OwnerCaseDetailScreen() {
       goBack();
     } catch (e) {
       hapticError();
-      Alert.alert("Не удалось удалить", e instanceof Error ? e.message : String(e));
+      showAlert("Не удалось удалить", e instanceof Error ? e.message : String(e));
     }
   };
 
@@ -224,7 +224,7 @@ export default function OwnerCaseDetailScreen() {
       });
       setEditing(false);
     } catch (e) {
-      Alert.alert("Не удалось сохранить", e instanceof Error ? e.message : String(e));
+      showAlert("Не удалось сохранить", e instanceof Error ? e.message : String(e));
     }
   };
 

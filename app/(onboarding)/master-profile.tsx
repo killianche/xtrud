@@ -2,7 +2,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
-import { Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, View } from "react-native";
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
 import { OnboardingProgress } from "@/components/OnboardingProgress";
@@ -20,6 +20,7 @@ import { useUserRecord } from "@/features/auth/use-user-record";
 import { setUsernameErrorMessage, useSetUsername } from "@/features/auth/use-username";
 import { useCities } from "@/features/cities/use-cities";
 import { MasterProfileFormBody } from "@/features/master-profile/MasterProfileFormBody";
+import { showAlert } from "@/lib/alert";
 
 export default function MasterProfileScreen() {
   const insets = useSafeAreaInsets();
@@ -111,7 +112,7 @@ export default function MasterProfileScreen() {
         const message =
           e instanceof Error ? setUsernameErrorMessage(e.message) : "Неизвестная ошибка сервера.";
         console.error("[MasterProfile submit]", e);
-        Alert.alert("Не удалось сохранить профиль", message);
+        showAlert("Не удалось сохранить профиль", message);
       }
     },
     (formErrors) => {

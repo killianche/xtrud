@@ -35,7 +35,7 @@
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { X } from "phosphor-react-native";
 import { useState } from "react";
-import { Alert, KeyboardAvoidingView, Platform, Pressable, TextInput, View } from "react-native";
+import { KeyboardAvoidingView, Platform, Pressable, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
 import { useAuthSession } from "@/features/auth/use-auth-session";
@@ -45,6 +45,7 @@ import {
   reasonsFor,
   useCreateReport,
 } from "@/features/reports/use-create-report";
+import { showAlert } from "@/lib/alert";
 import { useThemeColor, useThemeColors } from "@/lib/use-theme-color";
 
 const REVIEW_REASONS: ReportReason[] = reasonsFor("review");
@@ -79,12 +80,12 @@ export default function ReportReviewScreen() {
         description,
       });
       close();
-      Alert.alert(
+      showAlert(
         "Жалоба отправлена",
         "Модератор рассмотрит отзыв. Если он нарушает правила — мы его удалим.",
       );
     } catch (e) {
-      Alert.alert("Не удалось отправить", e instanceof Error ? e.message : "Попробуйте ещё раз.");
+      showAlert("Не удалось отправить", e instanceof Error ? e.message : "Попробуйте ещё раз.");
     }
   };
 

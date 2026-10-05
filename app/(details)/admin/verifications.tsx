@@ -11,7 +11,7 @@
 
 import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
-import { Alert, Image, Pressable, View } from "react-native";
+import { Image, Pressable, View } from "react-native";
 import { AppText } from "@/components/AppText";
 import { FormScreen, GlassButton, Input, InsetGroup } from "@/components/ui";
 import {
@@ -22,6 +22,7 @@ import {
   verificationPhotoUrl,
 } from "@/features/admin/use-admin-actions";
 import { useAuthSession } from "@/features/auth/use-auth-session";
+import { showAlert } from "@/lib/alert";
 import { hapticSuccess } from "@/lib/haptics";
 import { promptAsync } from "@/lib/prompt";
 
@@ -155,7 +156,7 @@ export default function AdminVerificationsScreen() {
       { userId: row.user_id, approve, reason, firstName, lastName },
       {
         onSuccess: () => hapticSuccess(),
-        onError: (e) => Alert.alert("Не получилось", e.message),
+        onError: (e) => showAlert("Не получилось", e.message),
       },
     );
   };

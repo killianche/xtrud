@@ -14,7 +14,7 @@
 
 import { CaretLeft, ShieldCheck, Warning, X } from "phosphor-react-native";
 import { useState } from "react";
-import { ActivityIndicator, Alert, Pressable, ScrollView, View } from "react-native";
+import { ActivityIndicator, Pressable, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
 import { EmptyState } from "@/components/EmptyState";
@@ -28,6 +28,7 @@ import {
 import { useAuthSession } from "@/features/auth/use-auth-session";
 import { useUserRecord } from "@/features/auth/use-user-record";
 import { REASON_LABELS } from "@/features/reports/use-create-report";
+import { chooseAsync } from "@/lib/alert";
 import { useSafeBack } from "@/lib/use-safe-back";
 import { useThemeColors } from "@/lib/use-theme-color";
 
@@ -144,59 +145,42 @@ export default function AdminReportsScreen() {
     );
   }
 
-  const handleAction = (item: ReportWithReporter) => {
+  const handleAction = async (item: ReportWithReporter) => {
     if (!userId) return;
-    Alert.alert(
-      "Действие по жалобе",
-      `Причина: ${REASON_LABELS[item.reason]}\nТип: ${item.target_type}\nID: ${item.target_id}`,
-      [
-        { text: "Отмена", style: "cancel" },
-        {
-          text: "Отклонить (dismiss)",
-          onPress: () => {
-            updateReport.mutate({
-              reportId: item.id,
-              status: "dismissed",
-              reviewerId: userId,
-            });
-          },
-        },
+    const choice = await chooseAsync<"dismiss" | "suspend" | "hide_review">({
+      title: "Действие по жалобе",
+      message: `Причина: ${REASON_LABELS[item.reason]}\nТип: ${item.target_type}\nID: ${item.target_id}`,
+      options: [
+        { id: "dismiss", text: "Отклонить жалобу" },
         ...(item.target_type === "user"
-          ? [
-              {
-                text: "Suspend юзер + resolve",
-                style: "destructive" as const,
-                onPress: () => {
-                  updateUser.mutate({ userId: item.target_id, status: "suspended" });
-                  updateReport.mutate({
-                    reportId: item.id,
-                    status: "resolved",
-                    reviewerId: userId,
-                    adminNote: "Пользователь приостановлен",
-                  });
-                },
-              },
-            ]
+          ? [{ id: "suspend" as const, text: "Приостановить пользователя", destructive: true }]
           : []),
         ...(item.target_type === "review"
-          ? [
-              {
-                text: "Скрыть отзыв + resolve",
-                style: "destructive" as const,
-                onPress: () => {
-                  updateReview.mutate({ reviewId: item.target_id, status: "hidden" });
-                  updateReport.mutate({
-                    reportId: item.id,
-                    status: "resolved",
-                    reviewerId: userId,
-                    adminNote: "Отзыв скрыт",
-                  });
-                },
-              },
-            ]
+          ? [{ id: "hide_review" as const, text: "Скрыть отзыв", destructive: true }]
           : []),
       ],
-    );
+    });
+    if (choice === "dismiss") {
+      updateReport.mutate({ reportId: item.id, status: "dismissed", reviewerId: userId });
+    }
+    if (choice === "suspend") {
+      updateUser.mutate({ userId: item.target_id, status: "suspended" });
+      updateReport.mutate({
+        reportId: item.id,
+        status: "resolved",
+        reviewerId: userId,
+        adminNote: "Пользователь приостановлен",
+      });
+    }
+    if (choice === "hide_review") {
+      updateReview.mutate({ reviewId: item.target_id, status: "hidden" });
+      updateReport.mutate({
+        reportId: item.id,
+        status: "resolved",
+        reviewerId: userId,
+        adminNote: "Отзыв скрыт",
+      });
+    }
   };
 
   return (

@@ -15,7 +15,7 @@
 
 import { FlashList } from "@shopify/flash-list";
 import { Prohibit } from "phosphor-react-native";
-import { Alert, Pressable, View } from "react-native";
+import { Pressable, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
 import { Avatar, ScreenHeader, Skeleton } from "@/components/ui";
@@ -25,6 +25,7 @@ import {
   useBlockedUsers,
   useUnblockUser,
 } from "@/features/blocking/use-user-blocks";
+import { showAlert } from "@/lib/alert";
 import { confirmAsync } from "@/lib/confirm";
 import { useSafeBack } from "@/lib/use-safe-back";
 import { useThemeColors } from "@/lib/use-theme-color";
@@ -90,7 +91,7 @@ export default function BlockedUsersScreen() {
                 if (!confirmed) return;
                 unblock.mutate(item.blockedId, {
                   onError: (e) =>
-                    Alert.alert("Не удалось разблокировать", blockingActionFailureMessage(e)),
+                    showAlert("Не удалось разблокировать", blockingActionFailureMessage(e)),
                 });
               }}
             />

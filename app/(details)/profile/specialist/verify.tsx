@@ -10,7 +10,7 @@
 import { useRouter } from "expo-router";
 import { IdentificationCard, SealCheck } from "phosphor-react-native";
 import { useState } from "react";
-import { Alert, View } from "react-native";
+import { View } from "react-native";
 import { AppText } from "@/components/AppText";
 import { FormScreen, InsetGroup, InsetRow } from "@/components/ui";
 import { SystemIcon } from "@/components/ui/SystemIcon";
@@ -45,11 +45,9 @@ export default function VerifyIdentityScreen() {
     try {
       const result = await submit.mutateAsync({ previous: v });
       if (result === "sent") {
+        // Окна «Фото отправлено» нет (аудит 2026-10-05): статус «На проверке»
+        // и подпись под ним говорят то же самое на самом экране.
         hapticSuccess();
-        Alert.alert(
-          "Фото отправлено",
-          "Проверим в течение дня и пришлём уведомление. Фото видит только администратор.",
-        );
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Не удалось отправить фото");
@@ -87,7 +85,9 @@ export default function VerifyIdentityScreen() {
         footer={
           v?.status === "rejected" && v.rejection_reason
             ? `Причина: ${v.rejection_reason}`
-            : undefined
+            : v?.status === "pending"
+              ? "Проверим в течение дня и пришлём уведомление."
+              : undefined
         }
       >
         <InsetRow

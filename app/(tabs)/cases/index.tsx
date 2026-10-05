@@ -37,7 +37,7 @@ import { Image } from "expo-image";
 import { useRouter } from "expo-router";
 import { ImageSquare, Plus, SignIn } from "phosphor-react-native";
 import { useState } from "react";
-import { Alert, Pressable, View } from "react-native";
+import { Pressable, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
 import { ScreenHeader } from "@/components/ui";
@@ -48,6 +48,7 @@ import {
   useCreateCase,
   useMasterCases,
 } from "@/features/profile/use-portfolio-cases";
+import { showAlert } from "@/lib/alert";
 import { lightColors } from "@/lib/colors";
 import { cdnBlur, cdnImage } from "@/lib/image-cdn";
 import { type PickedImage, pickMultipleImages, uploadPortfolioBatch } from "@/lib/image-upload";
@@ -169,7 +170,7 @@ export default function CasesScreen() {
       const failed = await attachUploaded(created.id, results);
       setCreating(null);
       if (failed > 0) {
-        Alert.alert(
+        showAlert(
           "Часть фото не загрузилась",
           `Не удалось: ${failed}. Откройте работу и добавьте ещё раз.`,
         );
@@ -180,10 +181,7 @@ export default function CasesScreen() {
       router.push(`/cases/${created.id}` as never);
     } catch (e) {
       setCreating(null);
-      Alert.alert(
-        "Не удалось создать работу",
-        e instanceof Error ? e.message : "Неизвестная ошибка",
-      );
+      showAlert("Не удалось создать работу", e instanceof Error ? e.message : "Неизвестная ошибка");
     }
   };
 
@@ -205,7 +203,7 @@ export default function CasesScreen() {
       });
       const failed = await attachUploaded(caseId, results);
       if (failed > 0) {
-        Alert.alert("Часть фото не загрузилась", `Не удалось: ${failed}. Попробуйте ещё раз.`);
+        showAlert("Часть фото не загрузилась", `Не удалось: ${failed}. Попробуйте ещё раз.`);
       }
     } finally {
       setAddingToCaseId(null);

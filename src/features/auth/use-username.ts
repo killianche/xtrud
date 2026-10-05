@@ -73,11 +73,11 @@ export function useUsernameAvailability(username: string): {
 
 /** Человеческое сообщение по коду ошибки RPC set_username. */
 export function setUsernameErrorMessage(message: string): string {
-  if (message.includes("username_taken")) return "Этот юзернейм уже занят.";
+  if (message.includes("username_taken")) return "Это имя пользователя уже занято.";
   if (message.includes("username_invalid"))
-    return "Юзернейм: латиница, цифры, точка и _ (от 3 до 30 символов).";
+    return "Имя пользователя: латиница, цифры, точка и _ (от 3 до 30 символов).";
   if (message.includes("username_already_set"))
-    return "Юзернейм уже закреплён за аккаунтом и не меняется.";
+    return "Имя пользователя уже закреплено за аккаунтом и не меняется.";
   return message;
 }
 

@@ -6,7 +6,8 @@
  */
 
 import { useRouter } from "expo-router";
-import { ActionSheetIOS, Alert, Platform } from "react-native";
+import { ActionSheetIOS, Platform } from "react-native";
+import { chooseAsync } from "@/lib/alert";
 import { useOrderDraftStore } from "@/lib/order-draft-store";
 import { useComposer } from "./composer-store";
 
@@ -43,11 +44,16 @@ export function useComposerClose(): () => void {
         },
       );
     } else {
-      Alert.alert("Черновик задания", undefined, [
-        { text: "Удалить", style: "destructive", onPress: discard },
-        { text: "Сохранить", onPress: leave },
-        { text: "Отмена", style: "cancel" },
-      ]);
+      void chooseAsync<"discard" | "save">({
+        title: "Черновик задания",
+        options: [
+          { id: "discard", text: "Удалить черновик", destructive: true },
+          { id: "save", text: "Сохранить черновик" },
+        ],
+      }).then((choice) => {
+        if (choice === "discard") discard();
+        if (choice === "save") leave();
+      });
     }
   };
 }

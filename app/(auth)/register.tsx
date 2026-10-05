@@ -214,12 +214,12 @@ export default function RegisterScreen() {
             />
           </NavCircleButton>
           {/* Стандарт auth-экранов 2026-09-02 — см. app/(auth)/phone.tsx. */}
-          <AppText weight="bold" className="mt-6 text-display-lg text-ink">
+          <AppText weight="bold" className="mt-6 text-ios-large-title text-ink">
             Создать аккаунт
           </AppText>
           {prefill ? (
             <View className="mt-4 rounded-xl bg-canvas-soft px-4 py-3">
-              <AppText accessibilityRole="alert" className="text-body-md text-body">
+              <AppText accessibilityRole="alert" className="text-ios-callout text-body">
                 {/* «Подтверждён» — только пока в поле тот же номер (QA: поменяли
                     номер — подтверждения для нового нет, спросим звонок). */}
                 {prefill.verificationToken &&
@@ -258,7 +258,7 @@ export default function RegisterScreen() {
           </Button>
 
           <View className="mt-6 flex-row items-center justify-center">
-            <AppText className="text-body-md text-body">Уже есть аккаунт? </AppText>
+            <AppText className="text-ios-callout text-body">Уже есть аккаунт? </AppText>
             <Pressable
               accessibilityRole="button"
               disabled={isBusy}
@@ -284,7 +284,7 @@ export default function RegisterScreen() {
               hitSlop={8}
               className={`min-h-11 justify-center ${isBusy ? "opacity-30" : "active:opacity-70"}`}
             >
-              <AppText weight="semibold" className="text-body-md text-accent">
+              <AppText weight="semibold" className="text-ios-callout text-accent">
                 Войти
               </AppText>
             </Pressable>

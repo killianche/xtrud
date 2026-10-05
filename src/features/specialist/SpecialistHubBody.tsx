@@ -18,7 +18,7 @@ import {
   UserCircle,
 } from "phosphor-react-native";
 import { useEffect, useRef } from "react";
-import { Alert, View } from "react-native";
+import { View } from "react-native";
 import { AppText } from "@/components/AppText";
 import { Avatar } from "@/components/Avatar";
 import { InsetGroup, InsetRow } from "@/components/ui";
@@ -34,6 +34,7 @@ import {
   useSetShownInCatalog,
 } from "@/features/specialist/use-specialist";
 import { useMyVerification, VERIFICATION_LABEL } from "@/features/specialist/use-verification";
+import { showAlert } from "@/lib/alert";
 import { DISTRICTS, getCityName } from "@/lib/location-config";
 import { useThemeColors } from "@/lib/use-theme-color";
 
@@ -182,7 +183,7 @@ export function SpecialistHubBody({ userId }: { userId: string }) {
               if (canBeShown) {
                 setShown.mutate(next);
               } else if (m?.status === "suspended") {
-                Alert.alert(
+                showAlert(
                   "Профиль скрыт администратором",
                   "Если это ошибка, напишите в поддержку.",
                 );

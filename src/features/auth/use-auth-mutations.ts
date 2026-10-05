@@ -7,18 +7,15 @@
 // - useRequestReset  → requestPasswordReset: письмо со ссылкой на сброс пароля.
 // - useUpdatePassword→ updatePassword: установить новый пароль (экран /reset-password).
 //
-// Дормант (для будущего возврата SMS):
-// - useSendOtp / useVerifyOtp → sendOtpToPhone / verifyOtpCode (signInWithOtp).
-// Реализация всех функций — src/lib/auth.ts.
+// Вход по SMS-коду удалён (аудит 2026-10-05); номер подтверждается обратным
+// звонком (CallConfirmSheet). Реализация функций — src/lib/auth.ts.
 
 import { useMutation } from "@tanstack/react-query";
 import {
   loginWithCredentials,
   registerWithCredentials,
   requestPasswordReset,
-  sendOtpToPhone,
   updatePassword,
-  verifyOtpCode,
 } from "@/lib/auth";
 
 // ── Основной вход: номер/почта + пароль ────────────────────────────────────
@@ -84,44 +81,6 @@ export function useUpdatePassword() {
   return useMutation({
     mutationFn: async (password: string): Promise<{ ok: true }> => {
       const result = await updatePassword(password);
-      if (!result.ok) {
-        throw new Error(result.error);
-      }
-      return { ok: true };
-    },
-  });
-}
-
-// ── Дормант: SMS-OTP (для будущего возврата) ───────────────────────────────
-
-export interface SendOtpInput {
-  phone: string;
-}
-
-/** Отправить код на номер (реальный SMS или demo-no-op). */
-export function useSendOtp() {
-  return useMutation({
-    mutationFn: async (input: SendOtpInput): Promise<{ ok: true }> => {
-      const result = await sendOtpToPhone(input.phone);
-      if (!result.ok) {
-        throw new Error(result.error);
-      }
-      return { ok: true };
-    },
-  });
-}
-
-export interface VerifyOtpInput {
-  phone: string;
-  /** 6-значный код из SMS. Для demo-номеров игнорируется. */
-  code: string;
-}
-
-/** Проверить код и войти. */
-export function useVerifyOtp() {
-  return useMutation({
-    mutationFn: async (input: VerifyOtpInput): Promise<{ ok: true }> => {
-      const result = await verifyOtpCode(input.phone, input.code);
       if (!result.ok) {
         throw new Error(result.error);
       }

@@ -184,7 +184,7 @@ export default function LoginScreen() {
               бело-белое, непонятно, что где нажимать»): крупный заголовок,
               поля Input с заливкой и акцентной рамкой в фокусе, одна
               акцентная кнопка, ссылки в акценте. */}
-          <AppText weight="bold" className="mt-6 text-display-lg text-ink">
+          <AppText weight="bold" className="mt-6 text-ios-large-title text-ink">
             Вход в xtrud
           </AppText>
 
@@ -268,7 +268,7 @@ export default function LoginScreen() {
               hitSlop={8}
               className={`mt-3 min-h-11 justify-center self-start ${isBusy ? "opacity-30" : "active:opacity-70"}`}
             >
-              <AppText weight="semibold" className="text-body-md text-accent">
+              <AppText weight="semibold" className="text-ios-callout text-accent">
                 Забыли пароль?
               </AppText>
             </Pressable>
@@ -279,7 +279,7 @@ export default function LoginScreen() {
                   accessibilityRole="alert"
                   accessibilityLiveRegion="polite"
                   weight="medium"
-                  className="text-body-md text-error-deep"
+                  className="text-ios-callout text-error-deep"
                 >
                   {serverError}
                 </AppText>
@@ -301,7 +301,7 @@ export default function LoginScreen() {
           </Button>
 
           <View className="mt-6 flex-row items-center justify-center">
-            <AppText className="text-body-md text-body">Нет аккаунта? </AppText>
+            <AppText className="text-ios-callout text-body">Нет аккаунта? </AppText>
             <Pressable
               accessibilityRole="button"
               disabled={isBusy}
@@ -309,7 +309,7 @@ export default function LoginScreen() {
               hitSlop={8}
               className={`min-h-11 justify-center ${isBusy ? "opacity-30" : "active:opacity-70"}`}
             >
-              <AppText weight="semibold" className="text-body-md text-accent">
+              <AppText weight="semibold" className="text-ios-callout text-accent">
                 Зарегистрироваться
               </AppText>
             </Pressable>

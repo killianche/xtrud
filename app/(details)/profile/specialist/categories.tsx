@@ -6,7 +6,7 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Check } from "phosphor-react-native";
 import { useEffect, useMemo, useState } from "react";
-import { Alert, Pressable, View } from "react-native";
+import { Pressable, View } from "react-native";
 import { AppText } from "@/components/AppText";
 import { FormScreen, InsetGroup, SearchField } from "@/components/ui";
 import { SystemIcon } from "@/components/ui/SystemIcon";
@@ -16,6 +16,7 @@ import { useVisibleCategories } from "@/features/categories/use-visible-categori
 import { useMyMasterCategories } from "@/features/master-categories/use-my-categories";
 import { useSetMasterCategories } from "@/features/master-categories/use-set-categories";
 import { useInvalidateSpecialistCounts } from "@/features/specialist/use-specialist";
+import { showAlert } from "@/lib/alert";
 import { getCategoryIcon } from "@/lib/category-icons";
 import { hapticSelection } from "@/lib/haptics";
 import { useThemeColors } from "@/lib/use-theme-color";
@@ -45,7 +46,7 @@ export default function SpecialistCategoriesScreen() {
     setSelected(canAdd ? [...current, add as string] : current);
     if (add && !current.includes(add) && current.length >= MAX) {
       // Лимит заполнен — объяснить, почему нужная категория не отмечена.
-      Alert.alert(
+      showAlert(
         `В профиле уже ${MAX} категорий`,
         "Снимите одну из них — и отметьте нужную. Больше пяти категорий выбрать нельзя.",
       );

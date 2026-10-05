@@ -21,7 +21,7 @@ import {
   UserCircle,
   Wrench,
 } from "phosphor-react-native";
-import { Alert, Linking, View } from "react-native";
+import { Linking, View } from "react-native";
 import { AppText } from "@/components/AppText";
 import { Avatar } from "@/components/Avatar";
 import { InsetGroup, InsetRow } from "@/components/ui";
@@ -31,6 +31,7 @@ import { useUserRecord } from "@/features/auth/use-user-record";
 import { useUnreadReviewsCount } from "@/features/notifications/use-notifications";
 import { useUserPrivate } from "@/features/profile/use-user-private";
 import { AvailabilityRows } from "@/features/specialist/AvailabilityRows";
+import { showAlert } from "@/lib/alert";
 import { signOut } from "@/lib/auth";
 import { confirmAsync } from "@/lib/confirm";
 import { pluralizeRu } from "@/lib/pluralize";
@@ -69,7 +70,7 @@ export function AccountBody({ userId }: { userId: string }) {
     if (!ok) return;
     const result = await signOut();
     if (result.ok) router.replace("/(tabs)" as never);
-    else Alert.alert("Не удалось выйти", result.error);
+    else showAlert("Не удалось выйти", result.error);
   };
 
   return (

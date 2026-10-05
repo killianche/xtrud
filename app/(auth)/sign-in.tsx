@@ -66,7 +66,7 @@ export default function SignInScreen() {
           <AppText
             accessibilityRole="header"
             weight="bold"
-            className="mt-6 text-display-lg text-ink"
+            className="mt-6 text-ios-large-title text-ink"
           >
             Введите пароль
           </AppText>
@@ -120,7 +120,7 @@ export default function SignInScreen() {
               hitSlop={8}
               className="mt-3 min-h-11 justify-center self-start active:opacity-70"
             >
-              <AppText weight="semibold" className="text-body-md text-accent">
+              <AppText weight="semibold" className="text-ios-callout text-accent">
                 Забыли пароль?
               </AppText>
             </Pressable>

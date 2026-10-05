@@ -32,7 +32,7 @@ interface OrdersSearchFiltersState {
    * Фильтр по локации. cityId="" и district="" = «Вся Ингушетия» (без фильтра).
    * Иначе выбран ЛИБО город (cityId), ЛИБО район (district) — взаимоисключающе
    * (выбор одного сбрасывает другой через setLocation). Выбирается на экране
-   * шторке «Фильтры» (/find-filters), применяется в ленте /find.
+   * шторке «Место» (/find-place), применяется в ленте /find.
    */
   cityId: string;
   district: string;

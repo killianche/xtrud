@@ -19,6 +19,7 @@ import { Animated, type FlatList, type ScrollView, View } from "react-native";
 import { InsetGroup, InsetRow, SearchField } from "@/components/ui";
 import { LargeTitleBar, LargeTitleBlock, useLargeTitle } from "@/components/ui/LargeTitle";
 import { CategoryMatches } from "@/features/categories/CategoryMatches";
+import { onlyCategoryId } from "@/features/categories/only-category";
 import { SectionGrid, SectionGridSkeleton } from "@/features/categories/SectionGrid";
 import { useCategoriesL1 } from "@/features/categories/use-categories-l1";
 import { useVisibleCategories } from "@/features/categories/use-visible-categories";
@@ -54,10 +55,14 @@ export default function SpecialistsCategoriesScreen() {
     );
   }, [l1.data, categories.data]);
 
-  const openSection = (l1Id: string) =>
-    router.push({ pathname: "/specialists/category", params: { l1: l1Id } } as never);
   const openCategory = (l2Id: string) =>
     router.push({ pathname: "/specialists/section", params: { l2: l2Id } } as never);
+  // Раздел из одной подкатегории — сразу к специалистам (№239).
+  const openSection = (l1Id: string) => {
+    const only = onlyCategoryId(categories.data ?? [], l1Id);
+    if (only) openCategory(only);
+    else router.push({ pathname: "/specialists/category", params: { l1: l1Id } } as never);
+  };
 
   return (
     <View className="flex-1 bg-surface-page">

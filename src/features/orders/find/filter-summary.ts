@@ -1,6 +1,7 @@
 /**
- * Подписи фильтров «Найти задание» (№235): категория и место одной строкой —
- * «Сантехника · Экажево, Назрановский р-н». Чистая функция — тестируется.
+ * Подписи капсул «Найти задание» (№235, №238): категория («Обои», раздел
+ * для «Весь раздел») и место («Экажево, Назрановский р-н»). Чистые функции —
+ * тестируются.
  */
 
 import { ALL_INGUSHETIA_CITY_ID, getCityName } from "@/lib/location-config";
@@ -32,9 +33,4 @@ export function placeLabel(i: FilterSummaryInput): string | null {
   if (i.district && i.village) return `${i.village}, ${i.district.replace(" район", " р-н")}`;
   if (i.district) return i.district;
   return null;
-}
-
-export function filterSummary(i: FilterSummaryInput): string | null {
-  const parts = [categoryLabel(i), placeLabel(i)].filter((x): x is string => !!x);
-  return parts.length > 0 ? parts.join(" · ") : null;
 }

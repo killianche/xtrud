@@ -3,21 +3,22 @@
  * «открываешь — список заданий, 20–25, внизу "Загрузить ещё"; кнопка
  * "Фильтр" — категория и подкатегория, локация; в стиле iOS»).
  *
- * Сверху крупный заголовок и капсула «Фильтры» (со счётчиком выбранного) —
- * открывает системную шторку `/find-filters`. Под капсулой — что выбрано
- * («Обои · Экажево, Назрановский р-н») и «Сбросить». Список — по 20, дальше
+ * Сверху крупный заголовок и две капсулы — «Категория» и «Место» (№238):
+ * выбор виден на капсуле, каждая открывает свою шторку (`/find-category`,
+ * `/find-place`). Список — по 20, дальше
  * «Загрузить ещё»: человек сам решает, листать ли дальше. Жест вниз —
  * обновить. Пусто/ошибка/загрузка — свои состояния.
  */
 
 import { FlashList } from "@shopify/flash-list";
 import { useRouter } from "expo-router";
-import { SlidersHorizontal, Tray } from "phosphor-react-native";
+import { MapPin, SquaresFour, Tray } from "phosphor-react-native";
 import { useEffect, useMemo } from "react";
-import { Pressable, RefreshControl, View } from "react-native";
+import { Pressable, RefreshControl, ScrollView, View } from "react-native";
 import { AppText } from "@/components/AppText";
 import { OrderRowsSkeleton } from "@/components/OrderRowsSkeleton";
 import { Button } from "@/components/ui";
+import { FilterChip } from "@/components/ui/FilterChip";
 import { LargeTitleBlock, type useLargeTitle } from "@/components/ui/LargeTitle";
 import { useAuthSession } from "@/features/auth/use-auth-session";
 import { useCategoriesL1 } from "@/features/categories/use-categories-l1";
@@ -33,7 +34,7 @@ import { describeQueryError } from "@/lib/describe-query-error";
 import { useTabBarSpace } from "@/lib/tab-bar-space";
 import { useThemeColors } from "@/lib/use-theme-color";
 import { FindOrderRow } from "./FindOrderRow";
-import { filterSummary } from "./filter-summary";
+import { categoryLabel, placeLabel } from "./filter-summary";
 
 const EMPTY_IDS: ReadonlySet<string> = new Set();
 
@@ -60,18 +61,17 @@ export function FindFeed({
   const activeCount = countActiveFilters(filters);
   const sections = useCategoriesL1();
   const categories = useVisibleCategories();
-  const summary = useMemo(
-    () =>
-      filterSummary({
-        l1Id: filters.l1Id,
-        l2Ids: filters.l2Ids,
-        wholeSection: filters.wholeSection,
-        cityId: filters.cityId,
-        district: filters.district,
-        village: filters.village,
-        sectionName: (id) => sections.data?.find((s) => s.id === id)?.name_ru,
-        categoryName: (id) => categories.data?.find((c) => c.id === id)?.name_ru,
-      }),
+  const summaryInput = useMemo(
+    () => ({
+      l1Id: filters.l1Id,
+      l2Ids: filters.l2Ids,
+      wholeSection: filters.wholeSection,
+      cityId: filters.cityId,
+      district: filters.district,
+      village: filters.village,
+      sectionName: (id: string) => sections.data?.find((s) => s.id === id)?.name_ru,
+      categoryName: (id: string) => categories.data?.find((c) => c.id === id)?.name_ru,
+    }),
     [filters, sections.data, categories.data],
   );
 
@@ -85,54 +85,35 @@ export function FindFeed({
   const rows = (feed.data?.pages ?? []).flatMap((p) => p.rows);
   const responded = useMyRespondedOrderIds(userId).data ?? EMPTY_IDS;
 
+  // Две капсулы, как у Avito и Airbnb: выбор виден прямо на кнопке
+  // (владелец, 2026-10-05, №238; docs/FIND_FILTERS_2026-10.md).
+  const catLabel = categoryLabel(summaryInput);
+  const where = placeLabel(summaryInput);
   const header = (
     <View className="pb-3">
       <LargeTitleBlock title="Найти задание" />
-      <View className="flex-row items-center gap-3 px-4">
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={
-            activeCount > 0 ? `Фильтры, выбрано: ${activeCount}` : "Фильтры: категория и место"
-          }
-          onPress={() => router.push("/find-filters" as never)}
-          className={`min-h-11 flex-row items-center gap-2 rounded-pill border px-4 active:opacity-70 ${
-            activeCount > 0 ? "border-accent bg-accent-soft" : "border-hairline bg-canvas"
-          }`}
-        >
-          <SlidersHorizontal size={18} weight="bold" color={activeCount > 0 ? tc.accent : tc.ink} />
-          <AppText
-            weight="semibold"
-            className={`text-ios-callout ${activeCount > 0 ? "text-accent" : "text-ink"}`}
-          >
-            Фильтры
-          </AppText>
-          {activeCount > 0 ? (
-            <View className="h-5 min-w-5 items-center justify-center rounded-full bg-accent px-1.5">
-              <AppText weight="semibold" className="text-ios-caption1 text-on-accent">
-                {activeCount}
-              </AppText>
-            </View>
-          ) : null}
-        </Pressable>
-        {activeCount > 0 ? (
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Сбросить фильтры"
-            onPress={filters.clearAll}
-            hitSlop={8}
-            className="min-h-11 justify-center active:opacity-60"
-          >
-            <AppText weight="semibold" className="text-ios-callout text-accent">
-              Сбросить
-            </AppText>
-          </Pressable>
-        ) : null}
-      </View>
-      {summary ? (
-        <AppText className="mt-2 px-4 text-ios-subheadline text-mute" numberOfLines={2}>
-          {summary}
-        </AppText>
-      ) : null}
+      {/* Одна строка с прокруткой вбок: длинный выбор («Инарки, Малгобекский
+          р-н») не переносит вторую капсулу вниз. */}
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={{ paddingHorizontal: 16, gap: 8 }}
+      >
+        <FilterChip
+          label={catLabel ?? "Категории"}
+          Icon={SquaresFour}
+          active={!!catLabel}
+          accessibilityLabel={`Категория: ${catLabel ?? "все"}. Изменить`}
+          onPress={() => router.push("/find-category" as never)}
+        />
+        <FilterChip
+          label={where ?? "Вся Ингушетия"}
+          Icon={MapPin}
+          active={!!where}
+          accessibilityLabel={`Место: ${where ?? "вся Ингушетия"}. Изменить`}
+          onPress={() => router.push("/find-place" as never)}
+        />
+      </ScrollView>
     </View>
   );
 

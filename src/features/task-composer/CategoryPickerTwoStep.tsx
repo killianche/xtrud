@@ -19,6 +19,7 @@ import { useMemo } from "react";
 import { View } from "react-native";
 import { AppText } from "@/components/AppText";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { onlyCategoryId } from "@/features/categories/only-category";
 import type { CategoryL1 } from "@/features/categories/use-categories-l1";
 import type { VisibleCategory } from "@/features/categories/use-visible-categories";
 import { getCategoryIcon } from "@/lib/category-icons";
@@ -97,7 +98,7 @@ export function CategoryPickerTwoStep({
             <ChoiceRow
               key={category.id}
               title={category.name_ru}
-              subtitle={sectionName}
+              subtitle={sectionName === category.name_ru ? undefined : sectionName}
               icon={<Icon size={18} weight="bold" color={tc.ink} />}
               selected={category.id === selectedL2Id}
               onPress={() => onPick(category.id)}
@@ -117,6 +118,21 @@ export function CategoryPickerTwoStep({
         {groups.map((group, i) => {
           const Icon = getCategoryIcon(group.section.icon);
           const current = group.items.find((c) => c.id === selectedL2Id);
+          // Раздел из одной подкатегории выбирается сразу, без второго экрана (№239).
+          const onlyId = onlyCategoryId(group.items, group.section.id);
+          const only = onlyId ? group.items.find((c) => c.id === onlyId) : undefined;
+          if (only) {
+            return (
+              <ChoiceRow
+                key={group.section.id}
+                title={group.section.name_ru}
+                icon={<Icon size={18} weight="bold" color={tc.ink} />}
+                selected={only.id === selectedL2Id}
+                onPress={() => onPick(only.id)}
+                last={i === groups.length - 1}
+              />
+            );
+          }
           return (
             <ChoiceRow
               key={group.section.id}

@@ -33,8 +33,7 @@ export interface FilterChipProps {
 }
 
 export function FilterChip({ label, Icon, active, onPress, accessibilityLabel }: FilterChipProps) {
-  const tc = useThemeColors(["accent", "ink", "mute"]);
-  const fg = active ? tc.accent : tc.ink;
+  const tc = useThemeColors(["accent", "mute"]);
   return (
     <Pressable
       accessibilityRole="button"
@@ -48,8 +47,8 @@ export function FilterChip({ label, Icon, active, onPress, accessibilityLabel }:
       {Icon ? <Icon size={17} weight="bold" color={active ? tc.accent : tc.mute} /> : null}
       <AppText
         weight="semibold"
-        className="shrink text-ios-callout"
-        style={{ color: fg }}
+        // Цвет классом, а не style: на web style с CSS-переменной не применяется.
+        className={`shrink text-ios-callout ${active ? "text-accent" : "text-ink"}`}
         numberOfLines={1}
       >
         {label}

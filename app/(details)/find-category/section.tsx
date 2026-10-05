@@ -1,18 +1,19 @@
 /**
- * /find-filters/section?id= — подкатегории раздела для фильтра (№235):
- * «Весь раздел» или одна подкатегория. Выбор — сразу к «Фильтрам».
+ * /find-category/section?id= — подкатегории раздела (№238): «Весь раздел»
+ * первой, дальше подкатегории с иконками. Выбор закрывает шторку.
  */
 
 import { Redirect, useLocalSearchParams, useRouter } from "expo-router";
-import { InsetGroup, InsetRow } from "@/components/ui/InsetList";
+import { InsetGroup, InsetRow } from "@/components/ui";
 import { useCategoriesL1 } from "@/features/categories/use-categories-l1";
 import { useVisibleCategories } from "@/features/categories/use-visible-categories";
-import { FilterSheetScreen } from "@/features/orders/find/FilterSheet";
+import { closeFilterSheet, FilterSheetScreen } from "@/features/orders/find/FilterSheet";
 import { useOrdersSearchFiltersStore } from "@/features/orders/orders-search-filters-store";
 import { getCategoryIcon } from "@/lib/category-icons";
+import { pluralizeRu } from "@/lib/pluralize";
 import { useThemeColors } from "@/lib/use-theme-color";
 
-export default function FindFilterSectionScreen() {
+export default function FindCategorySectionScreen() {
   const router = useRouter();
   const tc = useThemeColors(["ink"]);
   const { id } = useLocalSearchParams<{ id?: string }>();
@@ -24,20 +25,32 @@ export default function FindFilterSectionScreen() {
   const categories = useVisibleCategories();
   const section = sections.data?.find((s) => s.id === id);
   const items = (categories.data ?? []).filter((c) => c.l1_id === id);
-  if (!id || (sections.data && !section)) return <Redirect href="/find-filters/category" />;
+  if (!id || (sections.data && !section)) return <Redirect href="/find-category" />;
 
-  // Над «Фильтрами» лежат два экрана: разделы и этот.
+  const wholeChosen = l1Id === id && wholeSection;
   const pick = (next: string[], whole: boolean) => {
     setCategory(id, next, whole);
-    router.dismiss(2);
+    closeFilterSheet(router, "nested");
   };
-  const wholeChosen = l1Id === id && wholeSection;
 
   return (
-    <FilterSheetScreen title={section?.name_ru ?? "Раздел"} onBack={() => router.back()}>
+    <FilterSheetScreen
+      title={section?.name_ru ?? "Раздел"}
+      onBack={() => router.back()}
+      onClose={() => closeFilterSheet(router, "nested")}
+    >
       <InsetGroup>
         <InsetRow
           title="Весь раздел"
+          subtitle={
+            items.length > 0
+              ? `${items.length} ${pluralizeRu(items.length, {
+                  one: "подкатегория",
+                  few: "подкатегории",
+                  many: "подкатегорий",
+                })}`
+              : undefined
+          }
           selected={wholeChosen}
           onPress={() =>
             pick(

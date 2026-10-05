@@ -1,35 +1,38 @@
 /**
- * /find-filters/district?id= — район для фильтра (№235): «Весь район» или
- * село (задания села и всего района). Выбор — сразу к «Фильтрам».
+ * /find-place/district?id= — район (№238): «Весь район» (с его городами) или
+ * село — в селе видны и задания на весь район. Выбор закрывает шторку.
  */
 
 import { Redirect, useLocalSearchParams, useRouter } from "expo-router";
-import { InsetGroup, InsetRow } from "@/components/ui/InsetList";
-import { FilterSheetScreen } from "@/features/orders/find/FilterSheet";
+import { InsetGroup, InsetRow } from "@/components/ui";
+import { closeFilterSheet, FilterSheetScreen } from "@/features/orders/find/FilterSheet";
 import { useOrdersSearchFiltersStore } from "@/features/orders/orders-search-filters-store";
 import { CITY_IDS_BY_DISTRICT_ID, DISTRICTS, getCityName } from "@/lib/location-config";
 
-export default function FindFilterDistrictScreen() {
+export default function FindPlaceDistrictScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id?: string }>();
   const district = useOrdersSearchFiltersStore((s) => s.district);
   const village = useOrdersSearchFiltersStore((s) => s.village);
   const setLocation = useOrdersSearchFiltersStore((s) => s.setLocation);
   const d = DISTRICTS.find((x) => x.id === id);
-  if (!d) return <Redirect href="/find-filters/place" />;
+  if (!d) return <Redirect href="/find-place" />;
 
   const chosen = district === d.name;
   const cityNames = [
     ...new Set((CITY_IDS_BY_DISTRICT_ID[d.id] ?? []).map((cid) => getCityName(cid))),
   ];
-  // Над «Фильтрами» лежат два экрана: места и этот.
   const pick = (v: string) => {
     setLocation("", d.name, v);
-    router.dismiss(2);
+    closeFilterSheet(router, "nested");
   };
 
   return (
-    <FilterSheetScreen title={d.name} onBack={() => router.back()}>
+    <FilterSheetScreen
+      title={d.name}
+      onBack={() => router.back()}
+      onClose={() => closeFilterSheet(router, "nested")}
+    >
       <InsetGroup>
         <InsetRow
           title="Весь район"

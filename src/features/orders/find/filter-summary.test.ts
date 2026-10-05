@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { categoryLabel, filterSummary, placeLabel } from "./filter-summary";
+import { categoryLabel, placeLabel } from "./filter-summary";
 
 const base = {
   l1Id: "",
@@ -11,20 +11,21 @@ const base = {
   categoryName: (id: string) => ({ wallpaper: "Обои", tiles: "Плитка" })[id],
 };
 
-describe("filterSummary", () => {
+describe("подписи капсул", () => {
   it("без фильтров — пусто", () => {
-    expect(filterSummary(base)).toBeNull();
+    expect(categoryLabel(base)).toBeNull();
+    expect(placeLabel(base)).toBeNull();
   });
   it("подкатегория и село с районом", () => {
-    expect(
-      filterSummary({
-        ...base,
-        l1Id: "repair",
-        l2Ids: ["wallpaper"],
-        district: "Назрановский район",
-        village: "Экажево",
-      }),
-    ).toBe("Обои · Экажево, Назрановский р-н");
+    const i = {
+      ...base,
+      l1Id: "repair",
+      l2Ids: ["wallpaper"],
+      district: "Назрановский район",
+      village: "Экажево",
+    };
+    expect(categoryLabel(i)).toBe("Обои");
+    expect(placeLabel(i)).toBe("Экажево, Назрановский р-н");
   });
   it("весь раздел — имя раздела", () => {
     expect(categoryLabel({ ...base, l1Id: "repair", l2Ids: ["wallpaper", "tiles"] })).toBe(

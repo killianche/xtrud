@@ -8,7 +8,7 @@
  */
 
 import { Image } from "expo-image";
-import { Pressable, View } from "react-native";
+import { Pressable, useWindowDimensions, View } from "react-native";
 import { AppText } from "@/components/AppText";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { getCategoryIcon } from "@/lib/category-icons";
@@ -16,6 +16,7 @@ import { getSectionArt } from "@/lib/section-art";
 import { CARD_SHADOW } from "@/lib/shadows";
 import { useAppWidth } from "@/lib/use-app-width";
 import { useThemeColors } from "@/lib/use-theme-color";
+import { sectionGridColumns } from "./section-grid-columns";
 
 export interface SectionTile {
   id: string;
@@ -27,23 +28,28 @@ export interface SectionTile {
 
 const SIDE = 16;
 const GAP = 10;
-const COLUMNS = 3;
 const ART = 56;
 
-function useTileWidth(): number {
-  const width = useAppWidth();
-  return Math.floor((width - SIDE * 2 - GAP * (COLUMNS - 1)) / COLUMNS);
+/** Ширина плитки и её высота: квадрат в три колонки; при меньшем числе колонок — по тексту. */
+function useTileSize(): { width: number; minHeight: number | undefined } {
+  const appWidth = useAppWidth();
+  const columns = sectionGridColumns(useWindowDimensions().fontScale);
+  const width = Math.floor((appWidth - SIDE * 2 - GAP * (columns - 1)) / columns);
+  return { width, minHeight: columns === 3 ? Math.round(width * 1.02) : undefined };
 }
 
 export function SectionGrid({
   tiles,
   onPress,
+  selectedId,
 }: {
   tiles: readonly SectionTile[];
   onPress: (id: string) => void;
+  /** Выбранный раздел — обведён акцентом (фильтр «Найти задание», №238). */
+  selectedId?: string | null;
 }) {
   const tc = useThemeColors(["accent"]);
-  const tileWidth = useTileWidth();
+  const size = useTileSize();
   if (tiles.length === 0) {
     // Пусто — значит пусто: одна строка, без пустой площадки (QA 2026-10-03).
     return (
@@ -57,15 +63,19 @@ export function SectionGrid({
       {tiles.map((tile) => {
         const art = getSectionArt(tile.id);
         const Icon = getCategoryIcon(tile.icon);
+        const selected = selectedId === tile.id;
         return (
           <Pressable
             key={tile.id}
             accessibilityRole="button"
+            accessibilityState={{ selected }}
             accessibilityLabel={tile.meta ? `${tile.name}, ${tile.meta}` : tile.name}
             onPress={() => onPress(tile.id)}
-            className="items-center rounded-2xl bg-surface-card px-2 pb-3 pt-4 active:opacity-80"
+            className={`items-center rounded-2xl border-2 bg-surface-card px-2 pb-3 pt-4 active:opacity-80 ${
+              selected ? "border-accent" : "border-transparent"
+            }`}
             // min, а не fixed: при крупном шрифте карточка растёт по тексту.
-            style={[CARD_SHADOW, { width: tileWidth, minHeight: Math.round(tileWidth * 1.02) }]}
+            style={[CARD_SHADOW, { width: size.width, minHeight: size.minHeight }]}
           >
             {art ? (
               <Image
@@ -98,7 +108,7 @@ export function SectionGrid({
 
 /** Скелетон сетки на время загрузки каталога. */
 export function SectionGridSkeleton({ count = 12 }: { count?: number }) {
-  const tileWidth = useTileWidth();
+  const size = useTileSize();
   return (
     <View className="flex-row flex-wrap px-4" style={{ gap: GAP }}>
       {Array.from({ length: count }, (_, i) => (
@@ -106,7 +116,7 @@ export function SectionGridSkeleton({ count = 12 }: { count?: number }) {
           // biome-ignore lint/suspicious/noArrayIndexKey: статичный скелетон.
           key={i}
           className="items-center rounded-2xl bg-surface-card px-2 pb-3 pt-4"
-          style={[CARD_SHADOW, { width: tileWidth, minHeight: Math.round(tileWidth * 1.02) }]}
+          style={[CARD_SHADOW, { width: size.width, minHeight: size.minHeight }]}
         >
           <Skeleton width={ART} height={ART} className="rounded-full" />
           <View className="mt-3 w-full items-center gap-1.5">

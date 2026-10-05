@@ -17,14 +17,9 @@ const ART: Record<string, ImageSourcePropType> = {
   "tech-security": require("../../assets/images/sections/tech-security.png"),
   "handyman-moving": require("../../assets/images/sections/handyman-moving.png"),
   cargo: require("../../assets/images/sections/cargo.png"),
-  courier: require("../../assets/images/sections/courier.png"),
   "computer-help": require("../../assets/images/sections/computer-help.png"),
   auto: require("../../assets/images/sections/auto.png"),
-  beauty: require("../../assets/images/sections/beauty.png"),
   tutors: require("../../assets/images/sections/tutors.png"),
-  events: require("../../assets/images/sections/events.png"),
-  "photo-video": require("../../assets/images/sections/photo-video.png"),
-  "virtual-assistant": require("../../assets/images/sections/virtual-assistant.png"),
   "legal-accounting": require("../../assets/images/sections/legal-accounting.png"),
 };
 

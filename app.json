@@ -18,7 +18,7 @@
         "NSPhotoLibraryAddUsageDescription": "Приложение может сохранять фотографии (например, из портфолио мастера) в вашу галерею.",
         "ITSAppUsesNonExemptEncryption": false
       },
-      "buildNumber": "132",
+      "buildNumber": "133",
       "privacyManifests": {
         "NSPrivacyTracking": false,
         "NSPrivacyTrackingDomains": [],

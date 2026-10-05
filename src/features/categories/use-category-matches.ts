@@ -1,0 +1,73 @@
+/**
+ * Подбор подкатегорий по словам человека — общий для конструктора задания,
+ * «Специалистов» и фильтра «Найти задание» (№241, docs/CATEGORY_QUICK_PICK_2026-10.md).
+ *
+ * Порядок: мгновенные совпадения по названию подкатегории (без сети), затем
+ * умный поиск search_categories — синонимы и услуги («поменять розетку» →
+ * Электрика, услуга «Замена розетки / выключателя»); без сети — встроенный
+ * каталог. Последними — подкатегории раздела, если совпало его название.
+ */
+
+import { useMemo } from "react";
+import type { CategoryL1 } from "@/features/categories/use-categories-l1";
+import { type SearchHit, useSearchCategories } from "@/features/categories/use-search-categories";
+
+export interface CategoryMatch<T> {
+  category: T;
+  /** Совпавшая услуга подкатегории («Замена розетки / выключателя»), если нашлась по ней. */
+  service?: string;
+}
+
+/** Чистая часть подбора — порядок и услуги; проверяется тестами. */
+export function mergeCategoryMatches<T extends { id: string; l1_id: string; name_ru: string }>(
+  query: string,
+  categories: readonly T[],
+  sections: readonly Pick<CategoryL1, "id" | "name_ru">[],
+  hits: readonly Pick<SearchHit, "kind" | "name_ru" | "l2_id" | "source">[],
+): CategoryMatch<T>[] {
+  const q = query.trim().toLowerCase();
+  if (!q) return [];
+  const byId = new Map(categories.map((c) => [c.id, c]));
+  const order: string[] = [];
+  const service = new Map<string, string>();
+  const add = (id: string) => {
+    if (byId.has(id) && !order.includes(id)) order.push(id);
+  };
+
+  for (const c of categories) if (c.name_ru.toLowerCase().includes(q)) add(c.id);
+  for (const hit of hits) {
+    add(hit.l2_id);
+    // Услуга подписью — только при совпадении по словам или синонимам: близость
+    // букв (trigram) даёт «Перевезти стройматериалы» на «перевезти диван».
+    const reliable = /fts|synonym/.test(hit.source);
+    if (hit.kind === "l3" && reliable && byId.has(hit.l2_id) && !service.has(hit.l2_id)) {
+      service.set(hit.l2_id, hit.name_ru);
+    }
+  }
+  const sectionIds = new Set(
+    sections.filter((s) => s.name_ru.toLowerCase().includes(q)).map((s) => s.id),
+  );
+  for (const c of categories) if (sectionIds.has(c.l1_id)) add(c.id);
+
+  return order.flatMap((id) => {
+    const category = byId.get(id);
+    return category ? [{ category, service: service.get(id) }] : [];
+  });
+}
+
+const NO_SECTIONS: readonly CategoryL1[] = [];
+
+export function useCategoryMatches<T extends { id: string; l1_id: string; name_ru: string }>(
+  query: string,
+  categories: readonly T[],
+  sections: readonly CategoryL1[] = NO_SECTIONS,
+): { matches: CategoryMatch<T>[]; searching: boolean } {
+  const q = query.trim().toLowerCase();
+  const search = useSearchCategories(q, 12);
+  const hits = search.data?.hits;
+  const matches = useMemo(
+    () => mergeCategoryMatches(q, categories, sections, hits ?? []),
+    [q, categories, sections, hits],
+  );
+  return { matches, searching: search.isFetching };
+}

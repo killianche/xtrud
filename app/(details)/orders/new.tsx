@@ -127,7 +127,8 @@ export default function TaskCategoryScreen() {
         <SearchField
           value={query}
           onChangeText={setQuery}
-          placeholder="Например, электрик или уборка"
+          // Писать своими словами, как у Профи (№241): поиск понимает задачу.
+          placeholder="Например, поменять розетку"
           showCancel={false}
           accessibilityLabel="Поиск категории"
         />

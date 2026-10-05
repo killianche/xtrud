@@ -9,8 +9,9 @@
  * `openSectionId`), поэтому жест «назад» возвращает к разделам. Строка
  * раздела показывает уже выбранную в нём подкатегорию значением справа.
  *
- * С поиском — подкатегории сразу (и по названию раздела тоже), подпись —
- * раздел, тап выбирает. Переиспользует тот же `ChoiceRow`, что и остальные
+ * С поиском — подкатегории сразу по словам человека (useCategoryMatches:
+ * название, синонимы и услуги каталога, название раздела), подпись —
+ * совпавшая услуга или раздел, тап выбирает (№241). Переиспользует тот же `ChoiceRow`, что и остальные
  * шаги конструктора (`where.tsx`), и те же состояния загрузки/ошибки, что
  * `SubcategoryScreen` («Найти задание»).
  */
@@ -21,11 +22,12 @@ import { AppText } from "@/components/AppText";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { onlyCategoryId } from "@/features/categories/only-category";
 import type { CategoryL1 } from "@/features/categories/use-categories-l1";
+import { useCategoryMatches } from "@/features/categories/use-category-matches";
 import type { VisibleCategory } from "@/features/categories/use-visible-categories";
 import { getCategoryIcon } from "@/lib/category-icons";
 import { useThemeColors } from "@/lib/use-theme-color";
 import { ChoiceGroup, ChoiceRow } from "./ComposerRows";
-import { groupCategoriesByL1, searchCategories } from "./category-picker";
+import { groupCategoriesByL1 } from "./category-picker";
 
 export interface CategoryPickerTwoStepProps {
   sections: readonly CategoryL1[];
@@ -56,10 +58,9 @@ export function CategoryPickerTwoStep({
 }: CategoryPickerTwoStepProps) {
   const tc = useThemeColors(["ink"]);
   const groups = useMemo(() => groupCategoriesByL1(sections, categories), [sections, categories]);
-  const hits = useMemo(
-    () => (query.trim() ? searchCategories(sections, categories, query) : []),
-    [sections, categories, query],
-  );
+  // Умный подбор, как в «Специалистах»: «поменять розетку» → Электрика (№241).
+  const { matches: hits, searching } = useCategoryMatches(query, categories, sections);
+  const sectionName = (l1Id: string) => sections.find((s) => s.id === l1Id)?.name_ru;
 
   if (loading) {
     return (
@@ -86,19 +87,22 @@ export function CategoryPickerTwoStep({
     if (hits.length === 0) {
       return (
         <AppText className="px-8 pt-4 text-center text-ios-body text-mute">
-          Ничего не нашлось. Попробуйте другое слово.
+          {searching ? "Ищем…" : "Ничего не нашлось. Попробуйте сказать иначе или выберите раздел."}
         </AppText>
       );
     }
     return (
       <ChoiceGroup>
-        {hits.map(({ category, sectionName }, i) => {
+        {hits.map(({ category, service }, i) => {
           const Icon = getCategoryIcon(category.icon);
+          // Под названием — совпавшая услуга («Замена розетки / выключателя»),
+          // иначе раздел, если он не повторяет название.
+          const section = sectionName(category.l1_id);
           return (
             <ChoiceRow
               key={category.id}
               title={category.name_ru}
-              subtitle={sectionName === category.name_ru ? undefined : sectionName}
+              subtitle={service ?? (section === category.name_ru ? undefined : section)}
               icon={<Icon size={18} weight="bold" color={tc.ink} />}
               selected={category.id === selectedL2Id}
               onPress={() => onPick(category.id)}

@@ -37,33 +37,3 @@ export function findSectionIdForCategory(
 ): string | null {
   return categories.find((c) => c.id === categoryId)?.l1_id ?? null;
 }
-
-export interface CategorySearchHit {
-  category: VisibleCategory;
-  sectionName: string;
-}
-
-/**
- * Поиск сразу по подкатегориям и названиям разделов (владелец, 2026-10-04):
- * результат — подкатегории с подписью раздела, тап выбирает сразу.
- */
-export function searchCategories(
-  sections: readonly CategoryL1[],
-  categories: readonly VisibleCategory[],
-  query: string,
-): CategorySearchHit[] {
-  const q = query.trim().toLowerCase();
-  if (!q) return [];
-  const sectionById = new Map(sections.map((s) => [s.id, s]));
-  return categories
-    .filter((c) => {
-      const section = sectionById.get(c.l1_id);
-      return (
-        c.name_ru.toLowerCase().includes(q) || (section?.name_ru.toLowerCase().includes(q) ?? false)
-      );
-    })
-    .map((category) => ({
-      category,
-      sectionName: sectionById.get(category.l1_id)?.name_ru ?? "",
-    }));
-}

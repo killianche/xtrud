@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { CategoryL1 } from "@/features/categories/use-categories-l1";
 import type { VisibleCategory } from "@/features/categories/use-visible-categories";
-import { findSectionIdForCategory, groupCategoriesByL1, searchCategories } from "./category-picker";
+import { findSectionIdForCategory, groupCategoriesByL1 } from "./category-picker";
 
 const sections: CategoryL1[] = [
   {
@@ -64,30 +64,5 @@ describe("findSectionIdForCategory", () => {
 
   it("возвращает null, если категория не найдена (ещё не загрузилась)", () => {
     expect(findSectionIdForCategory(categories, "l2-unknown")).toBeNull();
-  });
-});
-
-describe("searchCategories", () => {
-  it("ищет по названию подкатегории", () => {
-    const hits = searchCategories(sections, categories, "сантех");
-    expect(hits.map((h) => h.category.id)).toEqual(["l2-plumbing"]);
-    expect(hits[0]?.sectionName).toBe("Строительство и ремонт");
-  });
-
-  it("ищет по названию раздела и возвращает все его подкатегории", () => {
-    const hits = searchCategories(sections, categories, "дом и быт");
-    expect(hits.map((h) => h.category.id)).toEqual(["l2-cleaning"]);
-  });
-
-  it("не чувствительна к регистру", () => {
-    expect(searchCategories(sections, categories, "ЭЛЕКТРИКА")).toHaveLength(1);
-  });
-
-  it("пустой запрос — пустой результат", () => {
-    expect(searchCategories(sections, categories, "   ")).toEqual([]);
-  });
-
-  it("без совпадений — пустой результат", () => {
-    expect(searchCategories(sections, categories, "вертолёт")).toEqual([]);
   });
 });

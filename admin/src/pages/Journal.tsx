@@ -38,6 +38,7 @@ export const ACTION_LABEL: Record<string, string> = {
   set_find_tiles: "Плитки «Найти задание»",
   broadcast_push: "Рассылка push",
   set_require_login: "Обязательный вход",
+  set_composer_start: "Первый экран создания задания",
   instagram_approve: "Instagram одобрен",
   experience_badge_grant: "Выдан значок «Большой опыт»",
   experience_badge_revoke: "Снят значок «Большой опыт»",

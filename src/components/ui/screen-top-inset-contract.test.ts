@@ -25,6 +25,9 @@ const INSET_AWARE_WRAPPERS = [
   "OwnerCaseDetailScreen",
   "LegalScreen",
   "<ComposerScreen",
+  // Первый экран создания задания и каталог (№242) — внутри ComposerScreen.
+  "<QuickStartStep",
+  "<CategoryCatalogStep",
   "<FormScreen",
   "<SpecialistsListScreen",
   "<PublishAuthSheet",

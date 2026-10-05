@@ -36,6 +36,12 @@ export interface ComposerFieldProps
   /** Крупное поле для главного текста (22 pt) или обычное (17 pt). */
   size?: "title" | "body";
   multiline?: boolean;
+  /**
+   * Однострочное на вид поле, которое растёт по тексту (первый экран «Что
+   * нужно сделать?», №242): написанное станет названием и может быть длиннее
+   * строки — горизонтальная прокрутка его прятала бы.
+   */
+  autoGrow?: boolean;
   /** Значение справа, например «₽». */
   suffix?: string;
 }
@@ -50,6 +56,7 @@ export const ComposerField = forwardRef<TextInput, ComposerFieldProps>(function 
     hint,
     size = "body",
     multiline = false,
+    autoGrow = false,
     suffix,
     onBlur,
     onFocus,
@@ -67,6 +74,9 @@ export const ComposerField = forwardRef<TextInput, ComposerFieldProps>(function 
   const { colorScheme } = useColorScheme();
   const [touched, setTouched] = useState(false);
   const [focused, setFocused] = useState(false);
+  // Веб: textarea сама не растёт — высота по содержимому (iPhone растёт сам).
+  const [webHeight, setWebHeight] = useState<number | null>(null);
+  const growOnWeb = autoGrow && Platform.OS === "web";
   const showError = touched && !focused && !!error;
   const fontSize = size === "title" ? 24 : 18;
   // Свой ref — чтобы нажатие в любое место плитки ставило курсор; наружу
@@ -95,7 +105,9 @@ export const ComposerField = forwardRef<TextInput, ComposerFieldProps>(function 
           { borderWidth: 1 },
           multiline
             ? { minHeight: 132, alignItems: "flex-start", paddingVertical: 12 }
-            : { minHeight: 56 },
+            : autoGrow
+              ? { minHeight: 56, paddingVertical: 12 }
+              : { minHeight: 56 },
         ]}
       >
         <TextInput
@@ -107,7 +119,14 @@ export const ComposerField = forwardRef<TextInput, ComposerFieldProps>(function 
           selectionColor={tc.accent}
           cursorColor={tc.accent}
           keyboardAppearance={colorScheme === "dark" ? "dark" : "light"}
-          multiline={multiline}
+          multiline={multiline || autoGrow}
+          // Веб рисует textarea в две строки по умолчанию; iPhone и так берёт
+          // высоту по тексту.
+          {...(growOnWeb ? ({ rows: 1 } as object) : {})}
+          onContentSizeChange={(e) => {
+            if (growOnWeb) setWebHeight(e.nativeEvent.contentSize.height);
+            props.onContentSizeChange?.(e);
+          }}
           textAlignVertical={multiline ? "top" : "center"}
           inputAccessoryViewID={withAccessory ? accessoryId : undefined}
           {...props}
@@ -132,6 +151,8 @@ export const ComposerField = forwardRef<TextInput, ComposerFieldProps>(function 
             paddingVertical: 0,
             alignSelf: "stretch",
             ...(multiline ? { lineHeight: Math.round(fontSize * 1.35), minHeight: 132 - 24 } : {}),
+            ...(autoGrow ? { lineHeight: Math.round(fontSize * 1.3) } : {}),
+            ...(growOnWeb && webHeight ? { height: webHeight } : {}),
             ...({ outlineStyle: "none" } as object),
           }}
         />

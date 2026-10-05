@@ -659,9 +659,16 @@ export const api = {
       p_reason: reason,
     }),
   appFlags: () =>
-    rpc<{ find_screen?: string; find_tiles?: string; require_login?: boolean }>("get_app_flags"),
+    rpc<{
+      find_screen?: string;
+      find_tiles?: string;
+      require_login?: boolean;
+      composer_start?: string;
+    }>("get_app_flags"),
   setRequireLogin: (enabled: boolean) =>
     rpc<{ require_login?: boolean }>("admin_set_require_login", { p_enabled: enabled }),
+  setComposerStart: (variant: "quick" | "catalog") =>
+    rpc<{ composer_start?: string }>("admin_set_composer_start", { p_variant: variant }),
   setFindTiles: (variant: "mosaic" | "grid") =>
     rpc<{ find_tiles?: string }>("admin_set_find_tiles", { p_variant: variant }),
   broadcastPreview: (audience: BroadcastAudience) =>

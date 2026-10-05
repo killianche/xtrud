@@ -16,6 +16,12 @@
  * (`extraL2Ids`, 0195) очищаются при выборе здесь, но остаются в данных
  * для совместимости с публикацией и проверкой задания.
  *
+ * DECISION владельца 2026-10-05 (№242): первым экраном — «Что нужно
+ * сделать?» (`QuickStartStep`): поле, категории подсказками при вводе, как у
+ * Профи и YouDo. Каталог (`CategoryCatalogStep`) — при откате флагом
+ * `composer_start = "catalog"` (0228), с проверки, при правке и устаревшей
+ * категории; из подсказок — `orders/new/catalog`.
+ *
  * Вход с главной приносит `?draft=` (текст из поля «Что нужно сделать») —
  * он станет названием. Возврат после входа гостя (auth-return) приводит
  * сюда же: если ответы полные — сразу на проверку.
@@ -23,23 +29,14 @@
 
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useRef, useState } from "react";
-import { View } from "react-native";
-import { SearchField } from "@/components/ui";
 import { ORDER_CREATE_RETURN_TO } from "@/features/auth/auth-return";
 import { useAuthSession } from "@/features/auth/use-auth-session";
 import { useUserRecord } from "@/features/auth/use-user-record";
-import { useCategoriesL1 } from "@/features/categories/use-categories-l1";
-import { useVisibleCategories } from "@/features/categories/use-visible-categories";
-import { CategoryPickerTwoStep } from "@/features/task-composer/CategoryPickerTwoStep";
-import { ComposerScreen } from "@/features/task-composer/ComposerScreen";
+import { useAppFlagsQuery } from "@/features/settings/use-app-flags";
+import { CategoryCatalogStep } from "@/features/task-composer/CategoryCatalogStep";
 import { useComposer } from "@/features/task-composer/composer-store";
-import {
-  COMPOSER_ROUTE,
-  COMPOSER_SECTION_ROUTE,
-  isComposerComplete,
-  isStepValid,
-  normalizeTitle,
-} from "@/features/task-composer/steps";
+import { QuickStartStep } from "@/features/task-composer/QuickStartStep";
+import { COMPOSER_ROUTE, isComposerComplete, normalizeTitle } from "@/features/task-composer/steps";
 import { useStepNavigation } from "@/features/task-composer/use-step-navigation";
 import { useAuthReturnUrlStore } from "@/lib/auth-return-url-store";
 
@@ -57,7 +54,6 @@ export default function TaskCategoryScreen() {
   const { session } = useAuthSession();
   const userId = session?.user?.id;
   const { data: user } = useUserRecord(userId);
-  const [query, setQuery] = useState("");
 
   // Текст с главной и категория из каталога применяются один раз.
   const appliedParamsRef = useRef(false);
@@ -87,71 +83,21 @@ export default function TaskCategoryScreen() {
     if (isComposerComplete(values)) router.replace(COMPOSER_ROUTE.review as never);
   }, [returnHandled, userId, user, composer.ready, values, router]);
 
-  const l1 = useCategoriesL1();
-  const categories = useVisibleCategories();
-
-  // Раздел — отдельный экран: системный жест «назад» с него возвращает сюда.
-  // «Из проверки» передаётся дальше, чтобы выбор вернул на проверку.
-  const openSection = (id: string) =>
-    router.push({
-      pathname: COMPOSER_SECTION_ROUTE,
-      params: nav.fromReview && params.from === "review" ? { id, from: "review" } : { id },
-    } as never);
-
-  // Выбор подкатегории — сразу следующий шаг (владелец, 2026-10-04): «одно
-  // действие вместо отметить + Далее». Дополнительные категории (0195)
-  // очищаются — этот экран больше не предлагает их.
-  const onPick = (id: string) => {
-    patch({ l2Id: id, extraL2Ids: [] });
-    nav.goNext();
-  };
+  const flags = useAppFlagsQuery();
 
   if (!composer.ready) return null;
 
+  const subtitle =
+    params.stale === "1" ? "Категория изменилась в каталоге — выберите её заново." : undefined;
+  // Со слов — только для нового задания: с проверки, при правке и при
+  // устаревшей категории меняют именно категорию (№242).
+  // Флаг ещё не пришёл — сразу новый путь (он же по умолчанию), без пустого
+  // экрана в ожидании сети (design-quality §1.2); "catalog" — только явный откат.
+  const quick =
+    (flags.data?.composerStart ?? "quick") === "quick" && !nav.fromReview && params.stale !== "1";
+
+  if (quick) return <QuickStartStep />;
   return (
-    <ComposerScreen
-      step="category"
-      title="Какая категория?"
-      subtitle={
-        params.stale === "1" ? "Категория изменилась в каталоге — выберите её заново." : undefined
-      }
-      onBack={nav.fromReview ? nav.goBack : undefined}
-      onClose={nav.close}
-      // Кнопки «Далее» нет: выбор подраздела сам ведёт на следующий шаг.
-      hideActions
-      primaryLabel={nav.primaryLabel}
-      primaryDisabled={!isStepValid("category", values)}
-      onPrimary={nav.goNext}
-    >
-      <View className="mb-5 px-4">
-        <SearchField
-          value={query}
-          onChangeText={setQuery}
-          // Писать своими словами, как у Профи (№241): поиск понимает задачу.
-          placeholder="Например, поменять розетку"
-          showCancel={false}
-          accessibilityLabel="Поиск категории"
-        />
-      </View>
-      <CategoryPickerTwoStep
-        sections={l1.data ?? []}
-        categories={categories.data ?? []}
-        selectedL2Id={values.l2Id}
-        openSectionId={null}
-        onOpenSection={openSection}
-        query={query}
-        onPick={onPick}
-        loading={categories.isLoading || l1.isLoading}
-        errorMessage={
-          categories.error || l1.error
-            ? "Не удалось загрузить категории. Проверьте связь."
-            : undefined
-        }
-        onRetry={() => {
-          void categories.refetch();
-          void l1.refetch();
-        }}
-      />
-    </ComposerScreen>
+    <CategoryCatalogStep subtitle={subtitle} onBack={nav.fromReview ? nav.goBack : undefined} />
   );
 }

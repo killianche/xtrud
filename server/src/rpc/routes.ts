@@ -49,6 +49,8 @@ export const RPC_ALLOWLIST = new Set([
   "admin_set_master_visibility",
   // Значок «Большой опыт» (0225): внутри проверка is_admin_session().
   "admin_set_experience_badge",
+  // Первый экран создания задания (0228): внутри проверка is_admin_session().
+  "admin_set_composer_start",
   "admin_list_reports",
   "admin_resolve_report",
   // Заявки «Забыли пароль?» (0214); проверка админа — внутри функций.

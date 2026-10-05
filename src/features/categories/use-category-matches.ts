@@ -5,12 +5,15 @@
  * Порядок: мгновенные совпадения по названию подкатегории (без сети), затем
  * умный поиск search_categories — синонимы и услуги («поменять розетку» →
  * Электрика, услуга «Замена розетки / выключателя»); без сети — встроенный
- * каталог. Последними — подкатегории раздела, если совпало его название.
+ * каталог; затем пословный подбор для длинных фраз (searchCatalogByWords).
+ * Последними — подкатегории раздела, если совпало его название.
  */
 
 import { useMemo } from "react";
+import { searchCatalogByWords } from "@/features/categories/bundled-task-catalog";
 import type { CategoryL1 } from "@/features/categories/use-categories-l1";
 import { type SearchHit, useSearchCategories } from "@/features/categories/use-search-categories";
+import { useDebouncedValue } from "@/lib/use-debounced-value";
 
 export interface CategoryMatch<T> {
   category: T;
@@ -57,17 +60,45 @@ export function mergeCategoryMatches<T extends { id: string; l1_id: string; name
 
 const NO_SECTIONS: readonly CategoryL1[] = [];
 
+/** Подсказки — с двух букв: одна буква совпадает почти со всем каталогом. */
+export const MIN_MATCH_QUERY = 2;
+
 export function useCategoryMatches<T extends { id: string; l1_id: string; name_ru: string }>(
   query: string,
   categories: readonly T[],
   sections: readonly CategoryL1[] = NO_SECTIONS,
-): { matches: CategoryMatch<T>[]; searching: boolean } {
+  /** С какой длины подбирать: «Специалисты» и фильтр — с первой буквы, как раньше. */
+  minQuery = MIN_MATCH_QUERY,
+): { matches: CategoryMatch<T>[]; searching: boolean; tooShort: boolean } {
   const q = query.trim().toLowerCase();
-  const search = useSearchCategories(q, 12);
-  const hits = search.data?.hits;
-  const matches = useMemo(
-    () => mergeCategoryMatches(q, categories, sections, hits ?? []),
-    [q, categories, sections, hits],
+  const tooShort = q.length < minQuery;
+  // Названия совпадают сразу, без сети; умный поиск — через 250 мс после
+  // последней буквы, а не запросом на каждую (№242).
+  const debounced = useDebouncedValue(q, 250);
+  const search = useSearchCategories(tooShort ? "" : debounced, 12);
+  const rpcHits = search.data?.hits;
+  // Фразы своими словами («нужно поменять розетку на кухне») сервер целиком
+  // не находит — их добирает пословный подбор по встроенному каталогу.
+  const wordHits = useMemo(
+    () =>
+      searchCatalogByWords(debounced, 5).map((h) => ({
+        kind: h.service ? ("l3" as const) : ("l2" as const),
+        name_ru: h.service ?? "",
+        l2_id: h.l2_id,
+        source: "fts",
+      })),
+    [debounced],
   );
-  return { matches, searching: search.isFetching };
+  const matches = useMemo(
+    () =>
+      tooShort
+        ? []
+        : mergeCategoryMatches(q, categories, sections, [...(rpcHits ?? []), ...wordHits]),
+    [tooShort, q, categories, sections, rpcHits, wordHits],
+  );
+  return {
+    matches,
+    searching: !tooShort && (search.isFetching || debounced !== q),
+    tooShort,
+  };
 }

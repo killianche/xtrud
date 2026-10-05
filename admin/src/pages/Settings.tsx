@@ -133,7 +133,7 @@ export function Settings() {
   );
 }
 
-type Flags = { find_tiles?: string; require_login?: boolean };
+type Flags = { find_tiles?: string; require_login?: boolean; composer_start?: string };
 
 /** Флаги приложения (0216/0217) — один запрос на обе карточки; при сбое —
  *  ошибка и «Повторить», а не вечный скелетон или выдуманное значение. */
@@ -156,7 +156,71 @@ function FlagCards() {
       </div>
     );
   }
-  return <RequireLoginCard flags={flags} onChange={setFlags} />;
+  return (
+    <>
+      <RequireLoginCard flags={flags} onChange={setFlags} />
+      <ComposerStartCard flags={flags} onChange={setFlags} />
+    </>
+  );
+}
+
+/** Первый экран создания задания (флаг composer_start, 0228, №242): «Что
+ *  нужно сделать?» с подсказками категорий или прежний каталог разделов.
+ *  Нужен, чтобы откатить новый путь без новой сборки. */
+function ComposerStartCard({
+  flags,
+  onChange,
+}: {
+  flags: Flags | null;
+  onChange: (f: Flags) => void;
+}) {
+  const { toast, confirm } = useFeedback();
+  const [busy, setBusy] = useState(false);
+  const current = flags ? (flags.composer_start === "catalog" ? "catalog" : "quick") : null;
+  const change = async (next: "quick" | "catalog") => {
+    if (busy || next === current) return;
+    const ok = await confirm({
+      title: next === "quick" ? "Начинать со слов?" : "Вернуть выбор из каталога?",
+      text:
+        next === "quick"
+          ? "Первый экран — поле «Что нужно сделать?», категории появляются подсказками при вводе."
+          : "Первый экран — список разделов, как раньше. Поиск по словам остаётся над списком.",
+      confirmLabel: next === "quick" ? "Включить" : "Вернуть",
+    });
+    if (ok === null) return;
+    setBusy(true);
+    try {
+      onChange({ ...flags, ...(await api.setComposerStart(next)) });
+      toast(
+        next === "quick" ? "Создание задания начинается со слов" : "Возвращён выбор из каталога",
+      );
+    } catch (e) {
+      toast(e instanceof Error ? e.message : "Не удалось сохранить", true);
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <div className="card stack" style={{ maxWidth: 520 }}>
+      <p className="mono-eyebrow">Создание задания</p>
+      <p className="body-md text-mute" style={{ margin: 0 }}>
+        С чего начинается создание задания. Действует для приложения 1.0.4 (сборка 135) и новее при
+        следующем открытии.
+      </p>
+      {current === null ? (
+        <SkeletonRows count={1} height={36} />
+      ) : (
+        <Segmented
+          value={current}
+          options={[
+            { value: "quick", label: "Со слов" },
+            { value: "catalog", label: "Из каталога" },
+          ]}
+          onChange={(v) => void change(v === "catalog" ? "catalog" : "quick")}
+        />
+      )}
+    </div>
+  );
 }
 
 /** Обязательный вход (флаг require_login): приложение сразу просит номер и

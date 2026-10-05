@@ -14,6 +14,7 @@ const PUBLIC_DETAIL_ROUTES = new Set([
   "orders/new",
   "orders/new/account",
   "orders/new/budget",
+  "orders/new/catalog",
   "orders/new/contacts",
   "orders/new/details",
   "orders/new/district",

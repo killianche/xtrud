@@ -3,12 +3,15 @@
  * одном экране (владелец, 2026-09-13: «заголовок, подробное описание и
  * фотографии на одном экране»). Раньше описание и фото были отдельным шагом.
  * Подпись над полем объясняет, что сюда писать (DECISION 2026-09-07).
+ * При первом экране «Что нужно сделать?» (№242) — заголовок «Подробности»,
+ * название уже заполнено оттуда, клавиатура сама не открывается.
  */
 
 import { Redirect } from "expo-router";
 import { useRef } from "react";
 import type { TextInput } from "react-native";
 import { taskDetailsPrompt } from "@/features/orders/task-details-prompt";
+import { useAppFlags } from "@/features/settings/use-app-flags";
 import { ComposerField } from "@/features/task-composer/ComposerFields";
 import { ComposerScreen } from "@/features/task-composer/ComposerScreen";
 import { useComposer } from "@/features/task-composer/composer-store";
@@ -26,6 +29,9 @@ import { useStepNavigation } from "@/features/task-composer/use-step-navigation"
 export default function TaskTitleScreen() {
   const { values, patch, photos, setPhotos } = useComposer();
   const nav = useStepNavigation("title");
+  // При новом первом экране вопрос «Что нужно сделать?» уже задан, название
+  // пришло оттуда — здесь подробности (№242). При откате — прежний заголовок.
+  const quick = useAppFlags().composerStart === "quick";
   // Клавиатура — после того как экран доехал (иначе она серая в переходе).
   const titleRef = useRef<TextInput>(null);
   useFocusAfterTransition(titleRef, values.title.length === 0);
@@ -39,7 +45,7 @@ export default function TaskTitleScreen() {
   return (
     <ComposerScreen
       step="title"
-      title="Что нужно сделать?"
+      title={quick ? "Подробности" : "Что нужно сделать?"}
       onBack={nav.goBack}
       onClose={nav.close}
       primaryLabel={nav.primaryLabel}

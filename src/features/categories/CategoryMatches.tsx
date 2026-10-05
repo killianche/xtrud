@@ -32,12 +32,15 @@ export function CategoryMatches({
   const tc = useThemeColors(["ink"]);
   const categories = useVisibleCategories();
   const sections = useCategoriesL1();
-  const { matches, searching } = useCategoryMatches(
+  const { matches, searching, tooShort } = useCategoryMatches(
     query,
     categories.data ?? NO_CATEGORIES,
     sections.data,
+    // Родитель переключается на подбор с первой буквы — и подбор с первой.
+    1,
   );
 
+  if (tooShort) return null;
   if (matches.length === 0) {
     return (
       <View className="px-8 pt-8">

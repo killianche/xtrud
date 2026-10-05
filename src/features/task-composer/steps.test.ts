@@ -11,6 +11,7 @@ import {
   nextStep,
   parseBudgetInput,
   stepPosition,
+  titleFromQuery,
   upcomingDates,
 } from "./steps";
 
@@ -108,5 +109,14 @@ describe("composer steps", () => {
   it("даты идут подряд от сегодня в местном времени", () => {
     const dates = upcomingDates(3, new Date(2026, 8, 30));
     expect(dates).toEqual(["2026-09-30", "2026-10-01", "2026-10-02"]);
+  });
+});
+
+describe("titleFromQuery", () => {
+  it("первая буква заглавная, остальное как написано, пробелы нормализованы", () => {
+    expect(titleFromQuery("  поменять   розетку ")).toBe("Поменять розетку");
+    expect(titleFromQuery("ёлку установить")).toBe("Ёлку установить");
+    expect(titleFromQuery("Собрать шкаф IKEA")).toBe("Собрать шкаф IKEA");
+    expect(titleFromQuery("")).toBe("");
   });
 });

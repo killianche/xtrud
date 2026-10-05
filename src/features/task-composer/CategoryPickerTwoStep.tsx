@@ -59,7 +59,7 @@ export function CategoryPickerTwoStep({
   const tc = useThemeColors(["ink"]);
   const groups = useMemo(() => groupCategoriesByL1(sections, categories), [sections, categories]);
   // Умный подбор, как в «Специалистах»: «поменять розетку» → Электрика (№241).
-  const { matches: hits, searching } = useCategoryMatches(query, categories, sections);
+  const { matches: hits, searching, tooShort } = useCategoryMatches(query, categories, sections);
   const sectionName = (l1Id: string) => sections.find((s) => s.id === l1Id)?.name_ru;
 
   if (loading) {
@@ -83,7 +83,7 @@ export function CategoryPickerTwoStep({
     );
   }
 
-  if (query.trim()) {
+  if (query.trim() && !tooShort) {
     if (hits.length === 0) {
       return (
         <AppText className="px-8 pt-4 text-center text-ios-body text-mute">

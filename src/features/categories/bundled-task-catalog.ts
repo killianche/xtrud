@@ -207,6 +207,146 @@ export function searchBundledTaskCatalog(query: string, limit: number): BundledS
     .slice(0, limit);
 }
 
+/** Слова, которые не говорят, какая нужна работа. */
+const WORD_STOP = new Set([
+  "нужно",
+  "нужен",
+  "нужна",
+  "нужны",
+  "надо",
+  "мне",
+  "нам",
+  "хочу",
+  "чтобы",
+  "пожалуйста",
+  "срочно",
+  "очень",
+  "это",
+  "как",
+  "для",
+  "или",
+  "при",
+  "под",
+  "над",
+  "без",
+  "все",
+  "всё",
+  "дома",
+  "доме",
+  "есть",
+  "кто",
+  "может",
+  "можно",
+  "сегодня",
+  "завтра",
+  "быстро",
+  "мастер",
+]);
+/**
+ * Весят мало: глаголы «что-то сделать» подходят к любой работе, а место
+ * («на кухне», «в спальне») говорит где, а не что — иначе «поменять розетку
+ * на кухне» тянет «Ремонт кухни» вровень с «Электрикой».
+ */
+const WORD_WEAK = [
+  "поменя",
+  "замени",
+  "почини",
+  "сдела",
+  "установ",
+  "отремонт",
+  "ремонт",
+  "помоч",
+  "кухн",
+  "ванн",
+  "спальн",
+  "комнат",
+  "детск",
+  "квартир",
+  "дач",
+  "балкон",
+  "офис",
+  "туалет",
+];
+
+/** Основа слова без окончания: «розетку» → «розет», «кухне» → «кухн». */
+function wordStem(word: string): string {
+  return word.length <= 4 ? word : word.slice(0, Math.max(4, word.length - 2));
+}
+
+function stemMatches(stem: string, token: string): boolean {
+  return token.startsWith(stem) || (token.length >= 4 && stem.startsWith(token));
+}
+
+export interface CatalogWordHit {
+  l2_id: string;
+  score: number;
+  /** Услуга, совпавшая по словам, — подпись подсказки. */
+  service?: string;
+}
+
+/**
+ * Подбор подкатегорий по отдельным словам фразы — для того, как люди
+ * пишут: «нужно поменять розетку на кухне», «собрать шкаф и повесить полку в
+ * детской». Серверный search_categories ищет фразу целиком и на таких
+ * фразах ничего не находит (FACT, живая база 2026-10-05), встроенный поиск
+ * выше — тоже (окончания: «розетку» ≠ «розетка»). Здесь каждое значимое
+ * слово сравнивается по основе со словами каталога, совпадения
+ * складываются по подкатегории; «поменять», «починить» весят мало. Без сети,
+ * мгновенно (№242).
+ */
+export function searchCatalogByWords(query: string, limit: number): CatalogWordHit[] {
+  const words = normalizeSearchText(query)
+    .split(" ")
+    .filter((w) => w.length >= 3 && !WORD_STOP.has(w));
+  if (words.length === 0 || limit <= 0) return [];
+  const stems = [...new Set(words.map(wordStem))];
+  const weightOf = (stem: string) => (WORD_WEAK.some((w) => stem.startsWith(w)) ? 0.4 : 1);
+
+  const categories = getBundledVisibleCategories();
+  const allowed = new Set(categories.map((c) => c.id));
+  const services = taskCatalog.services.filter((sv) => sv.is_active && allowed.has(sv.l2_id));
+  const serviceById = new Map(services.map((sv) => [sv.id, sv]));
+
+  // Что совпало: [l2, текст, вес источника, услуга для подписи].
+  const sources: [string, string, number, string | undefined][] = [];
+  for (const c of categories) sources.push([c.id, c.name_ru, 0.8, undefined]);
+  for (const sv of services) sources.push([sv.l2_id, sv.name_ru, 0.6, sv.name_ru]);
+  for (const term of taskCatalog.terms) {
+    const service = term.l3_id ? serviceById.get(term.l3_id) : undefined;
+    const l2 = term.l2_id ?? service?.l2_id;
+    if (!l2 || !allowed.has(l2)) continue;
+    sources.push([l2, term.term, 0.5 + (term.weight / 100) * 0.4, service?.name_ru]);
+  }
+
+  // Лучший вес каждой основы в каждой подкатегории и лучшая услуга.
+  const best = new Map<string, Map<string, number>>();
+  const serviceHint = new Map<string, { name: string; matched: number }>();
+  for (const [l2, text, weight, service] of sources) {
+    const tokens = normalizeSearchText(text).split(" ");
+    const matched = stems.filter((st) => tokens.some((t) => stemMatches(st, t)));
+    if (matched.length === 0) continue;
+    const perStem = best.get(l2) ?? new Map<string, number>();
+    for (const st of matched)
+      perStem.set(st, Math.max(perStem.get(st) ?? 0, weight * weightOf(st)));
+    best.set(l2, perStem);
+    const strong = matched.filter((st) => weightOf(st) === 1).length;
+    if (service && strong > 0 && strong > (serviceHint.get(l2)?.matched ?? 0)) {
+      serviceHint.set(l2, { name: service, matched: strong });
+    }
+  }
+
+  const ranked = [...best.entries()]
+    .map(([l2_id, perStem]) => ({
+      l2_id,
+      score: [...perStem.values()].reduce((a, b) => a + b, 0),
+      service: serviceHint.get(l2_id)?.name,
+    }))
+    .sort((a, b) => b.score - a.score);
+  const top = ranked[0]?.score ?? 0;
+  // Только близкие к лучшему: «поменять» само по себе не тянет все разделы.
+  return ranked.filter((h) => h.score >= top * 0.5).slice(0, limit);
+}
+
 export async function searchTaskCatalogWithFallback(
   query: string,
   limit: number,

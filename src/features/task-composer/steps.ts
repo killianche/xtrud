@@ -117,6 +117,16 @@ export function normalizeTitle(value: string): string {
   return value.replace(/\s+/g, " ").trim().slice(0, TITLE_MAX);
 }
 
+/**
+ * Написанное на первом экране «Что нужно сделать?» → название задания (№242):
+ * пробелы как в normalizeTitle, первая буква заглавная, остальное — как
+ * написал человек («поменять розетку» → «Поменять розетку»).
+ */
+export function titleFromQuery(value: string): string {
+  const t = normalizeTitle(value);
+  return t.charAt(0).toLocaleUpperCase("ru-RU") + t.slice(1);
+}
+
 /** Телефон либо пустой (по желанию), либо настоящий номер. */
 export function isPhoneAcceptable(value: string): boolean {
   const trimmed = value.trim();

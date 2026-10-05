@@ -12,7 +12,7 @@
 //
 // Эталон: Google «Showing results for ...» pattern.
 
-import { useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import {
   type CategoryDataSource,
   searchTaskCatalogWithFallback,
@@ -63,6 +63,9 @@ export function useSearchCategories(query: string, limit = 10) {
     queryKey: ["search-categories", trimmed, limit] as const,
     queryFn: () => searchTaskCatalogWithFallback(trimmed, limit, rpcSearch),
     enabled,
+    // Пока ищется следующая буква — прежние подсказки остаются на месте, а не
+    // исчезают и появляются под пальцем (№242).
+    placeholderData: keepPreviousData,
     staleTime: (queryState) => (queryState.state.data?.source === "bundle" ? 0 : 30_000),
     refetchOnReconnect: true,
   });

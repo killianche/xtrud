@@ -396,6 +396,35 @@ export interface UncategorizedOrderRow {
   client_id: string;
 }
 
+/** Скрытое «красным флагом» задание (0231, №253): автор не знает, что оно скрыто. */
+export interface ShadowHiddenOrderRow {
+  id: string;
+  title: string;
+  description_short: string | null;
+  status: string;
+  /** beauty/plastic/tattoo/music — автоматическое правило; manual — скрыто вручную. */
+  topic: string;
+  /** Найденный фрагмент текста (auto/backfill) или причина администратора (admin). */
+  matched: string | null;
+  source: "auto" | "backfill" | "admin";
+  hidden_at: string;
+  created_at: string;
+  l2_id: string;
+  city_id: string | null;
+  city_name: string | null;
+  district: string | null;
+  village: string | null;
+  responses_count: number;
+  client_id: string;
+}
+
+/** Ответ admin_unhide_order: changed — было скрыто, notified — ушла рассылка специалистам. */
+export interface UnhideOrderResult {
+  order_id: string;
+  changed: boolean;
+  notified: boolean;
+}
+
 /** Ответ admin_set_order_category: changed/notified — чтобы не писать лишний тост. */
 export interface SetOrderCategoryResult {
   order_id: string;
@@ -466,6 +495,10 @@ function describe(error: { message?: string; code?: string } | null): string {
   if (message.includes("category_not_found")) return "Подраздел не найден.";
   // Без категории (0230, №251): перенос задания и создание категории.
   if (message.includes("bad_category")) return "Выберите настоящую категорию, не «Без категории».";
+  // Скрытые задания «красный флаг» (0231, №253).
+  if (message.includes("order_not_open")) {
+    return "Скрыть тихо можно только открытое задание.";
+  }
   if (message.includes("section_not_found")) return "Раздел не найден.";
   if (message.includes("bad_name")) {
     return "Название — от 2 до 60 символов, без ссылок и служебных слов.";
@@ -823,5 +856,16 @@ export const api = {
       p_name_ru: nameRu,
       p_icon: icon,
       p_terms: terms,
+    }),
+  /** Скрытые «красным флагом» задания (0231, №253): без телефонов и контактов. */
+  listShadowHiddenOrders: (limit = 200) =>
+    rpc<ShadowHiddenOrderRow[]>("admin_list_shadow_hidden_orders", { p_limit: limit }),
+  unhideOrder: (orderId: string, reason: string) =>
+    rpc<UnhideOrderResult>("admin_unhide_order", { p_order_id: orderId, p_reason: reason }),
+  /** Скрыть открытое задание тихо (автор не узнает) — ровно как красный флаг. */
+  hideOrderShadow: (orderId: string, reason: string) =>
+    rpc<{ order_id: string; changed: boolean }>("admin_hide_order_shadow", {
+      p_order_id: orderId,
+      p_reason: reason,
     }),
 };

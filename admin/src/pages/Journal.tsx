@@ -46,6 +46,8 @@ export const ACTION_LABEL: Record<string, string> = {
   instagram_reject: "Instagram отклонён",
   order_set_category: "Категория задания назначена",
   category_create: "Категория создана",
+  order_shadow_hide: "Задание скрыто тайно",
+  order_shadow_unhide: "Скрытое задание открыто",
 };
 
 export function Journal() {

@@ -9,6 +9,7 @@ import { type Section, Shell, sectionLabel } from "./components/Shell";
 import { api, hasSession, logout } from "./lib/api";
 import { Broadcast } from "./pages/Broadcast";
 import { Catalog } from "./pages/Catalog";
+import { HiddenOrders } from "./pages/HiddenOrders";
 import { Instagram } from "./pages/Instagram";
 import { Journal } from "./pages/Journal";
 import { Login } from "./pages/Login";
@@ -114,6 +115,7 @@ export function App() {
     recovery: "recovery",
     instagram: "instagram",
     uncategorized: "uncategorized",
+    "hidden-orders": "hiddenOrders",
     catalog: "catalog",
     promo: "promo",
     broadcast: "broadcast",
@@ -162,6 +164,9 @@ export function App() {
         break;
       case "uncategorized":
         page = <Uncategorized onOpenOrder={(id) => navigate(`/orders/${id}`)} />;
+        break;
+      case "hiddenOrders":
+        page = <HiddenOrders onOpenOrder={(id) => navigate(`/orders/${id}`)} />;
         break;
       case "catalog":
         page = <Catalog />;

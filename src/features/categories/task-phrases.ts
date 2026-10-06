@@ -1009,15 +1009,6 @@ export const TASK_PHRASES: readonly TaskPhrase[] = [
   { text: "Восстановить навыки вождения", l2: "driving-instructor", weight: 30 },
   { text: "Подготовиться к экзамену в ГИБДД", l2: "driving-instructor", weight: 35 },
   { text: "Научиться парковаться", l2: "driving-instructor", weight: 20 },
-  // ── music-lessons — Уроки музыки ──
-  { text: "Уроки музыки для ребёнка", l2: "music-lessons", weight: 30 },
-  { text: "Уроки игры на гитаре", l2: "music-lessons", weight: 40 },
-  { text: "Уроки фортепиано", l2: "music-lessons", weight: 35 },
-  { text: "Уроки вокала", l2: "music-lessons", weight: 35 },
-  { text: "Уроки игры на гармони", l2: "music-lessons", weight: 20 },
-  { text: "Уроки игры на барабанах", l2: "music-lessons", weight: 15 },
-  { text: "Уроки игры на скрипке", l2: "music-lessons", weight: 10 },
-  { text: "Уроки сольфеджио", l2: "music-lessons", weight: 10 },
   // ── lawyers — Юристы ──
   { text: "Консультация юриста", l2: "lawyers", weight: 65 },
   { text: "Составить договор", l2: "lawyers", weight: 50 },

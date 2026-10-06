@@ -18,6 +18,7 @@ export type Section =
   | "recovery"
   | "instagram"
   | "uncategorized"
+  | "hiddenOrders"
   | "catalog"
   | "promo"
   | "broadcast"
@@ -79,6 +80,14 @@ export const NAV: Array<{ title: string | null; items: NavItem[] }> = [
       // Счётчик — не из admin_attention (его не трогаем): длина своего же
       // списка, см. useUncategorizedCount ниже (0230, №251).
       { id: "uncategorized", label: "Без категории", path: "/uncategorized", icon: Icon.grid },
+      // Счётчик — длина своего же списка, см. useShadowHiddenCount ниже
+      // (0231, №253): admin_attention не трогаем.
+      {
+        id: "hiddenOrders",
+        label: "Скрытые задания",
+        path: "/hidden-orders",
+        icon: Icon.flag,
+      },
     ],
   },
   {
@@ -170,6 +179,34 @@ function useUncategorizedCount(): number {
   return count;
 }
 
+/**
+ * Счётчик «Скрытые задания» — не серверный admin_attention (его не меняем по
+ * заданию), а длина своего же списка admin_list_shadow_hidden_orders (0231,
+ * №253).
+ */
+function useShadowHiddenCount(): number {
+  const [count, setCount] = useState(0);
+  const load = useCallback(() => {
+    api
+      .listShadowHiddenOrders(200)
+      .then((rows) => setCount(rows.length))
+      .catch(() => undefined);
+  }, []);
+  useEffect(() => {
+    load();
+    const timer = setInterval(load, 60_000);
+    const onFocus = () => load();
+    window.addEventListener("focus", onFocus);
+    window.addEventListener("xtrud-admin-refresh", onFocus);
+    return () => {
+      clearInterval(timer);
+      window.removeEventListener("focus", onFocus);
+      window.removeEventListener("xtrud-admin-refresh", onFocus);
+    };
+  }, [load]);
+  return count;
+}
+
 export function Shell({
   section,
   title,
@@ -185,6 +222,7 @@ export function Shell({
 }) {
   const attention = useAttention();
   const uncategorizedCount = useUncategorizedCount();
+  const shadowHiddenCount = useShadowHiddenCount();
   const [menuOpen, setMenuOpen] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [theme, setTheme] = useState<"light" | "dark">(initialTheme);
@@ -231,7 +269,9 @@ export function Shell({
         attention.verifications_pending +
         attention.recovery_new +
         (attention.instagram_pending ?? 0)
-      : 0) + uncategorizedCount;
+      : 0) +
+    uncategorizedCount +
+    shadowHiddenCount;
 
   return (
     <div className={`shell ${menuOpen ? "menu-open" : ""}`}>
@@ -255,9 +295,11 @@ export function Shell({
               const count =
                 item.id === "uncategorized"
                   ? uncategorizedCount
-                  : attention && item.count
-                    ? item.count(attention)
-                    : 0;
+                  : item.id === "hiddenOrders"
+                    ? shadowHiddenCount
+                    : attention && item.count
+                      ? item.count(attention)
+                      : 0;
               return (
                 <button
                   key={item.id}

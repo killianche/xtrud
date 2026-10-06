@@ -368,16 +368,6 @@
       "is_featured": false
     },
     {
-      "id": "music-lessons",
-      "l1_id": "tutors",
-      "name_ru": "Уроки музыки",
-      "icon": "MusicNotes",
-      "sort_order": 50,
-      "is_active": true,
-      "is_visible": true,
-      "is_featured": false
-    },
-    {
       "id": "food-delivery",
       "l1_id": "cargo",
       "name_ru": "Доставка еды",
@@ -2553,27 +2543,6 @@
       "is_active": true
     },
     {
-      "id": "music-guitar",
-      "l2_id": "music-lessons",
-      "name_ru": "Гитара",
-      "sort_order": 10,
-      "is_active": true
-    },
-    {
-      "id": "music-piano",
-      "l2_id": "music-lessons",
-      "name_ru": "Фортепиано",
-      "sort_order": 20,
-      "is_active": true
-    },
-    {
-      "id": "music-vocal",
-      "l2_id": "music-lessons",
-      "name_ru": "Вокал",
-      "sort_order": 30,
-      "is_active": true
-    },
-    {
       "id": "paint-walls",
       "l2_id": "painting",
       "name_ru": "Покраска стен",
@@ -3732,12 +3701,6 @@
       "weight": 90
     },
     {
-      "term": "вокал",
-      "l2_id": "music-lessons",
-      "l3_id": null,
-      "weight": 70
-    },
-    {
       "term": "ворота",
       "l2_id": "fences-gates",
       "l3_id": null,
@@ -3808,12 +3771,6 @@
       "l2_id": "drywall",
       "l3_id": null,
       "weight": 100
-    },
-    {
-      "term": "гитара",
-      "l2_id": "music-lessons",
-      "l3_id": null,
-      "weight": 90
     },
     {
       "term": "гкл",
@@ -5508,12 +5465,6 @@
       "weight": 100
     },
     {
-      "term": "уроки музыки",
-      "l2_id": "music-lessons",
-      "l3_id": null,
-      "weight": 100
-    },
-    {
       "term": "установить дверь",
       "l2_id": "doors",
       "l3_id": null,
@@ -5614,12 +5565,6 @@
       "l2_id": "wallpaper",
       "l3_id": null,
       "weight": 100
-    },
-    {
-      "term": "фортепиано",
-      "l2_id": "music-lessons",
-      "l3_id": null,
-      "weight": 80
     },
     {
       "term": "фотообои",
@@ -5778,5 +5723,5 @@
       "weight": 100
     }
   ],
-  "content_sha256": "38ccda573cbab5c2ca5a023e895d39c2a84c2b96360ce7a799329fcde6de728e"
+  "content_sha256": "6f517a80ed2edab3c7b70d23826eace42d5ca210000dfd2bdad5d9c9abd9021c"
 }

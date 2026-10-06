@@ -112,6 +112,31 @@ export function OrderCard({
     }
   };
 
+  // Скрыть тихо (0231, №253): для тем из красного флага — автор не узнает,
+  // задание просто пропадает из ленты и рассылки, как при автоматическом
+  // скрытии. Доступно только для открытого задания (admin_hide_order_shadow).
+  const hideShadow = async () => {
+    const reason = await confirm({
+      title: "Скрыть задание тихо?",
+      text: "Задание пропадёт из ленты и рассылки специалистам. Автор не получит уведомление и не узнает, что оно скрыто.",
+      confirmLabel: "Скрыть тихо",
+      danger: true,
+      reason: true,
+    });
+    if (!reason) return;
+    setBusy(true);
+    try {
+      const result = await api.hideOrderShadow(o.id, reason);
+      toast(result.changed ? "Задание скрыто тихо" : "Уже скрыто");
+      refreshAttention();
+      load();
+    } catch (e) {
+      toast(e instanceof Error ? e.message : "Не удалось скрыть", true);
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const restore = async () => {
     const reason = await confirm({
       title: "Вернуть задание в ленту?",
@@ -159,6 +184,16 @@ export function OrderCard({
                 onClick={() => void hide()}
               >
                 {busy ? "Сохраняем…" : "Скрыть задание"}
+              </button>
+            ) : null}
+            {o.status === "open" ? (
+              <button
+                type="button"
+                className="btn btn-ghost"
+                disabled={busy}
+                onClick={() => void hideShadow()}
+              >
+                {busy ? "Сохраняем…" : "Скрыть тихо"}
               </button>
             ) : null}
           </>

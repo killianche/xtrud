@@ -55,10 +55,15 @@ export default function ForgotPasswordScreen() {
   // Номер подтверждён — второй шаг: новый пароль.
   const [verified, setVerified] = useState<{ phone: string; token: string } | null>(null);
   const [password, setPassword] = useState("");
+  // Пароль сохраняется и сразу входим — уход с экрана ожидаем, не спрашиваем.
+  const [saving, setSaving] = useState(false);
   // Номер уже подтверждён звонком — уход без нового пароля спрашиваем (QA).
+  // Во время «Сохранить и войти» защита выключена целиком (№246): после
+  // входа AuthGate уводит с экранов входа, и разрешение «на один уход» не
+  // покрывало второй переход — всплывало «Пароль не изменён. Выйти?».
   const allowLeave = useUnsavedChangesGuard({
-    hasUnsavedChanges: verified !== null,
-    isBusy: busy,
+    hasUnsavedChanges: verified !== null && !saving,
+    isBusy: busy && !saving,
     title: "Пароль не изменён",
     message: "Выйти? Звонок для подтверждения придётся повторить.",
   });
@@ -83,14 +88,17 @@ export default function ForgotPasswordScreen() {
   const savePassword = async () => {
     if (!verified) return;
     setBusy(true);
+    setSaving(true);
     setError(null);
     // Успешный recover сразу входит, и AuthGate уводит с экранов входа ещё до
-    // конца этой функции — уход разрешаем заранее, иначе гвард спросит
-    // «Пароль не изменён» после успеха. При ошибке экран остаётся.
+    // конца этой функции — уход разрешаем заранее (и состоянием saving, и
+    // разовым разрешением на случай, если переход опередит перерисовку).
     allowLeave();
     const r = await supabase.auth.recover(verified.phone, verified.token, password);
     setBusy(false);
     if (r.error) {
+      // Ошибка — экран остаётся, защита от ухода снова включена.
+      setSaving(false);
       // Подтверждение устарело (15 минут) — вернуть к номеру.
       if (r.error.code === "phone_verification_required") {
         setVerified(null);
@@ -99,8 +107,9 @@ export default function ForgotPasswordScreen() {
       setError({ text: r.error.message, noAccount: r.error.code === "account_not_found" });
       return;
     }
-    // Вход выполнен — AuthGate поведёт дальше; сразу на главную.
-    router.replace("/(tabs)" as never);
+    // Вход выполнен — дальше ведёт AuthGate: на главную (или на имя, если
+    // его нет, или туда, откуда пришли за входом). Свой переход не нужен —
+    // он и был вторым уходом с экрана.
   };
 
   const submit = async () => {

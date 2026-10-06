@@ -7,9 +7,19 @@ import { supabase } from "@/lib/supabase";
 
 import { type AppFlags, parseAppFlags } from "./app-flags";
 
-export type { AppFlags, ComposerStartVariant, FindTilesVariant } from "./app-flags";
+export type {
+  AppFlags,
+  ComposerFormVariant,
+  ComposerStartVariant,
+  FindTilesVariant,
+} from "./app-flags";
 
-const DEFAULT_FLAGS: AppFlags = { findTiles: "grid", requireLogin: false, composerStart: "quick" };
+const DEFAULT_FLAGS: AppFlags = {
+  findTiles: "grid",
+  requireLogin: false,
+  composerStart: "quick",
+  composerForm: "single",
+};
 
 /** Флаги и признак, что ответ сервера уже есть (до него — не решаем). */
 export function useAppFlagsQuery() {

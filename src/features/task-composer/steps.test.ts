@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 import {
   COMPOSER_STEPS,
   EMPTY_COMPOSER_VALUES,
-  effectiveWhatsapp,
   firstIncompleteStep,
   formatBudgetInput,
   hasComposerContent,
@@ -31,6 +30,19 @@ describe("composer steps", () => {
     expect(nextStep("title")).toBe("where");
     expect(nextStep("review")).toBeNull();
     expect(stepPosition("where")).toEqual({ index: 3, total: COMPOSER_STEPS.length });
+  });
+
+  it('форма одним экраном (№249): "Далее" с любого шага — прямо на review, индикатор «2 из 2»', () => {
+    expect(nextStep("category", "single")).toBe("review");
+    expect(nextStep("title", "single")).toBe("review");
+    expect(nextStep("budget", "single")).toBe("review");
+    expect(nextStep("review", "single")).toBeNull();
+    // Откат — явный "steps" ведёт себя как без формы.
+    expect(nextStep("category", "steps")).toBe("title");
+    expect(stepPosition("category", "single")).toEqual({ index: 1, total: 2 });
+    expect(stepPosition("review", "single")).toEqual({ index: 2, total: 2 });
+    expect(stepPosition("where", "single")).toEqual({ index: 2, total: 2 });
+    expect(stepPosition("where", "steps")).toEqual({ index: 3, total: COMPOSER_STEPS.length });
   });
 
   it("категория — первый шаг, название — второй", () => {

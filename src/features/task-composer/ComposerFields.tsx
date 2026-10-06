@@ -32,6 +32,12 @@ export interface ComposerFieldProps
   label?: string;
   /** Ошибка показывается только после того, как поле покинули. */
   error?: string | null;
+  /**
+   * Показать ошибку сразу, не дожидаясь, что поле покинули (форма одним
+   * экраном, вариант B №249: нажали «Опубликовать» с незаполненным полем —
+   * ошибка видна немедленно, docs/COMPOSER_ONE_FORM_2026-10.md).
+   */
+  forceError?: boolean;
   hint?: string;
   /** Крупное поле для главного текста (22 pt) или обычное (17 pt). */
   size?: "title" | "body";
@@ -53,6 +59,7 @@ export const ComposerField = forwardRef<TextInput, ComposerFieldProps>(function 
     placeholder,
     label,
     error,
+    forceError = false,
     hint,
     size = "body",
     multiline = false,
@@ -77,7 +84,7 @@ export const ComposerField = forwardRef<TextInput, ComposerFieldProps>(function 
   // Веб: textarea сама не растёт — высота по содержимому (iPhone растёт сам).
   const [webHeight, setWebHeight] = useState<number | null>(null);
   const growOnWeb = autoGrow && Platform.OS === "web";
-  const showError = touched && !focused && !!error;
+  const showError = (touched || forceError) && !focused && !!error;
   const fontSize = size === "title" ? 24 : 18;
   // Свой ref — чтобы нажатие в любое место плитки ставило курсор; наружу
   // отдаём то же поле, как раньше.

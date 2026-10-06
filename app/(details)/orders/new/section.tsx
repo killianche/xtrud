@@ -15,10 +15,11 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useCategoriesL1 } from "@/features/categories/use-categories-l1";
 import { useVisibleCategories } from "@/features/categories/use-visible-categories";
+import { useAppFlags } from "@/features/settings/use-app-flags";
 import { CategoryPickerTwoStep } from "@/features/task-composer/CategoryPickerTwoStep";
 import { ComposerScreen } from "@/features/task-composer/ComposerScreen";
 import { useComposer } from "@/features/task-composer/composer-store";
-import { COMPOSER_ROUTE, isStepValid } from "@/features/task-composer/steps";
+import { COMPOSER_ROUTE, isStepValid, nextStep } from "@/features/task-composer/steps";
 import { useStepNavigation } from "@/features/task-composer/use-step-navigation";
 
 export default function TaskCategorySectionScreen() {
@@ -28,6 +29,7 @@ export default function TaskCategorySectionScreen() {
   const composer = useComposer();
   const { values, patch } = composer;
   const nav = useStepNavigation("category");
+  const composerForm = useAppFlags().composerForm;
   const l1 = useCategoriesL1();
   const categories = useVisibleCategories();
   const section = (l1.data ?? []).find((s) => s.id === sectionId);
@@ -41,7 +43,9 @@ export default function TaskCategorySectionScreen() {
       router.dismiss(2);
       return;
     }
-    router.push(COMPOSER_ROUTE.title as never);
+    // Следующий шаг — как у остальных: при форме одним экраном (№249) это
+    // сама форма, а не отдельный экран названия.
+    router.push(COMPOSER_ROUTE[nextStep("category", composerForm) ?? "title"] as never);
   };
 
   if (!composer.ready) return null;

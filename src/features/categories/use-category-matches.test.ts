@@ -36,9 +36,12 @@ describe("mergeCategoryMatches", () => {
     expect(m).toEqual([{ category: categories[1], service: undefined }]);
   });
 
-  it("название раздела даёт его подкатегории последними, без повторов", () => {
+  it("название раздела даёт его подкатегории, только если больше ничего нет", () => {
     const m = mergeCategoryMatches("сантехника и", categories, sections, []);
     expect(m.map((x) => x.category.id)).toEqual(["electrical", "plumbing"]);
+    // «уборка» совпадает с названиями подкатегорий — раздел целиком не тянется.
+    const u = mergeCategoryMatches("уборка", categories, sections, []);
+    expect(u.map((x) => x.category.id)).toEqual(["cleaning", "cleaning-post-renovation"]);
   });
 
   it("подкатегории вне видимого каталога и пустой запрос не показываются", () => {

@@ -13,6 +13,9 @@ describe("searchCatalogByWords — фразы своими словами", () =
       expect.arrayContaining(["appliance-repair", "plumbing"]),
     );
     expect(top("поклеить обои в спальне")[0]).toBe("wallpaper");
+    // Беглая гласная: «котёл» — «Отопление и котлы» (тест друзей, №248).
+    expect(top("отремонтировать котёл")[0]).toBe("climate");
+    expect(top("вывоз мусора")[0]).toBe("disposal");
     expect(top("перевезти диван на дачу")[0]).toBe("cargo-transport");
   });
 

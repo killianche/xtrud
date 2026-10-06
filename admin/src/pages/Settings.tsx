@@ -133,7 +133,12 @@ export function Settings() {
   );
 }
 
-type Flags = { find_tiles?: string; require_login?: boolean; composer_start?: string };
+type Flags = {
+  find_tiles?: string;
+  require_login?: boolean;
+  composer_start?: string;
+  composer_form?: string;
+};
 
 /** Флаги приложения (0216/0217) — один запрос на обе карточки; при сбое —
  *  ошибка и «Повторить», а не вечный скелетон или выдуманное значение. */
@@ -160,6 +165,7 @@ function FlagCards() {
     <>
       <RequireLoginCard flags={flags} onChange={setFlags} />
       <ComposerStartCard flags={flags} onChange={setFlags} />
+      <ComposerFormCard flags={flags} onChange={setFlags} />
     </>
   );
 }
@@ -217,6 +223,64 @@ function ComposerStartCard({
             { value: "catalog", label: "Из каталога" },
           ]}
           onChange={(v) => void change(v === "catalog" ? "catalog" : "quick")}
+        />
+      )}
+    </div>
+  );
+}
+
+/** Форма задания одним экраном (флаг composer_form, 0229, №249): шаги 2+
+ *  создания задания — все пункты на одном экране (бывший «Проверьте
+ *  задание», теперь форма) или прежний один вопрос на экран. Нужен, чтобы
+ *  откатить форму без новой сборки. */
+function ComposerFormCard({
+  flags,
+  onChange,
+}: {
+  flags: Flags | null;
+  onChange: (f: Flags) => void;
+}) {
+  const { toast, confirm } = useFeedback();
+  const [busy, setBusy] = useState(false);
+  const current = flags ? (flags.composer_form === "steps" ? "steps" : "single") : null;
+  const change = async (next: "single" | "steps") => {
+    if (busy || next === current) return;
+    const ok = await confirm({
+      title: next === "single" ? "Все пункты на одном экране?" : "Вернуть по шагам?",
+      text:
+        next === "single"
+          ? "После выбора категории — одна форма со всеми полями: название, место, срок, бюджет, связь."
+          : "После выбора категории — снова один вопрос на экран, как раньше.",
+      confirmLabel: next === "single" ? "Включить" : "Вернуть",
+    });
+    if (ok === null) return;
+    setBusy(true);
+    try {
+      onChange({ ...flags, ...(await api.setComposerForm(next)) });
+      toast(next === "single" ? "Форма задания — одним экраном" : "Возвращена форма по шагам");
+    } catch (e) {
+      toast(e instanceof Error ? e.message : "Не удалось сохранить", true);
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <div className="card stack" style={{ maxWidth: 520 }}>
+      <p className="mono-eyebrow">Форма задания</p>
+      <p className="body-md text-mute" style={{ margin: 0 }}>
+        Шаги 2+ создания задания (после выбора категории). Действует для новой версии приложения при
+        следующем запуске.
+      </p>
+      {current === null ? (
+        <SkeletonRows count={1} height={36} />
+      ) : (
+        <Segmented
+          value={current}
+          options={[
+            { value: "single", label: "Одним экраном" },
+            { value: "steps", label: "По шагам" },
+          ]}
+          onChange={(v) => void change(v === "steps" ? "steps" : "single")}
         />
       )}
     </div>

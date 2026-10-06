@@ -273,8 +273,20 @@ function wordStem(word: string): string {
   return word.length <= 4 ? word : word.slice(0, Math.max(4, word.length - 2));
 }
 
+/** Согласные без конечных гласных: «котёл» и «котлы» → «ктл» (беглая гласная). */
+function consonantSkeleton(word: string): string {
+  return word.replace(/[аеиоуыэюяьъй]+$/u, "").replace(/[аеиоуыэюяьъй]/gu, "");
+}
+
 function stemMatches(stem: string, token: string): boolean {
-  return token.startsWith(stem) || (token.length >= 4 && stem.startsWith(token));
+  if (token.startsWith(stem) || (token.length >= 4 && stem.startsWith(token))) return true;
+  const sk = consonantSkeleton(stem);
+  // Первые две буквы — те же: иначе «перевезти» и «привезти» сходятся по костяку.
+  return (
+    sk.length >= 3 &&
+    stem.slice(0, 2) === token.slice(0, 2) &&
+    consonantSkeleton(token).startsWith(sk)
+  );
 }
 
 export interface CatalogWordHit {

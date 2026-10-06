@@ -18,6 +18,7 @@
 
 import { digitsOnly } from "@/features/auth/validation";
 import type { OrderPriceKind, OrderUrgencyValue } from "@/features/orders/order-schema";
+import type { ComposerFormVariant } from "@/features/settings/app-flags";
 
 export const COMPOSER_STEPS = [
   "category",
@@ -49,13 +50,30 @@ export const COMPOSER_ROUTE: Record<ComposerStep, string> = {
  */
 export const COMPOSER_SECTION_ROUTE = "/orders/new/section";
 
-export function nextStep(step: ComposerStep): ComposerStep | null {
+/**
+ * Следующий шаг. В форме одним экраном (`form: "single"`, вариант B №249)
+ * шагов физически два — подсказка и форма: с любого шага «Далее» ведёт прямо
+ * на `review` (сама форма), кроме `review` — там дальше нет ничего.
+ */
+export function nextStep(
+  step: ComposerStep,
+  form: ComposerFormVariant = "steps",
+): ComposerStep | null {
+  if (form === "single") return step === "review" ? null : "review";
   const i = COMPOSER_STEPS.indexOf(step);
   return i >= 0 && i < COMPOSER_STEPS.length - 1 ? (COMPOSER_STEPS[i + 1] ?? null) : null;
 }
 
-/** Индекс шага для индикатора: 1..N. */
-export function stepPosition(step: ComposerStep): { index: number; total: number } {
+/**
+ * Индекс шага для индикатора: 1..N. В форме одним экраном физических
+ * экранов — два: подсказка («category») и форма (всё остальное, включая
+ * открытые из формы `where`/`contacts`/`category` — это тот же второй шаг).
+ */
+export function stepPosition(
+  step: ComposerStep,
+  form: ComposerFormVariant = "steps",
+): { index: number; total: number } {
+  if (form === "single") return { index: step === "category" ? 1 : 2, total: 2 };
   return { index: COMPOSER_STEPS.indexOf(step) + 1, total: COMPOSER_STEPS.length };
 }
 

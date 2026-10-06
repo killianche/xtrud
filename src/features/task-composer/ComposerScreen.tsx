@@ -16,7 +16,7 @@
  */
 
 import { CaretLeft, X } from "phosphor-react-native";
-import type { ReactNode } from "react";
+import type { ReactNode, Ref } from "react";
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
@@ -24,6 +24,7 @@ import { BottomEdgeEffect } from "@/components/ui/BottomEdgeEffect";
 import { GLASS_BUTTON_HEIGHT, GlassButton } from "@/components/ui/GlassButton";
 import { NAV_BUTTON_SIZE, NAV_ROW_HEIGHT, NavCircleButton } from "@/components/ui/LargeTitle";
 import { SystemIcon } from "@/components/ui/SystemIcon";
+import { useAppFlags } from "@/features/settings/use-app-flags";
 import { useThemeColors } from "@/lib/use-theme-color";
 import { useComposerSession } from "./composer-store";
 import { type ComposerStep, stepPosition } from "./steps";
@@ -50,6 +51,8 @@ export interface ComposerScreenProps {
   error?: string | null;
   /** Скрыть нижнюю кнопку (успех, лимит). */
   hideActions?: boolean;
+  /** Прокрутка экрана — форма одним экраном прокручивает к незаполненному (№249). */
+  scrollRef?: Ref<ScrollView>;
 }
 
 export function ComposerScreen({
@@ -67,10 +70,12 @@ export function ComposerScreen({
   onSecondary,
   error,
   hideActions = false,
+  scrollRef,
 }: ComposerScreenProps) {
   const insets = useSafeAreaInsets();
   const tc = useThemeColors(["ink"]);
-  const { index, total } = stepPosition(step);
+  // Форма одним экраном (composer_form = "single") — два шага, а не семь.
+  const { index, total } = stepPosition(step, useAppFlags().composerForm);
   const isEdit = useComposerSession((st) => st.mode.kind === "edit");
   // Кнопки ближе к нижнему краю, на размытии (владелец, 2026-10-03).
   const bottomSpace = insets.bottom + 8;
@@ -139,6 +144,7 @@ export function ComposerScreen({
       </View>
 
       <ScrollView
+        ref={scrollRef}
         className="flex-1"
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="interactive"

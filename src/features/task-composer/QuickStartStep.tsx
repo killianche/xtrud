@@ -4,7 +4,10 @@
  * клавиатура; категории появляются подсказками, когда человек пишет.
  *
  * Касание подсказки — категория выбрана, написанное стало названием, сразу
- * «Подробности». Два касания до готовых категории и названия вместо трёх, и
+ * «Подробности». С №248 (тест друзей, видео YouDo) сверху — готовые
+ * формулировки задач из словаря (`task-phrases.ts`): «Отремонтировать газовый
+ * котёл» сразу задаёт и категорию, и название; ниже — категории для своего
+ * названия. До ввода — «Например» с частыми задачами. Два касания до готовых категории и названия вместо трёх, и
  * категорию не нужно искать глазами. Каталог — запасной путь: «Выбрать из
  * списка» / «Другая категория» (`orders/new/catalog`), написанное
  * сохраняется и станет названием.
@@ -15,13 +18,15 @@
 
 import { useRouter } from "expo-router";
 import { SquaresFour } from "phosphor-react-native";
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { AccessibilityInfo, Keyboard, Pressable, type TextInput, View } from "react-native";
 import { AppText } from "@/components/AppText";
 import { Skeleton } from "@/components/ui/Skeleton";
+import type { TaskPhrase } from "@/features/categories/task-phrases";
 import type { CategoryL1 } from "@/features/categories/use-categories-l1";
 import { useCategoriesL1 } from "@/features/categories/use-categories-l1";
 import { useCategoryMatches } from "@/features/categories/use-category-matches";
+import { useTaskPhrases } from "@/features/categories/use-task-phrases";
 import {
   useVisibleCategories,
   type VisibleCategory,
@@ -61,7 +66,11 @@ export function QuickStartStep({ subtitle }: { subtitle?: string }) {
     categories.data ?? NO_CATEGORIES,
     sections,
   );
-  const shown = matches.slice(0, MAX_SUGGESTIONS);
+  // Как у YouDo (№248): сначала готовые формулировки задач — касание сразу
+  // задаёт и категорию, и название; ниже — категории для своего названия.
+  const visibleIds = useMemo(() => (categories.data ?? []).map((c) => c.id), [categories.data]);
+  const { hits: phraseHits, examples } = useTaskPhrases(text, visibleIds);
+  const shown = matches.slice(0, phraseHits.length > 0 ? 3 : MAX_SUGGESTIONS);
   const catalogLoading = categories.isLoading || l1.isLoading;
   const catalogFailed = !catalogLoading && !!(categories.error || l1.error) && !categories.data;
 
@@ -70,16 +79,38 @@ export function QuickStartStep({ subtitle }: { subtitle?: string }) {
   useEffect(() => {
     if (!settled) return;
     AccessibilityInfo.announceForAccessibility(
-      shown.length > 0
-        ? `Подходящих категорий: ${shown.length}`
+      phraseHits.length + shown.length > 0
+        ? `Подсказок: ${phraseHits.length + shown.length}`
         : "Подходящей категории не нашлось",
     );
-  }, [settled, shown.length]);
+  }, [settled, phraseHits.length, shown.length]);
 
   const pick = (l2Id: string) => {
     patch({ l2Id, extraL2Ids: [], title: titleFromQuery(text) });
     Keyboard.dismiss();
     nav.goNext();
+  };
+  const pickPhrase = (p: TaskPhrase) => {
+    patch({ l2Id: p.l2, extraL2Ids: [], title: p.text });
+    Keyboard.dismiss();
+    nav.goNext();
+  };
+  const categoryById = (id: string) => categories.data?.find((c) => c.id === id);
+  const phraseRow = (p: TaskPhrase, last: boolean) => {
+    const c = categoryById(p.l2);
+    const Icon = getCategoryIcon(c?.icon ?? null);
+    return (
+      <ChoiceRow
+        key={`${p.l2}:${p.text}`}
+        title={p.text}
+        // Подпись — категория; если формулировка её повторяет, подпись не нужна.
+        subtitle={c && c.name_ru.toLowerCase() !== p.text.toLowerCase() ? c.name_ru : undefined}
+        icon={<Icon size={18} weight="bold" color={tc.ink} />}
+        selected={values.l2Id === p.l2 && values.title === p.text}
+        onPress={() => pickPhrase(p)}
+        last={last}
+      />
+    );
   };
   const openCatalog = () => {
     if (text.trim()) patch({ title: titleFromQuery(text) });
@@ -118,15 +149,23 @@ export function QuickStartStep({ subtitle }: { subtitle?: string }) {
       />
 
       {tooShort ? (
-        // Пока ничего не написано — только тихий выход в каталог для тех,
-        // кто не знает, как назвать задачу.
-        <Pressable
-          accessibilityRole="button"
-          onPress={openCatalog}
-          className="min-h-11 flex-row items-center self-start px-8 active:opacity-60"
-        >
-          <AppText className="text-ios-body text-accent">Выбрать из списка категорий</AppText>
-        </Pressable>
+        // Пока ничего не написано — примеры частых задач (как «Популярное» у
+        // YouDo, но без слова «популярное»: частоту мы не измеряем) и тихий
+        // выход в каталог.
+        <>
+          {examples.length > 0 ? (
+            <ChoiceGroup title="Например">
+              {examples.map((p, i) => phraseRow(p, i === examples.length - 1))}
+            </ChoiceGroup>
+          ) : null}
+          <Pressable
+            accessibilityRole="button"
+            onPress={openCatalog}
+            className="min-h-11 flex-row items-center self-start px-8 active:opacity-60"
+          >
+            <AppText className="text-ios-body text-accent">Выбрать из списка категорий</AppText>
+          </Pressable>
+        </>
       ) : catalogFailed ? (
         <ChoiceGroup footer="Не удалось загрузить категории. Проверьте связь.">
           <ChoiceRow
@@ -138,7 +177,7 @@ export function QuickStartStep({ subtitle }: { subtitle?: string }) {
             last
           />
         </ChoiceGroup>
-      ) : shown.length === 0 && (searching || catalogLoading) ? (
+      ) : phraseHits.length === 0 && shown.length === 0 && (searching || catalogLoading) ? (
         <View className="mx-4 overflow-hidden rounded-2xl bg-surface-card">
           {[0, 1, 2].map((i) => (
             <View key={i} className="flex-row items-center gap-3 px-4 py-3.5">
@@ -147,7 +186,7 @@ export function QuickStartStep({ subtitle }: { subtitle?: string }) {
             </View>
           ))}
         </View>
-      ) : shown.length === 0 ? (
+      ) : phraseHits.length === 0 && shown.length === 0 ? (
         // Сначала объяснение, потом выход — в порядке чтения.
         <>
           <AppText className="mb-2 px-8 text-ios-subheadline text-mute">
@@ -164,30 +203,39 @@ export function QuickStartStep({ subtitle }: { subtitle?: string }) {
           </ChoiceGroup>
         </>
       ) : (
-        <ChoiceGroup title="Подходящие категории">
-          {shown.map(({ category, service }) => {
-            const Icon = getCategoryIcon(category.icon);
-            const section = sectionName(category.l1_id);
-            return (
-              <ChoiceRow
-                key={category.id}
-                title={category.name_ru}
-                // Совпавшая услуга, иначе раздел — если он не повторяет название.
-                subtitle={service ?? (section === category.name_ru ? undefined : section)}
-                icon={<Icon size={18} weight="bold" color={tc.ink} />}
-                selected={category.id === values.l2Id}
-                onPress={() => pick(category.id)}
-              />
-            );
-          })}
-          <ChoiceRow
-            title="Другая категория"
-            icon={catalogIcon}
-            navigates
-            onPress={openCatalog}
-            last
-          />
-        </ChoiceGroup>
+        <>
+          {phraseHits.length > 0 ? (
+            <ChoiceGroup title="Подсказки">
+              {phraseHits.map((p, i) => phraseRow(p, i === phraseHits.length - 1))}
+            </ChoiceGroup>
+          ) : null}
+          <ChoiceGroup
+            title={phraseHits.length > 0 ? "Или выберите категорию" : "Подходящие категории"}
+          >
+            {shown.map(({ category, service }) => {
+              const Icon = getCategoryIcon(category.icon);
+              const section = sectionName(category.l1_id);
+              return (
+                <ChoiceRow
+                  key={category.id}
+                  title={category.name_ru}
+                  // Совпавшая услуга, иначе раздел — если он не повторяет название.
+                  subtitle={service ?? (section === category.name_ru ? undefined : section)}
+                  icon={<Icon size={18} weight="bold" color={tc.ink} />}
+                  selected={category.id === values.l2Id}
+                  onPress={() => pick(category.id)}
+                />
+              );
+            })}
+            <ChoiceRow
+              title="Другая категория"
+              icon={catalogIcon}
+              navigates
+              onPress={openCatalog}
+              last
+            />
+          </ChoiceGroup>
+        </>
       )}
     </ComposerScreen>
   );

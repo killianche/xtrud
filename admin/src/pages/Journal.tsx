@@ -39,6 +39,7 @@ export const ACTION_LABEL: Record<string, string> = {
   broadcast_push: "Рассылка push",
   set_require_login: "Обязательный вход",
   set_composer_start: "Первый экран создания задания",
+  set_composer_form: "Форма задания: одним экраном / по шагам",
   instagram_approve: "Instagram одобрен",
   experience_badge_grant: "Выдан значок «Большой опыт»",
   experience_badge_revoke: "Снят значок «Большой опыт»",

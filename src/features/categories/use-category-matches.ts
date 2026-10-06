@@ -6,7 +6,7 @@
  * умный поиск search_categories — синонимы и услуги («поменять розетку» →
  * Электрика, услуга «Замена розетки / выключателя»); без сети — встроенный
  * каталог; затем пословный подбор для длинных фраз (searchCatalogByWords).
- * Последними — подкатегории раздела, если совпало его название.
+ * Подкатегории раздела по его названию — только если больше ничего нет.
  */
 
 import { useMemo } from "react";
@@ -47,10 +47,15 @@ export function mergeCategoryMatches<T extends { id: string; l1_id: string; name
       service.set(hit.l2_id, hit.name_ru);
     }
   }
-  const sectionIds = new Set(
-    sections.filter((s) => s.name_ru.toLowerCase().includes(q)).map((s) => s.id),
-  );
-  for (const c of categories) if (sectionIds.has(c.l1_id)) add(c.id);
+  // Подкатегории раздела по его названию — только если больше ничего нет:
+  // «уборка» совпадала с «Уборка и помощь по хозяйству» и тянула «Няни и
+  // сиделки» (тест друзей, №248).
+  if (order.length === 0) {
+    const sectionIds = new Set(
+      sections.filter((s) => s.name_ru.toLowerCase().includes(q)).map((s) => s.id),
+    );
+    for (const c of categories) if (sectionIds.has(c.l1_id)) add(c.id);
+  }
 
   return order.flatMap((id) => {
     const category = byId.get(id);

@@ -176,8 +176,10 @@ export function CinematicHero({ onCreateTask }: { onCreateTask: () => void }) {
   // Контентную зону держим ~ширине, с потолком для широких web-вьюпортов.
   // Task-first версия компактнее: CTA и начало следующего блока видны без
   // лишнего скролла на типичном мобильном экране.
+  // Владелец, 2026-10-06 (№247): «картинку длиннее — процентов на 15»:
+  // 0.96 → 1.10 ширины, потолок 480 → 552.
   const heroWidth = Math.min(viewportWidth, 720);
-  const contentZone = Math.min(Math.round(heroWidth * 0.96), 480);
+  const contentZone = Math.min(Math.round(heroWidth * 1.1), 552);
   const heroHeight = insets.top + contentZone;
 
   return (
@@ -323,7 +325,8 @@ export function CinematicHero({ onCreateTask }: { onCreateTask: () => void }) {
         </View>
 
         {/* ── Низ фото-блока: крупный H1 + главный conversion action ── */}
-        <View className="absolute left-0 right-0 bottom-0 px-4 pb-5">
+        {/* pb-7: место под розовое свечение кнопки — край блока его не режет. */}
+        <View className="absolute left-0 right-0 bottom-0 px-4 pb-7">
           <AppText
             accessibilityRole="header"
             weight="display"

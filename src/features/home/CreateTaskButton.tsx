@@ -1,12 +1,19 @@
 /**
  * «Создать задание» на Главной — главное действие приложения.
  *
- * Владелец, 2026-10-03: «кнопку „Создать задание“ — с вау-эффектом, какой-то
- * классный стильный эффект, анимация». Эффект сдержанный, в духе iOS: по
- * кнопке раз в несколько секунд проходит мягкий световой блик (как у
- * главных кнопок в магазинах приложений), нажатие — короткое пружинистое
- * сжатие. При «Уменьшении движения» блика и сжатия нет — обычная кнопка.
- * Цвет — фирменный розовый с белым текстом (владелец, 2026-10-01).
+ * Владелец, 2026-10-03: «с вау-эффектом»; 2026-10-06 (№247): «побольше,
+ * потолще, ещё заметнее… очень качественный и дорогой дизайн». Решение — как
+ * главные кнопки iOS 26 (App Store «Получить», Apple Pay) и Airbnb:
+ *  - капсула 64 pt, крупный текст;
+ *  - объёмная заливка: фирменный розовый, сверху светлее, снизу плотнее —
+ *    наложением белого и чёрного из токенов, без новых цветов;
+ *  - тонкая светлая кромка сверху — как у стекла iOS 26;
+ *  - розовое свечение под кнопкой отделяет её от тёмного фото;
+ *  - плюс в белом круге — якорь взгляда;
+ *  - раз в несколько секунд — мягкий световой блик; нажатие — пружинистое
+ *    сжатие и лёгкая вибрация. При «Уменьшении движения» блика и сжатия нет.
+ * Отвергнуто: постоянная пульсация и бегущий градиент — дёшево и отвлекает.
+ * Фото под кнопкой одинаково в обеих темах, поэтому и кнопка одинакова.
  */
 
 import { LinearGradient } from "expo-linear-gradient";
@@ -17,20 +24,23 @@ import { AppText } from "@/components/AppText";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useReducedMotion } from "@/hooks/use-reduced-motion";
 import { darkColors, lightColors, withAlpha } from "@/lib/colors";
-import { SHADOW_COLOR } from "@/lib/shadows";
-import { useThemeColor } from "@/lib/use-theme-color";
+import { hapticImpact } from "@/lib/haptics";
 
 /** Длительность прохода блика и пауза между проходами, мс. */
-const SWEEP_MS = 1100;
-const PAUSE_MS = 2600;
+const SWEEP_MS = 1200;
+const PAUSE_MS = 3200;
+const HEIGHT = 64;
+const CHIP = 36;
 
 export function CreateTaskButton({ onPress }: { onPress: () => void }) {
-  const onAccent = useThemeColor("on-accent");
   const reducedMotion = useReducedMotion();
-  // Цвет блика — из палитры текущей темы (хекс: в вебе useThemeColor отдаёт
-  // CSS-переменную, к ней не приписать прозрачность).
+  // Хексы палитры текущей темы: в вебе useThemeColor отдаёт CSS-переменную,
+  // к ней не приписать прозрачность.
   const { colorScheme } = useColorScheme();
-  const shine = (colorScheme === "dark" ? darkColors : lightColors)["on-dark"];
+  const palette = colorScheme === "dark" ? darkColors : lightColors;
+  const white = palette["on-dark"];
+  const black = palette["surface-dark"];
+  const accent = palette.accent;
   const [width, setWidth] = useState(0);
   const sweep = useRef(new Animated.Value(0)).current;
   const scale = useRef(new Animated.Value(1)).current;
@@ -59,38 +69,58 @@ export function CreateTaskButton({ onPress }: { onPress: () => void }) {
       toValue: to,
       useNativeDriver: true,
       speed: 40,
-      bounciness: 8,
+      bounciness: 10,
     }).start();
   };
 
-  const band = Math.max(80, width * 0.35);
+  const band = Math.max(90, width * 0.32);
   const translateX = sweep.interpolate({ inputRange: [0, 1], outputRange: [-band, width + band] });
 
   return (
     <Animated.View
-      className="mt-4"
+      className="mt-5"
       style={{
+        // Полное скругление, как у капсулы: на крупном шрифте она выше 64 pt.
+        borderRadius: 999,
         transform: [{ scale }],
+        // Свечение фирменного цвета, а не серая тень: кнопка «светится» над
+        // тёмным фото.
         ...(Platform.OS === "web"
-          ? { boxShadow: "0 8px 24px rgba(0,0,0,0.18)" }
+          ? { boxShadow: `0 12px 32px ${withAlpha(accent, 0.5)}` }
           : {
-              shadowColor: SHADOW_COLOR,
-              shadowOpacity: 0.18,
-              shadowRadius: 14,
-              shadowOffset: { width: 0, height: 6 },
-              elevation: 6,
+              shadowColor: accent,
+              shadowOpacity: 0.55,
+              shadowRadius: 20,
+              shadowOffset: { width: 0, height: 10 },
+              elevation: 10,
             }),
       }}
     >
       <Pressable
         accessibilityRole="button"
         accessibilityLabel="Создать задание"
-        onPress={onPress}
-        onPressIn={() => pressTo(0.97)}
+        onPress={() => {
+          hapticImpact();
+          onPress();
+        }}
+        onPressIn={() => pressTo(0.96)}
         onPressOut={() => pressTo(1)}
         onLayout={(e) => setWidth(Math.round(e.nativeEvent.layout.width))}
-        className="min-h-14 flex-row items-center gap-3 overflow-hidden rounded-2xl bg-accent px-5 active:opacity-90"
+        className="flex-row items-center gap-3 overflow-hidden rounded-full bg-accent pl-3.5 pr-6 active:opacity-95"
+        style={{
+          minHeight: HEIGHT,
+          // Светлая кромка сверху — как у стекла iOS 26.
+          borderTopWidth: 1,
+          borderTopColor: withAlpha(white, 0.45),
+        }}
       >
+        {/* Объём: сверху светлее, снизу плотнее. */}
+        <LinearGradient
+          pointerEvents="none"
+          colors={[withAlpha(white, 0.24), withAlpha(white, 0), withAlpha(black, 0.16)]}
+          locations={[0, 0.5, 1]}
+          style={{ position: "absolute", left: 0, right: 0, top: 0, bottom: 0 }}
+        />
         {!reducedMotion && width > 0 ? (
           <Animated.View
             pointerEvents="none"
@@ -104,17 +134,20 @@ export function CreateTaskButton({ onPress }: { onPress: () => void }) {
             }}
           >
             <LinearGradient
-              colors={[withAlpha(shine, 0), withAlpha(shine, 0.32), withAlpha(shine, 0)]}
+              colors={[withAlpha(white, 0), withAlpha(white, 0.38), withAlpha(white, 0)]}
               start={{ x: 0, y: 0.5 }}
               end={{ x: 1, y: 0.5 }}
               style={{ flex: 1 }}
             />
           </Animated.View>
         ) : null}
-        <View>
-          <Plus size={22} weight="bold" color={onAccent} />
+        <View
+          className="items-center justify-center rounded-full bg-on-dark"
+          style={{ width: CHIP, height: CHIP }}
+        >
+          <Plus size={20} weight="bold" color={accent} />
         </View>
-        <AppText weight="semibold" className="flex-1 text-body-lg text-on-accent">
+        <AppText weight="bold" className="flex-1 text-ios-title2 text-on-accent">
           Создать задание
         </AppText>
       </Pressable>

@@ -11,8 +11,8 @@
   },
   "stores": {
     "ios": {
-      "latestPublishedVersion": "1.0.3",
-      "latestPublishedBuildNumber": 103,
+      "latestPublishedVersion": "1.0.4",
+      "latestPublishedBuildNumber": 130,
       "latestUploadedBuildNumber": 138
     },
     "android": {

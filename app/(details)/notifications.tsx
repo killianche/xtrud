@@ -76,11 +76,12 @@ export default function NotificationsScreen() {
             Пока тихо
           </AppText>
           <AppText className="mt-1.5 text-center text-ios-subheadline text-mute">
-            Здесь появятся отклики на ваши задания и новости по ним.
+            Здесь появятся отклики на ваши задания и новости по ним. Прочитанные исчезают через 2
+            дня.
           </AppText>
         </View>
       ) : (
-        <InsetGroup>
+        <InsetGroup footer="Прочитанные уведомления исчезают через 2 дня.">
           {items.map((n, i) => {
             const target = notificationTarget(n);
             const unread = !n.read_at || !!freshIds.current?.has(n.id);

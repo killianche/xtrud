@@ -18,6 +18,18 @@ export const unreadNotificationsKey = (userId: string | undefined) =>
 
 const PAGE = 50;
 
+/**
+ * Прочитанные уведомления пропадают из списка через двое суток после
+ * прочтения (владелец, 2026-10-06, №250); непрочитанные — всегда видны.
+ * В базе строки остаются — это только отбор списка.
+ */
+export const READ_NOTIFICATION_KEEP_MS = 2 * 24 * 60 * 60 * 1000;
+
+/** С какого момента прочтения уведомление ещё показывается. */
+export function readNotificationCutoff(now: number = Date.now()): string {
+  return new Date(now - READ_NOTIFICATION_KEEP_MS).toISOString();
+}
+
 export function useNotifications(userId: string | undefined) {
   return useQuery<AppNotification[]>({
     queryKey: notificationsKey(userId),
@@ -27,6 +39,7 @@ export function useNotifications(userId: string | undefined) {
         .from("notifications")
         .select("id, user_id, type, title, body, data, read_at, created_at")
         .eq("user_id", userId)
+        .or(`read_at.is.null,read_at.gt.${readNotificationCutoff()}`)
         .order("created_at", { ascending: false })
         .limit(PAGE);
       if (error) throw error;

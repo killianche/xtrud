@@ -51,7 +51,7 @@ export default function FindCategorySectionScreen() {
                 })}`
               : undefined
           }
-          selected={wholeChosen}
+          checked={wholeChosen}
           onPress={() =>
             pick(
               items.map((c) => c.id),
@@ -69,7 +69,7 @@ export default function FindCategorySectionScreen() {
               key={c.id}
               title={c.name_ru}
               icon={<Icon size={18} weight="bold" color={tc.ink} />}
-              selected={!wholeChosen && l2Ids.length === 1 && l2Ids[0] === c.id}
+              checked={!wholeChosen && l2Ids.length === 1 && l2Ids[0] === c.id}
               onPress={() => pick([c.id], false)}
               last={i === items.length - 1}
             />

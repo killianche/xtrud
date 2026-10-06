@@ -13,7 +13,7 @@
 import { FlashList } from "@shopify/flash-list";
 import { useRouter } from "expo-router";
 import { MapPin, SquaresFour, Tray } from "phosphor-react-native";
-import { useEffect, useMemo } from "react";
+import { useMemo } from "react";
 import { Pressable, RefreshControl, ScrollView, View } from "react-native";
 import { AppText } from "@/components/AppText";
 import { OrderRowsSkeleton } from "@/components/OrderRowsSkeleton";
@@ -29,7 +29,6 @@ import {
 } from "@/features/orders/orders-search-filters-store";
 import { useAllOpenOrders } from "@/features/orders/use-all-open-orders";
 import { useMyRespondedOrderIds } from "@/features/orders/use-my-responded-order-ids";
-import { useMarkFeedSeen } from "@/features/orders/use-unread-feed";
 import { describeQueryError } from "@/lib/describe-query-error";
 import { useTabBarSpace } from "@/lib/tab-bar-space";
 import { useThemeColors } from "@/lib/use-theme-color";
@@ -50,12 +49,6 @@ export function FindFeed({
   const tc = useThemeColors(["mute", "ink", "accent", "on-accent"]);
   const { session } = useAuthSession();
   const userId = session?.user?.id;
-
-  // Вход на вкладку снимает бейдж новых заданий.
-  const markSeen = useMarkFeedSeen(userId).mutate;
-  useEffect(() => {
-    if (userId) markSeen();
-  }, [userId, markSeen]);
 
   const filters = useOrdersSearchFiltersStore();
   const activeCount = countActiveFilters(filters);

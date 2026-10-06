@@ -60,7 +60,7 @@ export default function FindCategoryScreen() {
           <InsetGroup>
             <InsetRow
               title="Все категории"
-              selected={l2Ids.length === 0}
+              checked={l2Ids.length === 0}
               onPress={() => {
                 setCategory("", []);
                 closeFilterSheet(router, "first");

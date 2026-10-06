@@ -5,14 +5,16 @@
  *  - useUnreadFeedCount(userId, l2Ids, lastSeenAt): COUNT orders WHERE
  *    status='open' AND l2_id IN l2Ids AND client_id != userId AND
  *    created_at > lastSeenAt.
- *  - useMarkFeedSeen: RPC mark_feed_seen() — каждый mount /orders tab.
+ *  - useMarkFeedSeen: RPC mark_feed_seen() — при каждом заходе на вкладку
+ *    «Найти задание» и пока она открыта (app/(tabs)/_layout.tsx, №243).
  *  - живые обновления — общая личная подписка use-realtime-notifications.ts.
  *
- * Не вычитаем уже-откликнутые orders: minor over-count приемлем,
- * избегает сложного NOT IN запроса.
+ * Уже откликнутые задания вычитаются на клиенте (№243: «1» висела на
+ * задании, на которое владелец уже откликнулся, и найти его было нельзя).
  */
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMemo } from "react";
 import { userRecordKey } from "@/features/auth/use-user-record";
 import { unreadFeedKey } from "@/features/orders/unread-feed-helpers";
 import { supabase } from "@/lib/supabase";
@@ -24,29 +26,42 @@ export function useUnreadFeedCount(opts: {
   userId: string | null | undefined;
   l2Ids: string[];
   lastSeenAt: string | null;
-}) {
-  return useQuery<number>({
-    queryKey: unreadFeedKey(opts.userId ?? undefined, opts.l2Ids),
+  /** Задания, на которые я уже откликнулся, — для меня не «новые» (№243). */
+  respondedIds?: ReadonlySet<string>;
+}): { data: number } {
+  const query = useQuery<string[]>({
+    // lastSeenAt в ключе: после «посмотрел ленту» счёт сразу пересчитывается
+    // по новой отметке, а не ждёт устаревания (№243 — значок висел).
+    queryKey: [...unreadFeedKey(opts.userId ?? undefined, opts.l2Ids), opts.lastSeenAt ?? ""],
     queryFn: async () => {
-      if (!opts.userId || opts.l2Ids.length === 0) return 0;
+      if (!opts.userId || opts.l2Ids.length === 0) return [];
       let q = supabase
         .from("orders")
-        .select("id", { count: "exact", head: true })
+        .select("id")
         .eq("status", "open")
         .neq("client_id", opts.userId)
-        .or(orderCategoryFilter(opts.l2Ids));
+        .or(orderCategoryFilter(opts.l2Ids))
+        .order("created_at", { ascending: false })
+        .limit(100);
       if (opts.lastSeenAt) {
         q = q.gt("created_at", opts.lastSeenAt);
       }
-      const { count, error } = await q;
+      const { data, error } = await q;
       if (error) throw error;
-      return count ?? 0;
+      return (data ?? []).map((row) => row.id as string);
     },
     enabled: !!opts.userId && opts.l2Ids.length > 0,
     staleTime: 15_000,
     // Бейдж обновляется при возврате в приложение (focusManager в _layout).
     refetchOnWindowFocus: true,
   });
+  const ids = query.data;
+  const responded = opts.respondedIds;
+  const count = useMemo(
+    () => (ids ?? []).filter((id) => !responded?.has(id)).length,
+    [ids, responded],
+  );
+  return { data: count };
 }
 
 export function useMarkFeedSeen(userId: string | undefined) {
@@ -57,6 +72,8 @@ export function useMarkFeedSeen(userId: string | undefined) {
       if (error) throw error;
     },
     onSuccess: () => {
+      // Значок гаснет сразу, не дожидаясь нового запроса.
+      qc.setQueriesData<string[]>({ queryKey: ["unread-feed", userId] }, []);
       qc.invalidateQueries({ queryKey: userRecordKey(userId) });
     },
   });

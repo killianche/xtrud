@@ -1,10 +1,11 @@
+import { usePathname } from "expo-router";
 import {
   DarkTheme,
   DefaultTheme,
   ThemeProvider as NavThemeProvider,
 } from "expo-router/react-navigation";
 import { NativeTabs } from "expo-router/unstable-native-tabs";
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { Platform } from "react-native";
 import { LIQUID_GLASS } from "@/components/ui/GlassSurface";
 import { useAuthSession } from "@/features/auth/use-auth-session";
@@ -16,8 +17,9 @@ import {
   useUnreadOrderEventsCount,
   useUnreadReviewsCount,
 } from "@/features/notifications/use-notifications";
+import { useMyRespondedOrderIds } from "@/features/orders/use-my-responded-order-ids";
 import { useRealtimeNotifications } from "@/features/orders/use-realtime-notifications";
-import { useUnreadFeedCount } from "@/features/orders/use-unread-feed";
+import { useMarkFeedSeen, useUnreadFeedCount } from "@/features/orders/use-unread-feed";
 import { useUnreadResponsesCount } from "@/features/orders/use-unread-responses";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { triggerTabScrollReset } from "@/lib/tab-scroll-reset";
@@ -71,11 +73,25 @@ export default function TabsLayout() {
   useRealtimeNotifications({ userId: userId ?? null, l2Ids: masterL2Ids });
   // Цифра на иконке приложения — те же непрочитанные, что на колокольчике.
   useAppIconBadge(userId);
-  const { data: unreadFeed = 0 } = useUnreadFeedCount({
+  const { data: responded } = useMyRespondedOrderIds(userId);
+  const { data: unreadFeed } = useUnreadFeedCount({
     userId: userId ?? null,
     l2Ids: masterL2Ids,
     lastSeenAt: lastSeenFeedAt,
+    respondedIds: responded,
   });
+  // Пока открыта «Найти задание», новых для человека там нет: отметка
+  // «посмотрел» — при каждом заходе на вкладку и когда при открытой вкладке
+  // пришло новое (№243: раньше отметка ставилась один раз за запуск, и «1»
+  // висела на открытой вкладке).
+  const pathname = usePathname();
+  const onFindTab = pathname === "/find" || pathname.startsWith("/find/");
+  const markFeedSeen = useMarkFeedSeen(userId).mutate;
+  const hasUnreadFeed = unreadFeed > 0;
+  // biome-ignore lint/correctness/useExhaustiveDependencies: hasUnreadFeed — повод отметить снова, когда при открытой вкладке пришло новое.
+  useEffect(() => {
+    if (onFindTab && userId) markFeedSeen();
+  }, [onFindTab, userId, hasUnreadFeed, markFeedSeen]);
 
   // «Мои задания»: новые отклики клиенту + события по моим заказам (выбрали,
   // отменили, закрыли, отозвали отклик) — владелец 2026-09-07: «если отклик

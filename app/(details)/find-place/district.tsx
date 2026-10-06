@@ -37,7 +37,7 @@ export default function FindPlaceDistrictScreen() {
         <InsetRow
           title="Весь район"
           subtitle={cityNames.length > 0 ? `Включая ${cityNames.join(", ")}` : undefined}
-          selected={chosen && !village}
+          checked={chosen && !village}
           onPress={() => pick("")}
           last
         />
@@ -47,7 +47,7 @@ export default function FindPlaceDistrictScreen() {
           <InsetRow
             key={v}
             title={v}
-            selected={chosen && village === v}
+            checked={chosen && village === v}
             onPress={() => pick(v)}
             last={i === d.villages.length - 1}
           />

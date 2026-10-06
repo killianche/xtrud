@@ -464,7 +464,7 @@ export default function MasterPublicScreen() {
             {/* Отзывы */}
             <ReviewsSection
               title="Отзывы"
-              emptyText="Отзывов пока нет. Отзыв оставляет клиент после завершённого задания."
+              emptyText="Отзывов пока нет. Отзыв оставляет клиент, который выбрал специалиста."
               query={reviews}
               ratingAvg={ratingAvg}
               ratingCount={ratingCount}

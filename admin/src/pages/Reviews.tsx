@@ -79,7 +79,10 @@ export function Reviews({ onOpenUser }: { onOpenUser: (userId: string) => void }
       ) : !rows ? (
         <SkeletonRows count={5} height={72} />
       ) : rows.length === 0 ? (
-        <EmptyState title="Отзывов нет" hint="Отзывы появляются после выполненных заданий." />
+        <EmptyState
+          title="Отзывов нет"
+          hint="Отзыв оставляет клиент исполнителю, которого выбрал."
+        />
       ) : (
         <div className="stack">
           {rows.map((r) => (

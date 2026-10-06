@@ -13,13 +13,12 @@ import {
 } from "../components/ui";
 import { api, type OrderRow } from "../lib/api";
 
-type Filter = "all" | "open" | "in_progress" | "completed" | "cancelled";
+type Filter = "all" | "open" | "completed" | "cancelled";
 
 const FILTERS: Array<{ value: Filter; label: string }> = [
   { value: "all", label: "Все" },
   { value: "open", label: "Открытые" },
-  { value: "in_progress", label: "В работе" },
-  { value: "completed", label: "Выполненные" },
+  { value: "completed", label: "Исполнитель выбран" },
   { value: "cancelled", label: "Отменённые" },
 ];
 

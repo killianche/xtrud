@@ -20,7 +20,7 @@ const STATUS: Record<
   open: { label: "Открыто", tone: "active" },
   in_progress: { label: "В работе", tone: "warn" },
   awaiting_confirmation: { label: "Ждёт подтверждения", tone: "warn" },
-  completed: { label: "Выполнено", tone: "ok" },
+  completed: { label: "Исполнитель выбран", tone: "ok" },
   disputed: { label: "Спор", tone: "error" },
   cancelled: { label: "Отменено", tone: "muted" },
   expired: { label: "Истекло", tone: "muted" },

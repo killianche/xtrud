@@ -140,7 +140,7 @@ function timeAgoShort(iso: string): string {
 // статуса, карточка приглушена («Мои задания» → закрытые внизу списка).
 const DIMMED_STATUS: Partial<Record<OrderStatusValue, string>> = {
   draft: "Черновик",
-  completed: "Завершено",
+  completed: "Исполнитель выбран",
   cancelled: "Закрыто",
   expired: "Истекло",
 };

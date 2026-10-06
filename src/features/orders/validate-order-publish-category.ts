@@ -4,6 +4,7 @@ import {
   isVillageName,
   isVillageOfDistrict,
 } from "@/lib/location-config";
+import { UNCATEGORIZED_L2_ID } from "@/lib/product-scope";
 import { supabase } from "@/lib/supabase";
 
 export interface PublishCategoryRecord {
@@ -23,13 +24,15 @@ export interface PublishCityRecord {
 export type PublishCityLookup = (cityId: string) => Promise<PublishCityRecord | null>;
 
 async function lookupCurrentPublishCategory(l2Id: string): Promise<PublishCategoryRecord | null> {
-  const { data, error } = await supabase
+  let query = supabase
     .from("categories_l2")
     .select("id,l1_id,l1:categories_l1!inner(is_active)")
     .eq("id", l2Id)
-    .eq("is_visible", true)
-    .eq("is_active", true)
-    .maybeSingle();
+    .eq("is_active", true);
+  // «Без категории» (0230) скрыта из каталога, но публиковать в неё можно;
+  // остальные — только видимые.
+  if (l2Id !== UNCATEGORIZED_L2_ID) query = query.eq("is_visible", true);
+  const { data, error } = await query.maybeSingle();
 
   if (error) throw error;
   if (!data) return null;

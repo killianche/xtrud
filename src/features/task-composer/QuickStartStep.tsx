@@ -17,7 +17,7 @@
  */
 
 import { useRouter } from "expo-router";
-import { SquaresFour } from "phosphor-react-native";
+import { Sparkle, SquaresFour } from "phosphor-react-native";
 import { useEffect, useMemo, useRef } from "react";
 import { AccessibilityInfo, Keyboard, Pressable, type TextInput, View } from "react-native";
 import { AppText } from "@/components/AppText";
@@ -32,6 +32,7 @@ import {
   type VisibleCategory,
 } from "@/features/categories/use-visible-categories";
 import { getCategoryIcon } from "@/lib/category-icons";
+import { UNCATEGORIZED_L2_ID } from "@/lib/product-scope";
 import { useThemeColors } from "@/lib/use-theme-color";
 import { ComposerField } from "./ComposerFields";
 import { ChoiceGroup, ChoiceRow } from "./ComposerRows";
@@ -112,6 +113,11 @@ export function QuickStartStep({ subtitle }: { subtitle?: string }) {
       />
     );
   };
+  const pickUncategorized = () => {
+    patch({ l2Id: UNCATEGORIZED_L2_ID, extraL2Ids: [], title: titleFromQuery(text) });
+    Keyboard.dismiss();
+    nav.goNext();
+  };
   const openCatalog = () => {
     if (text.trim()) patch({ title: titleFromQuery(text) });
     Keyboard.dismiss();
@@ -187,12 +193,21 @@ export function QuickStartStep({ subtitle }: { subtitle?: string }) {
           ))}
         </View>
       ) : phraseHits.length === 0 && shown.length === 0 ? (
-        // Сначала объяснение, потом выход — в порядке чтения.
+        // Сначала объяснение, потом выход — в порядке чтения. Не подошла ни
+        // одна категория — задание всё равно публикуется: «Без категории», её
+        // подберёт админ (владелец, 2026-10-06, №251).
         <>
           <AppText className="mb-2 px-8 text-ios-subheadline text-mute">
-            Не нашли подходящую категорию. Попробуйте сказать иначе или выберите из списка.
+            Не нашли подходящую категорию. Опубликуйте без неё — подберём сами, или выберите из
+            списка.
           </AppText>
           <ChoiceGroup>
+            <ChoiceRow
+              title="Опубликовать без категории"
+              subtitle="Подберём категорию сами"
+              icon={<Sparkle size={18} weight="bold" color={tc.accent} />}
+              onPress={pickUncategorized}
+            />
             <ChoiceRow
               title="Выбрать из списка"
               icon={catalogIcon}

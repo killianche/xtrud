@@ -155,14 +155,25 @@ export function Catalog() {
                         {r.open_responses ? "Отклик: любой" : "Отклик: специалисты"}
                       </button>
                     )}
-                    <button
-                      type="button"
-                      className={`btn ${r.is_visible ? "btn-ghost" : "btn-primary"}`}
-                      disabled={busyId === r.l2_id}
-                      onClick={() => void toggle(r)}
-                    >
-                      {r.is_visible ? "Скрыть" : "Показать"}
-                    </button>
+                    {r.l2_id === "uncategorized" ? (
+                      // Служебная категория (0230): видимость охраняет триггер базы,
+                      // переключатель в админке не нужен и не должен провоцировать ошибку.
+                      <span
+                        className="cell-sub"
+                        title="Служебная категория — задания отсюда переносят в «Без категории»"
+                      >
+                        Служебная
+                      </span>
+                    ) : (
+                      <button
+                        type="button"
+                        className={`btn ${r.is_visible ? "btn-ghost" : "btn-primary"}`}
+                        disabled={busyId === r.l2_id}
+                        onClick={() => void toggle(r)}
+                      >
+                        {r.is_visible ? "Скрыть" : "Показать"}
+                      </button>
+                    )}
                   </div>
                 ))}
               </div>

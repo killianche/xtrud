@@ -17,6 +17,7 @@ export type Section =
   | "verifications"
   | "recovery"
   | "instagram"
+  | "uncategorized"
   | "catalog"
   | "promo"
   | "broadcast"
@@ -75,6 +76,9 @@ export const NAV: Array<{ title: string | null; items: NavItem[] }> = [
         icon: Icon.image,
         count: (a) => a.instagram_pending ?? 0,
       },
+      // Счётчик — не из admin_attention (его не трогаем): длина своего же
+      // списка, см. useUncategorizedCount ниже (0230, №251).
+      { id: "uncategorized", label: "Без категории", path: "/uncategorized", icon: Icon.grid },
     ],
   },
   {
@@ -139,6 +143,33 @@ export function refreshAttention(): void {
   window.dispatchEvent(new Event("xtrud-admin-refresh"));
 }
 
+/**
+ * Счётчик «Без категории» — не серверный admin_attention (его не меняем по
+ * заданию), а длина своего же списка admin_list_uncategorized_orders.
+ */
+function useUncategorizedCount(): number {
+  const [count, setCount] = useState(0);
+  const load = useCallback(() => {
+    api
+      .listUncategorizedOrders(200)
+      .then((rows) => setCount(rows.length))
+      .catch(() => undefined);
+  }, []);
+  useEffect(() => {
+    load();
+    const timer = setInterval(load, 60_000);
+    const onFocus = () => load();
+    window.addEventListener("focus", onFocus);
+    window.addEventListener("xtrud-admin-refresh", onFocus);
+    return () => {
+      clearInterval(timer);
+      window.removeEventListener("focus", onFocus);
+      window.removeEventListener("xtrud-admin-refresh", onFocus);
+    };
+  }, [load]);
+  return count;
+}
+
 export function Shell({
   section,
   title,
@@ -153,6 +184,7 @@ export function Shell({
   children: ReactNode;
 }) {
   const attention = useAttention();
+  const uncategorizedCount = useUncategorizedCount();
   const [menuOpen, setMenuOpen] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [theme, setTheme] = useState<"light" | "dark">(initialTheme);
@@ -193,12 +225,13 @@ export function Shell({
       /* без сохранения — только на эту вкладку */
     }
   };
-  const totalQueue = attention
-    ? attention.reports_open +
-      attention.verifications_pending +
-      attention.recovery_new +
-      (attention.instagram_pending ?? 0)
-    : 0;
+  const totalQueue =
+    (attention
+      ? attention.reports_open +
+        attention.verifications_pending +
+        attention.recovery_new +
+        (attention.instagram_pending ?? 0)
+      : 0) + uncategorizedCount;
 
   return (
     <div className={`shell ${menuOpen ? "menu-open" : ""}`}>
@@ -219,7 +252,12 @@ export function Shell({
           <nav key={group.title ?? "top"} className="nav-group" aria-label={group.title ?? "Обзор"}>
             {group.title ? <div className="nav-group-title">{group.title}</div> : null}
             {group.items.map((item) => {
-              const count = attention && item.count ? item.count(attention) : 0;
+              const count =
+                item.id === "uncategorized"
+                  ? uncategorizedCount
+                  : attention && item.count
+                    ? item.count(attention)
+                    : 0;
               return (
                 <button
                   key={item.id}

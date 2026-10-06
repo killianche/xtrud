@@ -21,6 +21,7 @@ import { Recovery } from "./pages/Recovery";
 import { Reports } from "./pages/Reports";
 import { Reviews } from "./pages/Reviews";
 import { Settings } from "./pages/Settings";
+import { Uncategorized } from "./pages/Uncategorized";
 import { UserCard } from "./pages/UserCard";
 import { Users } from "./pages/Users";
 import { Verifications } from "./pages/Verifications";
@@ -112,6 +113,7 @@ export function App() {
     verifications: "verifications",
     recovery: "recovery",
     instagram: "instagram",
+    uncategorized: "uncategorized",
     catalog: "catalog",
     promo: "promo",
     broadcast: "broadcast",
@@ -157,6 +159,9 @@ export function App() {
         break;
       case "instagram":
         page = <Instagram onOpen={openUser} />;
+        break;
+      case "uncategorized":
+        page = <Uncategorized onOpenOrder={(id) => navigate(`/orders/${id}`)} />;
         break;
       case "catalog":
         page = <Catalog />;

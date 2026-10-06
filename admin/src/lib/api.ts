@@ -381,6 +381,39 @@ export interface VerificationRow {
   verification_level: number | null;
 }
 
+/** Задание в служебной категории «Без категории» (0230, №251). */
+export interface UncategorizedOrderRow {
+  id: string;
+  title: string;
+  description_short: string | null;
+  status: string;
+  created_at: string;
+  city_id: string | null;
+  city_name: string | null;
+  district: string | null;
+  village: string | null;
+  responses_count: number;
+  client_id: string;
+}
+
+/** Ответ admin_set_order_category: changed/notified — чтобы не писать лишний тост. */
+export interface SetOrderCategoryResult {
+  order_id: string;
+  l2_id: string;
+  l2_name?: string;
+  changed: boolean;
+  notified: boolean;
+}
+
+/** Ответ admin_create_category — новая видимая категория. */
+export interface CreateCategoryResult {
+  l2_id: string;
+  l1_id: string;
+  name_ru: string;
+  icon: string;
+  terms_count: number;
+}
+
 export interface ActionRow {
   id: string;
   performed_at: string;
@@ -431,6 +464,20 @@ function describe(error: { message?: string; code?: string } | null): string {
   if (message.includes("bad_days")) return "Период — от 1 до 365 дней.";
   if (message.includes("bad_visible")) return "Не указано, показать или скрыть.";
   if (message.includes("category_not_found")) return "Подраздел не найден.";
+  // Без категории (0230, №251): перенос задания и создание категории.
+  if (message.includes("bad_category")) return "Выберите настоящую категорию, не «Без категории».";
+  if (message.includes("section_not_found")) return "Раздел не найден.";
+  if (message.includes("bad_name")) {
+    return "Название — от 2 до 60 символов, без ссылок и служебных слов.";
+  }
+  if (message.includes("bad_icon")) return "Эта иконка не подходит — выберите другую.";
+  if (message.includes("too_many_terms")) return "Слов поиска не больше 30.";
+  if (message.includes("bad_term")) {
+    return "Слово поиска — от 2 до 80 символов, без ссылок и служебных слов.";
+  }
+  if (message.includes("category_exists")) return "Такая категория уже есть в каталоге.";
+  if (message.includes("slug_exhausted"))
+    return "Не удалось придумать id — попробуйте другое название.";
   if (message.includes("request_not_open")) return "Заявка уже закрыта.";
   if (message.includes("request_changed")) {
     return "Специалист успел изменить Instagram — обновите список и проверьте новое имя.";
@@ -761,4 +808,20 @@ export const api = {
     const path = await rpc<string>("admin_delete_promo_banner", { p_id: id });
     if (path) await deletePromoImage(path);
   },
+  /** Задания без категории (0230, №251): без телефонов, контактов и адреса. */
+  listUncategorizedOrders: (limit = 200) =>
+    rpc<UncategorizedOrderRow[]>("admin_list_uncategorized_orders", { p_limit: limit }),
+  setOrderCategory: (orderId: string, l2Id: string, reason: string) =>
+    rpc<SetOrderCategoryResult>("admin_set_order_category", {
+      p_order_id: orderId,
+      p_l2_id: l2Id,
+      p_reason: reason,
+    }),
+  createCategory: (l1Id: string, nameRu: string, icon: string, terms: string[]) =>
+    rpc<CreateCategoryResult>("admin_create_category", {
+      p_l1_id: l1Id,
+      p_name_ru: nameRu,
+      p_icon: icon,
+      p_terms: terms,
+    }),
 };

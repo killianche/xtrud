@@ -60,6 +60,7 @@ import { WhenFields } from "@/features/task-composer/WhenFields";
 import { useReducedMotion } from "@/hooks/use-reduced-motion";
 import { hapticWarning } from "@/lib/haptics";
 import { ALL_INGUSHETIA_CITY_ID, formatOrderPlace, getCityName } from "@/lib/location-config";
+import { UNCATEGORIZED_L2_ID } from "@/lib/product-scope";
 import { useBackGestureLock } from "@/lib/use-back-gesture-lock";
 import { useThemeColors } from "@/lib/use-theme-color";
 import { useUnsavedChangesGuard } from "@/lib/use-unsaved-changes-guard";
@@ -169,10 +170,14 @@ export default function TaskReviewScreen() {
   }
   if (!composer.ready) return null;
 
-  const categoryNames = [values.l2Id, ...values.extraL2Ids]
-    .map((id) => categories.data?.find((c) => c.id === id)?.name_ru)
-    .filter(Boolean)
-    .join(", ");
+  // «Без категории» скрыта из каталога — подпись своя (№251).
+  const categoryNames =
+    values.l2Id === UNCATEGORIZED_L2_ID
+      ? "Подберём сами"
+      : [values.l2Id, ...values.extraL2Ids]
+          .map((id) => categories.data?.find((c) => c.id === id)?.name_ru)
+          .filter(Boolean)
+          .join(", ");
   const open = (step: ComposerStep) =>
     router.push({ pathname: COMPOSER_ROUTE[step], params: { from: "review" } } as never);
   // Место не выбрано — пусто (форма покажет «Выбрать»), а не «Ингушетия»

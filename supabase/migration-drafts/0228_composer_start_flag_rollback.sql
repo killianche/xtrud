@@ -1,7 +1,6 @@
 -- Откат 0228: get_app_flags — ровно редакция 0217 (без composer_start),
--- журнал — редакция 0225, переключатель и строка настройки удаляются.
--- Записи журнала set_composer_start, если были, удаляются: иначе прежнее
--- ограничение не встанет.
+-- переключатель и строка настройки удаляются. Журнал и его ограничение не
+-- трогаются — журнал неизменяем (см. ниже).
 
 BEGIN;
 
@@ -9,19 +8,11 @@ SET LOCAL lock_timeout = '5s';
 
 DROP FUNCTION IF EXISTS public.admin_set_composer_start(text);
 DELETE FROM public.app_settings WHERE key = 'composer_start';
-DELETE FROM public.admin_actions WHERE action = 'set_composer_start';
 
-ALTER TABLE public.admin_actions DROP CONSTRAINT admin_actions_action_check;
-ALTER TABLE public.admin_actions ADD CONSTRAINT admin_actions_action_check CHECK (action = ANY (ARRAY[
-  'warn', 'suspend', 'unsuspend', 'ban', 'unban', 'hide', 'unhide', 'hide_order',
-  'dismiss_report', 'resolve_report', 'issue_signed_url', 'verification_approve',
-  'verification_reject', 'master_show', 'master_hide', 'set_password', 'set_phone',
-  'set_order_limits', 'set_find_screen', 'promo_banner_add', 'promo_banner_update',
-  'promo_banner_delete', 'resolve_recovery_request', 'restore_order', 'category_show',
-  'category_hide', 'set_find_tiles', 'broadcast_push', 'category_open_responses',
-  'set_require_login', 'instagram_approve', 'instagram_reject', 'experience_badge_grant',
-  'experience_badge_revoke'
-]::text[]));
+-- Журнал admin_actions неизменяем (триггеры admin_actions_no_delete/_no_update):
+-- записи 'set_composer_start' остаются, и список допустимых действий тоже остаётся с
+-- 'set_composer_start' — лишнее значение безвредно, а прежний CHECK не встал бы на
+-- уже сделанных записях (найдено проверкой безопасности 0230, 2026-10-06).
 
 CREATE OR REPLACE FUNCTION public.get_app_flags()
  RETURNS jsonb

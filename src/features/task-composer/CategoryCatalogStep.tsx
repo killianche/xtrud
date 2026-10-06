@@ -16,7 +16,9 @@ import { View } from "react-native";
 import { SearchField } from "@/components/ui";
 import { useCategoriesL1 } from "@/features/categories/use-categories-l1";
 import { useVisibleCategories } from "@/features/categories/use-visible-categories";
+import { UNCATEGORIZED_L2_ID } from "@/lib/product-scope";
 import { CategoryPickerTwoStep } from "./CategoryPickerTwoStep";
+import { ChoiceGroup, ChoiceRow } from "./ComposerRows";
 import { ComposerScreen } from "./ComposerScreen";
 import { useComposer } from "./composer-store";
 import { COMPOSER_SECTION_ROUTE, isStepValid } from "./steps";
@@ -31,7 +33,7 @@ export function CategoryCatalogStep({
   onBack?: () => void;
 }) {
   const router = useRouter();
-  const { values, patch } = useComposer();
+  const { values, patch, mode } = useComposer();
   const nav = useStepNavigation("category");
   const [query, setQuery] = useState("");
   const l1 = useCategoriesL1();
@@ -94,6 +96,18 @@ export function CategoryCatalogStep({
           void l1.refetch();
         }}
       />
+      {/* Не нашлось в каталоге — публикуем «Без категории», подберёт админ
+          (№251). Только для нового задания: у опубликованного категория уже есть. */}
+      {mode.kind === "create" && !query.trim() ? (
+        <ChoiceGroup footer="Задание увидят сразу, а категорию подберём сами.">
+          <ChoiceRow
+            title="Нет подходящей категории"
+            selected={values.l2Id === UNCATEGORIZED_L2_ID}
+            onPress={() => onPick(UNCATEGORIZED_L2_ID)}
+            last
+          />
+        </ChoiceGroup>
+      ) : null}
     </ComposerScreen>
   );
 }

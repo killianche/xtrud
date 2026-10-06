@@ -44,6 +44,8 @@ export const ACTION_LABEL: Record<string, string> = {
   experience_badge_grant: "Выдан значок «Большой опыт»",
   experience_badge_revoke: "Снят значок «Большой опыт»",
   instagram_reject: "Instagram отклонён",
+  order_set_category: "Категория задания назначена",
+  category_create: "Категория создана",
 };
 
 export function Journal() {

@@ -9,6 +9,7 @@ import { useOrderResponses } from "@/features/orders/use-order-responses";
 import { useRejectResponse } from "@/features/orders/use-reject-response";
 import { chooseAsync, showAlert } from "@/lib/alert";
 import { describeServerError } from "@/lib/describe-server-error";
+import { UNCATEGORIZED_L2_ID } from "@/lib/product-scope";
 import { useThemeColors } from "@/lib/use-theme-color";
 import { ClientMasterResponseCard } from "./ClientMasterResponseCard";
 
@@ -164,21 +165,24 @@ export function ClientResponsesSection({
                 исполнителя самому в каталоге.
               </AppText>
               <View className="mt-3 flex-row flex-wrap gap-2">
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel="Посмотреть специалистов раздела"
-                  onPress={() =>
-                    router.push({
-                      pathname: "/specialists/section",
-                      params: { l2: order.l2_id },
-                    } as never)
-                  }
-                  className="min-h-11 items-center justify-center rounded-pill bg-accent px-4 active:opacity-85"
-                >
-                  <AppText weight="semibold" className="text-body-sm text-on-accent">
-                    Специалисты раздела
-                  </AppText>
-                </Pressable>
+                {/* «Без категории» (№251) — своих специалистов нет, список был бы пуст. */}
+                {order.l2_id === UNCATEGORIZED_L2_ID ? null : (
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="Посмотреть специалистов раздела"
+                    onPress={() =>
+                      router.push({
+                        pathname: "/specialists/section",
+                        params: { l2: order.l2_id },
+                      } as never)
+                    }
+                    className="min-h-11 items-center justify-center rounded-pill bg-accent px-4 active:opacity-85"
+                  >
+                    <AppText weight="semibold" className="text-body-sm text-on-accent">
+                      Специалисты раздела
+                    </AppText>
+                  </Pressable>
+                )}
                 <Pressable
                   accessibilityRole="button"
                   accessibilityLabel="Изменить задание"

@@ -33,3 +33,11 @@ export function filterL2BySections<T extends { l1_id: string }>(
   const active = activeSectionIds(sections);
   return items.filter((c) => active.has(c.l1_id));
 }
+
+/**
+ * Служебная скрытая категория «Без категории» (0230, №251): задание, которому
+ * не подошла ни одна категория, публикуется в неё и попадает в очередь
+ * админки; админ назначает категорию или создаёт новую. В каталоге и выборе
+ * специалиста её нет (is_visible = false).
+ */
+export const UNCATEGORIZED_L2_ID = "uncategorized";

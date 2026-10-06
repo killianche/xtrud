@@ -97,6 +97,10 @@ export const RPC_ALLOWLIST = new Set([
   "admin_update_promo_banner",
   "admin_move_promo_banner",
   "admin_delete_promo_banner",
+  // Задания без категории (0230, №251): внутри проверка is_admin_session().
+  "admin_list_uncategorized_orders",
+  "admin_set_order_category",
+  "admin_create_category",
 ]);
 
 const NAME_RE = /^[a-z_][a-z0-9_]*$/;

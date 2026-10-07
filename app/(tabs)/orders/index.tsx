@@ -320,6 +320,9 @@ function OrdersList({ userId, contentTop, onScroll, header }: ListProps) {
             // Счётчик откликов важен, пока исполнитель не выбран.
             showResponsesCount={o.status === "open"}
             newResponsesCount={newByOrder?.get(o.id) ?? 0}
+            // Тот же знак, что в общей ленте: по нему автор узнаёт своё
+            // задание везде (№287).
+            isMine
             createdAt={o.created_at}
             status={o.status}
             statusView={item.statusView}

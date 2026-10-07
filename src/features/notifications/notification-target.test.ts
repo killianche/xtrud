@@ -74,4 +74,10 @@ describe("задание без категории — админу и упра�
       ),
     ).toBe("/admin/uncategorized");
   });
+
+  it("«Новая жалоба» ведёт в очередь жалоб (0240, №288)", () => {
+    expect(
+      notificationTargetFromData({ type: "system", kind: "new_report", report_id: "r" }, "u1"),
+    ).toBe("/admin/reports");
+  });
 });

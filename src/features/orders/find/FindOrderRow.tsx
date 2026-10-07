@@ -6,10 +6,13 @@ import type { OrderWithRefs } from "@/features/orders/use-my-orders";
 export function FindOrderRow({
   order: o,
   responded,
+  mine,
   onOpen,
 }: {
   order: OrderWithRefs;
   responded: boolean;
+  /** Задание текущего пользователя — плашка «Ваше задание» (№287). */
+  mine: boolean;
   onOpen: (id: string) => void;
 }) {
   return (
@@ -34,6 +37,7 @@ export function FindOrderRow({
       coverUrl={o.photo_urls?.[0] ?? null}
       photosCount={o.photo_urls?.length ?? 0}
       alreadyResponded={responded}
+      isMine={mine}
       onPress={() => onOpen(o.id)}
     />
   );

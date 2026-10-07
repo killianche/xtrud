@@ -68,6 +68,7 @@ export function MyOrdersShowcase({ userId }: { userId: string | undefined }) {
             budgetValue={o.budget_value}
             coverUrl={o.photo_urls?.[0] ?? null}
             photosCount={o.photo_urls?.length ?? 0}
+            isMine
             onPress={() => router.push(`/orders/${o.id}` as never)}
           />
         ))}

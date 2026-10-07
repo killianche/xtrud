@@ -152,6 +152,7 @@ export function FindFeed({
         <FindOrderRow
           order={item}
           responded={responded.has(item.id)}
+          mine={!!userId && item.client_id === userId}
           onOpen={(id) => router.push(`/orders/${id}` as never)}
         />
       )}

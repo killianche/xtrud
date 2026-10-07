@@ -142,6 +142,7 @@ export function ActiveOrdersShowcase({ userId }: { userId: string | undefined })
               status={o.status}
               budgetKind={o.budget_kind}
               budgetValue={o.budget_value}
+              isMine={!!userId && o.client_id === userId}
               onPress={() => router.push(`/orders/${o.id}` as never)}
             />
           ))

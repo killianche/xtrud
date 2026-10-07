@@ -36,7 +36,7 @@
 // поэтому обе темы корректны.
 
 import { Image as ExpoImage } from "expo-image";
-import { ArrowRight, ChatCenteredText, Phone } from "phosphor-react-native";
+import { ArrowRight, ChatCenteredText, Phone, UserCircle } from "phosphor-react-native";
 import { type GestureResponderEvent, Pressable, View } from "react-native";
 import { AppText } from "@/components/AppText";
 import { StatusPill } from "@/components/StatusPill";
@@ -103,6 +103,11 @@ export interface OrderRowProps {
   description?: string | null;
   /** Уже откликнулись — чип «Вы откликнулись» в подвале карточки. */
   alreadyResponded?: boolean;
+  /** Задание моё — плашка «Ваше задание» на месте «Вы откликнулись» (№287):
+   *  автор видит своё задание в общей ленте и узнаёт его по тому же знаку,
+   *  что в «Мои задания». На своё задание не откликаются, так что плашки
+   *  не встречаются. */
+  isMine?: boolean;
   /** Кнопка «Откликнуться» в карточке. Только в компактных подборках;
    *  основная лента открывает детали тапом по всей карточке. Скрывается,
    *  если уже откликнулись. */
@@ -191,7 +196,8 @@ export function OrderRow(props: OrderRowProps) {
   const pillIconKey = statusView?.iconKey;
   const pillIconWeight = statusView?.iconWeight;
   const isDimmed = statusView ? statusView.cardArchived : !!pillLabel;
-  const showButton = !!props.showRespondButton && !props.alreadyResponded;
+  const isMine = !!props.isMine;
+  const showButton = !!props.showRespondButton && !props.alreadyResponded && !isMine;
 
   const timingLabel = formatOrderTiming(props.urgency, props.preferredDate);
   const isUrgent = props.urgency === "urgent" && !isDimmed;
@@ -216,6 +222,7 @@ export function OrderRow(props: OrderRowProps) {
 
   const ariaLabel = [
     props.title,
+    isMine ? "Ваше задание" : null,
     uncategorized ? null : props.categoryName,
     pillLabel ?? timingLabel,
     locationLabel,
@@ -338,7 +345,7 @@ export function OrderRow(props: OrderRowProps) {
         ) : null}
 
         {/* Цена и действие. Число — крупно: ради него мастер и смотрит ленту. */}
-        {priceLabel || showButton || props.alreadyResponded ? (
+        {priceLabel || showButton || props.alreadyResponded || isMine ? (
           <View className="mt-3 flex-row items-center justify-between gap-3">
             {priceLabel ? (
               <AppText
@@ -366,6 +373,13 @@ export function OrderRow(props: OrderRowProps) {
                 </AppText>
                 <ArrowRight size={16} weight="bold" color={tc["on-accent"]} />
               </Pressable>
+            ) : isMine ? (
+              <View className="flex-row items-center gap-1 rounded-pill bg-accent-soft py-1.5 pr-3 pl-2">
+                <UserCircle size={18} weight="fill" color={tc.accent} />
+                <AppText weight="semibold" className="text-body-sm text-accent">
+                  Ваше задание
+                </AppText>
+              </View>
             ) : props.alreadyResponded && !myResponseLabel ? (
               <View className="rounded-pill bg-accent-soft px-3 py-1.5">
                 <AppText weight="semibold" className="text-body-sm text-accent">

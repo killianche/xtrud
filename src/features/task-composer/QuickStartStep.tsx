@@ -30,7 +30,6 @@
 import { useEffect, useMemo, useRef } from "react";
 import { AccessibilityInfo, Keyboard, type TextInput } from "react-native";
 import { AppText } from "@/components/AppText";
-import { searchCatalogByWords } from "@/features/categories/bundled-task-catalog";
 import type { TaskPhrase } from "@/features/categories/task-phrases";
 import { useTaskPhrases } from "@/features/categories/use-task-phrases";
 import { useVisibleCategories } from "@/features/categories/use-visible-categories";
@@ -82,7 +81,7 @@ export function QuickStartStep({ subtitle }: { subtitle?: string }) {
   // «Далее» без подсказки — категорию ставим сами (guess-category.ts).
   const continueWithText = () => {
     if (!canContinue) return;
-    const l2Id = guessCategoryId(phraseHits, searchCatalogByWords(text, 5), new Set(visibleIds));
+    const l2Id = guessCategoryId(phraseHits, new Set(visibleIds));
     goNext(l2Id, titleFromQuery(text));
   };
   const categoryById = (id: string) => categories.data?.find((c) => c.id === id);

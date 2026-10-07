@@ -174,35 +174,45 @@ export function searchTaskPhrases<T extends PhraseLike>(
   limit = 6,
 ): PhraseHit<T>[] {
   const endsWithSpace = /\s$/.test(query);
-  // Печатаемое последнее слово может оказаться началом другого («ко» →
-  // «котёл», «по» → «покраска»): отбрасываем только однобуквенное «в», «с»…
-  const all = words(query).filter(
-    (w, i, list) =>
-      !FUNCTION_WORDS.has(w) || (i === list.length - 1 && !endsWithSpace && w.length > 1),
-  );
-  if (all.length === 0) return [];
-  const significant = all.filter(
-    (w, i) => !STOP.has(w) || (i === all.length - 1 && !endsWithSpace),
-  );
-  const q = significant.length > 0 ? significant : all;
+  // Всё после первого предлога — уточнение места или предмета («поклеить
+  // обои | в спальне», «течёт кран | на кухне»): совпасть должны слова до
+  // него, уточнение лишь поднимает подходящие выше (№269). Печатаемое
+  // последнее слово может оказаться началом другого («ко» → «котёл»): тогда
+  // это не предлог — отбрасываем только однобуквенное «в», «с»…
+  const raw = words(query);
+  const items: { w: string; optional: boolean }[] = [];
+  let afterPreposition = false;
+  raw.forEach((w, i) => {
+    const typing = i === raw.length - 1 && !endsWithSpace;
+    if (FUNCTION_WORDS.has(w) && !(typing && w.length > 1)) {
+      afterPreposition = true;
+      return;
+    }
+    if (STOP.has(w) && !typing) return;
+    items.push({ w, optional: afterPreposition });
+  });
+  if (items.length === 0) return [];
+  const required = items.some((x) => !x.optional) ? items.filter((x) => !x.optional) : items;
+  const optional = required === items ? [] : items.filter((x) => x.optional);
+  const q = required.map((x) => x.w);
+  const matches = (qw: string, pw: readonly string[]) => {
+    // Синонимы работы (SAME_WORK) — и для печатаемого слова: начало в
+    // SAME_WORK не короче пяти букв, значит слово уже узнаваемо
+    // («убраться» без пробела после — уже уборка, №259).
+    const alts = alternatives(qw);
+    return pw.some((w) => wordMatches(qw, w) || (alts?.some((a) => w.startsWith(a)) ?? false));
+  };
 
   const hits: PhraseHit<T>[] = [];
   for (const phrase of phrases) {
     const pw = words(phrase.text);
-    let ok = true;
-    for (let i = 0; i < q.length && ok; i++) {
-      // Синонимы работы (SAME_WORK) — и для печатаемого слова: начало в
-      // SAME_WORK не короче пяти букв, значит слово уже узнаваемо
-      // («убраться» без пробела после — уже уборка, №259).
-      const qw = q[i] as string;
-      const alts = alternatives(qw);
-      ok = pw.some((w) => wordMatches(qw, w) || (alts?.some((a) => w.startsWith(a)) ?? false));
-    }
-    if (!ok) continue;
+    if (!q.every((qw) => matches(qw, pw))) continue;
     // Начинается с первого слова запроса — выше, но не настолько, чтобы
     // перебить частоту: «уборка» → и «Уборка квартиры», и «Генеральная уборка».
     const startsWithFirst = (pw[0] ?? "").startsWith(q[0] as string) ? 150 : 0;
-    const score = startsWithFirst + phrase.weight * 5 - pw.length;
+    // Совпавшее уточнение («в квартире») — выше остальных формулировок.
+    const context = optional.filter((x) => matches(x.w, pw)).length * 200;
+    const score = startsWithFirst + context + phrase.weight * 5 - pw.length;
     hits.push({ phrase, score });
   }
   hits.sort((a, b) => b.score - a.score || a.phrase.text.localeCompare(b.phrase.text, "ru"));

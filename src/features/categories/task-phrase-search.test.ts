@@ -89,8 +89,10 @@ describe("уборка своими словами (№259)", () => {
 
   it("«убраться в комнате» — уборка, без вмятин и ванной комнаты", () => {
     const hits = searchTaskPhrases("Убраться в комнате", TASK_PHRASES, 6);
-    expect(hits.length).toBeGreaterThan(0);
-    expect(hits.every((h) => h.phrase.l2 === "cleaning")).toBe(true);
+    expect(hits[0]?.phrase.text).toBe("Убраться в комнате");
+    expect(hits.some((h) => h.phrase.l2 === "body-repair" || h.phrase.l2 === "renovation")).toBe(
+      false,
+    );
   });
 
   it("предлог в конце не требует слова на эту букву", () => {

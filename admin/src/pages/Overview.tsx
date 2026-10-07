@@ -44,7 +44,7 @@ export function Overview({ navigate }: { navigate: (path: string) => void }) {
         { label: "Жалобы", value: attention.reports_open, hint: "ждут разбора", path: "/reports" },
         {
           label: "Звонки",
-          value: attention.recovery_new,
+          value: attention.recovery_new ?? 0,
           hint: "забыли пароль",
           path: "/recovery",
         },
@@ -56,7 +56,7 @@ export function Overview({ navigate }: { navigate: (path: string) => void }) {
         },
         {
           label: "Паспорта",
-          value: attention.verifications_pending,
+          value: attention.verifications_pending ?? 0,
           hint: "на проверке",
           path: "/verifications",
         },

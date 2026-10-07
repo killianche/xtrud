@@ -32,7 +32,7 @@ import {
 } from "@/components/ui";
 import { BottomEdgeEffect } from "@/components/ui/BottomEdgeEffect";
 import { Skeleton } from "@/components/ui/Skeleton";
-import { useAdminSetUserStatus, useIsAdmin } from "@/features/admin/use-admin-actions";
+import { useAdminSetUserStatus, useIsStaff } from "@/features/admin/use-admin-actions";
 import { GuestContactGate } from "@/features/auth/GuestContactGate";
 import { useAuthSession } from "@/features/auth/use-auth-session";
 import { blockConfirmMessage } from "@/features/blocking/blocking-copy";
@@ -65,6 +65,7 @@ import { showActionMenu } from "@/lib/action-menu";
 import { showAlert } from "@/lib/alert";
 import { getCategoryIcon } from "@/lib/category-icons";
 import { confirmAsync } from "@/lib/confirm";
+import { describeServerError } from "@/lib/describe-server-error";
 import { hapticSuccess } from "@/lib/haptics";
 import { cdnBlur, cdnImage } from "@/lib/image-cdn";
 import { getCityName } from "@/lib/location-config";
@@ -183,13 +184,13 @@ export default function MasterPublicScreen() {
       onError: (e) => showAlert("Не удалось заблокировать", blockingActionFailureMessage(e)),
     });
   };
-  const isAdmin = useIsAdmin(currentUserId);
+  const isStaff = useIsStaff(currentUserId);
   const adminStatus = useAdminSetUserStatus();
   const adminSetStatus = async (status: "banned" | "active") => {
     if (!masterId) return;
     const reason = await promptAsync({
       title: status === "banned" ? "Заблокировать аккаунт" : "Снять блокировку",
-      message: "Причина попадёт в журнал администратора.",
+      message: "Причина попадёт в журнал управления.",
       confirmText: status === "banned" ? "Заблокировать" : "Снять",
     });
     if (!reason) return;
@@ -197,7 +198,7 @@ export default function MasterPublicScreen() {
       { userId: masterId, status, reason },
       {
         onSuccess: () => hapticSuccess(),
-        onError: (e) => showAlert("Не получилось", e.message),
+        onError: (e) => showAlert("Не получилось", describeServerError(e, "Попробуйте ещё раз.")),
       },
     );
   };
@@ -205,12 +206,12 @@ export default function MasterPublicScreen() {
     const items: Array<{ label: string; onPress: () => void }> = [];
     if (currentUserId) items.push({ label: "Заблокировать", onPress: () => void handleBlock() });
     items.push({ label: "Пожаловаться", onPress: () => setReportOpen(true) });
-    if (isAdmin && !isOwn) {
+    if (isStaff && !isOwn) {
       items.push(
         u?.status === "banned"
-          ? { label: "Снять блокировку (админ)", onPress: () => void adminSetStatus("active") }
+          ? { label: "Снять блокировку аккаунта", onPress: () => void adminSetStatus("active") }
           : {
-              label: "Заблокировать аккаунт (админ)",
+              label: "Заблокировать аккаунт для всех",
               onPress: () => void adminSetStatus("banned"),
             },
       );

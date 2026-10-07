@@ -6,7 +6,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { api, type OrderRow, type UserRow } from "../lib/api";
 import { Icon } from "./icons";
-import { NAV } from "./Shell";
+import type { NAV } from "./Shell";
 import { formatPhone, fullName, statusLabel } from "./ui";
 
 interface Item {
@@ -18,9 +18,15 @@ interface Item {
 }
 
 export function CommandPalette({
+  nav,
+  searchPeople,
   onClose,
   onGo,
 }: {
+  /** Разделы, доступные роли (navFor). */
+  nav: typeof NAV;
+  /** Поиск людей и заданий — только админу (admin_list_users/orders, 0239). */
+  searchPeople: boolean;
   onClose: () => void;
   onGo: (path: string) => void;
 }) {
@@ -36,7 +42,7 @@ export function CommandPalette({
 
   useEffect(() => {
     const q = query.trim();
-    if (q.length < 2) {
+    if (q.length < 2 || !searchPeople) {
       setUsers([]);
       setOrders([]);
       return;
@@ -56,11 +62,12 @@ export function CommandPalette({
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [query]);
+  }, [query, searchPeople]);
 
   const items = useMemo<Item[]>(() => {
     const q = query.trim().toLowerCase();
-    const sections: Item[] = NAV.flatMap((g) => g.items)
+    const sections: Item[] = nav
+      .flatMap((g) => g.items)
       .filter((i) => !q || i.label.toLowerCase().includes(q))
       .map((i) => ({ key: `s-${i.id}`, group: "Разделы", label: i.label, path: i.path }));
     return [
@@ -80,7 +87,7 @@ export function CommandPalette({
         path: `/orders/${o.id}`,
       })),
     ];
-  }, [query, users, orders]);
+  }, [query, users, orders, nav]);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: новый список — выбор с начала
   useEffect(() => {
@@ -111,7 +118,7 @@ export function CommandPalette({
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           onKeyDown={onKeyDown}
-          placeholder="Имя, номер телефона, задание или раздел"
+          placeholder={searchPeople ? "Имя, номер телефона, задание или раздел" : "Раздел"}
           aria-label="Поиск"
         />
         <div className="palette-list" role="listbox">

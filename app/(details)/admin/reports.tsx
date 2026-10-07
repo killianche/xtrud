@@ -1,266 +1,233 @@
 /**
- * /admin/reports — очередь жалоб и модерация (Sprint I.5).
+ * /admin/reports — жалобы для админа и управляющего (№286,
+ * docs/STAFF_ROLES_2026-10.md). Те же функции базы, что у веб-админки
+ * (admin_list_reports, admin_resolve_report, санкции): каждое решение
+ * с причиной и в журнале admin_actions. Право проверяет база
+ * (`is_staff_session()`).
  *
- * Точка входа: хаб /admin → «Жалобы и модерация» (видно только админу).
- *
- * Что умеет:
- *  - Список жалоб (по статусу, default pending)
- *  - Open report → меню действий: dismiss / suspend user / hide review
- *  - Видимо только админу (RLS отсекает не-админов, list = []).
- *
- * Раньше этот экран был /admin (index). 2026-05-22 вынесен в /admin/reports,
- * а /admin стал хабом (рейтинг мастеров + модерация).
+ * Раньше экран менял таблицы напрямую (без причины и журнала) и показывал
+ * голый идентификатор предмета — решать по номеру нельзя.
  */
 
-import { CaretLeft, ShieldCheck, Warning, X } from "phosphor-react-native";
 import { useState } from "react";
-import { ActivityIndicator, Pressable, ScrollView, View } from "react-native";
+import { ActivityIndicator, Pressable, RefreshControl, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
-import { EmptyState } from "@/components/EmptyState";
-import {
-  type ReportWithReporter,
-  useReportsQueue,
-  useUpdateReport,
-  useUpdateReviewStatus,
-  useUpdateUserStatus,
-} from "@/features/admin/use-admin";
+import { ScreenHeader } from "@/components/ui";
 import { useAuthSession } from "@/features/auth/use-auth-session";
-import { useUserRecord } from "@/features/auth/use-user-record";
 import { REASON_LABELS } from "@/features/reports/use-create-report";
-import { chooseAsync } from "@/lib/alert";
+import {
+  type StaffReport,
+  type StaffReportAction,
+  useStaffReportAction,
+  useStaffReports,
+  useStaffRole,
+} from "@/features/staff/use-staff";
+import { chooseAsync, showAlert } from "@/lib/alert";
+import { describeServerError } from "@/lib/describe-server-error";
+import { hapticSuccess } from "@/lib/haptics";
+import { promptAsync } from "@/lib/prompt";
 import { useSafeBack } from "@/lib/use-safe-back";
 import { useThemeColors } from "@/lib/use-theme-color";
 
-const STATUS_FILTERS = [
-  { key: "pending" as const, label: "На рассмотрении" },
-  { key: "reviewed" as const, label: "В работе" },
-  { key: "resolved" as const, label: "Решены" },
-  { key: "dismissed" as const, label: "Отклонены" },
-  { key: "all" as const, label: "Все" },
+const FILTERS: { key: StaffReport["status"] | null; label: string }[] = [
+  { key: "pending", label: "Ждут разбора" },
+  { key: "resolved", label: "Решены" },
+  { key: "dismissed", label: "Отклонены" },
+  { key: null, label: "Все" },
 ];
 
-function ReportCard({
-  item,
-  onAction,
-}: {
-  item: ReportWithReporter;
-  onAction: (item: ReportWithReporter) => void;
-}) {
-  const tc = useThemeColors(["success"]);
-  const reporterName =
-    [item.reporter?.first_name, item.reporter?.last_name].filter(Boolean).join(" ") || "Аноним";
+const TARGET_LABEL: Record<StaffReport["target_type"], string> = {
+  user: "Пользователь",
+  order: "Задание",
+  review: "Отзыв",
+  message: "Сообщение",
+};
+
+const STATUS_LABEL: Record<StaffReport["status"], string> = {
+  pending: "Ждёт разбора",
+  reviewed: "Рассмотрена",
+  resolved: "Решена",
+  dismissed: "Отклонена",
+};
+
+type ActionId = StaffReportAction["kind"];
+
+const ACTION_TEXT: Record<ActionId, string> = {
+  dismiss: "Отклонить жалобу",
+  resolve: "Закрыть как решённую",
+  warn: "Предупредить",
+  suspend: "Приостановить аккаунт",
+  ban: "Заблокировать аккаунт",
+  hide_order: "Скрыть задание",
+  hide_review: "Скрыть отзыв",
+};
+
+function ReportCard({ item, onPress }: { item: StaffReport; onPress: () => void }) {
   const created = new Date(item.created_at).toLocaleString("ru-RU", {
-    day: "2-digit",
+    day: "numeric",
     month: "short",
     hour: "2-digit",
     minute: "2-digit",
   });
-
+  const pending = item.status === "pending";
+  const reason = REASON_LABELS[item.reason as keyof typeof REASON_LABELS] ?? item.reason;
   return (
     <Pressable
       accessibilityRole="button"
-      onPress={() => onAction(item)}
-      className="rounded-lg border border-hairline bg-canvas p-4 active:opacity-70"
+      accessibilityHint={pending ? "Открывает действия по жалобе" : undefined}
+      disabled={!pending}
+      onPress={onPress}
+      className="gap-1.5 rounded-2xl bg-surface-card p-4 active:opacity-80"
     >
-      <View className="flex-row items-start justify-between gap-2">
-        <View className="flex-row items-center gap-2">
-          <View className="rounded-pill bg-error-soft px-2 py-1">
-            <AppText weight="medium" className="text-caption text-error">
-              {REASON_LABELS[item.reason]}
-            </AppText>
-          </View>
-          <View className="rounded-pill bg-surface-2 px-2 py-1">
-            <AppText weight="medium" className="text-caption text-body">
-              {item.target_type}
-            </AppText>
-          </View>
-        </View>
-        <AppText className="text-caption text-muted-soft">{created}</AppText>
-      </View>
-
-      <AppText weight="semibold" className="mt-2 text-body-md text-ink" numberOfLines={2}>
-        От {reporterName}
-      </AppText>
-
-      {item.description && (
-        <AppText className="mt-1 text-caption text-muted" numberOfLines={3}>
-          {item.description}
+      <View className="flex-row items-start justify-between gap-3">
+        <AppText weight="semibold" className="flex-1 text-ios-body text-ink">
+          {reason}
         </AppText>
-      )}
-
-      <AppText className="mt-2 text-caption text-muted-soft">
-        target_id: {item.target_id.slice(0, 8)}…
+        <AppText className="text-ios-footnote text-mute">{created}</AppText>
+      </View>
+      <AppText className="text-ios-subheadline text-body" numberOfLines={3}>
+        {TARGET_LABEL[item.target_type]}
+        {item.target_label ? `: ${item.target_label}` : ""}
       </AppText>
-
-      {item.status !== "pending" && (
-        <View className="mt-2 flex-row items-center gap-1">
-          <ShieldCheck size={12} weight="bold" color={tc.success} />
-          <AppText weight="medium" className="text-caption text-success">
-            {item.status}
-          </AppText>
-        </View>
-      )}
+      {item.description ? (
+        <AppText className="text-ios-subheadline text-mute" numberOfLines={4}>
+          «{item.description}»
+        </AppText>
+      ) : null}
+      <AppText className="text-ios-footnote text-mute">
+        {item.reporter_label ? `От: ${item.reporter_label}` : "Автор неизвестен"}
+        {item.reports_on_target > 1 ? ` · жалоб на это: ${item.reports_on_target}` : ""}
+      </AppText>
+      {!pending ? (
+        <AppText weight="semibold" className="text-ios-footnote text-mute">
+          {STATUS_LABEL[item.status]}
+        </AppText>
+      ) : null}
     </Pressable>
   );
 }
 
-export default function AdminReportsScreen() {
+export default function StaffReportsScreen() {
   const insets = useSafeAreaInsets();
   const { session } = useAuthSession();
-  const userId = session?.user?.id;
-  const { data: user } = useUserRecord(userId);
-  const isAdmin = (user as { is_admin?: boolean } | null)?.is_admin === true;
-
-  const [statusFilter, setStatusFilter] =
-    useState<(typeof STATUS_FILTERS)[number]["key"]>("pending");
-  const reports = useReportsQueue(statusFilter);
-  const updateReport = useUpdateReport();
-  const updateUser = useUpdateUserStatus();
-  const updateReview = useUpdateReviewStatus();
-  const tc = useThemeColors(["ink"]);
+  const role = useStaffRole(session?.user?.id);
+  const [filter, setFilter] = useState<StaffReport["status"] | null>("pending");
+  const reports = useStaffReports(filter, !!role);
+  const act = useStaffReportAction();
+  const tc = useThemeColors(["mute"]);
   const goBack = useSafeBack("/admin" as const);
 
-  if (user && !isAdmin) {
-    return (
-      <View
-        className="flex-1 items-center justify-center bg-canvas px-6"
-        style={{ paddingTop: insets.top }}
-      >
-        <EmptyState
-          icon={Warning}
-          title="Доступ запрещён"
-          hint="Эта страница только для админов."
-        />
-        <Pressable
-          accessibilityRole="button"
-          onPress={goBack}
-          className="mt-4 min-h-11 items-center justify-center rounded-md border border-hairline px-4 active:opacity-70"
-        >
-          <AppText weight="medium" className="text-caption text-ink">
-            Назад
-          </AppText>
-        </Pressable>
-      </View>
-    );
-  }
-
-  const handleAction = async (item: ReportWithReporter) => {
-    if (!userId) return;
-    const choice = await chooseAsync<"dismiss" | "suspend" | "hide_review">({
-      title: "Действие по жалобе",
-      message: `Причина: ${REASON_LABELS[item.reason]}\nТип: ${item.target_type}\nID: ${item.target_id}`,
-      options: [
-        { id: "dismiss", text: "Отклонить жалобу" },
-        ...(item.target_type === "user"
-          ? [{ id: "suspend" as const, text: "Приостановить пользователя", destructive: true }]
-          : []),
-        ...(item.target_type === "review"
-          ? [{ id: "hide_review" as const, text: "Скрыть отзыв", destructive: true }]
-          : []),
-      ],
+  const handle = async (r: StaffReport) => {
+    if (act.isPending) return;
+    const ids: ActionId[] = ["dismiss"];
+    if (r.target_user_id) ids.push("warn", "suspend", "ban");
+    if (r.target_type === "order") ids.push("hide_order");
+    if (r.target_type === "review") ids.push("hide_review");
+    ids.push("resolve");
+    const choice = await chooseAsync<ActionId>({
+      title: "Решение по жалобе",
+      message: r.target_label ?? undefined,
+      options: ids.map((id) => ({
+        id,
+        text: ACTION_TEXT[id],
+        destructive: id === "ban" || id === "suspend" || id.startsWith("hide_"),
+      })),
     });
-    if (choice === "dismiss") {
-      updateReport.mutate({ reportId: item.id, status: "dismissed", reviewerId: userId });
+    if (!choice) return;
+    const reason = await promptAsync({
+      title: ACTION_TEXT[choice],
+      message: "Причина попадёт в журнал управления.",
+      confirmText: "Готово",
+    });
+    if (!reason || reason.trim().length < 3) {
+      if (reason !== null) showAlert("Нужна причина", "Напишите хотя бы пару слов.");
+      return;
     }
-    if (choice === "suspend") {
-      updateUser.mutate({ userId: item.target_id, status: "suspended" });
-      updateReport.mutate({
-        reportId: item.id,
-        status: "resolved",
-        reviewerId: userId,
-        adminNote: "Пользователь приостановлен",
-      });
-    }
-    if (choice === "hide_review") {
-      updateReview.mutate({ reviewId: item.target_id, status: "hidden" });
-      updateReport.mutate({
-        reportId: item.id,
-        status: "resolved",
-        reviewerId: userId,
-        adminNote: "Отзыв скрыт",
-      });
-    }
+    act.mutate(
+      { report: r, action: { kind: choice } as StaffReportAction, reason: reason.trim() },
+      {
+        onSuccess: () => hapticSuccess(),
+        onError: (e) => showAlert("Не получилось", describeServerError(e, "Попробуйте ещё раз.")),
+      },
+    );
   };
 
+  const rows = reports.data ?? [];
   return (
-    <View className="flex-1 bg-canvas" style={{ paddingTop: insets.top }}>
-      <View className="flex-row items-center gap-2 px-3 py-2">
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Назад"
-          onPress={goBack}
-          hitSlop={12}
-          className="h-12 w-12 items-center justify-center rounded-full active:opacity-70"
-        >
-          <CaretLeft size={28} weight="bold" color={tc.ink} />
-        </Pressable>
-        <AppText weight="bold" className="flex-1 text-title-lg text-ink">
-          Модерация
+    <View className="flex-1 bg-surface-page" style={{ paddingTop: insets.top }}>
+      <ScreenHeader title="Жалобы" onBack={goBack} />
+      {role === undefined ? (
+        <ActivityIndicator className="mt-8" color={tc.mute} />
+      ) : role === null ? (
+        <AppText className="px-6 pt-6 text-ios-body text-mute">
+          Раздел только для администраторов и управляющих.
         </AppText>
-      </View>
-
-      <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-        <View className="flex-row gap-2 px-6 pb-3">
-          {STATUS_FILTERS.map((f) => {
-            const selected = statusFilter === f.key;
-            return (
-              <Pressable
-                key={f.key}
-                accessibilityRole="button"
-                accessibilityState={{ selected }}
-                onPress={() => setStatusFilter(f.key)}
-                className={`h-9 items-center justify-center rounded-pill px-3 active:opacity-70 ${
-                  selected ? "bg-primary" : "bg-surface-2"
-                }`}
-              >
-                <AppText
-                  weight="medium"
-                  className={`text-caption ${selected ? "text-on-primary" : "text-body"}`}
-                >
-                  {f.label}
+      ) : (
+        <>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} className="grow-0">
+            <View className="flex-row gap-2 px-4 pt-2 pb-3">
+              {FILTERS.map((f) => {
+                const selected = filter === f.key;
+                return (
+                  <Pressable
+                    key={f.label}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected }}
+                    onPress={() => setFilter(f.key)}
+                    className={`min-h-11 justify-center rounded-full px-4 active:opacity-70 ${
+                      selected ? "bg-accent" : "bg-surface-card"
+                    }`}
+                  >
+                    <AppText
+                      weight="semibold"
+                      className={`text-ios-subheadline ${selected ? "text-on-accent" : "text-ink"}`}
+                    >
+                      {f.label}
+                    </AppText>
+                  </Pressable>
+                );
+              })}
+            </View>
+          </ScrollView>
+          <ScrollView
+            contentContainerStyle={{
+              padding: 16,
+              paddingTop: 4,
+              gap: 12,
+              paddingBottom: insets.bottom + 24,
+            }}
+            refreshControl={
+              <RefreshControl
+                refreshing={reports.isRefetching}
+                onRefresh={() => void reports.refetch()}
+              />
+            }
+          >
+            {reports.isLoading ? (
+              <ActivityIndicator className="mt-8" color={tc.mute} />
+            ) : reports.error ? (
+              <View className="items-center gap-3 pt-8">
+                <AppText className="text-center text-ios-body text-mute">
+                  Не удалось загрузить. Проверьте связь.
                 </AppText>
-              </Pressable>
-            );
-          })}
-        </View>
-      </ScrollView>
-
-      {reports.isLoading && (
-        <View className="mt-8 items-center">
-          <ActivityIndicator />
-        </View>
-      )}
-
-      {reports.error && (
-        <View className="mt-8 px-6">
-          <AppText weight="medium" className="text-caption text-error">
-            Не удалось загрузить. {reports.error.message}
-          </AppText>
-        </View>
-      )}
-
-      {reports.data && reports.data.length === 0 && !reports.isLoading && (
-        <View className="flex-1 items-center justify-center">
-          <EmptyState
-            icon={X}
-            title="Пусто"
-            hint={`Нет жалоб в статусе «${STATUS_FILTERS.find((s) => s.key === statusFilter)?.label}».`}
-          />
-        </View>
-      )}
-
-      {reports.data && reports.data.length > 0 && (
-        <ScrollView
-          contentContainerStyle={{ paddingBottom: insets.bottom + 24 }}
-          showsVerticalScrollIndicator={false}
-        >
-          <View className="gap-3 px-6 pt-2 pb-4">
-            {reports.data.map((item) => (
-              <ReportCard key={item.id} item={item} onAction={handleAction} />
-            ))}
-          </View>
-        </ScrollView>
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={() => void reports.refetch()}
+                  className="min-h-11 justify-center px-4 active:opacity-60"
+                >
+                  <AppText className="text-ios-body text-accent">Повторить</AppText>
+                </Pressable>
+              </View>
+            ) : rows.length === 0 ? (
+              <AppText className="pt-8 text-center text-ios-body text-mute">
+                {filter === "pending" ? "Новых жалоб нет." : "Здесь пусто."}
+              </AppText>
+            ) : (
+              rows.map((r) => <ReportCard key={r.id} item={r} onPress={() => void handle(r)} />)
+            )}
+          </ScrollView>
+        </>
       )}
     </View>
   );

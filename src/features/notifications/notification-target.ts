@@ -25,6 +25,9 @@ export function notificationTargetFromData(
   if (d.type === "master_hidden" || d.type === "master_shown") return "/profile/specialist";
   // Значок «Большой опыт» (0225) — в свой профиль, где его видят клиенты.
   if (d.type === "experience_badge") return userId ? `/master/${userId}` : null;
+  // Админу и управляющему: «Новое задание без категории» (0230/0236) —
+  // список «Без категории» в приложении, где назначают категорию (№286).
+  if (d.kind === "uncategorized_order") return "/admin/uncategorized";
   const orderId = typeof d.order_id === "string" && UUID.test(d.order_id) ? d.order_id : null;
   return orderId ? `/orders/${orderId}` : null;
 }

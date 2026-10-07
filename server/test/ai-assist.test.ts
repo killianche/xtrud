@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   type AssistDeps,
   buildAssistMessages,
-  loadOrderTitleAsAdmin,
+  loadOrderTitleAsStaff,
   PerUserWindow,
   parseAssistAnswer,
   type QueryClient,
@@ -177,7 +177,7 @@ describe("промпт помощника", () => {
   });
 });
 
-/** Поддельный клиент: is_admin_session() и admin_order_card. */
+/** Поддельный клиент: is_staff_session() и admin_order_card. */
 function fakeClient(
   isAdmin: boolean,
   title: string | null = "Выкопать колодец",
@@ -187,7 +187,7 @@ function fakeClient(
   const client: QueryClient = {
     query: async (text: string) => {
       sql.push(text);
-      if (text.includes("is_admin_session")) return { rows: [{ ok: isAdmin }] };
+      if (text.includes("is_staff_session")) return { rows: [{ ok: isAdmin }] };
       if (text.includes("admin_order_card")) {
         if (!isAdmin) throw Object.assign(new Error("forbidden"), { code: "42501" });
         return { rows: [{ card: title === null ? null : { order: { title, l2_id: l2Id } } }] };
@@ -198,22 +198,25 @@ function fakeClient(
   return { client, sql };
 }
 
-describe("loadOrderTitleAsAdmin", () => {
+describe("loadOrderTitleAsStaff", () => {
   it("задание с категорией — 409: в DeepSeek уходит лишь «без категории» (№282)", async () => {
     const f = fakeClient(true, "Поменять розетку", "electrical");
-    const err = await loadOrderTitleAsAdmin(f.client, ORDER).catch((e) => e);
+    const err = await loadOrderTitleAsStaff(f.client, ORDER).catch((e) => e);
     expect(err).toMatchObject({ status: 409 });
   });
 
-  it("не админ — 403 до чтения задания", async () => {
+  it("не сотрудник — 403 до чтения задания", async () => {
     const f = fakeClient(false);
-    const err = await loadOrderTitleAsAdmin(f.client, ORDER).catch((e) => e);
+    const err = await loadOrderTitleAsStaff(f.client, ORDER).catch((e) => e);
     expect(err.status).toBe(403);
     expect(f.sql).toHaveLength(1);
   });
-  it("админ — название задания", async () => {
+  it("админ или управляющий (is_staff_session, 0239) — название задания", async () => {
     const f = fakeClient(true);
-    expect(await loadOrderTitleAsAdmin(f.client, ORDER)).toBe("Выкопать колодец");
+    expect(await loadOrderTitleAsStaff(f.client, ORDER)).toBe("Выкопать колодец");
+    // Доступ решает база: is_staff_session(), а не is_admin_session() (№286).
+    expect(f.sql[0]).toContain("public.is_staff_session()");
+    expect(f.sql.join("\n")).not.toContain("is_admin_session");
   });
 });
 

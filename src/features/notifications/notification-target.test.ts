@@ -64,3 +64,14 @@ describe("mergePushData", () => {
     expect(mergePushData([1], undefined)).toEqual({});
   });
 });
+
+describe("задание без категории — админу и управляющему (№286)", () => {
+  it("ведёт в «Без категории» в приложении", () => {
+    expect(
+      notificationTargetFromData(
+        { type: "system", kind: "uncategorized_order", uncategorized_order_id: "x" },
+        "u1",
+      ),
+    ).toBe("/admin/uncategorized");
+  });
+});

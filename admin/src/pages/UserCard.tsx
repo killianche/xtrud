@@ -13,6 +13,7 @@ import {
   SkeletonRows,
 } from "../components/ui";
 import { api, type UserCard as UserCardData, type UserStatus } from "../lib/api";
+import { useStaffRole } from "../lib/role";
 
 function Row({ label, value }: { label: string; value: string }) {
   return (
@@ -350,6 +351,8 @@ function Sanctions({
 }
 
 export function UserCard({ userId, onBack }: { userId: string; onBack: () => void }) {
+  // Управляющему пароль и номер входа закрыты, телефон база не отдаёт (0239).
+  const isAdminSession = useStaffRole() === "admin";
   const [card, setCard] = useState<UserCardData | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -374,7 +377,7 @@ export function UserCard({ userId, onBack }: { userId: string; onBack: () => voi
       <div className="page-header">
         <div>
           <button type="button" className="nav-link" onClick={onBack} style={{ paddingLeft: 0 }}>
-            ← Все люди
+            {isAdminSession ? "← Все люди" : "← Назад"}
           </button>
           <h1 className="heading-lg" style={{ marginTop: 4 }}>
             {fullName(user.first_name, user.last_name)}
@@ -390,8 +393,12 @@ export function UserCard({ userId, onBack }: { userId: string; onBack: () => voi
       <div className="grid-two">
         <div className="card stack">
           <p className="mono-eyebrow">Профиль</p>
-          <Row label="Номер" value={formatPhone(user.phone)} />
-          <Row label="Адрес входа" value={user.login_email ?? "—"} />
+          {isAdminSession ? (
+            <>
+              <Row label="Номер" value={formatPhone(user.phone)} />
+              <Row label="Адрес входа" value={user.login_email ?? "—"} />
+            </>
+          ) : null}
           <Row label="Юзернейм" value={user.username ? `@${user.username}` : "—"} />
           <Row label="Город" value={user.city_id ?? "—"} />
           <Row label="Район" value={user.district ?? "—"} />
@@ -400,12 +407,16 @@ export function UserCard({ userId, onBack }: { userId: string; onBack: () => voi
         </div>
 
         <div className="stack">
-          <div className="card">
-            <PasswordForm userId={user.id} onDone={load} />
-          </div>
-          <div className="card">
-            <PhoneForm userId={user.id} current={user.phone} onDone={load} />
-          </div>
+          {isAdminSession ? (
+            <>
+              <div className="card">
+                <PasswordForm userId={user.id} onDone={load} />
+              </div>
+              <div className="card">
+                <PhoneForm userId={user.id} current={user.phone} onDone={load} />
+              </div>
+            </>
+          ) : null}
           <div className="card">
             <Sanctions
               userId={user.id}

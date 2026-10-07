@@ -8,11 +8,18 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useUserRecord } from "@/features/auth/use-user-record";
+import { useStaffRole } from "@/features/staff/use-staff";
 import { supabase } from "@/lib/supabase";
 
 export function useIsAdmin(userId: string | undefined): boolean {
   const { data } = useUserRecord(userId);
   return data?.is_admin === true;
+}
+
+/** Админ или управляющий (№286): скрыть задание, заблокировать, назначить
+ *  категорию. База проверяет то же через `is_staff_session()`. */
+export function useIsStaff(userId: string | undefined): boolean {
+  return !!useStaffRole(userId);
 }
 
 export type AdminUserStatus = "active" | "suspended" | "banned";

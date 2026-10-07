@@ -189,11 +189,27 @@ export interface UserCard {
 /** Очереди «Требует внимания» (admin_attention, 0215). */
 export interface Attention {
   reports_open: number;
-  verifications_pending: number;
-  recovery_new: number;
-  masters_pending: number;
+  /** Управляющему — null: паспорта, восстановление, анкеты и Instagram только у админа (0239). */
+  verifications_pending: number | null;
+  recovery_new: number | null;
+  masters_pending: number | null;
   /** Заявки Instagram на проверке (0218). */
-  instagram_pending?: number;
+  instagram_pending?: number | null;
+}
+
+/** Роль в управлении (0239, №286): админ или управляющий. */
+export type StaffRole = "admin" | "manager";
+
+/** Сотрудник в разделе «Команда» (admin_list_staff, 0239) — только админу. */
+export interface StaffRow {
+  id: string;
+  first_name: string | null;
+  last_name: string | null;
+  phone: string | null;
+  role: StaffRole;
+  status: string;
+  is_demo: boolean;
+  last_active_at: string | null;
 }
 
 export interface InstagramRequestRow {
@@ -589,8 +605,20 @@ export interface ActionRow {
 function describe(error: { message?: string; code?: string } | null): string {
   const code = error?.code ?? "";
   const message = error?.message ?? "";
+  // Коды 0239 идут с 42501 — разбираем их раньше общего «нет прав».
+  if (message.includes("cannot_sanction_staff")) {
+    return "Аккаунт сотрудника может заблокировать только администратор.";
+  }
+  if (message.includes("cannot_change_self")) return "Свою роль поменять нельзя.";
+  if (message.includes("admin_managed_by_owner")) {
+    return "Права администратора меняются только вручную в базе — напишите владельцу.";
+  }
+  if (message.includes("user_not_eligible")) {
+    return "Роль можно дать только активному обычному аккаунту.";
+  }
+  if (message.includes("bad_role")) return "Недопустимая роль.";
   if (code === "42501" || message.includes("forbidden")) {
-    return "Нет прав администратора для этого действия.";
+    return "Нет прав для этого действия.";
   }
   // Тексты функций баннеров (0206) уже человеческие — показываем как есть.
   if (
@@ -800,6 +828,16 @@ export const api = {
     if (status >= 400 || !url) throw new Error("Не удалось открыть фото документа.");
     return url;
   },
+  /** Роль текущего входа: admin | manager | null (0239). Читается из базы,
+   *  поэтому снятие роли действует сразу. */
+  myStaffRole: () => rpc<StaffRole | null>("my_staff_role"),
+  listStaff: () => rpc<StaffRow[]>("admin_list_staff"),
+  /** Только управляющие: админа меняет владелец базы вручную (0239). */
+  setStaffRole: (userId: string, role: "manager" | null, reason: string) =>
+    rpc<{ ok: boolean; from: StaffRole | null; to: StaffRole | null; changed: boolean }>(
+      "admin_set_staff_role",
+      { p_user_id: userId, p_role: role, p_reason: reason },
+    ),
   listUsers: (search: string, limit = 50, offset = 0) =>
     rpc<UserRow[]>("admin_list_users", {
       p_search: search.trim() === "" ? null : search.trim(),

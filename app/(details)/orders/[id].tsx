@@ -6,7 +6,11 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
 import { GLASS_BUTTON_HEIGHT, GlassButton, ScreenHeader, Skeleton } from "@/components/ui";
 import { BottomEdgeEffect } from "@/components/ui/BottomEdgeEffect";
-import { useAdminHideOrder, useIsAdmin } from "@/features/admin/use-admin-actions";
+import {
+  useAdminHideOrder,
+  useAdminSetUserStatus,
+  useIsStaff,
+} from "@/features/admin/use-admin-actions";
 import { useAuthSession } from "@/features/auth/use-auth-session";
 import { blockConfirmMessage, blockSuccessMessage } from "@/features/blocking/blocking-copy";
 import { blockingActionFailureMessage } from "@/features/blocking/blocking-error-message";
@@ -36,6 +40,7 @@ import { useAuthReturnUrlStore } from "@/lib/auth-return-url-store";
 import { confirmAsync } from "@/lib/confirm";
 import { describeServerError } from "@/lib/describe-server-error";
 import { hapticError, hapticSuccess } from "@/lib/haptics";
+import { UNCATEGORIZED_L2_ID } from "@/lib/product-scope";
 import { promptAsync } from "@/lib/prompt";
 import { useSafeBack } from "@/lib/use-safe-back";
 import { useThemeColors } from "@/lib/use-theme-color";
@@ -308,7 +313,7 @@ export default function OrderDetailScreen() {
   //   чужой заказ:        Заблокировать заказчика, Пожаловаться
   //                       (UGC safety, App Store Guideline 1.2)
   // Максимум 2 пункта видно одновременно в любой комбинации статуса/владения.
-  const isAdmin = useIsAdmin(userId);
+  const isStaff = useIsStaff(userId);
   const adminHideOrder = useAdminHideOrder();
   const adminHide = async () => {
     if (!id) return;
@@ -325,7 +330,27 @@ export default function OrderDetailScreen() {
           hapticSuccess();
           router.back();
         },
-        onError: (e) => showAlert("Не получилось", e.message),
+        onError: (e) => showAlert("Не получилось", describeServerError(e, "Попробуйте ещё раз.")),
+      },
+    );
+  };
+  // Блокировка автора для всех (№286): база не даст тронуть сотрудника
+  // ('cannot_sanction_staff'), причина — в журнал управления.
+  const adminUserStatus = useAdminSetUserStatus();
+  const adminBanClient = async () => {
+    if (!order?.client_id) return;
+    const reason = await promptAsync({
+      title: "Заблокировать аккаунт",
+      message: "Человек не сможет входить в приложение. Причина попадёт в журнал управления.",
+      confirmText: "Заблокировать",
+    });
+    if (!reason) return;
+    adminUserStatus.mutate(
+      { userId: order.client_id, status: "banned", reason },
+      {
+        onSuccess: () => hapticSuccess(),
+        onError: (e) =>
+          showAlert("Не удалось заблокировать", describeServerError(e, "Попробуйте ещё раз.")),
       },
     );
   };
@@ -373,11 +398,29 @@ export default function OrderDetailScreen() {
         onPress: () => setReportOpen(true),
       });
     }
-    if (isAdmin && !isOwner && (order.status === "open" || order.status === "in_progress")) {
+    // Админ и управляющий (№286): категория для задания без неё и скрытие.
+    if (isStaff && order.status === "open" && order.l2_id === UNCATEGORIZED_L2_ID) {
       items.push({
-        label: "Скрыть задание (админ)",
+        label: "Назначить категорию",
+        onPress: () =>
+          router.push({
+            pathname: "/admin/assign-category",
+            params: { orderId: id, title: order.title },
+          } as never),
+      });
+    }
+    if (isStaff && !isOwner && (order.status === "open" || order.status === "in_progress")) {
+      items.push({
+        label: "Скрыть задание для всех",
         destructive: true,
         onPress: () => void adminHide(),
+      });
+    }
+    if (isStaff && !isOwner && order.client_id) {
+      items.push({
+        label: "Заблокировать аккаунт для всех",
+        destructive: true,
+        onPress: () => void adminBanClient(),
       });
     }
     showActionMenu({ title: "Действия с заданием", items, colorScheme });

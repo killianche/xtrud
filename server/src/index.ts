@@ -141,8 +141,9 @@ await app.register(
     });
     registerRpcRoutes(scope, db, tokens);
     // Помощник админа по категории (№282) — только с ключом DeepSeek. Своя
-    // область: лимит 30/мин по IP и 30/мин на админа, доступ — проверкой
-    // is_admin_session() в базе. Ничего в базе не меняет.
+    // область: лимит 30/мин по IP и 30/мин на сотрудника, доступ — проверкой
+    // is_staff_session() в базе (админ или управляющий, 0239). Ничего в базе
+    // не меняет.
     if (cfg.DEEPSEEK_API_KEY !== undefined) {
       const apiKey = cfg.DEEPSEEK_API_KEY;
       await scope.register(async (aiScope) => {

@@ -97,7 +97,8 @@ export const RPC_ALLOWLIST = new Set([
   "admin_update_promo_banner",
   "admin_move_promo_banner",
   "admin_delete_promo_banner",
-  // Задания без категории (0230, №251): внутри проверка is_admin_session().
+  // Задания без категории (0230, №251). С 0239 — is_staff_session() (админ или
+  // управляющий) у функций из docs/STAFF_ROLES_2026-10.md §2.
   "admin_list_uncategorized_orders",
   "admin_set_order_category",
   "admin_create_category",
@@ -114,6 +115,12 @@ export const RPC_ALLOWLIST = new Set([
   "admin_list_category_orders",
   "admin_rename_section",
   "admin_reorder",
+  // Управляющие (0239, №286): роль текущего пользователя (вход веб-админки и
+  // экран «Управление» в приложении), команда — только админ (проверка
+  // is_admin_session() внутри функций).
+  "my_staff_role",
+  "admin_list_staff",
+  "admin_set_staff_role",
 ]);
 
 const NAME_RE = /^[a-z_][a-z0-9_]*$/;

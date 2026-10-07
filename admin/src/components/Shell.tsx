@@ -3,7 +3,7 @@
 // раз в минуту и при возврате на вкладку.
 
 import { type ReactNode, useCallback, useEffect, useState } from "react";
-import { type Attention, api } from "../lib/api";
+import { type Attention, api, type StaffRole } from "../lib/api";
 import { CommandPalette } from "./CommandPalette";
 import { Icon } from "./icons";
 
@@ -23,6 +23,7 @@ export type Section =
   | "promo"
   | "broadcast"
   | "settings"
+  | "team"
   | "journal";
 
 interface NavItem {
@@ -30,7 +31,7 @@ interface NavItem {
   label: string;
   path: string;
   icon: () => ReactNode;
-  count?: (a: Attention) => number;
+  count?: (a: Attention) => number | null;
 }
 
 export const NAV: Array<{ title: string | null; items: NavItem[] }> = [
@@ -102,10 +103,38 @@ export const NAV: Array<{ title: string | null; items: NavItem[] }> = [
     title: "Система",
     items: [
       { id: "settings", label: "Настройки", path: "/settings", icon: Icon.settings },
+      { id: "team", label: "Команда", path: "/team", icon: Icon.users },
       { id: "journal", label: "Журнал", path: "/journal", icon: Icon.journal },
     ],
   },
 ];
+
+/**
+ * Разделы управляющего (docs/STAFF_ROLES_2026-10.md §2): задания без
+ * категории, «красный флаг», жалобы. Остальное — только админ; база
+ * всё равно ответит forbidden, меню лишь не показывает лишнего.
+ */
+const MANAGER_SECTIONS: ReadonlySet<Section> = new Set([
+  "uncategorized",
+  "hiddenOrders",
+  "reports",
+]);
+
+export function canOpenSection(role: StaffRole, id: Section): boolean {
+  return role === "admin" || MANAGER_SECTIONS.has(id);
+}
+
+/** Первая страница после входа: у управляющего нет «Обзора» (метрики — админу). */
+export function homePath(role: StaffRole): string {
+  return role === "admin" ? "/" : "/uncategorized";
+}
+
+export function navFor(role: StaffRole): typeof NAV {
+  return NAV.map((g) => ({
+    ...g,
+    items: g.items.filter((i) => canOpenSection(role, i.id)),
+  })).filter((g) => g.items.length > 0);
+}
 
 export function sectionLabel(id: Section): string {
   for (const g of NAV) for (const i of g.items) if (i.id === id) return i.label;
@@ -208,18 +237,21 @@ function useShadowHiddenCount(): number {
 }
 
 export function Shell({
+  role,
   section,
   title,
   navigate,
   onSignOut,
   children,
 }: {
+  role: StaffRole;
   section: Section;
   title: string;
   navigate: (path: string) => void;
   onSignOut: () => void;
   children: ReactNode;
 }) {
+  const nav = navFor(role);
   const attention = useAttention();
   const uncategorizedCount = useUncategorizedCount();
   const shadowHiddenCount = useShadowHiddenCount();
@@ -266,8 +298,8 @@ export function Shell({
   const totalQueue =
     (attention
       ? attention.reports_open +
-        attention.verifications_pending +
-        attention.recovery_new +
+        (attention.verifications_pending ?? 0) +
+        (attention.recovery_new ?? 0) +
         (attention.instagram_pending ?? 0)
       : 0) +
     uncategorizedCount +
@@ -280,7 +312,7 @@ export function Shell({
           <span className="brand-mark">x</span>
           <div>
             <div className="brand-name">xtrud</div>
-            <div className="brand-tag">админка</div>
+            <div className="brand-tag">{role === "admin" ? "админка" : "управление"}</div>
           </div>
         </div>
         <button type="button" className="search-trigger" onClick={() => setPaletteOpen(true)}>
@@ -288,7 +320,7 @@ export function Shell({
           Поиск
           <span className="kbd">⌘K</span>
         </button>
-        {NAV.map((group) => (
+        {nav.map((group) => (
           <nav key={group.title ?? "top"} className="nav-group" aria-label={group.title ?? "Обзор"}>
             {group.title ? <div className="nav-group-title">{group.title}</div> : null}
             {group.items.map((item) => {
@@ -298,7 +330,7 @@ export function Shell({
                   : item.id === "hiddenOrders"
                     ? shadowHiddenCount
                     : attention && item.count
-                      ? item.count(attention)
+                      ? (item.count(attention) ?? 0)
                       : 0;
               return (
                 <button
@@ -364,6 +396,8 @@ export function Shell({
 
       {paletteOpen ? (
         <CommandPalette
+          nav={nav}
+          searchPeople={role === "admin"}
           onClose={() => setPaletteOpen(false)}
           onGo={(path) => {
             setPaletteOpen(false);

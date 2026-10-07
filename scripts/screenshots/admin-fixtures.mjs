@@ -305,7 +305,40 @@ export function fixture(path, args) {
         masters: m,
       }));
     case "admin_attention":
-      return { reports_open: 2, verifications_pending: 1, recovery_new: 1, masters_pending: 1 };
+      return process.env.SHOT_ROLE === "manager"
+        ? {
+            reports_open: 2,
+            verifications_pending: null,
+            recovery_new: null,
+            masters_pending: null,
+          }
+        : { reports_open: 2, verifications_pending: 1, recovery_new: 1, masters_pending: 1 };
+    // Роль входа (0239): SHOT_ROLE=manager снимает вид управляющего.
+    case "my_staff_role":
+      return process.env.SHOT_ROLE === "manager" ? "manager" : "admin";
+    case "admin_list_staff":
+      return [
+        {
+          id: "u1",
+          first_name: "Ахмед",
+          last_name: "Евлоев",
+          phone: "+79280000001",
+          role: "admin",
+          status: "active",
+          is_demo: false,
+          last_active_at: new Date(Date.now() - 3600e3).toISOString(),
+        },
+        {
+          id: "u2",
+          first_name: "Магомед",
+          last_name: "Цечоев",
+          phone: "+79280000002",
+          role: "manager",
+          status: "active",
+          is_demo: false,
+          last_active_at: new Date(Date.now() - 86400e3).toISOString(),
+        },
+      ];
     default:
       return undefined;
   }

@@ -1,9 +1,12 @@
 /**
- * /admin — хаб админки (видно только users.is_admin).
+ * /admin — хаб «Управление» для админа и управляющего (№286,
+ * docs/STAFF_ROLES_2026-10.md).
  *
- * Точка входа: «Админка» в профиле. Отсюда — разделы:
- *   - Рейтинг мастеров (по категориям, внутренний балл) → /admin/ratings
- *   - Жалобы и модерация → /admin/reports
+ * Точка входа: «Управление» в профиле. Разделы:
+ *   - Без категории → /admin/uncategorized (админ и управляющий)
+ *   - Жалобы и модерация → /admin/reports (админ и управляющий)
+ *   - Рейтинг специалистов → /admin/ratings (только админ)
+ *   - Паспорта → /admin/verifications (только админ: персональные данные)
  *
  * Раньше /admin был сразу экраном модерации; 2026-05-22 стал хабом, модерация
  * переехала в /admin/reports — чтобы добавлять новые админ-разделы.
@@ -16,14 +19,15 @@ import {
   ChartBar,
   IdentificationCard,
   ShieldCheck,
+  Tag,
   Warning,
 } from "phosphor-react-native";
-import { Pressable, ScrollView, View } from "react-native";
+import { ActivityIndicator, Pressable, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
 import { EmptyState } from "@/components/EmptyState";
 import { useAuthSession } from "@/features/auth/use-auth-session";
-import { useUserRecord } from "@/features/auth/use-user-record";
+import { useStaffRole } from "@/features/staff/use-staff";
 import { useSafeBack } from "@/lib/use-safe-back";
 import { useThemeColors } from "@/lib/use-theme-color";
 import type { IconComponent } from "@/types/icon";
@@ -65,12 +69,22 @@ export default function AdminHubScreen() {
   const router = useRouter();
   const { session } = useAuthSession();
   const userId = session?.user?.id;
-  const { data: user } = useUserRecord(userId);
-  const isAdmin = (user as { is_admin?: boolean } | null)?.is_admin === true;
-  const tc = useThemeColors(["ink"]);
+  const role = useStaffRole(userId);
+  const isAdmin = role === "admin";
+  const tc = useThemeColors(["ink", "mute"]);
   const goBack = useSafeBack("/(tabs)/profile" as const);
 
-  if (user && !isAdmin) {
+  // Пока роль уточняется — пусто, а не меню: не-сотрудник не должен видеть
+  // разделы даже на кадр (ревью xtrud-security 2026-10-07, M5).
+  if (role === undefined) {
+    return (
+      <View className="flex-1 items-center justify-center bg-canvas">
+        <ActivityIndicator color={tc.mute} />
+      </View>
+    );
+  }
+
+  if (role === null) {
     return (
       <View
         className="flex-1 items-center justify-center bg-canvas px-6"
@@ -79,7 +93,7 @@ export default function AdminHubScreen() {
         <EmptyState
           icon={Warning}
           title="Доступ запрещён"
-          hint="Эта страница только для админов."
+          hint="Эта страница только для администраторов и управляющих."
         />
         <Pressable
           accessibilityRole="button"
@@ -107,7 +121,7 @@ export default function AdminHubScreen() {
           <CaretLeft size={28} weight="bold" color={tc.ink} />
         </Pressable>
         <AppText weight="bold" className="flex-1 text-title-lg text-ink">
-          Админка
+          Управление
         </AppText>
       </View>
 
@@ -117,10 +131,10 @@ export default function AdminHubScreen() {
       >
         <View className="gap-3 px-6 pt-2">
           <HubCard
-            icon={ChartBar}
-            title="Рейтинг специалистов"
-            hint="Внутренний балл специалистов по категориям — кто выше в выдаче."
-            onPress={() => router.push("/admin/ratings" as never)}
+            icon={Tag}
+            title="Без категории"
+            hint="Задания, которым нейросеть не подобрала категорию."
+            onPress={() => router.push("/admin/uncategorized" as never)}
           />
           <HubCard
             icon={ShieldCheck}
@@ -128,12 +142,22 @@ export default function AdminHubScreen() {
             hint="Очередь жалоб: скрыть отзыв, приостановить пользователя."
             onPress={() => router.push("/admin/reports" as never)}
           />
-          <HubCard
-            icon={IdentificationCard}
-            title="Паспорта"
-            hint="Подтверждение личности специалистов: фото, решение, значок."
-            onPress={() => router.push("/admin/verifications" as never)}
-          />
+          {isAdmin ? (
+            <>
+              <HubCard
+                icon={ChartBar}
+                title="Рейтинг специалистов"
+                hint="Внутренний балл специалистов по категориям — кто выше в выдаче."
+                onPress={() => router.push("/admin/ratings" as never)}
+              />
+              <HubCard
+                icon={IdentificationCard}
+                title="Паспорта"
+                hint="Подтверждение личности специалистов: фото, решение, значок."
+                onPress={() => router.push("/admin/verifications" as never)}
+              />
+            </>
+          ) : null}
         </View>
       </ScrollView>
     </View>

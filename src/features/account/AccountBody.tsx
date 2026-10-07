@@ -31,6 +31,7 @@ import { useUserRecord } from "@/features/auth/use-user-record";
 import { useUnreadReviewsCount } from "@/features/notifications/use-notifications";
 import { useUserPrivate } from "@/features/profile/use-user-private";
 import { AvailabilityRows } from "@/features/specialist/AvailabilityRows";
+import { useStaffRole } from "@/features/staff/use-staff";
 import { showAlert } from "@/lib/alert";
 import { signOut } from "@/lib/auth";
 import { confirmAsync } from "@/lib/confirm";
@@ -40,6 +41,7 @@ import { useThemeColors } from "@/lib/use-theme-color";
 export function AccountBody({ userId }: { userId: string }) {
   const router = useRouter();
   const { data: user } = useUserRecord(userId);
+  const staffRole = useStaffRole(userId);
   const { data: userPrivate } = useUserPrivate(userId);
   // Номер входа — маской, как в «Настройках» iOS у Apple ID.
   const phoneDigits = (userPrivate?.phone ?? "").replace(/\D/g, "").slice(-10);
@@ -98,10 +100,10 @@ export function AccountBody({ userId }: { userId: string }) {
 
       <AvailabilityRows userId={userId} />
 
-      {user?.is_admin ? (
-        <InsetGroup title="Администратор">
+      {staffRole ? (
+        <InsetGroup title={staffRole === "admin" ? "Администратор" : "Управляющий"}>
           <InsetRow
-            title="Панель администратора"
+            title="Управление"
             icon={<ShieldCheck size={18} weight="bold" color={tc["on-accent"]} />}
             iconAccent
             navigates

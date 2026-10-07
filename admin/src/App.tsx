@@ -5,8 +5,9 @@
 
 import { type ReactNode, useCallback, useEffect, useState } from "react";
 import { FeedbackProvider } from "./components/feedback";
-import { type Section, Shell, sectionLabel } from "./components/Shell";
-import { api, hasSession, logout } from "./lib/api";
+import { canOpenSection, homePath, type Section, Shell, sectionLabel } from "./components/Shell";
+import { api, hasSession, logout, type StaffRole } from "./lib/api";
+import { StaffRoleContext } from "./lib/role";
 import { Broadcast } from "./pages/Broadcast";
 import { Catalog } from "./pages/Catalog";
 import { HiddenOrders } from "./pages/HiddenOrders";
@@ -22,12 +23,13 @@ import { Recovery } from "./pages/Recovery";
 import { Reports } from "./pages/Reports";
 import { Reviews } from "./pages/Reviews";
 import { Settings } from "./pages/Settings";
+import { Team } from "./pages/Team";
 import { Uncategorized } from "./pages/Uncategorized";
 import { UserCard } from "./pages/UserCard";
 import { Users } from "./pages/Users";
 import { Verifications } from "./pages/Verifications";
 
-type Session = "loading" | "anonymous" | "not-admin" | "admin";
+type Session = "loading" | "anonymous" | "not-admin" | StaffRole;
 
 function useHashRoute(): [string, (next: string) => void] {
   const [route, setRoute] = useState(() => window.location.hash.slice(1) || "/");
@@ -46,9 +48,8 @@ export function App() {
   const [session, setSession] = useState<Session>("loading");
   const [route, navigate] = useHashRoute();
 
-  // Признак админа проверяем вызовом admin_metrics: сервер ответит forbidden,
-  // если прав нет. Так право читается из базы, а не из токена, и снятие прав
-  // действует сразу.
+  // Роль читаем из базы (my_staff_role, 0239): админ, управляющий или
+  // никто. Не из токена — снятие роли действует сразу.
   //
   // Второго фактора нет: DECISION владельца 2026-09-03 «убери второй фактор,
   // просто по логину и паролю» (миграция 0150). Значит пароль администратора —
@@ -59,8 +60,8 @@ export function App() {
       return;
     }
     try {
-      await api.metrics();
-      setSession("admin");
+      const role = await api.myStaffRole();
+      setSession(role === "admin" || role === "manager" ? role : "not-admin");
     } catch {
       setSession("not-admin");
     }
@@ -92,9 +93,11 @@ export function App() {
     return (
       <div className="state">
         <p className="heading-md" style={{ color: "var(--ink)" }}>
-          Доступ только для администратора
+          Доступ только для команды
         </p>
-        <p className="body-md text-mute">Эта учётная запись не имеет прав администратора.</p>
+        <p className="body-md text-mute">
+          У этой учётной записи нет роли администратора или управляющего.
+        </p>
         <button type="button" className="btn btn-ghost" onClick={signOut} style={{ marginTop: 8 }}>
           Выйти
         </button>
@@ -121,12 +124,31 @@ export function App() {
     broadcast: "broadcast",
     settings: "settings",
     journal: "journal",
+    team: "team",
   };
-  const section: Section = known[first] ?? "overview";
+  const role: StaffRole = session;
+  const section: Section = known[first] ?? (role === "admin" ? "overview" : "uncategorized");
   const openUser = (id: string) => navigate(`/users/${id}`);
 
   let page: ReactNode;
-  if (userMatch?.[1]) {
+  if (!userMatch && !orderMatch && !canOpenSection(role, section)) {
+    page = (
+      <div className="state">
+        <p className="heading-md" style={{ color: "var(--ink)" }}>
+          Нет доступа
+        </p>
+        <p className="body-md text-mute">Этот раздел открыт только администратору.</p>
+        <button
+          type="button"
+          className="btn btn-ghost"
+          onClick={() => navigate(homePath(role))}
+          style={{ marginTop: 8 }}
+        >
+          К моим разделам
+        </button>
+      </div>
+    );
+  } else if (userMatch?.[1]) {
     page = <UserCard userId={userMatch[1]} onBack={() => window.history.back()} />;
   } else if (orderMatch?.[1]) {
     page = (
@@ -183,21 +205,27 @@ export function App() {
       case "broadcast":
         page = <Broadcast />;
         break;
+      case "team":
+        page = <Team onOpenUser={openUser} />;
+        break;
       default:
         page = <Overview navigate={navigate} />;
     }
   }
 
   return (
-    <FeedbackProvider>
-      <Shell
-        section={section}
-        title={sectionLabel(section)}
-        navigate={navigate}
-        onSignOut={() => void signOut()}
-      >
-        {page}
-      </Shell>
-    </FeedbackProvider>
+    <StaffRoleContext.Provider value={role}>
+      <FeedbackProvider>
+        <Shell
+          role={role}
+          section={section}
+          title={sectionLabel(section)}
+          navigate={navigate}
+          onSignOut={() => void signOut()}
+        >
+          {page}
+        </Shell>
+      </FeedbackProvider>
+    </StaffRoleContext.Provider>
   );
 }

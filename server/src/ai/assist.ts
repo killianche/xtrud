@@ -2,13 +2,14 @@
 //
 // POST /v2/admin/ai/assist {order_id, instruction} → предложение нейросети:
 // поставить существующую подкатегорию, создать новую или «непонятно».
-// Сервер НИЧЕГО не меняет в базе: применяет админ из веб-админки
+// Сервер НИЧЕГО не меняет в базе: применяет админ или управляющий
 // существующими admin_set_order_category / admin_create_category (там же
-// повторная проверка is_admin_session() и всех полей).
+// повторная проверка is_staff_session() и всех полей).
 //
-// Доступ — только админ, и проверяется базой, а не клеймами токена: в одной
-// транзакции под пользователем из токена зовётся is_admin_session(), затем
-// admin_order_card (у неё своя такая же проверка). Наружу (DeepSeek) уходит
+// Доступ — админ или управляющий (0239, №286: docs/STAFF_ROLES_2026-10.md),
+// и проверяется базой, а не клеймами токена: в одной транзакции под
+// пользователем из токена зовётся is_staff_session(), затем admin_order_card
+// (у неё своя такая же проверка). Наружу (DeepSeek) уходит
 // только название задания без контактов (как у классификатора, №279),
 // каталог и инструкция админа без контактов. Ключ и текст инструкции в лог
 // не пишутся.
@@ -257,19 +258,20 @@ export class AssistHttpError extends Error {
   }
 }
 
-/** Минимум клиента pg, нужный проверке админа (подменяется в тестах). */
+/** Минимум клиента pg, нужный проверке сотрудника (подменяется в тестах). */
 export interface QueryClient {
   query: (sql: string, values?: unknown[]) => Promise<{ rows: Array<Record<string, unknown>> }>;
 }
 
 /**
- * В транзакции пользователя из токена: is_admin_session() → название
- * задания через admin_order_card (своя проверка админа внутри). Не админ —
- * 403 до чтения задания.
+ * В транзакции пользователя из токена: is_staff_session() (админ или
+ * управляющий, 0239) → название задания через admin_order_card (своя
+ * проверка внутри; поле l2_id карточка отдаёт с 0239). Не сотрудник — 403
+ * до чтения задания.
  */
-export async function loadOrderTitleAsAdmin(client: QueryClient, orderId: string): Promise<string> {
-  const admin = await client.query("SELECT public.is_admin_session() AS ok");
-  if (admin.rows[0]?.ok !== true) {
+export async function loadOrderTitleAsStaff(client: QueryClient, orderId: string): Promise<string> {
+  const staff = await client.query("SELECT public.is_staff_session() AS ok");
+  if (staff.rows[0]?.ok !== true) {
     throw new AssistHttpError(403, "Нет доступа", "42501");
   }
   const card = await client.query("SELECT public.admin_order_card($1) AS card", [orderId]);
@@ -346,7 +348,7 @@ export async function registerAiAssistRoutes(app: FastifyInstance, deps: AssistD
       let title: string;
       try {
         title = await deps.db.asUser(claims, (c) =>
-          loadOrderTitleAsAdmin(c as unknown as QueryClient, orderId),
+          loadOrderTitleAsStaff(c as unknown as QueryClient, orderId),
         );
       } catch (e) {
         if (e instanceof AssistHttpError) {

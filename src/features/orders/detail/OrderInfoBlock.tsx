@@ -10,6 +10,7 @@ import { orderCategoryIds } from "@/features/orders/order-categories";
 import { formatOrderTiming, formatPrice } from "@/features/orders/order-schema";
 import { orderStatusView } from "@/features/orders/order-status-view";
 import type { useOrderDetail } from "@/features/orders/use-order-detail";
+import { UNCATEGORIZED_L2_ID } from "@/lib/product-scope";
 import { CARD_SHADOW } from "@/lib/shadows";
 import { useThemeColors } from "@/lib/use-theme-color";
 import { normalizeWhatsappDigits } from "@/lib/whatsapp";
@@ -51,7 +52,9 @@ export function OrderInfoBlock({ order, isOwner, isGuest, myResponseStatus }: Or
   const tc = useThemeColors(["muted-soft", "mute", "ink", "warning", "error"]);
   // Задание может быть в нескольких категориях (0195): основная + до двух.
   const categories = useVisibleCategories();
+  // Без категории (№251) — строки категории у плашки статуса нет (№265).
   const categoryLine = orderCategoryIds(order)
+    .filter((id) => id !== UNCATEGORIZED_L2_ID)
     .map((id, i) =>
       i === 0
         ? (order.l2?.name_ru ?? categories.data?.find((c) => c.id === id)?.name_ru ?? id)
@@ -83,12 +86,14 @@ export function OrderInfoBlock({ order, isOwner, isGuest, myResponseStatus }: Or
         </View>
         {/* Точка и категория переносятся вместе: иначе «·» оставалась одна
             в конце первой строки. */}
-        <View className="shrink flex-row items-center gap-2">
-          <AppText className="text-caption text-mute">·</AppText>
-          <AppText weight="medium" className="flex-shrink text-caption text-body">
-            {categoryLine}
-          </AppText>
-        </View>
+        {categoryLine ? (
+          <View className="shrink flex-row items-center gap-2">
+            <AppText className="text-caption text-mute">·</AppText>
+            <AppText weight="medium" className="flex-shrink text-caption text-body">
+              {categoryLine}
+            </AppText>
+          </View>
+        ) : null}
       </View>
 
       <AppText weight="display" className="mt-3 text-display-md tracking-tight text-ink">

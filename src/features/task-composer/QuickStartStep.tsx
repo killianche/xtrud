@@ -19,14 +19,16 @@
  * (`guess-category.ts`), на форме её видно и можно поменять; не уверены —
  * «Без категории», подберёт админ (№251).
  *
+ * №265 (владелец, 2026-10-07): под полем ничего лишнего — ни пояснения про
+ * подбор категории, ни ссылки на каталог; каталог остаётся на форме
+ * (строка «Категория»).
+ *
  * Откат — флаг `composer_start = "catalog"` в веб-админке (0228): первым
  * экраном снова каталог (`CategoryCatalogStep`).
  */
 
-import { useRouter } from "expo-router";
-import { SquaresFour } from "phosphor-react-native";
 import { useEffect, useMemo, useRef } from "react";
-import { AccessibilityInfo, Keyboard, Pressable, type TextInput } from "react-native";
+import { AccessibilityInfo, Keyboard, type TextInput } from "react-native";
 import { AppText } from "@/components/AppText";
 import { searchCatalogByWords } from "@/features/categories/bundled-task-catalog";
 import type { TaskPhrase } from "@/features/categories/task-phrases";
@@ -49,10 +51,9 @@ export const COMPOSER_CATALOG_ROUTE = "/orders/new/catalog";
 const MIN_QUERY = 2;
 
 export function QuickStartStep({ subtitle }: { subtitle?: string }) {
-  const router = useRouter();
   const { values, patch } = useComposer();
   const nav = useStepNavigation("category");
-  const tc = useThemeColors(["ink", "mute"]);
+  const tc = useThemeColors(["ink"]);
   const categories = useVisibleCategories();
   const inputRef = useRef<TextInput>(null);
   // Клавиатура — сразу, как экран доехал: здесь одно действие — написать.
@@ -83,11 +84,6 @@ export function QuickStartStep({ subtitle }: { subtitle?: string }) {
     if (!canContinue) return;
     const l2Id = guessCategoryId(phraseHits, searchCatalogByWords(text, 5), new Set(visibleIds));
     goNext(l2Id, titleFromQuery(text));
-  };
-  const openCatalog = () => {
-    if (text.trim()) patch({ title: titleFromQuery(text) });
-    Keyboard.dismiss();
-    router.push(COMPOSER_CATALOG_ROUTE as never);
   };
   const categoryById = (id: string) => categories.data?.find((c) => c.id === id);
   const phraseRow = (p: TaskPhrase, last: boolean) => {
@@ -147,22 +143,7 @@ export function QuickStartStep({ subtitle }: { subtitle?: string }) {
         <AppText className="mb-4 px-8 text-ios-subheadline text-mute">
           Напишите чуть подробнее — например, «поменять розетку».
         </AppText>
-      ) : canContinue ? (
-        // Подсказок нет — «Далее» всё равно ведёт дальше: сказать, что будет
-        // с категорией, иначе её появление на форме выглядит самоуправством.
-        <AppText className="mb-4 px-8 text-ios-subheadline text-mute">
-          Категорию подберём по названию — её можно поменять на следующем экране.
-        </AppText>
       ) : null}
-      {/* Тихий запасной путь — для тех, кто привык искать в каталоге. */}
-      <Pressable
-        accessibilityRole="button"
-        onPress={openCatalog}
-        className="min-h-11 flex-row items-center gap-2 self-start px-8 active:opacity-60"
-      >
-        <SquaresFour size={18} weight="bold" color={tc.mute} />
-        <AppText className="text-ios-body text-accent">Выбрать из списка категорий</AppText>
-      </Pressable>
     </ComposerScreen>
   );
 }

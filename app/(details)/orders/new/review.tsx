@@ -361,15 +361,19 @@ export default function TaskReviewScreen() {
         />
       </View>
       <View onLayout={at("category")}>
-        <ChoiceGroup>
-          <ChoiceRow
-            title="Категория"
-            value={categoryNames}
-            navigates
-            onPress={() => open("category")}
-            last
-          />
-        </ChoiceGroup>
+        {/* Категорию подберём сами — строки нет вовсе (владелец, №265):
+            «Подберём сами» ничего не говорит и только занимает место. */}
+        {values.l2Id === UNCATEGORIZED_L2_ID ? null : (
+          <ChoiceGroup>
+            <ChoiceRow
+              title="Категория"
+              value={categoryNames}
+              navigates
+              onPress={() => open("category")}
+              last
+            />
+          </ChoiceGroup>
+        )}
         {missingStep === "category" ? (
           <AppText
             accessibilityRole="alert"

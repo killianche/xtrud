@@ -47,6 +47,7 @@ import type { OrderPriceKind, OrderUrgency } from "@/features/orders/use-create-
 import { getCategoryIcon } from "@/lib/category-icons";
 import { cdnBlur, cdnImage } from "@/lib/image-cdn";
 import { formatOrderPlace } from "@/lib/location-config";
+import { UNCATEGORIZED_L2_ID } from "@/lib/product-scope";
 import { CARD_SHADOW } from "@/lib/shadows";
 import { useThemeColors } from "@/lib/use-theme-color";
 
@@ -170,6 +171,9 @@ export function OrderRow(props: OrderRowProps) {
   };
 
   const Icon = getCategoryIcon(props.categoryIcon);
+  // Задание без категории (№251): названия «Без категории» на карточке нет —
+  // подпись появится, когда админ назначит категорию (№265).
+  const uncategorized = props.categoryL2Id === UNCATEGORIZED_L2_ID;
   const statusView = props.statusView ?? null;
   // Статус читается VoiceOver всегда (ariaLabel ниже). Видимой плашкой — только
   // особый статус (выбрали, закрыто, истекло); обычный «Открыто» / «Отклик
@@ -212,7 +216,7 @@ export function OrderRow(props: OrderRowProps) {
 
   const ariaLabel = [
     props.title,
-    props.categoryName,
+    uncategorized ? null : props.categoryName,
     pillLabel ?? timingLabel,
     locationLabel,
     priceLabel ? `Бюджет ${priceLabel}` : null,
@@ -243,13 +247,13 @@ export function OrderRow(props: OrderRowProps) {
             «Отклик отправлен») плашкой не рисуется — его и так говорит место
             в списке; VoiceOver читает статус из ariaLabel по-прежнему. */}
         <View className="flex-row items-center gap-2">
-          {<Icon size={18} weight="bold" color={tc.accent} />}
+          {uncategorized ? null : <Icon size={18} weight="bold" color={tc.accent} />}
           <AppText
             weight="semibold"
             className="min-w-0 flex-1 text-body-sm text-body"
             numberOfLines={1}
           >
-            {props.categoryName}
+            {uncategorized ? "" : props.categoryName}
           </AppText>
           {showPill ? (
             <View className="max-w-[55%] shrink-0">

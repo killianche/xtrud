@@ -2,155 +2,102 @@
   "schema_version": 2,
   "sections": [
     {
-      "id": "repair-finishing",
-      "name_ru": "Ремонт и отделка",
-      "icon": "PaintBrush",
-      "sort_order": 1,
-      "is_active": true
-    },
-    {
-      "id": "utilities",
-      "name_ru": "Сантехника и электрика",
-      "icon": "Lightning",
-      "sort_order": 2,
-      "is_active": true
-    },
-    {
-      "id": "construction",
-      "name_ru": "Строительство и участок",
-      "icon": "Crane",
-      "sort_order": 3,
+      "id": "handyman-moving",
+      "name_ru": "Мастер на час и разнорабочие",
+      "icon": "Wrench",
+      "sort_order": 10,
       "is_active": true
     },
     {
       "id": "home-services",
       "name_ru": "Уборка и помощь по хозяйству",
       "icon": "Broom",
-      "sort_order": 4,
-      "is_active": true
-    },
-    {
-      "id": "interior",
-      "name_ru": "Мебель и интерьер",
-      "icon": "Couch",
-      "sort_order": 5,
-      "is_active": true
-    },
-    {
-      "id": "tech-security",
-      "name_ru": "Техника и безопасность",
-      "icon": "ShieldCheck",
-      "sort_order": 6,
-      "is_active": true
-    },
-    {
-      "id": "handyman-moving",
-      "name_ru": "Мастер на час и разнорабочие",
-      "icon": "Wrench",
-      "sort_order": 7,
+      "sort_order": 20,
       "is_active": true
     },
     {
       "id": "cargo",
       "name_ru": "Перевозки и доставка",
       "icon": "Truck",
-      "sort_order": 8,
+      "sort_order": 30,
+      "is_active": true
+    },
+    {
+      "id": "utilities",
+      "name_ru": "Сантехника и электрика",
+      "icon": "Lightning",
+      "sort_order": 40,
+      "is_active": true
+    },
+    {
+      "id": "repair-finishing",
+      "name_ru": "Ремонт и отделка",
+      "icon": "PaintBrush",
+      "sort_order": 50,
+      "is_active": true
+    },
+    {
+      "id": "construction",
+      "name_ru": "Строительство и участок",
+      "icon": "Crane",
+      "sort_order": 60,
+      "is_active": true
+    },
+    {
+      "id": "home-appliances",
+      "name_ru": "Ремонт бытовой техники",
+      "icon": "WashingMachine",
+      "sort_order": 70,
+      "is_active": true
+    },
+    {
+      "id": "interior",
+      "name_ru": "Мебель и интерьер",
+      "icon": "Couch",
+      "sort_order": 80,
+      "is_active": true
+    },
+    {
+      "id": "auto",
+      "name_ru": "Автосервис",
+      "icon": "Car",
+      "sort_order": 90,
+      "is_active": true
+    },
+    {
+      "id": "tech-security",
+      "name_ru": "Замки, камеры, антенны",
+      "icon": "ShieldCheck",
+      "sort_order": 100,
       "is_active": true
     },
     {
       "id": "computer-help",
       "name_ru": "Компьютерная помощь",
       "icon": "Laptop",
-      "sort_order": 10,
-      "is_active": true
-    },
-    {
-      "id": "auto",
-      "name_ru": "Ремонт транспорта",
-      "icon": "Car",
-      "sort_order": 11,
+      "sort_order": 110,
       "is_active": true
     },
     {
       "id": "tutors",
       "name_ru": "Репетиторы и обучение",
       "icon": "GraduationCap",
-      "sort_order": 13,
+      "sort_order": 120,
       "is_active": true
     },
     {
       "id": "legal-accounting",
       "name_ru": "Юристы и бухгалтеры",
       "icon": "Scales",
-      "sort_order": 17,
+      "sort_order": 130,
       "is_active": true
     }
   ],
   "categories": [
     {
-      "id": "cleaning",
-      "l1_id": "home-services",
-      "name_ru": "Уборка (клининг)",
-      "icon": "Broom",
-      "sort_order": 1,
-      "is_active": true,
-      "is_visible": true,
-      "is_featured": false
-    },
-    {
-      "id": "laundry",
-      "l1_id": "home-services",
-      "name_ru": "Стирка и чистка",
-      "icon": "WashingMachine",
-      "sort_order": 2,
-      "is_active": true,
-      "is_visible": true,
-      "is_featured": false
-    },
-    {
-      "id": "disposal",
-      "l1_id": "home-services",
-      "name_ru": "Вывоз мусора",
-      "icon": "Trash",
-      "sort_order": 3,
-      "is_active": true,
-      "is_visible": true,
-      "is_featured": false
-    },
-    {
-      "id": "garden",
-      "l1_id": "home-services",
-      "name_ru": "Сад и участок",
-      "icon": "Plant",
-      "sort_order": 4,
-      "is_active": true,
-      "is_visible": true,
-      "is_featured": false
-    },
-    {
-      "id": "pest-control",
-      "l1_id": "home-services",
-      "name_ru": "Дезинфекция и борьба с вредителями",
-      "icon": "Bug",
-      "sort_order": 6,
-      "is_active": true,
-      "is_visible": true,
-      "is_featured": false
-    },
-    {
-      "id": "car-repair",
-      "l1_id": "auto",
-      "name_ru": "Автосервис и ремонт",
-      "icon": "Engine",
-      "sort_order": 10,
-      "is_active": true,
-      "is_visible": true,
-      "is_featured": false
-    },
-    {
-      "id": "cargo-transport",
+      "id": "movers",
       "l1_id": "cargo",
-      "name_ru": "Грузоперевозки",
+      "name_ru": "Грузчики и переезды",
       "icon": "Truck",
       "sort_order": 10,
       "is_active": true,
@@ -168,6 +115,26 @@
       "is_featured": false
     },
     {
+      "id": "car-repair",
+      "l1_id": "auto",
+      "name_ru": "Ремонт двигателя и ТО",
+      "icon": "Engine",
+      "sort_order": 10,
+      "is_active": true,
+      "is_visible": true,
+      "is_featured": false
+    },
+    {
+      "id": "renovation",
+      "l1_id": "repair-finishing",
+      "name_ru": "Ремонт и отделка",
+      "icon": "Hammer",
+      "sort_order": 10,
+      "is_active": true,
+      "is_visible": true,
+      "is_featured": true
+    },
+    {
       "id": "plumbing",
       "l1_id": "utilities",
       "name_ru": "Сантехника",
@@ -176,6 +143,16 @@
       "is_active": true,
       "is_visible": true,
       "is_featured": true
+    },
+    {
+      "id": "cleaning",
+      "l1_id": "home-services",
+      "name_ru": "Уборка (клининг)",
+      "icon": "Broom",
+      "sort_order": 10,
+      "is_active": true,
+      "is_visible": true,
+      "is_featured": false
     },
     {
       "id": "school-subjects",
@@ -228,9 +205,9 @@
       "is_featured": false
     },
     {
-      "id": "movers",
+      "id": "cargo-transport",
       "l1_id": "cargo",
-      "name_ru": "Грузчики и переезды",
+      "name_ru": "Грузоперевозки",
       "icon": "Truck",
       "sort_order": 20,
       "is_active": true,
@@ -248,10 +225,50 @@
       "is_featured": false
     },
     {
+      "id": "housekeeping",
+      "l1_id": "home-services",
+      "name_ru": "Помощь по хозяйству",
+      "icon": "House",
+      "sort_order": 20,
+      "is_active": true,
+      "is_visible": true,
+      "is_featured": false
+    },
+    {
+      "id": "painting",
+      "l1_id": "repair-finishing",
+      "name_ru": "Штукатурка и покраска",
+      "icon": "PaintBrush",
+      "sort_order": 20,
+      "is_active": true,
+      "is_visible": true,
+      "is_featured": false
+    },
+    {
+      "id": "courier-delivery",
+      "l1_id": "cargo",
+      "name_ru": "Доставка документов и посылок",
+      "icon": "Package",
+      "sort_order": 30,
+      "is_active": true,
+      "is_visible": true,
+      "is_featured": false
+    },
+    {
       "id": "languages",
       "l1_id": "tutors",
       "name_ru": "Иностранные языки",
       "icon": "Translate",
+      "sort_order": 30,
+      "is_active": true,
+      "is_visible": true,
+      "is_featured": false
+    },
+    {
+      "id": "wallpaper",
+      "l1_id": "repair-finishing",
+      "name_ru": "Обои",
+      "icon": "Wall",
       "sort_order": 30,
       "is_active": true,
       "is_visible": true,
@@ -268,20 +285,20 @@
       "is_featured": false
     },
     {
-      "id": "tire-service",
-      "l1_id": "auto",
-      "name_ru": "Шиномонтаж",
-      "icon": "Tire",
+      "id": "cleaning-post-renovation",
+      "l1_id": "home-services",
+      "name_ru": "Уборка после ремонта",
+      "icon": "Sparkle",
       "sort_order": 30,
       "is_active": true,
       "is_visible": true,
       "is_featured": false
     },
     {
-      "id": "tow-truck",
-      "l1_id": "cargo",
-      "name_ru": "Эвакуатор",
-      "icon": "CarProfile",
+      "id": "tire-service",
+      "l1_id": "auto",
+      "name_ru": "Шиномонтаж",
+      "icon": "Tire",
       "sort_order": 30,
       "is_active": true,
       "is_visible": true,
@@ -308,16 +325,6 @@
       "is_featured": false
     },
     {
-      "id": "courier-delivery",
-      "l1_id": "cargo",
-      "name_ru": "Доставка документов и посылок",
-      "icon": "Package",
-      "sort_order": 40,
-      "is_active": true,
-      "is_visible": true,
-      "is_featured": false
-    },
-    {
       "id": "body-repair",
       "l1_id": "auto",
       "name_ru": "Кузовной ремонт и покраска",
@@ -328,14 +335,34 @@
       "is_featured": false
     },
     {
-      "id": "renovation",
-      "l1_id": "repair-finishing",
-      "name_ru": "Ремонт и отделка",
-      "icon": "Hammer",
+      "id": "buy-deliver",
+      "l1_id": "cargo",
+      "name_ru": "Купить и доставить",
+      "icon": "ShoppingBag",
       "sort_order": 40,
       "is_active": true,
       "is_visible": true,
-      "is_featured": true
+      "is_featured": false
+    },
+    {
+      "id": "tiling",
+      "l1_id": "repair-finishing",
+      "name_ru": "Плитка и мозаика",
+      "icon": "GridFour",
+      "sort_order": 40,
+      "is_active": true,
+      "is_visible": true,
+      "is_featured": false
+    },
+    {
+      "id": "laundry",
+      "l1_id": "home-services",
+      "name_ru": "Стирка и чистка",
+      "icon": "WashingMachine",
+      "sort_order": 40,
+      "is_active": true,
+      "is_visible": true,
+      "is_featured": false
     },
     {
       "id": "car-wash",
@@ -348,10 +375,20 @@
       "is_featured": false
     },
     {
-      "id": "buy-deliver",
+      "id": "disposal",
+      "l1_id": "home-services",
+      "name_ru": "Вывоз мусора",
+      "icon": "Trash",
+      "sort_order": 50,
+      "is_active": true,
+      "is_visible": true,
+      "is_featured": false
+    },
+    {
+      "id": "food-delivery",
       "l1_id": "cargo",
-      "name_ru": "Купить и доставить",
-      "icon": "ShoppingBag",
+      "name_ru": "Доставка еды",
+      "icon": "ForkKnife",
       "sort_order": 50,
       "is_active": true,
       "is_visible": true,
@@ -368,10 +405,30 @@
       "is_featured": false
     },
     {
-      "id": "food-delivery",
-      "l1_id": "cargo",
-      "name_ru": "Доставка еды",
-      "icon": "ForkKnife",
+      "id": "floors",
+      "l1_id": "repair-finishing",
+      "name_ru": "Полы и стяжка",
+      "icon": "SquaresFour",
+      "sort_order": 50,
+      "is_active": true,
+      "is_visible": true,
+      "is_featured": false
+    },
+    {
+      "id": "drywall",
+      "l1_id": "repair-finishing",
+      "name_ru": "Гипсокартон",
+      "icon": "StackSimple",
+      "sort_order": 60,
+      "is_active": true,
+      "is_visible": true,
+      "is_featured": false
+    },
+    {
+      "id": "roadside-help",
+      "l1_id": "auto",
+      "name_ru": "Помощь на дороге",
+      "icon": "TrafficCone",
       "sort_order": 60,
       "is_active": true,
       "is_visible": true,
@@ -388,30 +445,30 @@
       "is_featured": false
     },
     {
-      "id": "cleaning-post-renovation",
+      "id": "garden",
       "l1_id": "home-services",
-      "name_ru": "Уборка после ремонта",
-      "icon": "Sparkle",
+      "name_ru": "Сад и участок",
+      "icon": "Plant",
       "sort_order": 60,
       "is_active": true,
       "is_visible": true,
       "is_featured": false
     },
     {
-      "id": "windows",
-      "l1_id": "repair-finishing",
-      "name_ru": "Окна и остекление",
-      "icon": "AppWindow",
-      "sort_order": 70,
+      "id": "tow-truck",
+      "l1_id": "cargo",
+      "name_ru": "Эвакуатор",
+      "icon": "CarProfile",
+      "sort_order": 60,
       "is_active": true,
       "is_visible": true,
       "is_featured": false
     },
     {
-      "id": "housekeeping",
-      "l1_id": "home-services",
-      "name_ru": "Помощь по хозяйству",
-      "icon": "House",
+      "id": "driver-hourly",
+      "l1_id": "cargo",
+      "name_ru": "Водитель на час",
+      "icon": "Car",
       "sort_order": 70,
       "is_active": true,
       "is_visible": true,
@@ -422,7 +479,17 @@
       "l1_id": "repair-finishing",
       "name_ru": "Двери",
       "icon": "Door",
-      "sort_order": 80,
+      "sort_order": 70,
+      "is_active": true,
+      "is_visible": true,
+      "is_featured": false
+    },
+    {
+      "id": "pest-control",
+      "l1_id": "home-services",
+      "name_ru": "Дезинфекция и борьба с вредителями",
+      "icon": "Bug",
+      "sort_order": 70,
       "is_active": true,
       "is_visible": true,
       "is_featured": false
@@ -438,61 +505,21 @@
       "is_featured": false
     },
     {
+      "id": "windows",
+      "l1_id": "repair-finishing",
+      "name_ru": "Окна и остекление",
+      "icon": "AppWindow",
+      "sort_order": 80,
+      "is_active": true,
+      "is_visible": true,
+      "is_featured": false
+    },
+    {
       "id": "locks-security",
       "l1_id": "tech-security",
-      "name_ru": "Замки и безопасность",
+      "name_ru": "Замки и вскрытие дверей",
       "icon": "Key",
       "sort_order": 90,
-      "is_active": true,
-      "is_visible": true,
-      "is_featured": false
-    },
-    {
-      "id": "painting",
-      "l1_id": "repair-finishing",
-      "name_ru": "Штукатурка и покраска",
-      "icon": "PaintBrush",
-      "sort_order": 100,
-      "is_active": true,
-      "is_visible": true,
-      "is_featured": false
-    },
-    {
-      "id": "wallpaper",
-      "l1_id": "repair-finishing",
-      "name_ru": "Обои",
-      "icon": "Wall",
-      "sort_order": 105,
-      "is_active": true,
-      "is_visible": true,
-      "is_featured": false
-    },
-    {
-      "id": "drywall",
-      "l1_id": "repair-finishing",
-      "name_ru": "Гипсокартон",
-      "icon": "StackSimple",
-      "sort_order": 120,
-      "is_active": true,
-      "is_visible": true,
-      "is_featured": false
-    },
-    {
-      "id": "tiling",
-      "l1_id": "repair-finishing",
-      "name_ru": "Плитка и мозаика",
-      "icon": "GridFour",
-      "sort_order": 130,
-      "is_active": true,
-      "is_visible": true,
-      "is_featured": false
-    },
-    {
-      "id": "floors",
-      "l1_id": "repair-finishing",
-      "name_ru": "Полы и стяжка",
-      "icon": "SquaresFour",
-      "sort_order": 140,
       "is_active": true,
       "is_visible": true,
       "is_featured": false
@@ -502,6 +529,16 @@
       "l1_id": "utilities",
       "name_ru": "Отопление и котлы",
       "icon": "Thermometer",
+      "sort_order": 170,
+      "is_active": true,
+      "is_visible": true,
+      "is_featured": false
+    },
+    {
+      "id": "general-construction",
+      "l1_id": "construction",
+      "name_ru": "Строительство",
+      "icon": "Crane",
       "sort_order": 170,
       "is_active": true,
       "is_visible": true,
@@ -583,16 +620,6 @@
       "name_ru": "Спецтехника",
       "icon": "Truck",
       "sort_order": 235,
-      "is_active": true,
-      "is_visible": true,
-      "is_featured": false
-    },
-    {
-      "id": "general-construction",
-      "l1_id": "construction",
-      "name_ru": "Строительство",
-      "icon": "Crane",
-      "sort_order": 240,
       "is_active": true,
       "is_visible": true,
       "is_featured": false
@@ -699,7 +726,7 @@
     },
     {
       "id": "appliance-repair",
-      "l1_id": "tech-security",
+      "l1_id": "home-appliances",
       "name_ru": "Ремонт бытовой техники",
       "icon": "Gear",
       "sort_order": 340,
@@ -720,9 +747,19 @@
     {
       "id": "security-systems",
       "l1_id": "tech-security",
-      "name_ru": "Видеонаблюдение и охрана",
+      "name_ru": "Видеонаблюдение",
       "icon": "SecurityCamera",
       "sort_order": 370,
+      "is_active": true,
+      "is_visible": true,
+      "is_featured": false
+    },
+    {
+      "id": "intercom-alarm",
+      "l1_id": "tech-security",
+      "name_ru": "Домофоны и сигнализация",
+      "icon": "ShieldCheck",
+      "sort_order": 380,
       "is_active": true,
       "is_visible": true,
       "is_featured": false
@@ -1549,6 +1586,27 @@
       "is_active": true
     },
     {
+      "id": "driver-own-car",
+      "l2_id": "driver-hourly",
+      "name_ru": "Водитель на ваш автомобиль",
+      "sort_order": 10,
+      "is_active": true
+    },
+    {
+      "id": "driver-sober",
+      "l2_id": "driver-hourly",
+      "name_ru": "Трезвый водитель",
+      "sort_order": 20,
+      "is_active": true
+    },
+    {
+      "id": "driver-car-transfer",
+      "l2_id": "driver-hourly",
+      "name_ru": "Перегнать автомобиль",
+      "sort_order": 30,
+      "is_active": true
+    },
+    {
       "id": "drive-beginner",
       "l2_id": "driving-instructor",
       "name_ru": "Вождение для начинающих",
@@ -2155,6 +2213,34 @@
       "l2_id": "insulation",
       "name_ru": "Пароизоляция / гидроизоляция",
       "sort_order": 80,
+      "is_active": true
+    },
+    {
+      "id": "alarm-security",
+      "l2_id": "intercom-alarm",
+      "name_ru": "Охранная сигнализация",
+      "sort_order": 30,
+      "is_active": true
+    },
+    {
+      "id": "alarm-fire",
+      "l2_id": "intercom-alarm",
+      "name_ru": "Пожарная сигнализация",
+      "sort_order": 40,
+      "is_active": true
+    },
+    {
+      "id": "access-control",
+      "l2_id": "intercom-alarm",
+      "name_ru": "Контроль доступа",
+      "sort_order": 50,
+      "is_active": true
+    },
+    {
+      "id": "intercom-pro",
+      "l2_id": "intercom-alarm",
+      "name_ru": "Домофоны",
+      "sort_order": 60,
       "is_active": true
     },
     {
@@ -2921,6 +3007,27 @@
       "is_active": true
     },
     {
+      "id": "road-jumpstart",
+      "l2_id": "roadside-help",
+      "name_ru": "Прикурить автомобиль",
+      "sort_order": 10,
+      "is_active": true
+    },
+    {
+      "id": "road-fuel",
+      "l2_id": "roadside-help",
+      "name_ru": "Подвезти топливо",
+      "sort_order": 20,
+      "is_active": true
+    },
+    {
+      "id": "road-wheel",
+      "l2_id": "roadside-help",
+      "name_ru": "Заменить колесо на дороге",
+      "sort_order": 30,
+      "is_active": true
+    },
+    {
       "id": "roof-metal",
       "l2_id": "roofing",
       "name_ru": "Металлочерепица",
@@ -3058,34 +3165,6 @@
       "l2_id": "security-systems",
       "name_ru": "Облачное видеонаблюдение",
       "sort_order": 20,
-      "is_active": true
-    },
-    {
-      "id": "alarm-security",
-      "l2_id": "security-systems",
-      "name_ru": "Охранная сигнализация",
-      "sort_order": 30,
-      "is_active": true
-    },
-    {
-      "id": "alarm-fire",
-      "l2_id": "security-systems",
-      "name_ru": "Пожарная сигнализация",
-      "sort_order": 40,
-      "is_active": true
-    },
-    {
-      "id": "access-control",
-      "l2_id": "security-systems",
-      "name_ru": "Контроль доступа",
-      "sort_order": 50,
-      "is_active": true
-    },
-    {
-      "id": "intercom-pro",
-      "l2_id": "security-systems",
-      "name_ru": "Домофоны",
-      "sort_order": 60,
       "is_active": true
     },
     {
@@ -3653,14 +3732,14 @@
       "weight": 100
     },
     {
-      "term": "видеокамера",
-      "l2_id": "security-systems",
+      "term": "видеодомофон",
+      "l2_id": "intercom-alarm",
       "l3_id": null,
-      "weight": 100
+      "weight": 90
     },
     {
-      "term": "видеонаблюдение",
-      "l2_id": "locks-security",
+      "term": "видеокамера",
+      "l2_id": "security-systems",
       "l3_id": null,
       "weight": 100
     },
@@ -3693,6 +3772,18 @@
       "l2_id": "body-repair",
       "l3_id": null,
       "weight": 80
+    },
+    {
+      "term": "водитель",
+      "l2_id": "driver-hourly",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "водитель на час",
+      "l2_id": "driver-hourly",
+      "l3_id": null,
+      "weight": 100
     },
     {
       "term": "водонагреватель",
@@ -3954,7 +4045,7 @@
     },
     {
       "term": "домофон",
-      "l2_id": "security-systems",
+      "l2_id": "intercom-alarm",
       "l3_id": null,
       "weight": 100
     },
@@ -4037,6 +4128,12 @@
       "weight": 100
     },
     {
+      "term": "закончился бензин",
+      "l2_id": "roadside-help",
+      "l3_id": null,
+      "weight": 90
+    },
+    {
       "term": "залить",
       "l2_id": "concrete",
       "l3_id": null,
@@ -4057,6 +4154,12 @@
     {
       "term": "замена труб",
       "l2_id": "water-sewer",
+      "l3_id": null,
+      "weight": 90
+    },
+    {
+      "term": "замена экрана телефона",
+      "l2_id": "pc-repair",
       "l3_id": null,
       "weight": 90
     },
@@ -4389,6 +4492,12 @@
       "l2_id": "floors",
       "l3_id": null,
       "weight": 100
+    },
+    {
+      "term": "личный водитель",
+      "l2_id": "driver-hourly",
+      "l3_id": null,
+      "weight": 90
     },
     {
       "term": "люстра",
@@ -4751,6 +4860,18 @@
       "weight": 60
     },
     {
+      "term": "перегнать машину",
+      "l2_id": "driver-hourly",
+      "l3_id": null,
+      "weight": 90
+    },
+    {
+      "term": "перегон автомобиля",
+      "l2_id": "driver-hourly",
+      "l3_id": null,
+      "weight": 80
+    },
+    {
       "term": "перегородка",
       "l2_id": "drywall",
       "l3_id": null,
@@ -4851,6 +4972,18 @@
       "l2_id": "renovation",
       "l3_id": null,
       "weight": 100
+    },
+    {
+      "term": "подвезти бензин",
+      "l2_id": "roadside-help",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "подвезти топливо",
+      "l2_id": "roadside-help",
+      "l3_id": null,
+      "weight": 90
     },
     {
       "term": "подвесной потолок",
@@ -4955,6 +5088,12 @@
       "weight": 60
     },
     {
+      "term": "помощь на дороге",
+      "l2_id": "roadside-help",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
       "term": "помощь по дому",
       "l2_id": "handyman",
       "l3_id": null,
@@ -5049,6 +5188,18 @@
       "l2_id": "buy-deliver",
       "l3_id": null,
       "weight": 90
+    },
+    {
+      "term": "прикурить",
+      "l2_id": "roadside-help",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "прикурить машину",
+      "l2_id": "roadside-help",
+      "l3_id": null,
+      "weight": 100
     },
     {
       "term": "пробурить",
@@ -5363,6 +5514,12 @@
       "weight": 70
     },
     {
+      "term": "сел аккумулятор",
+      "l2_id": "roadside-help",
+      "l3_id": null,
+      "weight": 90
+    },
+    {
       "term": "септик",
       "l2_id": "water-sewer",
       "l3_id": null,
@@ -5382,13 +5539,7 @@
     },
     {
       "term": "сигнализация",
-      "l2_id": "locks-security",
-      "l3_id": null,
-      "weight": 100
-    },
-    {
-      "term": "сигнализация",
-      "l2_id": "security-systems",
+      "l2_id": "intercom-alarm",
       "l3_id": null,
       "weight": 100
     },
@@ -5409,6 +5560,12 @@
       "l2_id": "garden",
       "l3_id": null,
       "weight": 90
+    },
+    {
+      "term": "скуд",
+      "l2_id": "intercom-alarm",
+      "l3_id": null,
+      "weight": 100
     },
     {
       "term": "сломать стену",
@@ -5603,6 +5760,12 @@
       "weight": 100
     },
     {
+      "term": "техпомощь",
+      "l2_id": "roadside-help",
+      "l3_id": null,
+      "weight": 80
+    },
+    {
       "term": "течет",
       "l2_id": "plumbing",
       "l3_id": null,
@@ -5631,6 +5794,12 @@
       "l2_id": "machinery",
       "l3_id": null,
       "weight": 80
+    },
+    {
+      "term": "трезвый водитель",
+      "l2_id": "driver-hourly",
+      "l3_id": null,
+      "weight": 100
     },
     {
       "term": "триколор",
@@ -6053,5 +6222,5 @@
       "weight": 100
     }
   ],
-  "content_sha256": "0458c2f06504608d6b0a7339ceb3ac8333b8630bd3bf67bf0abb9dac23ceecaf"
+  "content_sha256": "0889e75ff544e54c9a2112ee5a49996dabee85f6d3791d91eaf7abaf54871b00"
 }

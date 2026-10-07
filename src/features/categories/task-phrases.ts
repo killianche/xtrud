@@ -740,19 +740,20 @@ export const TASK_PHRASES: readonly TaskPhrase[] = [
   { text: "Настроить каналы на телевизоре", l2: "satellite-tv", weight: 40 },
   { text: "Подключить интернет-телевидение", l2: "satellite-tv", weight: 25 },
   { text: "Установить усилитель сигнала", l2: "satellite-tv", weight: 20 },
-  // ── security-systems — Видеонаблюдение и охрана ──
+  // ── security-systems — Видеонаблюдение (домофоны и сигнализация — intercom-alarm, 0241) ──
   { text: "Установить видеонаблюдение", l2: "security-systems", weight: 65 },
   { text: "Видеонаблюдение для частного дома", l2: "security-systems", weight: 40 },
   { text: "Установить камеры видеонаблюдения во дворе", l2: "security-systems", weight: 40 },
   { text: "Установить видеонаблюдение в магазине", l2: "security-systems", weight: 25 },
   { text: "Настроить видеонаблюдение с телефона", l2: "security-systems", weight: 30 },
   { text: "Обслуживание видеонаблюдения", l2: "security-systems", weight: 15 },
-  { text: "Установить домофон", l2: "security-systems", weight: 45 },
-  { text: "Установить видеодомофон", l2: "security-systems", weight: 40 },
-  { text: "Отремонтировать домофон", l2: "security-systems", weight: 25 },
-  { text: "Установить охранную сигнализацию", l2: "security-systems", weight: 40 },
-  { text: "Установить пожарную сигнализацию", l2: "security-systems", weight: 20 },
-  { text: "Установить контроль доступа", l2: "security-systems", weight: 15 },
+  // ── intercom-alarm — Домофоны и сигнализация (0241, №292) ──
+  { text: "Установить домофон", l2: "intercom-alarm", weight: 45 },
+  { text: "Установить видеодомофон", l2: "intercom-alarm", weight: 40 },
+  { text: "Отремонтировать домофон", l2: "intercom-alarm", weight: 25 },
+  { text: "Установить охранную сигнализацию", l2: "intercom-alarm", weight: 40 },
+  { text: "Установить пожарную сигнализацию", l2: "intercom-alarm", weight: 20 },
+  { text: "Установить контроль доступа", l2: "intercom-alarm", weight: 15 },
   // ── handyman — Мастер на час ──
   { text: "Мастер на час", l2: "handyman", weight: 95 },
   { text: "Муж на час", l2: "handyman", weight: 70 },
@@ -845,8 +846,14 @@ export const TASK_PHRASES: readonly TaskPhrase[] = [
   { text: "Эвакуатор в другой город", l2: "tow-truck", weight: 35 },
   { text: "Перевезти мотоцикл", l2: "tow-truck", weight: 20 },
   { text: "Перевезти спецтехнику", l2: "tow-truck", weight: 25 },
-  // спорно: прикурить или поменять колесо — auto-electric / tire-service
-  { text: "Техпомощь на дороге", l2: "tow-truck", weight: 30 },
+  // ── driver-hourly — Водитель на час (0241, №292) ──
+  { text: "Водитель на час", l2: "driver-hourly", weight: 60 },
+  { text: "Водитель на мою машину", l2: "driver-hourly", weight: 40 },
+  { text: "Трезвый водитель", l2: "driver-hourly", weight: 45 },
+  { text: "Перегнать машину", l2: "driver-hourly", weight: 40 },
+  { text: "Отвезти меня на моей машине", l2: "driver-hourly", weight: 25 },
+  { text: "Водитель на свадьбу", l2: "driver-hourly", weight: 25 },
+  { text: "Отвезти машину на техосмотр", l2: "driver-hourly", weight: 15 },
   // ── courier-delivery — Доставка документов и посылок ──
   { text: "Доставить документы", l2: "courier-delivery", weight: 50 },
   { text: "Доставить посылку", l2: "courier-delivery", weight: 50 },
@@ -968,6 +975,14 @@ export const TASK_PHRASES: readonly TaskPhrase[] = [
   { text: "Отполировать машину", l2: "body-repair", weight: 40 },
   // спорно: отдельной категории автостёкол в каталоге нет
   { text: "Заменить лобовое стекло", l2: "body-repair", weight: 30 },
+  // ── roadside-help — Помощь на дороге (0241, №292) ──
+  { text: "Техпомощь на дороге", l2: "roadside-help", weight: 50 },
+  { text: "Прикурить машину", l2: "roadside-help", weight: 60 },
+  { text: "Прикурить аккумулятор", l2: "roadside-help", weight: 40 },
+  { text: "Подвезти бензин", l2: "roadside-help", weight: 40 },
+  { text: "Закончился бензин, привезти топливо", l2: "roadside-help", weight: 25 },
+  { text: "Заменить колесо на дороге", l2: "roadside-help", weight: 45 },
+  { text: "Пробил колесо, нужна помощь", l2: "roadside-help", weight: 30 },
   // ── car-wash — Автомойка и химчистка ──
   { text: "Помыть машину", l2: "car-wash", weight: 50 },
   { text: "Выездная мойка автомобиля", l2: "car-wash", weight: 40 },

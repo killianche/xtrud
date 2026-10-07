@@ -16,6 +16,8 @@ const ART: Record<string, ImageSourcePropType> = {
   "home-services": require("../../assets/images/sections/home-services.png"),
   interior: require("../../assets/images/sections/interior.png"),
   "tech-security": require("../../assets/images/sections/tech-security.png"),
+  // №292: «Ремонт бытовой техники» выделен из «Техники и безопасности».
+  "home-appliances": require("../../assets/images/sections/home-appliances.png"),
   "handyman-moving": require("../../assets/images/sections/handyman-moving.png"),
   cargo: require("../../assets/images/sections/cargo.png"),
   "computer-help": require("../../assets/images/sections/computer-help.png"),

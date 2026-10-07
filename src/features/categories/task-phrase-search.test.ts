@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { searchTaskPhrases } from "./task-phrase-search";
+import { TASK_PHRASES } from "./task-phrases";
 
 const P = [
   { text: "Отремонтировать газовый котёл", l2: "climate", weight: 70 },
@@ -80,5 +81,24 @@ describe("searchTaskPhrases на словаре TASK_PHRASES — сценари�
       "только уборка",
     ).toBe(true);
     expect(hits.some((h) => /генеральная/i.test(h.phrase.text))).toBe(true);
+  });
+});
+
+describe("уборка своими словами (№259)", () => {
+  const texts = (q: string) => searchTaskPhrases(q, TASK_PHRASES, 6).map((h) => h.phrase.text);
+
+  it("«убраться в комнате» — уборка, без вмятин и ванной комнаты", () => {
+    const hits = searchTaskPhrases("Убраться в комнате", TASK_PHRASES, 6);
+    expect(hits.length).toBeGreaterThan(0);
+    expect(hits.every((h) => h.phrase.l2 === "cleaning")).toBe(true);
+  });
+
+  it("предлог в конце не требует слова на эту букву", () => {
+    expect(texts("убраться в")).not.toContain("Убрать вмятину");
+    expect(texts("убраться в")[0]).toMatch(/^Убраться в/);
+  });
+
+  it("«убрать вмятину» — по-прежнему кузовной ремонт", () => {
+    expect(searchTaskPhrases("убрать вмятину", TASK_PHRASES, 6)[0]?.phrase.l2).toBe("body-repair");
   });
 });

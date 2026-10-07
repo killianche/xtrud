@@ -12,89 +12,82 @@
  * списка» / «Другая категория» (`orders/new/catalog`), написанное
  * сохраняется и станет названием.
  *
+ * С №259 (снимки владельца и YouDo, 2026-10-07) под полем — только
+ * подсказки-формулировки, без списка категорий: подбор категорий по словам
+ * путал («убраться в комнате» → «Кузовной ремонт»). Не подошла ни одна —
+ * «Далее»: написанное станет названием, категорию ставим сами
+ * (`guess-category.ts`), на форме её видно и можно поменять; не уверены —
+ * «Без категории», подберёт админ (№251).
+ *
  * Откат — флаг `composer_start = "catalog"` в веб-админке (0228): первым
  * экраном снова каталог (`CategoryCatalogStep`).
  */
 
 import { useRouter } from "expo-router";
-import { Sparkle, SquaresFour } from "phosphor-react-native";
+import { SquaresFour } from "phosphor-react-native";
 import { useEffect, useMemo, useRef } from "react";
-import { AccessibilityInfo, Keyboard, Pressable, type TextInput, View } from "react-native";
+import { AccessibilityInfo, Keyboard, Pressable, type TextInput } from "react-native";
 import { AppText } from "@/components/AppText";
-import { Skeleton } from "@/components/ui/Skeleton";
+import { searchCatalogByWords } from "@/features/categories/bundled-task-catalog";
 import type { TaskPhrase } from "@/features/categories/task-phrases";
-import type { CategoryL1 } from "@/features/categories/use-categories-l1";
-import { useCategoriesL1 } from "@/features/categories/use-categories-l1";
-import { useCategoryMatches } from "@/features/categories/use-category-matches";
 import { useTaskPhrases } from "@/features/categories/use-task-phrases";
-import {
-  useVisibleCategories,
-  type VisibleCategory,
-} from "@/features/categories/use-visible-categories";
+import { useVisibleCategories } from "@/features/categories/use-visible-categories";
 import { getCategoryIcon } from "@/lib/category-icons";
-import { UNCATEGORIZED_L2_ID } from "@/lib/product-scope";
 import { useThemeColors } from "@/lib/use-theme-color";
 import { ComposerField } from "./ComposerFields";
 import { ChoiceGroup, ChoiceRow } from "./ComposerRows";
 import { ComposerScreen } from "./ComposerScreen";
 import { useComposer } from "./composer-store";
-import { isStepValid, TITLE_MAX, titleFromQuery } from "./steps";
+import { guessCategoryId } from "./guess-category";
+import { normalizeTitle, TITLE_MAX, TITLE_MIN, titleFromQuery } from "./steps";
 import { useFocusAfterTransition } from "./use-focus-after-transition";
 import { useStepNavigation } from "./use-step-navigation";
 
-/** Больше пяти подсказок над клавиатурой не помещается и не помогает выбрать. */
-const MAX_SUGGESTIONS = 5;
 export const COMPOSER_CATALOG_ROUTE = "/orders/new/catalog";
 
-const NO_CATEGORIES: readonly VisibleCategory[] = [];
-const NO_SECTIONS: readonly CategoryL1[] = [];
+/** Подсказки — с двух букв: одна буква совпадает почти со всем словарём. */
+const MIN_QUERY = 2;
 
 export function QuickStartStep({ subtitle }: { subtitle?: string }) {
   const router = useRouter();
   const { values, patch } = useComposer();
   const nav = useStepNavigation("category");
-  const tc = useThemeColors(["ink", "mute", "accent"]);
-  const l1 = useCategoriesL1();
+  const tc = useThemeColors(["ink", "mute"]);
   const categories = useVisibleCategories();
   const inputRef = useRef<TextInput>(null);
   // Клавиатура — сразу, как экран доехал: здесь одно действие — написать.
   useFocusAfterTransition(inputRef, true);
 
   const text = values.title;
-  const sections = l1.data ?? NO_SECTIONS;
-  const { matches, searching, tooShort } = useCategoryMatches(
-    text,
-    categories.data ?? NO_CATEGORIES,
-    sections,
-  );
-  // Как у YouDo (№248): сначала готовые формулировки задач — касание сразу
-  // задаёт и категорию, и название; ниже — категории для своего названия.
+  const tooShort = text.trim().length < MIN_QUERY;
   const visibleIds = useMemo(() => (categories.data ?? []).map((c) => c.id), [categories.data]);
   const { hits: phraseHits, examples } = useTaskPhrases(text, visibleIds);
-  const shown = matches.slice(0, phraseHits.length > 0 ? 3 : MAX_SUGGESTIONS);
-  const catalogLoading = categories.isLoading || l1.isLoading;
-  const catalogFailed = !catalogLoading && !!(categories.error || l1.error) && !categories.data;
+  const canContinue = normalizeTitle(text).length >= TITLE_MIN;
 
   // VoiceOver: подсказки появляются без касания — объявить, сколько их.
-  const settled = !tooShort && !searching && !catalogLoading;
   useEffect(() => {
-    if (!settled) return;
+    if (tooShort) return;
     AccessibilityInfo.announceForAccessibility(
-      phraseHits.length + shown.length > 0
-        ? `Подсказок: ${phraseHits.length + shown.length}`
-        : "Подходящей категории не нашлось",
+      phraseHits.length > 0 ? `Подсказок: ${phraseHits.length}` : "Подсказок нет",
     );
-  }, [settled, phraseHits.length, shown.length]);
+  }, [tooShort, phraseHits.length]);
 
-  const pick = (l2Id: string) => {
-    patch({ l2Id, extraL2Ids: [], title: titleFromQuery(text) });
+  const goNext = (l2Id: string, title: string) => {
+    patch({ l2Id, extraL2Ids: [], title });
     Keyboard.dismiss();
     nav.goNext();
   };
-  const pickPhrase = (p: TaskPhrase) => {
-    patch({ l2Id: p.l2, extraL2Ids: [], title: p.text });
+  const pickPhrase = (p: TaskPhrase) => goNext(p.l2, p.text);
+  // «Далее» без подсказки — категорию ставим сами (guess-category.ts).
+  const continueWithText = () => {
+    if (!canContinue) return;
+    const l2Id = guessCategoryId(phraseHits, searchCatalogByWords(text, 5), new Set(visibleIds));
+    goNext(l2Id, titleFromQuery(text));
+  };
+  const openCatalog = () => {
+    if (text.trim()) patch({ title: titleFromQuery(text) });
     Keyboard.dismiss();
-    nav.goNext();
+    router.push(COMPOSER_CATALOG_ROUTE as never);
   };
   const categoryById = (id: string) => categories.data?.find((c) => c.id === id);
   const phraseRow = (p: TaskPhrase, last: boolean) => {
@@ -113,18 +106,7 @@ export function QuickStartStep({ subtitle }: { subtitle?: string }) {
       />
     );
   };
-  const pickUncategorized = () => {
-    patch({ l2Id: UNCATEGORIZED_L2_ID, extraL2Ids: [], title: titleFromQuery(text) });
-    Keyboard.dismiss();
-    nav.goNext();
-  };
-  const openCatalog = () => {
-    if (text.trim()) patch({ title: titleFromQuery(text) });
-    Keyboard.dismiss();
-    router.push(COMPOSER_CATALOG_ROUTE as never);
-  };
-  const sectionName = (l1Id: string) => sections.find((s) => s.id === l1Id)?.name_ru;
-  const catalogIcon = <SquaresFour size={18} weight="bold" color={tc.mute} />;
+  const suggestions = tooShort ? examples : phraseHits;
 
   return (
     <ComposerScreen
@@ -132,11 +114,11 @@ export function QuickStartStep({ subtitle }: { subtitle?: string }) {
       title="Что нужно сделать?"
       subtitle={subtitle}
       onClose={nav.close}
-      // «Далее» нет: дальше ведёт касание подсказки.
-      hideActions
-      primaryLabel={nav.primaryLabel}
-      primaryDisabled={!isStepValid("category", values)}
-      onPrimary={nav.goNext}
+      // Пока ничего не написано, кнопки нет: дальше ведёт пример или ввод.
+      hideActions={tooShort}
+      primaryLabel="Далее"
+      primaryDisabled={!canContinue}
+      onPrimary={continueWithText}
     >
       <ComposerField
         ref={inputRef}
@@ -154,104 +136,33 @@ export function QuickStartStep({ subtitle }: { subtitle?: string }) {
         accessibilityLabel="Что нужно сделать"
       />
 
-      {tooShort ? (
-        // Пока ничего не написано — примеры частых задач (как «Популярное» у
-        // YouDo, но без слова «популярное»: частоту мы не измеряем) и тихий
-        // выход в каталог.
-        <>
-          {examples.length > 0 ? (
-            <ChoiceGroup title="Например">
-              {examples.map((p, i) => phraseRow(p, i === examples.length - 1))}
-            </ChoiceGroup>
-          ) : null}
-          <Pressable
-            accessibilityRole="button"
-            onPress={openCatalog}
-            className="min-h-11 flex-row items-center self-start px-8 active:opacity-60"
-          >
-            <AppText className="text-ios-body text-accent">Выбрать из списка категорий</AppText>
-          </Pressable>
-        </>
-      ) : catalogFailed ? (
-        <ChoiceGroup footer="Не удалось загрузить категории. Проверьте связь.">
-          <ChoiceRow
-            title="Повторить"
-            onPress={() => {
-              void categories.refetch();
-              void l1.refetch();
-            }}
-            last
-          />
+      {suggestions.length > 0 ? (
+        // До ввода — примеры частых задач (как «Популярное» у YouDo, но без
+        // слова «популярное»: частоту мы не измеряем); при вводе — подсказки.
+        <ChoiceGroup title={tooShort ? "Например" : "Подсказки"}>
+          {suggestions.map((p, i) => phraseRow(p, i === suggestions.length - 1))}
         </ChoiceGroup>
-      ) : phraseHits.length === 0 && shown.length === 0 && (searching || catalogLoading) ? (
-        <View className="mx-4 overflow-hidden rounded-2xl bg-surface-card">
-          {[0, 1, 2].map((i) => (
-            <View key={i} className="flex-row items-center gap-3 px-4 py-3.5">
-              <Skeleton width={36} height={36} className="rounded-lg" />
-              <Skeleton height={17} className="flex-1 rounded" />
-            </View>
-          ))}
-        </View>
-      ) : phraseHits.length === 0 && shown.length === 0 ? (
-        // Сначала объяснение, потом выход — в порядке чтения. Не подошла ни
-        // одна категория — задание всё равно публикуется: «Без категории», её
-        // подберёт админ (владелец, 2026-10-06, №251).
-        <>
-          <AppText className="mb-2 px-8 text-ios-subheadline text-mute">
-            Не нашли подходящую категорию. Опубликуйте без неё — подберём сами, или выберите из
-            списка.
-          </AppText>
-          <ChoiceGroup>
-            <ChoiceRow
-              title="Опубликовать без категории"
-              subtitle="Подберём категорию сами"
-              icon={<Sparkle size={18} weight="bold" color={tc.accent} />}
-              onPress={pickUncategorized}
-            />
-            <ChoiceRow
-              title="Выбрать из списка"
-              icon={catalogIcon}
-              navigates
-              onPress={openCatalog}
-              last
-            />
-          </ChoiceGroup>
-        </>
-      ) : (
-        <>
-          {phraseHits.length > 0 ? (
-            <ChoiceGroup title="Подсказки">
-              {phraseHits.map((p, i) => phraseRow(p, i === phraseHits.length - 1))}
-            </ChoiceGroup>
-          ) : null}
-          <ChoiceGroup
-            title={phraseHits.length > 0 ? "Или выберите категорию" : "Подходящие категории"}
-          >
-            {shown.map(({ category, service }) => {
-              const Icon = getCategoryIcon(category.icon);
-              const section = sectionName(category.l1_id);
-              return (
-                <ChoiceRow
-                  key={category.id}
-                  title={category.name_ru}
-                  // Совпавшая услуга, иначе раздел — если он не повторяет название.
-                  subtitle={service ?? (section === category.name_ru ? undefined : section)}
-                  icon={<Icon size={18} weight="bold" color={tc.ink} />}
-                  selected={category.id === values.l2Id}
-                  onPress={() => pick(category.id)}
-                />
-              );
-            })}
-            <ChoiceRow
-              title="Другая категория"
-              icon={catalogIcon}
-              navigates
-              onPress={openCatalog}
-              last
-            />
-          </ChoiceGroup>
-        </>
-      )}
+      ) : !canContinue ? (
+        // 2–4 буквы без подсказок: «Далее» ещё неактивна — сказать почему.
+        <AppText className="mb-4 px-8 text-ios-subheadline text-mute">
+          Напишите чуть подробнее — например, «поменять розетку».
+        </AppText>
+      ) : canContinue ? (
+        // Подсказок нет — «Далее» всё равно ведёт дальше: сказать, что будет
+        // с категорией, иначе её появление на форме выглядит самоуправством.
+        <AppText className="mb-4 px-8 text-ios-subheadline text-mute">
+          Категорию подберём по названию — её можно поменять на следующем экране.
+        </AppText>
+      ) : null}
+      {/* Тихий запасной путь — для тех, кто привык искать в каталоге. */}
+      <Pressable
+        accessibilityRole="button"
+        onPress={openCatalog}
+        className="min-h-11 flex-row items-center gap-2 self-start px-8 active:opacity-60"
+      >
+        <SquaresFour size={18} weight="bold" color={tc.mute} />
+        <AppText className="text-ios-body text-accent">Выбрать из списка категорий</AppText>
+      </Pressable>
     </ComposerScreen>
   );
 }

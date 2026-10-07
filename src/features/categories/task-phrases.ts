@@ -468,6 +468,15 @@ export const TASK_PHRASES: readonly TaskPhrase[] = [
   // ── cleaning — Уборка (клининг) ──
   { text: "Генеральная уборка квартиры", l2: "cleaning", weight: 95 },
   { text: "Уборка квартиры", l2: "cleaning", weight: 90 },
+  // Как говорят люди (№259, подсказки YouDo): «убраться в …».
+  { text: "Убраться в квартире", l2: "cleaning", weight: 88 },
+  { text: "Убраться в доме", l2: "cleaning", weight: 70 },
+  { text: "Убраться в комнате", l2: "cleaning", weight: 55 },
+  { text: "Убраться в офисе", l2: "cleaning", weight: 40 },
+  { text: "Убраться в однокомнатной квартире", l2: "cleaning", weight: 45 },
+  { text: "Убраться в двухкомнатной квартире", l2: "cleaning", weight: 40 },
+  { text: "Уборка комнаты", l2: "cleaning", weight: 40 },
+  { text: "Прибраться в квартире", l2: "cleaning", weight: 35 },
   { text: "Регулярная уборка квартиры", l2: "cleaning", weight: 60 },
   { text: "Уборка дома", l2: "cleaning", weight: 75 },
   { text: "Генеральная уборка дома", l2: "cleaning", weight: 70 },
@@ -564,6 +573,7 @@ export const TASK_PHRASES: readonly TaskPhrase[] = [
   { text: "Обработать от плесени", l2: "pest-control", weight: 35 },
   // ── cleaning-post-renovation — Уборка после ремонта ──
   { text: "Уборка после ремонта", l2: "cleaning-post-renovation", weight: 85 },
+  { text: "Убраться после ремонта", l2: "cleaning-post-renovation", weight: 50 },
   { text: "Генеральная уборка после ремонта", l2: "cleaning-post-renovation", weight: 60 },
   { text: "Уборка после капитального ремонта", l2: "cleaning-post-renovation", weight: 35 },
   { text: "Уборка после косметического ремонта", l2: "cleaning-post-renovation", weight: 25 },

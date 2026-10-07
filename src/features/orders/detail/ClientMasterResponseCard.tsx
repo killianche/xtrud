@@ -1,6 +1,13 @@
 import { useRouter } from "expo-router";
-import { ArrowCounterClockwise, CaretRight, CheckCircle, Clock, Star } from "phosphor-react-native";
-import { ActivityIndicator, Pressable, View } from "react-native";
+import {
+  ArrowCounterClockwise,
+  CaretRight,
+  DotsThree,
+  Phone,
+  Star,
+  WhatsappLogo,
+} from "phosphor-react-native";
+import { ActionSheetIOS, ActivityIndicator, Platform, Pressable, View } from "react-native";
 import { AppText } from "@/components/AppText";
 import { Avatar } from "@/components/Avatar";
 import { StatusPill } from "@/components/StatusPill";
@@ -8,39 +15,43 @@ import { isVerifiedLevel, VerifiedBadge } from "@/components/ui";
 import { useMasterPhone, useMasterPublicProfile } from "@/features/master-view/use-master-public";
 import type { OrderStatusView } from "@/features/orders/order-status-view";
 import type { OrderResponseWithMaster } from "@/features/orders/use-order-responses";
+import { useColorScheme } from "@/hooks/use-color-scheme";
+import { chooseAsync } from "@/lib/alert";
+import { openExternalUrl } from "@/lib/open-link";
 import { CARD_SHADOW } from "@/lib/shadows";
 import { useThemeColors } from "@/lib/use-theme-color";
 import { normalizeWhatsappDigits, resolveWhatsappDigits } from "@/lib/whatsapp";
-import { ContactButtons } from "./ContactButtons";
 import { formatResponsePrice } from "./order-response-price";
 
 // ----------------------------------------------------------------------------
-// Карточка отклика у автора задания. Редизайн 2026-09-11 (владелец:
-// «Показать контакты, Профиль, Скрыть — некрасиво»):
+// Карточка отклика у автора задания. Редизайн №260→№262 (владелец,
+// 2026-10-07: «кнопки мелкие и непонятные, „Скрыть“ непонятная, редизайн с
+// нуля в стиле iOS, как у больших компаний»):
 //
 //   ┌──────────────────────────────────────────────┐
-//   │ (фото) Имя ✓                        5 000 ₽   │
-//   │        ★ 5.0 (1)   ⏱ Завтра                   │
+//   │ (фото) Имя ✓                            ⋯     │  ← тап — профиль
+//   │        ★ 5,0 · 3 отзыва   ›                   │
+//   │ Цена              Срок                        │
+//   │ 5 000 ₽           Завтра                      │
 //   │ Сообщение специалиста                          │
-//   │ [   Позвонить   ]  [   WhatsApp   ]            │
-//   │ ─────────────────────────────────────────────  │
-//   │ Профиль ›                              Скрыть │
+//   │ (📞) (WA)  [         Выбрать          ]        │
 //   └──────────────────────────────────────────────┘
 //
-// Каждый отклик — отдельная карточка, как задание в ленте (DESIGN.md,
-// 2026-09-02). Контакты видны сразу: они часть отклика (0147, DECISION
-// 2026-09-01). Кнопка «Показать контакты» осталась от старой схемы и
-// появлялась как раз у новых откликов, где номер уже в строке, — лишний шаг
-// убран. Старым откликам без контактов в строке номер подгружается через
-// get_master_phone. «Позвонить» — в акценте: чёрных кнопок в продукте нет
-// (DESIGN.md: «черные кнопки не делай»).
+// Что взято: Thumbtack и Profi.ru — цена и срок отдельными подписанными
+// фактами, а не мелким текстом у имени; «Контакты» iOS — связь круглыми
+// кнопками-иконками; одно заметное действие — «Выбрать» (VoiceOver слышит
+// «Выбрать исполнителем» и что задание закроется, №255; полная подпись
+// переносилась на две строки). Редкое — «Скрыть» — в меню «⋯», как
+// второстепенные действия в системных приложениях (HIG: Menus).
+// Контакты видны сразу (0147); старым откликам без контактов в строке номер
+// подгружается через get_master_phone.
 // ----------------------------------------------------------------------------
 
 interface ClientMasterResponseCardProps {
   response: OrderResponseWithMaster;
   isRejecting: boolean;
-  /** Если undefined — кнопка «Скрыть» не показывается (заказ закрыт /
-   *  rejected уже). */
+  /** «Скрыть» в меню «⋯»; undefined — пункта нет (заказ закрыт / уже
+   *  скрыт). Выбор в меню — уже подтверждение: второго окна не нужно. */
   onReject: (() => void) | undefined;
   /** Скрытый отклик — приглушённый, без кнопок связи. */
   rejected?: boolean;
@@ -64,6 +75,7 @@ export function ClientMasterResponseCard({
   statusView,
 }: ClientMasterResponseCardProps) {
   const router = useRouter();
+  const { colorScheme } = useColorScheme();
   const tc = useThemeColors(["ink", "mute", "warning", "accent"]);
   const rowPhone = response.contact_phone?.trim() || null;
   const rowWa = response.whatsapp_phone?.trim() || null;
@@ -100,7 +112,8 @@ export function ClientMasterResponseCard({
     [response.master?.first_name, response.master?.last_name].filter(Boolean).join(" ") ||
     "Исполнитель";
   const priceText = formatResponsePrice(response);
-  const ratingText = hasRating ? Number(ratingAvg).toFixed(1) : null;
+  // «5,0», как в профиле: десятичная запятая по-русски.
+  const ratingText = hasRating ? Number(ratingAvg).toFixed(1).replace(".", ",") : null;
   const profileAccessibilityLabel = [
     `Профиль ${masterName}`,
     verified ? "Проверенный специалист" : null,
@@ -112,80 +125,124 @@ export function ClientMasterResponseCard({
     .join(". ");
   const onProfile = () => router.push(`/master/${response.master_id}` as never);
 
+  const onMore = async () => {
+    const choice = await chooseActionAsync({
+      title: masterName,
+      message: onReject ? "Скрытый отклик уйдёт вниз списка. Специалист не узнает." : undefined,
+      options: [
+        { id: "profile", text: "Открыть профиль" },
+        ...(onReject ? [{ id: "hide" as const, text: "Скрыть отклик", destructive: true }] : []),
+      ],
+      colorScheme,
+    });
+    if (choice === "profile") onProfile();
+    else if (choice === "hide") onReject?.();
+  };
+
   return (
     <View
       className="rounded-2xl bg-surface-card p-4"
       style={[CARD_SHADOW, rejected ? { opacity: 0.6 } : null]}
     >
-      {/* Кто и за сколько. Тап — профиль специалиста; шеврон у имени говорит
-          об этом, отдельной кнопки «Профиль» нет (владелец, 2026-10-03:
-          «зачем она, если тап по аккаунту и так туда ведёт»). Материал —
-          как у карточек списков: тень без рамки. */}
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={profileAccessibilityLabel}
-        onPress={onProfile}
-        className="flex-row items-center gap-3 active:opacity-70"
-      >
-        <Avatar
-          url={response.master?.avatar_url ?? null}
-          name={masterName}
-          seed={response.master?.id ?? response.master_id}
-          size="md"
-        />
-        <View className="min-w-0 flex-1">
-          <View className="flex-row items-center gap-1">
-            <AppText weight="semibold" className="shrink text-body-md text-ink" numberOfLines={1}>
-              {masterName}
-            </AppText>
-            {verified ? <VerifiedBadge size={16} /> : null}
-            <CaretRight size={14} weight="bold" color={tc.mute} />
-          </View>
-          {ratingText || response.lead_time ? (
-            <View className="mt-0.5 flex-row flex-wrap items-center gap-x-3">
+      <View className="flex-row items-start gap-2">
+        {/* Кто: тап — профиль; шеврон говорит, что строка ведёт дальше. */}
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={profileAccessibilityLabel}
+          accessibilityHint="Открывает профиль специалиста"
+          onPress={onProfile}
+          className="min-h-11 flex-1 flex-row items-center gap-3 active:opacity-70"
+        >
+          <Avatar
+            url={response.master?.avatar_url ?? null}
+            name={masterName}
+            seed={response.master?.id ?? response.master_id}
+            size="lg"
+          />
+          <View className="min-w-0 flex-1">
+            <View className="flex-row items-center gap-1">
+              <AppText
+                weight="semibold"
+                className="shrink text-ios-body text-ink"
+                numberOfLines={2}
+              >
+                {masterName}
+              </AppText>
+              {verified ? <VerifiedBadge size={16} /> : null}
+            </View>
+            <View className="mt-0.5 flex-row items-center gap-1">
               {ratingText ? (
-                <View className="flex-row items-center gap-1">
+                <>
                   <Star size={14} weight="fill" color={tc.warning} />
-                  <AppText weight="semibold" className="text-body-sm text-ink">
+                  <AppText weight="semibold" className="text-ios-subheadline text-ink">
                     {ratingText}
                   </AppText>
-                  <AppText className="text-body-sm text-mute">({ratingCount})</AppText>
-                </View>
-              ) : null}
-              {response.lead_time ? (
-                <View className="shrink flex-row items-center gap-1">
-                  <Clock size={14} weight="bold" color={tc.mute} />
-                  <AppText className="shrink text-body-sm text-mute" numberOfLines={1}>
-                    {response.lead_time}
+                  <AppText className="text-ios-subheadline text-mute">
+                    {` · ${reviewsLabel(ratingCount)}`}
                   </AppText>
-                </View>
-              ) : null}
+                </>
+              ) : (
+                <AppText className="text-ios-subheadline text-mute">Профиль</AppText>
+              )}
+              <CaretRight size={13} weight="bold" color={tc.mute} />
             </View>
-          ) : null}
-        </View>
-        <View className="items-end gap-1">
-          {statusView ? (
-            <StatusPill
-              tone={statusView.pillTone}
-              label={statusView.label}
-              iconKey={statusView.iconKey}
-              iconWeight={statusView.iconWeight}
-            />
-          ) : null}
-          <AppText weight="bold" className="text-title-lg text-ink">
+          </View>
+        </Pressable>
+        {statusView ? (
+          <StatusPill
+            tone={statusView.pillTone}
+            label={statusView.label}
+            iconKey={statusView.iconKey}
+            iconWeight={statusView.iconWeight}
+          />
+        ) : rejected ? null : (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={`Ещё: ${masterName}`}
+            onPress={() => void onMore()}
+            disabled={isRejecting}
+            hitSlop={6}
+            className="h-11 w-11 items-center justify-center rounded-full active:bg-canvas-soft"
+          >
+            {isRejecting ? (
+              <ActivityIndicator size="small" color={tc.mute} />
+            ) : (
+              <DotsThree size={24} weight="bold" color={tc.mute} />
+            )}
+          </Pressable>
+        )}
+      </View>
+
+      {/* Цена и срок — два подписанных факта, как в предложениях Thumbtack. */}
+      <View className="mt-4 flex-row gap-6">
+        <View className="shrink">
+          <AppText className="text-ios-footnote text-mute">Цена</AppText>
+          <AppText weight="semibold" className="mt-0.5 text-ios-title2 text-ink">
             {priceText}
           </AppText>
         </View>
-      </Pressable>
+        {response.lead_time ? (
+          <View className="min-w-0 shrink">
+            <AppText className="text-ios-footnote text-mute">Срок</AppText>
+            <AppText
+              weight="semibold"
+              className="mt-0.5 text-ios-title2 text-ink"
+              numberOfLines={2}
+            >
+              {response.lead_time}
+            </AppText>
+          </View>
+        ) : null}
+      </View>
 
       {response.message ? (
-        <AppText className="mt-3 text-body-md text-body" numberOfLines={6}>
+        <AppText className="mt-3 text-ios-body text-body" numberOfLines={6}>
           {response.message}
         </AppText>
       ) : null}
 
       {rejected ? (
-        <AppText weight="medium" className="mt-3 text-body-sm text-mute">
+        <AppText weight="medium" className="mt-3 text-ios-subheadline text-mute">
           Отклик скрыт
         </AppText>
       ) : contactsError ? (
@@ -197,70 +254,140 @@ export function ClientMasterResponseCard({
           onPress={() => {
             void Promise.all([masterPhone.refetch(), masterPublic.refetch()]);
           }}
-          className="mt-4 min-h-12 flex-row items-center justify-center gap-2 rounded-pill border border-hairline-strong bg-canvas px-3 active:bg-canvas-soft"
+          className="mt-4 min-h-12 flex-row items-center justify-center gap-2 rounded-pill bg-canvas-soft px-3 active:opacity-70"
         >
           {contactsLoading ? (
             <ActivityIndicator size="small" color={tc.mute} />
           ) : (
             <>
               <ArrowCounterClockwise size={16} weight="bold" color={tc.ink} />
-              <AppText weight="semibold" className="text-body-md text-ink">
+              <AppText weight="semibold" className="text-ios-body text-ink">
                 Контакты не загрузились — повторить
               </AppText>
             </>
           )}
         </Pressable>
       ) : (
-        <ContactButtons
-          phoneTel={phoneTel}
-          whatsappDigits={phoneWa}
-          loading={contactsLoading}
-          who={masterName}
-        />
-      )}
-
-      {/* Выбор исполнителя — контурная капсула: главное на карточке всё же
-          связь, а выбирают после разговора (0196). «Скрыть» — тихая ссылка
-          в той же строке, без отдельной полосы под линией. */}
-      {onPick || onReject ? (
-        <View className="mt-2.5 flex-row items-center gap-2">
+        <View className="mt-4 flex-row flex-wrap items-center gap-2">
+          <ContactIconButton
+            kind="call"
+            enabled={!!phoneTel}
+            loading={contactsLoading && !phoneTel}
+            who={masterName}
+            onPress={() => phoneTel && openExternalUrl(`tel:${phoneTel}`)}
+          />
+          {/* Пока контакты старого отклика грузятся — место WhatsApp занято
+              индикатором, как у «Позвонить», без скачка разметки (QA №262). */}
+          {phoneWa || contactsLoading ? (
+            <ContactIconButton
+              kind="whatsapp"
+              enabled={!!phoneWa}
+              loading={contactsLoading && !phoneWa}
+              who={masterName}
+              onPress={() => openExternalUrl(`https://wa.me/${phoneWa}`)}
+            />
+          ) : null}
           {onPick ? (
             <Pressable
               accessibilityRole="button"
               accessibilityLabel={`Выбрать исполнителем: ${masterName}`}
+              accessibilityHint="Задание закроется и уйдёт из поиска"
               accessibilityState={{ disabled: picking, busy: picking }}
               onPress={onPick}
               disabled={picking}
-              className={`min-h-12 flex-1 flex-row items-center justify-center gap-2 rounded-pill border-2 border-accent bg-canvas px-3 active:bg-accent-soft ${picking ? "opacity-60" : ""}`}
+              className={`min-h-12 grow basis-40 items-center justify-center rounded-pill bg-accent px-4 active:opacity-85 ${
+                picking ? "opacity-60" : ""
+              }`}
             >
-              <CheckCircle size={18} weight="bold" color={tc.accent} />
-              <AppText weight="semibold" className="text-body-md text-accent">
-                {picking ? "Выбираем…" : "Выбрать исполнителем"}
+              <AppText weight="semibold" className="text-center text-ios-body text-on-accent">
+                {picking ? "Выбираем…" : "Выбрать"}
               </AppText>
-            </Pressable>
-          ) : (
-            <View className="flex-1" />
-          )}
-          {onReject ? (
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={`Скрыть отклик: ${masterName}`}
-              accessibilityState={{ disabled: isRejecting, busy: isRejecting }}
-              onPress={onReject}
-              disabled={isRejecting}
-              className="min-h-12 items-center justify-center px-3 active:opacity-60"
-            >
-              {isRejecting ? (
-                <ActivityIndicator size="small" color={tc.mute} />
-              ) : (
-                <AppText weight="medium" className="text-body-md text-mute">
-                  Скрыть
-                </AppText>
-              )}
             </Pressable>
           ) : null}
         </View>
-      ) : null}
+      )}
     </View>
   );
+}
+
+/** «3 отзыва», «1 отзыв», «5 отзывов». */
+function reviewsLabel(n: number): string {
+  const mod10 = n % 10;
+  const mod100 = n % 100;
+  const word =
+    mod10 === 1 && mod100 !== 11
+      ? "отзыв"
+      : mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)
+        ? "отзыва"
+        : "отзывов";
+  return `${n} ${word}`;
+}
+
+/** Круглая кнопка связи — как «Позвонить» / «Сообщение» в «Контактах» iOS. */
+function ContactIconButton({
+  kind,
+  enabled,
+  loading = false,
+  who,
+  onPress,
+}: {
+  kind: "call" | "whatsapp";
+  enabled: boolean;
+  loading?: boolean;
+  who: string;
+  onPress: () => void;
+}) {
+  const tc = useThemeColors(["accent", "mute"]);
+  const Icon = kind === "call" ? Phone : WhatsappLogo;
+  const label =
+    kind === "call" ? (enabled ? `Позвонить: ${who}` : "Номера нет") : `WhatsApp: ${who}`;
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityState={{ disabled: !enabled, busy: loading }}
+      disabled={!enabled}
+      onPress={onPress}
+      className={`h-12 w-12 items-center justify-center rounded-full ${
+        enabled ? "bg-accent-soft active:opacity-70" : "bg-canvas-soft"
+      }`}
+    >
+      {loading ? (
+        <ActivityIndicator size="small" color={tc.mute} />
+      ) : (
+        <Icon size={22} weight="fill" color={enabled ? tc.accent : tc.mute} />
+      )}
+    </Pressable>
+  );
+}
+
+/**
+ * Меню «⋯»: на iPhone — системный список действий (ActionSheetIOS, как меню
+ * задания в `orders/[id].tsx`), иначе — системное окно выбора.
+ */
+function chooseActionAsync<T extends string>(opts: {
+  title: string;
+  message?: string;
+  options: Array<{ id: T; text: string; destructive?: boolean }>;
+  colorScheme: "light" | "dark";
+}): Promise<T | null> {
+  if (Platform.OS !== "ios") {
+    return chooseAsync({ title: opts.title, message: opts.message, options: opts.options });
+  }
+  return new Promise((resolve) => {
+    const cancelButtonIndex = opts.options.length;
+    ActionSheetIOS.showActionSheetWithOptions(
+      {
+        title: opts.title,
+        message: opts.message,
+        options: [...opts.options.map((o) => o.text), "Отмена"],
+        cancelButtonIndex,
+        destructiveButtonIndex: opts.options
+          .map((o, i) => (o.destructive ? i : -1))
+          .filter((i) => i >= 0),
+        userInterfaceStyle: opts.colorScheme,
+      },
+      (i) => resolve(i === cancelButtonIndex ? null : (opts.options[i]?.id ?? null)),
+    );
+  });
 }

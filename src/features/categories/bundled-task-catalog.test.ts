@@ -43,7 +43,8 @@ describe("bundled task catalog", () => {
 
   it("offers explicit low-confidence categories for a multi-intent phrase", () => {
     const hits = searchBundledTaskCatalog("убрать двор", 10);
-    expect(hits.map((hit) => hit.l2_id)).toContain("cleaning-post-renovation");
+    // «убрать» — общая уборка (0233, №259), а не уборка после ремонта.
+    expect(hits.map((hit) => hit.l2_id)).toContain("cleaning");
     expect(hits.map((hit) => hit.l2_id)).toContain("landscape");
     expect(hits.every((hit) => hit.score < 1)).toBe(true);
   });

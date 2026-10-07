@@ -7,7 +7,7 @@ import { Skeleton } from "@/components/ui";
 import type { OrderDetail } from "@/features/orders/use-order-detail";
 import { useOrderResponses } from "@/features/orders/use-order-responses";
 import { useRejectResponse } from "@/features/orders/use-reject-response";
-import { chooseAsync, showAlert } from "@/lib/alert";
+import { showAlert } from "@/lib/alert";
 import { describeServerError } from "@/lib/describe-server-error";
 import { UNCATEGORIZED_L2_ID } from "@/lib/product-scope";
 import { useThemeColors } from "@/lib/use-theme-color";
@@ -57,18 +57,11 @@ export function ClientResponsesSection({
   // Раскрыт ли блок «Скрытые отклики» (по умолчанию свёрнут).
   const [hiddenExpanded, setHiddenExpanded] = useState(false);
 
-  // Кнопка «Скрыть» на карточке: confirm → reject_response RPC.
-  // Карточка переезжает в collapsible-секцию «Скрытые» внизу.
-  const onRejectResponseClick = async (responseId: string, masterName: string) => {
+  // «Скрыть отклик» в меню «⋯» карточки → reject_response RPC (№262). Меню
+  // с пояснением и красным пунктом — уже подтверждение, второго окна нет.
+  // Карточка переезжает в свёрнутый раздел «Скрытые» внизу.
+  const onRejectResponseClick = (responseId: string) => {
     if (pendingRejectResponseId) return;
-    const choice = await chooseAsync({
-      title: "Скрыть этот отклик?",
-      // Уведомления специалисту нет (0202: отклик — как сообщение). Вернуть
-      // скрытый отклик в приложении нельзя.
-      message: `Отклик от «${masterName}» уедет в раздел «Скрытые». Специалист об этом не узнает.`,
-      options: [{ id: "hide", text: "Скрыть", destructive: true }],
-    });
-    if (choice !== "hide") return;
     setPendingRejectResponseId(responseId);
     rejectResponse.mutate(
       { responseId, orderId },
@@ -227,16 +220,7 @@ export function ClientResponsesSection({
               }
               picking={picking}
               isRejecting={pendingRejectResponseId === r.id}
-              onReject={
-                isOpen
-                  ? () => {
-                      const masterName =
-                        [r.master?.first_name, r.master?.last_name].filter(Boolean).join(" ") ||
-                        "исполнителя";
-                      void onRejectResponseClick(r.id, masterName);
-                    }
-                  : undefined
-              }
+              onReject={isOpen ? () => onRejectResponseClick(r.id) : undefined}
             />
           ))}
         </View>

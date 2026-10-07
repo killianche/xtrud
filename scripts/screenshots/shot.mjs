@@ -25,10 +25,12 @@ async function stretch(page) {
 }
 
 const [dist, outDir, routesArg, ...rest] = process.argv.slice(2);
-const clicks = [];
+// Действия по порядку: --click «видимый текст», --type «текст в поле в фокусе».
+const actions = [];
 let wheel = 0;
 for (let i = 0; i < rest.length; i++) {
-  if (rest[i] === "--click") clicks.push(rest[++i]);
+  if (rest[i] === "--click") actions.push({ kind: "click", value: rest[++i] });
+  else if (rest[i] === "--type") actions.push({ kind: "type", value: rest[++i] });
   else if (rest[i] === "--wheel") wheel = Number(rest[++i]);
 }
 const TYPES = {
@@ -120,13 +122,15 @@ for (const scheme of ["light", "dark"]) {
     // (на iOS это нативный UITabBarController) — растягиваем их на экран.
     await stretch(page);
     await page.waitForTimeout(500);
-    for (const text of clicks) {
-      await page
-        .getByText(text, { exact: true })
-        .filter({ visible: true })
-        .first()
-        .click({ timeout: 5000 })
-        .catch((e) => console.log("click fail", text, e.message.split("\n")[0]));
+    for (const { kind, value } of actions) {
+      if (kind === "type") await page.keyboard.type(value, { delay: 30 });
+      else
+        await page
+          .getByText(value, { exact: true })
+          .filter({ visible: true })
+          .first()
+          .click({ timeout: 5000 })
+          .catch((e) => console.log("click fail", value, e.message.split("\n")[0]));
       await page.waitForTimeout(1500);
       await stretch(page);
     }

@@ -50,6 +50,11 @@ export interface ComposerFieldProps
   autoGrow?: boolean;
   /** Значение справа, например «₽». */
   suffix?: string;
+  /**
+   * Поле в строке рядом с кнопкой (сумма и «Договорная», №260): без своих
+   * отступов, растягивается на свободное место; ошибку показывает строка.
+   */
+  inline?: boolean;
 }
 
 export const ComposerField = forwardRef<TextInput, ComposerFieldProps>(function ComposerField(
@@ -65,6 +70,7 @@ export const ComposerField = forwardRef<TextInput, ComposerFieldProps>(function 
     multiline = false,
     autoGrow = false,
     suffix,
+    inline = false,
     onBlur,
     onFocus,
     ...props
@@ -85,6 +91,7 @@ export const ComposerField = forwardRef<TextInput, ComposerFieldProps>(function 
   const [webHeight, setWebHeight] = useState<number | null>(null);
   const growOnWeb = autoGrow && Platform.OS === "web";
   const showError = (touched || forceError) && !focused && !!error;
+  const showMessage = !inline;
   const fontSize = size === "title" ? 24 : 18;
   // Свой ref — чтобы нажатие в любое место плитки ставило курсор; наружу
   // отдаём то же поле, как раньше.
@@ -92,7 +99,7 @@ export const ComposerField = forwardRef<TextInput, ComposerFieldProps>(function 
   useImperativeHandle(ref, () => inputRef.current as TextInput, []);
 
   return (
-    <View className="mb-5 px-4">
+    <View className={inline ? "flex-1" : "mb-5 px-4"}>
       {label ? (
         <AppText className="mb-1.5 ml-4 text-ios-footnote uppercase text-mute">{label}</AppText>
       ) : null}
@@ -169,11 +176,11 @@ export const ComposerField = forwardRef<TextInput, ComposerFieldProps>(function 
           </AppText>
         ) : null}
       </Pressable>
-      {showError ? (
+      {showMessage && showError ? (
         <AppText accessibilityRole="alert" className="mt-1.5 ml-4 text-ios-footnote text-error">
           {error}
         </AppText>
-      ) : hint ? (
+      ) : showMessage && hint ? (
         <AppText className="mt-1.5 ml-4 text-ios-footnote text-mute">{hint}</AppText>
       ) : null}
       {withAccessory ? (

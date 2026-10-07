@@ -11,8 +11,8 @@
  *
  * Флаг `composer_form` (0229, №249, docs/COMPOSER_ONE_FORM_2026-10.md):
  * "single" (по умолчанию) — этот же экран становится формой: простые поля
- * (название, подробности, фото, срок, бюджет) редактируются прямо тут,
- * составные (категория, место, связь) — всё та же строка-переход. "steps" —
+ * (название, подробности, фото, срок, бюджет, с №260 и связь) редактируются
+ * прямо тут, составные (категория, адрес) — всё та же строка-переход. "steps" —
  * откат, экран ведёт себя как раньше, ничего не меняется.
  */
 
@@ -32,6 +32,7 @@ import { BudgetFields } from "@/features/task-composer/BudgetFields";
 import { ComposerField } from "@/features/task-composer/ComposerFields";
 import { ChoiceGroup, ChoiceRow } from "@/features/task-composer/ComposerRows";
 import { ComposerScreen } from "@/features/task-composer/ComposerScreen";
+import { ContactsFields } from "@/features/task-composer/ContactsFields";
 import {
   isEditDirty,
   useComposer,
@@ -69,10 +70,10 @@ import { useUnsavedChangesGuard } from "@/lib/use-unsaved-changes-guard";
 const MISSING_STEP_MESSAGE: Record<ComposerStep, string> = {
   category: "Выберите категорию",
   title: "Укажите название задания",
-  where: "Укажите, где выполнить задание",
+  where: "Укажите адрес",
   when: "Укажите срок",
-  budget: "Укажите бюджет",
-  contacts: "Укажите способ связи",
+  budget: "Укажите сумму или выберите «Договорная»",
+  contacts: "Укажите, как с вами связаться",
   review: "",
 };
 
@@ -290,7 +291,7 @@ export default function TaskReviewScreen() {
         </ChoiceGroup>
         <ChoiceGroup title="Условия">
           <ChoiceRow
-            title="Где"
+            title="Адрес"
             value={values.address.trim() ? `${place}, ${values.address.trim()}` : place}
             navigates
             onPress={() => open("where")}
@@ -395,7 +396,9 @@ export default function TaskReviewScreen() {
       <View onLayout={at("where")}>
         <ChoiceGroup>
           <ChoiceRow
-            title="Где"
+            // «Адрес», а не «Где» (владелец, 2026-10-07, №260): подпись строки —
+            // что указать, как у Авито и YouDo.
+            title="Адрес"
             // Пусто — «Выбрать», а не голая строка: видно, что здесь ждут ответа.
             value={
               (values.address.trim() ? `${place}, ${values.address.trim()}` : place) || "Выбрать"
@@ -410,7 +413,7 @@ export default function TaskReviewScreen() {
             accessibilityRole="alert"
             className="-mt-5 mb-5 px-8 text-ios-footnote text-error"
           >
-            Укажите, где выполнить задание
+            Укажите адрес
           </AppText>
         ) : null}
       </View>
@@ -419,6 +422,7 @@ export default function TaskReviewScreen() {
           values={values}
           patch={composer.patch}
           showMissingError={missingStep === "when"}
+          showLabel
         />
       </View>
       <View onLayout={at("budget")}>
@@ -426,18 +430,12 @@ export default function TaskReviewScreen() {
           values={values}
           patch={composer.patch}
           showMissingError={missingStep === "budget"}
+          showLabel
         />
       </View>
       <View onLayout={at("contacts")}>
-        <ChoiceGroup>
-          <ChoiceRow
-            title="Связь"
-            value={contacts}
-            navigates
-            onPress={() => open("contacts")}
-            last
-          />
-        </ChoiceGroup>
+        {/* Два способа — сразу на форме, без перехода (владелец, №260). */}
+        <ContactsFields title="Связь" />
         {missingStep === "contacts" ? (
           <AppText
             accessibilityRole="alert"

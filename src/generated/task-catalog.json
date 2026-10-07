@@ -3762,7 +3762,7 @@
     },
     {
       "term": "генеральная",
-      "l2_id": "cleaning-post-renovation",
+      "l2_id": "cleaning",
       "l3_id": null,
       "weight": 100
     },
@@ -4128,7 +4128,7 @@
     },
     {
       "term": "клининг",
-      "l2_id": "cleaning-post-renovation",
+      "l2_id": "cleaning",
       "l3_id": null,
       "weight": 100
     },
@@ -4392,7 +4392,7 @@
     },
     {
       "term": "мытьё",
-      "l2_id": "cleaning-post-renovation",
+      "l2_id": "cleaning",
       "l3_id": null,
       "weight": 80
     },
@@ -4524,7 +4524,7 @@
     },
     {
       "term": "окна помыть",
-      "l2_id": "cleaning-post-renovation",
+      "l2_id": "cleaning",
       "l3_id": null,
       "weight": 100
     },
@@ -4800,9 +4800,15 @@
     },
     {
       "term": "помыть окна",
-      "l2_id": "cleaning-post-renovation",
+      "l2_id": "cleaning",
       "l3_id": null,
       "weight": 100
+    },
+    {
+      "term": "после ремонта",
+      "l2_id": "cleaning-post-renovation",
+      "l3_id": null,
+      "weight": 90
     },
     {
       "term": "построить",
@@ -4851,6 +4857,12 @@
       "l2_id": "handyman",
       "l3_id": null,
       "weight": 100
+    },
+    {
+      "term": "прибраться",
+      "l2_id": "cleaning",
+      "l3_id": null,
+      "weight": 90
     },
     {
       "term": "приварить",
@@ -5418,7 +5430,13 @@
     },
     {
       "term": "уборка",
-      "l2_id": "cleaning-post-renovation",
+      "l2_id": "cleaning",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "уборка квартиры",
+      "l2_id": "cleaning",
       "l3_id": null,
       "weight": 100
     },
@@ -5429,8 +5447,20 @@
       "weight": 100
     },
     {
+      "term": "уборщица",
+      "l2_id": "cleaning",
+      "l3_id": null,
+      "weight": 90
+    },
+    {
       "term": "убрать",
-      "l2_id": "cleaning-post-renovation",
+      "l2_id": "cleaning",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "убраться",
+      "l2_id": "cleaning",
       "l3_id": null,
       "weight": 100
     },
@@ -5592,7 +5622,7 @@
     },
     {
       "term": "химчистка",
-      "l2_id": "cleaning-post-renovation",
+      "l2_id": "cleaning",
       "l3_id": null,
       "weight": 90
     },
@@ -5723,5 +5753,5 @@
       "weight": 100
     }
   ],
-  "content_sha256": "6f517a80ed2edab3c7b70d23826eace42d5ca210000dfd2bdad5d9c9abd9021c"
+  "content_sha256": "2d43d1b68fcb8cb14d59886eb8c6d6789b33617a9ae2a95e4c994f724f84390d"
 }

@@ -7,7 +7,7 @@ import {
   Star,
   WhatsappLogo,
 } from "phosphor-react-native";
-import { ActionSheetIOS, ActivityIndicator, Platform, Pressable, View } from "react-native";
+import { ActivityIndicator, Pressable, View } from "react-native";
 import { AppText } from "@/components/AppText";
 import { Avatar } from "@/components/Avatar";
 import { StatusPill } from "@/components/StatusPill";
@@ -16,7 +16,7 @@ import { useMasterPhone, useMasterPublicProfile } from "@/features/master-view/u
 import type { OrderStatusView } from "@/features/orders/order-status-view";
 import type { OrderResponseWithMaster } from "@/features/orders/use-order-responses";
 import { useColorScheme } from "@/hooks/use-color-scheme";
-import { chooseAsync } from "@/lib/alert";
+import { showActionMenu } from "@/lib/action-menu";
 import { openExternalUrl } from "@/lib/open-link";
 import { CARD_SHADOW } from "@/lib/shadows";
 import { useThemeColors } from "@/lib/use-theme-color";
@@ -125,19 +125,16 @@ export function ClientMasterResponseCard({
     .join(". ");
   const onProfile = () => router.push(`/master/${response.master_id}` as never);
 
-  const onMore = async () => {
-    const choice = await chooseActionAsync({
+  const onMore = () =>
+    showActionMenu({
       title: masterName,
       message: onReject ? "Скрытый отклик уйдёт вниз списка. Специалист не узнает." : undefined,
-      options: [
-        { id: "profile", text: "Открыть профиль" },
-        ...(onReject ? [{ id: "hide" as const, text: "Скрыть отклик", destructive: true }] : []),
+      items: [
+        { label: "Открыть профиль", onPress: onProfile },
+        ...(onReject ? [{ label: "Скрыть отклик", destructive: true, onPress: onReject }] : []),
       ],
       colorScheme,
     });
-    if (choice === "profile") onProfile();
-    else if (choice === "hide") onReject?.();
-  };
 
   return (
     <View
@@ -199,7 +196,7 @@ export function ClientMasterResponseCard({
           <Pressable
             accessibilityRole="button"
             accessibilityLabel={`Ещё: ${masterName}`}
-            onPress={() => void onMore()}
+            onPress={onMore}
             disabled={isRejecting}
             hitSlop={6}
             className="h-11 w-11 items-center justify-center rounded-full active:bg-canvas-soft"
@@ -359,35 +356,4 @@ function ContactIconButton({
       )}
     </Pressable>
   );
-}
-
-/**
- * Меню «⋯»: на iPhone — системный список действий (ActionSheetIOS, как меню
- * задания в `orders/[id].tsx`), иначе — системное окно выбора.
- */
-function chooseActionAsync<T extends string>(opts: {
-  title: string;
-  message?: string;
-  options: Array<{ id: T; text: string; destructive?: boolean }>;
-  colorScheme: "light" | "dark";
-}): Promise<T | null> {
-  if (Platform.OS !== "ios") {
-    return chooseAsync({ title: opts.title, message: opts.message, options: opts.options });
-  }
-  return new Promise((resolve) => {
-    const cancelButtonIndex = opts.options.length;
-    ActionSheetIOS.showActionSheetWithOptions(
-      {
-        title: opts.title,
-        message: opts.message,
-        options: [...opts.options.map((o) => o.text), "Отмена"],
-        cancelButtonIndex,
-        destructiveButtonIndex: opts.options
-          .map((o, i) => (o.destructive ? i : -1))
-          .filter((i) => i >= 0),
-        userInterfaceStyle: opts.colorScheme,
-      },
-      (i) => resolve(i === cancelButtonIndex ? null : (opts.options[i]?.id ?? null)),
-    );
-  });
 }

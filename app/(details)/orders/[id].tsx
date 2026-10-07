@@ -1,15 +1,7 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { DotsThree, Export, Star } from "phosphor-react-native";
 import { useCallback, useEffect, useState } from "react";
-import {
-  ActionSheetIOS,
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  Share,
-  View,
-} from "react-native";
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, Share, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
 import { GLASS_BUTTON_HEIGHT, GlassButton, ScreenHeader, Skeleton } from "@/components/ui";
@@ -38,6 +30,7 @@ import { useMarkResponsesViewed } from "@/features/orders/use-unread-responses";
 import { ReportModal } from "@/features/reports/ReportModal";
 import { useMyReviewForOrder } from "@/features/reviews/use-reviews";
 import { useColorScheme } from "@/hooks/use-color-scheme";
+import { showActionMenu } from "@/lib/action-menu";
 import { chooseAsync, showAlert } from "@/lib/alert";
 import { useAuthReturnUrlStore } from "@/lib/auth-return-url-store";
 import { confirmAsync } from "@/lib/confirm";
@@ -386,26 +379,7 @@ export default function OrderDetailScreen() {
         onPress: () => void adminHide(),
       });
     }
-    if (items.length === 0) return;
-
-    const cancelButtonIndex = items.length;
-    const destructiveButtonIndex = items
-      .map((item, i) => (item.destructive ? i : -1))
-      .filter((i) => i >= 0);
-
-    ActionSheetIOS.showActionSheetWithOptions(
-      {
-        title: "Действия с заданием",
-        options: [...items.map((item) => item.label), "Отмена"],
-        cancelButtonIndex,
-        destructiveButtonIndex,
-        userInterfaceStyle: colorScheme,
-      },
-      (buttonIndex) => {
-        if (buttonIndex === cancelButtonIndex) return;
-        items[buttonIndex]?.onPress();
-      },
-    );
+    showActionMenu({ title: "Действия с заданием", items, colorScheme });
   };
 
   // Нужна категория, которой нет в профиле (№203) — системное окно с

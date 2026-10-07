@@ -15,7 +15,7 @@ import { Image as ExpoImage } from "expo-image";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { DotsThree, InstagramLogo, LinkSimple, Star } from "phosphor-react-native";
 import { useEffect, useMemo, useState } from "react";
-import { ActionSheetIOS, Animated, Pressable, View } from "react-native";
+import { Animated, Pressable, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
 import { Avatar } from "@/components/Avatar";
@@ -61,6 +61,7 @@ import { useReviewableOrderForMaster } from "@/features/reviews/use-reviews";
 import { availabilityTitle } from "@/features/specialist/AvailabilityRows";
 import { linkLabel } from "@/features/specialist/link-url";
 import { useColorScheme } from "@/hooks/use-color-scheme";
+import { showActionMenu } from "@/lib/action-menu";
 import { showAlert } from "@/lib/alert";
 import { getCategoryIcon } from "@/lib/category-icons";
 import { confirmAsync } from "@/lib/confirm";
@@ -214,15 +215,10 @@ export default function MasterPublicScreen() {
             },
       );
     }
-    ActionSheetIOS.showActionSheetWithOptions(
-      {
-        options: [...items.map((i) => i.label), "Отмена"],
-        cancelButtonIndex: items.length,
-        destructiveButtonIndex: items.map((_, i) => i),
-        userInterfaceStyle: colorScheme,
-      },
-      (i) => items[i]?.onPress(),
-    );
+    showActionMenu({
+      items: items.map((i) => ({ ...i, destructive: true })),
+      colorScheme,
+    });
   };
   const handleReview = () => {
     if (!currentUserId || !reviewable.data) return;

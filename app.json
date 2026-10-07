@@ -159,7 +159,7 @@
         "android.permission.SYSTEM_ALERT_WINDOW"
       ],
       "adaptiveIcon": {
-        "backgroundColor": "#ffffff",
+        "backgroundColor": "#fa617b",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
@@ -171,6 +171,7 @@
       [
         "expo-notifications",
         {
+          "icon": "./assets/images/notification-icon.png",
           "color": "#e11d48"
         }
       ],

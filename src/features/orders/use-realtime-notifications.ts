@@ -25,6 +25,7 @@ import {
 import { unreadFeedKey, unreadResponsesKey } from "@/features/orders/unread-feed-helpers";
 import { myOrdersKey } from "@/features/orders/use-my-orders";
 import { env } from "@/lib/env";
+import { networkQuietRemainingMs } from "@/lib/fetch-with-timeout";
 import { openSse } from "@/lib/sse";
 import { supabase } from "@/lib/supabase";
 
@@ -47,14 +48,19 @@ export function useRealtimeNotifications(opts: {
     if (!userId) return;
     const l2Ids = l2Key ? l2Key.split(",") : [];
 
+    // cancelRefetch: false — запрос, который уже летит (например, обновление
+    // при возврате в приложение), не отменяется и не шлётся заново: раньше
+    // журнал сервера показывал дубли пачкой (№278).
     const refreshAll = () => {
-      qc.invalidateQueries({ queryKey: notificationsKey(userId) });
-      qc.invalidateQueries({ queryKey: unreadNotificationsKey(userId) });
-      qc.invalidateQueries({ queryKey: unreadOrderEventsKey(userId) });
-      qc.invalidateQueries({ queryKey: unreadReviewsKey(userId) });
-      qc.invalidateQueries({ queryKey: unreadResponsesKey(userId) });
-      qc.invalidateQueries({ queryKey: myOrdersKey(userId) });
-      if (l2Ids.length > 0) qc.invalidateQueries({ queryKey: unreadFeedKey(userId, l2Ids) });
+      const keep = { cancelRefetch: false } as const;
+      void qc.invalidateQueries({ queryKey: notificationsKey(userId) }, keep);
+      void qc.invalidateQueries({ queryKey: unreadNotificationsKey(userId) }, keep);
+      void qc.invalidateQueries({ queryKey: unreadOrderEventsKey(userId) }, keep);
+      void qc.invalidateQueries({ queryKey: unreadReviewsKey(userId) }, keep);
+      void qc.invalidateQueries({ queryKey: unreadResponsesKey(userId) }, keep);
+      void qc.invalidateQueries({ queryKey: myOrdersKey(userId) }, keep);
+      if (l2Ids.length > 0)
+        void qc.invalidateQueries({ queryKey: unreadFeedKey(userId, l2Ids) }, keep);
     };
 
     // Запасной опрос: не нужен, пока живой канал присылает сигналы.
@@ -67,13 +73,18 @@ export function useRealtimeNotifications(opts: {
 
     let close: (() => void) | null = null;
     let retry: ReturnType<typeof setTimeout> | null = null;
+    let catchUp: ReturnType<typeof setTimeout> | null = null;
     let attempt = 0;
     let disposed = false;
     let hadConnection = false;
 
     const schedule = () => {
       if (disposed || retry || AppState.currentState !== "active") return;
-      const wait = RETRY_MS[Math.min(attempt, RETRY_MS.length - 1)] ?? 30_000;
+      // После повисшего запроса — не раньше конца паузы тишины (№278).
+      const wait = Math.max(
+        RETRY_MS[Math.min(attempt, RETRY_MS.length - 1)] ?? 30_000,
+        networkQuietRemainingMs(),
+      );
       attempt += 1;
       retry = setTimeout(() => {
         retry = null;
@@ -94,8 +105,16 @@ export function useRealtimeNotifications(opts: {
         },
         onFrame: (frame) => {
           if (frame.event === "notification") refreshAll();
-          // После обрыва сигналы могли потеряться — догоняем одним заходом.
-          if (frame.event === "ready" && hadConnection) refreshAll();
+          // После обрыва сигналы могли потеряться — догоняем одним заходом,
+          // но через 2 с: при возврате в приложение значки только что
+          // обновились сами, и новая пачка следом не нужна (№278).
+          if (frame.event === "ready" && hadConnection) {
+            if (catchUp) clearTimeout(catchUp);
+            catchUp = setTimeout(() => {
+              catchUp = null;
+              if (!disposed) refreshAll();
+            }, 2000);
+          }
           if (frame.event === "ready") hadConnection = true;
         },
         onClose: () => {
@@ -128,6 +147,7 @@ export function useRealtimeNotifications(opts: {
       sub.remove();
       close?.();
       if (retry) clearTimeout(retry);
+      if (catchUp) clearTimeout(catchUp);
       lastLiveAt.current = 0;
     };
   }, [opts.userId, l2Key, qc]);

@@ -71,6 +71,25 @@ export function createTimeoutError(timeoutMs: number): TimeoutError {
   return error;
 }
 
+/**
+ * Пауза тишины после повисшего запроса (№278). Обрывы «без VPN» у владельца —
+ * заморозка соединений фильтром провайдера на минуты; фоновые переподключения
+ * (поток событий, регистрация push) в это время только плодят новые
+ * соединения. Минуту после таймаута фон молчит; действия человека — как раньше.
+ */
+export const NETWORK_QUIET_MS = 60_000;
+let lastTimeoutAt = 0;
+
+/** Сколько ещё молчать фону; 0 — можно. */
+export function networkQuietRemainingMs(now = Date.now()): number {
+  return Math.max(0, lastTimeoutAt + NETWORK_QUIET_MS - now);
+}
+
+/** Для тестов. */
+export function resetNetworkQuiet(): void {
+  lastTimeoutAt = 0;
+}
+
 type FetchImpl = (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
 
 /**
@@ -101,6 +120,7 @@ export function createTimeoutFetch(timeoutMs?: number, fetchImpl?: FetchImpl): F
 
     const expiry = new Promise<never>((_resolve, reject) => {
       timer = setTimeout(() => {
+        lastTimeoutAt = Date.now();
         controller.abort();
         reject(createTimeoutError(limit));
       }, limit);

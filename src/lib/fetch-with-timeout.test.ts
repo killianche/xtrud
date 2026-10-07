@@ -1,7 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   createTimeoutFetch,
+  NETWORK_QUIET_MS,
+  networkQuietRemainingMs,
   REQUEST_TIMEOUT_MS,
+  resetNetworkQuiet,
   timeoutForRequest,
   UPLOAD_TIMEOUT_MS,
 } from "./fetch-with-timeout";
@@ -106,5 +109,31 @@ describe("срок ожидания по типу запроса", () => {
     expect(timeoutForRequest("https://api.xtrud.pro/v2/rest/orders", { method: "POST" })).toBe(
       REQUEST_TIMEOUT_MS,
     );
+  });
+});
+
+describe("пауза тишины после повисшего запроса (№278)", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    resetNetworkQuiet();
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("без таймаутов фон не ждёт", () => {
+    expect(networkQuietRemainingMs()).toBe(0);
+  });
+
+  it("после таймаута фон молчит минуту, потом снова можно", async () => {
+    const timeoutFetch = createTimeoutFetch(1000, () => new Promise<Response>(() => {}));
+    const assertion = expect(timeoutFetch("https://api.xtrud.pro/v2/events")).rejects.toMatchObject(
+      { code: "ETIMEDOUT" },
+    );
+    await vi.advanceTimersByTimeAsync(1000);
+    await assertion;
+    expect(networkQuietRemainingMs()).toBeGreaterThan(NETWORK_QUIET_MS - 100);
+    vi.advanceTimersByTime(NETWORK_QUIET_MS);
+    expect(networkQuietRemainingMs()).toBe(0);
   });
 });

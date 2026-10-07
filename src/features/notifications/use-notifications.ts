@@ -7,6 +7,7 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
+import { useStartupSettled } from "@/lib/use-startup-settled";
 import type { Tables } from "@/types/database";
 import { notificationTargetFromData } from "./notification-target";
 
@@ -51,6 +52,8 @@ export function useNotifications(userId: string | undefined) {
 }
 
 export function useUnreadNotificationsCount(userId: string | undefined) {
+  // Значок — не в первую пачку запросов при запуске (№278).
+  const settled = useStartupSettled();
   return useQuery<number>({
     queryKey: unreadNotificationsKey(userId),
     queryFn: async () => {
@@ -63,7 +66,7 @@ export function useUnreadNotificationsCount(userId: string | undefined) {
       if (error) throw error;
       return count ?? 0;
     },
-    enabled: !!userId,
+    enabled: !!userId && settled,
     staleTime: 30_000,
     refetchOnWindowFocus: true,
   });
@@ -88,6 +91,8 @@ export const unreadOrderEventsKey = (userId: string | undefined) =>
   ["notifications", "unread-order-events", userId] as const;
 
 export function useUnreadOrderEventsCount(userId: string | undefined) {
+  // Значок — не в первую пачку запросов при запуске (№278).
+  const settled = useStartupSettled();
   return useQuery<number>({
     queryKey: unreadOrderEventsKey(userId),
     queryFn: async () => {
@@ -103,7 +108,7 @@ export function useUnreadOrderEventsCount(userId: string | undefined) {
       if (error) throw error;
       return count ?? 0;
     },
-    enabled: !!userId,
+    enabled: !!userId && settled,
     staleTime: 15_000,
     refetchOnWindowFocus: true,
   });
@@ -189,6 +194,8 @@ export const unreadReviewsKey = (userId: string | undefined) =>
   ["notifications", "unread-reviews", userId] as const;
 
 export function useUnreadReviewsCount(userId: string | undefined) {
+  // Значок — не в первую пачку запросов при запуске (№278).
+  const settled = useStartupSettled();
   return useQuery<number>({
     queryKey: unreadReviewsKey(userId),
     queryFn: async () => {
@@ -202,7 +209,7 @@ export function useUnreadReviewsCount(userId: string | undefined) {
       if (error) throw error;
       return count ?? 0;
     },
-    enabled: !!userId,
+    enabled: !!userId && settled,
     staleTime: 15_000,
     refetchOnWindowFocus: true,
   });

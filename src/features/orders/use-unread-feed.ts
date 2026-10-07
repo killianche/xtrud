@@ -18,6 +18,7 @@ import { useMemo } from "react";
 import { userRecordKey } from "@/features/auth/use-user-record";
 import { unreadFeedKey } from "@/features/orders/unread-feed-helpers";
 import { supabase } from "@/lib/supabase";
+import { useStartupSettled } from "@/lib/use-startup-settled";
 import { orderCategoryFilter } from "./order-categories";
 
 export { unreadFeedKey };
@@ -29,6 +30,8 @@ export function useUnreadFeedCount(opts: {
   /** Задания, на которые я уже откликнулся, — для меня не «новые» (№243). */
   respondedIds?: ReadonlySet<string>;
 }): { data: number } {
+  // Значок — не в первую пачку запросов при запуске (№278).
+  const settled = useStartupSettled();
   const query = useQuery<string[]>({
     // lastSeenAt в ключе: после «посмотрел ленту» счёт сразу пересчитывается
     // по новой отметке, а не ждёт устаревания (№243 — значок висел).
@@ -50,7 +53,7 @@ export function useUnreadFeedCount(opts: {
       if (error) throw error;
       return (data ?? []).map((row) => row.id as string);
     },
-    enabled: !!opts.userId && opts.l2Ids.length > 0,
+    enabled: !!opts.userId && opts.l2Ids.length > 0 && settled,
     staleTime: 15_000,
     // Бейдж обновляется при возврате в приложение (focusManager в _layout).
     refetchOnWindowFocus: true,

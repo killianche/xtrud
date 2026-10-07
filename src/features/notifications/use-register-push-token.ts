@@ -26,6 +26,7 @@ import * as Notifications from "expo-notifications";
 import { useEffect, useRef } from "react";
 import { AppState, Platform } from "react-native";
 import { reportClientError } from "@/lib/error-reporting";
+import { networkQuietRemainingMs } from "@/lib/fetch-with-timeout";
 import { supabase } from "@/lib/supabase";
 import { ANDROID_NOTIFICATION_CHANNEL } from "./android-channel";
 
@@ -133,6 +134,8 @@ export function useRegisterPushToken(userId: string | null | undefined): void {
 
     const attempt = async (ask: boolean) => {
       if (doneFor.current === userId || inFlight.current) return;
+      // Сеть только что повисла — повторим при следующем возврате (№278).
+      if (networkQuietRemainingMs() > 0) return;
       inFlight.current = true;
       const saved = await registerPushTokenNow(userId, ask);
       inFlight.current = false;

@@ -41,3 +41,18 @@ export function filterL2BySections<T extends { l1_id: string }>(
  * специалиста её нет (is_visible = false).
  */
 export const UNCATEGORIZED_L2_ID = "uncategorized";
+
+/**
+ * Основные разделы (владелец, 2026-10-07, №294/№296): «разнорабочие, уборку и
+ * ремонт бытовой техники подсветить — это актуальнейшие темы». Подсвечены в
+ * сетке «Специалистов» и в каталоге, стоят рядом под заголовком «Найти
+ * задание». Короткое имя — для плитки в ряд из четырёх. Без надписи
+ * «популярное»: интерфейс не утверждает неизмеренного (design-quality §5).
+ */
+export const FEATURED_SECTIONS: readonly { id: string; short: string }[] = [
+  { id: "handyman-moving", short: "Мастер на час" },
+  { id: "home-services", short: "Уборка" },
+  { id: "home-appliances", short: "Ремонт техники" },
+];
+
+export const FEATURED_SECTION_IDS: readonly string[] = FEATURED_SECTIONS.map((s) => s.id);

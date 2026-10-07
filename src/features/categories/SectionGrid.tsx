@@ -42,11 +42,14 @@ export function SectionGrid({
   tiles,
   onPress,
   selectedId,
+  featuredIds = [],
 }: {
   tiles: readonly SectionTile[];
   onPress: (id: string) => void;
   /** Выбранный раздел — обведён акцентом (фильтр «Найти задание», №238). */
   selectedId?: string | null;
+  /** Основные разделы (№296): первыми, в розовой заливке, подпись жирнее. */
+  featuredIds?: readonly string[];
 }) {
   const tc = useThemeColors(["accent"]);
   const size = useTileSize();
@@ -58,12 +61,18 @@ export function SectionGrid({
       </AppText>
     );
   }
+  // Основные — первыми в их порядке, остальные — как пришли из базы.
+  const ordered = [
+    ...featuredIds.flatMap((id) => tiles.filter((t) => t.id === id)),
+    ...tiles.filter((t) => !featuredIds.includes(t.id)),
+  ];
   return (
     <View className="flex-row flex-wrap px-4" style={{ gap: GAP }}>
-      {tiles.map((tile) => {
+      {ordered.map((tile) => {
         const art = getSectionArt(tile.id);
         const Icon = getCategoryIcon(tile.icon);
         const selected = selectedId === tile.id;
+        const featured = featuredIds.includes(tile.id);
         return (
           <Pressable
             key={tile.id}
@@ -71,9 +80,9 @@ export function SectionGrid({
             accessibilityState={{ selected }}
             accessibilityLabel={tile.meta ? `${tile.name}, ${tile.meta}` : tile.name}
             onPress={() => onPress(tile.id)}
-            className={`items-center rounded-2xl border-2 bg-surface-card px-2 pb-3 pt-4 active:opacity-80 ${
-              selected ? "border-accent" : "border-transparent"
-            }`}
+            className={`items-center rounded-2xl border-2 px-2 pb-3 pt-4 active:opacity-80 ${
+              featured ? "bg-accent-soft" : "bg-surface-card"
+            } ${selected ? "border-accent" : "border-transparent"}`}
             // min, а не fixed: при крупном шрифте карточка растёт по тексту.
             style={[CARD_SHADOW, { width: size.width, minHeight: size.minHeight }]}
           >
@@ -93,7 +102,7 @@ export function SectionGrid({
               </View>
             )}
             <AppText
-              weight="medium"
+              weight={featured ? "semibold" : "medium"}
               className="mt-2 text-center text-ios-footnote text-ink"
               numberOfLines={3}
             >

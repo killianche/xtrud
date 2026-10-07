@@ -16,6 +16,7 @@ import { useCategoriesL1 } from "@/features/categories/use-categories-l1";
 import { useVisibleCategories } from "@/features/categories/use-visible-categories";
 import { closeFilterSheet, FilterSheetScreen } from "@/features/orders/find/FilterSheet";
 import { useOrdersSearchFiltersStore } from "@/features/orders/orders-search-filters-store";
+import { FEATURED_SECTION_IDS } from "@/lib/product-scope";
 
 export default function FindCategoryScreen() {
   const router = useRouter();
@@ -84,6 +85,7 @@ export default function FindCategoryScreen() {
           ) : (
             <SectionGrid
               tiles={tiles}
+              featuredIds={FEATURED_SECTION_IDS}
               selectedId={l2Ids.length > 0 ? l1Id : null}
               onPress={(id) => {
                 const only = onlyCategoryId(categories.data ?? [], id);

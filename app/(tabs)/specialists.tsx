@@ -23,6 +23,7 @@ import { onlyCategoryId } from "@/features/categories/only-category";
 import { SectionGrid, SectionGridSkeleton } from "@/features/categories/SectionGrid";
 import { useCategoriesL1 } from "@/features/categories/use-categories-l1";
 import { useVisibleCategories } from "@/features/categories/use-visible-categories";
+import { FEATURED_SECTION_IDS } from "@/lib/product-scope";
 import { useTabBarSpace } from "@/lib/tab-bar-space";
 import { scrollViewToTop, useTabScrollResetCounter } from "@/lib/tab-scroll-reset";
 
@@ -99,7 +100,7 @@ export default function SpecialistsCategoriesScreen() {
             />
           </InsetGroup>
         ) : (
-          <SectionGrid tiles={tiles} onPress={openSection} />
+          <SectionGrid tiles={tiles} onPress={openSection} featuredIds={FEATURED_SECTION_IDS} />
         )}
       </Animated.ScrollView>
       <LargeTitleBar

@@ -17,7 +17,12 @@ import {
   RelativeTime,
   SkeletonRows,
 } from "../components/ui";
-import { api, type CategoryRow, type UncategorizedOrderRow } from "../lib/api";
+import {
+  type AiCategorySuggestionRow,
+  api,
+  type CategoryRow,
+  type UncategorizedOrderRow,
+} from "../lib/api";
 
 /**
  * Небольшой набор имён Phosphor для новой категории — те же имена, что есть
@@ -57,6 +62,7 @@ function sectionsOf(categories: CategoryRow[]): Array<{ id: string; name: string
 
 function OrderRowCard({
   order,
+  suggestion,
   categories,
   categoriesError,
   onReloadCategories,
@@ -64,6 +70,8 @@ function OrderRowCard({
   onDone,
 }: {
   order: UncategorizedOrderRow;
+  /** Что предложила нейросеть, если она уже смотрела задание (№279). */
+  suggestion?: AiCategorySuggestionRow;
   categories: CategoryRow[] | null;
   categoriesError: string | null;
   onReloadCategories: () => void;
@@ -143,6 +151,29 @@ function OrderRowCard({
     }
   };
 
+  // Одним нажатием — то, что предложила нейросеть (№279).
+  const acceptSuggestion = async () => {
+    if (!suggestion?.suggested_l2) return;
+    const ok = await confirm({
+      title: `Назначить «${suggestion.l2_name ?? suggestion.suggested_l2}» заданию «${order.title}»?`,
+      text: "Подсказка нейросети. Специалистов этой категории уведомит рассылка.",
+      confirmLabel: "Назначить",
+    });
+    if (ok === null) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await api.setOrderCategory(order.id, suggestion.suggested_l2, "Подсказка нейросети");
+      toast("Категория назначена");
+      refreshAttention();
+      onDone();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Не удалось назначить категорию.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const submitCreate = async () => {
     if (!createL1) {
       setError("Выберите раздел.");
@@ -206,8 +237,36 @@ function OrderRowCard({
         </div>
       </div>
 
+      {suggestion ? (
+        <p className="body-sm" style={{ margin: 0 }}>
+          {suggestion.status === "pending"
+            ? "Нейросеть ещё смотрит задание…"
+            : suggestion.suggested_l2
+              ? `Нейросеть предлагает: ${suggestion.l2_name ?? suggestion.suggested_l2}${
+                  suggestion.confidence != null
+                    ? ` (уверенность ${Math.round(suggestion.confidence * 100)}%)`
+                    : ""
+                }`
+              : "Нейросеть не смогла подобрать категорию"}
+        </p>
+      ) : null}
+      {mode === null && error ? (
+        <div className="banner-error body-md" role="alert">
+          {error}
+        </div>
+      ) : null}
       {mode === null ? (
         <div className="row" style={{ flexWrap: "wrap" }}>
+          {suggestion?.suggested_l2 && suggestion.status !== "pending" ? (
+            <button
+              type="button"
+              className="btn btn-primary"
+              disabled={busy}
+              onClick={() => void acceptSuggestion()}
+            >
+              Принять подсказку
+            </button>
+          ) : null}
           <button type="button" className="btn btn-ghost" onClick={openAssign}>
             Назначить категорию
           </button>
@@ -349,6 +408,8 @@ export function Uncategorized({ onOpenOrder }: { onOpenOrder: (orderId: string) 
   const [error, setError] = useState<string | null>(null);
   const [categories, setCategories] = useState<CategoryRow[] | null>(null);
   const [categoriesError, setCategoriesError] = useState<string | null>(null);
+  // Подсказки нейросети — дополнение: не загрузились — список работает как раньше.
+  const [suggestions, setSuggestions] = useState<Map<string, AiCategorySuggestionRow>>(new Map());
 
   const load = useCallback(() => {
     setRows(null);
@@ -357,6 +418,10 @@ export function Uncategorized({ onOpenOrder }: { onOpenOrder: (orderId: string) 
       .listUncategorizedOrders()
       .then(setRows)
       .catch((e: Error) => setError(e.message));
+    api
+      .listAiCategorySuggestions()
+      .then((list) => setSuggestions(new Map(list.map((s) => [s.order_id, s]))))
+      .catch(() => setSuggestions(new Map()));
   }, []);
   const loadCategories = useCallback(() => {
     setCategoriesError(null);
@@ -380,9 +445,9 @@ export function Uncategorized({ onOpenOrder }: { onOpenOrder: (orderId: string) 
         }
       />
       <p className="body-sm text-mute" style={{ margin: "0 0 16px" }}>
-        Сюда попадают задания, которым при публикации не подошла ни одна категория каталога.
-        Назначьте существующую категорию или создайте новую — она сразу закрепится за этим заданием
-        и появится в каталоге.
+        Сюда попадают задания, категорию которых не узнал словарь, а нейросеть не уверена. Примите
+        подсказку нейросети, назначьте существующую категорию или создайте новую — она сразу
+        закрепится за этим заданием и появится в каталоге.
       </p>
       {error ? (
         <ErrorState message={error} onRetry={load} />
@@ -399,6 +464,7 @@ export function Uncategorized({ onOpenOrder }: { onOpenOrder: (orderId: string) 
             <OrderRowCard
               key={o.id}
               order={o}
+              suggestion={suggestions.get(o.id)}
               categories={categories}
               categoriesError={categoriesError}
               onReloadCategories={loadCategories}

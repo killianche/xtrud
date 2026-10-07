@@ -66,6 +66,20 @@ const schema = z.object({
   /** Потолок новых проверок на весь сервер — сутки и час (всплеск). */
   CALLCHECK_DAILY_CAP: z.coerce.number().int().min(1).default(300),
   CALLCHECK_HOURLY_CAP: z.coerce.number().int().min(1).default(60),
+  /**
+   * Подбор категории заданию «Без категории» нейросетью DeepSeek (0236,
+   * №279). Без ключа классификатор не запускается — поведение как раньше
+   * (сам переключатель — app_settings 'ai_classify' в базе). Ключ не
+   * логируется.
+   */
+  // Пустая строка в env — «не задан», а не «короткий ключ»: иначе сервер не стартует.
+  DEEPSEEK_API_KEY: z.preprocess((v) => (v === "" ? undefined : v), z.string().min(16).optional()),
+  DEEPSEEK_MODEL: z
+    .string()
+    .regex(/^[A-Za-z0-9._-]{1,80}$/)
+    .default("deepseek-flash"),
+  /** Порог уверенности, с которого категория ставится без админа. */
+  AI_CONFIDENCE_MIN: z.coerce.number().min(0).max(1).default(0.8),
 });
 
 export type Config = z.infer<typeof schema>;

@@ -1,6 +1,7 @@
 import cors from "@fastify/cors";
 import rateLimit from "@fastify/rate-limit";
 import Fastify from "fastify";
+import { startAiClassifier } from "./ai/classifier.js";
 import { Tokens } from "./auth/jwt.js";
 import { registerAuthRoutes } from "./auth/routes.js";
 import { SmsRuCallCheck } from "./auth/smsru-callcheck.js";
@@ -98,6 +99,21 @@ app.addContentTypeParser("*", { parseAs: "buffer" }, (_req, body, done) => done(
 const hub = new EventHub();
 startEventListener(cfg.DATABASE_URL, hub, app.log);
 
+// Подбор категории заданию «Без категории» (0236, №279) — только с ключом
+// DeepSeek. Без ключа база по-прежнему зовёт админов сама.
+if (cfg.DEEPSEEK_API_KEY !== undefined) {
+  startAiClassifier(
+    cfg.DATABASE_URL,
+    db,
+    {
+      apiKey: cfg.DEEPSEEK_API_KEY,
+      model: cfg.DEEPSEEK_MODEL,
+      minConfidence: cfg.AI_CONFIDENCE_MIN,
+    },
+    app.log,
+  );
+}
+
 app.get("/v2/health", async () => {
   const r = await db.pool.query("SELECT now() AS now");
   return {
@@ -109,6 +125,7 @@ app.get("/v2/health", async () => {
     pushFcm: fcm !== null,
     storage: s3 === null ? "disk" : "s3",
     phoneCall: cfg.SMSRU_API_ID !== undefined,
+    aiClassifier: cfg.DEEPSEEK_API_KEY !== undefined,
   };
 });
 

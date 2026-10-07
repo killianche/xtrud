@@ -396,6 +396,20 @@ export interface UncategorizedOrderRow {
   client_id: string;
 }
 
+/** Подсказка нейросети по заданию без категории (0236, №279). */
+export interface AiCategorySuggestionRow {
+  order_id: string;
+  order_title: string;
+  order_l2: string;
+  suggested_l2: string | null;
+  l2_name: string | null;
+  confidence: number | null;
+  status: "pending" | "assigned" | "unsure" | "failed";
+  reason: string | null;
+  model: string | null;
+  updated_at: string;
+}
+
 /** Скрытое «красным флагом» задание (0231, №253): автор не знает, что оно скрыто. */
 export interface ShadowHiddenOrderRow {
   id: string;
@@ -844,6 +858,8 @@ export const api = {
   /** Задания без категории (0230, №251): без телефонов, контактов и адреса. */
   listUncategorizedOrders: (limit = 200) =>
     rpc<UncategorizedOrderRow[]>("admin_list_uncategorized_orders", { p_limit: limit }),
+  listAiCategorySuggestions: (limit = 200) =>
+    rpc<AiCategorySuggestionRow[]>("admin_list_ai_category_suggestions", { p_limit: limit }),
   setOrderCategory: (orderId: string, l2Id: string, reason: string) =>
     rpc<SetOrderCategoryResult>("admin_set_order_category", {
       p_order_id: orderId,

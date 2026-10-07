@@ -33,8 +33,6 @@ import { AppText } from "@/components/AppText";
 import type { TaskPhrase } from "@/features/categories/task-phrases";
 import { useTaskPhrases } from "@/features/categories/use-task-phrases";
 import { useVisibleCategories } from "@/features/categories/use-visible-categories";
-import { getCategoryIcon } from "@/lib/category-icons";
-import { useThemeColors } from "@/lib/use-theme-color";
 import { ComposerField } from "./ComposerFields";
 import { ChoiceGroup, ChoiceRow } from "./ComposerRows";
 import { ComposerScreen } from "./ComposerScreen";
@@ -52,7 +50,6 @@ const MIN_QUERY = 2;
 export function QuickStartStep({ subtitle }: { subtitle?: string }) {
   const { values, patch } = useComposer();
   const nav = useStepNavigation("category");
-  const tc = useThemeColors(["ink"]);
   const categories = useVisibleCategories();
   const inputRef = useRef<TextInput>(null);
   // Клавиатура — сразу, как экран доехал: здесь одно действие — написать.
@@ -84,23 +81,17 @@ export function QuickStartStep({ subtitle }: { subtitle?: string }) {
     const l2Id = guessCategoryId(phraseHits, new Set(visibleIds));
     goNext(l2Id, titleFromQuery(text));
   };
-  const categoryById = (id: string) => categories.data?.find((c) => c.id === id);
-  const phraseRow = (p: TaskPhrase, last: boolean) => {
-    const c = categoryById(p.l2);
-    const Icon = getCategoryIcon(c?.icon ?? null);
-    return (
-      <ChoiceRow
-        key={`${p.l2}:${p.text}`}
-        title={p.text}
-        // Подпись — категория; если формулировка её повторяет, подпись не нужна.
-        subtitle={c && c.name_ru.toLowerCase() !== p.text.toLowerCase() ? c.name_ru : undefined}
-        icon={<Icon size={18} weight="bold" color={tc.ink} />}
-        selected={values.l2Id === p.l2 && values.title === p.text}
-        onPress={() => pickPhrase(p)}
-        last={last}
-      />
-    );
-  };
+  // Категорий клиент не видит (владелец, 2026-10-07, №279): подсказка —
+  // просто формулировка задачи, как у YouDo; категорию ставим сами.
+  const phraseRow = (p: TaskPhrase, last: boolean) => (
+    <ChoiceRow
+      key={`${p.l2}:${p.text}`}
+      title={p.text}
+      selected={values.l2Id === p.l2 && values.title === p.text}
+      onPress={() => pickPhrase(p)}
+      last={last}
+    />
+  );
   const suggestions = tooShort ? examples : phraseHits;
 
   return (

@@ -371,3 +371,62 @@
     animation: none;
   }
 }
+
+/* ── Каталог (№284): разделы слева, подкатегории справа ─────────────────── */
+.catalog-split {
+  display: grid;
+  grid-template-columns: 280px minmax(0, 1fr);
+  gap: var(--space-lg);
+  align-items: start;
+}
+@media (max-width: 900px) {
+  .catalog-split {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.list-row.is-selected {
+  background: var(--hairline-soft);
+  box-shadow: inset 3px 0 0 var(--accent-brand);
+}
+.link-plain {
+  all: unset;
+  cursor: pointer;
+  min-width: 0;
+  display: block;
+}
+.link-plain:focus-visible {
+  outline: 2px solid var(--link);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+.btn-icon {
+  min-width: 36px;
+  padding-left: 0;
+  padding-right: 0;
+  justify-content: center;
+}
+.card-inset {
+  background: var(--canvas);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-md);
+  padding: var(--space-md);
+}
+.heading-sm {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ink);
+}
+.chip {
+  border: 1px solid var(--hairline);
+  background: var(--canvas-elevated);
+  color: var(--body);
+  border-radius: var(--radius-pill);
+  padding: 4px 10px;
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+.chip:hover {
+  border-color: var(--error);
+  color: var(--error-deep);
+}

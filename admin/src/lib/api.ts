@@ -302,6 +302,48 @@ export interface CategoryRow {
   masters: number;
   /** Откликаться может любой (простые работы), иначе — только специалист с категорией (0217). */
   open_responses?: boolean;
+  /** С 0238 (№284): иконки, порядок раздела, синонимы, все задания категории. */
+  l1_icon?: string;
+  l1_sort_order?: number;
+  icon?: string;
+  terms?: string[];
+  total_orders?: number;
+}
+
+/** Задание в категории — для экрана каталога (0238, без ПДн клиента). */
+export interface CategoryOrderRow {
+  id: string;
+  title: string;
+  status: string;
+  created_at: string;
+  responses_count: number;
+  city_name: string | null;
+  district: string | null;
+  village: string | null;
+  /** false — категория у задания дополнительная. */
+  is_main: boolean;
+  /** Скрыто «красным флагом». */
+  is_hidden: boolean;
+}
+
+export interface MergeCategoryResult {
+  from: string;
+  into: string;
+  orders_main: number;
+  orders_extra: number;
+  orders_open: number;
+  notified: number;
+  masters_moved: number;
+  masters_merged: number;
+}
+
+export interface MoveOrdersResult {
+  into: string;
+  into_name: string;
+  moved: number;
+  unchanged: number;
+  notified: number;
+  hidden_not_notified: number;
 }
 
 export type BroadcastAudience = "all" | "clients" | "masters";
@@ -821,6 +863,57 @@ export const api = {
       p_reason: reason,
     }),
   listCategories: () => rpc<CategoryRow[]>("admin_list_categories"),
+  /** Правка подкатегории (0238): null — поле не трогать; terms — полный новый набор. */
+  updateCategory: (
+    l2Id: string,
+    patch: {
+      name?: string | null;
+      icon?: string | null;
+      l1Id?: string | null;
+      terms?: string[] | null;
+    },
+    reason: string,
+  ) =>
+    rpc<{ l2_id: string; name_ru: string; changed: boolean }>("admin_update_category", {
+      p_l2_id: l2Id,
+      p_name_ru: patch.name ?? null,
+      p_icon: patch.icon ?? null,
+      p_l1_id: patch.l1Id ?? null,
+      p_terms: patch.terms ?? null,
+      p_reason: reason,
+    }),
+  mergeCategory: (fromL2: string, intoL2: string, reason: string, notify = true) =>
+    rpc<MergeCategoryResult>("admin_merge_category", {
+      p_from_l2: fromL2,
+      p_into_l2: intoL2,
+      p_reason: reason,
+      p_notify: notify,
+    }),
+  moveOrders: (orderIds: string[], intoL2: string, reason: string, notify = true) =>
+    rpc<MoveOrdersResult>("admin_move_orders", {
+      p_order_ids: orderIds,
+      p_into_l2: intoL2,
+      p_reason: reason,
+      p_notify: notify,
+    }),
+  listCategoryOrders: (l2Id: string, status: "open" | "all" = "open", limit = 100) =>
+    rpc<CategoryOrderRow[]>("admin_list_category_orders", {
+      p_l2_id: l2Id,
+      p_status: status,
+      p_limit: limit,
+    }),
+  renameSection: (l1Id: string, name: string, reason: string) =>
+    rpc<{ l1_id: string; name_ru: string; changed: boolean }>("admin_rename_section", {
+      p_l1_id: l1Id,
+      p_name_ru: name,
+      p_reason: reason,
+    }),
+  reorderCatalog: (kind: "l1" | "l2", ids: string[], reason: string) =>
+    rpc<{ order: string[]; changed: boolean }>("admin_reorder", {
+      p_kind: kind,
+      p_ids: ids,
+      p_reason: reason,
+    }),
   setCategoryOpenResponses: (l2Id: string, open: boolean, reason: string) =>
     rpc<void>("admin_set_category_open_responses", {
       p_l2_id: l2Id,

@@ -107,6 +107,13 @@ export const RPC_ALLOWLIST = new Set([
   "admin_hide_order_shadow",
   // Подсказки нейросети по категориям (0236, №279): внутри is_admin_session().
   "admin_list_ai_category_suggestions",
+  // Управление каталогом (0238, №284): внутри is_admin_session().
+  "admin_update_category",
+  "admin_merge_category",
+  "admin_move_orders",
+  "admin_list_category_orders",
+  "admin_rename_section",
+  "admin_reorder",
 ]);
 
 const NAME_RE = /^[a-z_][a-z0-9_]*$/;

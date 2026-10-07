@@ -34,7 +34,7 @@ import { formatResponsePrice } from "./order-response-price";
 //   │ Цена              Срок                        │
 //   │ 5 000 ₽           Завтра                      │
 //   │ Сообщение специалиста                          │
-//   │ (📞) (WA)  [         Выбрать          ]        │
+//   │ [ 📞 Позвонить ]  [ WhatsApp ]                 │  ← №293
 //   └──────────────────────────────────────────────┘
 //
 // Что взято: Thumbtack и Profi.ru — цена и срок отдельными подписанными
@@ -214,7 +214,7 @@ export function ClientMasterResponseCard({
       <View className="mt-4 flex-row gap-6">
         <View className="shrink">
           <AppText className="text-ios-footnote text-mute">Цена</AppText>
-          <AppText weight="semibold" className="mt-0.5 text-ios-title2 text-ink">
+          <AppText weight="semibold" className="mt-0.5 text-ios-title3 text-ink">
             {priceText}
           </AppText>
         </View>
@@ -223,7 +223,7 @@ export function ClientMasterResponseCard({
             <AppText className="text-ios-footnote text-mute">Срок</AppText>
             <AppText
               weight="semibold"
-              className="mt-0.5 text-ios-title2 text-ink"
+              className="mt-0.5 text-ios-title3 text-ink"
               numberOfLines={2}
             >
               {response.lead_time}
@@ -266,7 +266,7 @@ export function ClientMasterResponseCard({
         </Pressable>
       ) : (
         <View className="mt-4 flex-row flex-wrap items-center gap-2">
-          <ContactIconButton
+          <ContactPillButton
             kind="call"
             enabled={!!phoneTel}
             loading={contactsLoading && !phoneTel}
@@ -276,7 +276,7 @@ export function ClientMasterResponseCard({
           {/* Пока контакты старого отклика грузятся — место WhatsApp занято
               индикатором, как у «Позвонить», без скачка разметки (QA №262). */}
           {phoneWa || contactsLoading ? (
-            <ContactIconButton
+            <ContactPillButton
               kind="whatsapp"
               enabled={!!phoneWa}
               loading={contactsLoading && !phoneWa}
@@ -320,8 +320,14 @@ function reviewsLabel(n: number): string {
   return `${n} ${word}`;
 }
 
-/** Круглая кнопка связи — как «Позвонить» / «Сообщение» в «Контактах» iOS. */
-function ContactIconButton({
+/**
+ * Кнопка связи с подписью (№293, владелец 2026-10-07: «не нравится кнопка
+ * звонка» — одинокий розовый круг без подписи после ухода «Выбрать»).
+ * Стили iOS: «Позвонить» — tinted (заливка оттенком, текст акцентом),
+ * WhatsApp — gray. Не сплошная красная: откликов бывает пять, и под ними
+ * красная «Завершить задание» — одно главное действие на экран.
+ */
+function ContactPillButton({
   kind,
   enabled,
   loading = false,
@@ -334,25 +340,38 @@ function ContactIconButton({
   who: string;
   onPress: () => void;
 }) {
-  const tc = useThemeColors(["accent", "mute"]);
-  const Icon = kind === "call" ? Phone : WhatsappLogo;
-  const label =
-    kind === "call" ? (enabled ? `Позвонить: ${who}` : "Номера нет") : `WhatsApp: ${who}`;
+  const tc = useThemeColors(["accent", "mute", "ink"]);
+  const call = kind === "call";
+  const Icon = call ? Phone : WhatsappLogo;
+  const label = call ? (enabled ? "Позвонить" : "Номера нет") : "WhatsApp";
+  const a11y = call ? (enabled ? `Позвонить: ${who}` : "Номера нет") : `WhatsApp: ${who}`;
+  const tone = !enabled
+    ? "bg-canvas-soft"
+    : call
+      ? "bg-accent-soft active:opacity-70"
+      : "bg-canvas-soft-2 active:opacity-70";
+  const iconColor = !enabled ? tc.mute : call ? tc.accent : tc.ink;
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={label}
+      accessibilityLabel={a11y}
       accessibilityState={{ disabled: !enabled, busy: loading }}
       disabled={!enabled}
       onPress={onPress}
-      className={`h-12 w-12 items-center justify-center rounded-full ${
-        enabled ? "bg-accent-soft active:opacity-70" : "bg-canvas-soft"
-      }`}
+      className={`min-h-12 grow basis-32 flex-row items-center justify-center gap-2 rounded-pill px-4 ${tone}`}
     >
       {loading ? (
         <ActivityIndicator size="small" color={tc.mute} />
       ) : (
-        <Icon size={22} weight="fill" color={enabled ? tc.accent : tc.mute} />
+        <>
+          <Icon size={20} weight="fill" color={iconColor} />
+          <AppText
+            weight="semibold"
+            className={`text-ios-body ${!enabled ? "text-mute" : call ? "text-accent" : "text-ink"}`}
+          >
+            {label}
+          </AppText>
+        </>
       )}
     </Pressable>
   );

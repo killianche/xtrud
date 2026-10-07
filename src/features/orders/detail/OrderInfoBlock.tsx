@@ -104,24 +104,6 @@ export function OrderInfoBlock({ order, isOwner, isGuest, myResponseStatus }: Or
           читаемым цветом; микроиконки; жирные заголовки секций; всё стопкой
           друг под другом, а не разбросано. Каждая секция — заголовок + тело. */}
 
-      {/* Бюджет */}
-      {budgetText ? (
-        <View className="mt-6">
-          <AppText weight="bold" className="text-title-md text-ink">
-            Бюджет
-          </AppText>
-          <View className="mt-2 flex-row items-center gap-2">
-            <Wallet size={18} weight="bold" color={tc.ink} />
-            <AppText
-              weight={isNegotiable ? "semibold" : "mono"}
-              className="text-display-md text-ink tracking-tight"
-            >
-              {isNegotiable ? "Договорная" : budgetText}
-            </AppText>
-          </View>
-        </View>
-      ) : null}
-
       {/* Описание */}
       {order.description ? (
         <View className="mt-6">
@@ -149,6 +131,19 @@ export function OrderInfoBlock({ order, isOwner, isGuest, myResponseStatus }: Or
           Детали
         </AppText>
         <View className="mt-2 gap-3">
+          {/* Бюджет — первой строкой деталей (№293): отдельный блок с
+              заголовком и огромным «Договорная» спорил с названием. */}
+          {budgetText ? (
+            <View className="flex-row items-center gap-3">
+              <Wallet size={18} weight="bold" color={tc.ink} />
+              <AppText
+                weight={isNegotiable ? "medium" : "bold"}
+                className={`flex-1 ${isNegotiable ? "text-body-md" : "text-title-md"} text-ink`}
+              >
+                {isNegotiable ? "Цена договорная" : budgetText}
+              </AppText>
+            </View>
+          ) : null}
           <View className="flex-row items-center gap-3">
             <Clock size={18} weight="bold" color={isUrgent ? tc.error : tc.ink} />
             <AppText

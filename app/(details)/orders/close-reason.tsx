@@ -6,12 +6,13 @@
  * (`docs/IOS_FOUNDATION.md` §2.4): «выбор параметра/подтверждение» →
  * `formSheet`, а не самописный full-screen `<Modal>`.
  *
- * Две крупные кнопки (план §4 ORDER_LIFECYCLE_CLIENT_PLAN.md):
- *   - «Я нашёл исполнителя» → выбор из откликнувшихся: задание переходит в
- *     «Исполнитель выбран» (0196, pick_order_master); «Не из откликов» —
- *     закрытие с cancel_reason = 'found_master';
- *   - «Больше не нужно»     → cancel_reason = 'no_longer_needed'.
- * `?step=who` открывает сразу выбор исполнителя (блок «Нашли исполнителя?»).
+ * «Завершить задание» (владелец, 2026-10-07, №285: «кнопки „Выбрать“ у
+ * отклика не надо — общая кнопка завершить; при завершении выбрать, кто стал
+ * мастером, или „никто не подошёл“»). Один шаг:
+ *   - откликнувшийся → «Исполнитель выбран» (pick_order_master, 0208);
+ *     отзыв потом — кнопкой в задании, сам не предлагается;
+ *   - «Нашёл в другом месте» → cancel_reason = 'found_master';
+ *   - «Никто не подошёл»     → cancel_reason = 'no_longer_needed'.
  * Заголовок-вопрос без подзаголовка (правило §G design-quality.md).
  * Контент предсказуемой высоты (2 карточки + сноска) → `fitToContents`.
  *
@@ -26,8 +27,7 @@
  */
 
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
-import { CheckCircle, UserCircle, X } from "phosphor-react-native";
-import { useState } from "react";
+import { MinusCircle, UserCircle, X } from "phosphor-react-native";
 import { Pressable, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
@@ -36,7 +36,6 @@ import { InsetGroup, InsetRow } from "@/components/ui";
 import { useCloseReasonPickerStore } from "@/features/orders/close-reason-picker-store";
 import type { CancelReason } from "@/features/orders/use-cancel-order";
 import { useOrderResponses } from "@/features/orders/use-order-responses";
-import { hapticSelection } from "@/lib/haptics";
 import { useThemeColors } from "@/lib/use-theme-color";
 
 // Параметры шторки — константа модуля. Объект, создаваемый заново при каждом
@@ -52,17 +51,13 @@ const SHEET_OPTIONS = {
 export default function CloseReasonScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const params = useLocalSearchParams<{ orderId?: string; step?: string }>();
+  const params = useLocalSearchParams<{ orderId?: string }>();
   const orderId = typeof params.orderId === "string" ? params.orderId : undefined;
   const setResult = useCloseReasonPickerStore((s) => s.setResult);
   const tc = useThemeColors(["mute"]);
 
   const close = () => router.back();
 
-  // Р1 (DECISION владельца 2026-09-07): «нашёл исполнителя» → спросить, кто
-  // из откликнувшихся сделал работу. Мастер получит уведомление (0175).
-  // «Выбрать исполнителя» из блока задания открывает сразу список (0196).
-  const [step, setStep] = useState<"reason" | "who">(params.step === "who" ? "who" : "reason");
   const responsesQ = useOrderResponses(orderId);
   // Выбрать можно только из живых откликов: отозванный или скрытый — нет.
   const responders = (responsesQ.data ?? []).filter(
@@ -74,15 +69,6 @@ export default function CloseReasonScreen() {
     close();
   };
 
-  const onFoundMaster = () => {
-    if (responders.length === 0) {
-      pick("found_master");
-      return;
-    }
-    hapticSelection();
-    setStep("who");
-  };
-
   return (
     <>
       <Stack.Screen options={SHEET_OPTIONS} />
@@ -90,11 +76,12 @@ export default function CloseReasonScreen() {
         {/* Header — тот же стиль, что у `PickerSheetPage` (bold title + close-X). */}
         <View className="flex-row items-center gap-3 px-5 py-3">
           <AppText
+            accessibilityRole="header"
             weight="bold"
             className="flex-1 text-display-sm tracking-tight text-ink"
             numberOfLines={2}
           >
-            {step === "who" ? "С кем договорились?" : "Почему закрываете задание?"}
+            Кто стал исполнителем?
           </AppText>
           <Pressable
             accessibilityRole="button"
@@ -107,14 +94,10 @@ export default function CloseReasonScreen() {
           </Pressable>
         </View>
 
-        {/* Два крупных варианта-карточки (Lazyweb: DoorDash refund-sheet, Linear
-            status-picker). Каждый — иконка в круге + заголовок + описание справа.
-            «Нашёл мастера» — позитивный исход (success-tint), «Больше не нужно» —
-            нейтральный. Оба → cancelled, разница в cancel_reason. */}
-        {step === "who" ? (
-          <View className="pb-6 pt-1">
-            <InsetGroup>
-              {responders.map((r) => {
+        <View className="pb-6 pt-1">
+          {responders.length > 0 ? (
+            <InsetGroup title="Откликнулись">
+              {responders.map((r, i) => {
                 const m = r.master;
                 const name =
                   [m?.first_name, m?.last_name].filter(Boolean).join(" ") || "Специалист";
@@ -124,88 +107,34 @@ export default function CloseReasonScreen() {
                     title={name}
                     subtitle={
                       r.price_value
-                        ? `${r.price_value} ₽ · ${r.lead_time ?? ""}`
+                        ? `${r.price_value} ₽${r.lead_time ? ` · ${r.lead_time}` : ""}`
                         : (r.lead_time ?? undefined)
                     }
                     icon={<Avatar url={m?.avatar_url} name={name} seed={m?.id} size="sm" />}
                     onPress={() => pick("found_master", m?.id ?? null)}
+                    last={i === responders.length - 1}
                   />
                 );
               })}
-              <InsetRow
-                title="Не из откликов"
-                subtitle="Нашёл исполнителя другим способом — задание закроется"
-                icon={<UserCircle size={20} weight="bold" color={tc.mute} />}
-                onPress={() => pick("found_master", null)}
-                last
-              />
             </InsetGroup>
-          </View>
-        ) : (
-          <View className="gap-2 px-5 pb-6 pt-1">
-            <CloseReasonOption
-              icon={CheckCircle}
-              title="Я нашёл исполнителя"
-              description="Выберу из откликнувшихся или отмечу, что нашёл в другом месте."
-              tone="success"
-              onPress={onFoundMaster}
+          ) : null}
+          <InsetGroup>
+            <InsetRow
+              title="Нашёл в другом месте"
+              subtitle="Исполнитель не из откликов — задание закроется"
+              icon={<UserCircle size={20} weight="bold" color={tc.mute} />}
+              onPress={() => pick("found_master", null)}
             />
-            <CloseReasonOption
-              icon={X}
-              title="Больше не нужно"
-              description="Передумал или решил вопрос другим способом."
-              tone="neutral"
+            <InsetRow
+              title="Никто не подошёл"
+              subtitle="Задание закроется без исполнителя"
+              icon={<MinusCircle size={20} weight="bold" color={tc.mute} />}
               onPress={() => pick("no_longer_needed")}
+              last
             />
-          </View>
-        )}
+          </InsetGroup>
+        </View>
       </View>
     </>
-  );
-}
-
-// CloseReasonOption — карточка-вариант причины закрытия. Раньше рендерилась в
-// `BottomSheet` (Modal-портал), где CSS-vars не резолвились — цвета
-// приходилось брать hex'ом из палитры по DOM-теме. Обычный route-контент
-// такой проблемы не имеет — NativeWind className работает как везде.
-interface CloseReasonOptionProps {
-  icon: typeof CheckCircle;
-  title: string;
-  description: string;
-  tone: "success" | "neutral";
-  onPress: () => void;
-}
-
-function CloseReasonOption({
-  icon: Icon,
-  title,
-  description,
-  tone,
-  onPress,
-}: CloseReasonOptionProps) {
-  const tc = useThemeColors(["success", "ink"]);
-  const iconColor = tone === "success" ? tc.success : tc.ink;
-
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={title}
-      onPress={onPress}
-      className="flex-row items-center gap-3.5 rounded-2xl border border-hairline bg-canvas px-4 py-3.5 active:opacity-70"
-    >
-      <View
-        className={`h-11 w-11 items-center justify-center rounded-xl ${
-          tone === "success" ? "bg-success-soft" : "bg-canvas-soft"
-        }`}
-      >
-        <Icon size={24} weight={tone === "success" ? "fill" : "bold"} color={iconColor} />
-      </View>
-      <View className="flex-1 min-w-0">
-        <AppText weight="semibold" className="text-body-md text-ink">
-          {title}
-        </AppText>
-        <AppText className="mt-0.5 text-caption text-mute">{description}</AppText>
-      </View>
-    </Pressable>
   );
 }

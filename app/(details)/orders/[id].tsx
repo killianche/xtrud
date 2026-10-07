@@ -76,6 +76,7 @@ export default function OrderDetailScreen() {
   const _hasMyMasterResponse = !!myMasterResponseQ.data;
   // Можно ли откликнуться: не автор, задание открыто и ждёт откликов, своего
   // отклика нет или он отозван. Гость тоже видит кнопку — через вход.
+  const canFinish = !!order && isOwner && order.status === "open";
   const canRespond =
     !!order &&
     !isOwner &&
@@ -186,7 +187,20 @@ export default function OrderDetailScreen() {
           (r) => r.master_id === pickedMasterId && (r.status === "sent" || r.status === "viewed"),
         );
         if (response) {
-          pickResponse(response.id);
+          // Выбор не отменить — подтверждение (раньше оно было у кнопки
+          // «Выбрать» на карточке, №285).
+          const name =
+            [response.master?.first_name, response.master?.last_name].filter(Boolean).join(" ") ||
+            "специалист";
+          void confirmAsync({
+            title: `Исполнитель — ${name}?`,
+            message:
+              "Задание завершится, остальные отклики снимутся, исполнитель получит уведомление. Отзыв можно будет оставить позже в задании.",
+            confirmText: "Завершить",
+            cancelText: "Отмена",
+          }).then((ok) => {
+            if (ok && !pickMaster.isPending) pickResponse(response.id);
+          });
           return;
         }
       }
@@ -198,21 +212,8 @@ export default function OrderDetailScreen() {
         },
       );
     },
-    [id, userId, cancelMutate, ownerResponses, pickResponse],
+    [id, userId, cancelMutate, ownerResponses, pickResponse, pickMaster.isPending],
   );
-
-  const handlePickFromCard = async (responseId: string, masterName: string) => {
-    const confirmed = await confirmAsync({
-      title: `Выбрать исполнителем: ${masterName}?`,
-      message:
-        "Задание закроется, остальные отклики снимутся, исполнитель получит уведомление. Отменить выбор будет нельзя.",
-      confirmText: "Выбрать",
-      cancelText: "Отмена",
-    });
-    // Повторное нажатие, пока первый выбор ещё уходит на сервер, — не второй
-    // запрос и не ложная ошибка «Не удалось выбрать» (аудит 2026-09-22).
-    if (confirmed && !pickMaster.isPending) pickResponse(responseId);
-  };
 
   const openReview = () => {
     if (!id || !order?.picked_master_id) return;
@@ -349,7 +350,7 @@ export default function OrderDetailScreen() {
         onPress: () => router.push(`/orders/edit/${id}` as never),
       });
       items.push({
-        label: "Закрыть задание",
+        label: "Завершить задание",
         onPress: () =>
           router.push({ pathname: "/orders/close-reason", params: { orderId: id } } as never),
       });
@@ -516,7 +517,9 @@ export default function OrderDetailScreen() {
 
       {order && (
         <ScrollView
-          contentContainerStyle={{ paddingBottom: insets.bottom + 24 + (canRespond ? 72 : 0) }}
+          contentContainerStyle={{
+            paddingBottom: insets.bottom + 24 + (canRespond || canFinish ? 72 : 0),
+          }}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
@@ -566,12 +569,7 @@ export default function OrderDetailScreen() {
           ) : null}
 
           {isOwner && id && order && order.contact_mode !== "phone_open" ? (
-            <ClientResponsesSection
-              orderId={id}
-              order={order}
-              onPick={(responseId, masterName) => void handlePickFromCard(responseId, masterName)}
-              picking={pickMaster.isPending}
-            />
+            <ClientResponsesSection orderId={id} order={order} />
           ) : null}
           {isOwner && order.contact_mode === "phone_open" ? (
             <View className="mx-5 mt-6 rounded-2xl bg-canvas-soft p-4">
@@ -620,6 +618,26 @@ export default function OrderDetailScreen() {
               myMasterResponseQ.data?.status === "withdrawn" ? "Откликнуться снова" : "Откликнуться"
             }
             onPress={() => void handleRespondPress()}
+          />
+        </View>
+      ) : null}
+
+      {/* Автор открытого задания: главное действие — «Завершить задание»
+          (владелец, №285): кто стал исполнителем или «никто не подошёл». */}
+      {canFinish && id ? (
+        <BottomEdgeEffect solid={insets.bottom + 4 + GLASS_BUTTON_HEIGHT + 8} />
+      ) : null}
+      {canFinish && id ? (
+        <View
+          pointerEvents="box-none"
+          className="absolute left-0 right-0 px-5"
+          style={{ bottom: insets.bottom + 4 }}
+        >
+          <GlassButton
+            label="Завершить задание"
+            onPress={() =>
+              router.push({ pathname: "/orders/close-reason", params: { orderId: id } } as never)
+            }
           />
         </View>
       ) : null}

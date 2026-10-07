@@ -27,18 +27,9 @@ import { ClientMasterResponseCard } from "./ClientMasterResponseCard";
 interface ClientResponsesSectionProps {
   orderId: string;
   order: OrderDetail;
-  /** «Выбрать исполнителем» на карточке (0196) — только в открытом задании. */
-  onPick: (responseId: string, masterName: string) => void;
-  /** Выбор уже уходит на сервер — кнопки «Выбрать» заблокированы. */
-  picking: boolean;
 }
 
-export function ClientResponsesSection({
-  orderId,
-  order,
-  onPick,
-  picking,
-}: ClientResponsesSectionProps) {
+export function ClientResponsesSection({ orderId, order }: ClientResponsesSectionProps) {
   const tc = useThemeColors(["muted-soft"]);
   const router = useRouter();
   const {
@@ -208,17 +199,8 @@ export function ClientResponsesSection({
             <ClientMasterResponseCard
               key={r.id}
               response={r}
-              onPick={
-                isOpen && (r.status === "sent" || r.status === "viewed")
-                  ? () =>
-                      onPick(
-                        r.id,
-                        [r.master?.first_name, r.master?.last_name].filter(Boolean).join(" ") ||
-                          "специалист",
-                      )
-                  : undefined
-              }
-              picking={picking}
+              // «Выбрать» на карточке нет (владелец, №285): исполнителя
+              // выбирают при «Завершить задание».
               isRejecting={pendingRejectResponseId === r.id}
               onReject={isOpen ? () => onRejectResponseClick(r.id) : undefined}
             />

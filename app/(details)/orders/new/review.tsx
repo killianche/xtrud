@@ -19,7 +19,7 @@
 import { Redirect, useRouter } from "expo-router";
 import { usePreventRemove } from "expo-router/react-navigation";
 import { useEffect, useRef, useState } from "react";
-import { type LayoutChangeEvent, type ScrollView, View } from "react-native";
+import type { LayoutChangeEvent, ScrollView } from "react-native";
 import { AppText } from "@/components/AppText";
 import { useAuthSession } from "@/features/auth/use-auth-session";
 import { useVisibleCategories } from "@/features/categories/use-visible-categories";
@@ -38,6 +38,7 @@ import {
   useComposer,
   useComposerSession,
 } from "@/features/task-composer/composer-store";
+import { FieldFlash } from "@/features/task-composer/FieldFlash";
 import { PhotoGrid } from "@/features/task-composer/PhotoGrid";
 import {
   COMPOSER_ACCOUNT_ROUTE,
@@ -50,6 +51,7 @@ import {
   DESCRIPTION_MAX,
   effectiveWhatsapp,
   firstIncompleteStep,
+  incompleteSteps,
   isComposerComplete,
   normalizeTitle,
   TITLE_MAX,
@@ -66,14 +68,14 @@ import { useBackGestureLock } from "@/lib/use-back-gesture-lock";
 import { useThemeColors } from "@/lib/use-theme-color";
 import { useUnsavedChangesGuard } from "@/lib/use-unsaved-changes-guard";
 
-/** Текст ошибки под кнопкой — какого раздела формы не хватает (вариант B, №249). */
-const MISSING_STEP_MESSAGE: Record<ComposerStep, string> = {
-  category: "Выберите категорию",
-  title: "Укажите название задания",
-  where: "Укажите адрес",
-  when: "Укажите срок",
-  budget: "Укажите сумму или выберите «Договорная»",
-  contacts: "Укажите, как с вами связаться",
+/** Короткие имена разделов для строки «Осталось указать: …» (№290). */
+const STEP_SHORT: Record<ComposerStep, string> = {
+  category: "категорию",
+  title: "название",
+  where: "адрес",
+  when: "срок",
+  budget: "бюджет",
+  contacts: "связь",
   review: "",
 };
 
@@ -97,6 +99,11 @@ export default function TaskReviewScreen() {
   // блокируем кнопку заранее (на шести ответах постоянно неактивная кнопка
   // не объясняет, чего не хватает).
   const [submitAttempted, setSubmitAttempted] = useState(false);
+  // Какой раздел подсветить и номер вспышки: каждое нажатие — новая (№290).
+  const [flash, setFlash] = useState<{ step: ComposerStep | null; n: number }>({
+    step: null,
+    n: 0,
+  });
 
   // Сессия редактирования живёт, пока открыт этот экран.
   useEffect(() => {
@@ -211,6 +218,7 @@ export default function TaskReviewScreen() {
       hapticWarning();
       // К первому незаполненному — а не только текст над кнопкой.
       const first = firstIncompleteStep(values);
+      setFlash((f) => ({ step: first, n: f.n + 1 }));
       const y = first ? sectionY.current[first] : undefined;
       if (y !== undefined)
         scrollRef.current?.scrollTo({ y: Math.max(0, y - 12), animated: !reducedMotion });
@@ -323,6 +331,8 @@ export default function TaskReviewScreen() {
   // Вариант B (№249): этот же экран — форма. Простые поля редактируются
   // прямо здесь (перенос JSX из title.tsx/when.tsx/budget.tsx без изменения
   // пропсов), составные — строка-переход тем же механизмом `from=review`.
+  const remaining = incompleteSteps(values).map((st) => STEP_SHORT[st]);
+  const flashFor = (step: ComposerStep) => (flash.step === step ? flash.n : 0);
   const titleTrimmed = normalizeTitle(values.title);
   const titleError =
     titleTrimmed.length === 0
@@ -340,10 +350,16 @@ export default function TaskReviewScreen() {
       primaryLabel={mode.kind === "edit" ? "Сохранить" : userId ? "Опубликовать" : "Далее"}
       onPrimary={onPrimary}
       busy={publish.busy}
-      error={publish.error ?? (missingStep ? MISSING_STEP_MESSAGE[missingStep] : null)}
+      // Ошибка нехватки — у самого раздела (подсветка + текст под ним), над
+      // кнопкой её не повторяем. Над кнопкой — спокойная строка «что
+      // осталось», видна сразу, а не после нажатия (№290).
+      error={publish.error}
+      footnote={remaining.length > 0 ? `Осталось указать: ${remaining.join(", ")}` : null}
+      primaryInactive={remaining.length > 0}
+      primaryHint={remaining.length > 0 ? `Осталось указать: ${remaining.join(", ")}` : undefined}
       scrollRef={scrollRef}
     >
-      <View onLayout={at("title")}>
+      <FieldFlash onLayout={at("title")} trigger={flashFor("title")}>
         <ComposerField
           label="Название задания"
           size="title"
@@ -359,8 +375,8 @@ export default function TaskReviewScreen() {
           forceError={submitAttempted}
           accessibilityLabel="Название задания"
         />
-      </View>
-      <View onLayout={at("category")}>
+      </FieldFlash>
+      <FieldFlash onLayout={at("category")} trigger={flashFor("category")}>
         {/* Категорий клиент не видит вовсе (владелец, 2026-10-07, №279): её
             ставит словарь или нейросеть на сервере, сомнительное — админ.
             Строка остаётся только если категории нет совсем (старый
@@ -384,7 +400,7 @@ export default function TaskReviewScreen() {
             Выберите категорию
           </AppText>
         ) : null}
-      </View>
+      </FieldFlash>
       <ComposerField
         label="Подробности · по желанию"
         multiline
@@ -399,7 +415,7 @@ export default function TaskReviewScreen() {
         accessibilityLabel="Описание задания"
       />
       <PhotoGrid photos={photos} onChange={composer.setPhotos} />
-      <View onLayout={at("where")}>
+      <FieldFlash onLayout={at("where")} trigger={flashFor("where")}>
         <ChoiceGroup>
           <ChoiceRow
             // «Адрес», а не «Где» (владелец, 2026-10-07, №260): подпись строки —
@@ -422,24 +438,24 @@ export default function TaskReviewScreen() {
             Укажите адрес
           </AppText>
         ) : null}
-      </View>
-      <View onLayout={at("when")}>
+      </FieldFlash>
+      <FieldFlash onLayout={at("when")} trigger={flashFor("when")}>
         <WhenFields
           values={values}
           patch={composer.patch}
           showMissingError={missingStep === "when"}
           showLabel
         />
-      </View>
-      <View onLayout={at("budget")}>
+      </FieldFlash>
+      <FieldFlash onLayout={at("budget")} trigger={flashFor("budget")}>
         <BudgetFields
           values={values}
           patch={composer.patch}
           showMissingError={missingStep === "budget"}
           showLabel
         />
-      </View>
-      <View onLayout={at("contacts")}>
+      </FieldFlash>
+      <FieldFlash onLayout={at("contacts")} trigger={flashFor("contacts")}>
         {/* Два способа — сразу на форме, без перехода (владелец, №260). */}
         <ContactsFields title="Связь" />
         {missingStep === "contacts" ? (
@@ -450,7 +466,7 @@ export default function TaskReviewScreen() {
             Укажите, как с вами связаться
           </AppText>
         ) : null}
-      </View>
+      </FieldFlash>
     </ComposerScreen>
   );
 }

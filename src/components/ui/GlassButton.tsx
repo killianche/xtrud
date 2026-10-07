@@ -27,6 +27,12 @@ export interface GlassButtonProps {
    * secondary: подложка та же, меняется только цвет надписи.
    */
   neutral?: boolean;
+  /**
+   * Выглядит неактивной, но нажимается (№290): форма ещё не заполнена, и
+   * нажатие показывает, чего не хватает, — глухая кнопка этого не объясняет.
+   */
+  inactive?: boolean;
+  accessibilityHint?: string;
 }
 
 export function GlassButton({
@@ -36,11 +42,21 @@ export function GlassButton({
   busy = false,
   secondary = false,
   neutral = false,
+  inactive = false,
+  accessibilityHint,
 }: GlassButtonProps) {
   const tc = useThemeColors(["accent", "on-accent", "ink"]);
+  // Неактивная — сплошная серая, как неактивная кнопка iOS: полупрозрачная
+  // просвечивала поля формы под собой (снимок 2026-10-07, №290).
+  const looksOff = inactive && !busy && !disabled;
   const textColor = secondary ? (neutral ? tc.ink : tc.accent) : tc["on-accent"];
   const content = busy ? (
     <ActivityIndicator color={textColor} />
+  ) : looksOff ? (
+    // Классы токенов, а не цвет из useThemeColors: обе темы гарантированно.
+    <AppText weight="semibold" className="text-mute" style={{ fontSize: 18 }}>
+      {label}
+    </AppText>
   ) : (
     <AppText weight="semibold" style={{ color: textColor, fontSize: 18 }}>
       {label}
@@ -58,12 +74,17 @@ export function GlassButton({
       accessibilityRole="button"
       accessibilityLabel={label}
       accessibilityState={{ disabled: disabled || busy, busy }}
+      accessibilityHint={accessibilityHint}
       onPress={onPress}
       disabled={disabled || busy}
       className="active:opacity-80"
       style={{ opacity: disabled && !busy ? 0.45 : 1 }}
     >
-      {LIQUID_GLASS ? (
+      {looksOff ? (
+        <View className="bg-surface-3" style={shape}>
+          {content}
+        </View>
+      ) : LIQUID_GLASS ? (
         <GlassView
           glassEffectStyle="regular"
           tintColor={secondary ? undefined : tc.accent}

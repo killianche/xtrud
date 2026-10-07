@@ -43,6 +43,11 @@ export interface ComposerScreenProps {
   primaryLabel: string;
   onPrimary: () => void;
   primaryDisabled?: boolean;
+  /** Кнопка приглушена, но нажимается: чего-то не хватает (№290). */
+  primaryInactive?: boolean;
+  primaryHint?: string;
+  /** Спокойная строка над кнопкой — что осталось заполнить (№290). */
+  footnote?: string | null;
   busy?: boolean;
   /** Второстепенное действие текстом над кнопкой («Пропустить»). */
   secondaryLabel?: string;
@@ -65,6 +70,9 @@ export function ComposerScreen({
   primaryLabel,
   onPrimary,
   primaryDisabled = false,
+  primaryInactive = false,
+  primaryHint,
+  footnote,
   busy = false,
   secondaryLabel,
   onSecondary,
@@ -81,7 +89,7 @@ export function ComposerScreen({
   const bottomSpace = insets.bottom + 8;
   const actionsHeight = hideActions
     ? 0
-    : PRIMARY_HEIGHT + (secondaryLabel ? 48 : 0) + (error ? 44 : 0);
+    : PRIMARY_HEIGHT + (secondaryLabel ? 48 : 0) + (error || footnote ? 44 : 0);
 
   return (
     <KeyboardAvoidingView
@@ -181,6 +189,10 @@ export function ComposerScreen({
             >
               {error}
             </AppText>
+          ) : footnote ? (
+            <AppText className="mb-2 text-center text-ios-subheadline text-mute">
+              {footnote}
+            </AppText>
           ) : null}
           {secondaryLabel && onSecondary ? (
             <Pressable
@@ -199,6 +211,8 @@ export function ComposerScreen({
             label={primaryLabel}
             onPress={onPrimary}
             disabled={primaryDisabled}
+            inactive={primaryInactive}
+            accessibilityHint={primaryHint}
             busy={busy}
           />
         </View>

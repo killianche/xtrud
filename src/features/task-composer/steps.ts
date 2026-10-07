@@ -183,6 +183,12 @@ export function isComposerComplete(v: ComposerValues): boolean {
   return COMPOSER_STEPS.filter((s) => s !== "review").every((s) => isStepValid(s, v));
 }
 
+/** Все незаполненные обязательные шаги — по порядку формы (№290: строка
+ *  «Осталось указать: …» над кнопкой). */
+export function incompleteSteps(v: ComposerValues): ComposerStep[] {
+  return COMPOSER_STEPS.filter((s) => s !== "review" && !isStepValid(s, v));
+}
+
 /** Первый незаполненный шаг — куда вести с проверки или после входа. */
 export function firstIncompleteStep(v: ComposerValues): ComposerStep {
   return COMPOSER_STEPS.find((s) => s !== "review" && !isStepValid(s, v)) ?? "review";

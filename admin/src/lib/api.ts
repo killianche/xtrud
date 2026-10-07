@@ -408,6 +408,81 @@ export interface AiCategorySuggestionRow {
   reason: string | null;
   model: string | null;
   updated_at: string;
+  /** Нейросеть предлагает создать подкатегорию (0237, №282). */
+  suggested_new: { section_id: string; name: string; section_name: string | null } | null;
+}
+
+/** Предложение помощника-нейросети админу (POST /v2/admin/ai/assist, №282). */
+export type AiAssistProposal =
+  | {
+      action: "assign";
+      l2_id: string;
+      l2_name: string;
+      section_id: string;
+      section_name: string;
+      explanation: string;
+    }
+  | {
+      action: "create";
+      section_id: string;
+      section_name: string;
+      name: string;
+      icon: string | null;
+      terms: string[];
+      explanation: string;
+    }
+  | { action: "unclear"; message: string; explanation: string; problem: string | null };
+
+/**
+ * Спросить нейросеть, что делать с заданием без категории. Ничего не меняет:
+ * применяет админ кнопкой. Ожидание 30 с — модель «размышляет» дольше
+ * обычного вызова (15 с у postJson).
+ */
+async function aiAssist(orderId: string, instruction: string): Promise<AiAssistProposal> {
+  const call = async (token: string | null) => {
+    try {
+      const res = await fetch(`${await baseUrl()}/v2/admin/ai/assist`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ order_id: orderId, instruction }),
+        signal: AbortSignal.timeout(30_000),
+      });
+      const text = await res.text();
+      let json: unknown = null;
+      try {
+        json = text ? JSON.parse(text) : null;
+      } catch {
+        json = { error: text };
+      }
+      return { status: res.status, json };
+    } catch (e) {
+      const timeout = e instanceof DOMException && e.name === "TimeoutError";
+      return {
+        status: 0,
+        json: { error: timeout ? "Нейросеть не ответила за 30 секунд." : "Нет связи с сервером." },
+      };
+    }
+  };
+  let token = await accessToken();
+  let res = await call(token);
+  if (res.status === 401 && token) {
+    token = await refreshToken();
+    if (token) res = await call(token);
+  }
+  if (res.status !== 200) {
+    const body = (res.json ?? {}) as { error?: string };
+    throw new Error(
+      res.status === 429
+        ? "Слишком часто — подождите минуту."
+        : res.status === 502
+          ? "Нейросеть сейчас недоступна — назначьте категорию вручную."
+          : (body.error ?? "Не удалось спросить нейросеть."),
+    );
+  }
+  return (res.json as { proposal: AiAssistProposal }).proposal;
 }
 
 /** Скрытое «красным флагом» задание (0231, №253): автор не знает, что оно скрыто. */
@@ -858,6 +933,7 @@ export const api = {
   /** Задания без категории (0230, №251): без телефонов, контактов и адреса. */
   listUncategorizedOrders: (limit = 200) =>
     rpc<UncategorizedOrderRow[]>("admin_list_uncategorized_orders", { p_limit: limit }),
+  aiAssist,
   listAiCategorySuggestions: (limit = 200) =>
     rpc<AiCategorySuggestionRow[]>("admin_list_ai_category_suggestions", { p_limit: limit }),
   setOrderCategory: (orderId: string, l2Id: string, reason: string) =>

@@ -1,39 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { searchTaskPhrases } from "@/features/categories/task-phrase-search";
-import { TASK_PHRASES } from "@/features/categories/task-phrases";
-import { UNCATEGORIZED_L2_ID } from "@/lib/product-scope";
-import { guessCategoryId } from "./guess-category";
+import { searchTaskPhrases } from "./task-phrase-search";
+import { TASK_PHRASES } from "./task-phrases";
 
-const visible = new Set(TASK_PHRASES.map((p) => p.l2));
-const guess = (text: string) =>
-  guessCategoryId(
-    searchTaskPhrases(text, TASK_PHRASES, 6).map((h) => h.phrase),
-    visible,
-  );
-
-describe("guessCategoryId", () => {
-  it("формулировка из словаря — её категория", () => {
-    expect(guess("Убраться в комнате")).toBe("cleaning");
-    expect(guess("ремонт котла")).toBe("climate");
-  });
-
-  it("не знаем наверняка — без категории, подберёт админ (снимки владельца №269)", () => {
-    expect(guess("Переставить столы в кафе")).toBe(UNCATEGORIZED_L2_ID);
-    expect(guess("абракадабра")).toBe(UNCATEGORIZED_L2_ID);
-  });
-
-  it("уточнение после предлога не мешает («в комнате 10 квадратов»)", () => {
-    expect(guess("Убраться в комнате 10 квадратов")).toBe("cleaning");
-  });
-
-  it("скрытая категория не ставится", () => {
-    expect(guessCategoryId([{ l2: "hidden" }], new Set(["a"]))).toBe(UNCATEGORIZED_L2_ID);
-    expect(guessCategoryId([{ l2: "hidden" }, { l2: "a" }], new Set(["a"]))).toBe("a");
-  });
-});
-
-// Живые фразы по всем разделам каталога (№264, после ошибки с уборкой и
-// кондиционерами): «Далее» должна ставить ту категорию, которую ждёт человек.
+// Живые фразы по всем разделам каталога (№264): первая подсказка словаря
+// ведёт в ту категорию, которую ждёт человек. С №281 категорию по тексту
+// ставит нейросеть, а подсказка — по нажатию, но качество словаря то же.
 const CASES: [string, string][] = [
   ["Убраться в комнате", "cleaning"],
   ["Убраться в квартире после гостей", "cleaning"],
@@ -96,8 +67,8 @@ const CASES: [string, string][] = [
   ["утеплить дом", "insulation"],
 ];
 
-describe("guessCategoryId — живые фразы по разделам (№264)", () => {
+describe("первая подсказка — нужная категория (№264, №281)", () => {
   it.each(CASES)("«%s» → %s", (text, want) => {
-    expect(guess(text)).toBe(want);
+    expect(searchTaskPhrases(text, TASK_PHRASES, 6)[0]?.phrase.l2).toBe(want);
   });
 });

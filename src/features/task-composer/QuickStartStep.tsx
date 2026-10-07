@@ -16,7 +16,7 @@
  * подсказки-формулировки, без списка категорий: подбор категорий по словам
  * путал («убраться в комнате» → «Кузовной ремонт»). Не подошла ни одна —
  * «Далее»: написанное станет названием, категорию ставим сами
- * (`guess-category.ts`), на форме её видно и можно поменять; не уверены —
+ * (с №281 — нейросеть на сервере, 0236), на форме её нет; не уверена —
  * «Без категории», подберёт админ (№251).
  *
  * №265 (владелец, 2026-10-07): под полем ничего лишнего — ни пояснения про
@@ -33,11 +33,11 @@ import { AppText } from "@/components/AppText";
 import type { TaskPhrase } from "@/features/categories/task-phrases";
 import { useTaskPhrases } from "@/features/categories/use-task-phrases";
 import { useVisibleCategories } from "@/features/categories/use-visible-categories";
+import { UNCATEGORIZED_L2_ID } from "@/lib/product-scope";
 import { ComposerField } from "./ComposerFields";
 import { ChoiceGroup, ChoiceRow } from "./ComposerRows";
 import { ComposerScreen } from "./ComposerScreen";
 import { useComposer } from "./composer-store";
-import { guessCategoryId } from "./guess-category";
 import { normalizeTitle, TITLE_MAX, TITLE_MIN, titleFromQuery } from "./steps";
 import { useFocusAfterTransition } from "./use-focus-after-transition";
 import { useStepNavigation } from "./use-step-navigation";
@@ -75,11 +75,13 @@ export function QuickStartStep({ subtitle }: { subtitle?: string }) {
     nav.goNext();
   };
   const pickPhrase = (p: TaskPhrase) => goNext(p.l2, p.text);
-  // «Далее» без подсказки — категорию ставим сами (guess-category.ts).
+  // «Далее» без подсказки — категорию ставит нейросеть на сервере (0236),
+  // не уверена — админ (владелец, 2026-10-07, №281: словарь угадывал —
+  // «Поменять на столбе уличном лампочку» ушло в «Сантехнику»). Сама
+  // категория — только когда человек нажал подсказку.
   const continueWithText = () => {
     if (!canContinue) return;
-    const l2Id = guessCategoryId(phraseHits, new Set(visibleIds));
-    goNext(l2Id, titleFromQuery(text));
+    goNext(UNCATEGORIZED_L2_ID, titleFromQuery(text));
   };
   // Категорий клиент не видит (владелец, 2026-10-07, №279): подсказка —
   // просто формулировка задачи, как у YouDo; категорию ставим сами.

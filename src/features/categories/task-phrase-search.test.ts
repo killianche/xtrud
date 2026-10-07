@@ -104,3 +104,15 @@ describe("уборка своими словами (№259)", () => {
     expect(searchTaskPhrases("убрать вмятину", TASK_PHRASES, 6)[0]?.phrase.l2).toBe("body-repair");
   });
 });
+
+describe("общее действие без предмета (№281)", () => {
+  const texts = (q: string) => searchTaskPhrases(q, TASK_PHRASES, 6).map((h) => h.phrase.text);
+  it("«Поменять на столбе уличном лампочку» — не смесители и не двери", () => {
+    expect(
+      texts("Поменять на столбе уличном лампочку").some((t) => /смесител|дверь|резину/i.test(t)),
+    ).toBe(false);
+  });
+  it("предмет после общего действия по-прежнему находит («поменять розетку»)", () => {
+    expect(texts("поменять розетку")[0]).toMatch(/розетк/i);
+  });
+});

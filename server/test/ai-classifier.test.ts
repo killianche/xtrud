@@ -8,20 +8,39 @@ import {
   type ClaimedTask,
   type ClassifierStore,
   cachedCatalog,
+  catalogLine,
+  catalogSections,
   DEEPSEEK_URL,
   orderText,
   parseAnswer,
+  parseNewCategory,
   processOne,
   stripContacts,
+  toCatalogItem,
   type Verdict,
 } from "../src/ai/classifier.js";
 import { loadConfig } from "../src/config.js";
 
 const KEY = "sk-test-0123456789abcdef";
 const CATALOG: CatalogItem[] = [
-  { l2_id: "lawn-mowing", name_ru: "Покос травы", section: "Сад" },
-  { l2_id: "plumbing", name_ru: "Сантехника", section: "Ремонт" },
+  {
+    l2_id: "lawn-mowing",
+    name_ru: "Покос травы",
+    section: "Сад",
+    section_id: "garden",
+    services: "Покос триммером; Покос газона",
+    terms: "косить; трава",
+  },
+  {
+    l2_id: "plumbing",
+    name_ru: "Сантехника",
+    section: "Ремонт",
+    section_id: "repair",
+    services: "",
+    terms: "",
+  },
 ];
+const SECTIONS = new Set(["garden", "repair"]);
 const ALLOWED = new Set(CATALOG.map((c) => c.l2_id));
 const silent = { info: () => undefined, warn: () => undefined };
 
@@ -296,5 +315,98 @@ describe("stripContacts — замечания ревью безопасност
     expect(stripContacts("Поменять 3 розетки, 2 выключателя")).toBe(
       "Поменять 3 розетки, 2 выключателя",
     );
+  });
+});
+
+describe("каталог с услугами и синонимами (0237)", () => {
+  it("строка подкатегории: услуги и синонимы только если есть", () => {
+    expect(catalogLine(CATALOG[0] as CatalogItem)).toBe(
+      "lawn-mowing — Покос травы (Сад) | услуги: Покос триммером; Покос газона | синонимы: косить; трава",
+    );
+    expect(catalogLine(CATALOG[1] as CatalogItem)).toBe("plumbing — Сантехника (Ремонт)");
+  });
+  it("разделы без повторов, в промпте есть список разделов и формат new_category", () => {
+    expect(catalogSections([...CATALOG, { ...(CATALOG[0] as CatalogItem), l2_id: "x" }])).toEqual([
+      { id: "garden", name: "Сад" },
+      { id: "repair", name: "Ремонт" },
+    ]);
+    const [system, user] = buildMessages("Выкопать колодец", CATALOG);
+    expect(system?.content).toContain('"new_category"');
+    expect(user?.content).toContain("Разделы (id — название):\ngarden — Сад\nrepair — Ремонт");
+    expect(user?.content).toContain("услуги: Покос триммером");
+  });
+  it("строка базы до 0237 (без новых полей) — пустые строки, не undefined", () => {
+    expect(toCatalogItem({ l2_id: "a", name_ru: "Б", section: "В" })).toEqual({
+      l2_id: "a",
+      name_ru: "Б",
+      section: "В",
+      section_id: "",
+      services: "",
+      terms: "",
+    });
+  });
+});
+
+describe("предложение новой подкатегории (0237)", () => {
+  it("при l2_id null и верном разделе — suggested_new", () => {
+    const v = parseAnswer(
+      '{"l2_id":null,"confidence":0,"new_category":{"section_id":"garden","name":"  Бурение   скважин "}}',
+      ALLOWED,
+      0.8,
+      SECTIONS,
+    );
+    expect(v).toEqual({
+      outcome: "unsure",
+      l2_id: null,
+      confidence: 0,
+      error: null,
+      suggested_new: { section_id: "garden", name: "Бурение скважин" },
+    });
+  });
+  it("уверенное назначение не несёт предложения", () => {
+    const v = parseAnswer(
+      '{"l2_id":"plumbing","confidence":0.95,"new_category":{"section_id":"garden","name":"Колодцы"}}',
+      ALLOWED,
+      0.8,
+      SECTIONS,
+    );
+    expect(v.outcome).toBe("assigned");
+    expect(v.suggested_new).toBeUndefined();
+  });
+  it("чужой раздел, кривое название, контакты — отбрасываются", () => {
+    expect(parseNewCategory({ section_id: "nope", name: "Колодцы" }, SECTIONS)).toBeNull();
+    expect(parseNewCategory({ section_id: "garden", name: "К" }, SECTIONS)).toBeNull();
+    expect(parseNewCategory({ section_id: "garden", name: "x".repeat(61) }, SECTIONS)).toBeNull();
+    expect(parseNewCategory({ section_id: "garden", name: "123" }, SECTIONS)).toBeNull();
+    expect(parseNewCategory({ section_id: "garden", name: "Колодцы\u202E" }, SECTIONS)).toBeNull();
+    expect(
+      parseNewCategory({ section_id: "garden", name: "Звоните 89281234567" }, SECTIONS),
+    ).toBeNull();
+    expect(
+      parseNewCategory({ section_id: "garden", name: "Ремонт https://x.ru" }, SECTIONS),
+    ).toBeNull();
+    expect(parseNewCategory("Колодцы", SECTIONS)).toBeNull();
+    // Без списка разделов (старый вызов) предложения не бывает.
+    const v = parseAnswer(
+      '{"l2_id":null,"confidence":0,"new_category":{"section_id":"garden","name":"Колодцы"}}',
+      ALLOWED,
+      0.8,
+    );
+    expect(v.suggested_new).toBeUndefined();
+  });
+  it("processOne передаёт предложение в базу", async () => {
+    const s = fakeStore([{ ...TASK }]);
+    const f = fakeFetch(async () =>
+      okResponse(
+        '{"l2_id":null,"confidence":0.1,"new_category":{"section_id":"garden","name":"Колодцы"}}',
+      ),
+    );
+    await processOne(
+      s.store,
+      { apiKey: KEY, model: "m", fetchImpl: f.fn, minConfidence: 0.8 },
+      s.store.catalog,
+      silent,
+    );
+    expect(s.results[0]?.verdict.suggested_new).toEqual({ section_id: "garden", name: "Колодцы" });
   });
 });

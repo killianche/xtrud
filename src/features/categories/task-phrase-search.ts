@@ -123,6 +123,33 @@ const SAME_WORK: readonly [string, readonly string[]][] = [
   ["почист", ["почист", "чистк", "очист"]],
 ];
 
+/**
+ * Общее действие без предмета: «поменять», «починить», «установить»… Если до
+ * предлога только такие слова, совпасть должно и уточнение — иначе
+ * «Поменять на столбе уличном лампочку» подсказывало «Поменять смеситель»
+ * (снимок владельца 2026-10-07, №281).
+ */
+const GENERIC_ACTIONS = [
+  "помен",
+  "замен",
+  "ремонт",
+  "отремонт",
+  "почин",
+  "установ",
+  "постав",
+  "сдела",
+  "помоч",
+  "помощ",
+  "монтаж",
+  "подключ",
+  "настро",
+  "провер",
+];
+
+function isGenericAction(word: string): boolean {
+  return GENERIC_ACTIONS.some((g) => word.startsWith(g));
+}
+
 function alternatives(queryWord: string): readonly string[] | null {
   for (const [start, alts] of SAME_WORK) if (queryWord.startsWith(start)) return alts;
   return null;
@@ -195,6 +222,7 @@ export function searchTaskPhrases<T extends PhraseLike>(
   const required = items.some((x) => !x.optional) ? items.filter((x) => !x.optional) : items;
   const optional = required === items ? [] : items.filter((x) => x.optional);
   const q = required.map((x) => x.w);
+  const needContext = optional.length > 0 && q.every(isGenericAction);
   const matches = (qw: string, pw: readonly string[]) => {
     // Синонимы работы (SAME_WORK) — и для печатаемого слова: начало в
     // SAME_WORK не короче пяти букв, значит слово уже узнаваемо
@@ -207,6 +235,7 @@ export function searchTaskPhrases<T extends PhraseLike>(
   for (const phrase of phrases) {
     const pw = words(phrase.text);
     if (!q.every((qw) => matches(qw, pw))) continue;
+    if (needContext && !optional.some((x) => matches(x.w, pw))) continue;
     // Начинается с первого слова запроса — выше, но не настолько, чтобы
     // перебить частоту: «уборка» → и «Уборка квартиры», и «Генеральная уборка».
     const startsWithFirst = (pw[0] ?? "").startsWith(q[0] as string) ? 150 : 0;

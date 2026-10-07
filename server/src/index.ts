@@ -1,7 +1,8 @@
 import cors from "@fastify/cors";
 import rateLimit from "@fastify/rate-limit";
 import Fastify from "fastify";
-import { startAiClassifier } from "./ai/classifier.js";
+import { registerAiAssistRoutes } from "./ai/assist.js";
+import { cachedCatalog, dbStore, startAiClassifier } from "./ai/classifier.js";
 import { Tokens } from "./auth/jwt.js";
 import { registerAuthRoutes } from "./auth/routes.js";
 import { SmsRuCallCheck } from "./auth/smsru-callcheck.js";
@@ -139,6 +140,21 @@ await app.register(
       registerAuthRoutes(authScope, db, tokens, cfg, undefined, undefined, undefined, callProvider);
     });
     registerRpcRoutes(scope, db, tokens);
+    // Помощник админа по категории (№282) — только с ключом DeepSeek. Своя
+    // область: лимит 30/мин по IP и 30/мин на админа, доступ — проверкой
+    // is_admin_session() в базе. Ничего в базе не меняет.
+    if (cfg.DEEPSEEK_API_KEY !== undefined) {
+      const apiKey = cfg.DEEPSEEK_API_KEY;
+      await scope.register(async (aiScope) => {
+        await registerAiAssistRoutes(aiScope, {
+          db,
+          tokens,
+          getCatalog: cachedCatalog(dbStore(db)),
+          // Ответ помощника длиннее (название, синонимы, пояснение).
+          ai: { apiKey, model: cfg.DEEPSEEK_MODEL, maxTokens: 1500 },
+        });
+      });
+    }
     registerEventRoutes(scope, tokens, hub);
     if (cfg.NOTIFY_SECRET !== undefined) {
       registerPushRoutes(scope, db, apns, cfg.NOTIFY_SECRET, rustorePush, fcm);

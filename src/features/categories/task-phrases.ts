@@ -255,6 +255,9 @@ export const TASK_PHRASES: readonly TaskPhrase[] = [
   { text: "Установить радиаторы отопления", l2: "climate", weight: 60 },
   { text: "Заменить батареи отопления", l2: "climate", weight: 60 },
   { text: "Перенести батарею", l2: "climate", weight: 35 },
+  // Жалобой, как пишут люди (№264).
+  { text: "Не греет батарея", l2: "climate", weight: 45 },
+  { text: "Не работает отопление", l2: "climate", weight: 45 },
   { text: "Спустить воздух из батарей", l2: "climate", weight: 30 },
   { text: "Промыть систему отопления", l2: "climate", weight: 40 },
   { text: "Опрессовка системы отопления", l2: "climate", weight: 25 },
@@ -483,6 +486,7 @@ export const TASK_PHRASES: readonly TaskPhrase[] = [
   { text: "Уборка частного дома", l2: "cleaning", weight: 55 },
   { text: "Услуги уборщицы", l2: "cleaning", weight: 50 },
   { text: "Помыть окна", l2: "cleaning", weight: 80 },
+  { text: "Помыть окна на балконе", l2: "cleaning", weight: 30 },
   { text: "Мытьё окон", l2: "cleaning", weight: 60 },
   { text: "Мытьё окон в частном доме", l2: "cleaning", weight: 35 },
   { text: "Помыть балкон", l2: "cleaning", weight: 25 },
@@ -560,6 +564,7 @@ export const TASK_PHRASES: readonly TaskPhrase[] = [
   // ── pest-control — Дезинфекция и борьба с вредителями ──
   { text: "Обработать от тараканов", l2: "pest-control", weight: 55 },
   { text: "Вывести тараканов", l2: "pest-control", weight: 45 },
+  { text: "Потравить тараканов", l2: "pest-control", weight: 45 },
   { text: "Обработать от клопов", l2: "pest-control", weight: 50 },
   { text: "Обработать от блох", l2: "pest-control", weight: 30 },
   { text: "Обработать от муравьёв", l2: "pest-control", weight: 25 },
@@ -947,6 +952,7 @@ export const TASK_PHRASES: readonly TaskPhrase[] = [
   // ── body-repair — Кузовной ремонт и покраска ──
   { text: "Кузовной ремонт после ДТП", l2: "body-repair", weight: 45 },
   { text: "Убрать вмятину", l2: "body-repair", weight: 50 },
+  { text: "Выровнять вмятину", l2: "body-repair", weight: 30 },
   { text: "Удаление вмятин без покраски", l2: "body-repair", weight: 30 },
   { text: "Убрать царапины на машине", l2: "body-repair", weight: 40 },
   { text: "Устранить ржавчину на кузове", l2: "body-repair", weight: 25 },

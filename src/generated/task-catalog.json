@@ -3467,6 +3467,12 @@
       "weight": 70
     },
     {
+      "term": "автовышка",
+      "l2_id": "machinery",
+      "l3_id": null,
+      "weight": 90
+    },
+    {
       "term": "автоинструктор",
       "l2_id": "driving-instructor",
       "l3_id": null,
@@ -3545,6 +3551,12 @@
       "weight": 100
     },
     {
+      "term": "ассенизатор",
+      "l2_id": "water-sewer",
+      "l3_id": null,
+      "weight": 90
+    },
+    {
       "term": "баня",
       "l2_id": "baths-pools",
       "l3_id": null,
@@ -3567,6 +3579,12 @@
       "l2_id": null,
       "l3_id": "plaster-microcement",
       "weight": 100
+    },
+    {
+      "term": "бетононасос",
+      "l2_id": "machinery",
+      "l3_id": null,
+      "weight": 80
     },
     {
       "term": "бетонщик",
@@ -3626,6 +3644,12 @@
       "term": "венецианская",
       "l2_id": null,
       "l3_id": "plaster-venetian",
+      "weight": 100
+    },
+    {
+      "term": "вентиляция",
+      "l2_id": "climate-control",
+      "l3_id": null,
       "weight": 100
     },
     {
@@ -3713,6 +3737,12 @@
       "weight": 100
     },
     {
+      "term": "вскопать огород",
+      "l2_id": "garden",
+      "l3_id": null,
+      "weight": 80
+    },
+    {
       "term": "входная дверь",
       "l2_id": "doors",
       "l3_id": null,
@@ -3725,6 +3755,12 @@
       "weight": 100
     },
     {
+      "term": "выгребная яма",
+      "l2_id": "water-sewer",
+      "l3_id": null,
+      "weight": 90
+    },
+    {
       "term": "выключатели",
       "l2_id": "electrical",
       "l3_id": null,
@@ -3735,6 +3771,18 @@
       "l2_id": "electrical",
       "l3_id": null,
       "weight": 100
+    },
+    {
+      "term": "выравнивание стен",
+      "l2_id": "painting",
+      "l3_id": null,
+      "weight": 90
+    },
+    {
+      "term": "вытяжка",
+      "l2_id": "climate-control",
+      "l3_id": null,
+      "weight": 90
     },
     {
       "term": "газель",
@@ -3785,6 +3833,12 @@
       "weight": 70
     },
     {
+      "term": "глажка белья",
+      "l2_id": "laundry",
+      "l3_id": null,
+      "weight": 80
+    },
+    {
       "term": "готовка",
       "l2_id": "housekeeping",
       "l3_id": null,
@@ -3827,6 +3881,18 @@
       "weight": 80
     },
     {
+      "term": "дезинсекция",
+      "l2_id": "pest-control",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "дезинфекция",
+      "l2_id": "pest-control",
+      "l3_id": null,
+      "weight": 90
+    },
+    {
       "term": "декларация",
       "l2_id": "accountants",
       "l3_id": null,
@@ -3855,6 +3921,12 @@
       "l2_id": "demolition",
       "l3_id": null,
       "weight": 100
+    },
+    {
+      "term": "дератизация",
+      "l2_id": "pest-control",
+      "l3_id": null,
+      "weight": 90
     },
     {
       "term": "дизайн",
@@ -3983,6 +4055,12 @@
       "weight": 100
     },
     {
+      "term": "замена труб",
+      "l2_id": "water-sewer",
+      "l3_id": null,
+      "weight": 90
+    },
+    {
       "term": "замки",
       "l2_id": "locks-security",
       "l3_id": null,
@@ -3997,6 +4075,12 @@
     {
       "term": "замыкание",
       "l2_id": "electrical",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "заправка кондиционера",
+      "l2_id": "climate-control",
       "l3_id": null,
       "weight": 100
     },
@@ -4133,6 +4217,12 @@
       "weight": 100
     },
     {
+      "term": "клопы",
+      "l2_id": "pest-control",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
       "term": "колесо",
       "l2_id": "tire-service",
       "l3_id": null,
@@ -4152,7 +4242,7 @@
     },
     {
       "term": "кондиционер",
-      "l2_id": "climate",
+      "l2_id": "climate-control",
       "l3_id": null,
       "weight": 100
     },
@@ -4235,6 +4325,12 @@
       "weight": 100
     },
     {
+      "term": "крысы",
+      "l2_id": "pest-control",
+      "l3_id": null,
+      "weight": 90
+    },
+    {
       "term": "крыша",
       "l2_id": "roofing",
       "l3_id": null,
@@ -4299,6 +4395,18 @@
       "l2_id": "electrical",
       "l3_id": null,
       "weight": 100
+    },
+    {
+      "term": "маляр",
+      "l2_id": "painting",
+      "l3_id": null,
+      "weight": 90
+    },
+    {
+      "term": "манипулятор",
+      "l2_id": "machinery",
+      "l3_id": null,
+      "weight": 90
     },
     {
       "term": "мастер на час",
@@ -4397,6 +4505,12 @@
       "weight": 80
     },
     {
+      "term": "мыши",
+      "l2_id": "pest-control",
+      "l3_id": null,
+      "weight": 80
+    },
+    {
       "term": "навесной фасад",
       "l2_id": "facade",
       "l3_id": null,
@@ -4427,6 +4541,12 @@
       "weight": 90
     },
     {
+      "term": "насосная станция",
+      "l2_id": "water-sewer",
+      "l3_id": null,
+      "weight": 80
+    },
+    {
       "term": "настройка компьютера",
       "l2_id": "pc-repair",
       "l3_id": null,
@@ -4434,19 +4554,7 @@
     },
     {
       "term": "натяжной потолок",
-      "l2_id": "ceilings",
-      "l3_id": null,
-      "weight": 100
-    },
-    {
-      "term": "натяжной потолок",
       "l2_id": "tension-ceilings",
-      "l3_id": null,
-      "weight": 100
-    },
-    {
-      "term": "натяжные потолки",
-      "l2_id": "ceilings",
       "l3_id": null,
       "weight": 100
     },
@@ -4505,6 +4613,18 @@
       "weight": 100
     },
     {
+      "term": "обрезка деревьев",
+      "l2_id": "garden",
+      "l3_id": null,
+      "weight": 90
+    },
+    {
+      "term": "огород",
+      "l2_id": "garden",
+      "l3_id": null,
+      "weight": 80
+    },
+    {
       "term": "огэ",
       "l2_id": "exam-prep",
       "l3_id": null,
@@ -4549,6 +4669,12 @@
     {
       "term": "отделка",
       "l2_id": "renovation",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "откачка септика",
+      "l2_id": "water-sewer",
       "l3_id": null,
       "weight": 100
     },
@@ -4655,6 +4781,12 @@
       "weight": 100
     },
     {
+      "term": "плесень",
+      "l2_id": "pest-control",
+      "l3_id": null,
+      "weight": 80
+    },
+    {
       "term": "плита",
       "l2_id": "appliance-repair",
       "l3_id": null,
@@ -4685,6 +4817,12 @@
       "weight": 100
     },
     {
+      "term": "побелка",
+      "l2_id": "painting",
+      "l3_id": null,
+      "weight": 80
+    },
+    {
       "term": "поверка счётчиков",
       "l2_id": "plumbing",
       "l3_id": null,
@@ -4701,6 +4839,12 @@
       "l2_id": "handyman",
       "l3_id": null,
       "weight": 100
+    },
+    {
+      "term": "погрузчик",
+      "l2_id": "machinery",
+      "l3_id": null,
+      "weight": 90
     },
     {
       "term": "под ключ",
@@ -4751,7 +4895,31 @@
       "weight": 100
     },
     {
+      "term": "покос травы",
+      "l2_id": "garden",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "покосить траву",
+      "l2_id": "garden",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "покрасить",
+      "l2_id": "painting",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
       "term": "покрасить стены",
+      "l2_id": "painting",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "покраска",
       "l2_id": "painting",
       "l3_id": null,
       "weight": 100
@@ -4809,6 +4977,12 @@
       "l2_id": "cleaning-post-renovation",
       "l3_id": null,
       "weight": 90
+    },
+    {
+      "term": "постирать",
+      "l2_id": "laundry",
+      "l3_id": null,
+      "weight": 100
     },
     {
       "term": "построить",
@@ -4907,6 +5081,12 @@
       "weight": 80
     },
     {
+      "term": "прорыв трубы",
+      "l2_id": "water-sewer",
+      "l3_id": null,
+      "weight": 90
+    },
+    {
       "term": "протечка",
       "l2_id": "plumbing",
       "l3_id": null,
@@ -4941,6 +5121,12 @@
       "l2_id": "laborers",
       "l3_id": null,
       "weight": 80
+    },
+    {
+      "term": "разводка труб",
+      "l2_id": "water-sewer",
+      "l3_id": null,
+      "weight": 90
     },
     {
       "term": "разнорабочие",
@@ -5027,6 +5213,12 @@
       "weight": 100
     },
     {
+      "term": "ремонт обуви",
+      "l2_id": "laundry",
+      "l3_id": null,
+      "weight": 80
+    },
+    {
       "term": "ремонт стиралки",
       "l2_id": "appliance-repair",
       "l3_id": null,
@@ -5093,10 +5285,22 @@
       "weight": 80
     },
     {
+      "term": "сад",
+      "l2_id": "garden",
+      "l3_id": null,
+      "weight": 80
+    },
+    {
       "term": "сайдинг",
       "l2_id": "facade",
       "l3_id": null,
       "weight": 100
+    },
+    {
+      "term": "самосвал",
+      "l2_id": "machinery",
+      "l3_id": null,
+      "weight": 90
     },
     {
       "term": "сантехник",
@@ -5159,6 +5363,12 @@
       "weight": 70
     },
     {
+      "term": "септик",
+      "l2_id": "water-sewer",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
       "term": "сетка-рабица",
       "l2_id": "fences-gates",
       "l3_id": null,
@@ -5193,6 +5403,12 @@
       "l2_id": "drilling-wells",
       "l3_id": null,
       "weight": 100
+    },
+    {
+      "term": "скосить траву",
+      "l2_id": "garden",
+      "l3_id": null,
+      "weight": 90
     },
     {
       "term": "сломать стену",
@@ -5249,14 +5465,32 @@
       "weight": 100
     },
     {
+      "term": "спецтехника",
+      "l2_id": "machinery",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "спил дерева",
+      "l2_id": "garden",
+      "l3_id": null,
+      "weight": 90
+    },
+    {
+      "term": "спилить дерево",
+      "l2_id": "garden",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
       "term": "сплит",
-      "l2_id": "climate",
+      "l2_id": "climate-control",
       "l3_id": null,
       "weight": 100
     },
     {
       "term": "сплит-система",
-      "l2_id": "climate",
+      "l2_id": "climate-control",
       "l3_id": null,
       "weight": 100
     },
@@ -5281,6 +5515,12 @@
     {
       "term": "стиральная",
       "l2_id": "appliance-repair",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "стирка",
+      "l2_id": "laundry",
       "l3_id": null,
       "weight": 100
     },
@@ -5323,6 +5563,12 @@
     {
       "term": "счётчик электричества",
       "l2_id": "electrical",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "тараканы",
+      "l2_id": "pest-control",
       "l3_id": null,
       "weight": 100
     },
@@ -5379,6 +5625,12 @@
       "l2_id": "tension-ceilings",
       "l3_id": null,
       "weight": 100
+    },
+    {
+      "term": "трактор",
+      "l2_id": "machinery",
+      "l3_id": null,
+      "weight": 80
     },
     {
       "term": "триколор",
@@ -5526,7 +5778,7 @@
     },
     {
       "term": "установка кондиционера",
-      "l2_id": "climate",
+      "l2_id": "climate-control",
       "l3_id": null,
       "weight": 100
     },
@@ -5627,6 +5879,12 @@
       "weight": 90
     },
     {
+      "term": "химчистка одежды",
+      "l2_id": "laundry",
+      "l3_id": null,
+      "weight": 90
+    },
+    {
       "term": "химчистка салона",
       "l2_id": "car-wash",
       "l3_id": null,
@@ -5643,6 +5901,12 @@
       "l2_id": "laborers",
       "l3_id": null,
       "weight": 90
+    },
+    {
+      "term": "чистка кондиционера",
+      "l2_id": "climate-control",
+      "l3_id": null,
+      "weight": 100
     },
     {
       "term": "шёлковая штукатурка",
@@ -5675,6 +5939,18 @@
       "weight": 70
     },
     {
+      "term": "шпаклевка",
+      "l2_id": "painting",
+      "l3_id": null,
+      "weight": 90
+    },
+    {
+      "term": "шпаклёвка",
+      "l2_id": "painting",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
       "term": "штакетник",
       "l2_id": "fences-gates",
       "l3_id": null,
@@ -5689,6 +5965,18 @@
     {
       "term": "шторы",
       "l2_id": "curtains-blinds",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
+      "term": "штукатур",
+      "l2_id": "painting",
+      "l3_id": null,
+      "weight": 90
+    },
+    {
+      "term": "штукатурка",
+      "l2_id": "painting",
       "l3_id": null,
       "weight": 100
     },
@@ -5717,6 +6005,12 @@
       "weight": 100
     },
     {
+      "term": "экскаватор",
+      "l2_id": "machinery",
+      "l3_id": null,
+      "weight": 100
+    },
+    {
       "term": "электрик",
       "l2_id": "electrical",
       "l3_id": null,
@@ -5733,6 +6027,12 @@
       "l2_id": "lawyers",
       "l3_id": null,
       "weight": 100
+    },
+    {
+      "term": "ямобур",
+      "l2_id": "machinery",
+      "l3_id": null,
+      "weight": 80
     },
     {
       "term": "cctv",
@@ -5753,5 +6053,5 @@
       "weight": 100
     }
   ],
-  "content_sha256": "2d43d1b68fcb8cb14d59886eb8c6d6789b33617a9ae2a95e4c994f724f84390d"
+  "content_sha256": "0458c2f06504608d6b0a7339ceb3ac8333b8630bd3bf67bf0abb9dac23ceecaf"
 }

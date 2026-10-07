@@ -619,6 +619,24 @@ export async function pickMultipleImages(maxCount: number): Promise<PickedImage[
   }));
 }
 
+/** Снимок камерой — без обрезки, как фото задания (№268). На сайте камеры
+ *  нет — тот же выбор файла, браузер на телефоне сам предложит снять. */
+export async function takePhoto(): Promise<PickedImage | null> {
+  if (Platform.OS === "web") {
+    const [first] = await pickMultipleImagesWeb(1);
+    return first ?? null;
+  }
+  const perm = await ImagePicker.requestCameraPermissionsAsync();
+  if (!perm.granted) {
+    showAlert("Нет доступа к камере", "Разрешите доступ к камере в Настройках.");
+    return null;
+  }
+  const result = await ImagePicker.launchCameraAsync({ mediaTypes: ["images"], quality: 1 });
+  if (result.canceled) return null;
+  const a = result.assets[0];
+  return a ? { uri: a.uri, width: a.width, height: a.height } : null;
+}
+
 /** Один кадр заказа → resize (1920px) → upload в order-photos/{userId}/{uuid}.jpg.
  *  Без жёсткого aspect-crop: в карусели заказа фото показываются через cover. */
 async function processAndUploadOrderPhoto(

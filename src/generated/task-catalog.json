@@ -66,7 +66,7 @@
     },
     {
       "id": "tech-security",
-      "name_ru": "Замки, камеры, антенны",
+      "name_ru": "Безопасность и антенны",
       "icon": "ShieldCheck",
       "sort_order": 100,
       "is_active": true
@@ -6222,5 +6222,5 @@
       "weight": 100
     }
   ],
-  "content_sha256": "0889e75ff544e54c9a2112ee5a49996dabee85f6d3791d91eaf7abaf54871b00"
+  "content_sha256": "76983ff58e6d60b3bbc508c2ca926875c4d6e1433cf5fe801dc839d7c5ca2f3a"
 }

@@ -3,14 +3,14 @@
   "sections": [
     {
       "id": "handyman-moving",
-      "name_ru": "Мастер на час и разнорабочие",
+      "name_ru": "Быстрые задачи и разнорабочие",
       "icon": "Wrench",
       "sort_order": 10,
       "is_active": true
     },
     {
       "id": "home-services",
-      "name_ru": "Уборка и помощь по хозяйству",
+      "name_ru": "Уборка",
       "icon": "Broom",
       "sort_order": 20,
       "is_active": true
@@ -79,6 +79,13 @@
       "is_active": true
     },
     {
+      "id": "family-care",
+      "name_ru": "Няни и сиделки",
+      "icon": "Baby",
+      "sort_order": 115,
+      "is_active": true
+    },
+    {
       "id": "tutors",
       "name_ru": "Репетиторы и обучение",
       "icon": "GraduationCap",
@@ -109,6 +116,16 @@
       "l1_id": "computer-help",
       "name_ru": "Компьютерная помощь",
       "icon": "Laptop",
+      "sort_order": 10,
+      "is_active": true,
+      "is_visible": true,
+      "is_featured": false
+    },
+    {
+      "id": "caregivers",
+      "l1_id": "family-care",
+      "name_ru": "Няни и сиделки",
+      "icon": "Baby",
       "sort_order": 10,
       "is_active": true,
       "is_visible": true,
@@ -245,6 +262,16 @@
       "is_featured": false
     },
     {
+      "id": "disposal",
+      "l1_id": "cargo",
+      "name_ru": "Вывоз мусора",
+      "icon": "Trash",
+      "sort_order": 25,
+      "is_active": true,
+      "is_visible": true,
+      "is_featured": false
+    },
+    {
       "id": "courier-delivery",
       "l1_id": "cargo",
       "name_ru": "Доставка документов и посылок",
@@ -357,7 +384,7 @@
     {
       "id": "laundry",
       "l1_id": "home-services",
-      "name_ru": "Стирка и чистка",
+      "name_ru": "Стирка и химчистка",
       "icon": "WashingMachine",
       "sort_order": 40,
       "is_active": true,
@@ -375,10 +402,10 @@
       "is_featured": false
     },
     {
-      "id": "disposal",
-      "l1_id": "home-services",
-      "name_ru": "Вывоз мусора",
-      "icon": "Trash",
+      "id": "handyman",
+      "l1_id": "handyman-moving",
+      "name_ru": "Быстрые задачи",
+      "icon": "Wrench",
       "sort_order": 50,
       "is_active": true,
       "is_visible": true,
@@ -389,16 +416,6 @@
       "l1_id": "cargo",
       "name_ru": "Доставка еды",
       "icon": "ForkKnife",
-      "sort_order": 50,
-      "is_active": true,
-      "is_visible": true,
-      "is_featured": false
-    },
-    {
-      "id": "handyman",
-      "l1_id": "handyman-moving",
-      "name_ru": "Мастер на час",
-      "icon": "Wrench",
       "sort_order": 50,
       "is_active": true,
       "is_visible": true,
@@ -445,16 +462,6 @@
       "is_featured": false
     },
     {
-      "id": "garden",
-      "l1_id": "home-services",
-      "name_ru": "Сад и участок",
-      "icon": "Plant",
-      "sort_order": 60,
-      "is_active": true,
-      "is_visible": true,
-      "is_featured": false
-    },
-    {
       "id": "tow-truck",
       "l1_id": "cargo",
       "name_ru": "Эвакуатор",
@@ -490,16 +497,6 @@
       "name_ru": "Дезинфекция и борьба с вредителями",
       "icon": "Bug",
       "sort_order": 70,
-      "is_active": true,
-      "is_visible": true,
-      "is_featured": false
-    },
-    {
-      "id": "caregivers",
-      "l1_id": "home-services",
-      "name_ru": "Няни и сиделки",
-      "icon": "Baby",
-      "sort_order": 80,
       "is_active": true,
       "is_visible": true,
       "is_featured": false
@@ -650,6 +647,16 @@
       "name_ru": "Благоустройство и ландшафт",
       "icon": "TreeEvergreen",
       "sort_order": 270,
+      "is_active": true,
+      "is_visible": true,
+      "is_featured": false
+    },
+    {
+      "id": "garden",
+      "l1_id": "construction",
+      "name_ru": "Сад и огород",
+      "icon": "Plant",
+      "sort_order": 275,
       "is_active": true,
       "is_visible": true,
       "is_featured": false
@@ -6222,5 +6229,5 @@
       "weight": 100
     }
   ],
-  "content_sha256": "76983ff58e6d60b3bbc508c2ca926875c4d6e1433cf5fe801dc839d7c5ca2f3a"
+  "content_sha256": "898f1776956a4e680af4dd582fc967f7105010adeaf0f4117c521ef9735ac234"
 }

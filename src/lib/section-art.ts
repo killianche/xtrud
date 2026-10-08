@@ -22,6 +22,8 @@ const ART: Record<string, ImageSourcePropType> = {
   cargo: require("../../assets/images/sections/cargo.png"),
   "computer-help": require("../../assets/images/sections/computer-help.png"),
   auto: require("../../assets/images/sections/auto.png"),
+  // №330: «Няни и сиделки» выделены из «Уборки» — коляска в том же стиле.
+  "family-care": require("../../assets/images/sections/family-care.png"),
   tutors: require("../../assets/images/sections/tutors.png"),
   "legal-accounting": require("../../assets/images/sections/legal-accounting.png"),
 };

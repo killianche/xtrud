@@ -448,10 +448,10 @@ export function UserCard({ userId, onBack }: { userId: string; onBack: () => voi
         </div>
 
         <div className="card">
-          <p className="mono-eyebrow">Отклики · {card.responses.length}</p>
+          <p className="mono-eyebrow">Предложения · {card.responses.length}</p>
           <div className="stack" style={{ marginTop: 12, gap: 8 }}>
             {card.responses.length === 0 ? (
-              <p className="body-md text-mute">Нет откликов</p>
+              <p className="body-md text-mute">Нет предложений</p>
             ) : (
               card.responses.map((response) => (
                 <div key={response.id} className="row" style={{ justifyContent: "space-between" }}>

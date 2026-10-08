@@ -117,7 +117,7 @@ export default function SpecialistStatusesSheet() {
             ))}
           </View>
           <AppText className="mx-8 mt-2 text-ios-footnote text-mute">
-            Откликаться на задания можно при любом статусе.
+            Предлагать услуги можно при любом статусе.
           </AppText>
 
           <AppText weight="semibold" className="mx-8 mt-7 text-ios-body text-ink">

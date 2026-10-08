@@ -96,7 +96,7 @@ export default function CloseReasonScreen() {
 
         <View className="pb-6 pt-1">
           {responders.length > 0 ? (
-            <InsetGroup title="Откликнулись">
+            <InsetGroup title="Предложили услуги">
               {responders.map((r, i) => {
                 const m = r.master;
                 const name =
@@ -121,7 +121,7 @@ export default function CloseReasonScreen() {
           <InsetGroup>
             <InsetRow
               title="Нашёл в другом месте"
-              subtitle="Исполнитель не из откликов — задание закроется"
+              subtitle="Исполнитель не из предложений — задание закроется"
               icon={<UserCircle size={20} weight="bold" color={tc.mute} />}
               onPress={() => pick("found_master", null)}
             />

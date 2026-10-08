@@ -52,7 +52,7 @@ export default function RespondRoute() {
         <View className="flex-row items-start gap-3 px-4 pt-4 pb-2">
           <View className="min-w-0 flex-1 pt-0.5">
             <AppText weight="bold" className="text-ios-title1 text-ink" numberOfLines={1}>
-              Отклик
+              Ваше предложение
             </AppText>
             {o ? (
               <AppText className="mt-0.5 text-ios-subheadline text-mute" numberOfLines={1}>

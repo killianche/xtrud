@@ -290,7 +290,7 @@ function OrderRowCard({
           ) : null}
           <p className="body-sm text-mute" style={{ margin: "4px 0 0" }}>
             {place(order)} · <RelativeTime iso={order.created_at} /> ·{" "}
-            {plural(order.responses_count, "отклик", "отклика", "откликов")}
+            {plural(order.responses_count, "предложение", "предложения", "предложений")}
           </p>
         </div>
         <div style={{ textAlign: "right" }}>

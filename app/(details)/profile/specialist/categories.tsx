@@ -120,7 +120,7 @@ export default function SpecialistCategoriesScreen() {
       title="Чем занимаетесь?"
       subtitle={
         respondTo
-          ? "Нужная уже отмечена — нажмите «Готово», и откроется отклик."
+          ? "Нужная уже отмечена — нажмите «Готово», и откроется форма предложения."
           : `До ${MAX} категорий.`
       }
       onBack={() => router.back()}

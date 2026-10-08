@@ -68,10 +68,10 @@ export function pluralizeServices(count: number): string {
  * статус заказа.
  */
 export function pluralizeResponses(count: number): string {
-  if (count === 0) return "Нет откликов";
+  if (count === 0) return "Нет предложений";
   return `${count} ${pluralizeRu(count, {
-    one: "отклик",
-    few: "отклика",
-    many: "откликов",
+    one: "предложение",
+    few: "предложения",
+    many: "предложений",
   })}`;
 }

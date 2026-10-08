@@ -52,7 +52,7 @@ export function RespondAuthSheet({ orderId, onClose }: RespondAuthSheetProps) {
           className="flex-1 text-display-sm tracking-tight text-ink"
           numberOfLines={2}
         >
-          Войдите, чтобы откликнуться
+          Войдите, чтобы предложить свои услуги
         </AppText>
         <Pressable
           accessibilityRole="button"

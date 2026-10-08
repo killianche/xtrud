@@ -78,7 +78,7 @@ export function MasterPublishChecklist({ progress }: MasterPublishChecklistProps
         Поднимитесь выше в поиске
       </AppText>
       <AppText className="mt-1 text-body-sm text-mute">
-        Заполненный профиль показывается выше в поиске и приносит больше откликов.
+        Заполненный профиль показывается выше в поиске и чаще получает заказы.
       </AppText>
 
       {/* Progress bar */}

@@ -50,7 +50,7 @@ export const UNCATEGORIZED_L2_ID = "uncategorized";
  * «популярное»: интерфейс не утверждает неизмеренного (design-quality §5).
  */
 export const FEATURED_SECTIONS: readonly { id: string; short: string }[] = [
-  { id: "handyman-moving", short: "Мастер на час" },
+  { id: "handyman-moving", short: "Быстрые задачи" },
   { id: "home-services", short: "Уборка" },
   { id: "home-appliances", short: "Ремонт техники" },
 ];

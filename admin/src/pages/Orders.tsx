@@ -78,7 +78,7 @@ export function Orders({ onOpen }: { onOpen: (orderId: string) => void }) {
             <span>Задание</span>
             <span>Клиент</span>
             <span>Место</span>
-            <span>Отклики</span>
+            <span>Предложения</span>
             <span>Состояние</span>
             <span>Создано</span>
           </div>

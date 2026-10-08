@@ -5,7 +5,7 @@ describe("describeServerError", () => {
   it("переводит код, который увидел владелец", () => {
     // Ровно та строка со скриншота 2026-09-05.
     expect(describeServerError(new Error("cannot_withdraw_after_decision"), "запасной")).toBe(
-      "Этот отклик уже нельзя отозвать.",
+      "Это предложение уже нельзя отозвать.",
     );
   });
 

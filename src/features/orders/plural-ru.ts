@@ -15,7 +15,7 @@ export function pluralRu(count: number, one: string, few: string, many: string):
 
 /** «3 отклика» — число вместе со словом. */
 export function responsesLabel(count: number): string {
-  return `${count} ${pluralRu(count, "отклик", "отклика", "откликов")}`;
+  return `${count} ${pluralRu(count, "предложение", "предложения", "предложений")}`;
 }
 
 /** «12 специалистов» — сколько людей в категории.

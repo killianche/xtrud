@@ -132,7 +132,7 @@ export default function OrdersScreen() {
           <EmptyState
             icon={ClipboardText}
             title="Войдите, чтобы видеть свои задания"
-            hint="Здесь будут ваши задания и отклики на них."
+            hint="Здесь будут ваши задания и предложения специалистов."
             ctaLabel="Войти"
             ctaIcon={SignIn}
             onCta={() => router.push("/(auth)/phone" as never)}
@@ -195,7 +195,7 @@ export default function OrdersScreen() {
               },
               {
                 id: "responses",
-                label: "Ваши отклики",
+                label: "Ваши предложения",
                 tone: "primary",
                 // Отправленный отклик — самолётик, как блок «Ваш отклик» в
                 // задании (владелец, 2026-10-03: «инструмент поменять»).
@@ -343,7 +343,7 @@ function OrdersList({ userId, contentTop, onScroll, header }: ListProps) {
           <EmptyState
             icon={ClipboardText}
             title="Вы ещё не выкладывали задания"
-            hint="Опишите задачу — исполнители пришлют отклики с ценой и сроком."
+            hint="Опишите задачу — исполнители предложат цену и срок."
             ctaLabel="Разместить задание"
             ctaIcon={Plus}
             onCta={() => router.push("/orders/new" as never)}
@@ -440,7 +440,7 @@ function ResponsesList({ userId, contentTop, onScroll, header }: ListProps) {
           ) : (
             <EmptyState
               icon={ChatCenteredText}
-              title="Вы ещё никому не откликались"
+              title="Вы ещё никому не предлагали услуги"
               hint="Найдите подходящее задание и предложите свою цену и срок."
               ctaLabel="Найти задание"
               ctaIcon={MagnifyingGlass}

@@ -135,10 +135,14 @@ export function ClientMasterResponseCard({
   const onMore = () =>
     showActionMenu({
       title: masterName,
-      message: onReject ? "Скрытый отклик уйдёт вниз списка. Специалист не узнает." : undefined,
+      message: onReject
+        ? "Скрытое предложение уйдёт вниз списка. Специалист не узнает."
+        : undefined,
       items: [
         { label: "Открыть профиль", onPress: onProfile },
-        ...(onReject ? [{ label: "Скрыть отклик", destructive: true, onPress: onReject }] : []),
+        ...(onReject
+          ? [{ label: "Скрыть предложение", destructive: true, onPress: onReject }]
+          : []),
       ],
       colorScheme,
     });
@@ -248,7 +252,7 @@ export function ClientMasterResponseCard({
 
       {rejected ? (
         <AppText weight="medium" className="mt-3 text-ios-subheadline text-mute">
-          Отклик скрыт
+          Предложение скрыто
         </AppText>
       ) : contactsError ? (
         <Pressable

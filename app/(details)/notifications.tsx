@@ -76,8 +76,8 @@ export default function NotificationsScreen() {
             Пока тихо
           </AppText>
           <AppText className="mt-1.5 text-center text-ios-subheadline text-mute">
-            Здесь появятся отклики на ваши задания и новости по ним. Прочитанные исчезают через 2
-            дня.
+            Здесь появятся предложения по вашим заданиям и новости по ним. Прочитанные исчезают
+            через 2 дня.
           </AppText>
         </View>
       ) : (

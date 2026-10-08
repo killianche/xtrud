@@ -85,7 +85,7 @@ export function ClientResponsesSection({ orderId, order }: ClientResponsesSectio
       {/* Heading: «Отклики · N» */}
       <View className="flex-row items-baseline justify-between gap-2">
         <AppText weight="semibold" className="text-title-md text-ink tracking-tight">
-          {hasPicked ? "Другие отклики" : "Отклики"}
+          {hasPicked ? "Другие предложения" : "Предложения специалистов"}
         </AppText>
         {hasResponses ? (
           <AppText weight="mono" className="text-mono-caption text-mute">
@@ -115,14 +115,14 @@ export function ClientResponsesSection({ orderId, order }: ClientResponsesSectio
       {error && (
         <View className="mt-3 rounded-lg bg-canvas-soft p-4">
           <AppText weight="semibold" className="text-body-sm text-ink">
-            Не удалось загрузить отклики
+            Не удалось загрузить предложения
           </AppText>
           <AppText className="mt-1 text-body-sm text-error">
-            {describeServerError(error, "Не удалось отправить отклик. Попробуйте ещё раз.")}
+            {describeServerError(error, "Не удалось отправить предложение. Попробуйте ещё раз.")}
           </AppText>
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="Повторить загрузку откликов"
+            accessibilityLabel="Повторить загрузку предложений"
             disabled={isRefetchingResponses}
             onPress={() => void refetchResponses()}
             className="mt-3 min-h-11 self-start items-center justify-center rounded-md border border-hairline bg-canvas px-4 active:bg-canvas-soft"
@@ -135,13 +135,13 @@ export function ClientResponsesSection({ orderId, order }: ClientResponsesSectio
       )}
 
       {/* Empty state. Текст зависит от возраста заказа: свежий — оптимистично,
-          старше суток без откликов — честно + совет как привлечь мастеров. */}
+          старше суток без предложений — честно + совет как привлечь мастеров. */}
       {!isLoading && !error && !hasResponses && (
         <View className="mt-3 rounded-xl border border-hairline bg-canvas-soft p-4">
           {isStaleNoResponses ? (
             <>
               <AppText weight="medium" className="text-body-sm text-ink">
-                Пока никто не откликнулся
+                Пока никто не предложил услуги
               </AppText>
               <AppText className="mt-1 text-body-sm text-mute">
                 Так бывает — спрос на разные услуги разный. Чтобы заданием заинтересовались,
@@ -182,7 +182,7 @@ export function ClientResponsesSection({ orderId, order }: ClientResponsesSectio
           ) : (
             <>
               <AppText weight="medium" className="text-body-sm text-ink">
-                Откликов пока нет
+                Предложений пока нет
               </AppText>
               <AppText className="mt-1 text-body-sm text-mute">
                 Уведомим, как только исполнитель отзовётся.
@@ -218,7 +218,7 @@ export function ClientResponsesSection({ orderId, order }: ClientResponsesSectio
           >
             <View className="flex-1 flex-row items-center gap-2">
               <AppText weight="medium" className="text-body-sm text-mute">
-                Скрытые отклики
+                Скрытые предложения
               </AppText>
               <View className="rounded-full bg-canvas-soft-2 px-2 py-0.5">
                 <AppText weight="mono" className="text-mono-caption text-mute">

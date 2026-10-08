@@ -104,9 +104,9 @@ function Summary({ days }: { days: number }) {
       spark: line("new_order_notifications"),
     },
     {
-      label: "С откликом",
+      label: "С предложением",
       value: ofTotal(m.orders_with_response, m.orders_published),
-      hint: `первый отклик: медиана ${minutes(m.first_response_median_min)}`,
+      hint: `первое предложение: медиана ${minutes(m.first_response_median_min)}`,
       spark: line("responses"),
     },
     {
@@ -118,7 +118,7 @@ function Summary({ days }: { days: number }) {
     {
       label: "Выбран исполнитель",
       value: ofTotal(m.orders_picked, m.orders_published),
-      hint: `откликов ${m.responses_total}, отозвано ${m.responses_withdrawn}`,
+      hint: `предложений ${m.responses_total}, отозвано ${m.responses_withdrawn}`,
     },
     {
       label: "Специалисты открывали задания",
@@ -188,9 +188,9 @@ function Table({ head, children }: { head: string[]; children: React.ReactNode }
 const ORDER_SORT: Array<{ value: string; label: string }> = [
   { value: "created", label: "Новые" },
   { value: "reach", label: "Охват" },
-  { value: "responses", label: "Отклики" },
+  { value: "responses", label: "Предложения" },
   { value: "clicks", label: "Нажатия" },
-  { value: "first_response", label: "Первый отклик" },
+  { value: "first_response", label: "Первое предложение" },
 ];
 
 function Orders({ days, onOpenOrder }: { days: number; onOpenOrder: (id: string) => void }) {
@@ -215,8 +215,8 @@ function Orders({ days, onOpenOrder }: { days: number; onOpenOrder: (id: string)
           options={[
             { value: "all", label: "Все" },
             { value: "noreach", label: "Никому не ушло" },
-            { value: "noresp", label: "Без откликов" },
-            { value: "nocontact", label: "Отклики есть, нажатий нет" },
+            { value: "noresp", label: "Без предложений" },
+            { value: "nocontact", label: "Предложения есть, нажатий нет" },
           ]}
           onChange={setFilter}
         />
@@ -234,8 +234,8 @@ function Orders({ days, onOpenOrder }: { days: number; onOpenOrder: (id: string)
             "Клиент",
             "Дошло",
             "Открыли",
-            "Отклики",
-            "Первый отклик",
+            "Предложения",
+            "Первое предложение",
             "Позвонить",
             "WhatsApp",
             "Итог",
@@ -285,7 +285,7 @@ function Orders({ days, onOpenOrder }: { days: number; onOpenOrder: (id: string)
 
 const MASTER_SORT: Array<{ value: string; label: string }> = [
   { value: "clicks", label: "Нажатия" },
-  { value: "responses", label: "Отклики" },
+  { value: "responses", label: "Предложения" },
   { value: "reach", label: "Уведомления" },
   { value: "views", label: "Открыл заданий" },
   { value: "profile_views", label: "Просмотры профиля" },
@@ -328,7 +328,7 @@ function Masters({ days, onOpenUser }: { days: number; onOpenUser: (id: string) 
             "Категорий",
             "Уведомлений",
             "Открыл",
-            "Отклики",
+            "Предложения",
             "Выбран",
             "Профиль смотрели",
             "Позвонить",
@@ -379,7 +379,7 @@ function Masters({ days, onOpenUser }: { days: number; onOpenUser: (id: string) 
 
 const CLIENT_SORT: Array<{ value: string; label: string }> = [
   { value: "orders", label: "Задания" },
-  { value: "responses", label: "Отклики" },
+  { value: "responses", label: "Предложения" },
   { value: "clicks", label: "Нажатия" },
   { value: "last_order", label: "Последнее задание" },
   { value: "last_active", label: "Последний вход" },
@@ -418,8 +418,8 @@ function Clients({ days, onOpenUser }: { days: number; onOpenUser: (id: string) 
           head={[
             "Клиент",
             "Выложил",
-            "С откликом",
-            "Откликов",
+            "С предложением",
+            "Предложений",
             "Позвонить",
             "WhatsApp",
             "Выбрал",
@@ -470,7 +470,7 @@ function Daily({ days }: { days: number }) {
         "Задания",
         "Уведомлений",
         "Открыли",
-        "Отклики",
+        "Предложения",
         "Позвонить",
         "WhatsApp",
         "Профили",

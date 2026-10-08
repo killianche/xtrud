@@ -126,7 +126,7 @@ export function Overview({ navigate }: { navigate: (path: string) => void }) {
                 <Sparkline values={line("orders")} />
               </div>
               <div className="kpi">
-                <span className="mono-eyebrow">Отклики</span>
+                <span className="mono-eyebrow">Предложения</span>
                 <span className="kpi-value">+{sum("responses")}</span>
                 <span className="body-sm text-mute">
                   всего {metrics.responses_total.toLocaleString("ru-RU")}

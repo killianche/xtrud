@@ -19,11 +19,11 @@
 /** Коды, до которых человек реально может дойти в приложении. */
 const KNOWN: Record<string, string> = {
   // Отклики
-  cannot_withdraw_after_decision: "Этот отклик уже нельзя отозвать.",
-  cannot_respond_to_own_order: "Нельзя откликнуться на собственное задание.",
-  daily_response_limit_reached: "На сегодня отклики закончились. Попробуйте завтра.",
-  response_not_found: "Отклик не найден — возможно, он уже отозван.",
-  not_response_owner: "Это чужой отклик.",
+  cannot_withdraw_after_decision: "Это предложение уже нельзя отозвать.",
+  cannot_respond_to_own_order: "Нельзя предлагать услуги в своём задании.",
+  daily_response_limit_reached: "На сегодня предложения закончились. Попробуйте завтра.",
+  response_not_found: "Предложение не найдено — возможно, его уже отозвали.",
+  not_response_owner: "Это чужое предложение.",
   response_contacts_incomplete: "Оставьте телефон или WhatsApp, иначе с вами не свяжутся.",
   order_response_l2_mismatch: "Задание из другой категории.",
 

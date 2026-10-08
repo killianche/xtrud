@@ -68,11 +68,11 @@ describe("pluralize concrete words", () => {
   });
 
   it("отклик: 0 → 'Нет откликов', 1, 3, 5, 11, 22", () => {
-    expect(pluralizeResponses(0)).toBe("Нет откликов");
-    expect(pluralizeResponses(1)).toBe("1 отклик");
-    expect(pluralizeResponses(3)).toBe("3 отклика");
-    expect(pluralizeResponses(5)).toBe("5 откликов");
-    expect(pluralizeResponses(11)).toBe("11 откликов");
-    expect(pluralizeResponses(22)).toBe("22 отклика");
+    expect(pluralizeResponses(0)).toBe("Нет предложений");
+    expect(pluralizeResponses(1)).toBe("1 предложение");
+    expect(pluralizeResponses(3)).toBe("3 предложения");
+    expect(pluralizeResponses(5)).toBe("5 предложений");
+    expect(pluralizeResponses(11)).toBe("11 предложений");
+    expect(pluralizeResponses(22)).toBe("22 предложения");
   });
 });

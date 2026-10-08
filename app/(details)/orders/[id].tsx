@@ -209,7 +209,7 @@ export default function OrderDetailScreen() {
           void confirmAsync({
             title: `Исполнитель — ${name}?`,
             message:
-              "Задание завершится, остальные отклики снимутся, исполнитель получит уведомление. Отзыв можно будет оставить позже в задании.",
+              "Задание завершится, остальные предложения снимутся, исполнитель получит уведомление. Отзыв можно будет оставить позже в задании.",
             confirmText: "Завершить",
             cancelText: "Отмена",
           }).then((ok) => {
@@ -254,7 +254,7 @@ export default function OrderDetailScreen() {
     const confirmed = await confirmAsync({
       title: "Удалить задание?",
       message:
-        "Задание исчезнет из «Моих заданий» навсегда вместе с откликами. Это нельзя отменить.",
+        "Задание исчезнет из «Моих заданий» навсегда вместе с предложениями. Это нельзя отменить.",
       confirmText: "Удалить",
       cancelText: "Отмена",
       destructive: true,
@@ -446,7 +446,7 @@ export default function OrderDetailScreen() {
         // С 0247 (№325) открыты все категории; окно — только если админ
         // закрыл категорию. После выбора — сразу к отклику (№303).
         message:
-          "На эти задания откликаются специалисты с этой категорией в профиле. Добавьте её — это минута, и сразу вернётесь к отклику.",
+          "На эти задания предлагают услуги специалисты с этой категорией в профиле. Добавьте её — это минута, и сразу вернётесь к предложению.",
         options: [{ id: "add", text: "Добавить категорию" }],
       });
       if (choice === "add") {
@@ -631,8 +631,8 @@ export default function OrderDetailScreen() {
                 Специалисты свяжутся напрямую
               </AppText>
               <AppText className="mt-1 text-ios-subheadline text-mute">
-                Вы выбрали связь по номеру: откликов в приложении не будет, специалисты позвонят или
-                напишут в WhatsApp.
+                Вы выбрали связь по номеру: предложений в приложении не будет, специалисты позвонят
+                или напишут в WhatsApp.
               </AppText>
             </View>
           ) : null}
@@ -669,7 +669,9 @@ export default function OrderDetailScreen() {
         >
           <GlassButton
             label={
-              myMasterResponseQ.data?.status === "withdrawn" ? "Откликнуться снова" : "Откликнуться"
+              myMasterResponseQ.data?.status === "withdrawn"
+                ? "Предложить снова"
+                : "Предложить свои услуги"
             }
             onPress={() => void handleRespondPress()}
           />

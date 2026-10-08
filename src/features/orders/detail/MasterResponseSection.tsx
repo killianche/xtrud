@@ -47,8 +47,8 @@ export function MasterResponseSection({
   const onWithdrawPress = async () => {
     if (withdrawResponse.isPending) return;
     const confirmed = await confirmAsync({
-      title: "Отозвать отклик?",
-      message: "Клиент получит уведомление. Позже можно откликнуться снова.",
+      title: "Отозвать предложение?",
+      message: "Клиент получит уведомление. Позже можно предложить снова.",
       confirmText: "Отозвать",
       cancelText: "Отмена",
     });
@@ -77,7 +77,7 @@ export function MasterResponseSection({
   const hint = isPickedMaster
     ? orderStatus === "cancelled" || orderStatus === "expired"
       ? "Клиент закрыл задание после того, как выбрал вас."
-      : "Клиент свяжется с вами по номеру из отклика. Когда закончите работу, попросите его оставить отзыв."
+      : "Клиент свяжется с вами по номеру из предложения. Когда закончите работу, попросите его оставить отзыв."
     : orderStatus === "open"
       ? // Обычное ожидание — без пояснения (владелец запрещает подсказки,
         // которые повторяют очевидное; статус уже на плашке).
@@ -106,7 +106,7 @@ export function MasterResponseSection({
           weight="semibold"
           className="flex-1 text-title-md text-ink"
         >
-          Ваш отклик
+          Ваше предложение
         </AppText>
         <StatusPill
           tone={statusView.pillTone}
@@ -134,7 +134,7 @@ export function MasterResponseSection({
       {canWithdraw ? (
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Отозвать отклик"
+          accessibilityLabel="Отозвать предложение"
           accessibilityState={{
             disabled: withdrawResponse.isPending,
             busy: withdrawResponse.isPending,
@@ -144,7 +144,7 @@ export function MasterResponseSection({
           className="mt-3 min-h-11 items-center justify-center border-t border-t-hairline pt-1 active:opacity-60"
         >
           <AppText weight="semibold" className="text-body-md text-error">
-            {withdrawResponse.isPending ? "Отзываем…" : "Отозвать отклик"}
+            {withdrawResponse.isPending ? "Отзываем…" : "Отозвать предложение"}
           </AppText>
         </Pressable>
       ) : null}

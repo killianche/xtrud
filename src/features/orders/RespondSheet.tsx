@@ -123,13 +123,13 @@ export function RespondSheet({
 
   const error = submit.error
     ? isDailyLimitError(submit.error)
-      ? "На сегодня отклики закончились. Завтра будет снова 5."
+      ? "На сегодня предложения закончились. Завтра будет снова 5."
       : // Сервер объясняет причину сам («вы уже откликнулись», «вас уже
         // выбрали»). Прежний общий текст звал повторить попытку там, где
         // повтор не мог сработать (разбор 2026-09-09).
-        describeServerError(submit.error, "Не удалось отправить отклик. Попробуйте ещё раз.")
+        describeServerError(submit.error, "Не удалось отправить предложение. Попробуйте ещё раз.")
     : limitReached
-      ? "На сегодня отклики закончились. Завтра будет снова 5."
+      ? "На сегодня предложения закончились. Завтра будет снова 5."
       : null;
 
   const send = async () => {
@@ -292,14 +292,14 @@ export function RespondSheet({
           </AppText>
         ) : null}
         <GlassButton
-          label={resendResponseId ? "Откликнуться снова" : "Откликнуться"}
+          label={resendResponseId ? "Предложить снова" : "Предложить свои услуги"}
           onPress={() => void send()}
           disabled={!valid || limitReached}
           busy={submit.isPending}
         />
         {limit ? (
           <AppText className="mt-2 text-center text-ios-footnote text-mute">
-            Сегодня осталось откликов: {Math.max(0, limit.remaining)} из {limit.max}
+            Сегодня осталось предложений: {Math.max(0, limit.remaining)} из {limit.max}
           </AppText>
         ) : null}
       </View>

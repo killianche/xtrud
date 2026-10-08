@@ -204,7 +204,7 @@ export default function TaskReviewScreen() {
       ? [values.contactPhone.trim(), effectiveWhatsapp(values) ? "WhatsApp" : ""]
           .filter(Boolean)
           .join(" · ")
-      : "Отклики в приложении";
+      : "Предложения в приложении";
 
   // Форма одним экраном: раньше первой нехватки не видно было, пока её не
   // открыли — теперь нажатие «Опубликовать» с пустым разделом сразу

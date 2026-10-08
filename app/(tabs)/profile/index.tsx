@@ -54,7 +54,7 @@ export default function ProfileTab() {
             <View className="px-4 pb-4">
               <GuestContactGate
                 returnPath=""
-                title="Войдите, чтобы публиковать задания, откликаться и видеть контакты"
+                title="Войдите, чтобы публиковать задания, предлагать услуги и видеть контакты"
               />
             </View>
           </InsetGroup>

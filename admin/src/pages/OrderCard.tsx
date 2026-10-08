@@ -18,7 +18,7 @@ import {
 import { api, type OrderCardData } from "../lib/api";
 
 const CONTACT_MODE: Record<string, string> = {
-  chat_only: "Через отклики",
+  chat_only: "Через предложения",
   phone_open: "Звонить напрямую",
   phone_masked: "Скрытый номер",
 };
@@ -232,11 +232,11 @@ export function OrderCard({
 
           <section>
             <div className="section-title" style={{ marginTop: 8 }}>
-              <h2 className="heading-md">Отклики</h2>
+              <h2 className="heading-md">Предложения</h2>
               <span className="body-md text-mute">{responses.length}</span>
             </div>
             {responses.length === 0 ? (
-              <p className="body-md text-mute">Откликов пока нет.</p>
+              <p className="body-md text-mute">Предложений пока нет.</p>
             ) : (
               <div className="list">
                 {responses.map((r) => (

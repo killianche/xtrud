@@ -71,7 +71,7 @@ export function Users({ onOpen }: { onOpen: (userId: string) => void }) {
             <span>Номер</span>
             <span>Состояние</span>
             <span>Задания</span>
-            <span>Отклики</span>
+            <span>Предложения</span>
             <span>Регистрация</span>
           </div>
           {rows.map((row) => (

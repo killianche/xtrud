@@ -79,7 +79,7 @@ export function SpecialistCard({ userId, value }: { userId: string; value?: stri
           </AppText>
         </View>
         <AppText className="mt-3 text-ios-subheadline text-body">
-          Откликаться на задания можно сразу. Выберите свои категории — и клиенты найдут вас в
+          Предлагать услуги можно сразу. Выберите свои категории — и клиенты найдут вас в
           «Специалистах».
         </AppText>
         <View className="mt-3 gap-2" accessibilityRole="list">

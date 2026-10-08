@@ -135,5 +135,5 @@ export function orderStatusView(input: OrderStatusViewInput): OrderStatusView {
   const chosenMe = input.myResponseStatus === "accepted";
   return chosenMe
     ? view(false, "confirmed", "Вас выбрали", "check")
-    : view(false, "neutral", "Отклик отправлен");
+    : view(false, "neutral", "Предложение отправлено");
 }

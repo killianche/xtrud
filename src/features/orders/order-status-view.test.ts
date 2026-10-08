@@ -92,7 +92,7 @@ describe("orderStatusView — специалист: отклик как сооб
           myResponseStatus: resp as never,
         });
         expect(v).toMatchObject({
-          label: "Отклик отправлен",
+          label: "Предложение отправлено",
           pillTone: "neutral",
           cardArchived: false,
         });
@@ -117,6 +117,6 @@ describe("orderStatusView — специалист: отклик как сооб
   it("выбрали, потом отказались (accepted → rejected) — снова нейтрально, без архивного тона", () => {
     expect(
       orderStatusView({ role: "master", order: order("open"), myResponseStatus: "rejected" }),
-    ).toMatchObject({ label: "Отклик отправлен", pillTone: "neutral" });
+    ).toMatchObject({ label: "Предложение отправлено", pillTone: "neutral" });
   });
 });

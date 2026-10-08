@@ -196,7 +196,7 @@ export function OrderInfoBlock({ order, isOwner, isGuest, myResponseStatus }: Or
             </View>
             {order.contact_mode === "phone_open" ? (
               <AppText className="mt-3 text-body-sm text-mute">
-                Клиент ждёт звонка или сообщения — откликов в приложении здесь нет.
+                Клиент ждёт звонка или сообщения — предложений в приложении здесь нет.
               </AppText>
             ) : null}
             {/* Номер клиента — только в режиме «напрямую»: в обычном режиме

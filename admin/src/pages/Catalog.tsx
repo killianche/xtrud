@@ -443,13 +443,13 @@ export function Catalog() {
                           type="button"
                           className="btn btn-ghost"
                           disabled={busy}
-                          title="Кто может откликаться на задания этой подкатегории"
+                          title="Кто может предлагать услуги в заданиях этой подкатегории"
                           onClick={() =>
                             void run(
                               {
                                 title: r.open_responses
                                   ? `«${r.l2_name}»: только специалисты категории?`
-                                  : `«${r.l2_name}»: откликаться может любой?`,
+                                  : `«${r.l2_name}»: предлагать услуги может любой?`,
                                 confirmLabel: "Сохранить",
                               },
                               async (reason) => {
@@ -463,7 +463,7 @@ export function Catalog() {
                             )
                           }
                         >
-                          {r.open_responses ? "Отклик: любой" : "Отклик: специалисты"}
+                          {r.open_responses ? "Предложения: любой" : "Предложения: специалисты"}
                         </button>
                       )}
                     </div>
@@ -778,7 +778,8 @@ function OrdersPanel({
               <div style={{ minWidth: 0 }}>
                 <div className="cell-title">{o.title}</div>
                 <div className="cell-sub">
-                  {place(o)} · {plural(o.responses_count, "отклик", "отклика", "откликов")}
+                  {place(o)} ·{" "}
+                  {plural(o.responses_count, "предложение", "предложения", "предложений")}
                   {o.is_main ? "" : " · дополнительная категория"}
                   {o.is_hidden ? " · скрыто" : ""}
                 </div>

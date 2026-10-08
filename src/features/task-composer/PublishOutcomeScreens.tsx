@@ -55,7 +55,7 @@ export function PublishOutcomeScreen({ outcome }: { outcome: PublishOutcome }) {
       subtitle={
         outcome.kind === "saved"
           ? undefined
-          : "Специалисты из этой категории уже получают уведомление. Отклики придут в «Мои задания»."
+          : "Специалисты из этой категории уже получают уведомление. Предложения придут в «Мои задания»."
       }
       onClose={toMyOrders}
       primaryLabel=""

@@ -229,10 +229,10 @@ export function OrderRow(props: OrderRowProps) {
     priceLabel ? `Бюджет ${priceLabel}` : null,
     `Опубликовано ${timeAgoShort(props.createdAt)}`,
     props.showResponsesCount && (props.newResponsesCount ?? 0) > 0
-      ? `Новых откликов: ${props.newResponsesCount}`
+      ? `Новых предложений: ${props.newResponsesCount}`
       : null,
-    myResponseLabel ? `Ваш отклик ${myResponseLabel}` : null,
-    props.alreadyResponded && !myResponseLabel ? "Вы откликнулись" : null,
+    myResponseLabel ? `Ваше предложение ${myResponseLabel}` : null,
+    props.alreadyResponded && !myResponseLabel ? "Вы предложили" : null,
   ]
     .filter(Boolean)
     .join(". ");
@@ -251,7 +251,7 @@ export function OrderRow(props: OrderRowProps) {
             публикации, ЛИБО плашка особого статуса — не оба: раньше плашка
             и дата стояли столбиком, строка раздувалась и заголовок уезжал
             вниз (скриншот владельца). Обычное состояние («Открыто»,
-            «Отклик отправлен») плашкой не рисуется — его и так говорит место
+            «Предложение отправлено») плашкой не рисуется — его и так говорит место
             в списке; VoiceOver читает статус из ariaLabel по-прежнему. */}
         <View className="flex-row items-center gap-2">
           {uncategorized ? null : <Icon size={18} weight="bold" color={tc.accent} />}
@@ -339,7 +339,7 @@ export function OrderRow(props: OrderRowProps) {
           <View className="mt-2 flex-row items-center gap-1.5">
             <Phone size={15} weight="bold" color={tc.accent} />
             <AppText weight="medium" className="text-body-sm text-accent">
-              Связь напрямую — без откликов
+              Связь напрямую — без предложений
             </AppText>
           </View>
         ) : null}
@@ -363,13 +363,13 @@ export function OrderRow(props: OrderRowProps) {
             {showButton ? (
               <Pressable
                 accessibilityRole="button"
-                accessibilityLabel="Откликнуться на задание"
+                accessibilityLabel="Предложить свои услуги"
                 onPress={handleRespond}
                 hitSlop={4}
                 className="min-h-11 flex-row items-center gap-1.5 rounded-pill bg-accent px-4 active:opacity-85"
               >
                 <AppText weight="semibold" className="text-body-md text-on-accent">
-                  Откликнуться
+                  Предложить свои услуги
                 </AppText>
                 <ArrowRight size={16} weight="bold" color={tc["on-accent"]} />
               </Pressable>
@@ -383,7 +383,7 @@ export function OrderRow(props: OrderRowProps) {
             ) : props.alreadyResponded && !myResponseLabel ? (
               <View className="rounded-pill bg-accent-soft px-3 py-1.5">
                 <AppText weight="semibold" className="text-body-sm text-accent">
-                  Вы откликнулись
+                  Вы предложили
                 </AppText>
               </View>
             ) : null}
@@ -421,7 +421,7 @@ export function OrderRow(props: OrderRowProps) {
                         ? ` · ${newCount} ${pluralRu(newCount, "новый", "новых", "новых")}`
                         : ""
                     }`
-                  : "Откликов пока нет"}
+                  : "Предложений пока нет"}
               </AppText>
               {hasResponses ? <ArrowRight size={16} weight="bold" color={tc.accent} /> : null}
             </View>
@@ -436,7 +436,7 @@ export function OrderRow(props: OrderRowProps) {
                   className="min-w-0 flex-1 text-body-md text-ink"
                   numberOfLines={1}
                 >
-                  Ваш отклик: {myResponseLabel}
+                  Ваше предложение: {myResponseLabel}
                 </AppText>
               </View>
               {props.myResponse?.message?.trim() ? (

@@ -26,7 +26,10 @@
 import { FlashList, type FlashListRef } from "@shopify/flash-list";
 import { useFocusEffect, useNavigation, useRouter } from "expo-router";
 import {
+  Archive,
   ArrowClockwise,
+  CaretDown,
+  CaretUp,
   ChatCenteredText,
   ClipboardText,
   MagnifyingGlass,
@@ -42,6 +45,7 @@ import {
   type FlatList,
   type NativeScrollEvent,
   type NativeSyntheticEvent,
+  Pressable,
   View,
 } from "react-native";
 import { AppText } from "@/components/AppText";
@@ -235,20 +239,39 @@ interface ListProps {
   header: ReactElement;
 }
 
-/** Тихий заголовок секции «Архив» перед первой архивной карточкой (§4.2) —
- *  не карточка, не жирная линия, как section header в iOS (Настройки,
- *  Файлы): просто подпись, задающая смысл всему, что ниже. */
-function ArchiveSectionHeader() {
+/**
+ * «Архив · N» — закрытые задания свёрнуты в одну тихую строку внизу списка
+ * (владелец, 2026-10-08, №331: «чтобы глаза не надоедали, но легко
+ * открыть»). Касание раскрывает их тут же, повторное — сворачивает: как
+ * «Выполненные» в «Напоминаниях» iOS, без отдельного экрана.
+ */
+function ArchiveToggle({
+  count,
+  open,
+  onToggle,
+}: {
+  count: number;
+  open: boolean;
+  onToggle: () => void;
+}) {
+  const tc = useThemeColors(["mute"]);
+  const Caret = open ? CaretUp : CaretDown;
   return (
-    <View className="mb-2 mt-6 px-4">
-      <AppText
-        accessibilityRole="header"
-        weight="semibold"
-        className="text-caption uppercase text-mute"
-      >
-        Архив
+    <Pressable
+      accessibilityRole="button"
+      accessibilityState={{ expanded: open }}
+      accessibilityLabel={`Архив, ${count}`}
+      accessibilityHint={open ? "Скрыть закрытые задания" : "Показать закрытые задания"}
+      onPress={onToggle}
+      className="mx-4 mb-3 mt-4 min-h-12 flex-row items-center gap-3 rounded-2xl px-4 active:opacity-60"
+    >
+      <Archive size={20} weight="regular" color={tc.mute} />
+      <AppText weight="semibold" className="flex-1 text-ios-body text-mute">
+        Архив · {count}
       </AppText>
-    </View>
+      <AppText className="text-ios-subheadline text-mute">{open ? "Скрыть" : "Показать"}</AppText>
+      <Caret size={16} weight="bold" color={tc.mute} />
+    </Pressable>
   );
 }
 
@@ -273,7 +296,11 @@ function OrdersList({ userId, contentTop, onScroll, header }: ListProps) {
   const { data: newByOrder } = useNewResponsesByOrder(userId);
   const refresh = usePullToRefresh();
 
-  const sections = useMemo(() => buildOrderSections(orders ?? []), [orders]);
+  const [archiveOpen, setArchiveOpen] = useState(false);
+  const sections = useMemo(
+    () => buildOrderSections(orders ?? [], archiveOpen),
+    [orders, archiveOpen],
+  );
 
   // Tap-on-active-tab → scroll to top (src/lib/tab-scroll-reset.ts).
   const listRef = useRef<FlashListRef<OrderListSectionItem<OrderWithRefs>>>(null);
@@ -302,7 +329,15 @@ function OrdersList({ userId, contentTop, onScroll, header }: ListProps) {
       showsVerticalScrollIndicator={false}
       refreshControl={refresh.control}
       renderItem={({ item }) => {
-        if (item.kind === "archiveHeader") return <ArchiveSectionHeader />;
+        if (item.kind === "archiveHeader") {
+          return (
+            <ArchiveToggle
+              count={item.count}
+              open={item.open}
+              onToggle={() => setArchiveOpen((v) => !v)}
+            />
+          );
+        }
         const o = item.data;
         return (
           <OrderRow
@@ -400,7 +435,8 @@ function ResponsesList({ userId, contentTop, onScroll, header }: ListProps) {
         showsVerticalScrollIndicator={false}
         refreshControl={refresh.control}
         renderItem={({ item }) => {
-          if (item.kind === "archiveHeader") return <ArchiveSectionHeader />;
+          // В списке предложений архива нет (buildResponseList, §0.3).
+          if (item.kind === "archiveHeader") return null;
           const r = item.data;
           return (
             <OrderRow

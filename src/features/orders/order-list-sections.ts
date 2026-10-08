@@ -18,7 +18,7 @@ import type { OrderWithRefs } from "./use-my-orders";
 import type { MyResponseWithOrder } from "./use-my-responses";
 
 export type OrderListSectionItem<T> =
-  | { kind: "archiveHeader" }
+  | { kind: "archiveHeader"; count: number; open: boolean }
   | { kind: "row"; id: string; statusView: OrderStatusView; data: T };
 
 interface SortableItem<T> {
@@ -36,7 +36,10 @@ interface SortableItem<T> {
  * архива нет — заголовка нет. Если активных нет, а архив есть — заголовок
  * всё равно показывается (архив — не то же самое, что пустой список).
  */
-function buildSections<T>(items: SortableItem<T>[]): OrderListSectionItem<T>[] {
+function buildSections<T>(
+  items: SortableItem<T>[],
+  archiveOpen: boolean,
+): OrderListSectionItem<T>[] {
   const active = items.filter((i) => !i.statusView.cardArchived);
   const archived = items.filter((i) => i.statusView.cardArchived);
   const rank = (i: SortableItem<T>) => (i.statusView.pillTone === "confirmed" ? 0 : 1);
@@ -46,13 +49,23 @@ function buildSections<T>(items: SortableItem<T>[]): OrderListSectionItem<T>[] {
   const toRows = (list: SortableItem<T>[]): OrderListSectionItem<T>[] =>
     list.map((i) => ({ kind: "row" as const, id: i.id, statusView: i.statusView, data: i.data }));
 
-  return archivedSorted.length > 0
-    ? [...toRows(activeSorted), { kind: "archiveHeader" as const }, ...toRows(archivedSorted)]
-    : toRows(activeSorted);
+  // Архив свёрнут, пока человек сам его не откроет (владелец, 2026-10-08,
+  // №331: «закрытые — куда-то убрать, чтобы глаза не надоедали, но легко
+  // открыть»): строка «Архив · N» вместо всех карточек.
+  if (archivedSorted.length === 0) return toRows(activeSorted);
+  const header = {
+    kind: "archiveHeader" as const,
+    count: archivedSorted.length,
+    open: archiveOpen,
+  };
+  return [...toRows(activeSorted), header, ...(archiveOpen ? toRows(archivedSorted) : [])];
 }
 
 /** «Мои задания» → «Как клиент». */
-export function buildOrderSections(orders: OrderWithRefs[]): OrderListSectionItem<OrderWithRefs>[] {
+export function buildOrderSections(
+  orders: OrderWithRefs[],
+  archiveOpen = false,
+): OrderListSectionItem<OrderWithRefs>[] {
   return buildSections(
     orders.map((o) => ({
       id: o.id,
@@ -60,6 +73,7 @@ export function buildOrderSections(orders: OrderWithRefs[]): OrderListSectionIte
       statusView: orderStatusView({ role: "client", order: o }),
       data: o,
     })),
+    archiveOpen,
   );
 }
 

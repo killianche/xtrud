@@ -36,13 +36,25 @@ describe("buildOrderSections — «Как клиент»", () => {
     expect(sections.map((s) => (s.kind === "row" ? s.id : null))).toEqual(["b", "c", "a"]);
   });
 
-  it("с архивом — заголовок ровно один раз, перед архивом", () => {
+  it("архив свёрнут по умолчанию — только строка «Архив · N» (№331)", () => {
     const list = [
       order("a", "open", "2026-01-01T00:00:00Z"),
       order("b", "completed", "2026-01-05T00:00:00Z"),
       order("c", "cancelled", "2026-01-03T00:00:00Z"),
     ];
-    const sections = buildOrderSections(list);
+    expect(buildOrderSections(list)).toEqual([
+      expect.objectContaining({ kind: "row", id: "a" }),
+      { kind: "archiveHeader", count: 2, open: false },
+    ]);
+  });
+
+  it("раскрытый архив — заголовок ровно один раз, перед архивом", () => {
+    const list = [
+      order("a", "open", "2026-01-01T00:00:00Z"),
+      order("b", "completed", "2026-01-05T00:00:00Z"),
+      order("c", "cancelled", "2026-01-03T00:00:00Z"),
+    ];
+    const sections = buildOrderSections(list, true);
     const headerIdx = sections.findIndex((s) => s.kind === "archiveHeader");
     expect(headerIdx).toBeGreaterThan(-1);
     expect(sections.filter((s) => s.kind === "archiveHeader")).toHaveLength(1);
@@ -54,8 +66,8 @@ describe("buildOrderSections — «Как клиент»", () => {
 
   it("все элементы архивные — заголовок всё равно показывается", () => {
     const list = [order("a", "completed", "2026-01-01T00:00:00Z")];
-    const sections = buildOrderSections(list);
-    expect(sections[0]).toEqual({ kind: "archiveHeader" });
+    const sections = buildOrderSections(list, true);
+    expect(sections[0]).toEqual({ kind: "archiveHeader", count: 1, open: true });
     expect(sections[1]).toMatchObject({ kind: "row", id: "a" });
   });
 

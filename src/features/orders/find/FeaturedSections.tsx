@@ -1,6 +1,7 @@
 /**
  * Ряд под заголовком «Найти задание» (владелец, 2026-10-07, №294): три
- * основные категории с картинками и четвёртая плитка «Все категории».
+ * основные категории с картинками и четвёртая плитка «Категория» (весь
+ * каталог; владелец, 2026-10-08, №316).
  * Касание основной — сразу её задания (весь раздел); повторное — снять.
  * «Все категории» — шторка каталога (/find-category).
  */
@@ -85,7 +86,7 @@ export function FeaturedSections({ onAll }: { onAll: () => void }) {
       })}
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel="Все категории"
+        accessibilityLabel="Категория — весь каталог"
         onPress={onAll}
         className={tileClass(false)}
         style={[CARD_SHADOW, { width }]}
@@ -101,7 +102,7 @@ export function FeaturedSections({ onAll }: { onAll: () => void }) {
           className="mt-1.5 text-center text-ios-caption1 text-ink"
           numberOfLines={2}
         >
-          Все категории
+          Категория
         </AppText>
       </Pressable>
     </View>

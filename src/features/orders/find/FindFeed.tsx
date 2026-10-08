@@ -12,7 +12,7 @@
 
 import { FlashList } from "@shopify/flash-list";
 import { useRouter } from "expo-router";
-import { MapPin, SlidersHorizontal, Tray } from "phosphor-react-native";
+import { CaretDown, MapPin, SlidersHorizontal, SquaresFour, Tray, X } from "phosphor-react-native";
 import { useMemo } from "react";
 import { Pressable, RefreshControl, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -30,7 +30,6 @@ import {
 import { useAllOpenOrders } from "@/features/orders/use-all-open-orders";
 import { useMyRespondedOrderIds } from "@/features/orders/use-my-responded-order-ids";
 import { describeQueryError } from "@/lib/describe-query-error";
-import { FEATURED_SECTION_IDS } from "@/lib/product-scope";
 import { CARD_SHADOW, SHADOW_COLOR } from "@/lib/shadows";
 import { useTabBarSpace } from "@/lib/tab-bar-space";
 import { useThemeColors } from "@/lib/use-theme-color";
@@ -81,23 +80,42 @@ export function FindFeed({
   const rows = (feed.data?.pages ?? []).flatMap((p) => p.rows);
   const responded = useMyRespondedOrderIds(userId).data ?? EMPTY_IDS;
 
-  // №294 (владелец, 2026-10-07): место — капсулой справа от заголовка; под
-  // заголовком три основные категории и «Все категории»; уточнение —
-  // плавающей кнопкой «Уточнить» над нижним меню.
+  // №313 (владелец, 2026-10-08, референс — логика Авито): заголовок, под ним
+  // строка «место» и выбранная категория капсулой с крестиком (сброс одним
+  // касанием); плитки основных разделов — только пока категория не выбрана.
   const catLabel = categoryLabel(summaryInput);
   const where = placeLabel(summaryInput);
+  const clearCategory = () => filters.setCategory("", []);
+
+  // «Уточнить»: выбран раздел из нескольких подкатегорий — его подкатегории
+  // (поверх списка разделов: «Назад» ведёт к разделам), иначе весь каталог.
+  const refine = () => {
+    const sectionSize = (categories.data ?? []).filter((c) => c.l1_id === filters.l1Id).length;
+    if (filters.l1Id && sectionSize > 1) {
+      router.push({ pathname: "/find-category/section", params: { id: filters.l1Id } } as never, {
+        withAnchor: true,
+      });
+    } else {
+      router.push("/find-category" as never);
+    }
+  };
+
   const header = (
     <View className="pb-4">
-      {/* Место — капсулой в правом верхнем углу, над крупным заголовком:
-          так в iOS стоят кнопки при large title («Почта», «Заметки»);
-          рядом с заголовком в одну строку она не помещается (№294). */}
-      <View className="flex-row justify-end px-4 pt-2">
+      <AppText
+        accessibilityRole="header"
+        weight="bold"
+        className="px-4 pt-3 pb-3 text-ios-large-title text-ink"
+      >
+        Найти задание
+      </AppText>
+      <View className="flex-row flex-wrap items-center gap-2 px-4 pb-4">
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={`Место: ${where ?? "вся Ингушетия"}. Изменить`}
           onPress={() => router.push("/find-place" as never)}
-          hitSlop={6}
-          className={`min-h-9 max-w-[60%] flex-row items-center gap-1 rounded-pill px-3 active:opacity-70 ${
+          hitSlop={4}
+          className={`min-h-10 max-w-full flex-row items-center gap-1.5 rounded-pill px-3.5 active:opacity-70 ${
             where ? "bg-accent-soft" : "bg-surface-card"
           }`}
           style={CARD_SHADOW}
@@ -108,31 +126,46 @@ export function FindFeed({
             className={`shrink text-ios-subheadline ${where ? "text-accent" : "text-ink"}`}
             numberOfLines={1}
           >
-            {where ?? "Ингушетия"}
+            {where ?? "Вся Ингушетия"}
           </AppText>
+          <CaretDown size={14} weight="bold" color={where ? tc.accent : tc.mute} />
         </Pressable>
+        {catLabel ? (
+          <View
+            className="min-h-10 max-w-full flex-row items-center rounded-pill bg-accent-soft"
+            style={CARD_SHADOW}
+          >
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={`Категория: ${catLabel}. Уточнить`}
+              onPress={refine}
+              hitSlop={4}
+              className="min-h-10 shrink flex-row items-center gap-1.5 pl-3.5 pr-1 active:opacity-70"
+            >
+              <SquaresFour size={16} weight="bold" color={tc.accent} />
+              <AppText
+                weight="semibold"
+                className="shrink text-ios-subheadline text-accent"
+                numberOfLines={1}
+              >
+                {catLabel}
+              </AppText>
+            </Pressable>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Сбросить категорию"
+              onPress={clearCategory}
+              hitSlop={6}
+              className="h-10 w-10 items-center justify-center active:opacity-60"
+            >
+              <X size={16} weight="bold" color={tc.accent} />
+            </Pressable>
+          </View>
+        ) : null}
       </View>
-      <AppText
-        accessibilityRole="header"
-        weight="bold"
-        className="px-4 pt-1 pb-4 text-ios-large-title text-ink"
-      >
-        Найти задание
-      </AppText>
-      <FeaturedSections onAll={() => router.push("/find-category" as never)} />
+      {catLabel ? null : <FeaturedSections onAll={() => router.push("/find-category" as never)} />}
     </View>
   );
-
-  // «Уточнить»: выбран раздел из нескольких подкатегорий — его подкатегории,
-  // иначе весь каталог.
-  const refine = () => {
-    const sectionSize = (categories.data ?? []).filter((c) => c.l1_id === filters.l1Id).length;
-    if (filters.l1Id && sectionSize > 1) {
-      router.push({ pathname: "/find-category/section", params: { id: filters.l1Id } } as never);
-    } else {
-      router.push("/find-category" as never);
-    }
-  };
 
   const footer =
     rows.length > 0 && feed.hasNextPage ? (
@@ -226,13 +259,7 @@ export function FindFeed({
           )
         }
       />
-      <RefineButton
-        // Раздел выбран плиткой — он и так виден в ряду; иначе — на кнопке.
-        selection={
-          filters.wholeSection && FEATURED_SECTION_IDS.includes(filters.l1Id) ? null : catLabel
-        }
-        onPress={refine}
-      />
+      <RefineButton onPress={refine} />
     </View>
   );
 }
@@ -245,16 +272,9 @@ const REFINE_SPACE = 16 + 48 + 12;
  * материал и отступ, что у кнопки «+» на главной (FloatingActionButton):
  * меню системное, iOS уже включает его в безопасную область.
  */
-function RefineButton({
-  selection,
-  onPress,
-}: {
-  /** Выбранная категория — видна на кнопке, чтобы фильтр не терялся. */
-  selection: string | null;
-  onPress: () => void;
-}) {
+function RefineButton({ onPress }: { onPress: () => void }) {
   const insets = useSafeAreaInsets();
-  const tc = useThemeColors(["ink"]);
+  const tc = useThemeColors(["on-accent"]);
   return (
     <View
       pointerEvents="box-none"
@@ -268,13 +288,11 @@ function RefineButton({
     >
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel={
-          selection ? `Уточнить категорию, выбрано: ${selection}` : "Уточнить категорию"
-        }
+        accessibilityLabel="Уточнить категорию"
         onPress={onPress}
         hitSlop={4}
-        // Обводка hairline — край виден и в тёмной теме, где тень не читается.
-        className="min-h-12 max-w-[85%] flex-row items-center gap-2 rounded-pill border border-hairline bg-surface-card px-5 active:opacity-70"
+        // Яркая розовая (владелец, 2026-10-08, №316): главное действие ленты.
+        className="min-h-12 max-w-[85%] flex-row items-center gap-2 rounded-pill bg-accent px-5 active:opacity-85"
         style={{
           shadowColor: SHADOW_COLOR,
           shadowOpacity: 0.14,
@@ -283,9 +301,13 @@ function RefineButton({
           elevation: 4,
         }}
       >
-        <SlidersHorizontal size={20} weight="bold" color={tc.ink} />
-        <AppText weight="semibold" className="shrink text-ios-body text-ink" numberOfLines={1}>
-          {selection ? `Уточнить · ${selection}` : "Уточнить"}
+        <SlidersHorizontal size={20} weight="bold" color={tc["on-accent"]} />
+        <AppText
+          weight="semibold"
+          className="shrink text-ios-body text-on-accent"
+          numberOfLines={1}
+        >
+          Уточнить
         </AppText>
       </Pressable>
     </View>

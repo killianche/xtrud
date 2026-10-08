@@ -5,6 +5,14 @@
  */
 
 import { Stack } from "expo-router";
+
+// Опорный экран шторки — список разделов: если открыть сразу подкатегории
+// («Уточнить» с выбранным разделом), «Назад» ведёт к разделам, а не
+// закрывает шторку (№313). Работает вместе с push(…, { withAnchor: true }).
+export const unstable_settings = {
+  initialRouteName: "index",
+};
+
 import { useThemeColors } from "@/lib/use-theme-color";
 
 export default function FilterSheetLayout() {

@@ -1,10 +1,13 @@
 /**
- * /find-category/section?id= — подкатегории раздела (№238): «Весь раздел»
- * первой, дальше подкатегории с иконками. Выбор закрывает шторку.
+ * /find-category/section?id= — подкатегории раздела (№238) с иконками.
+ * Касание подкатегории — сразу её задания, шторка закрывается. Весь раздел —
+ * плавающая кнопка внизу (владелец, 2026-10-08, №320: строка «Весь раздел»
+ * сверху была незаметной).
  */
 
 import { Redirect, useLocalSearchParams, useRouter } from "expo-router";
-import { InsetGroup, InsetRow } from "@/components/ui";
+import { Check } from "phosphor-react-native";
+import { FloatingPillButton, InsetGroup, InsetRow } from "@/components/ui";
 import { useCategoriesL1 } from "@/features/categories/use-categories-l1";
 import { useVisibleCategories } from "@/features/categories/use-visible-categories";
 import { closeFilterSheet, FilterSheetScreen } from "@/features/orders/find/FilterSheet";
@@ -15,7 +18,7 @@ import { useThemeColors } from "@/lib/use-theme-color";
 
 export default function FindCategorySectionScreen() {
   const router = useRouter();
-  const tc = useThemeColors(["ink"]);
+  const tc = useThemeColors(["ink", "on-accent"]);
   const { id } = useLocalSearchParams<{ id?: string }>();
   const l1Id = useOrdersSearchFiltersStore((s) => s.l1Id);
   const l2Ids = useOrdersSearchFiltersStore((s) => s.l2Ids);
@@ -38,29 +41,25 @@ export default function FindCategorySectionScreen() {
       title={section?.name_ru ?? "Раздел"}
       onBack={() => router.back()}
       onClose={() => closeFilterSheet(router, "nested")}
-    >
-      <InsetGroup>
-        <InsetRow
-          title="Весь раздел"
-          subtitle={
-            items.length > 0
-              ? `${items.length} ${pluralizeRu(items.length, {
-                  one: "подкатегория",
-                  few: "подкатегории",
-                  many: "подкатегорий",
-                })}`
-              : undefined
-          }
-          checked={wholeChosen}
+      footer={(bottom) => (
+        <FloatingPillButton
+          label={wholeChosen ? "Весь раздел выбран" : "Показать весь раздел"}
+          accessibilityLabel={`Показать весь раздел, ${items.length} ${pluralizeRu(items.length, {
+            one: "подкатегория",
+            few: "подкатегории",
+            many: "подкатегорий",
+          })}`}
+          icon={wholeChosen ? <Check size={18} weight="bold" color={tc["on-accent"]} /> : undefined}
           onPress={() =>
             pick(
               items.map((c) => c.id),
               true,
             )
           }
-          last
+          bottom={bottom}
         />
-      </InsetGroup>
+      )}
+    >
       <InsetGroup title="Подкатегория">
         {items.map((c, i) => {
           const Icon = getCategoryIcon(c.icon);

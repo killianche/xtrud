@@ -13,6 +13,7 @@ export {
   FloatingActionButton,
   type FloatingActionButtonProps,
 } from "./FloatingActionButton";
+export { FLOATING_PILL_SPACE, FloatingPillButton } from "./FloatingPillButton";
 export { FormScreen, type FormScreenProps } from "./FormScreen";
 export { GLASS_BUTTON_HEIGHT, GlassButton, type GlassButtonProps } from "./GlassButton";
 export { GlassSurface, type GlassSurfaceProps, LIQUID_GLASS } from "./GlassSurface";

@@ -32,6 +32,12 @@ export interface GlassButtonProps {
    * нажатие показывает, чего не хватает, — глухая кнопка этого не объясняет.
    */
   inactive?: boolean;
+  /**
+   * Чёрная капсула (в тёмной теме — светлая): действие нужное, но не
+   * зовущее, — «Закрыть задание» у автора (владелец, 2026-10-08, №321:
+   * розовая выглядела как то, что надо нажать сейчас).
+   */
+  dark?: boolean;
   accessibilityHint?: string;
 }
 
@@ -43,6 +49,7 @@ export function GlassButton({
   secondary = false,
   neutral = false,
   inactive = false,
+  dark = false,
   accessibilityHint,
 }: GlassButtonProps) {
   const tc = useThemeColors(["accent", "on-accent", "ink"]);
@@ -52,6 +59,11 @@ export function GlassButton({
   const textColor = secondary ? (neutral ? tc.ink : tc.accent) : tc["on-accent"];
   const content = busy ? (
     <ActivityIndicator color={textColor} />
+  ) : dark && !secondary ? (
+    // Классы токенов: в вебе цвет из useThemeColors — CSS-переменная.
+    <AppText weight="semibold" className="text-canvas" style={{ fontSize: 18 }}>
+      {label}
+    </AppText>
   ) : looksOff ? (
     // Классы токенов, а не цвет из useThemeColors: обе темы гарантированно.
     <AppText weight="semibold" className="text-mute" style={{ fontSize: 18 }}>
@@ -82,6 +94,23 @@ export function GlassButton({
     >
       {looksOff ? (
         <View className="bg-surface-3" style={shape}>
+          {content}
+        </View>
+      ) : dark && !secondary ? (
+        // Сплошная, без стекла: оттенок ink в Liquid Glass выходит серым.
+        <View
+          className="bg-ink"
+          style={[
+            shape,
+            {
+              shadowColor: SHADOW_COLOR,
+              shadowOpacity: 0.16,
+              shadowRadius: 10,
+              shadowOffset: { width: 0, height: 4 },
+              elevation: 4,
+            },
+          ]}
+        >
           {content}
         </View>
       ) : LIQUID_GLASS ? (

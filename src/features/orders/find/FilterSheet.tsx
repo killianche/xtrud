@@ -14,6 +14,7 @@ import type { ReactNode } from "react";
 import { ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
+import { FLOATING_PILL_SPACE } from "@/components/ui/FloatingPillButton";
 import { NAV_BUTTON_SIZE, NAV_ROW_HEIGHT, NavCircleButton } from "@/components/ui/LargeTitle";
 import { SystemIcon } from "@/components/ui/SystemIcon";
 import { useThemeColors } from "@/lib/use-theme-color";
@@ -40,6 +41,7 @@ export function FilterSheetScreen({
   onBack,
   onClose,
   header,
+  footer,
   children,
 }: {
   title: string;
@@ -49,6 +51,11 @@ export function FilterSheetScreen({
   onClose: () => void;
   /** Под заголовком, до списка (поиск). */
   header?: ReactNode;
+  /**
+   * Плавающая кнопка внизу (FloatingPillButton, №320): получает отступ от
+   * низа; список оставляет под ней место.
+   */
+  footer?: (bottom: number) => ReactNode;
   children: ReactNode;
 }) {
   const insets = useSafeAreaInsets();
@@ -77,7 +84,9 @@ export function FilterSheetScreen({
       <ScrollView
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
-        contentContainerStyle={{ paddingBottom: insets.bottom + 32 }}
+        contentContainerStyle={{
+          paddingBottom: insets.bottom + (footer ? FLOATING_PILL_SPACE + 12 : 32),
+        }}
         showsVerticalScrollIndicator={false}
       >
         <View className="px-5 pb-4 pt-1">
@@ -89,6 +98,7 @@ export function FilterSheetScreen({
         {header}
         {children}
       </ScrollView>
+      {footer ? footer(insets.bottom + 12) : null}
     </View>
   );
 }

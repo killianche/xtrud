@@ -18,7 +18,7 @@ import { Pressable, RefreshControl, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
 import { OrderRowsSkeleton } from "@/components/OrderRowsSkeleton";
-import { Button } from "@/components/ui";
+import { Button, FLOATING_PILL_SPACE, FloatingPillButton } from "@/components/ui";
 import type { useLargeTitle } from "@/components/ui/LargeTitle";
 import { useAuthSession } from "@/features/auth/use-auth-session";
 import { useCategoriesL1 } from "@/features/categories/use-categories-l1";
@@ -30,7 +30,7 @@ import {
 import { useAllOpenOrders } from "@/features/orders/use-all-open-orders";
 import { useMyRespondedOrderIds } from "@/features/orders/use-my-responded-order-ids";
 import { describeQueryError } from "@/lib/describe-query-error";
-import { CARD_SHADOW, SHADOW_COLOR } from "@/lib/shadows";
+import { CARD_SHADOW } from "@/lib/shadows";
 import { useTabBarSpace } from "@/lib/tab-bar-space";
 import { useThemeColors } from "@/lib/use-theme-color";
 import { FeaturedSections } from "./FeaturedSections";
@@ -187,7 +187,7 @@ export function FindFeed({
         extraData={responded}
         contentContainerStyle={{
           paddingTop: contentTop,
-          paddingBottom: tabBarSpace + REFINE_SPACE,
+          paddingBottom: tabBarSpace + FLOATING_PILL_SPACE,
         }}
         onScroll={onScroll}
         scrollEventThrottle={16}
@@ -256,52 +256,22 @@ export function FindFeed({
   );
 }
 
-/** Место под плавающей «Уточнить»: кнопка 48 pt + зазоры. */
-const REFINE_SPACE = 16 + 48 + 12;
-
 /**
  * «Уточнить» — плавающая капсула по центру над нижним меню (№294), тот же
- * материал и отступ, что у кнопки «+» на главной (FloatingActionButton):
- * меню системное, iOS уже включает его в безопасную область.
+ * отступ, что у кнопки «+» на главной (FloatingActionButton): меню
+ * системное, iOS уже включает его в безопасную область.
  */
 function RefineButton({ onPress }: { onPress: () => void }) {
   const insets = useSafeAreaInsets();
   const tc = useThemeColors(["on-accent"]);
+  // Яркая розовая (владелец, 2026-10-08, №316): главное действие ленты.
   return (
-    <View
-      pointerEvents="box-none"
-      style={{
-        position: "absolute",
-        left: 0,
-        right: 0,
-        bottom: insets.bottom + 10,
-        alignItems: "center",
-      }}
-    >
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel="Уточнить категорию"
-        onPress={onPress}
-        hitSlop={4}
-        // Яркая розовая (владелец, 2026-10-08, №316): главное действие ленты.
-        className="min-h-12 max-w-[85%] flex-row items-center gap-2 rounded-pill bg-accent px-5 active:opacity-85"
-        style={{
-          shadowColor: SHADOW_COLOR,
-          shadowOpacity: 0.14,
-          shadowRadius: 12,
-          shadowOffset: { width: 0, height: 4 },
-          elevation: 4,
-        }}
-      >
-        <SlidersHorizontal size={20} weight="bold" color={tc["on-accent"]} />
-        <AppText
-          weight="semibold"
-          className="shrink text-ios-body text-on-accent"
-          numberOfLines={1}
-        >
-          Уточнить
-        </AppText>
-      </Pressable>
-    </View>
+    <FloatingPillButton
+      label="Уточнить"
+      accessibilityLabel="Уточнить категорию"
+      icon={<SlidersHorizontal size={20} weight="bold" color={tc["on-accent"]} />}
+      onPress={onPress}
+      bottom={insets.bottom + 10}
+    />
   );
 }

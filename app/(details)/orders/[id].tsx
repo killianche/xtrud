@@ -384,7 +384,7 @@ export default function OrderDetailScreen() {
         onPress: () => router.push(`/orders/edit/${id}` as never),
       });
       items.push({
-        label: "Завершить задание",
+        label: "Закрыть задание",
         onPress: () =>
           router.push({ pathname: "/orders/close-reason", params: { orderId: id } } as never),
       });
@@ -676,8 +676,9 @@ export default function OrderDetailScreen() {
         </View>
       ) : null}
 
-      {/* Автор открытого задания: главное действие — «Завершить задание»
-          (владелец, №285): кто стал исполнителем или «никто не подошёл». */}
+      {/* Автор открытого задания: «Закрыть задание» (владелец, №285): кто
+          стал исполнителем или «никто не подошёл». Чёрная, а не розовая —
+          действие в конце, не призыв (№321). */}
       {canFinish && id ? (
         <BottomEdgeEffect solid={insets.bottom + 4 + GLASS_BUTTON_HEIGHT + 8} />
       ) : null}
@@ -688,7 +689,8 @@ export default function OrderDetailScreen() {
           style={{ bottom: insets.bottom + 4 }}
         >
           <GlassButton
-            label="Завершить задание"
+            label="Закрыть задание"
+            dark
             onPress={() =>
               router.push({ pathname: "/orders/close-reason", params: { orderId: id } } as never)
             }

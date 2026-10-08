@@ -200,7 +200,7 @@ export function ClientResponsesSection({ orderId, order }: ClientResponsesSectio
               key={r.id}
               response={r}
               // «Выбрать» на карточке нет (владелец, №285): исполнителя
-              // выбирают при «Завершить задание».
+              // выбирают при «Закрыть задание».
               isRejecting={pendingRejectResponseId === r.id}
               onReject={isOpen ? () => onRejectResponseClick(r.id) : undefined}
             />

@@ -21,6 +21,7 @@ export function FloatingPillButton({
   icon,
   onPress,
   bottom,
+  collapsed = false,
 }: {
   label: string;
   accessibilityLabel?: string;
@@ -29,7 +30,13 @@ export function FloatingPillButton({
   onPress: () => void;
   /** Отступ от низа экрана (с безопасной областью). */
   bottom: number;
+  /**
+   * Свёрнута в розовый круг с иконкой — при прокрутке вниз, чтобы не
+   * закрывать список (№323). Метка для VoiceOver остаётся.
+   */
+  collapsed?: boolean;
 }) {
+  const round = collapsed && !!icon;
   return (
     <View
       pointerEvents="box-none"
@@ -40,7 +47,9 @@ export function FloatingPillButton({
         accessibilityLabel={accessibilityLabel ?? label}
         onPress={onPress}
         hitSlop={4}
-        className="min-h-12 max-w-[85%] flex-row items-center gap-2 rounded-pill bg-accent px-5 active:opacity-85"
+        className={`min-h-12 flex-row items-center justify-center rounded-pill bg-accent active:opacity-85 ${
+          round ? "w-12" : "max-w-[85%] gap-2 px-5"
+        }`}
         style={{
           shadowColor: SHADOW_COLOR,
           shadowOpacity: 0.14,
@@ -50,13 +59,15 @@ export function FloatingPillButton({
         }}
       >
         {icon}
-        <AppText
-          weight="semibold"
-          className="shrink text-ios-body text-on-accent"
-          numberOfLines={1}
-        >
-          {label}
-        </AppText>
+        {round ? null : (
+          <AppText
+            weight="semibold"
+            className="shrink text-ios-body text-on-accent"
+            numberOfLines={1}
+          >
+            {label}
+          </AppText>
+        )}
       </Pressable>
     </View>
   );

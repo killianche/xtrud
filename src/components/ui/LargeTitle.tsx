@@ -171,6 +171,38 @@ export interface LargeTitleBarProps {
   belowFloating?: boolean;
 }
 
+/**
+ * Только затемнение под строкой состояния (часы, связь, заряд) — без
+ * компактного заголовка и без полосы под ним. «Найти задание» (владелец,
+ * 2026-10-08, №323: «маленький заголовок и градиент убрать, затемнение на
+ * часах можно оставить»). Проявляется, когда содержимое уехало под часы.
+ */
+export function StatusBarScrollEdge({
+  opacity,
+}: {
+  opacity: Animated.AnimatedInterpolation<number>;
+}) {
+  const insets = useSafeAreaInsets();
+  return (
+    <Animated.View
+      pointerEvents="none"
+      style={{
+        position: "absolute",
+        top: 0,
+        left: 0,
+        right: 0,
+        height: insets.top + STATUS_EDGE_FADE,
+        zIndex: 10,
+        opacity,
+      }}
+    >
+      <ScrollEdgeEffect fade={STATUS_EDGE_FADE} />
+    </Animated.View>
+  );
+}
+
+const STATUS_EDGE_FADE = 16;
+
 export function LargeTitleBar({
   title,
   compactTitleOpacity,

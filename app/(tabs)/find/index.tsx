@@ -3,12 +3,13 @@
  * (владелец, 2026-10-05, №235; раньше — плитки разделов → подразделы →
  * задания, №158/№205). Категория и место — шторки `/find-category`, `/find-place` (№238).
  *
- * Верх — тот же механизм, что у «Мои» и «Специалисты»: крупный заголовок в
- * начале списка, компактный с размытием проявляется при прокрутке.
+ * Верх: крупный заголовок в начале списка; при прокрутке компактного
+ * заголовка и полосы с размытием нет — только затемнение под часами
+ * (владелец, 2026-10-08, №323).
  */
 
 import { View } from "react-native";
-import { LargeTitleBar, useLargeTitle } from "@/components/ui/LargeTitle";
+import { StatusBarScrollEdge, useLargeTitle } from "@/components/ui/LargeTitle";
 import { FindFeed } from "@/features/orders/find/FindFeed";
 
 export default function FindScreen() {
@@ -18,11 +19,7 @@ export default function FindScreen() {
   return (
     <View className="flex-1 bg-surface-page">
       <FindFeed contentTop={large.contentTop} onScroll={large.onScroll} />
-      <LargeTitleBar
-        title="Найти задание"
-        compactTitleOpacity={large.compactTitleOpacity}
-        onLayoutHeight={large.setBarHeight}
-      />
+      <StatusBarScrollEdge opacity={large.compactTitleOpacity} />
     </View>
   );
 }

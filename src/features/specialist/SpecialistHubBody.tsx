@@ -264,16 +264,21 @@ export function SpecialistHubBody({ userId }: { userId: string }) {
           icon={<IdentificationCard size={18} weight="bold" color={tc.ink} />}
           navigates
           onPress={() => router.push("/profile/specialist/verify" as never)}
+          last={!experienceBadge.isSuccess}
         />
-        <InsetRow
-          // Заявка на значок: администратор связывается и проверяет (0246, №318).
-          title="Значок «Большой опыт»"
-          value={EXPERIENCE_BADGE_STATUS_TEXT[experienceBadge.data?.status ?? "none"]}
-          icon={<Medal size={18} weight="bold" color={tc.ink} />}
-          navigates
-          onPress={() => router.push("/profile/specialist/experience-badge" as never)}
-          last
-        />
+        {/* Заявка на значок: администратор связывается и проверяет (0246,
+            №318). Строка — только когда сервер отвечает: пока функция не
+            открыта, человек не должен упираться в ошибку. */}
+        {experienceBadge.isSuccess ? (
+          <InsetRow
+            title="Значок «Большой опыт»"
+            value={EXPERIENCE_BADGE_STATUS_TEXT[experienceBadge.data?.status ?? "none"]}
+            icon={<Medal size={18} weight="bold" color={tc.ink} />}
+            navigates
+            onPress={() => router.push("/profile/specialist/experience-badge" as never)}
+            last
+          />
+        ) : null}
       </InsetGroup>
 
       <InsetGroup title="Клиенты">

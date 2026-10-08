@@ -10,27 +10,41 @@
  * Правила:
  *   - цена: одно поле, предзаполнено бюджетом задания; пусто — договорная;
  *   - срок: капсулы + «Свой срок» (поле);
- *   - телефон: поле + строка «Из аккаунта» одним тапом; WhatsApp — «тот же
- *     номер» (по умолчанию) или отдельный, тоже с подстановкой из профиля;
+ *   - связь (№322): номер подставляется сам — из прошлого отклика, контактов
+ *     профиля или номера входа (response-contacts.ts) — и показан строкой с
+ *     «Изменить»; переключатели «Звонки» и «WhatsApp», можно оставить один;
  *   - сообщение — по желанию;
  *   - «Откликнуться» — стеклянная капсула внизу; дневной лимит объясняется
  *     словами, а не блокировкой без причины.
  */
 
+import { Phone } from "phosphor-react-native";
 import { useEffect, useRef, useState } from "react";
 import { Pressable, View } from "react-native";
 import { AppText } from "@/components/AppText";
 import { GlassButton, InsetGroup, InsetRow } from "@/components/ui";
 import { useUserRecord } from "@/features/auth/use-user-record";
-import { digitsOnly, normalizePhone } from "@/features/auth/validation";
 import { useMasterPublicProfile } from "@/features/master-view/use-master-public";
 import type { OrderPriceKind } from "@/features/orders/order-schema";
-import { useSubmitResponse } from "@/features/orders/use-order-responses";
+import {
+  contactsPayload,
+  contactsValid,
+  displayPhone,
+  phoneComplete,
+  type ResponseContactsDraft,
+  resolveResponseContacts,
+} from "@/features/orders/response-contacts";
+import {
+  useMyLastResponseContacts,
+  useSubmitResponse,
+} from "@/features/orders/use-order-responses";
 import { isDailyLimitError, useResponseLimit } from "@/features/orders/use-response-limit";
+import { useUserPrivate } from "@/features/profile/use-user-private";
 import { ComposerField } from "@/features/task-composer/ComposerFields";
 import { formatBudgetInput, parseBudgetInput } from "@/features/task-composer/steps";
 import { describeServerError } from "@/lib/describe-server-error";
 import { hapticSelection, hapticSuccess } from "@/lib/haptics";
+import { useThemeColors } from "@/lib/use-theme-color";
 
 const LEAD_TIMES = ["Сегодня", "Завтра", "На этой неделе", "На следующей неделе"] as const;
 const CUSTOM = "__custom";
@@ -46,10 +60,6 @@ export interface RespondSheetProps {
   onDone: () => void;
 }
 
-function phoneOk(value: string): boolean {
-  return digitsOnly(value).length >= 10;
-}
-
 export function RespondSheet({
   orderId,
   masterId,
@@ -63,41 +73,52 @@ export function RespondSheet({
   const { data: limit } = useResponseLimit();
   const { data: me } = useUserRecord(masterId);
   const myPublic = useMasterPublicProfile(masterId);
-  const accountPhone = me?.contact_phone?.trim() ?? "";
-  const profileWa = myPublic.data?.master?.whatsapp_phone?.trim() ?? "";
+  const loginPhone = useUserPrivate(masterId);
+  const lastContacts = useMyLastResponseContacts(masterId);
+  const tc = useThemeColors(["ink"]);
 
   const [price, setPrice] = useState<number | null>(
     budgetKind && budgetKind !== "negotiable" ? budgetValue : null,
   );
   const [lead, setLead] = useState<string>("Завтра");
   const [customLead, setCustomLead] = useState("");
-  const [phone, setPhone] = useState("");
-  // Выключен по умолчанию. Раньше он был включён, и в каждый отклик
-  // подставлялся тот же номер — даже у специалистов без WhatsApp. Клиент
-  // видел кнопку «WhatsApp», которая никуда не вела (владелец, 2026-09-09;
-  // по данным: из 11 откликов у 7 номер просто скопирован, отдельный не
-  // вводил никто). Кнопка у клиента появляется только если человек сам
-  // подтвердил WhatsApp — design-quality §5.
-  const [sameWa, setSameWa] = useState(false);
-  const [wa, setWa] = useState("");
+  const [contacts, setContacts] = useState<ResponseContactsDraft>({
+    phone: "",
+    call: true,
+    whatsapp: false,
+    waPhone: "",
+  });
+  // Поля номера открыты, только когда номера нет или человек нажал
+  // «Изменить»; иначе номер — одной строкой (№322).
+  const [editing, setEditing] = useState(true);
   const [message, setMessage] = useState("");
-
-  // Номер из аккаунта подставляется один раз — «не просим то, что знаем».
-  const prefilledRef = useRef(false);
+  // Подставляем по мере ответа источников, пока человек сам не тронул
+  // связь: медленный источник не держит форму пустой, а ответ, пришедший
+  // позже, не затирает введённое. «Не просим то, что знаем».
+  const touchedRef = useRef(false);
+  const patch = (next: Partial<ResponseContactsDraft>) => {
+    touchedRef.current = true;
+    setContacts((c) => ({ ...c, ...next }));
+  };
   useEffect(() => {
-    if (prefilledRef.current || !accountPhone) return;
-    prefilledRef.current = true;
-    setPhone(accountPhone);
-  }, [accountPhone]);
+    if (touchedRef.current) return;
+    const draft = resolveResponseContacts({
+      last: lastContacts.data ?? null,
+      profilePhone: me?.contact_phone,
+      profileWa: myPublic.data?.master?.whatsapp_phone,
+      profileWaSame: myPublic.data?.master?.whatsapp_same_as_phone,
+      loginPhone: loginPhone.data?.phone,
+    });
+    setContacts(draft);
+    setEditing(!phoneComplete(draft.phone));
+  }, [lastContacts.data, me, myPublic.data, loginPhone.data]);
 
   const leadTime = lead === CUSTOM ? customLead.trim() : lead;
-  const waEffective = sameWa ? phone : wa;
   const limitReached = (limit?.remaining ?? 5) <= 0;
   const valid =
     leadTime.length > 0 &&
     leadTime.length <= 100 &&
-    phoneOk(phone) &&
-    (sameWa || wa.trim().length === 0 || phoneOk(wa)) &&
+    contactsValid(contacts) &&
     message.length <= 1000;
 
   const error = submit.error
@@ -122,8 +143,7 @@ export function RespondSheet({
       priceValue: price && price > 0 ? price : null,
       leadTime,
       message,
-      contactPhone: phoneOk(phone) ? normalizePhone(phone) : null,
-      whatsappPhone: phoneOk(waEffective) ? normalizePhone(waEffective) : null,
+      ...contactsPayload(contacts),
     });
     hapticSuccess();
     onDone();
@@ -184,63 +204,74 @@ export function RespondSheet({
         />
       ) : null}
 
-      <ComposerField
-        label="Телефон для связи"
-        value={phone}
-        onChangeText={setPhone}
-        placeholder="+7 928 000-00-00"
-        keyboardType="phone-pad"
-        textContentType="telephoneNumber"
-        autoComplete="tel"
-        error={phone.trim() && !phoneOk(phone) ? "Введите номер полностью" : null}
-        accessibilityLabel="Телефон для связи"
-      />
-      {accountPhone && phone.trim() !== accountPhone ? (
-        <View className="-mt-3 mb-6 px-4">
-          <InsetGroup>
-            <InsetRow
-              title="Подставить из аккаунта"
-              value={accountPhone}
-              onPress={() => setPhone(accountPhone)}
-              last
-            />
-          </InsetGroup>
-        </View>
+      {editing ? (
+        <ComposerField
+          label="Номер для связи"
+          value={contacts.phone}
+          onChangeText={(t) => patch({ phone: t })}
+          placeholder="+7 928 000-00-00"
+          keyboardType="phone-pad"
+          textContentType="telephoneNumber"
+          autoComplete="tel"
+          error={
+            contacts.phone.trim() && !phoneComplete(contacts.phone)
+              ? "Введите номер полностью"
+              : null
+          }
+          accessibilityLabel="Номер для связи"
+        />
       ) : null}
-
-      <InsetGroup>
+      <InsetGroup
+        title={editing ? undefined : "Связь с вами"}
+        footer={
+          !contacts.call && !contacts.whatsapp
+            ? "Оставьте хотя бы один способ — иначе клиент не сможет с вами связаться."
+            : "Номер увидит только автор задания. В следующий раз подставим его сами."
+        }
+      >
+        {editing ? null : (
+          <InsetRow
+            title={displayPhone(contacts.phone)}
+            icon={<Phone size={18} weight="bold" color={tc.ink} />}
+            value="Изменить"
+            accessibilityLabel={`Номер для связи ${displayPhone(contacts.phone)}. Изменить`}
+            onPress={() => {
+              touchedRef.current = true;
+              setEditing(true);
+            }}
+          />
+        )}
         <InsetRow
-          title="WhatsApp — тот же номер"
-          toggle={{ value: sameWa, onChange: setSameWa }}
+          title="Звонки"
+          toggle={{ value: contacts.call, onChange: (v) => patch({ call: v }) }}
+        />
+        <InsetRow
+          title="WhatsApp"
+          subtitle={
+            contacts.whatsapp && contacts.waPhone.trim() && !editing
+              ? `на ${displayPhone(contacts.waPhone)}`
+              : undefined
+          }
+          toggle={{ value: contacts.whatsapp, onChange: (v) => patch({ whatsapp: v }) }}
           last
         />
       </InsetGroup>
-      {sameWa ? null : (
-        <>
-          <ComposerField
-            label="Номер WhatsApp"
-            value={wa}
-            onChangeText={setWa}
-            placeholder="+7 928 000-00-00"
-            keyboardType="phone-pad"
-            textContentType="telephoneNumber"
-            error={wa.trim() && !phoneOk(wa) ? "Введите номер полностью" : null}
-            accessibilityLabel="Номер WhatsApp"
-          />
-          {profileWa && wa.trim() !== profileWa ? (
-            <View className="-mt-3 mb-6 px-4">
-              <InsetGroup>
-                <InsetRow
-                  title="Подставить из профиля"
-                  value={profileWa}
-                  onPress={() => setWa(profileWa)}
-                  last
-                />
-              </InsetGroup>
-            </View>
-          ) : null}
-        </>
-      )}
+      {editing && contacts.whatsapp ? (
+        <ComposerField
+          label="Другой номер для WhatsApp"
+          value={contacts.waPhone}
+          onChangeText={(t) => patch({ waPhone: t })}
+          placeholder="Если не тот же"
+          keyboardType="phone-pad"
+          textContentType="telephoneNumber"
+          error={
+            contacts.waPhone.trim() && !phoneComplete(contacts.waPhone)
+              ? "Введите номер полностью"
+              : null
+          }
+          accessibilityLabel="Другой номер для WhatsApp"
+        />
+      ) : null}
 
       <ComposerField
         label="Сообщение клиенту"

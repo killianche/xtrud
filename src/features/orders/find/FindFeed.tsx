@@ -13,8 +13,15 @@
 import { FlashList } from "@shopify/flash-list";
 import { useRouter } from "expo-router";
 import { CaretDown, MapPin, SlidersHorizontal, SquaresFour, Tray, X } from "phosphor-react-native";
-import { useMemo } from "react";
-import { Pressable, RefreshControl, View } from "react-native";
+import { useMemo, useRef, useState } from "react";
+import {
+  LayoutAnimation,
+  type NativeScrollEvent,
+  type NativeSyntheticEvent,
+  Pressable,
+  RefreshControl,
+  View,
+} from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
 import { OrderRowsSkeleton } from "@/components/OrderRowsSkeleton";
@@ -29,6 +36,7 @@ import {
 } from "@/features/orders/orders-search-filters-store";
 import { useAllOpenOrders } from "@/features/orders/use-all-open-orders";
 import { useMyRespondedOrderIds } from "@/features/orders/use-my-responded-order-ids";
+import { useReducedMotion } from "@/hooks/use-reduced-motion";
 import { describeQueryError } from "@/lib/describe-query-error";
 import { CARD_SHADOW } from "@/lib/shadows";
 import { useTabBarSpace } from "@/lib/tab-bar-space";
@@ -91,6 +99,31 @@ export function FindFeed({
   // и подписан подкатегорией, человек видит выбор целиком (владелец,
   // 2026-10-08, №317 — раньше открывались сразу подкатегории).
   const refine = () => router.push("/find-category" as never);
+
+  // «Уточнить» сворачивается в круг при прокрутке вниз и раскрывается при
+  // прокрутке вверх или у начала списка (№323). Порог — чтобы дрожание
+  // пальца не переключало.
+  const reducedMotion = useReducedMotion();
+  const [refineCollapsed, setRefineCollapsed] = useState(false);
+  const lastY = useRef(0);
+  const handleScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    onScroll(e);
+    const y = e.nativeEvent.contentOffset.y;
+    const dy = y - lastY.current;
+    let next: boolean | null = null;
+    if (y < 40) next = false;
+    else if (dy > 12) next = true;
+    else if (dy < -12) next = false;
+    if (next !== null) {
+      lastY.current = y;
+      if (next !== refineCollapsed) {
+        if (!reducedMotion) {
+          LayoutAnimation.configureNext(LayoutAnimation.create(180, "easeInEaseOut", "opacity"));
+        }
+        setRefineCollapsed(next);
+      }
+    }
+  };
 
   const header = (
     <View className="pb-4">
@@ -189,7 +222,7 @@ export function FindFeed({
           paddingTop: contentTop,
           paddingBottom: tabBarSpace + FLOATING_PILL_SPACE,
         }}
-        onScroll={onScroll}
+        onScroll={handleScroll}
         scrollEventThrottle={16}
         refreshControl={
           <RefreshControl
@@ -251,7 +284,7 @@ export function FindFeed({
           )
         }
       />
-      <RefineButton onPress={refine} />
+      <RefineButton onPress={refine} collapsed={refineCollapsed} />
     </View>
   );
 }
@@ -261,7 +294,7 @@ export function FindFeed({
  * отступ, что у кнопки «+» на главной (FloatingActionButton): меню
  * системное, iOS уже включает его в безопасную область.
  */
-function RefineButton({ onPress }: { onPress: () => void }) {
+function RefineButton({ onPress, collapsed }: { onPress: () => void; collapsed: boolean }) {
   const insets = useSafeAreaInsets();
   const tc = useThemeColors(["on-accent"]);
   // Яркая розовая (владелец, 2026-10-08, №316): главное действие ленты.
@@ -272,6 +305,7 @@ function RefineButton({ onPress }: { onPress: () => void }) {
       icon={<SlidersHorizontal size={20} weight="bold" color={tc["on-accent"]} />}
       onPress={onPress}
       bottom={insets.bottom + 10}
+      collapsed={collapsed}
     />
   );
 }

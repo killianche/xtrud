@@ -97,6 +97,29 @@ export interface SubmitResponseInput {
   resendResponseId?: string;
 }
 
+/**
+ * Контакты последнего отклика с номером (№322): форма отклика подставляет
+ * их сама. Строки откликов человек видит только свои (RLS).
+ */
+export function useMyLastResponseContacts(userId: string | undefined) {
+  return useQuery({
+    queryKey: ["my-last-response-contacts", userId],
+    enabled: !!userId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("order_responses")
+        .select("contact_phone, whatsapp_phone")
+        .eq("master_id", userId as string)
+        .or("contact_phone.not.is.null,whatsapp_phone.not.is.null")
+        .order("updated_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+  });
+}
+
 export function useSubmitResponse() {
   const queryClient = useQueryClient();
 
@@ -131,6 +154,7 @@ export function useSubmitResponse() {
       queryClient.invalidateQueries({ queryKey: myRespondedOrderIdsKey(masterId) });
       // P0-5: после успешного отклика обновляем бейдж лимита в шапке master-главной.
       queryClient.invalidateQueries({ queryKey: ["response-limit-today"] });
+      queryClient.invalidateQueries({ queryKey: ["my-last-response-contacts", masterId] });
     },
   });
 }

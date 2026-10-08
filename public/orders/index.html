@@ -5,11 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Задание в xtrud</title>
   <meta name="robots" content="noindex,nofollow">
-  <meta name="description" content="Задание в приложении xtrud для iPhone.">
+  <meta name="description" content="Задание в приложении xtrud для iPhone и Android.">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="xtrud">
   <meta property="og:title" content="Задание в xtrud">
-  <meta property="og:description" content="Откройте задание в приложении xtrud для iPhone.">
+  <meta property="og:description" content="Откройте задание в приложении xtrud для iPhone и Android.">
   <meta name="apple-itunes-app" content="app-id=6776783761">
   <link rel="stylesheet" href="/legal.css">
   <style>
@@ -27,18 +27,29 @@
        любой адрес /orders/<id>. -->
   <nav><a href="/">xtrud</a><a href="/support/">Поддержка</a></nav>
   <h1>Задание в xtrud</h1>
-  <p>Это задание открывается в приложении xtrud для iPhone. Установите приложение и снова нажмите на ссылку — задание откроется сразу.</p>
+  <p>Это задание открывается в приложении xtrud для iPhone и Android. Установите приложение и снова нажмите на ссылку — задание откроется сразу.</p>
   <div class="actions">
-    <a class="button primary" href="https://apps.apple.com/app/id6776783761">Скачать в App Store</a>
+    <a class="button primary" id="ios" href="https://apps.apple.com/app/id6776783761">Скачать в App Store</a>
+    <a class="button secondary" id="android" href="https://play.google.com/store/apps/details?id=com.xtrud.app">Скачать в Google Play</a>
     <a class="button secondary" id="open" href="xtrud://" hidden>Открыть задание в приложении</a>
   </div>
-  <p class="meta" style="margin-top:24px">Приложения для Android пока нет.</p>
   <footer>© 2026 xtrud</footer>
 </main>
 <script>
   // Номер задания берём из адреса /orders/<id>. Подставляем только uuid —
   // иначе кнопку «Открыть» не показываем.
   (function () {
+    // На Android главная кнопка — Google Play (№300: раньше страница писала
+    // «Android нет», и ссылка «Поделиться» вела в тупик).
+    if (/android/i.test(navigator.userAgent)) {
+      var ios = document.getElementById("ios");
+      var android = document.getElementById("android");
+      if (ios && android) {
+        android.className = "button primary";
+        ios.className = "button secondary";
+        android.parentNode.insertBefore(android, ios);
+      }
+    }
     var match = location.pathname.match(/^\/orders\/([0-9a-fA-F-]{36})\/?$/);
     var open = document.getElementById("open");
     if (match && open) {

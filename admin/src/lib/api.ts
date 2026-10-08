@@ -296,6 +296,22 @@ export interface AnalyticsDailyRow {
   active_users: number;
 }
 
+/** Заявка на подтверждение компании (0245, №308). */
+export interface CompanyRequestRow {
+  user_id: string;
+  user_label: string | null;
+  legal_name: string;
+  instagram: string;
+  whatsapp: string;
+  inn: string | null;
+  status: "pending" | "approved" | "rejected";
+  reason: string | null;
+  submitted_at: string;
+  reviewed_at: string | null;
+  verified_at: string | null;
+  revision: number;
+}
+
 /** Роль в управлении (0239, №286): админ или управляющий. */
 export type StaffRole = "admin" | "manager";
 
@@ -716,6 +732,12 @@ function describe(error: { message?: string; code?: string } | null): string {
     return "Роль можно дать только активному обычному аккаунту.";
   }
   if (message.includes("bad_role")) return "Недопустимая роль.";
+  if (message.includes("request_changed"))
+    return "Заявку изменили, пока вы смотрели — обновите список.";
+  if (message.includes("request_not_open")) return "Заявка уже рассмотрена.";
+  if (message.includes("not_verified")) return "Значка у компании нет.";
+  if (message.includes("self_review_forbidden"))
+    return "Свою компанию подтверждает другой администратор.";
   if (code === "42501" || message.includes("forbidden")) {
     return "Нет прав для этого действия.";
   }
@@ -970,6 +992,20 @@ export const api = {
       p_is_test: isTest,
       p_reason: reason,
     }),
+  listCompanyRequests: (status: "pending" | "approved" | "rejected" | null) =>
+    rpc<CompanyRequestRow[]>("admin_list_company_verifications", {
+      p_status: status,
+      p_limit: 100,
+    }),
+  reviewCompany: (userId: string, approve: boolean, reason: string | null, revision: number) =>
+    rpc<{ user_id: string; status: string }>("admin_review_company_verification", {
+      p_user_id: userId,
+      p_approve: approve,
+      p_reason: reason,
+      p_revision: revision,
+    }),
+  revokeCompany: (userId: string, reason: string) =>
+    rpc<{ user_id: string }>("admin_revoke_company", { p_user_id: userId, p_reason: reason }),
   listUsers: (search: string, limit = 50, offset = 0) =>
     rpc<UserRow[]>("admin_list_users", {
       p_search: search.trim() === "" ? null : search.trim(),

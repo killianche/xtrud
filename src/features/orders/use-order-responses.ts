@@ -22,10 +22,12 @@ export interface OrderResponseWithMaster extends Tables<"order_responses"> {
     | (Pick<Tables<"users">, "id" | "first_name" | "last_name" | "avatar_url"> & {
         // Рейтинг мастера (общий, по всем категориям) — чтобы клиент сравнивал
         // мастеров в карточке отклика не только по цене. one-to-one → объект|null.
-        profile: Pick<
-          Tables<"master_profiles">,
-          "rating_overall_avg" | "rating_overall_count" | "verification_level"
-        > | null;
+        profile:
+          | (Pick<
+              Tables<"master_profiles">,
+              "rating_overall_avg" | "rating_overall_count" | "verification_level" | "account_type"
+            > & { legal_name?: string | null; company_verified_at?: string | null })
+          | null;
       })
     | null;
 }
@@ -42,7 +44,7 @@ export function useOrderResponses(orderId: string | undefined) {
       const { data, error } = await supabase
         .from("order_responses")
         .select(
-          "*, master:users!order_responses_master_id_fkey(id, first_name, last_name, avatar_url, profile:master_profiles!master_profiles_user_id_fkey(rating_overall_avg, rating_overall_count, verification_level))",
+          "*, master:users!order_responses_master_id_fkey(id, first_name, last_name, avatar_url, profile:master_profiles!master_profiles_user_id_fkey(rating_overall_avg, rating_overall_count, verification_level, account_type, legal_name, company_verified_at))",
         )
         .eq("order_id", orderId)
         .order("created_at", { ascending: false });

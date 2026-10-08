@@ -65,3 +65,25 @@ describe("RPC_ALLOWLIST — аналитика (0243)", () => {
     }
   });
 });
+
+// Подтверждение компании (0245, №308, docs/COMPANY_VERIFICATION_2026-10.md).
+// Доступ проверяют сами функции: специалист — активный вошедший,
+// админские — is_staff_session().
+describe("RPC_ALLOWLIST — подтверждение компании (0245)", () => {
+  it("функции специалиста и админки открыты", () => {
+    for (const name of [
+      "submit_company_verification",
+      "set_account_type",
+      "my_company_verification",
+      "admin_list_company_verifications",
+      "admin_review_company_verification",
+      "admin_revoke_company",
+    ]) {
+      expect(RPC_ALLOWLIST.has(name), name).toBe(true);
+    }
+  });
+
+  it("внутренний помощник не открыт", () => {
+    expect(RPC_ALLOWLIST.has("company_verification_state")).toBe(false);
+  });
+});

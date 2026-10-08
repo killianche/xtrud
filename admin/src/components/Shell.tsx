@@ -18,6 +18,7 @@ export type Section =
   | "verifications"
   | "recovery"
   | "instagram"
+  | "companies"
   | "uncategorized"
   | "hiddenOrders"
   | "catalog"
@@ -86,6 +87,8 @@ export const NAV: Array<{ title: string | null; items: NavItem[] }> = [
         icon: Icon.image,
         count: (a) => a.instagram_pending ?? 0,
       },
+      // Подтверждение компаний (0245, №308) — только админ: WhatsApp и ИНН.
+      { id: "companies", label: "Компании", path: "/companies", icon: Icon.users },
       // Счётчик — не из admin_attention (его не трогаем): длина своего же
       // списка, см. useUncategorizedCount ниже (0230, №251).
       { id: "uncategorized", label: "Без категории", path: "/uncategorized", icon: Icon.grid },

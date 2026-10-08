@@ -20,6 +20,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
 import { Avatar } from "@/components/Avatar";
 import {
+  CompanyBadge,
   ExperienceBadge,
   GLASS_BUTTON_HEIGHT,
   GlassButton,
@@ -59,6 +60,7 @@ import { useMasterPortfolio } from "@/features/profile/use-my-portfolio";
 import { ReportModal } from "@/features/reports/ReportModal";
 import { useReviewableOrderForMaster } from "@/features/reviews/use-reviews";
 import { availabilityTitle } from "@/features/specialist/AvailabilityRows";
+import { displayName, isCompanyVerified } from "@/features/specialist/company";
 import { linkLabel } from "@/features/specialist/link-url";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { showActionMenu } from "@/lib/action-menu";
@@ -128,7 +130,8 @@ export default function MasterPublicScreen() {
 
   const u = profile.data?.user;
   const m = profile.data?.master;
-  const name = [u?.first_name, u?.last_name].filter(Boolean).join(" ") || "Специалист";
+  // Компания — название вместо имени, значок — после проверки (0245, №308).
+  const name = displayName(u?.first_name, u?.last_name, m);
   const ratingAvg = m?.rating_overall_avg ?? null;
   const ratingCount = m?.rating_overall_count ?? 0;
   const place = u?.district ? u.district : u?.city_id ? getCityName(u.city_id) : null;
@@ -279,6 +282,7 @@ export default function MasterPublicScreen() {
                   {name}
                 </AppText>
                 {isVerifiedLevel(m?.verification_level) ? <VerifiedBadge size={22} /> : null}
+                {isCompanyVerified(m) ? <CompanyBadge /> : null}
               </View>
               <View className="mt-1.5 flex-row items-center gap-1.5">
                 {ratingCount > 0 ? (

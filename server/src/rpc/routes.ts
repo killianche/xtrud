@@ -81,6 +81,13 @@ export const RPC_ALLOWLIST = new Set([
   "my_instagram",
   "admin_list_instagram_requests",
   "admin_review_instagram",
+  // 0245: подтверждение компании (№308).
+  "submit_company_verification",
+  "set_account_type",
+  "my_company_verification",
+  "admin_list_company_verifications",
+  "admin_review_company_verification",
+  "admin_revoke_company",
   "admin_set_user_status",
   "admin_warn_user",
   "admin_set_user_password",

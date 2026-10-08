@@ -11,10 +11,11 @@ import { ActivityIndicator, Pressable, View } from "react-native";
 import { AppText } from "@/components/AppText";
 import { Avatar } from "@/components/Avatar";
 import { StatusPill } from "@/components/StatusPill";
-import { isVerifiedLevel, VerifiedBadge } from "@/components/ui";
+import { CompanyBadge, isVerifiedLevel, VerifiedBadge } from "@/components/ui";
 import { useMasterPhone, useMasterPublicProfile } from "@/features/master-view/use-master-public";
 import type { OrderStatusView } from "@/features/orders/order-status-view";
 import type { OrderResponseWithMaster } from "@/features/orders/use-order-responses";
+import { displayName, isCompanyVerified } from "@/features/specialist/company";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { showActionMenu } from "@/lib/action-menu";
 import { trackEvent } from "@/lib/analytics";
@@ -109,9 +110,14 @@ export function ClientMasterResponseCard({
     ? masterPhone.isFetching || masterPublic.isFetching
     : false;
 
-  const masterName =
-    [response.master?.first_name, response.master?.last_name].filter(Boolean).join(" ") ||
-    "Исполнитель";
+  // Компания — название вместо имени (0245, №308).
+  const masterName = displayName(
+    response.master?.first_name,
+    response.master?.last_name,
+    response.master?.profile,
+    "Исполнитель",
+  );
+  const companyVerified = isCompanyVerified(response.master?.profile);
   const priceText = formatResponsePrice(response);
   // «5,0», как в профиле: десятичная запятая по-русски.
   const ratingText = hasRating ? Number(ratingAvg).toFixed(1).replace(".", ",") : null;
@@ -167,6 +173,7 @@ export function ClientMasterResponseCard({
                 {masterName}
               </AppText>
               {verified ? <VerifiedBadge size={16} /> : null}
+              {companyVerified ? <CompanyBadge compact /> : null}
             </View>
             <View className="mt-0.5 flex-row items-center gap-1">
               {ratingText ? (

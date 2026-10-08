@@ -7,6 +7,7 @@
 
 import { useRouter } from "expo-router";
 import {
+  BuildingOffice,
   ChatCircleText,
   IdentificationCard,
   Images,
@@ -28,6 +29,7 @@ import { useMasterServiceAreas } from "@/features/master-profile/use-service-are
 import { useUnreadReviewsCount } from "@/features/notifications/use-notifications";
 import { useMasterPortfolio } from "@/features/profile/use-my-portfolio";
 import { promptChooseCategory } from "@/features/specialist/category-required";
+import { useMyCompany } from "@/features/specialist/use-company";
 import {
   useEnableSpecialistMode,
   useMySpecialistProfile,
@@ -43,6 +45,15 @@ export function SpecialistHubBody({ userId }: { userId: string }) {
   const { data: user } = useUserRecord(userId);
   const profile = useMySpecialistProfile(userId);
   const categories = useMyMasterCategories(userId);
+  const company = useMyCompany(!!userId);
+  const companyValue =
+    company.data?.account_type !== "company"
+      ? "Частный мастер"
+      : company.data.status === "approved"
+        ? "Компания подтверждена"
+        : company.data.status === "pending"
+          ? "Компания · на проверке"
+          : "Компания";
   const verification = useMyVerification(userId);
   const setShown = useSetShownInCatalog(userId);
   const portfolio = useMasterPortfolio(userId ?? null);
@@ -204,6 +215,14 @@ export function SpecialistHubBody({ userId }: { userId: string }) {
           iconAccent
           navigates
           onPress={() => router.push("/profile/specialist/categories" as never)}
+        />
+        <InsetRow
+          // Частный мастер или компания, значок компании (0245, №308).
+          title="Как показывать"
+          value={companyValue}
+          icon={<BuildingOffice size={18} weight="bold" color={tc.ink} />}
+          navigates
+          onPress={() => router.push("/profile/specialist/company" as never)}
         />
         <InsetRow
           title="О себе"

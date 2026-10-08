@@ -24,6 +24,7 @@ import { AppText } from "@/components/AppText";
 import { CITIES } from "@/components/CitySelector";
 import {
   Avatar,
+  CompanyBadge,
   ExperienceBadge,
   FilterChip,
   LargeTitleBar,
@@ -60,14 +61,17 @@ function first(value: string | string[] | undefined): string | null {
 /** Карточка специалиста — общий язык карточек: жирное имя 18, факты 16. */
 function MasterCard({ master, onPress }: { master: MasterSearchResult; onPress: () => void }) {
   const tc = useThemeColors(["warning"]);
-  const name = fullName(master.first_name, master.last_name);
+  // Компания — название вместо имени (0245, №308).
+  const name =
+    (master.account_type === "company" && master.legal_name?.trim()) ||
+    fullName(master.first_name, master.last_name);
   const place = [master.city_name, master.district].filter(Boolean).join(" · ");
   const hasRating = master.rating_avg !== null && (master.rating_count ?? 0) > 0;
 
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={`${name}${master.is_verified ? ", проверенный специалист" : ""}${
+      accessibilityLabel={`${name}${master.is_verified ? ", проверенный специалист" : ""}${master.company_verified ? ", компания подтверждена" : ""}${
         master.has_experience_badge ? ", большой опыт" : ""
       }. ${master.categories.join(", ")}`}
       onPress={onPress}
@@ -88,6 +92,7 @@ function MasterCard({ master, onPress }: { master: MasterSearchResult; onPress: 
               {name}
             </AppText>
             {master.is_verified ? <VerifiedBadge size={18} /> : null}
+            {master.company_verified ? <CompanyBadge compact /> : null}
           </View>
           {place ? (
             <AppText className="mt-0.5 text-body-sm text-mute" numberOfLines={1}>

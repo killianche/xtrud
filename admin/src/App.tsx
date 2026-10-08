@@ -11,6 +11,7 @@ import { StaffRoleContext } from "./lib/role";
 import { Analytics } from "./pages/Analytics";
 import { Broadcast } from "./pages/Broadcast";
 import { Catalog } from "./pages/Catalog";
+import { Companies } from "./pages/Companies";
 import { HiddenOrders } from "./pages/HiddenOrders";
 import { Instagram } from "./pages/Instagram";
 import { Journal } from "./pages/Journal";
@@ -119,6 +120,7 @@ export function App() {
     verifications: "verifications",
     recovery: "recovery",
     instagram: "instagram",
+    companies: "companies",
     uncategorized: "uncategorized",
     "hidden-orders": "hiddenOrders",
     catalog: "catalog",
@@ -188,6 +190,9 @@ export function App() {
         break;
       case "instagram":
         page = <Instagram onOpen={openUser} />;
+        break;
+      case "companies":
+        page = <Companies onOpen={openUser} />;
         break;
       case "uncategorized":
         page = <Uncategorized onOpenOrder={(id) => navigate(`/orders/${id}`)} />;

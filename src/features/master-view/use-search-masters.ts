@@ -32,6 +32,10 @@ export interface MasterSearchResult {
   is_verified: boolean;
   /** Значок «Большой опыт» (0225); старый сервер не присылает — false. */
   has_experience_badge?: boolean;
+  /** Компания вместо имени (0245, №308); старый сервер не присылает. */
+  account_type?: string | null;
+  legal_name?: string | null;
+  company_verified?: boolean;
 }
 
 export type MasterSort = "rating" | "experience" | "availability";

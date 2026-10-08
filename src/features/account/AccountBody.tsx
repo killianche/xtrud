@@ -21,7 +21,7 @@ import {
   UserCircle,
   Wrench,
 } from "phosphor-react-native";
-import { Linking, View } from "react-native";
+import { View } from "react-native";
 import { AppText } from "@/components/AppText";
 import { Avatar } from "@/components/Avatar";
 import { InsetGroup, InsetRow } from "@/components/ui";
@@ -35,6 +35,7 @@ import { useStaffRole } from "@/features/staff/use-staff";
 import { showAlert } from "@/lib/alert";
 import { signOut } from "@/lib/auth";
 import { confirmAsync } from "@/lib/confirm";
+import { openExternalUrl } from "@/lib/open-link";
 import { pluralizeRu } from "@/lib/pluralize";
 import { useThemeColors } from "@/lib/use-theme-color";
 
@@ -165,7 +166,7 @@ export function AccountBody({ userId }: { userId: string }) {
           title="Написать в поддержку"
           icon={<Headset size={18} weight="bold" color={tc.ink} />}
           navigates
-          onPress={() => void Linking.openURL(SUPPORT_URL)}
+          onPress={() => openExternalUrl(SUPPORT_URL)}
           last
         />
       </InsetGroup>

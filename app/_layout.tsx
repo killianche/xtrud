@@ -12,6 +12,7 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { initialWindowMetrics, SafeAreaProvider } from "react-native-safe-area-context";
 import "react-native-reanimated";
 import { AppErrorBoundary } from "@/components/AppErrorBoundary";
+import { PromptHost } from "@/components/PromptHost";
 import { KeyboardDoneAccessory } from "@/components/ui/KeyboardDone";
 import { BannedScreen } from "@/features/auth/BannedScreen";
 import { isPublicDetailsRoute } from "@/features/auth/public-route-policy";
@@ -315,6 +316,8 @@ export default function RootLayout() {
             <StatusBar style="auto" />
             {/* Галочка над цифровой клавиатурой — одна на всё приложение. */}
             <KeyboardDoneAccessory />
+            {/* Ввод причины на Android (promptAsync), №298. */}
+            <PromptHost />
           </SafeAreaProvider>
         </PersistQueryClientProvider>
       </GestureHandlerRootView>

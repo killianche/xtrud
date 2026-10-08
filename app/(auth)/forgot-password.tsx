@@ -21,7 +21,7 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { CaretLeft, CheckCircle } from "phosphor-react-native";
 import { useEffect, useState } from "react";
-import { KeyboardAvoidingView, Linking, Platform, Pressable, ScrollView, View } from "react-native";
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
 import { Button, GlassButton, Input } from "@/components/ui";
@@ -34,6 +34,7 @@ import { formatRuPhone } from "@/features/auth/RegisterFormFields";
 import { fetchAuthOptions } from "@/features/auth/use-auth-options";
 import { normalizeRuPhoneDigits } from "@/features/auth/validation";
 import { requestPasswordRecovery } from "@/lib/auth";
+import { openExternalUrl } from "@/lib/open-link";
 import { supabase } from "@/lib/supabase";
 import { useSafeBack } from "@/lib/use-safe-back";
 import { useThemeColors } from "@/lib/use-theme-color";
@@ -349,7 +350,7 @@ export default function ForgotPasswordScreen() {
           {byCall ? null : (
             <Pressable
               accessibilityRole="button"
-              onPress={() => void Linking.openURL(SUPPORT_URL)}
+              onPress={() => openExternalUrl(SUPPORT_URL)}
               hitSlop={8}
               className="mt-4 min-h-11 items-center justify-center active:opacity-60"
             >

@@ -7,11 +7,12 @@
 
 import { useRouter } from "expo-router";
 import { LifebuoyIcon } from "phosphor-react-native";
-import { Linking, View } from "react-native";
+import { View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
 import { GlassButton } from "@/components/ui";
 import { SUPPORT_URL } from "@/features/auth/BannedScreen";
+import { openExternalUrl } from "@/lib/open-link";
 import { useThemeColors } from "@/lib/use-theme-color";
 
 export default function ResetPasswordScreen() {
@@ -34,10 +35,7 @@ export default function ResetPasswordScreen() {
         и пришлём его вам.
       </AppText>
       <View className="mt-8 w-full gap-3">
-        <GlassButton
-          label="Написать в поддержку"
-          onPress={() => void Linking.openURL(SUPPORT_URL)}
-        />
+        <GlassButton label="Написать в поддержку" onPress={() => openExternalUrl(SUPPORT_URL)} />
         <GlassButton
           label="К входу"
           onPress={() => router.replace("/(auth)/phone" as never)}

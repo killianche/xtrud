@@ -38,7 +38,6 @@ import { useState } from "react";
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
-  Linking,
   Platform,
   Pressable,
   TextInput,
@@ -54,6 +53,7 @@ import { useAuthSession } from "@/features/auth/use-auth-session";
 import { digitsOnly, formatPhoneMask, normalizePhone } from "@/features/auth/validation";
 import { useUpdateMyPhone, useUserPrivate } from "@/features/profile/use-user-private";
 import { useMyVerification } from "@/features/specialist/use-verification";
+import { openExternalUrl } from "@/lib/open-link";
 import { useThemeColors } from "@/lib/use-theme-color";
 import { useUnsavedChangesGuard } from "@/lib/use-unsaved-changes-guard";
 
@@ -196,7 +196,7 @@ export default function ChangePhoneScreen() {
           {viaSupport ? (
             <Pressable
               accessibilityRole="button"
-              onPress={() => void Linking.openURL(SUPPORT_URL)}
+              onPress={() => openExternalUrl(SUPPORT_URL)}
               hitSlop={8}
               className="min-h-11 justify-center self-start active:opacity-60"
             >

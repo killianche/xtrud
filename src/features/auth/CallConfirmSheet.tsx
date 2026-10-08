@@ -17,12 +17,13 @@
 
 import { CheckCircle, Phone, X } from "phosphor-react-native";
 import { type ReactNode, useCallback, useEffect, useRef, useState } from "react";
-import { ActivityIndicator, AppState, Linking, Modal, Pressable, View } from "react-native";
+import { ActivityIndicator, AppState, Modal, Pressable, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
 import { Button } from "@/components/ui";
 import { NavCircleButton } from "@/components/ui/LargeTitle";
 import { SystemIcon } from "@/components/ui/SystemIcon";
+import { openExternalUrl } from "@/lib/open-link";
 import { supabase } from "@/lib/supabase";
 import { useThemeColors } from "@/lib/use-theme-color";
 import { SUPPORT_URL } from "./BannedScreen";
@@ -308,7 +309,7 @@ function CallConfirmBody({
             size="lg"
             fullWidth
             disabled={confirmed}
-            onPress={() => void Linking.openURL(`tel:+${call.callPhone}`)}
+            onPress={() => openExternalUrl(`tel:+${call.callPhone}`)}
             accessibilityHint="Откроет звонок на бесплатный номер"
             leftIcon={<Phone size={20} weight="fill" color={tc["on-accent"]} />}
           >
@@ -325,7 +326,7 @@ function CallConfirmBody({
         ) : null}
         <Pressable
           accessibilityRole="button"
-          onPress={() => void Linking.openURL(SUPPORT_URL)}
+          onPress={() => openExternalUrl(SUPPORT_URL)}
           hitSlop={8}
           className="min-h-11 items-center justify-center active:opacity-60"
         >

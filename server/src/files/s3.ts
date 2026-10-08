@@ -137,6 +137,28 @@ export class S3Storage {
    * подсчёт файлов в папке на диске — защита от заваливания хранилища.
    */
   async countPrefix(prefix: string, limit: number): Promise<number> {
+    const xml = await this.listXml(prefix, limit);
+    return Number(/<KeyCount>(\d+)<\/KeyCount>/.exec(xml)?.[1] ?? "0");
+  }
+
+  /**
+   * Ключи под префиксом, одна страница (до 1000). Нужна очереди удаления
+   * файлов удалённых аккаунтов (account-file-cleanup.ts, миграция 0244).
+   */
+  async listKeys(prefix: string): Promise<string[]> {
+    const xml = await this.listXml(prefix, 1000);
+    return [...xml.matchAll(/<Key>([^<]*)<\/Key>/g)].map((m) =>
+      (m[1] ?? "")
+        .replace(/&lt;/g, "<")
+        .replace(/&gt;/g, ">")
+        .replace(/&quot;/g, '"')
+        .replace(/&apos;/g, "'")
+        .replace(/&amp;/g, "&"),
+    );
+  }
+
+  /** ListObjectsV2 под префиксом — тело ответа (XML). */
+  private async listXml(prefix: string, limit: number): Promise<string> {
     const query = `list-type=2&max-keys=${limit}&prefix=${encodeURIComponent(prefix)}`;
     const host = new URL(this.cfg.endpoint).host;
     const canonicalUri = `/${this.cfg.bucket}`;
@@ -179,8 +201,7 @@ export class S3Storage {
       signal: AbortSignal.timeout(15_000),
     });
     if (!res.ok) throw new Error(`S3 LIST ${prefix}: HTTP ${res.status}`);
-    const xml = await res.text();
-    return Number(/<KeyCount>(\d+)<\/KeyCount>/.exec(xml)?.[1] ?? "0");
+    return res.text();
   }
 
   /** Есть ли объект. Нужен, чтобы не считать файлы в папке заново. */

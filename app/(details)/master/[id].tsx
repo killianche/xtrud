@@ -63,6 +63,7 @@ import { linkLabel } from "@/features/specialist/link-url";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { showActionMenu } from "@/lib/action-menu";
 import { showAlert } from "@/lib/alert";
+import { trackEvent } from "@/lib/analytics";
 import { getCategoryIcon } from "@/lib/category-icons";
 import { confirmAsync } from "@/lib/confirm";
 import { describeServerError } from "@/lib/describe-server-error";
@@ -508,14 +509,23 @@ export default function MasterPublicScreen() {
         >
           {phoneTel ? (
             <View className="flex-1">
-              <GlassButton label="Позвонить" onPress={() => openExternalUrl(`tel:${phoneTel}`)} />
+              <GlassButton
+                label="Позвонить"
+                onPress={() => {
+                  trackEvent("call_click", { masterId, source: "master_profile" });
+                  openExternalUrl(`tel:${phoneTel}`);
+                }}
+              />
             </View>
           ) : null}
           {phoneWa ? (
             <View className="flex-1">
               <GlassButton
                 label="WhatsApp"
-                onPress={() => openExternalUrl(`https://wa.me/${phoneWa}`)}
+                onPress={() => {
+                  trackEvent("whatsapp_click", { masterId, source: "master_profile" });
+                  openExternalUrl(`https://wa.me/${phoneWa}`);
+                }}
                 secondary={!!phoneTel}
               />
             </View>

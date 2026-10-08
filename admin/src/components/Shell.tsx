@@ -9,6 +9,7 @@ import { Icon } from "./icons";
 
 export type Section =
   | "overview"
+  | "analytics"
   | "users"
   | "masters"
   | "orders"
@@ -35,7 +36,14 @@ interface NavItem {
 }
 
 export const NAV: Array<{ title: string | null; items: NavItem[] }> = [
-  { title: null, items: [{ id: "overview", label: "Обзор", path: "/", icon: Icon.home }] },
+  {
+    title: null,
+    items: [
+      { id: "overview", label: "Обзор", path: "/", icon: Icon.home },
+      // Аналитика (0243, №299): задания, специалисты, клиенты, по дням.
+      { id: "analytics", label: "Аналитика", path: "/analytics", icon: Icon.star },
+    ],
+  },
   {
     title: "Площадка",
     items: [
@@ -118,6 +126,8 @@ const MANAGER_SECTIONS: ReadonlySet<Section> = new Set([
   "uncategorized",
   "hiddenOrders",
   "reports",
+  // Аналитика — цифры без телефонов (0243, №299).
+  "analytics",
 ]);
 
 export function canOpenSection(role: StaffRole, id: Section): boolean {

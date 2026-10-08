@@ -17,6 +17,7 @@ import type { OrderStatusView } from "@/features/orders/order-status-view";
 import type { OrderResponseWithMaster } from "@/features/orders/use-order-responses";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { showActionMenu } from "@/lib/action-menu";
+import { trackEvent } from "@/lib/analytics";
 import { openExternalUrl } from "@/lib/open-link";
 import { CARD_SHADOW } from "@/lib/shadows";
 import { useThemeColors } from "@/lib/use-theme-color";
@@ -271,7 +272,15 @@ export function ClientMasterResponseCard({
             enabled={!!phoneTel}
             loading={contactsLoading && !phoneTel}
             who={masterName}
-            onPress={() => phoneTel && openExternalUrl(`tel:${phoneTel}`)}
+            onPress={() => {
+              if (!phoneTel) return;
+              trackEvent("call_click", {
+                orderId: response.order_id,
+                responseId: response.id,
+                source: "response_card",
+              });
+              openExternalUrl(`tel:${phoneTel}`);
+            }}
           />
           {/* Пока контакты старого отклика грузятся — место WhatsApp занято
               индикатором, как у «Позвонить», без скачка разметки (QA №262). */}
@@ -281,7 +290,14 @@ export function ClientMasterResponseCard({
               enabled={!!phoneWa}
               loading={contactsLoading && !phoneWa}
               who={masterName}
-              onPress={() => openExternalUrl(`https://wa.me/${phoneWa}`)}
+              onPress={() => {
+                trackEvent("whatsapp_click", {
+                  orderId: response.order_id,
+                  responseId: response.id,
+                  source: "response_card",
+                });
+                openExternalUrl(`https://wa.me/${phoneWa}`);
+              }}
             />
           ) : null}
           {onPick ? (

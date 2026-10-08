@@ -8,6 +8,7 @@ import { FeedbackProvider } from "./components/feedback";
 import { canOpenSection, homePath, type Section, Shell, sectionLabel } from "./components/Shell";
 import { api, hasSession, logout, type StaffRole } from "./lib/api";
 import { StaffRoleContext } from "./lib/role";
+import { Analytics } from "./pages/Analytics";
 import { Broadcast } from "./pages/Broadcast";
 import { Catalog } from "./pages/Catalog";
 import { HiddenOrders } from "./pages/HiddenOrders";
@@ -109,6 +110,7 @@ export function App() {
   const orderMatch = /^\/orders\/(.+)$/.exec(route);
   const first = route.split("/")[1] ?? "";
   const known: Record<string, Section> = {
+    analytics: "analytics",
     users: "users",
     masters: "masters",
     orders: "orders",
@@ -160,6 +162,9 @@ export function App() {
     );
   } else {
     switch (section) {
+      case "analytics":
+        page = <Analytics onOpenOrder={(id) => navigate(`/orders/${id}`)} onOpenUser={openUser} />;
+        break;
       case "users":
         page = <Users onOpen={openUser} />;
         break;

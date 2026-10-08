@@ -197,6 +197,105 @@ export interface Attention {
   instagram_pending?: number | null;
 }
 
+/** Аналитика (0243, №299). Нажатие ≠ звонок: считаем только нажатия. */
+export interface AnalyticsOverview {
+  period_from: string;
+  period_to: string;
+  tracking_since: string | null;
+  orders_published: number;
+  orders_test_excluded: number;
+  orders_with_response: number;
+  orders_with_contact: number;
+  orders_picked: number;
+  first_response_median_min: number | null;
+  first_response_p90_min: number | null;
+  responses_total: number;
+  responses_withdrawn: number;
+  reach_avg_masters: number | null;
+  orders_reached: number;
+  order_views: number;
+  order_viewers: number;
+  call_clicks: number;
+  whatsapp_clicks: number;
+  profile_views: number;
+  active_masters_avg: number | null;
+  active_users_avg: number | null;
+  signups: number;
+}
+
+export interface AnalyticsOrderRow {
+  order_id: string;
+  created_at: string;
+  title: string;
+  category_name: string | null;
+  status: string;
+  contact_mode: string;
+  client_id: string;
+  client_label: string | null;
+  is_test: boolean;
+  reached_masters: number;
+  viewed_by_masters: number;
+  responses: number;
+  responses_active: number;
+  minutes_to_first_response: number | null;
+  call_clicks: number;
+  whatsapp_clicks: number;
+  contacted_masters: number;
+  client_viewed_responses: boolean;
+  picked_master_label: string | null;
+  total_count: number;
+}
+
+export interface AnalyticsMasterRow {
+  master_id: string;
+  label: string | null;
+  status: string;
+  availability_status: string | null;
+  categories_count: number;
+  reached_orders: number;
+  order_views: number;
+  responses: number;
+  responses_withdrawn: number;
+  responses_picked: number;
+  profile_views: number;
+  call_clicks: number;
+  whatsapp_clicks: number;
+  clicks_today: number;
+  active_days: number;
+  last_active_at: string | null;
+  rating_overall_avg: number | null;
+  total_count: number;
+}
+
+export interface AnalyticsClientRow {
+  client_id: string;
+  label: string | null;
+  orders_published: number;
+  orders_with_response: number;
+  responses_received: number;
+  call_clicks: number;
+  whatsapp_clicks: number;
+  orders_picked: number;
+  reviews_left: number;
+  last_order_at: string | null;
+  last_active_at: string | null;
+  total_count: number;
+}
+
+export interface AnalyticsDailyRow {
+  day: string;
+  signups: number;
+  orders: number;
+  responses: number;
+  new_order_notifications: number;
+  order_views: number;
+  call_clicks: number;
+  whatsapp_clicks: number;
+  profile_views: number;
+  active_masters: number;
+  active_users: number;
+}
+
 /** Роль в управлении (0239, №286): админ или управляющий. */
 export type StaffRole = "admin" | "manager";
 
@@ -838,6 +937,39 @@ export const api = {
       "admin_set_staff_role",
       { p_user_id: userId, p_role: role, p_reason: reason },
     ),
+  analyticsOverview: (days: number) =>
+    rpc<AnalyticsOverview>("admin_analytics_overview", { p_days: days }),
+  analyticsOrders: (days: number, sort: string, limit = 100, offset = 0) =>
+    rpc<AnalyticsOrderRow[]>("admin_analytics_orders", {
+      p_days: days,
+      p_limit: limit,
+      p_offset: offset,
+      p_sort: sort,
+    }),
+  analyticsMasters: (days: number, sort: string, search: string, limit = 100, offset = 0) =>
+    rpc<AnalyticsMasterRow[]>("admin_analytics_masters", {
+      p_days: days,
+      p_limit: limit,
+      p_offset: offset,
+      p_sort: sort,
+      p_search: search.trim() || null,
+    }),
+  analyticsClients: (days: number, sort: string, search: string, limit = 100, offset = 0) =>
+    rpc<AnalyticsClientRow[]>("admin_analytics_clients", {
+      p_days: days,
+      p_limit: limit,
+      p_offset: offset,
+      p_sort: sort,
+      p_search: search.trim() || null,
+    }),
+  analyticsDaily: (days: number) =>
+    rpc<AnalyticsDailyRow[]>("admin_analytics_daily", { p_days: days }),
+  setOrderTest: (orderId: string, isTest: boolean, reason: string) =>
+    rpc<{ ok: boolean; changed: boolean }>("admin_set_order_test", {
+      p_order_id: orderId,
+      p_is_test: isTest,
+      p_reason: reason,
+    }),
   listUsers: (search: string, limit = 50, offset = 0) =>
     rpc<UserRow[]>("admin_list_users", {
       p_search: search.trim() === "" ? null : search.trim(),

@@ -17,6 +17,7 @@ import { Db } from "./db.js";
 import { EventHub } from "./events/hub.js";
 import { startEventListener } from "./events/listener.js";
 import { registerEventRoutes } from "./events/routes.js";
+import { processFileDeletionQueue } from "./files/account-file-cleanup.js";
 import { registerFilesRoutes } from "./files/routes.js";
 import { S3Storage } from "./files/s3.js";
 import { TRUSTED_PROXIES } from "./http/trust-proxy.js";
@@ -172,3 +173,20 @@ await app.register(
 );
 
 await app.listen({ port: cfg.PORT, host: "0.0.0.0" });
+
+// Файлы удалённых аккаунтов (0244): delete_my_account ставит задания в
+// очередь базы, здесь они выполняются. Проходы не перекрываются.
+let fileCleanupRunning = false;
+const fileCleanup = setInterval(() => {
+  if (fileCleanupRunning) return;
+  fileCleanupRunning = true;
+  processFileDeletionQueue(db, cfg.FILES_ROOT, s3, app.log)
+    .then((r) => {
+      if (r.done > 0 || r.failed > 0) app.log.info({ fileCleanup: r }, "account file cleanup");
+    })
+    .catch((e) => app.log.error({ err: e }, "account file cleanup failed"))
+    .finally(() => {
+      fileCleanupRunning = false;
+    });
+}, 5 * 60_000);
+fileCleanup.unref();

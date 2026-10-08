@@ -121,6 +121,16 @@ export const RPC_ALLOWLIST = new Set([
   "my_staff_role",
   "admin_list_staff",
   "admin_set_staff_role",
+  // Аналитика (0243, №299). track_event — EXECUTE только authenticated,
+  // неверные данные молча отбрасываются в базе; отчёты и отметка «тестовое»
+  // — is_staff_session() внутри функций.
+  "track_event",
+  "admin_analytics_overview",
+  "admin_analytics_orders",
+  "admin_analytics_masters",
+  "admin_analytics_clients",
+  "admin_analytics_daily",
+  "admin_set_order_test",
 ]);
 
 const NAME_RE = /^[a-z_][a-z0-9_]*$/;

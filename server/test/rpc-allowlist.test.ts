@@ -41,3 +41,27 @@ describe("RPC_ALLOWLIST — управляющие (0239)", () => {
     }
   });
 });
+
+// Аналитика админки (0243, №299). Доступ проверяется в базе: track_event —
+// только authenticated, отчёты — is_staff_session(); список лишь открывает путь.
+describe("RPC_ALLOWLIST — аналитика (0243)", () => {
+  it("запись событий и отчёты открыты", () => {
+    for (const name of [
+      "track_event",
+      "admin_analytics_overview",
+      "admin_analytics_orders",
+      "admin_analytics_masters",
+      "admin_analytics_clients",
+      "admin_analytics_daily",
+      "admin_set_order_test",
+    ]) {
+      expect(RPC_ALLOWLIST.has(name), name).toBe(true);
+    }
+  });
+
+  it("служебные функции аналитики наружу не открыты", () => {
+    for (const name of ["analytics_excluded_user", "analytics_excluded_order"]) {
+      expect(RPC_ALLOWLIST.has(name), name).toBe(false);
+    }
+  });
+});

@@ -1,6 +1,6 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { DotsThree, Export, Star } from "phosphor-react-native";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, Share, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
@@ -36,6 +36,7 @@ import { useMyReviewForOrder } from "@/features/reviews/use-reviews";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { showActionMenu } from "@/lib/action-menu";
 import { chooseAsync, showAlert } from "@/lib/alert";
+import { trackEvent } from "@/lib/analytics";
 import { useAuthReturnUrlStore } from "@/lib/auth-return-url-store";
 import { confirmAsync } from "@/lib/confirm";
 import { describeServerError } from "@/lib/describe-server-error";
@@ -64,6 +65,14 @@ export default function OrderDetailScreen() {
   } = useOrderDetail(id);
 
   const isOwner = !!userId && !!order && order.client_id === userId;
+  // Просмотр задания специалистом — для аналитики админки (№299): раз за
+  // открытие, только вошедший и не автор; база пишет не чаще раза в сутки.
+  const viewTracked = useRef<string | null>(null);
+  useEffect(() => {
+    if (!userId || !order || order.client_id === userId || viewTracked.current === order.id) return;
+    viewTracked.current = order.id;
+    trackEvent("order_view", { orderId: order.id, source: "feed" });
+  }, [userId, order]);
 
   // Если dual-role-пользователь сейчас в client-режиме смотрит чужой заказ, на
   // который уже откликался КАК МАСТЕР — показываем «Вы откликнулись» badge с
@@ -434,14 +443,16 @@ export default function OrderDetailScreen() {
       const name = e.categoryName ?? "этой категории";
       const choice = await chooseAsync({
         title: `Нужна категория «${name}»`,
+        // На простые работы откликается любой, на эту — с категорией в
+        // профиле; после выбора — сразу к отклику (№303).
         message:
-          "Откликаться на такие задания могут специалисты этой категории. Добавьте её в профиль — это минута.",
+          "Уборка, переезды и подработка открыты всем. На такие задания откликаются специалисты с этой категорией в профиле. Добавьте её — это минута, и сразу вернётесь к отклику.",
         options: [{ id: "add", text: "Добавить категорию" }],
       });
       if (choice === "add") {
         router.push({
           pathname: "/profile/specialist/categories",
-          params: e.categoryId ? { add: e.categoryId } : {},
+          params: { ...(e.categoryId ? { add: e.categoryId } : {}), respondTo: id },
         } as never);
       }
       return;

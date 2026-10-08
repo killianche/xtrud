@@ -32,7 +32,7 @@ const TYPES = {
   ".woff2": "font/woff2",
 };
 const server = createServer(async (req, res) => {
-  let path = decodeURIComponent((req.url ?? "/").split("?")[0]).replace(/^\/admin/, "") || "/";
+  const path = decodeURIComponent((req.url ?? "/").split("?")[0]).replace(/^\/admin/, "") || "/";
   let file = join(dist, path);
   try {
     if ((await stat(file)).isDirectory()) file = join(dist, "index.html");

@@ -19,7 +19,6 @@ import {
   ShieldCheck,
   SignOut,
   UserCircle,
-  Wrench,
 } from "phosphor-react-native";
 import { View } from "react-native";
 import { AppText } from "@/components/AppText";
@@ -28,9 +27,11 @@ import { InsetGroup, InsetRow } from "@/components/ui";
 import { SUPPORT_URL } from "@/features/auth/BannedScreen";
 import { formatRuPhone } from "@/features/auth/RegisterFormFields";
 import { useUserRecord } from "@/features/auth/use-user-record";
+import { useMyMasterCategories } from "@/features/master-categories/use-my-categories";
 import { useUnreadReviewsCount } from "@/features/notifications/use-notifications";
 import { useUserPrivate } from "@/features/profile/use-user-private";
 import { AvailabilityRows } from "@/features/specialist/AvailabilityRows";
+import { SpecialistCard } from "@/features/specialist/SpecialistCard";
 import { useStaffRole } from "@/features/staff/use-staff";
 import { showAlert } from "@/lib/alert";
 import { signOut } from "@/lib/auth";
@@ -52,7 +53,7 @@ export function AccountBody({ userId }: { userId: string }) {
 
   // Каждый аккаунт — специалист (DECISION владельца 2026-09-11): «Я
   // специалист» есть у всех; профиль создаёт сам экран, если его нет.
-  const openSpecialist = () => router.push("/profile/specialist" as never);
+  const hasCategories = (useMyMasterCategories(userId).data ?? []).length > 0;
   // Новые отзывы — сюда ведёт счётчик на вкладке профиля.
   const unreadReviews = useUnreadReviewsCount(userId).data ?? 0;
   const reviewsValue =
@@ -87,19 +88,12 @@ export function AccountBody({ userId }: { userId: string }) {
         </View>
       </View>
 
-      <InsetGroup title="Специалист">
-        <InsetRow
-          title="Я специалист"
-          icon={<Wrench size={18} weight="bold" color={tc["on-accent"]} />}
-          iconAccent
-          value={reviewsValue}
-          navigates
-          onPress={openSpecialist}
-          last
-        />
-      </InsetGroup>
+      {/* «Я специалист» — крупной карточкой с понятным первым шагом (№303). */}
+      <SpecialistCard userId={userId} value={reviewsValue} />
 
-      <AvailabilityRows userId={userId} />
+      {/* «Принимаю задания» — только у кого есть категория: без неё блок
+          заперт и лишь путал клиента (аудит №298, №303). */}
+      {hasCategories ? <AvailabilityRows userId={userId} /> : null}
 
       {staffRole ? (
         <InsetGroup title={staffRole === "admin" ? "Администратор" : "Управляющий"}>

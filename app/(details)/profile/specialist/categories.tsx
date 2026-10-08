@@ -3,6 +3,7 @@
  * список по разделам с поиском, галочки-кружки. Сохранение — «Готово».
  */
 
+import { useQueryClient } from "@tanstack/react-query";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Check } from "phosphor-react-native";
 import { useEffect, useMemo, useState } from "react";
@@ -15,6 +16,7 @@ import { useCategoriesL1 } from "@/features/categories/use-categories-l1";
 import { useVisibleCategories } from "@/features/categories/use-visible-categories";
 import { useMyMasterCategories } from "@/features/master-categories/use-my-categories";
 import { useSetMasterCategories } from "@/features/master-categories/use-set-categories";
+import { respondEligibilityKey } from "@/features/orders/use-respond-eligibility";
 import { useInvalidateSpecialistCounts } from "@/features/specialist/use-specialist";
 import { showAlert } from "@/lib/alert";
 import { getCategoryIcon } from "@/lib/category-icons";
@@ -34,10 +36,13 @@ export default function SpecialistCategoriesScreen() {
   const categories = useVisibleCategories();
   const setCategories = useSetMasterCategories();
   const invalidate = useInvalidateSpecialistCounts();
+  const qc = useQueryClient();
   const [query, setQuery] = useState("");
   // ?add=<l2> — пришли из задания: «Нужна категория…» (№203). Её сразу
   // отмечаем — остаётся нажать «Готово».
-  const { add } = useLocalSearchParams<{ add?: string }>();
+  // ?respondTo=<orderId> — после «Готово» сразу к отклику на это задание
+  // (№303), а не обратно в задание искать кнопку.
+  const { add, respondTo } = useLocalSearchParams<{ add?: string; respondTo?: string }>();
   const [selected, setSelected] = useState<string[] | null>(null);
   useEffect(() => {
     if (selected !== null || !mine.data) return;
@@ -96,7 +101,15 @@ export default function SpecialistCategoriesScreen() {
         onSuccess: () => {
           invalidate(userId);
           allowLeave();
-          router.back();
+          if (respondTo) {
+            void qc.invalidateQueries({ queryKey: respondEligibilityKey(respondTo) });
+            router.replace({
+              pathname: "/orders/respond",
+              params: { orderId: respondTo },
+            } as never);
+          } else {
+            router.back();
+          }
         },
       },
     );
@@ -105,7 +118,11 @@ export default function SpecialistCategoriesScreen() {
   return (
     <FormScreen
       title="Чем занимаетесь?"
-      subtitle={`До ${MAX} категорий.`}
+      subtitle={
+        respondTo
+          ? "Нужная уже отмечена — нажмите «Готово», и откроется отклик."
+          : `До ${MAX} категорий.`
+      }
       onBack={() => router.back()}
       primaryLabel={chosen.length > 0 ? `Готово · ${chosen.length}` : "Готово"}
       onPrimary={save}

@@ -216,6 +216,7 @@ export function OrderInfoBlock({ order, isOwner, isGuest, myResponseStatus }: Or
                   order.whatsapp_phone ? normalizeWhatsappDigits(order.whatsapp_phone) : null
                 }
                 who={contactDisplay}
+                orderId={order.id}
               />
             ) : null}
           </View>

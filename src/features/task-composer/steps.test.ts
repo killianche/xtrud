@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   COMPOSER_STEPS,
+  containsPhoneNumber,
   EMPTY_COMPOSER_VALUES,
   firstIncompleteStep,
   formatBudgetInput,
@@ -130,5 +131,28 @@ describe("titleFromQuery", () => {
     expect(titleFromQuery("ёлку установить")).toBe("Ёлку установить");
     expect(titleFromQuery("Собрать шкаф IKEA")).toBe("Собрать шкаф IKEA");
     expect(titleFromQuery("")).toBe("");
+  });
+});
+
+describe("containsPhoneNumber (№327)", () => {
+  it("находит номер в любой записи", () => {
+    for (const t of [
+      "+79280000000",
+      "8 928 000-00-00",
+      "звоните +7 (928) 123-45-67",
+      "89281234567 срочно",
+    ]) {
+      expect(containsPhoneNumber(t), t).toBe(true);
+    }
+  });
+
+  it("обычный текст и суммы — не номер", () => {
+    for (const t of ["Поменять лампочки", "Бюджет 555 800", "Квартира 45, этаж 3", "2025 год"]) {
+      expect(containsPhoneNumber(t), t).toBe(false);
+    }
+  });
+
+  it("с номером в названии шаг не готов", () => {
+    expect(isStepValid("title", { ...EMPTY_COMPOSER_VALUES, title: "+79280000000" })).toBe(false);
   });
 });

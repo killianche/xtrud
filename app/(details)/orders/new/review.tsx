@@ -48,12 +48,14 @@ import {
 import {
   COMPOSER_ROUTE,
   type ComposerStep,
+  containsPhoneNumber,
   DESCRIPTION_MAX,
   effectiveWhatsapp,
   firstIncompleteStep,
   incompleteSteps,
   isComposerComplete,
   normalizeTitle,
+  PHONE_IN_TEXT_ERROR,
   TITLE_MAX,
   TITLE_MIN,
 } from "@/features/task-composer/steps";
@@ -339,7 +341,9 @@ export default function TaskReviewScreen() {
       ? "Укажите название"
       : titleTrimmed.length < TITLE_MIN
         ? `Минимум ${TITLE_MIN} символов`
-        : null;
+        : containsPhoneNumber(titleTrimmed)
+          ? PHONE_IN_TEXT_ERROR
+          : null;
 
   return (
     <ComposerScreen
@@ -412,6 +416,8 @@ export default function TaskReviewScreen() {
             ? `${values.description.length} из ${DESCRIPTION_MAX}`
             : undefined
         }
+        error={containsPhoneNumber(values.description) ? PHONE_IN_TEXT_ERROR : null}
+        forceError
         accessibilityLabel="Описание задания"
       />
       <PhotoGrid photos={photos} onChange={composer.setPhotos} />

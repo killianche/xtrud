@@ -151,6 +151,22 @@ export function isPhoneAcceptable(value: string): boolean {
   return trimmed.length === 0 || digitsOnly(trimmed).length >= 10;
 }
 
+/**
+ * Номер телефона в тексте задания (№327, видео владельца: задание с номером
+ * вместо названия). Название и описание видят все в ленте и в push, а номер
+ * клиента не должен видеть никто (№302) — для связи есть свой выбор.
+ * 10 и больше цифр подряд, с пробелами, скобками, дефисами и «+».
+ */
+export function containsPhoneNumber(text: string): boolean {
+  for (const m of text.matchAll(/\+?\d[\d\s()-]{8,}\d/g)) {
+    if (digitsOnly(m[0]).length >= 10) return true;
+  }
+  return false;
+}
+
+export const PHONE_IN_TEXT_ERROR =
+  "Номер телефона в тексте увидят все. Уберите его — как с вами связаться, выберете отдельно.";
+
 /** Готов ли шаг — по нему включается «Далее». */
 export function isStepValid(step: ComposerStep, v: ComposerValues): boolean {
   switch (step) {
@@ -158,7 +174,12 @@ export function isStepValid(step: ComposerStep, v: ComposerValues): boolean {
       return v.l2Id.length > 0;
     case "title":
       // Название, описание и фото — один экран (владелец, 2026-09-13).
-      return normalizeTitle(v.title).length >= TITLE_MIN && v.description.length <= DESCRIPTION_MAX;
+      return (
+        normalizeTitle(v.title).length >= TITLE_MIN &&
+        v.description.length <= DESCRIPTION_MAX &&
+        !containsPhoneNumber(v.title) &&
+        !containsPhoneNumber(v.description)
+      );
     case "where":
       return (v.cityId.length > 0 || v.district.length > 0) && v.address.length <= ADDRESS_MAX;
     case "when":

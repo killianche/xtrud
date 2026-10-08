@@ -38,7 +38,14 @@ import { ComposerField } from "./ComposerFields";
 import { ChoiceGroup, ChoiceRow } from "./ComposerRows";
 import { ComposerScreen } from "./ComposerScreen";
 import { useComposer } from "./composer-store";
-import { normalizeTitle, TITLE_MAX, TITLE_MIN, titleFromQuery } from "./steps";
+import {
+  containsPhoneNumber,
+  normalizeTitle,
+  PHONE_IN_TEXT_ERROR,
+  TITLE_MAX,
+  TITLE_MIN,
+  titleFromQuery,
+} from "./steps";
 import { useFocusAfterTransition } from "./use-focus-after-transition";
 import { useStepNavigation } from "./use-step-navigation";
 
@@ -59,7 +66,9 @@ export function QuickStartStep({ subtitle }: { subtitle?: string }) {
   const tooShort = text.trim().length < MIN_QUERY;
   const visibleIds = useMemo(() => (categories.data ?? []).map((c) => c.id), [categories.data]);
   const { hits: phraseHits, examples } = useTaskPhrases(text, visibleIds);
-  const canContinue = normalizeTitle(text).length >= TITLE_MIN;
+  // Номер в названии увидят все (№327) — не пускаем дальше и говорим почему.
+  const phoneInText = containsPhoneNumber(text);
+  const canContinue = normalizeTitle(text).length >= TITLE_MIN && !phoneInText;
 
   // VoiceOver: подсказки появляются без касания — объявить, сколько их.
   useEffect(() => {
@@ -121,6 +130,8 @@ export function QuickStartStep({ subtitle }: { subtitle?: string }) {
         returnKeyType="done"
         submitBehavior="blurAndSubmit"
         maxLength={TITLE_MAX}
+        error={phoneInText ? PHONE_IN_TEXT_ERROR : null}
+        forceError
         accessibilityLabel="Что нужно сделать"
       />
 
@@ -132,8 +143,13 @@ export function QuickStartStep({ subtitle }: { subtitle?: string }) {
         </ChoiceGroup>
       ) : !canContinue ? (
         // 2–4 буквы без подсказок: «Далее» ещё неактивна — сказать почему.
-        <AppText className="mb-4 px-8 text-ios-subheadline text-mute">
-          Напишите чуть подробнее — например, «поменять розетку».
+        <AppText
+          accessibilityRole={phoneInText ? "alert" : undefined}
+          className={`mb-4 px-8 text-ios-subheadline ${phoneInText ? "text-error" : "text-mute"}`}
+        >
+          {phoneInText
+            ? PHONE_IN_TEXT_ERROR
+            : "Напишите чуть подробнее — например, «поменять розетку»."}
         </AppText>
       ) : null}
     </ComposerScreen>

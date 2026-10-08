@@ -17,9 +17,11 @@ import { ComposerScreen } from "@/features/task-composer/ComposerScreen";
 import { useComposer } from "@/features/task-composer/composer-store";
 import { PhotoGrid } from "@/features/task-composer/PhotoGrid";
 import {
+  containsPhoneNumber,
   DESCRIPTION_MAX,
   isStepValid,
   normalizeTitle,
+  PHONE_IN_TEXT_ERROR,
   TITLE_MAX,
   TITLE_MIN,
 } from "@/features/task-composer/steps";
@@ -40,7 +42,11 @@ export default function TaskTitleScreen() {
 
   const trimmed = normalizeTitle(values.title);
   const titleError =
-    trimmed.length > 0 && trimmed.length < TITLE_MIN ? `Минимум ${TITLE_MIN} символов` : null;
+    trimmed.length > 0 && trimmed.length < TITLE_MIN
+      ? `Минимум ${TITLE_MIN} символов`
+      : containsPhoneNumber(trimmed)
+        ? PHONE_IN_TEXT_ERROR
+        : null;
 
   return (
     <ComposerScreen
@@ -78,6 +84,8 @@ export default function TaskTitleScreen() {
             ? `${values.description.length} из ${DESCRIPTION_MAX}`
             : undefined
         }
+        error={containsPhoneNumber(values.description) ? PHONE_IN_TEXT_ERROR : null}
+        forceError
         accessibilityLabel="Описание задания"
       />
       <PhotoGrid photos={photos} onChange={setPhotos} />

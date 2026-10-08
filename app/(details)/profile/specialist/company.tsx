@@ -1,6 +1,7 @@
 /**
  * /profile/specialist/company — «Как вас показывать» и подтверждение
- * компании (0245, №308, docs/COMPANY_VERIFICATION_2026-10.md).
+ * компании (0245, №308, docs/COMPANY_VERIFICATION_2026-10.md). ИНН не
+ * спрашиваем (владелец, 2026-10-08: «ИНН не надо»).
  *
  * «Частный мастер» — в каталоге имя. «Компания» — название вместо имени;
  * значок «Компания подтверждена» — после заявки (Instagram, WhatsApp) и
@@ -42,14 +43,12 @@ export default function CompanyScreen() {
   const [name, setName] = useState("");
   const [instagram, setInstagram] = useState("");
   const [whatsapp, setWhatsapp] = useState("");
-  const [inn, setInn] = useState("");
   useEffect(() => {
     if (isCompany !== null || !my.data) return;
     setIsCompany(my.data.account_type === "company");
     setName(my.data.legal_name ?? "");
     setInstagram(my.data.instagram ?? "");
     setWhatsapp(my.data.whatsapp ?? "");
-    setInn(my.data.inn ?? "");
   }, [my.data, isCompany]);
 
   const status = my.data?.status ?? "none";
@@ -57,14 +56,12 @@ export default function CompanyScreen() {
   const nameOk = trimmed.length >= 2 && trimmed.length <= 80;
   const insta = normalizeInstagram(instagram);
   const waDigits = whatsapp.replace(/\D/g, "");
-  const innDigits = inn.replace(/\D/g, "");
   const formOk =
     nameOk &&
     insta.length > 0 &&
     isInstagramValid(insta) &&
     waDigits.length >= 10 &&
-    waDigits.length <= 15 &&
-    (innDigits.length === 0 || innDigits.length === 10 || innDigits.length === 12);
+    waDigits.length <= 15;
   const nameChanged = trimmed !== (my.data?.legal_name ?? "");
   const busy = setType.isPending || submit.isPending;
   const error =
@@ -79,7 +76,7 @@ export default function CompanyScreen() {
     }
     if (formOk && status !== "approved" && status !== "pending") {
       submit.mutate(
-        { legalName: trimmed, instagram: insta, whatsapp: waDigits, inn: innDigits || null },
+        { legalName: trimmed, instagram: insta, whatsapp: waDigits, inn: null },
         {
           onSuccess: () => {
             hapticSuccess();
@@ -91,7 +88,7 @@ export default function CompanyScreen() {
     }
     if (formOk && (nameChanged || insta !== (my.data?.instagram ?? ""))) {
       submit.mutate(
-        { legalName: trimmed, instagram: insta, whatsapp: waDigits, inn: innDigits || null },
+        { legalName: trimmed, instagram: insta, whatsapp: waDigits, inn: null },
         { onSuccess: () => router.back() },
       );
       return;
@@ -180,22 +177,9 @@ export default function CompanyScreen() {
             }
             accessibilityLabel="WhatsApp для связи с администратором"
           />
-          <ComposerField
-            label="ИНН · по желанию"
-            value={inn}
-            onChangeText={setInn}
-            placeholder="10 или 12 цифр"
-            keyboardType="number-pad"
-            error={
-              innDigits && innDigits.length !== 10 && innDigits.length !== 12
-                ? "10 или 12 цифр"
-                : null
-            }
-            accessibilityLabel="ИНН"
-          />
           <View className="px-8 pb-4">
             <AppText className="text-ios-footnote text-mute">
-              WhatsApp и ИНН видит только администратор, клиентам они не показываются.
+              WhatsApp видит только администратор, клиентам он не показывается.
             </AppText>
           </View>
         </>

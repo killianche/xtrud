@@ -12,7 +12,8 @@
   TELEGRAM_BOT_TOKEN=...   TELEGRAM_CHAT_ID=...
   SMTP_HOST=smtp.gmail.com SMTP_PORT=465 SMTP_USER=... SMTP_PASSWORD=...
   ALERT_EMAIL=pmrhhm@gmail.com
-Пустое — канал пропускается (пишется только в журнал).
+Пустое — канал пропускается (пишется только в журнал). Номер чата
+Telegram берётся сам из первого сообщения владельца боту (getUpdates).
 """
 import json, os, smtplib, ssl, subprocess, sys, time, urllib.request
 from email.mime.text import MIMEText
@@ -78,15 +79,43 @@ def checks():
     return res
 
 
+def telegram_chat(env):
+    """Номер чата: из настроек или из первого сообщения владельца боту."""
+    if env.get("TELEGRAM_CHAT_ID") or not env.get("TELEGRAM_BOT_TOKEN"):
+        return env.get("TELEGRAM_CHAT_ID")
+    try:
+        url = f"https://api.telegram.org/bot{env['TELEGRAM_BOT_TOKEN']}/getUpdates"
+        data = json.load(urllib.request.urlopen(url, timeout=45))
+        for u in data.get("result", []):
+            chat = (u.get("message") or {}).get("chat") or {}
+            if chat.get("type") == "private" and chat.get("id"):
+                cid = str(chat["id"])
+                text = open(ENV_FILE, encoding="utf-8").read()
+                if "TELEGRAM_CHAT_ID=" in text:
+                    import re
+                    text = re.sub(r"^TELEGRAM_CHAT_ID=.*$", "TELEGRAM_CHAT_ID=" + cid, text, flags=re.M)
+                else:
+                    text += "\nTELEGRAM_CHAT_ID=" + cid + "\n"
+                open(ENV_FILE, "w", encoding="utf-8").write(text)
+                env["TELEGRAM_CHAT_ID"] = cid
+                log("telegram chat id saved")
+                return cid
+    except Exception as e:  # noqa: BLE001
+        log(f"telegram getUpdates error: {str(e)[:80]}")
+    return None
+
+
 def send(env, text):
     sent = []
+    telegram_chat(env)
     if env.get("TELEGRAM_BOT_TOKEN") and env.get("TELEGRAM_CHAT_ID"):
         try:
             data = json.dumps({"chat_id": env["TELEGRAM_CHAT_ID"], "text": text}).encode()
             req = urllib.request.Request(
                 f"https://api.telegram.org/bot{env['TELEGRAM_BOT_TOKEN']}/sendMessage",
                 data=data, headers={"Content-Type": "application/json"})
-            urllib.request.urlopen(req, timeout=15)
+            # С VDS Telegram порой отвечает дольше 15 с (2026-10-08).
+            urllib.request.urlopen(req, timeout=45)
             sent.append("telegram")
         except Exception as e:  # noqa: BLE001
             log(f"telegram error: {str(e)[:80]}")
@@ -119,6 +148,10 @@ def main():
     except Exception:  # noqa: BLE001
         state = {}
     now = int(time.time())
+    # Владелец написал боту впервые — запомнить чат и сразу проверить канал.
+    had_chat = bool(env.get("TELEGRAM_CHAT_ID"))
+    if not had_chat and telegram_chat(env):
+        send(env, "✅ xtrud: оповещения о падении сервера подключены. Сюда придёт сообщение, если сайт, API или админка перестанут отвечать.")
     if "--test" in sys.argv:
         print(send(env, "xtrud: проверка оповещений — канал работает."))
         return

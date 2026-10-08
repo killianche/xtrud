@@ -3,6 +3,7 @@
 // Формат phone на UI: `+7 XXX XXX-XX-XX`. В БД храним как `+7XXXXXXXXXX` (нормализовано).
 
 import { z } from "zod";
+import { nameProblem } from "@/lib/name-check";
 
 /**
  * Извлекает только цифры из строки телефона.
@@ -149,7 +150,11 @@ export const registerFormSchema = z.object({
     .trim()
     .min(2, "Введите имя")
     .max(60, "Слишком длинное имя")
-    .refine((v) => !/\d/.test(v), { message: "Имя не содержит цифр" }),
+    .refine((v) => !/\d/.test(v), { message: "Имя не содержит цифр" })
+    .superRefine((v, ctx) => {
+      const problem = nameProblem(v, "Имя");
+      if (problem) ctx.addIssue({ code: "custom", message: problem });
+    }),
   // Фамилия необязательна (DECISION владельца 2026-09-22): имени достаточно
   // для доверия, лишнее поле до публикации — лишний шаг.
   lastName: z
@@ -157,7 +162,11 @@ export const registerFormSchema = z.object({
     .trim()
     .max(60, "Слишком длинная фамилия")
     .refine((v) => v === "" || v.length >= 2, { message: "Фамилия — от 2 букв" })
-    .refine((v) => !/\d/.test(v), { message: "Фамилия не содержит цифр" }),
+    .refine((v) => !/\d/.test(v), { message: "Фамилия не содержит цифр" })
+    .superRefine((v, ctx) => {
+      const problem = nameProblem(v, "Фамилия");
+      if (problem) ctx.addIssue({ code: "custom", message: problem });
+    }),
   // Ровно 10 цифр без кода страны: номер вводится в единственном формате
   // +7 XXX XXX-XX-XX (DECISION владельца 2026-09-03 — «чтобы не было такого,
   // что один раз написал 8, другой раз 7»). Ввод сам срезает лишние 7/8 в

@@ -43,6 +43,7 @@ import { useUpdateMyProfile } from "@/features/profile/use-update-my-profile";
 import { useUserPrivate } from "@/features/profile/use-user-private";
 import { useMyVerification } from "@/features/specialist/use-verification";
 import { confirmAsync } from "@/lib/confirm";
+import { nameProblem } from "@/lib/name-check";
 import { useSafeBack } from "@/lib/use-safe-back";
 import { useThemeColors } from "@/lib/use-theme-color";
 import { useUnsavedChangesGuard } from "@/lib/use-unsaved-changes-guard";
@@ -91,7 +92,9 @@ export default function EditClientScreen() {
       (lastName ?? "") !== (user?.last_name ?? ""));
   const usernameChanged = didInit && (usernameValue ?? "") !== (user?.username ?? "");
   const isDirty = nameChanged || usernameChanged;
-  const nameOk = firstName.trim().length >= 2;
+  // Подмена букв и слова площадки (№309) — та же проверка, что в базе.
+  const nameIssue = nameProblem(firstName, "Имя") ?? nameProblem(lastName, "Фамилия");
+  const nameOk = firstName.trim().length >= 2 && !nameIssue;
 
   // Валидность юзернейма блокирует сохранение ТОЛЬКО если юзернейм реально
   // меняли. Раньше canSave требовал usernameValid всегда, поэтому пустое или
@@ -112,7 +115,9 @@ export default function EditClientScreen() {
   // нет (isDirty=false) — никакой подсказки (нечего сохранять, это норма).
   let disabledReason: string | null = null;
   if (!isSaving && isDirty && !canSave) {
-    if (!nameOk) {
+    if (nameIssue) {
+      disabledReason = nameIssue;
+    } else if (!nameOk) {
       disabledReason = "Впишите имя — минимум 2 символа.";
     } else if (usernameChanged && !usernameValid) {
       disabledReason = "Выберите свободное имя пользователя, чтобы сохранить.";

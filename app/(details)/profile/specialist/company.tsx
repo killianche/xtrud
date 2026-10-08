@@ -23,6 +23,7 @@ import {
 import { isInstagramValid, normalizeInstagram } from "@/features/specialist/use-my-instagram";
 import { ComposerField } from "@/features/task-composer/ComposerFields";
 import { hapticSuccess } from "@/lib/haptics";
+import { nameProblem } from "@/lib/name-check";
 
 const STATUS_TEXT = {
   none: "Не подтверждена",
@@ -53,7 +54,8 @@ export default function CompanyScreen() {
 
   const status = my.data?.status ?? "none";
   const trimmed = name.trim().replace(/\s+/g, " ");
-  const nameOk = trimmed.length >= 2 && trimmed.length <= 80;
+  const nameIssue = nameProblem(trimmed, "Название");
+  const nameOk = trimmed.length >= 2 && trimmed.length <= 80 && !nameIssue;
   const insta = normalizeInstagram(instagram);
   const waDigits = whatsapp.replace(/\D/g, "");
   const formOk =
@@ -135,7 +137,7 @@ export default function CompanyScreen() {
             onChangeText={setName}
             placeholder="Например, «Крутые семечки»"
             maxLength={80}
-            error={name.length > 0 && !nameOk ? "От 2 до 80 символов" : null}
+            error={name.length > 0 && !nameOk ? (nameIssue ?? "От 2 до 80 символов") : null}
             accessibilityLabel="Название компании"
           />
 

@@ -87,18 +87,10 @@ export function FindFeed({
   const where = placeLabel(summaryInput);
   const clearCategory = () => filters.setCategory("", []);
 
-  // «Уточнить»: выбран раздел из нескольких подкатегорий — его подкатегории
-  // (поверх списка разделов: «Назад» ведёт к разделам), иначе весь каталог.
-  const refine = () => {
-    const sectionSize = (categories.data ?? []).filter((c) => c.l1_id === filters.l1Id).length;
-    if (filters.l1Id && sectionSize > 1) {
-      router.push({ pathname: "/find-category/section", params: { id: filters.l1Id } } as never, {
-        withAnchor: true,
-      });
-    } else {
-      router.push("/find-category" as never);
-    }
-  };
+  // «Уточнить» всегда открывает список разделов: выбранный раздел там обведён
+  // и подписан подкатегорией, человек видит выбор целиком (владелец,
+  // 2026-10-08, №317 — раньше открывались сразу подкатегории).
+  const refine = () => router.push("/find-category" as never);
 
   const header = (
     <View className="pb-4">

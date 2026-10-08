@@ -22,7 +22,7 @@ export interface SectionTile {
   id: string;
   name: string;
   icon: string | null;
-  /** Тихая строка под названием (сейчас не используется). */
+  /** Строка под названием акцентом — выбранная подкатегория (№317). */
   meta?: string | null;
 }
 
@@ -48,7 +48,10 @@ export function SectionGrid({
   onPress: (id: string) => void;
   /** Выбранный раздел — обведён акцентом (фильтр «Найти задание», №238). */
   selectedId?: string | null;
-  /** Основные разделы (№296): первыми, в розовой заливке, подпись жирнее. */
+  /**
+   * Основные разделы (№296): первыми. Выглядят как остальные — розовую
+   * заливку владелец убрал (2026-10-08, №317).
+   */
   featuredIds?: readonly string[];
 }) {
   const tc = useThemeColors(["accent"]);
@@ -72,7 +75,6 @@ export function SectionGrid({
         const art = getSectionArt(tile.id);
         const Icon = getCategoryIcon(tile.icon);
         const selected = selectedId === tile.id;
-        const featured = featuredIds.includes(tile.id);
         return (
           <Pressable
             key={tile.id}
@@ -80,9 +82,9 @@ export function SectionGrid({
             accessibilityState={{ selected }}
             accessibilityLabel={tile.meta ? `${tile.name}, ${tile.meta}` : tile.name}
             onPress={() => onPress(tile.id)}
-            className={`items-center rounded-2xl border-2 px-2 pb-3 pt-4 active:opacity-80 ${
-              featured ? "bg-accent-soft" : "bg-surface-card"
-            } ${selected ? "border-accent" : "border-transparent"}`}
+            className={`items-center rounded-2xl border-2 bg-surface-card px-2 pb-3 pt-4 active:opacity-80 ${
+              selected ? "border-accent" : "border-transparent"
+            }`}
             // min, а не fixed: при крупном шрифте карточка растёт по тексту.
             style={[CARD_SHADOW, { width: size.width, minHeight: size.minHeight }]}
           >
@@ -102,12 +104,21 @@ export function SectionGrid({
               </View>
             )}
             <AppText
-              weight={featured ? "semibold" : "medium"}
+              weight="medium"
               className="mt-2 text-center text-ios-footnote text-ink"
               numberOfLines={3}
             >
               {tile.name}
             </AppText>
+            {tile.meta ? (
+              <AppText
+                weight="semibold"
+                className="mt-0.5 text-center text-ios-caption1 text-accent"
+                numberOfLines={2}
+              >
+                {tile.meta}
+              </AppText>
+            ) : null}
           </Pressable>
         );
       })}

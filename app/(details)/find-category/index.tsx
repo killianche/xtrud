@@ -1,8 +1,9 @@
 /**
  * /find-category — категория для «Найти задание» (№238): поиск, «Все
  * категории», разделы плитками с 3D-иконками (как в каталоге); выбранный
- * раздел обведён. Раздел → его подкатегории; раздел из одной подкатегории
- * выбирается сразу (№239).
+ * раздел обведён и подписан выбранной подкатегорией (№317: «Уточнить» всегда
+ * открывает этот экран). Раздел → его подкатегории; раздел из одной
+ * подкатегории выбирается сразу (№239).
  */
 
 import { useRouter } from "expo-router";
@@ -16,6 +17,7 @@ import { useCategoriesL1 } from "@/features/categories/use-categories-l1";
 import { useVisibleCategories } from "@/features/categories/use-visible-categories";
 import { closeFilterSheet, FilterSheetScreen } from "@/features/orders/find/FilterSheet";
 import { useOrdersSearchFiltersStore } from "@/features/orders/orders-search-filters-store";
+import { pluralizeRu } from "@/lib/pluralize";
 import { FEATURED_SECTION_IDS } from "@/lib/product-scope";
 
 export default function FindCategoryScreen() {
@@ -23,12 +25,32 @@ export default function FindCategoryScreen() {
   const [query, setQuery] = useState("");
   const l1Id = useOrdersSearchFiltersStore((s) => s.l1Id);
   const l2Ids = useOrdersSearchFiltersStore((s) => s.l2Ids);
+  const wholeSection = useOrdersSearchFiltersStore((s) => s.wholeSection);
   const setCategory = useOrdersSearchFiltersStore((s) => s.setCategory);
   const sections = useCategoriesL1();
   const categories = useVisibleCategories();
   const tiles = (sections.data ?? [])
     .filter((s) => (categories.data ?? []).some((c) => c.l1_id === s.id))
-    .map((s) => ({ id: s.id, name: s.name_ru, icon: s.icon }));
+    .map((s) => ({
+      id: s.id,
+      name: s.name_ru,
+      icon: s.icon,
+      meta: l2Ids.length > 0 && s.id === l1Id ? selectionMeta(s.name_ru) : null,
+    }));
+  // Что выбрано внутри раздела — подпись под его плиткой.
+  function selectionMeta(sectionName: string): string | null {
+    if (wholeSection) return "Весь раздел";
+    if (l2Ids.length === 1) {
+      const name = categories.data?.find((c) => c.id === l2Ids[0])?.name_ru;
+      // Раздел из одной подкатегории с тем же названием — без повтора.
+      return name && name !== sectionName ? name : null;
+    }
+    return `${l2Ids.length} ${pluralizeRu(l2Ids.length, {
+      one: "подкатегория",
+      few: "подкатегории",
+      many: "подкатегорий",
+    })}`;
+  }
   const loading = sections.isLoading || categories.isLoading;
   const failed = !loading && (sections.error || categories.error);
 

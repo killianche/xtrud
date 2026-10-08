@@ -5,7 +5,7 @@ export { Avatar, type AvatarSize, normalizeAvatarUrl } from "./Avatar";
 export { Button, type ButtonProps, type ButtonSize, type ButtonVariant } from "./Button";
 export { Card, type CardPadding, type CardProps, type CardVariant } from "./Card";
 export { Chip, type ChipProps, type ChipSize, type ChipVariant } from "./Chip";
-export { CompanyBadge } from "./CompanyBadge";
+export { CompanyBadge, explainCompanyBadge } from "./CompanyBadge";
 export { ExperienceBadge } from "./ExperienceBadge";
 export { FilterChip, type FilterChipProps } from "./FilterChip";
 export {

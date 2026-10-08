@@ -88,6 +88,11 @@ export const RPC_ALLOWLIST = new Set([
   "admin_list_company_verifications",
   "admin_review_company_verification",
   "admin_revoke_company",
+  // 0246: заявка на значок «Большой опыт» (№318).
+  "submit_experience_badge_request",
+  "my_experience_badge_request",
+  "admin_list_experience_badge_requests",
+  "admin_review_experience_badge_request",
   "admin_set_user_status",
   "admin_warn_user",
   "admin_set_user_password",

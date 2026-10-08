@@ -173,7 +173,7 @@ export function ClientMasterResponseCard({
                 {masterName}
               </AppText>
               {verified ? <VerifiedBadge size={16} /> : null}
-              {companyVerified ? <CompanyBadge compact /> : null}
+              {companyVerified ? <CompanyBadge size={16} /> : null}
             </View>
             <View className="mt-0.5 flex-row items-center gap-1">
               {ratingText ? (

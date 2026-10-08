@@ -80,4 +80,13 @@ describe("задание без категории — админу и упра�
       notificationTargetFromData({ type: "system", kind: "new_report", report_id: "r" }, "u1"),
     ).toBe("/admin/reports");
   });
+
+  it("решение по заявке на значок — на экран заявки (0245, 0246)", () => {
+    expect(notificationTargetFromData({ type: "system", kind: "company_review" }, "u1")).toBe(
+      "/profile/specialist/company",
+    );
+    expect(
+      notificationTargetFromData({ type: "system", kind: "experience_badge_review" }, "u1"),
+    ).toBe("/profile/specialist/experience-badge");
+  });
 });

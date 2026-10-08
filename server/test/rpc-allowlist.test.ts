@@ -87,3 +87,23 @@ describe("RPC_ALLOWLIST — подтверждение компании (0245)",
     expect(RPC_ALLOWLIST.has("company_verification_state")).toBe(false);
   });
 });
+
+// Заявка на значок «Большой опыт» (0246, №318). Доступ проверяют сами
+// функции: специалист — активный вошедший, админские — is_admin_session().
+describe("RPC_ALLOWLIST — заявка на значок «Большой опыт» (0246)", () => {
+  it("функции специалиста и админки открыты", () => {
+    for (const name of [
+      "submit_experience_badge_request",
+      "my_experience_badge_request",
+      "admin_list_experience_badge_requests",
+      "admin_review_experience_badge_request",
+    ]) {
+      expect(RPC_ALLOWLIST.has(name), name).toBe(true);
+    }
+  });
+
+  it("внутренние помощники не открыты", () => {
+    expect(RPC_ALLOWLIST.has("experience_badge_state")).toBe(false);
+    expect(RPC_ALLOWLIST.has("notify_admins_badge_request")).toBe(false);
+  });
+});

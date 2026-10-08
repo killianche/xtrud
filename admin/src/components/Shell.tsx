@@ -19,6 +19,7 @@ export type Section =
   | "recovery"
   | "instagram"
   | "companies"
+  | "experienceBadges"
   | "uncategorized"
   | "hiddenOrders"
   | "catalog"
@@ -89,6 +90,13 @@ export const NAV: Array<{ title: string | null; items: NavItem[] }> = [
       },
       // Подтверждение компаний (0245, №308) — только админ: WhatsApp и ИНН.
       { id: "companies", label: "Компании", path: "/companies", icon: Icon.users },
+      // Заявки на значок «Большой опыт» (0246, №318) — только админ: WhatsApp.
+      {
+        id: "experienceBadges",
+        label: "Большой опыт",
+        path: "/experience-badges",
+        icon: Icon.star,
+      },
       // Счётчик — не из admin_attention (его не трогаем): длина своего же
       // списка, см. useUncategorizedCount ниже (0230, №251).
       { id: "uncategorized", label: "Без категории", path: "/uncategorized", icon: Icon.grid },

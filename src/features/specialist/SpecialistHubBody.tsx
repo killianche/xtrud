@@ -12,6 +12,7 @@ import {
   IdentificationCard,
   Images,
   MapPin,
+  Medal,
   Phone,
   SquaresFour,
   Star,
@@ -30,6 +31,10 @@ import { useUnreadReviewsCount } from "@/features/notifications/use-notification
 import { useMasterPortfolio } from "@/features/profile/use-my-portfolio";
 import { promptChooseCategory } from "@/features/specialist/category-required";
 import { useMyCompany } from "@/features/specialist/use-company";
+import {
+  EXPERIENCE_BADGE_STATUS_TEXT,
+  useMyExperienceBadge,
+} from "@/features/specialist/use-experience-badge";
 import {
   useEnableSpecialistMode,
   useMySpecialistProfile,
@@ -55,6 +60,7 @@ export function SpecialistHubBody({ userId }: { userId: string }) {
           ? "Компания · на проверке"
           : "Компания";
   const verification = useMyVerification(userId);
+  const experienceBadge = useMyExperienceBadge(!!userId);
   const setShown = useSetShownInCatalog(userId);
   const portfolio = useMasterPortfolio(userId ?? null);
   const areas = useMasterServiceAreas(userId ?? null);
@@ -258,6 +264,14 @@ export function SpecialistHubBody({ userId }: { userId: string }) {
           icon={<IdentificationCard size={18} weight="bold" color={tc.ink} />}
           navigates
           onPress={() => router.push("/profile/specialist/verify" as never)}
+        />
+        <InsetRow
+          // Заявка на значок: администратор связывается и проверяет (0246, №318).
+          title="Значок «Большой опыт»"
+          value={EXPERIENCE_BADGE_STATUS_TEXT[experienceBadge.data?.status ?? "none"]}
+          icon={<Medal size={18} weight="bold" color={tc.ink} />}
+          navigates
+          onPress={() => router.push("/profile/specialist/experience-badge" as never)}
           last
         />
       </InsetGroup>

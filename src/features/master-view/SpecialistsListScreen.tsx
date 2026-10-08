@@ -92,7 +92,7 @@ function MasterCard({ master, onPress }: { master: MasterSearchResult; onPress: 
               {name}
             </AppText>
             {master.is_verified ? <VerifiedBadge size={18} /> : null}
-            {master.company_verified ? <CompanyBadge compact /> : null}
+            {master.company_verified ? <CompanyBadge size={18} /> : null}
           </View>
           {place ? (
             <AppText className="mt-0.5 text-body-sm text-mute" numberOfLines={1}>

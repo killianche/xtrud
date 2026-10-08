@@ -312,6 +312,22 @@ export interface CompanyRequestRow {
   revision: number;
 }
 
+/** Заявка на значок «Большой опыт» (0246, №318). */
+export interface ExperienceBadgeRequestRow {
+  user_id: string;
+  user_label: string | null;
+  about: string;
+  whatsapp: string;
+  status: "pending" | "approved" | "rejected";
+  reason: string | null;
+  submitted_at: string;
+  reviewed_at: string | null;
+  granted_at: string | null;
+  revision: number;
+  categories: string[];
+  is_verified: boolean;
+}
+
 /** Роль в управлении (0239, №286): админ или управляющий. */
 export type StaffRole = "admin" | "manager";
 
@@ -1006,6 +1022,23 @@ export const api = {
     }),
   revokeCompany: (userId: string, reason: string) =>
     rpc<{ user_id: string }>("admin_revoke_company", { p_user_id: userId, p_reason: reason }),
+  listExperienceBadgeRequests: (status: "pending" | "approved" | "rejected" | null) =>
+    rpc<ExperienceBadgeRequestRow[]>("admin_list_experience_badge_requests", {
+      p_status: status,
+      p_limit: 100,
+    }),
+  reviewExperienceBadge: (
+    userId: string,
+    approve: boolean,
+    reason: string | null,
+    revision: number,
+  ) =>
+    rpc<{ user_id: string; status: string }>("admin_review_experience_badge_request", {
+      p_user_id: userId,
+      p_approve: approve,
+      p_reason: reason,
+      p_revision: revision,
+    }),
   listUsers: (search: string, limit = 50, offset = 0) =>
     rpc<UserRow[]>("admin_list_users", {
       p_search: search.trim() === "" ? null : search.trim(),

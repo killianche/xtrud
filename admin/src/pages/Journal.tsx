@@ -43,6 +43,7 @@ export const ACTION_LABEL: Record<string, string> = {
   instagram_approve: "Instagram одобрен",
   experience_badge_grant: "Выдан значок «Большой опыт»",
   experience_badge_revoke: "Снят значок «Большой опыт»",
+  experience_badge_reject: "Отклонена заявка на «Большой опыт»",
   instagram_reject: "Instagram отклонён",
   order_set_category: "Категория задания назначена",
   category_create: "Категория создана",

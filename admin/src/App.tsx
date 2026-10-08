@@ -12,6 +12,7 @@ import { Analytics } from "./pages/Analytics";
 import { Broadcast } from "./pages/Broadcast";
 import { Catalog } from "./pages/Catalog";
 import { Companies } from "./pages/Companies";
+import { ExperienceBadges } from "./pages/ExperienceBadges";
 import { HiddenOrders } from "./pages/HiddenOrders";
 import { Instagram } from "./pages/Instagram";
 import { Journal } from "./pages/Journal";
@@ -121,6 +122,7 @@ export function App() {
     recovery: "recovery",
     instagram: "instagram",
     companies: "companies",
+    "experience-badges": "experienceBadges",
     uncategorized: "uncategorized",
     "hidden-orders": "hiddenOrders",
     catalog: "catalog",
@@ -193,6 +195,9 @@ export function App() {
         break;
       case "companies":
         page = <Companies onOpen={openUser} />;
+        break;
+      case "experienceBadges":
+        page = <ExperienceBadges onOpen={openUser} />;
         break;
       case "uncategorized":
         page = <Uncategorized onOpenOrder={(id) => navigate(`/orders/${id}`)} />;

@@ -22,6 +22,7 @@ import { Avatar } from "@/components/Avatar";
 import {
   CompanyBadge,
   ExperienceBadge,
+  explainCompanyBadge,
   GLASS_BUTTON_HEIGHT,
   GlassButton,
   InsetGroup,
@@ -282,7 +283,9 @@ export default function MasterPublicScreen() {
                   {name}
                 </AppText>
                 {isVerifiedLevel(m?.verification_level) ? <VerifiedBadge size={22} /> : null}
-                {isCompanyVerified(m) ? <CompanyBadge /> : null}
+                {isCompanyVerified(m) ? (
+                  <CompanyBadge size={22} onPress={explainCompanyBadge} />
+                ) : null}
               </View>
               <View className="mt-1.5 flex-row items-center gap-1.5">
                 {ratingCount > 0 ? (

@@ -32,6 +32,11 @@ export interface OrderResponseWithMaster extends Tables<"order_responses"> {
     | null;
 }
 
+/** Из отклика ещё можно выбрать исполнителя: не отозван и не скрыт. */
+export function isPickableResponse(r: OrderResponseWithMaster): boolean {
+  return (r.status === "sent" || r.status === "viewed") && !!r.master;
+}
+
 export function orderResponsesKey(orderId: string | undefined) {
   return ["order-responses", orderId] as const;
 }

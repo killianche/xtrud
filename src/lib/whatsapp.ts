@@ -7,6 +7,8 @@
 //
 // Возвращает чистые цифры без `+` для wa.me URL: «79991234567».
 
+import { canonicalPhone } from "@/lib/phone";
+
 export interface WhatsappInput {
   /** master_profiles.whatsapp_phone — явный номер. */
   whatsappPhone: string | null | undefined;
@@ -31,11 +33,11 @@ export function resolveWhatsappDigits(input: WhatsappInput): string | null {
   return null;
 }
 
-/** Очищает номер до digits-only, отбрасывая `+`, пробелы, скобки, дефисы.
+/** Цифры номера в международной форме (`8 928…`/`928…` → `7928…`), без `+`.
  *  Возвращает null если меньше 5 цифр (невалидно). */
 export function normalizeWhatsappDigits(raw: string | null | undefined): string | null {
   if (!raw) return null;
-  const digits = raw.replace(/\D/g, "");
+  const digits = canonicalPhone(raw).replace(/\D/g, "");
   return digits.length >= 5 ? digits : null;
 }
 

@@ -27,7 +27,11 @@ import { type CancelReason, useCancelOrder } from "@/features/orders/use-cancel-
 import { useDeleteOrder } from "@/features/orders/use-delete-order";
 import { useOrderDetail } from "@/features/orders/use-order-detail";
 import { usePickOrderMaster } from "@/features/orders/use-order-lifecycle";
-import { useMyResponseForOrder, useOrderResponses } from "@/features/orders/use-order-responses";
+import {
+  isPickableResponse,
+  useMyResponseForOrder,
+  useOrderResponses,
+} from "@/features/orders/use-order-responses";
 import { canReopenOrder, useReopenOrder } from "@/features/orders/use-reopen-order";
 import { useRespondEligibility } from "@/features/orders/use-respond-eligibility";
 import { useMarkResponsesViewed } from "@/features/orders/use-unread-responses";
@@ -229,6 +233,25 @@ export default function OrderDetailScreen() {
     [id, userId, cancelMutate, ownerResponses, pickResponse, pickMaster.isPending],
   );
 
+  // Живых предложений нет — выбирать некого, экран «Кто стал исполнителем?»
+  // не нужен: только подтверждение (владелец, 2026-10-15, №344). Пока
+  // отклики не загрузились, открываем выбор — он подгрузит их сам.
+  const startClose = () => {
+    if (!id) return;
+    if (ownerResponsesQ.isSuccess && !ownerResponses.some(isPickableResponse)) {
+      void confirmAsync({
+        title: "Закрыть задание?",
+        message: "Предложений не было — задание закроется без исполнителя.",
+        confirmText: "Закрыть",
+        cancelText: "Отмена",
+      }).then((ok) => {
+        if (ok && !cancelOrder.isPending) handleCloseWithReason("no_longer_needed");
+      });
+      return;
+    }
+    router.push({ pathname: "/orders/close-reason", params: { orderId: id } } as never);
+  };
+
   const openReview = () => {
     if (!id || !order?.picked_master_id) return;
     router.push({
@@ -385,8 +408,7 @@ export default function OrderDetailScreen() {
       });
       items.push({
         label: "Закрыть задание",
-        onPress: () =>
-          router.push({ pathname: "/orders/close-reason", params: { orderId: id } } as never),
+        onPress: startClose,
       });
     }
     if (isOwner && isClosedHistory && canReopen) {
@@ -690,13 +712,7 @@ export default function OrderDetailScreen() {
           className="absolute left-0 right-0 px-5"
           style={{ bottom: insets.bottom + 4 }}
         >
-          <GlassButton
-            label="Закрыть задание"
-            dark
-            onPress={() =>
-              router.push({ pathname: "/orders/close-reason", params: { orderId: id } } as never)
-            }
-          />
+          <GlassButton label="Закрыть задание" dark onPress={startClose} />
         </View>
       ) : null}
 

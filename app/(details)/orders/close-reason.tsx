@@ -13,6 +13,8 @@
  *     отзыв потом — кнопкой в задании, сам не предлагается;
  *   - «Нашёл в другом месте» → cancel_reason = 'found_master';
  *   - «Никто не подошёл»     → cancel_reason = 'no_longer_needed'.
+ * Без живых предложений экран не открывается: выбирать некого, задание
+ * закрывается после подтверждения (`orders/[id].tsx`, №344).
  * Заголовок-вопрос без подзаголовка (правило §G design-quality.md).
  * Контент предсказуемой высоты (2 карточки + сноска) → `fitToContents`.
  *
@@ -35,7 +37,7 @@ import { Avatar } from "@/components/Avatar";
 import { InsetGroup, InsetRow } from "@/components/ui";
 import { useCloseReasonPickerStore } from "@/features/orders/close-reason-picker-store";
 import type { CancelReason } from "@/features/orders/use-cancel-order";
-import { useOrderResponses } from "@/features/orders/use-order-responses";
+import { isPickableResponse, useOrderResponses } from "@/features/orders/use-order-responses";
 import { useThemeColors } from "@/lib/use-theme-color";
 
 // Параметры шторки — константа модуля. Объект, создаваемый заново при каждом
@@ -60,9 +62,7 @@ export default function CloseReasonScreen() {
 
   const responsesQ = useOrderResponses(orderId);
   // Выбрать можно только из живых откликов: отозванный или скрытый — нет.
-  const responders = (responsesQ.data ?? []).filter(
-    (r) => (r.status === "sent" || r.status === "viewed") && r.master,
-  );
+  const responders = (responsesQ.data ?? []).filter(isPickableResponse);
 
   const pick = (reason: CancelReason, pickedMasterId: string | null = null) => {
     if (orderId) setResult({ orderId, reason, pickedMasterId });

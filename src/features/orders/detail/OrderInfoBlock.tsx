@@ -10,6 +10,7 @@ import { orderCategoryIds } from "@/features/orders/order-categories";
 import { formatOrderTiming, formatPrice } from "@/features/orders/order-schema";
 import { orderStatusView } from "@/features/orders/order-status-view";
 import type { useOrderDetail } from "@/features/orders/use-order-detail";
+import { dialPhone } from "@/lib/phone";
 import { UNCATEGORIZED_L2_ID } from "@/lib/product-scope";
 import { CARD_SHADOW } from "@/lib/shadows";
 import { useThemeColors } from "@/lib/use-theme-color";
@@ -211,7 +212,7 @@ export function OrderInfoBlock({ order, isOwner, isGuest, myResponseStatus }: Or
             ) : order.contact_mode === "phone_open" &&
               (order.contact_phone || order.whatsapp_phone) ? (
               <ContactButtons
-                phoneTel={order.contact_phone?.replace(/[^\d+]/g, "") || null}
+                phoneTel={dialPhone(order.contact_phone)}
                 whatsappDigits={
                   order.whatsapp_phone ? normalizeWhatsappDigits(order.whatsapp_phone) : null
                 }

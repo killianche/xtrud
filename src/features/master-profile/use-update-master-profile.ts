@@ -14,6 +14,7 @@
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { userRecordKey } from "@/features/auth/use-user-record";
+import { canonicalPhone } from "@/lib/phone";
 import { supabase } from "@/lib/supabase";
 
 export interface UpdateMasterProfileInput {
@@ -37,8 +38,9 @@ export function useUpdateMasterProfile() {
   return useMutation({
     mutationFn: async (input: UpdateMasterProfileInput) => {
       // contact_phone — обязательный явный публичный номер (валидируется схемой,
-      // минимум 10 цифр). Пишем как есть; регистрационный номер не подставляем.
-      const finalContactPhone = input.contactPhone.trim();
+      // минимум 10 цифр). Пишем в форме +7…, чтобы звонок шёл на российский
+      // номер (№344); регистрационный номер не подставляем.
+      const finalContactPhone = canonicalPhone(input.contactPhone);
 
       const { error: usersErr } = await supabase
         .from("users")
@@ -58,7 +60,7 @@ export function useUpdateMasterProfile() {
       // поэтому whatsapp_same_as_phone всегда false (удовлетворяет constraint
       // master_profiles_whatsapp_xor: ветка NOT same). Пусто → NULL.
       const trimmed = input.whatsappPhone.trim();
-      const whatsappPhone = trimmed === "" ? null : trimmed;
+      const whatsappPhone = canonicalPhone(trimmed) || null;
 
       // has_tools / has_transport — legacy поля (удалены из UI 2026-05-19),
       // не пишем — оставляем существующее значение в БД.

@@ -19,6 +19,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { masterOnboardingDraftKey } from "@/features/auth/use-master-onboarding-draft";
 import { userRecordKey } from "@/features/auth/use-user-record";
+import { canonicalPhone } from "@/lib/phone";
 import { supabase } from "@/lib/supabase";
 
 export interface SubmitMasterProfileInput {
@@ -48,9 +49,9 @@ export function useSubmitMasterProfile() {
       //    /profile/edit-master).
       //
       //    contact_phone — обязательный явный публичный номер (валидируется
-      //    схемой, минимум 10 цифр). Пишем как есть; регистрационный номер
-      //    автоматически не подставляем.
-      const finalContactPhone = input.contactPhone.trim();
+      //    схемой, минимум 10 цифр). Пишем в форме +7… (№344); регистрационный
+      //    номер автоматически не подставляем.
+      const finalContactPhone = canonicalPhone(input.contactPhone);
 
       const { error: userErr } = await supabase
         .from("users")
@@ -72,7 +73,7 @@ export function useSubmitMasterProfile() {
       //    WhatsApp без чекбокса → whatsapp_same_as_phone всегда false (ветка
       //    NOT same в constraint master_profiles_whatsapp_xor). Пусто → NULL.
       const trimmedWa = input.whatsappPhone.trim();
-      const whatsappPhone = trimmedWa === "" ? null : trimmedWa;
+      const whatsappPhone = canonicalPhone(trimmedWa) || null;
 
       const { error: profileErr } = await supabase.from("master_profiles").upsert(
         {

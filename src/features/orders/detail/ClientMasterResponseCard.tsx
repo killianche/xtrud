@@ -20,6 +20,7 @@ import { useColorScheme } from "@/hooks/use-color-scheme";
 import { showActionMenu } from "@/lib/action-menu";
 import { trackEvent } from "@/lib/analytics";
 import { openExternalUrl } from "@/lib/open-link";
+import { dialPhone } from "@/lib/phone";
 import { CARD_SHADOW } from "@/lib/shadows";
 import { useThemeColors } from "@/lib/use-theme-color";
 import { normalizeWhatsappDigits, resolveWhatsappDigits } from "@/lib/whatsapp";
@@ -97,7 +98,7 @@ export function ClientMasterResponseCard({
   const masterPublic = useMasterPublicProfile(fetchContactsFor);
 
   const phoneRaw = rowHasContacts ? rowPhone : (masterPhone.data ?? null);
-  const phoneTel = phoneRaw?.replace(/[^\d+]/g, "") || null;
+  const phoneTel = dialPhone(phoneRaw);
   const phoneWa = rowHasContacts
     ? normalizeWhatsappDigits(rowWa)
     : resolveWhatsappDigits({

@@ -74,6 +74,7 @@ import { hapticSuccess } from "@/lib/haptics";
 import { cdnBlur, cdnImage } from "@/lib/image-cdn";
 import { getCityName } from "@/lib/location-config";
 import { openExternalUrl } from "@/lib/open-link";
+import { dialPhone } from "@/lib/phone";
 import { pluralizeReviews } from "@/lib/pluralize";
 import { promptAsync } from "@/lib/prompt";
 import { useAppWidth } from "@/lib/use-app-width";
@@ -138,7 +139,7 @@ export default function MasterPublicScreen() {
   const place = u?.district ? u.district : u?.city_id ? getCityName(u.city_id) : null;
   // Одна тихая строка фактов под оценкой: место и опыт.
   const facts = [place, experienceLabel(m?.experience_years)].filter(Boolean).join(" · ");
-  const phoneTel = masterPhone.data?.replace(/[^\d+]/g, "") || null;
+  const phoneTel = dialPhone(masterPhone.data);
   const phoneWa = resolveWhatsappDigits({
     whatsappPhone: m?.whatsapp_phone,
     whatsappSameAsPhone: m?.whatsapp_same_as_phone,

@@ -12,6 +12,7 @@ import { type QueryKey, useMutation, useQuery, useQueryClient } from "@tanstack/
 import { userRecordKey } from "@/features/auth/use-user-record";
 import { myCategoriesKey } from "@/features/master-categories/use-my-categories";
 import { portfolioKey } from "@/features/profile/use-my-portfolio";
+import { canonicalPhone } from "@/lib/phone";
 import { supabase } from "@/lib/supabase";
 import type { Tables } from "@/types/database";
 
@@ -107,8 +108,8 @@ export function useUpdateSpecialistContacts() {
     mutationFn: async ({ userId, contactPhone, whatsappPhone, whatsappSameAsPhone, linkUrl }) => {
       // Один вызов — оба поля в одной транзакции (0173).
       const { error } = await supabase.rpc("set_specialist_contacts", {
-        p_phone: contactPhone,
-        p_whatsapp: whatsappPhone,
+        p_phone: canonicalPhone(contactPhone),
+        p_whatsapp: canonicalPhone(whatsappPhone),
         p_same: whatsappSameAsPhone,
       });
       if (error) throw error;

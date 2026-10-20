@@ -16,7 +16,15 @@
  * Без живых предложений экран не открывается: выбирать некого, задание
  * закрывается после подтверждения (`orders/[id].tsx`, №344).
  * Заголовок-вопрос без подзаголовка (правило §G design-quality.md).
- * Контент предсказуемой высоты (2 карточки + сноска) → `fitToContents`.
+ *
+ * Выбор и подтверждение разделены (владелец, 2026-10-20, №347: «люди не
+ * понимают, что надо что-то кликать»). Было: строки без признаков выбора,
+ * белая группа на белом фоне — читались как текст, а касание сразу
+ * закрывало задание. Стало: серый фон шторки, строки — белые группы с
+ * пустым кружком справа (как выбор в Почте/Фото); касание только отмечает
+ * вариант, закрывает задание розовая «Закрыть задание» внизу — неактивна,
+ * пока ничего не выбрано. Список длиннее ~60% экрана прокручивается,
+ * кнопка остаётся видна. Высота — `fitToContents`.
  *
  * Handshake — `useCloseReasonPickerStore` + `router.back()`; экран заказа
  * слушает store и выполняет саму мутацию закрытия (пикер о сети не знает,
@@ -30,12 +38,14 @@
 
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { MinusCircle, UserCircle, X } from "phosphor-react-native";
-import { Pressable, View } from "react-native";
+import { useState } from "react";
+import { Pressable, ScrollView, useWindowDimensions, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
 import { Avatar } from "@/components/Avatar";
-import { InsetGroup, InsetRow } from "@/components/ui";
+import { Button, InsetGroup, InsetRow } from "@/components/ui";
 import { useCloseReasonPickerStore } from "@/features/orders/close-reason-picker-store";
+import { formatPrice } from "@/features/orders/order-schema";
 import type { CancelReason } from "@/features/orders/use-cancel-order";
 import { isPickableResponse, useOrderResponses } from "@/features/orders/use-order-responses";
 import { useThemeColors } from "@/lib/use-theme-color";
@@ -50,13 +60,22 @@ const SHEET_OPTIONS = {
   sheetGrabberVisible: true,
 };
 
+/** Выбранный вариант: ключ строки и что уйдёт в закрытие задания. */
+interface Choice {
+  key: string;
+  reason: CancelReason;
+  pickedMasterId: string | null;
+}
+
 export default function CloseReasonScreen() {
   const insets = useSafeAreaInsets();
+  const { height } = useWindowDimensions();
   const router = useRouter();
   const params = useLocalSearchParams<{ orderId?: string }>();
   const orderId = typeof params.orderId === "string" ? params.orderId : undefined;
   const setResult = useCloseReasonPickerStore((s) => s.setResult);
   const tc = useThemeColors(["mute"]);
+  const [choice, setChoice] = useState<Choice | null>(null);
 
   const close = () => router.back();
 
@@ -64,15 +83,20 @@ export default function CloseReasonScreen() {
   // Выбрать можно только из живых откликов: отозванный или скрытый — нет.
   const responders = (responsesQ.data ?? []).filter(isPickableResponse);
 
-  const pick = (reason: CancelReason, pickedMasterId: string | null = null) => {
-    if (orderId) setResult({ orderId, reason, pickedMasterId });
+  const confirm = () => {
+    if (!choice) return;
+    if (orderId) {
+      setResult({ orderId, reason: choice.reason, pickedMasterId: choice.pickedMasterId });
+    }
     close();
   };
+
+  const isChosen = (key: string) => choice?.key === key;
 
   return (
     <>
       <Stack.Screen options={SHEET_OPTIONS} />
-      <View className="bg-canvas w-full" style={{ paddingTop: insets.top }}>
+      <View className="bg-surface-page w-full" style={{ paddingTop: insets.top }}>
         {/* Header — тот же стиль, что у `PickerSheetPage` (bold title + close-X). */}
         <View className="flex-row items-center gap-3 px-5 py-3">
           <AppText
@@ -94,24 +118,33 @@ export default function CloseReasonScreen() {
           </Pressable>
         </View>
 
-        <View className="pb-6 pt-1">
+        <ScrollView
+          style={{ maxHeight: height * 0.6 }}
+          contentContainerStyle={{ paddingTop: 4 }}
+          accessibilityRole="radiogroup"
+        >
           {responders.length > 0 ? (
             <InsetGroup title="Предложили услуги">
               {responders.map((r, i) => {
                 const m = r.master;
                 const name =
                   [m?.first_name, m?.last_name].filter(Boolean).join(" ") || "Специалист";
+                const key = `r:${r.id}`;
                 return (
                   <InsetRow
                     key={r.id}
+                    radio
+                    selected={isChosen(key)}
                     title={name}
                     subtitle={
                       r.price_value
-                        ? `${r.price_value} ₽${r.lead_time ? ` · ${r.lead_time}` : ""}`
+                        ? `${formatPrice("fixed", r.price_value)}${r.lead_time ? ` · ${r.lead_time}` : ""}`
                         : (r.lead_time ?? undefined)
                     }
                     icon={<Avatar url={m?.avatar_url} name={name} seed={m?.id} size="sm" />}
-                    onPress={() => pick("found_master", m?.id ?? null)}
+                    onPress={() =>
+                      setChoice({ key, reason: "found_master", pickedMasterId: m?.id ?? null })
+                    }
                     last={i === responders.length - 1}
                   />
                 );
@@ -120,19 +153,33 @@ export default function CloseReasonScreen() {
           ) : null}
           <InsetGroup>
             <InsetRow
+              radio
+              selected={isChosen("elsewhere")}
               title="Нашёл в другом месте"
-              subtitle="Исполнитель не из предложений — задание закроется"
+              subtitle="Исполнитель не из предложений"
               icon={<UserCircle size={20} weight="bold" color={tc.mute} />}
-              onPress={() => pick("found_master", null)}
+              onPress={() =>
+                setChoice({ key: "elsewhere", reason: "found_master", pickedMasterId: null })
+              }
             />
             <InsetRow
+              radio
+              selected={isChosen("nobody")}
               title="Никто не подошёл"
               subtitle="Задание закроется без исполнителя"
               icon={<MinusCircle size={20} weight="bold" color={tc.mute} />}
-              onPress={() => pick("no_longer_needed")}
+              onPress={() =>
+                setChoice({ key: "nobody", reason: "no_longer_needed", pickedMasterId: null })
+              }
               last
             />
           </InsetGroup>
+        </ScrollView>
+
+        <View className="px-4 pt-1" style={{ paddingBottom: insets.bottom + 12 }}>
+          <Button variant="accent" size="lg" fullWidth disabled={!choice} onPress={confirm}>
+            Закрыть задание
+          </Button>
         </View>
       </View>
     </>

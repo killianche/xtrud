@@ -8,13 +8,17 @@
  * настроек (DECISION владельца 2026-09-07: «всё крупнее, как в iOS»).
  */
 
-import { CaretRight, Check, Info } from "phosphor-react-native";
+import { CaretRight, Check, CheckCircle, CircleIcon, Info } from "phosphor-react-native";
 import type { ReactNode } from "react";
 import { Pressable, Switch, View } from "react-native";
 import { AppText } from "@/components/AppText";
 import { hapticSelection } from "@/lib/haptics";
 import { useThemeColors } from "@/lib/use-theme-color";
+import type { IconComponent } from "@/types/icon";
 import { SystemIcon } from "./SystemIcon";
+
+/** Android/web: залитый кружок с галочкой — пара к SF `checkmark.circle.fill`. */
+const CheckCircleFill: IconComponent = (p) => <CheckCircle {...p} weight="fill" />;
 
 export function InsetGroup({
   title,
@@ -50,6 +54,12 @@ export interface InsetRowProps {
   selected?: boolean;
   /** Галочка справа без заливки строки — выбор в списке фильтров/настроек. */
   checked?: boolean;
+  /**
+   * Строка — вариант ответа: справа пустой кружок, у выбранной — залитый
+   * с галочкой (как выбор в Почте и Фото). Пустой кружок сразу говорит, что
+   * строку надо выбрать; подтверждает выбор отдельная кнопка экрана.
+   */
+  radio?: boolean;
   /** Строка ведёт дальше (chevron), а не выбирает. */
   navigates?: boolean;
   /** Справа — значок ⓘ: строка открывает пояснение, а не раздел. */
@@ -76,6 +86,7 @@ export function InsetRow({
   iconAccent = false,
   selected = false,
   checked = false,
+  radio = false,
   navigates = false,
   info = false,
   value,
@@ -91,8 +102,12 @@ export function InsetRow({
   const interactive = !!onPress && !toggle;
   return (
     <Pressable
-      accessibilityRole={toggle ? "switch" : "button"}
-      accessibilityState={{ selected: selected || checked, disabled, checked: toggle?.value }}
+      accessibilityRole={toggle ? "switch" : radio ? "radio" : "button"}
+      accessibilityState={{
+        selected: selected || checked,
+        disabled,
+        checked: toggle ? toggle.value : radio ? selected : undefined,
+      }}
       accessibilityLabel={
         accessibilityLabel ??
         (subtitle ? `${title}, ${subtitle}` : value ? `${title}, ${value}` : title)
@@ -161,6 +176,16 @@ export function InsetRow({
               size={22}
               weight="regular"
               color={tc.accent}
+            />
+          </View>
+        ) : radio ? (
+          <View className="ml-3">
+            <SystemIcon
+              sf={selected ? "checkmark.circle.fill" : "circle"}
+              fallback={selected ? CheckCircleFill : CircleIcon}
+              size={24}
+              weight="regular"
+              color={selected ? tc.accent : tc["hairline-strong"]}
             />
           </View>
         ) : navigates ? (

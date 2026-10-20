@@ -21,10 +21,11 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { CaretLeft, CheckCircle } from "phosphor-react-native";
 import { useEffect, useState } from "react";
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, View } from "react-native";
+import { Pressable, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
 import { Button, GlassButton, Input } from "@/components/ui";
+import { FormScrollView } from "@/components/ui/KeyboardAware";
 import { NavCircleButton } from "@/components/ui/LargeTitle";
 import { SystemIcon } from "@/components/ui/SystemIcon";
 import { SUPPORT_URL } from "@/features/auth/BannedScreen";
@@ -175,14 +176,12 @@ export default function ForgotPasswordScreen() {
 
   if (verified) {
     return (
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
+      <View
         className="flex-1 bg-canvas"
         style={{ paddingTop: insets.top, paddingBottom: insets.bottom }}
       >
-        <ScrollView
+        <FormScrollView
           contentContainerStyle={{ flexGrow: 1 }}
-          keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
           {back}
@@ -227,22 +226,17 @@ export default function ForgotPasswordScreen() {
               Сохранить и войти
             </Button>
           </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
+        </FormScrollView>
+      </View>
     );
   }
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
+    <View
       className="flex-1 bg-canvas"
       style={{ paddingTop: insets.top, paddingBottom: insets.bottom }}
     >
-      <ScrollView
-        contentContainerStyle={{ flexGrow: 1 }}
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
-      >
+      <FormScrollView contentContainerStyle={{ flexGrow: 1 }} showsVerticalScrollIndicator={false}>
         {back}
         <View className="flex-1 px-6">
           <AppText
@@ -363,8 +357,8 @@ export default function ForgotPasswordScreen() {
             </Pressable>
           )}
         </View>
-      </ScrollView>
+      </FormScrollView>
       {call.sheet}
-    </KeyboardAvoidingView>
+    </View>
   );
 }

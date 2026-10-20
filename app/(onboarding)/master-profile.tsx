@@ -2,10 +2,11 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, View } from "react-native";
+import { Pressable, type ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
 import { OnboardingProgress } from "@/components/OnboardingProgress";
+import { FormScrollView } from "@/components/ui/KeyboardAware";
 import { masterOnboardingFormDefaults } from "@/features/auth/master-onboarding-draft";
 import {
   type MasterProfileFormValues,
@@ -135,19 +136,14 @@ export default function MasterProfileScreen() {
     !profileDraftError;
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
-      className="flex-1 bg-canvas"
-      style={{ paddingTop: insets.top }}
-    >
+    <View className="flex-1 bg-canvas" style={{ paddingTop: insets.top }}>
       <View className="py-4">
         <OnboardingProgress step={1} total={3} onCancel={exitOnboarding} />
       </View>
 
-      <ScrollView
+      <FormScrollView
         ref={scrollRef}
         contentContainerStyle={{ paddingBottom: insets.bottom + 24 }}
-        keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
         <View className="px-6 pb-6">
@@ -204,7 +200,7 @@ export default function MasterProfileScreen() {
             </AppText>
           </Pressable>
         </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+      </FormScrollView>
+    </View>
   );
 }

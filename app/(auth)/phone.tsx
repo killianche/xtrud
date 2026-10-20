@@ -11,10 +11,11 @@ import { useLocalSearchParams, useNavigation, useRouter } from "expo-router";
 import { CaretLeft, Eye, EyeSlash } from "phosphor-react-native";
 import { useCallback, useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, View } from "react-native";
+import { Pressable, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
 import { Button, Input } from "@/components/ui";
+import { FormScrollView } from "@/components/ui/KeyboardAware";
 import { NavCircleButton } from "@/components/ui/LargeTitle";
 import { SystemIcon } from "@/components/ui/SystemIcon";
 import { ORDER_CREATE_RETURN_TO, parseAuthReturnTo } from "@/features/auth/auth-return";
@@ -160,14 +161,12 @@ export default function LoginScreen() {
   useBackGestureLock(isBusy);
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
+    <View
       className="flex-1 bg-canvas"
       style={{ paddingTop: insets.top, paddingBottom: insets.bottom }}
     >
-      <ScrollView
+      <FormScrollView
         contentContainerStyle={{ flexGrow: 1, justifyContent: "space-between" }}
-        keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
         <View className="px-6 pt-4">
@@ -315,7 +314,7 @@ export default function LoginScreen() {
             </Pressable>
           </View>
         </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+      </FormScrollView>
+    </View>
   );
 }

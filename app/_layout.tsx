@@ -9,6 +9,7 @@ import { StatusBar } from "expo-status-bar";
 import { useEffect, useState } from "react";
 import { AppState } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { KeyboardProvider } from "react-native-keyboard-controller";
 import { initialWindowMetrics, SafeAreaProvider } from "react-native-safe-area-context";
 import "react-native-reanimated";
 import { AppErrorBoundary } from "@/components/AppErrorBoundary";
@@ -40,6 +41,7 @@ export const unstable_settings = {
  *
  * Структура (сверху вниз):
  *   GestureHandlerRootView (RNGH требование)
+ *   └─ KeyboardProvider     ← события клавиатуры для форм (KeyboardAware.tsx, №348)
  *   └─ QueryClientProvider
  *      └─ SafeAreaProvider
  *         └─ AuthGate          ← маршрутизация по auth-state
@@ -276,50 +278,55 @@ export default function RootLayout() {
   return (
     <AppErrorBoundary>
       <GestureHandlerRootView style={{ flex: 1 }}>
-        <PersistQueryClientProvider
-          client={queryClient}
-          persistOptions={{
-            persister,
-            maxAge: PERSIST_MAX_AGE_MS,
-            dehydrateOptions: {
-              shouldDehydrateQuery: (q) =>
-                q.state.status === "success" && PERSISTED_QUERY_KEYS.has(String(q.queryKey[0])),
-            },
-          }}
-        >
-          {/* initialMetrics обязателен: без него SafeAreaContext держит insets
+        <KeyboardProvider>
+          <PersistQueryClientProvider
+            client={queryClient}
+            persistOptions={{
+              persister,
+              maxAge: PERSIST_MAX_AGE_MS,
+              dehydrateOptions: {
+                shouldDehydrateQuery: (q) =>
+                  q.state.status === "success" && PERSISTED_QUERY_KEYS.has(String(q.queryKey[0])),
+              },
+            }}
+          >
+            {/* initialMetrics обязателен: без него SafeAreaContext держит insets
               равными null и НЕ РЕНДЕРИТ дерево вообще, пока не придёт нативное
               событие вставок — это лишний пустой кадр на каждом холодном
               старте. initialWindowMetrics доступен синхронно. */}
-          <SafeAreaProvider initialMetrics={initialWindowMetrics}>
-            <AuthGate>
-              <NavHistoryTracker />
-              <Stack
-                screenOptions={{
-                  headerShown: false,
-                  // Системный push (docs/IOS_FOUNDATION.md §2 п.2): slide_from_right на iOS — мёртвая настройка.
-                  animation: "default",
-                  gestureEnabled: true,
-                  contentStyle: { backgroundColor: canvasColor },
-                }}
-              >
-                <Stack.Screen
-                  name="(tabs)"
-                  options={{ animation: "none", gestureEnabled: false }}
-                />
-                <Stack.Screen name="(onboarding)" options={{ gestureEnabled: false }} />
-                {/* Шторки «Категория» и «Место» «Найти задание» со своим стеком (№238). */}
-                <Stack.Screen name="(details)/find-category" options={{ presentation: "modal" }} />
-                <Stack.Screen name="(details)/find-place" options={{ presentation: "modal" }} />
-              </Stack>
-            </AuthGate>
-            <StatusBar style="auto" />
-            {/* Галочка над цифровой клавиатурой — одна на всё приложение. */}
-            <KeyboardDoneAccessory />
-            {/* Ввод причины на Android (promptAsync), №298. */}
-            <PromptHost />
-          </SafeAreaProvider>
-        </PersistQueryClientProvider>
+            <SafeAreaProvider initialMetrics={initialWindowMetrics}>
+              <AuthGate>
+                <NavHistoryTracker />
+                <Stack
+                  screenOptions={{
+                    headerShown: false,
+                    // Системный push (docs/IOS_FOUNDATION.md §2 п.2): slide_from_right на iOS — мёртвая настройка.
+                    animation: "default",
+                    gestureEnabled: true,
+                    contentStyle: { backgroundColor: canvasColor },
+                  }}
+                >
+                  <Stack.Screen
+                    name="(tabs)"
+                    options={{ animation: "none", gestureEnabled: false }}
+                  />
+                  <Stack.Screen name="(onboarding)" options={{ gestureEnabled: false }} />
+                  {/* Шторки «Категория» и «Место» «Найти задание» со своим стеком (№238). */}
+                  <Stack.Screen
+                    name="(details)/find-category"
+                    options={{ presentation: "modal" }}
+                  />
+                  <Stack.Screen name="(details)/find-place" options={{ presentation: "modal" }} />
+                </Stack>
+              </AuthGate>
+              <StatusBar style="auto" />
+              {/* Галочка над цифровой клавиатурой — одна на всё приложение. */}
+              <KeyboardDoneAccessory />
+              {/* Ввод причины на Android (promptAsync), №298. */}
+              <PromptHost />
+            </SafeAreaProvider>
+          </PersistQueryClientProvider>
+        </KeyboardProvider>
       </GestureHandlerRootView>
     </AppErrorBoundary>
   );

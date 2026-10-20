@@ -43,6 +43,7 @@
 
 import { forwardRef, type ReactNode, useState } from "react";
 import { Platform, TextInput, type TextInputProps, View } from "react-native";
+import { KeyboardController } from "react-native-keyboard-controller";
 import { AppText } from "@/components/AppText";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useThemeColors } from "@/lib/use-theme-color";
@@ -57,6 +58,11 @@ export interface InputProps extends Omit<TextInputProps, "style"> {
   label?: string;
   hint?: string;
   error?: string;
+  /**
+   * Клавиша ввода — «Далее»: курсор переходит в следующее поле экрана, а
+   * клавиатура остаётся открытой (как в формах крупных приложений, №348).
+   */
+  next?: boolean;
 }
 
 const SIZE_MAP: Record<InputSize, { minHeight: number; paddingX: number; textSize: number }> = {
@@ -80,6 +86,8 @@ export const Input = forwardRef<TextInput, InputProps>(function Input(
     editable = true,
     onFocus,
     onBlur,
+    next = false,
+    onSubmitEditing,
     ...props
   },
   ref,
@@ -132,8 +140,17 @@ export const Input = forwardRef<TextInput, InputProps>(function Input(
           cursorColor={tc.accent}
           keyboardAppearance={colorScheme === "dark" ? "dark" : "light"}
           clearButtonMode={clearButtonMode}
-          // У цифровой клавиатуры iOS нет Return — галочка над ней (2026-10-03).
-          inputAccessoryViewID={keyboardDoneId(props.keyboardType)}
+          // У цифровой клавиатуры iOS нет Return, а в многострочном поле Return
+          // переносит строку — галочка над клавиатурой (2026-10-03, №348).
+          inputAccessoryViewID={keyboardDoneId(props.keyboardType, props.multiline)}
+          // Однострочное поле: клавиша «Готово» (на Android — галочка) убирает
+          // клавиатуру; с `next` — «Далее» в следующее поле (№348).
+          returnKeyType={props.multiline ? undefined : next ? "next" : "done"}
+          submitBehavior={next ? "submit" : undefined}
+          onSubmitEditing={(e) => {
+            if (next) KeyboardController.setFocusTo("next");
+            onSubmitEditing?.(e);
+          }}
           {...props}
           onFocus={(e) => {
             setFocused(true);

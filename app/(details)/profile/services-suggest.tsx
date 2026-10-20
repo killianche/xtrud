@@ -26,6 +26,7 @@ import { useMemo, useState } from "react";
 import { Pressable, ScrollView, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
+import { FormScrollView, KEYBOARD_FIELD_GAP, KeyboardDocked } from "@/components/ui/KeyboardAware";
 import { keyboardDoneId } from "@/components/ui/KeyboardDone";
 import { useAuthSession } from "@/features/auth/use-auth-session";
 import {
@@ -40,6 +41,9 @@ import {
 } from "@/features/master-services/use-master-services";
 import { useSafeBack } from "@/lib/use-safe-back";
 import { useThemeColors } from "@/lib/use-theme-color";
+
+/** Высота нижней панели «Добавить N» над нижним отступом: 12 + 48 + 12. */
+const CTA_BAR_HEIGHT = 72;
 
 // 4 chip-варианта типа цены: точная / от / до / договорная. Совпадает с
 // `order_price_kind` по семантике (см. order-schema.ts), но pricing_kind для
@@ -231,7 +235,9 @@ export default function ServicesSuggestScreen() {
         <View className="w-10" />
       </View>
 
-      <ScrollView
+      <FormScrollView
+        // Поле цены держится над закреплённой кнопкой «Добавить N».
+        bottomOffset={CTA_BAR_HEIGHT + KEYBOARD_FIELD_GAP}
         contentContainerStyle={{
           paddingHorizontal: 20,
           paddingBottom: insets.bottom + 120,
@@ -412,35 +418,37 @@ export default function ServicesSuggestScreen() {
             <AppText className="text-caption text-error">{errorMsg}</AppText>
           </View>
         ) : null}
-      </ScrollView>
+      </FormScrollView>
 
-      {/* Sticky CTA */}
-      <View
-        className="absolute left-0 right-0 bg-canvas border-t border-t-hairline px-5 pt-3"
-        style={{ bottom: 0, paddingBottom: insets.bottom + 12 }}
-      >
-        <Pressable
-          accessibilityRole="button"
-          onPress={handleSave}
-          disabled={selectedCount === 0 || saving}
-          className={`flex-row items-center justify-center gap-2 h-12 rounded-pill active:opacity-80 ${
-            selectedCount === 0 || saving ? "bg-canvas-soft-2" : "bg-ink"
-          }`}
+      {/* Sticky CTA — встаёт над клавиатурой, пока вводится цена (№348). */}
+      <KeyboardDocked>
+        <View
+          className="absolute left-0 right-0 bg-canvas border-t border-t-hairline px-5 pt-3"
+          style={{ bottom: 0, paddingBottom: insets.bottom + 12 }}
         >
-          <AppText
-            weight="semibold"
-            className={`text-body-md ${
-              selectedCount === 0 || saving ? "text-mute" : "text-on-primary"
+          <Pressable
+            accessibilityRole="button"
+            onPress={handleSave}
+            disabled={selectedCount === 0 || saving}
+            className={`flex-row items-center justify-center gap-2 h-12 rounded-pill active:opacity-80 ${
+              selectedCount === 0 || saving ? "bg-canvas-soft-2" : "bg-ink"
             }`}
           >
-            {saving
-              ? "Сохраняем…"
-              : selectedCount === 0
-                ? "Выберите услуги"
-                : `Добавить ${selectedCount}`}
-          </AppText>
-        </Pressable>
-      </View>
+            <AppText
+              weight="semibold"
+              className={`text-body-md ${
+                selectedCount === 0 || saving ? "text-mute" : "text-on-primary"
+              }`}
+            >
+              {saving
+                ? "Сохраняем…"
+                : selectedCount === 0
+                  ? "Выберите услуги"
+                  : `Добавить ${selectedCount}`}
+            </AppText>
+          </Pressable>
+        </View>
+      </KeyboardDocked>
     </View>
   );
 }

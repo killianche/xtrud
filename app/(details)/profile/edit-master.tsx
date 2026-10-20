@@ -11,16 +11,10 @@ import { useFocusEffect, useRouter } from "expo-router";
 import { SignIn, User } from "phosphor-react-native";
 import { useCallback, useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
-import {
-  ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  View,
-} from "react-native";
+import { ActivityIndicator, Pressable, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
+import { FormScrollView } from "@/components/ui/KeyboardAware";
 import {
   type MasterProfileFormValues,
   masterProfileSchema,
@@ -156,11 +150,7 @@ export default function EditMasterScreen() {
   const onCancel = goBack;
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
-      className="flex-1 bg-canvas-soft"
-      style={{ paddingTop: insets.top }}
-    >
+    <View className="flex-1 bg-canvas-soft" style={{ paddingTop: insets.top }}>
       {/* Навбар «Отмена / Профиль мастера / Сохранить» — единый паттерн с
           edit-client (Lazyweb: Bluesky / Lawfully). Save закреплён сверху и
           всегда доступен — у мастера длинная форма, нижняя кнопка уезжала. */}
@@ -232,9 +222,8 @@ export default function EditMasterScreen() {
       )}
 
       {userId && !profileLoading && user && isMaster && masterProfile && (
-        <ScrollView
+        <FormScrollView
           contentContainerStyle={{ paddingBottom: insets.bottom + 24 }}
-          keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
           {/* Заголовок «Профиль мастера» — в навбаре сверху. Небольшой воздух. */}
@@ -274,9 +263,9 @@ export default function EditMasterScreen() {
               </AppText>
             </View>
           )}
-        </ScrollView>
+        </FormScrollView>
       )}
-    </KeyboardAvoidingView>
+    </View>
   );
 }
 

@@ -13,10 +13,11 @@
 import { useRouter } from "expo-router";
 import { CaretLeft } from "phosphor-react-native";
 import { useState } from "react";
-import { KeyboardAvoidingView, Platform, ScrollView, View } from "react-native";
+import { View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
 import { Button, Input } from "@/components/ui";
+import { FormScrollView } from "@/components/ui/KeyboardAware";
 import { NavCircleButton } from "@/components/ui/LargeTitle";
 import { SystemIcon } from "@/components/ui/SystemIcon";
 import { useCallConfirm } from "@/features/auth/CallConfirmSheet";
@@ -69,14 +70,12 @@ export default function WelcomeScreen() {
   };
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
+    <View
       className="flex-1 bg-canvas"
       style={{ paddingTop: insets.top, paddingBottom: insets.bottom }}
     >
-      <ScrollView
+      <FormScrollView
         contentContainerStyle={{ flexGrow: 1, justifyContent: "space-between" }}
-        keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
         <View className="px-6 pt-4">
@@ -150,8 +149,8 @@ export default function WelcomeScreen() {
             Номер нужен, чтобы клиенты и специалисты могли связаться друг с другом.
           </AppText>
         </View>
-      </ScrollView>
+      </FormScrollView>
       {call.sheet}
-    </KeyboardAvoidingView>
+    </View>
   );
 }

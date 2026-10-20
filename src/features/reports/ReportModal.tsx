@@ -15,16 +15,9 @@
 
 import { Check, X } from "phosphor-react-native";
 import { useState } from "react";
-import {
-  KeyboardAvoidingView,
-  Modal,
-  Platform,
-  Pressable,
-  ScrollView,
-  TextInput,
-  View,
-} from "react-native";
+import { Modal, Pressable, ScrollView, TextInput, View } from "react-native";
 import { AppText } from "@/components/AppText";
+import { FormKeyboardAvoidingView } from "@/components/ui/KeyboardAware";
 import { useAuthSession } from "@/features/auth/use-auth-session";
 import {
   REASON_LABELS,
@@ -86,10 +79,7 @@ export function ReportModal({ visible, targetType, targetId, onClose }: ReportMo
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={handleClose}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-        className="flex-1 items-center justify-center bg-black/50 px-6"
-      >
+      <FormKeyboardAvoidingView className="flex-1 items-center justify-center bg-black/50 px-6">
         <View className="w-full max-w-md rounded-2xl bg-canvas p-6">
           <View className="mb-1 flex-row items-start justify-between">
             <AppText weight="bold" className="flex-1 text-title-md text-ink">
@@ -193,7 +183,7 @@ export function ReportModal({ visible, targetType, targetId, onClose }: ReportMo
             </>
           )}
         </View>
-      </KeyboardAvoidingView>
+      </FormKeyboardAvoidingView>
     </Modal>
   );
 }

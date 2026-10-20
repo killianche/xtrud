@@ -2,16 +2,18 @@
  * FormScreen — экран одного вопроса или настройки вне конструктора задания
  * (профиль специалиста и т.п.): строка навигации без фона с круглой
  * стеклянной «назад», Title 1, содержимое под плавающую капсулу главного
- * действия, клавиатура поднимает кнопку. Отступ от чёлки обязателен.
+ * действия, клавиатура поднимает кнопку, а поле в фокусе держится над ней
+ * (`KeyboardAware.tsx`, №348). Отступ от чёлки обязателен.
  */
 
 import { CaretLeft } from "phosphor-react-native";
 import type { ReactNode } from "react";
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, View } from "react-native";
+import { Pressable, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
 import { useThemeColors } from "@/lib/use-theme-color";
 import { GLASS_BUTTON_HEIGHT, GlassButton } from "./GlassButton";
+import { FormScrollView, KEYBOARD_FIELD_GAP, KeyboardDocked } from "./KeyboardAware";
 import { NAV_BUTTON_SIZE, NAV_ROW_HEIGHT, NavCircleButton } from "./LargeTitle";
 import { SystemIcon } from "./SystemIcon";
 
@@ -58,10 +60,7 @@ export function FormScreen({
     : 0;
 
   return (
-    <KeyboardAvoidingView
-      className="flex-1 bg-surface-page"
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
-    >
+    <View className="flex-1 bg-surface-page">
       <View style={{ paddingTop: insets.top }}>
         <View
           className="flex-row items-center justify-between px-3"
@@ -90,10 +89,9 @@ export function FormScreen({
         </View>
       </View>
 
-      <ScrollView
+      <FormScrollView
         className="flex-1"
-        keyboardShouldPersistTaps="handled"
-        keyboardDismissMode="interactive"
+        bottomOffset={actionsHeight + KEYBOARD_FIELD_GAP}
         contentContainerStyle={{ paddingBottom: actionsHeight + bottomSpace + bottomInset + 24 }}
         showsVerticalScrollIndicator={false}
       >
@@ -106,43 +104,45 @@ export function FormScreen({
           ) : null}
         </View>
         {children}
-      </ScrollView>
+      </FormScrollView>
 
       {hasPrimary ? (
-        <View
-          pointerEvents="box-none"
-          className="absolute left-0 right-0 px-5"
-          style={{ bottom: bottomSpace }}
-        >
-          {error ? (
-            <AppText
-              accessibilityRole="alert"
-              className="mb-2 text-center text-ios-subheadline text-error"
-            >
-              {error}
-            </AppText>
-          ) : null}
-          {secondaryLabel && onSecondary ? (
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={secondaryLabel}
-              onPress={onSecondary}
-              disabled={busy}
-              className="mb-1 min-h-12 items-center justify-center active:opacity-60"
-            >
-              <AppText weight="medium" className="text-ios-body text-accent">
-                {secondaryLabel}
+        <KeyboardDocked>
+          <View
+            pointerEvents="box-none"
+            className="absolute left-0 right-0 px-5"
+            style={{ bottom: bottomSpace }}
+          >
+            {error ? (
+              <AppText
+                accessibilityRole="alert"
+                className="mb-2 text-center text-ios-subheadline text-error"
+              >
+                {error}
               </AppText>
-            </Pressable>
-          ) : null}
-          <GlassButton
-            label={primaryLabel ?? ""}
-            onPress={onPrimary ?? (() => undefined)}
-            disabled={primaryDisabled}
-            busy={busy}
-          />
-        </View>
+            ) : null}
+            {secondaryLabel && onSecondary ? (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={secondaryLabel}
+                onPress={onSecondary}
+                disabled={busy}
+                className="mb-1 min-h-12 items-center justify-center active:opacity-60"
+              >
+                <AppText weight="medium" className="text-ios-body text-accent">
+                  {secondaryLabel}
+                </AppText>
+              </Pressable>
+            ) : null}
+            <GlassButton
+              label={primaryLabel ?? ""}
+              onPress={onPrimary ?? (() => undefined)}
+              disabled={primaryDisabled}
+              busy={busy}
+            />
+          </View>
+        </KeyboardDocked>
       ) : null}
-    </KeyboardAvoidingView>
+    </View>
   );
 }

@@ -28,9 +28,10 @@ import { Image } from "expo-image";
 import { useLocalSearchParams } from "expo-router";
 import { CaretLeft, ImageSquare, Pencil, Plus, Trash } from "phosphor-react-native";
 import { useState } from "react";
-import { ActivityIndicator, Pressable, ScrollView, TextInput, View } from "react-native";
+import { ActivityIndicator, Pressable, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
+import { FormScrollView } from "@/components/ui/KeyboardAware";
 import { useAuthSession } from "@/features/auth/use-auth-session";
 import { useAddPortfolioItem, useDeletePortfolioItem } from "@/features/profile/use-my-portfolio";
 import {
@@ -265,7 +266,7 @@ export default function OwnerCaseDetailScreen() {
         </Pressable>
       </View>
 
-      <ScrollView
+      <FormScrollView
         contentContainerStyle={{
           paddingHorizontal: 16,
           paddingTop: 8,
@@ -473,7 +474,7 @@ export default function OwnerCaseDetailScreen() {
             </Pressable>
           </View>
         ) : null}
-      </ScrollView>
+      </FormScrollView>
     </View>
   );
 }

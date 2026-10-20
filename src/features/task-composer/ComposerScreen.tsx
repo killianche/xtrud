@@ -17,11 +17,12 @@
 
 import { CaretLeft, X } from "phosphor-react-native";
 import type { ReactNode, Ref } from "react";
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, View } from "react-native";
+import { Pressable, type ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
 import { BottomEdgeEffect } from "@/components/ui/BottomEdgeEffect";
 import { GLASS_BUTTON_HEIGHT, GlassButton } from "@/components/ui/GlassButton";
+import { FormScrollView, KEYBOARD_FIELD_GAP, KeyboardDocked } from "@/components/ui/KeyboardAware";
 import { NAV_BUTTON_SIZE, NAV_ROW_HEIGHT, NavCircleButton } from "@/components/ui/LargeTitle";
 import { SystemIcon } from "@/components/ui/SystemIcon";
 import { useAppFlags } from "@/features/settings/use-app-flags";
@@ -92,10 +93,7 @@ export function ComposerScreen({
     : PRIMARY_HEIGHT + (secondaryLabel ? 48 : 0) + (error || footnote ? 44 : 0);
 
   return (
-    <KeyboardAvoidingView
-      className="flex-1 bg-surface-page"
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
-    >
+    <View className="flex-1 bg-surface-page">
       <View style={{ paddingTop: insets.top }}>
         {/* minHeight, не height: подпись по центру растёт с крупным шрифтом
             (QA 2026-10-03) — ряд растёт вместе с ней. */}
@@ -151,11 +149,10 @@ export function ComposerScreen({
         </View>
       </View>
 
-      <ScrollView
+      <FormScrollView
         ref={scrollRef}
         className="flex-1"
-        keyboardShouldPersistTaps="handled"
-        keyboardDismissMode="interactive"
+        bottomOffset={actionsHeight + KEYBOARD_FIELD_GAP}
         contentContainerStyle={{ paddingBottom: actionsHeight + bottomSpace + 24 }}
         showsVerticalScrollIndicator={false}
       >
@@ -168,55 +165,58 @@ export function ComposerScreen({
           ) : null}
         </View>
         {children}
-      </ScrollView>
+      </FormScrollView>
 
-      {hideActions ? null : (
-        // Подложка под нижними кнопками: список уходит под них и растворяется
-        // в цвет фона, а не просвечивает сквозь неактивную кнопку (скриншот
-        // владельца 2026-10-03, «Далее» поверх «Джейрахского района»).
-        <BottomEdgeEffect solid={actionsHeight + bottomSpace + 8} />
-      )}
-      {hideActions ? null : (
-        <View
-          pointerEvents="box-none"
-          className="absolute left-0 right-0 px-5"
-          style={{ bottom: bottomSpace }}
-        >
-          {error ? (
-            <AppText
-              accessibilityRole="alert"
-              className="mb-2 text-center text-ios-subheadline text-error"
-            >
-              {error}
-            </AppText>
-          ) : footnote ? (
-            <AppText className="mb-2 text-center text-ios-subheadline text-mute">
-              {footnote}
-            </AppText>
-          ) : null}
-          {secondaryLabel && onSecondary ? (
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={secondaryLabel}
-              onPress={onSecondary}
-              disabled={busy}
-              className="mb-1 min-h-12 items-center justify-center active:opacity-60"
-            >
-              <AppText weight="medium" className="text-ios-body text-accent">
-                {secondaryLabel}
+      {/* Подложка и кнопки едут вверх вместе с клавиатурой (№348). */}
+      <KeyboardDocked>
+        {hideActions ? null : (
+          // Подложка под нижними кнопками: список уходит под них и растворяется
+          // в цвет фона, а не просвечивает сквозь неактивную кнопку (скриншот
+          // владельца 2026-10-03, «Далее» поверх «Джейрахского района»).
+          <BottomEdgeEffect solid={actionsHeight + bottomSpace + 8} />
+        )}
+        {hideActions ? null : (
+          <View
+            pointerEvents="box-none"
+            className="absolute left-0 right-0 px-5"
+            style={{ bottom: bottomSpace }}
+          >
+            {error ? (
+              <AppText
+                accessibilityRole="alert"
+                className="mb-2 text-center text-ios-subheadline text-error"
+              >
+                {error}
               </AppText>
-            </Pressable>
-          ) : null}
-          <GlassButton
-            label={primaryLabel}
-            onPress={onPrimary}
-            disabled={primaryDisabled}
-            inactive={primaryInactive}
-            accessibilityHint={primaryHint}
-            busy={busy}
-          />
-        </View>
-      )}
-    </KeyboardAvoidingView>
+            ) : footnote ? (
+              <AppText className="mb-2 text-center text-ios-subheadline text-mute">
+                {footnote}
+              </AppText>
+            ) : null}
+            {secondaryLabel && onSecondary ? (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={secondaryLabel}
+                onPress={onSecondary}
+                disabled={busy}
+                className="mb-1 min-h-12 items-center justify-center active:opacity-60"
+              >
+                <AppText weight="medium" className="text-ios-body text-accent">
+                  {secondaryLabel}
+                </AppText>
+              </Pressable>
+            ) : null}
+            <GlassButton
+              label={primaryLabel}
+              onPress={onPrimary}
+              disabled={primaryDisabled}
+              inactive={primaryInactive}
+              accessibilityHint={primaryHint}
+              busy={busy}
+            />
+          </View>
+        )}
+      </KeyboardDocked>
+    </View>
   );
 }

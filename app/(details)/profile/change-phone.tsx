@@ -35,16 +35,10 @@
 import { Stack, useRouter } from "expo-router";
 import { X } from "phosphor-react-native";
 import { useState } from "react";
-import {
-  ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  TextInput,
-  View,
-} from "react-native";
+import { ActivityIndicator, Pressable, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
+import { FormKeyboardAvoidingView } from "@/components/ui/KeyboardAware";
 import { keyboardDoneId } from "@/components/ui/KeyboardDone";
 import { SUPPORT_URL } from "@/features/auth/BannedScreen";
 import { useCallConfirm } from "@/features/auth/CallConfirmSheet";
@@ -136,8 +130,7 @@ export default function ChangePhoneScreen() {
   return (
     <>
       <Stack.Screen options={{ presentation: "modal", gestureEnabled: !isBusy }} />
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
+      <FormKeyboardAvoidingView
         className="flex-1 bg-canvas"
         // Отступ от чёлки обязателен на каждом экране (DECISION владельца
         // 2026-09-06). Внутри системной модалки inset маленький, на полном
@@ -235,7 +228,7 @@ export default function ChangePhoneScreen() {
           </Pressable>
         </View>
         {call.sheet}
-      </KeyboardAvoidingView>
+      </FormKeyboardAvoidingView>
     </>
   );
 }

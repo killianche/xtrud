@@ -67,6 +67,7 @@ export function RegisterFormFields({
                 autoCapitalize="words"
                 autoComplete="given-name"
                 textContentType="givenName"
+                next
                 autoFocus={autoFocusName}
                 editable={!isBusy}
                 error={errors.firstName?.message}
@@ -89,6 +90,7 @@ export function RegisterFormFields({
                 autoCapitalize="words"
                 autoComplete="family-name"
                 textContentType="familyName"
+                next
                 editable={!isBusy}
                 error={errors.lastName?.message}
               />
@@ -130,6 +132,7 @@ export function RegisterFormFields({
                   autoComplete="tel-national"
                   textContentType="telephoneNumber"
                   inputMode="tel"
+                  next
                   editable={!isBusy}
                   error={errors.phone?.message}
                 />

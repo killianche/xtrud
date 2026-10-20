@@ -32,9 +32,10 @@
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { Star, X } from "phosphor-react-native";
 import { useState } from "react";
-import { KeyboardAvoidingView, Platform, Pressable, TextInput, View } from "react-native";
+import { Pressable, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
+import { FormKeyboardAvoidingView } from "@/components/ui/KeyboardAware";
 import { useAuthSession } from "@/features/auth/use-auth-session";
 import { useSubmitMasterReview } from "@/features/reviews/use-reviews";
 import { showAlert } from "@/lib/alert";
@@ -112,8 +113,7 @@ export default function MasterReviewScreen() {
   return (
     <>
       <Stack.Screen options={SCREEN_OPTIONS} />
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
+      <FormKeyboardAvoidingView
         className="flex-1 bg-canvas"
         // Отступ от чёлки обязателен на каждом экране (DECISION владельца
         // 2026-09-06). Внутри системной модалки inset маленький, на полном
@@ -225,7 +225,7 @@ export default function MasterReviewScreen() {
             Один отзыв на задание. Будьте честны — отзывы видны всем клиентам.
           </AppText>
         </View>
-      </KeyboardAvoidingView>
+      </FormKeyboardAvoidingView>
     </>
   );
 }

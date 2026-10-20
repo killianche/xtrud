@@ -6,9 +6,10 @@
 
 import { Redirect, Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { XCircle } from "phosphor-react-native";
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, View } from "react-native";
+import { Pressable, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
+import { FormScrollView } from "@/components/ui/KeyboardAware";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { SystemIcon } from "@/components/ui/SystemIcon";
 import { useAuthSession } from "@/features/auth/use-auth-session";
@@ -44,11 +45,7 @@ export default function RespondRoute() {
   return (
     <>
       <Stack.Screen options={SHEET_OPTIONS} />
-      <KeyboardAvoidingView
-        className="flex-1 bg-surface-page"
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-        style={{ paddingTop: insets.top }}
-      >
+      <View className="flex-1 bg-surface-page" style={{ paddingTop: insets.top }}>
         <View className="flex-row items-start gap-3 px-4 pt-4 pb-2">
           <View className="min-w-0 flex-1 pt-0.5">
             <AppText weight="bold" className="text-ios-title1 text-ink" numberOfLines={1}>
@@ -77,8 +74,7 @@ export default function RespondRoute() {
             />
           </Pressable>
         </View>
-        <ScrollView
-          keyboardShouldPersistTaps="handled"
+        <FormScrollView
           keyboardDismissMode="interactive"
           contentContainerStyle={{ paddingTop: 8, paddingBottom: insets.bottom + 24 }}
           showsVerticalScrollIndicator={false}
@@ -104,8 +100,8 @@ export default function RespondRoute() {
               onDone={close}
             />
           )}
-        </ScrollView>
-      </KeyboardAvoidingView>
+        </FormScrollView>
+      </View>
     </>
   );
 }

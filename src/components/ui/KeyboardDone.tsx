@@ -8,7 +8,8 @@
  * которая появляется вместе с ней. Одна панель на всё приложение
  * (KeyboardDoneAccessory в app/_layout.tsx), поля ссылаются на неё по
  * KEYBOARD_DONE_ID. Input и ComposerField подключают её сами для
- * цифровых клавиатур; обычные TextInput — через keyboardDoneId().
+ * цифровых клавиатур и многострочных полей (№348); обычные TextInput — через
+ * keyboardDoneId().
  *
  * На Android у цифровой клавиатуры есть своя «готово», на вебе клавиатуры
  * нет — там ничего не рисуем.
@@ -35,10 +36,17 @@ const NO_RETURN_KEY: ReadonlySet<KeyboardTypeOptions> = new Set([
   "name-phone-pad",
 ] as KeyboardTypeOptions[]);
 
-/** ID панели для поля, у клавиатуры которого нет клавиши Return; иначе undefined. */
-export function keyboardDoneId(keyboardType: KeyboardTypeOptions | undefined): string | undefined {
-  if (Platform.OS !== "ios" || !keyboardType) return undefined;
-  return NO_RETURN_KEY.has(keyboardType) ? KEYBOARD_DONE_ID : undefined;
+/**
+ * ID панели для поля, клавиатуру которого клавишей не закрыть: цифровая (нет
+ * Return) или многострочное поле (Return переносит строку, №348); иначе undefined.
+ */
+export function keyboardDoneId(
+  keyboardType: KeyboardTypeOptions | undefined,
+  multiline = false,
+): string | undefined {
+  if (Platform.OS !== "ios") return undefined;
+  if (multiline) return KEYBOARD_DONE_ID;
+  return keyboardType && NO_RETURN_KEY.has(keyboardType) ? KEYBOARD_DONE_ID : undefined;
 }
 
 /** Панель над клавиатурой: справа — круглая кнопка с галочкой. Монтируется один раз. */

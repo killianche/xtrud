@@ -19,20 +19,12 @@
 import { useRouter } from "expo-router";
 import { Camera } from "phosphor-react-native";
 import { useEffect, useState } from "react";
-import {
-  ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  TextInput,
-  type TextInputProps,
-  View,
-} from "react-native";
+import { ActivityIndicator, Pressable, TextInput, type TextInputProps, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
 import { Avatar } from "@/components/Avatar";
 import { Skeleton } from "@/components/ui";
+import { FormScrollView } from "@/components/ui/KeyboardAware";
 import { UsernameField } from "@/features/auth/UsernameField";
 import { useAuthSession } from "@/features/auth/use-auth-session";
 import { useUserRecord } from "@/features/auth/use-user-record";
@@ -175,11 +167,7 @@ export default function EditClientScreen() {
   };
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
-      className="flex-1 bg-canvas-soft"
-      style={{ paddingTop: insets.top }}
-    >
+    <View className="flex-1 bg-canvas-soft" style={{ paddingTop: insets.top }}>
       {/* Header navbar — Cancel / Title / Save */}
       <View className="flex-row items-center justify-between border-b-hairline border-b bg-canvas px-4 py-3">
         <Pressable
@@ -219,10 +207,9 @@ export default function EditClientScreen() {
         </Pressable>
       </View>
 
-      <ScrollView
+      <FormScrollView
         contentContainerStyle={{ paddingBottom: insets.bottom + 32 }}
         showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
       >
         {/* ============================================================
             Фото профиля HERO — тап открывает меню «сменить/удалить».
@@ -401,8 +388,8 @@ export default function EditClientScreen() {
         {/* Секция «Где вы живёте» удалена 2026-05-16: личный город/район
             клиента не используется в продукте. Мастера прикрепляются к
             районам через master_service_areas. */}
-      </ScrollView>
-    </KeyboardAvoidingView>
+      </FormScrollView>
+    </View>
   );
 }
 

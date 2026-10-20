@@ -1,11 +1,12 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { DotsThree, Export, Star } from "phosphor-react-native";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, Share, View } from "react-native";
+import { Pressable, ScrollView, Share, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
 import { GLASS_BUTTON_HEIGHT, GlassButton, ScreenHeader, Skeleton } from "@/components/ui";
 import { BottomEdgeEffect } from "@/components/ui/BottomEdgeEffect";
+import { FormKeyboardAvoidingView } from "@/components/ui/KeyboardAware";
 import {
   useAdminHideOrder,
   useAdminSetUserStatus,
@@ -487,11 +488,7 @@ export default function OrderDetailScreen() {
   };
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
-      className="flex-1 bg-canvas"
-      style={{ paddingTop: insets.top }}
-    >
+    <FormKeyboardAvoidingView className="flex-1 bg-canvas" style={{ paddingTop: insets.top }}>
       {/* ScreenHeader без title — заголовок переехал в body (hero-display
           под status). Header содержит только back + ⋮ overflow-меню.
           Паттерн Instagram-post / Twitter-tweet: entity-page без title в
@@ -724,6 +721,6 @@ export default function OrderDetailScreen() {
           onClose={() => setReportOpen(false)}
         />
       )}
-    </KeyboardAvoidingView>
+    </FormKeyboardAvoidingView>
   );
 }

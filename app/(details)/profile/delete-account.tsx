@@ -33,9 +33,10 @@
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { X } from "phosphor-react-native";
 import { useState } from "react";
-import { KeyboardAvoidingView, Platform, Pressable, TextInput, View } from "react-native";
+import { Pressable, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
+import { FormKeyboardAvoidingView } from "@/components/ui/KeyboardAware";
 import { useDeleteMyAccount } from "@/features/auth/use-delete-account";
 import { signOut } from "@/lib/auth";
 import { describeServerError } from "@/lib/describe-server-error";
@@ -86,8 +87,7 @@ export default function DeleteAccountScreen() {
   return (
     <>
       <Stack.Screen options={{ presentation: "modal", gestureEnabled: !isBusy }} />
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
+      <FormKeyboardAvoidingView
         className="flex-1 bg-canvas"
         // Отступ от чёлки обязателен на каждом экране (DECISION владельца
         // 2026-09-06). Внутри системной модалки inset маленький, на полном
@@ -202,7 +202,7 @@ export default function DeleteAccountScreen() {
             </View>
           )}
         </View>
-      </KeyboardAvoidingView>
+      </FormKeyboardAvoidingView>
     </>
   );
 }

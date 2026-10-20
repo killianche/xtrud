@@ -88,6 +88,7 @@
     "react-hook-form": "^7.54.0",
     "react-native": "0.86.3",
     "react-native-gesture-handler": "~2.32.0",
+    "react-native-keyboard-controller": "1.21.9",
     "react-native-pager-view": "8.0.2",
     "react-native-reanimated": "4.5.1",
     "react-native-rustore-push": "file:vendor/react-native-rustore-push",

@@ -5,10 +5,11 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { CaretLeft, Eye, EyeSlash } from "phosphor-react-native";
 import { useState } from "react";
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, View } from "react-native";
+import { Pressable, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
 import { Button, Input } from "@/components/ui";
+import { FormScrollView } from "@/components/ui/KeyboardAware";
 import { NavCircleButton } from "@/components/ui/LargeTitle";
 import { SystemIcon } from "@/components/ui/SystemIcon";
 import { formatRuPhone } from "@/features/auth/RegisterFormFields";
@@ -43,14 +44,12 @@ export default function SignInScreen() {
   };
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
+    <View
       className="flex-1 bg-canvas"
       style={{ paddingTop: insets.top, paddingBottom: insets.bottom }}
     >
-      <ScrollView
+      <FormScrollView
         contentContainerStyle={{ flexGrow: 1, justifyContent: "space-between" }}
-        keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
         <View className="px-6 pt-4">
@@ -139,7 +138,7 @@ export default function SignInScreen() {
             Войти
           </Button>
         </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+      </FormScrollView>
+    </View>
   );
 }

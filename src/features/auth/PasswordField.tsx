@@ -52,7 +52,6 @@ export function PasswordField({
       editable={editable}
       autoFocus={autoFocus}
       onSubmitEditing={onSubmitEditing}
-      returnKeyType={onSubmitEditing ? "done" : undefined}
       error={error}
       rightIcon={
         <Pressable

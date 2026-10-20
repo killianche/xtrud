@@ -20,10 +20,11 @@ import { useLocalSearchParams, useNavigation, useRouter } from "expo-router";
 import { CaretLeft } from "phosphor-react-native";
 import { useCallback, useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, View } from "react-native";
+import { Pressable, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
 import { Button } from "@/components/ui";
+import { FormScrollView } from "@/components/ui/KeyboardAware";
 import { NavCircleButton } from "@/components/ui/LargeTitle";
 import { SystemIcon } from "@/components/ui/SystemIcon";
 import { ORDER_CREATE_RETURN_TO, parseAuthReturnTo } from "@/features/auth/auth-return";
@@ -193,16 +194,11 @@ export default function RegisterScreen() {
   const canSubmit = isValid && acceptedTerms && !isBusy;
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
+    <View
       className="flex-1 bg-canvas"
       style={{ paddingTop: insets.top, paddingBottom: insets.bottom }}
     >
-      <ScrollView
-        contentContainerStyle={{ flexGrow: 1 }}
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
-      >
+      <FormScrollView contentContainerStyle={{ flexGrow: 1 }} showsVerticalScrollIndicator={false}>
         <View className="flex-1 px-6 pt-4">
           <NavCircleButton label="Назад" onPress={goBack} disabled={isBusy}>
             <SystemIcon
@@ -290,8 +286,8 @@ export default function RegisterScreen() {
             </Pressable>
           </View>
         </View>
-      </ScrollView>
+      </FormScrollView>
       {register.sheet}
-    </KeyboardAvoidingView>
+    </View>
   );
 }

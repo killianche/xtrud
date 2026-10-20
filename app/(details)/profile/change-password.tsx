@@ -14,10 +14,11 @@
 import { Stack, useRouter } from "expo-router";
 import { CheckCircle, X } from "phosphor-react-native";
 import { useState } from "react";
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, View } from "react-native";
+import { Pressable, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
 import { Button } from "@/components/ui";
+import { FormScrollView } from "@/components/ui/KeyboardAware";
 import { useCallConfirm } from "@/features/auth/CallConfirmSheet";
 import { PasswordField } from "@/features/auth/PasswordField";
 import { fetchAuthOptions } from "@/features/auth/use-auth-options";
@@ -99,11 +100,7 @@ export default function ChangePasswordScreen() {
   return (
     <>
       <Stack.Screen options={{ presentation: "modal", gestureEnabled: !busy }} />
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-        className="flex-1 bg-canvas"
-        style={{ paddingTop: insets.top }}
-      >
+      <View className="flex-1 bg-canvas" style={{ paddingTop: insets.top }}>
         <View className="flex-row items-center gap-3 px-5 py-3">
           <AppText
             accessibilityRole="header"
@@ -146,10 +143,7 @@ export default function ChangePasswordScreen() {
             </Button>
           </View>
         ) : (
-          <ScrollView
-            contentContainerStyle={{ paddingBottom: insets.bottom + 24 }}
-            keyboardShouldPersistTaps="handled"
-          >
+          <FormScrollView contentContainerStyle={{ paddingBottom: insets.bottom + 24 }}>
             <View className="gap-4 px-5 pt-2">
               {resetToken ? (
                 <AppText className="text-ios-subheadline text-mute">
@@ -215,10 +209,10 @@ export default function ChangePasswordScreen() {
                 </Pressable>
               )}
             </View>
-          </ScrollView>
+          </FormScrollView>
         )}
         {call.sheet}
-      </KeyboardAvoidingView>
+      </View>
     </>
   );
 }

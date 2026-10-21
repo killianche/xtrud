@@ -12,7 +12,6 @@ export type {
   ComposerFormVariant,
   ComposerStartVariant,
   FindTilesVariant,
-  HomeVariant,
 } from "./app-flags";
 
 const DEFAULT_FLAGS: AppFlags = {
@@ -20,7 +19,6 @@ const DEFAULT_FLAGS: AppFlags = {
   requireLogin: false,
   composerStart: "quick",
   composerForm: "single",
-  homeVariant: "v2",
 };
 
 /** Флаги и признак, что ответ сервера уже есть (до него — не решаем). */

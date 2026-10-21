@@ -42,17 +42,6 @@ import { useRouter } from "expo-router";
 import { BellSimple, CaretDown, MapPin, User as UserIcon } from "phosphor-react-native";
 import { useEffect, useRef } from "react";
 import { Animated, Easing, Pressable, View } from "react-native";
-import Reanimated, {
-  Extrapolation,
-  interpolate,
-  Easing as REasing,
-  ReduceMotion,
-  type SharedValue,
-  useAnimatedStyle,
-  useSharedValue,
-  withRepeat,
-  withTiming,
-} from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
 import { Avatar } from "@/components/Avatar";
@@ -86,29 +75,7 @@ const ON_PHOTO_INK = "#0a0a0a"; // = surface-dark, одинаков в обеи�
 // Белый поверх фото — токен on-dark, одинаковый в обеих темах.
 const ON_PHOTO = lightColors["on-dark"];
 
-/** Медленный Ken Burns новой главной: 1 → 1.06 за 16 с и обратно (HOME_V2 §5.2). */
-const KEN_BURNS_SCALE = 1.06;
-const KEN_BURNS_MS = 16000;
-/** Запас фото сверху под параллакс: слой выше блока на эту долю высоты. */
-const PARALLAX_OVERSCAN = 0.22;
-/** Фото при прокрутке едет вниз на эту долю пути — «глубина» (HOME_V2 §5.1). */
-const PARALLAX_RATIO = 0.4;
-
-export function CinematicHero({
-  onCreateTask,
-  scrollY,
-  kenBurns = false,
-}: {
-  onCreateTask: () => void;
-  /**
-   * Прокрутка экрана (новая главная, №353): растяжение фото при оттягивании,
-   * параллакс и угасание заголовка при прокрутке. Без неё — прежний
-   * неподвижный герой (вариант classic, откат из админки).
-   */
-  scrollY?: SharedValue<number>;
-  /** Медленное «дыхание» фото — только новая главная. */
-  kenBurns?: boolean;
-}) {
+export function CinematicHero({ onCreateTask }: { onCreateTask: () => void }) {
   const insets = useSafeAreaInsets();
   const viewportWidth = useAppWidth();
   const _onAccentColor = useThemeColor("on-accent");
@@ -215,140 +182,51 @@ export function CinematicHero({
   const contentZone = Math.min(Math.round(heroWidth * 1.1), 552);
   const heroHeight = insets.top + contentZone;
 
-  // ── Движение новой главной (HOME_V2 §5.1–5.2, №353). Classic (без scrollY и
-  // kenBurns) получает тождественные стили и прежнюю обрезку блока. ──
-  const moving = scrollY !== undefined;
-  const overscan = moving ? Math.round(heroHeight * PARALLAX_OVERSCAN) : 0;
-  const kenBurnsScale = useSharedValue(1);
-  useEffect(() => {
-    if (!kenBurns || reducedMotion) {
-      kenBurnsScale.value = 1;
-      return;
-    }
-    kenBurnsScale.value = withRepeat(
-      withTiming(KEN_BURNS_SCALE, {
-        duration: KEN_BURNS_MS,
-        easing: REasing.inOut(REasing.sin),
-        reduceMotion: ReduceMotion.System,
-      }),
-      -1,
-      true,
-    );
-  }, [kenBurns, reducedMotion, kenBurnsScale]);
-
-  // Оттягивание вниз (y < 0): фото растягивается от нижнего края и заполняет
-  // зазор над блоком — как обложка альбома в «Музыке». Масштаб вокруг центра
-  // плюс сдвиг на y/2 держат нижний край на месте, а верхний — у края экрана.
-  const stretchStyle = useAnimatedStyle(() => {
-    const y = scrollY?.value ?? 0;
-    if (y >= 0 || reducedMotion) return { transform: [{ translateY: 0 }, { scale: 1 }] };
-    // Потолок — удвоение высоты (HOME_V2 §5.1): резкий рывок не раздувает фото.
-    const pull = Math.min(-y, heroHeight);
-    return { transform: [{ translateY: -pull / 2 }, { scale: 1 + pull / heroHeight }] };
-  });
-  // Прокрутка вверх (y > 0): фото отстаёт от содержимого — глубина; запас
-  // overscan сверху не даёт открыться пустоте. Плюс медленный Ken Burns.
-  const photoStyle = useAnimatedStyle(() => {
-    const y = scrollY?.value ?? 0;
-    const shift =
-      moving && !reducedMotion
-        ? interpolate(y, [0, overscan / PARALLAX_RATIO], [0, overscan], Extrapolation.CLAMP)
-        : 0;
-    return { transform: [{ translateY: shift }, { scale: kenBurnsScale.value }] };
-  });
-  // Заголовок и кнопка уходят чуть быстрее фото и гаснут к середине пути —
-  // при обратной прокрутке возвращаются (тот же путь, без отдельной анимации).
-  const contentStyle = useAnimatedStyle(() => {
-    const y = scrollY?.value ?? 0;
-    if (!moving || y <= 0) return { opacity: 1, transform: [{ translateY: 0 }] };
-    return {
-      opacity: interpolate(y, [0, heroHeight * 0.5], [1, 0], Extrapolation.CLAMP),
-      transform: [
-        {
-          translateY: reducedMotion
-            ? 0
-            : interpolate(y, [0, heroHeight], [0, -heroHeight * 0.12], Extrapolation.CLAMP),
-        },
-      ],
-    };
-  });
-
   return (
     <View>
       {/* ===== Full-bleed фото-блок: от верха экрана, скруглён снизу ===== */}
       <View
-        // Новая главная: обрезает сам слой фото (ниже), чтобы растяжение
-        // могло выйти за верх блока; classic — прежняя обрезка блока.
-        className={moving ? "relative" : "relative overflow-hidden rounded-b-[28px]"}
+        className="relative overflow-hidden rounded-b-[28px]"
         style={{ width: "100%", height: heroHeight }}
       >
-        <Reanimated.View
-          pointerEvents="none"
-          // Фото и градиенты — декор: VoiceOver их не обходит (QA №353).
-          accessibilityElementsHidden
-          importantForAccessibility="no-hide-descendants"
-          // Стили объектом, не className: NativeWind не красит Reanimated.View.
-          style={[
-            {
+        {/* N слоёв фото поверх друг друга. opacity управляется через native
+            driver — ноль re-render'ов на каждом кадре. */}
+        {HERO_PHOTOS.map((src, i) => (
+          <Animated.View
+            key={String(src)}
+            pointerEvents="none"
+            style={{
               position: "absolute",
               left: 0,
               right: 0,
               top: 0,
               bottom: 0,
-              overflow: "hidden",
-              borderBottomLeftRadius: 28,
-              borderBottomRightRadius: 28,
-            },
-            stretchStyle,
-          ]}
-        >
-          <Reanimated.View
-            pointerEvents="none"
-            style={[
-              { position: "absolute", left: 0, right: 0, top: -overscan, bottom: 0 },
-              photoStyle,
-            ]}
+              opacity: opacities[i],
+            }}
           >
-            {/* N слоёв фото поверх друг друга. opacity управляется через native
-            driver — ноль re-render'ов на каждом кадре. */}
-            {HERO_PHOTOS.map((src, i) => (
-              <Animated.View
-                key={String(src)}
-                pointerEvents="none"
-                style={{
-                  position: "absolute",
-                  left: 0,
-                  right: 0,
-                  top: 0,
-                  bottom: 0,
-                  opacity: opacities[i],
-                }}
-              >
-                <ExpoImage
-                  source={src}
-                  style={{ width: "100%", height: "100%" }}
-                  contentFit="cover"
-                  priority={i === 0 ? "high" : "normal"}
-                  cachePolicy="memory-disk"
-                />
-              </Animated.View>
-            ))}
-          </Reanimated.View>
+            <ExpoImage
+              source={src}
+              style={{ width: "100%", height: "100%" }}
+              contentFit="cover"
+              priority={i === 0 ? "high" : "normal"}
+              cachePolicy="memory-disk"
+            />
+          </Animated.View>
+        ))}
 
-          {/* Верхний градиент — читаемость логотипа/города на светлом небе фото. */}
-          <LinearGradient
-            colors={["rgba(0,0,0,0.42)", "transparent"]}
-            style={{ position: "absolute", left: 0, right: 0, top: 0, height: insets.top + 96 }}
-            pointerEvents="none"
-          />
-          {/* Нижний сильный градиент — под белый H1 + поиск. */}
-          <LinearGradient
-            colors={["transparent", "rgba(0,0,0,0.35)", "rgba(0,0,0,0.78)"]}
-            locations={[0, 0.5, 1]}
-            style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: "62%" }}
-            pointerEvents="none"
-          />
-        </Reanimated.View>
+        {/* Верхний градиент — читаемость логотипа/города на светлом небе фото. */}
+        <LinearGradient
+          colors={["rgba(0,0,0,0.42)", "transparent"]}
+          style={{ position: "absolute", left: 0, right: 0, top: 0, height: insets.top + 96 }}
+          pointerEvents="none"
+        />
+        {/* Нижний сильный градиент — под белый H1 + поиск. */}
+        <LinearGradient
+          colors={["transparent", "rgba(0,0,0,0.35)", "rgba(0,0,0,0.78)"]}
+          locations={[0, 0.5, 1]}
+          style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: "62%" }}
+          pointerEvents="none"
+        />
 
         {/* ── Шапка поверх фото ──
             Ряд 1: логотип слева, профиль справа. Профиль перенесён сюда из
@@ -448,14 +326,7 @@ export function CinematicHero({
 
         {/* ── Низ фото-блока: крупный H1 + главный conversion action ── */}
         {/* pb-7: место под розовое свечение кнопки — край блока его не режет. */}
-        <Reanimated.View
-          style={[
-            { position: "absolute", left: 0, right: 0, bottom: 0, paddingHorizontal: 16 },
-            // pb-7: место под розовое свечение кнопки — край блока его не режет.
-            { paddingBottom: 28 },
-            contentStyle,
-          ]}
-        >
+        <View className="absolute left-0 right-0 bottom-0 px-4 pb-7">
           <AppText
             accessibilityRole="header"
             weight="display"
@@ -468,7 +339,7 @@ export function CinematicHero({
           {/* Создание задания — единственное primary-действие клиентского
               hero; со световым бликом (владелец, 2026-10-03: «вау-эффект»). */}
           <CreateTaskButton onPress={onCreateTask} />
-        </Reanimated.View>
+        </View>
       </View>
     </View>
   );

@@ -107,18 +107,3 @@ describe("RPC_ALLOWLIST — заявка на значок «Большой оп
     expect(RPC_ALLOWLIST.has("notify_admins_badge_request")).toBe(false);
   });
 });
-
-// Флаги приложения (0228, 0229, 0253): переключатели админки открыты, доступ
-// проверяется в базе (is_admin_session()).
-describe("RPC_ALLOWLIST — флаги приложения", () => {
-  it("чтение флагов и переключатели открыты", () => {
-    for (const name of [
-      "get_app_flags",
-      "admin_set_composer_start",
-      "admin_set_composer_form",
-      "admin_set_home_variant",
-    ]) {
-      expect(RPC_ALLOWLIST.has(name), name).toBe(true);
-    }
-  });
-});

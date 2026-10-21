@@ -138,7 +138,6 @@ type Flags = {
   require_login?: boolean;
   composer_start?: string;
   composer_form?: string;
-  home_variant?: string;
 };
 
 /** Флаги приложения (0216/0217) — один запрос на обе карточки; при сбое —
@@ -167,7 +166,6 @@ function FlagCards() {
       <RequireLoginCard flags={flags} onChange={setFlags} />
       <ComposerStartCard flags={flags} onChange={setFlags} />
       <ComposerFormCard flags={flags} onChange={setFlags} />
-      <HomeVariantCard flags={flags} onChange={setFlags} />
     </>
   );
 }
@@ -283,62 +281,6 @@ function ComposerFormCard({
             { value: "steps", label: "По шагам" },
           ]}
           onChange={(v) => void change(v === "steps" ? "steps" : "single")}
-        />
-      )}
-    </div>
-  );
-}
-
-/** Главная приложения (флаг home_variant, 0253): новая главная с
- *  рекомендациями и анимациями или прежняя. Нужен, чтобы откатить новую
- *  главную без новой сборки. */
-function HomeVariantCard({
-  flags,
-  onChange,
-}: {
-  flags: Flags | null;
-  onChange: (f: Flags) => void;
-}) {
-  const { toast, confirm } = useFeedback();
-  const [busy, setBusy] = useState(false);
-  const current = flags ? (flags.home_variant === "classic" ? "classic" : "v2") : null;
-  const change = async (next: "v2" | "classic") => {
-    if (busy || next === current) return;
-    const ok = await confirm({
-      title: next === "v2" ? "Включить новую главную?" : "Вернуть прежнюю главную?",
-      text:
-        next === "v2"
-          ? "Главная приложения — новая, с рекомендациями и анимациями."
-          : "Главная приложения — прежняя, как до обновления.",
-      confirmLabel: next === "v2" ? "Включить" : "Вернуть",
-    });
-    if (ok === null) return;
-    setBusy(true);
-    try {
-      onChange({ ...flags, ...(await api.setHomeVariant(next)) });
-      toast(next === "v2" ? "Включена новая главная" : "Возвращена прежняя главная");
-    } catch (e) {
-      toast(e instanceof Error ? e.message : "Не удалось сохранить", true);
-    } finally {
-      setBusy(false);
-    }
-  };
-  return (
-    <div className="card stack" style={{ maxWidth: 520 }}>
-      <p className="mono-eyebrow">Главная</p>
-      <p className="body-md text-mute" style={{ margin: 0 }}>
-        Действует для новой версии приложения при следующем запуске.
-      </p>
-      {current === null ? (
-        <SkeletonRows count={1} height={36} />
-      ) : (
-        <Segmented
-          value={current}
-          options={[
-            { value: "v2", label: "Новая" },
-            { value: "classic", label: "Прежняя" },
-          ]}
-          onChange={(v) => void change(v === "classic" ? "classic" : "v2")}
         />
       )}
     </div>

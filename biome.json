@@ -25,7 +25,10 @@
       "!**/expo-env.d.ts",
       "!**/nativewind-env.d.ts",
       "!src/types/database.ts",
-      "!vendor"
+      "!vendor",
+      "!.claude/skills",
+      "!.agents/skills",
+      "!skills-lock.json"
     ]
   },
   "formatter": {

@@ -1,6 +1,12 @@
 {
   "version": 1,
   "skills": {
+    "animation-principles": {
+      "source": "iart-ai/motion-design-skills",
+      "sourceType": "github",
+      "skillPath": "skills/animation-principles/SKILL.md",
+      "computedHash": "140b00a44e08aa7649fb1cce1c48670ff2e76f3889fbac0b5311cc5bb818d7b7"
+    },
     "eas-app-stores": {
       "source": "expo/skills",
       "sourceType": "github",
@@ -48,6 +54,12 @@
       "sourceType": "github",
       "skillPath": "skills/frontend-design/SKILL.md",
       "computedHash": "89496d5dd00f4810205f351759594fc2742bf8eea85a2f2b2d1de59f4bd91576"
+    },
+    "hallmark": {
+      "source": "Nutlope/hallmark",
+      "sourceType": "github",
+      "skillPath": "skills/hallmark/SKILL.md",
+      "computedHash": "579f86b27cdd7eb972107f7aecedd537f472891c5fd7c7c821bea15f64e0fe86"
     },
     "impeccable": {
       "source": "pbakaus/impeccable",

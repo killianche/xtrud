@@ -39,7 +39,16 @@ function pickVariety(rows: OrderWithRefs[], max: number): OrderWithRefs[] {
   return out;
 }
 
-export function ActiveOrdersShowcase({ userId }: { userId: string | undefined }) {
+export function ActiveOrdersShowcase({
+  userId,
+  l2Ids = null,
+}: {
+  userId: string | undefined;
+  /** Персонализация главной v2 (docs/HOME_V2_2026-10.md §4.2): свои категории
+   *  специалиста, иначе `null` — без фильтра, как раньше. Classic-главная
+   *  этот проп не передаёт, поведение не меняется. */
+  l2Ids?: string[] | null;
+}) {
   const router = useRouter();
   const accentColor = useThemeColor("accent");
 
@@ -49,7 +58,7 @@ export function ActiveOrdersShowcase({ userId }: { userId: string | undefined })
     error,
     refetch,
     isRefetching,
-  } = useAllOpenOrders({ userId, l2Ids: null });
+  } = useAllOpenOrders({ userId, l2Ids });
 
   const items = useMemo(
     () =>
@@ -69,7 +78,7 @@ export function ActiveOrdersShowcase({ userId }: { userId: string | undefined })
   return (
     <View className="mt-10">
       <View className="flex-row items-end justify-between px-5">
-        <AppText weight="bold" className="text-display-sm text-ink">
+        <AppText accessibilityRole="header" weight="bold" className="text-display-sm text-ink">
           Актуальные задания
         </AppText>
         {items.length > 0 ? (

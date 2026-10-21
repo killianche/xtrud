@@ -53,6 +53,8 @@ export const RPC_ALLOWLIST = new Set([
   "admin_set_composer_start",
   // Форма задания одним экраном (0229, №249): внутри проверка is_admin_session().
   "admin_set_composer_form",
+  // Флаг отката новой главной (0253): внутри проверка is_admin_session().
+  "admin_set_home_variant",
   "admin_list_reports",
   "admin_resolve_report",
   // Заявки «Забыли пароль?» (0214); проверка админа — внутри функций.

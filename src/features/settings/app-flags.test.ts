@@ -8,12 +8,14 @@ describe("parseAppFlags", () => {
       requireLogin: false,
       composerStart: "quick",
       composerForm: "single",
+      homeVariant: "v2",
     });
     expect(parseAppFlags(null)).toEqual({
       findTiles: "grid",
       requireLogin: false,
       composerStart: "quick",
       composerForm: "single",
+      homeVariant: "v2",
     });
   });
   it("мозаика и обязательный вход — только явным значением", () => {
@@ -22,12 +24,14 @@ describe("parseAppFlags", () => {
       requireLogin: true,
       composerStart: "quick",
       composerForm: "single",
+      homeVariant: "v2",
     });
     expect(parseAppFlags({ find_tiles: "list", require_login: "true" })).toEqual({
       findTiles: "grid",
       requireLogin: false,
       composerStart: "quick",
       composerForm: "single",
+      homeVariant: "v2",
     });
   });
   it('прежний каталог первым экраном — только явным "catalog" (откат №242)', () => {
@@ -39,5 +43,11 @@ describe("parseAppFlags", () => {
     expect(parseAppFlags({ composer_form: "steps" }).composerForm).toBe("steps");
     expect(parseAppFlags({ composer_form: "single" }).composerForm).toBe("single");
     expect(parseAppFlags({ composer_form: "other" }).composerForm).toBe("single");
+  });
+  it('новая главная (№353) — умолчание "v2", откат — только явным "classic"', () => {
+    expect(parseAppFlags({}).homeVariant).toBe("v2");
+    expect(parseAppFlags({ home_variant: "classic" }).homeVariant).toBe("classic");
+    expect(parseAppFlags({ home_variant: "v2" }).homeVariant).toBe("v2");
+    expect(parseAppFlags({ home_variant: "old" }).homeVariant).toBe("v2");
   });
 });

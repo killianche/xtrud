@@ -9,6 +9,8 @@ export type ComposerStartVariant = "quick" | "catalog";
  * (`review.tsx` становится формой) или прежний один вопрос на экран.
  */
 export type ComposerFormVariant = "steps" | "single";
+/** Главная (0253, №353): новая с рекомендациями или прежняя — откат из админки. */
+export type HomeVariant = "v2" | "classic";
 
 export interface AppFlags {
   findTiles: FindTilesVariant;
@@ -18,6 +20,8 @@ export interface AppFlags {
   composerStart: ComposerStartVariant;
   /** Откат на пошаговые экраны — "steps" из админки; нет ключа — форма. */
   composerForm: ComposerFormVariant;
+  /** Откат на прежнюю главную — "classic" из админки; нет ключа — новая. */
+  homeVariant: HomeVariant;
 }
 
 export function parseAppFlags(raw: unknown): AppFlags {
@@ -26,11 +30,13 @@ export function parseAppFlags(raw: unknown): AppFlags {
     require_login?: unknown;
     composer_start?: unknown;
     composer_form?: unknown;
+    home_variant?: unknown;
   };
   return {
     findTiles: r.find_tiles === "mosaic" ? "mosaic" : "grid",
     requireLogin: r.require_login === true,
     composerStart: r.composer_start === "catalog" ? "catalog" : "quick",
     composerForm: r.composer_form === "steps" ? "steps" : "single",
+    homeVariant: r.home_variant === "classic" ? "classic" : "v2",
   };
 }

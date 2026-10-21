@@ -383,6 +383,9 @@
 | 349 | Владелец (2026-10-20): после №347 и №348 выложить в App Store и Google Play | ✅ 1.0.6 уже была в App Store → версия 1.0.7: iOS 166 VALID, в TestFlight и подана в App Store (WAITING_FOR_REVIEW); Android 38 в Google Play production |
 | 350 | Владелец (2026-10-20): «делай» — закоммитить установленные скилы (`.claude/skills/*`, `skills-lock.json`) | ✅ закоммичено |
 | 351 | Владелец (2026-10-20): проверить, всё ли сделано и выложено в App Store, Google Play и TestFlight | ✅ проверено: App Store 1.0.7 WAITING_FOR_REVIEW; TestFlight 166 внутр. READY, внешн. на бета-проверке; Play production 1.0.7 (38) отправлен; открыты №305/315 (пароль Gmail) и №336 (RuStore) |
+| 352 | Владелец (2026-10-20): подключить скилы с GitHub и официальные Anthropic — дизайн, разработка приложений, анимация | ✅ поставлены hallmark (Nutlope/hallmark) и animation-principles (iart-ai/motion-design-skills); официальные Anthropic frontend-design, webapp-testing, skill-creator уже стоят; iOS/Swift-скилы не подходят (проект Expo/RN) |
+| 353 | Владелец (2026-10-20): главная xtrud — переделать как у подобных компаний, с рекомендациями, продуманная; анимации с «вау-эффектом» | ⏳ документ docs/HOME_V2_2026-10.md (designer); реализация — implementer; затем qa → reviewer. Разделы НЕ возвращать (владелец 2026-10-21) |
+| 354 | Владелец (2026-10-20): выложить в TestFlight с возможностью отката | ⏳ 0253 применена (копия pre-0253-20261021T060038Z.dump, пробный прогон с откатом, ревью security «можно»), API отдаёт home_variant=v2; выкладка xtrud-api и админки с переключателем заблокирована автодоступом — нужно разрешение владельца; сборка — после QA |
 
 ## 🚧 Этап 6 — план улучшения по аудиту 2026-09-22
 

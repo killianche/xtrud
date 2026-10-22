@@ -8,18 +8,21 @@
  * самостоятельная отменяемая целиком задача с вводом текста →
  * `presentation: "modal"`.
  *
- * Отзыв — только по завершённому заданию, где этот специалист был выбран
- * исполнителем (DECISION владельца 2026-09-13, 0196): `orderId` приходит
- * параметром с экрана задания или профиля. Лимит «один отзыв в три дня»
- * снят (DECISION владельца 2026-09-13, 0198): по одному заданию — один отзыв.
+ * Два режима по наличию `orderId` (0254, №356):
+ * - по заданию (DECISION владельца 2026-09-13, 0196): `orderId` приходит
+ *   параметром с экрана задания или профиля; текст необязателен (0198), лимит
+ *   «один отзыв в три дня» снят — по одному заданию один отзыв;
+ * - без задания: `orderId` не передан, текст обязателен (от 20 символов —
+ *   «★5 без слов» дешевле всего накрутить), в рейтинг не идёт и может уйти
+ *   «на проверку» вместо немедленной публикации.
  *
  * `authorId` берётся из своей сессии (`useAuthSession`), а не параметром —
  * это PII текущего пользователя, ему незачем идти через URL. `masterId` /
  * `masterName` приходят параметрами (нужны для RPC и копирайта, `master/[id]`
- * их уже знает). Мутация (`useSubmitMasterReview`) сама инвалидирует
- * recent-review / master-profile / master-reviews queries на success — round-
- * trip результата через store не нужен (та же логика, что у `create-case` /
- * `change-phone`).
+ * их уже знает). Мутации (`useSubmitMasterReview` / `useSubmitDirectReview`)
+ * сами инвалидируют recent-review / master-profile / master-reviews queries
+ * на success — round-trip результата через store не нужен (та же логика, что
+ * у `create-case` / `change-phone`).
  *
  * Приватный route (авторизация обязательна) — не в `PUBLIC_DETAIL_ROUTES`,
  * хотя родительский `master/[id]` публичный: анонимный deep link уводит на
@@ -31,22 +34,26 @@
 
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { Star, X } from "phosphor-react-native";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Pressable, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppText } from "@/components/AppText";
 import { FormKeyboardAvoidingView } from "@/components/ui/KeyboardAware";
 import { useAuthSession } from "@/features/auth/use-auth-session";
-import { useSubmitMasterReview } from "@/features/reviews/use-reviews";
+import {
+  directReviewCounterMax,
+  isDirectReviewTextValid,
+  MAX_REVIEW_TEXT_LENGTH,
+} from "@/features/reviews/direct-review";
+import { useSubmitDirectReview, useSubmitMasterReview } from "@/features/reviews/use-reviews";
 import { showAlert } from "@/lib/alert";
 import { useThemeColors } from "@/lib/use-theme-color";
+import { useUnsavedChangesGuard } from "@/lib/use-unsaved-changes-guard";
 
 // Константа модуля: объект, создаваемый на каждый рендер, заставлял систему
 // переоткрывать модалку (владелец, 2026-09-07: «кликаешь на отзыв — снова
 // открывает эту же страницу»).
 const SCREEN_OPTIONS = { presentation: "modal" as const };
-
-const MAX_TEXT_LENGTH = 500;
 
 function ratingLabel(rating: number): string {
   switch (rating) {
@@ -74,8 +81,9 @@ export default function MasterReviewScreen() {
     orderId?: string;
   }>();
   const masterId = typeof params.masterId === "string" ? params.masterId : undefined;
-  // Задание, по которому отзыв (0196): без него сервер отзыв не примет.
+  // Задание, по которому отзыв (0196): нет — значит отзыв без задания (0254).
   const orderId = typeof params.orderId === "string" ? params.orderId : undefined;
+  const isDirectMode = !orderId;
   const masterName = params.masterName || "Специалист";
   const { session } = useAuthSession();
   const authorId = session?.user?.id;
@@ -84,28 +92,69 @@ export default function MasterReviewScreen() {
   const [rating, setRating] = useState(0);
   const [text, setText] = useState("");
   const [serverError, setServerError] = useState<string | null>(null);
-  const submit = useSubmitMasterReview(authorId);
+  const submitOrder = useSubmitMasterReview(authorId);
+  const submitDirect = useSubmitDirectReview(authorId);
+  const pending = isDirectMode ? submitDirect.isPending : submitOrder.isPending;
 
-  const canSubmit = !!masterId && !!orderId && rating >= 1 && rating <= 5 && !submit.isPending;
+  const canSubmit =
+    !!masterId &&
+    rating >= 1 &&
+    rating <= 5 &&
+    !pending &&
+    (isDirectMode ? isDirectReviewTextValid(text) : true);
+
+  // Итог отправки: экран закрывается эффектом после рендера, когда защита
+  // от потери ввода уже знает, что всё отправлено (QA №356).
+  const [done, setDone] = useState<{ title: string; message: string } | null>(null);
+  useUnsavedChangesGuard({
+    hasUnsavedChanges: !done && (rating > 0 || text.trim().length > 0),
+    isBusy: pending && !done,
+    title: "Отзыв не отправлен",
+    message: "Закрыть без отправки?",
+  });
 
   const close = () => router.back();
 
+  useEffect(() => {
+    if (!done) return;
+    router.back();
+    showAlert(done.title, done.message);
+  }, [done, router]);
+
   const handleSubmit = () => {
-    if (!canSubmit || !masterId || !orderId) return;
+    if (!canSubmit || !masterId) return;
     setServerError(null);
-    submit.mutate(
+    const onError = (e: unknown) => {
+      // RPC возвращает понятный текст: «Вы уже оставили отзыв» /
+      // «Можно оставить отзыв только специалисту». Показываем как есть.
+      const msg = e instanceof Error ? e.message : "Не удалось отправить отзыв";
+      setServerError(msg);
+    };
+    if (isDirectMode) {
+      submitDirect.mutate(
+        { targetId: masterId, rating, text },
+        {
+          onSuccess: (result) => {
+            setDone(
+              result.status === "visible"
+                ? { title: "Отзыв опубликован", message: "Он уже виден на странице специалиста." }
+                : {
+                    title: "Отзыв появится после проверки",
+                    message: "Мы проверим его и опубликуем, если всё в порядке.",
+                  },
+            );
+          },
+          onError,
+        },
+      );
+      return;
+    }
+    if (!orderId) return;
+    submitOrder.mutate(
       { targetId: masterId, orderId, rating, text },
       {
-        onSuccess: () => {
-          close();
-          showAlert("Отзыв отправлен", "Спасибо за оценку.");
-        },
-        onError: (e) => {
-          // RPC возвращает понятный текст: «Вы уже оставили отзыв» /
-          // «Можно оставить отзыв только специалисту». Показываем как есть.
-          const msg = e instanceof Error ? e.message : "Не удалось отправить отзыв";
-          setServerError(msg);
-        },
+        onSuccess: () => setDone({ title: "Отзыв отправлен", message: "Спасибо за оценку." }),
+        onError,
       },
     );
   };
@@ -127,11 +176,11 @@ export default function MasterReviewScreen() {
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Закрыть"
-            disabled={submit.isPending}
+            disabled={pending}
             onPress={close}
             hitSlop={10}
             className={`h-9 w-9 items-center justify-center rounded-full active:bg-canvas-soft ${
-              submit.isPending ? "opacity-40" : ""
+              pending ? "opacity-40" : ""
             }`}
           >
             <X size={22} weight="bold" color={tc.mute} />
@@ -146,6 +195,11 @@ export default function MasterReviewScreen() {
             </AppText>
             .
           </AppText>
+          {isDirectMode ? (
+            <AppText className="mt-1 text-caption text-mute">
+              Без задания — отзыв не влияет на рейтинг специалиста.
+            </AppText>
+          ) : null}
 
           {/* Звёзды — крупные tap-targets, чтобы тап точно попадал. */}
           <View className="mt-6 flex-row items-center justify-center gap-3">
@@ -177,24 +231,28 @@ export default function MasterReviewScreen() {
             </AppText>
           ) : null}
 
-          {/* Текст (опц.) — placeholder поясняет что писать. */}
+          {/* Текст — по заданию опционален (placeholder поясняет что писать);
+              без задания обязателен от 20 символов (0254, раздел 2 правило 5). */}
           <View className="mt-6">
             <View className="flex-row items-center justify-between">
               <AppText weight="medium" className="text-caption text-mute">
-                Комментарий (необязательно)
+                {isDirectMode ? "Комментарий" : "Комментарий (необязательно)"}
               </AppText>
               <AppText weight="mono" className="text-mono-caption text-mute">
-                {text.length} / {MAX_TEXT_LENGTH}
+                {isDirectMode ? text.trim().length : text.length} /{" "}
+                {isDirectMode ? directReviewCounterMax(text.trim().length) : MAX_REVIEW_TEXT_LENGTH}
               </AppText>
             </View>
             <TextInput
               value={text}
-              onChangeText={(v) => setText(v.slice(0, MAX_TEXT_LENGTH))}
-              placeholder="Расскажите, как прошла работа"
+              onChangeText={(v) => setText(v.slice(0, MAX_REVIEW_TEXT_LENGTH))}
+              placeholder={
+                isDirectMode ? "Расскажите, как специалист помог" : "Расскажите, как прошла работа"
+              }
               placeholderTextColor={tc["muted-soft"]}
               multiline
               numberOfLines={5}
-              editable={!submit.isPending}
+              editable={!pending}
               className="mt-2 min-h-[120px] rounded-md border border-hairline bg-canvas px-3 py-3 text-body-md text-ink"
               style={{ textAlignVertical: "top" }}
             />
@@ -217,12 +275,14 @@ export default function MasterReviewScreen() {
             }`}
           >
             <AppText weight="semibold" className="text-button-lg text-on-primary">
-              {submit.isPending ? "Отправляем…" : "Отправить отзыв"}
+              {pending ? "Отправляем…" : "Отправить отзыв"}
             </AppText>
           </Pressable>
 
           <AppText className="mt-4 text-caption text-mute text-center">
-            Один отзыв на задание. Будьте честны — отзывы видны всем клиентам.
+            {isDirectMode
+              ? "Один отзыв без задания одному специалисту. Будьте честны — отзывы видны всем."
+              : "Один отзыв на задание. Будьте честны — отзывы видны всем клиентам."}
           </AppText>
         </View>
       </FormKeyboardAvoidingView>

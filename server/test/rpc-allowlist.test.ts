@@ -107,3 +107,24 @@ describe("RPC_ALLOWLIST — заявка на значок «Большой оп
     expect(RPC_ALLOWLIST.has("notify_admins_badge_request")).toBe(false);
   });
 });
+
+// Отзыв без задания и «Подозрительные» (0254, №356,
+// docs/REVIEWS_WITHOUT_ORDER_2026-10.md). Доступ проверяют сами функции:
+// submit_direct_review — только authenticated, админские — is_staff_session().
+describe("RPC_ALLOWLIST — отзыв без задания (0254)", () => {
+  it("отзыв без задания и списки админки открыты", () => {
+    for (const name of [
+      "submit_direct_review",
+      "submit_master_review",
+      "admin_list_flagged_reviews",
+      "admin_list_suspicious_specialists",
+      "admin_set_review_status",
+    ]) {
+      expect(RPC_ALLOWLIST.has(name), name).toBe(true);
+    }
+  });
+
+  it("триггерная функция истории токенов не открыта", () => {
+    expect(RPC_ALLOWLIST.has("trg_notification_token_history")).toBe(false);
+  });
+});

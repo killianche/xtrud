@@ -4,6 +4,8 @@
 // - useSubmitMasterReview: отзыв специалисту по завершённому заданию (0196).
 // - useReviewableOrderForMaster: есть ли завершённое задание с этим
 //   специалистом без моего отзыва — от этого зависит кнопка «Оставить отзыв».
+// - useHasDirectReview / useSubmitDirectReview: отзыв без задания (0254,
+//   №356) — не влияет на рейтинг, может уйти «на проверку».
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
@@ -148,6 +150,83 @@ export function useSubmitMasterReview(authorId: string | undefined) {
       queryClient.invalidateQueries({ queryKey: myReviewForOrderKey(orderId, authorId) });
       // Шапка профиля (rating_overall_avg/count) и список отзывов —
       // ключи из use-master-public.ts.
+      queryClient.invalidateQueries({ queryKey: ["master-public", targetId] });
+      queryClient.invalidateQueries({ queryKey: ["reviews-for-target", targetId] });
+    },
+  });
+}
+
+// ============================================================================
+// Отзыв без задания (0254, DECISION владельца 2026-10-22, №356): человек, кто
+// нашёл специалиста, но не создавал задание, может оставить отзыв один раз.
+// В рейтинг не идёт (recalc_master_rating считает только order_id IS NOT
+// NULL) — профиль всё равно инвалидируем, чтобы новая строка в списке
+// появилась сразу. RPC `submit_direct_review` сама проверяет лимиты и при
+// признаках накрутки возвращает status "pending" вместо "visible".
+// ============================================================================
+
+export const hasDirectReviewKey = (targetId: string | undefined, authorId: string | undefined) =>
+  ["has-direct-review", targetId, authorId] as const;
+
+/**
+ * Уже оставлен отзыв без задания этому специалисту? RLS разрешает автору
+ * видеть свой отзыв в любом статусе (visible/pending/hidden, раздел 1
+ * REVIEWS_WITHOUT_ORDER_2026-10.md) — запрос поэтому ищет любую строку, а не
+ * только видимую.
+ */
+export function useHasDirectReview(targetId: string | undefined, authorId: string | undefined) {
+  return useQuery<boolean>({
+    queryKey: hasDirectReviewKey(targetId, authorId),
+    queryFn: async () => {
+      if (!targetId || !authorId) return false;
+      const { data, error } = await supabase
+        .from("reviews")
+        .select("id")
+        .eq("author_id", authorId)
+        .eq("target_id", targetId)
+        .is("order_id", null)
+        .limit(1)
+        .maybeSingle();
+      if (error) throw error;
+      return !!data;
+    },
+    enabled: !!targetId && !!authorId && targetId !== authorId,
+    staleTime: 30_000,
+  });
+}
+
+export interface SubmitDirectReviewInput {
+  targetId: string;
+  rating: number;
+  text: string;
+}
+
+export interface SubmitDirectReviewResult {
+  id: string;
+  status: "visible" | "pending";
+}
+
+/** Отправить отзыв без задания. Возвращает {id, status} — экран показывает
+ *  разный текст успеха в зависимости от того, ушёл отзыв сразу или «на
+ *  проверку» (§7.3). */
+export function useSubmitDirectReview(authorId: string | undefined) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (input: SubmitDirectReviewInput) => {
+      const { data, error } = await supabase.rpc("submit_direct_review", {
+        p_target_id: input.targetId,
+        p_rating: input.rating,
+        p_text: input.text.trim(),
+      });
+      if (error) throw error;
+      return data as SubmitDirectReviewResult;
+    },
+    onSuccess: (_result, { targetId }) => {
+      // Те же ключи, что у useSubmitMasterReview, плюс «уже оставлял» —
+      // myReviewForOrderKey не нужен: у отзыва без задания нет orderId.
+      queryClient.invalidateQueries({ queryKey: reviewableOrderKey(targetId, authorId) });
+      queryClient.invalidateQueries({ queryKey: hasDirectReviewKey(targetId, authorId) });
       queryClient.invalidateQueries({ queryKey: ["master-public", targetId] });
       queryClient.invalidateQueries({ queryKey: ["reviews-for-target", targetId] });
     },

@@ -35,6 +35,7 @@ import {
 import { BottomEdgeEffect } from "@/components/ui/BottomEdgeEffect";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { useAdminSetUserStatus, useIsStaff } from "@/features/admin/use-admin-actions";
+import { parseAuthReturnTo } from "@/features/auth/auth-return";
 import { GuestContactGate } from "@/features/auth/GuestContactGate";
 import { useAuthSession } from "@/features/auth/use-auth-session";
 import { blockConfirmMessage } from "@/features/blocking/blocking-copy";
@@ -59,7 +60,8 @@ import {
 import { PortfolioLightbox } from "@/features/profile/PortfolioLightbox";
 import { useMasterPortfolio } from "@/features/profile/use-my-portfolio";
 import { ReportModal } from "@/features/reports/ReportModal";
-import { useReviewableOrderForMaster } from "@/features/reviews/use-reviews";
+import { resolveMasterReviewAction } from "@/features/reviews/direct-review";
+import { useHasDirectReview, useReviewableOrderForMaster } from "@/features/reviews/use-reviews";
 import { availabilityTitle } from "@/features/specialist/AvailabilityRows";
 import { displayName, isCompanyVerified } from "@/features/specialist/company";
 import { linkLabel } from "@/features/specialist/link-url";
@@ -67,6 +69,7 @@ import { useColorScheme } from "@/hooks/use-color-scheme";
 import { showActionMenu } from "@/lib/action-menu";
 import { showAlert } from "@/lib/alert";
 import { trackEvent } from "@/lib/analytics";
+import { useAuthReturnUrlStore } from "@/lib/auth-return-url-store";
 import { getCategoryIcon } from "@/lib/category-icons";
 import { confirmAsync } from "@/lib/confirm";
 import { describeServerError } from "@/lib/describe-server-error";
@@ -112,8 +115,11 @@ export default function MasterPublicScreen() {
   const reviews = useReviewsForTarget(masterId, "client_to_master");
   const masterPhone = useMasterPhone(masterId);
   const services = useMasterServices(masterId);
-  // Отзыв — только по завершённому заданию с этим специалистом (0196).
+  // Отзыв — приоритетно по завершённому заданию (0196); если такого нет, но
+  // человек ещё не оставлял этому специалисту отзыв без задания — тоже можно
+  // (0254, №356). Один умный CTA, не два — design-quality.md §1.1.
   const reviewable = useReviewableOrderForMaster(masterId, currentUserId);
+  const hasDirectReview = useHasDirectReview(masterId, currentUserId);
   const blockUser = useBlockUser();
   const recordView = useRecordMasterView();
   useEffect(() => {
@@ -162,13 +168,25 @@ export default function MasterPublicScreen() {
       // Не успели — просмотр загрузит сам.
     });
   }, [photos, screenWidth]);
-  const showReviewCta = !!masterId && !isOwn && !!reviewable.data;
   const hasContacts = !!phoneTel || !!phoneWa;
   // У своего профиля нижней панели нет: сюда попадают из редактора
   // «Я специалист», и кнопка «Редактировать профиль» вернула бы туда,
   // откуда пришли (владелец, 2026-09-09: «обе кнопки удали»).
   // Гостю контакты не показываются — вместо них блок входа (2026-10-03).
   const isGuest = !currentUserId;
+  // Отзыв без задания сервер принимает только опубликованному специалисту:
+  // master_profiles.status='active', users.status='active', не демо
+  // (дополнение к контракту 0254, 2026-10-22). Отзыв по заданию не завязан
+  // на это — задание уже было завершено независимо от текущей публикации.
+  const isMasterProfilePublished = m?.status === "active" && u?.status === "active" && !u?.is_demo;
+  const reviewAction = resolveMasterReviewAction({
+    isOwn,
+    isGuest,
+    hasReviewableOrder: !!reviewable.data,
+    hasDirectReview: hasDirectReview.data,
+    isMasterProfilePublished,
+  });
+  const showReviewCta = !!masterId && reviewAction !== "none";
   const bottomBar = !isOwn && !isGuest && hasContacts;
   const bottomSpace = insets.bottom + 16 + (bottomBar ? GLASS_BUTTON_HEIGHT + 12 : 0);
 
@@ -228,11 +246,31 @@ export default function MasterPublicScreen() {
     });
   };
   const handleReview = () => {
-    if (!currentUserId || !reviewable.data) return;
-    router.push({
-      pathname: "/master/review",
-      params: { masterId: masterId ?? "", masterName: name, orderId: reviewable.data.id },
-    } as never);
+    if (!masterId) return;
+    // Гость: кнопка обещает отзыв, а не выбор «Войти/Регистрация» — прямой
+    // переход к номеру телефона, тот же return-intent, что у GuestContactGate.
+    if (reviewAction === "guest") {
+      const returnTo = parseAuthReturnTo(`/master/${masterId}`);
+      if (returnTo) useAuthReturnUrlStore.getState().setReturnUrl(returnTo);
+      router.push({
+        pathname: "/(auth)/phone",
+        params: returnTo ? { returnTo } : {},
+      } as never);
+      return;
+    }
+    if (reviewAction === "order" && reviewable.data) {
+      router.push({
+        pathname: "/master/review",
+        params: { masterId, masterName: name, orderId: reviewable.data.id },
+      } as never);
+      return;
+    }
+    if (reviewAction === "direct") {
+      router.push({
+        pathname: "/master/review",
+        params: { masterId, masterName: name },
+      } as never);
+    }
   };
 
   const loading = profile.isLoading || (profile.isFetching && !profile.data);

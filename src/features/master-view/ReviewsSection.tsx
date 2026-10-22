@@ -70,6 +70,9 @@ export function ReviewsSection({
   const rows = query.data?.pages.flatMap((p) => p.rows) ?? [];
   const hasMore = query.hasNextPage;
   const hasSummary = ratingCount > 0;
+  // Отзыв без задания (0254) не входит в рейтинг выше — честно поясняем,
+  // почему строк в списке может быть больше, чем число оценок в сводке.
+  const hasAnyDirectReview = rows.some((r) => !r.order_id);
 
   return (
     <View className="mb-7 px-4">
@@ -96,6 +99,12 @@ export function ReviewsSection({
               </AppText>
             </View>
           </View>
+        ) : null}
+
+        {hasSummary && hasAnyDirectReview ? (
+          <AppText className="px-4 pb-3 text-ios-footnote text-mute">
+            Оценка — по завершённым заданиям
+          </AppText>
         ) : null}
 
         {query.isLoading ? (
@@ -174,11 +183,19 @@ function ReviewRow({
           </View>
           <View className="mt-1 flex-row items-center gap-1.5">
             <Stars value={review.rating} size={12} />
-            {review.l2?.name_ru ? (
+            {/* Без задания (0254) — не категория: честная атрибуция, тем же
+                тихим приёмом, не предупреждение (design-quality.md §5). */}
+            {review.order_id ? (
+              review.l2?.name_ru ? (
+                <AppText className="text-ios-footnote text-mute" numberOfLines={1}>
+                  · {review.l2.name_ru}
+                </AppText>
+              ) : null
+            ) : (
               <AppText className="text-ios-footnote text-mute" numberOfLines={1}>
-                · {review.l2.name_ru}
+                · Без задания
               </AppText>
-            ) : null}
+            )}
           </View>
           {review.text ? (
             <AppText className="mt-2 text-ios-body text-ink">{review.text}</AppText>

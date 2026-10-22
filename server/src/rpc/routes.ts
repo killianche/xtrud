@@ -38,6 +38,9 @@ export const RPC_ALLOWLIST = new Set([
   "set_specialist_contacts",
   "set_username",
   "submit_master_review",
+  // Отзыв без задания (0254, №356): EXECUTE только authenticated, правила и
+  // признаки накрутки — внутри функции.
+  "submit_direct_review",
   "submit_order_response",
   "touch_last_active",
   "unpick_order_master",
@@ -66,6 +69,9 @@ export const RPC_ALLOWLIST = new Set([
   "admin_restore_order",
   "admin_list_reviews",
   "admin_set_review_status",
+  // «Подозрительные» (0254, №356): внутри проверка is_staff_session().
+  "admin_list_flagged_reviews",
+  "admin_list_suspicious_specialists",
   "admin_list_categories",
   "admin_set_category_visible",
   // 0216: плитки «Найти задание» и рассылка push; 0217: кто может откликаться.

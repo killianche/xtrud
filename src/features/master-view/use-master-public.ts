@@ -29,6 +29,7 @@ export type MasterPublicProfile = {
     | "district"
     | "is_master"
     | "status"
+    | "is_demo"
   >;
   master:
     | (Pick<
@@ -67,13 +68,16 @@ export function useMasterPublicProfile(masterId: string | null | undefined) {
     // потребителей хука (экран мастера, экран заказа, экран кейса), а город
     // мастера на карточке намеренно не показывается. Третий round-trip делался
     // впустую.
+    //
+    // is_demo — для кнопки «Оставить отзыв» без задания (0254): сервер
+    // отклоняет отзыв демо-специалисту, кнопка не должна его обещать.
     queryFn: async () => {
       if (!masterId) return null;
 
       const { data, error } = await supabase
         .from("users")
         .select(
-          "id, first_name, last_name, avatar_url, city_id, district, is_master, status, master:master_profiles!master_profiles_user_id_fkey(bio, experience_years, rating_overall_avg, rating_overall_count, closed_deals, languages, status, account_type, team_size, availability_status, availability_until, whatsapp_phone, whatsapp_same_as_phone, verification_level, experience_badge_at, link_url, instagram, legal_name, company_verified_at)",
+          "id, first_name, last_name, avatar_url, city_id, district, is_master, status, is_demo, master:master_profiles!master_profiles_user_id_fkey(bio, experience_years, rating_overall_avg, rating_overall_count, closed_deals, languages, status, account_type, team_size, availability_status, availability_until, whatsapp_phone, whatsapp_same_as_phone, verification_level, experience_badge_at, link_url, instagram, legal_name, company_verified_at)",
         )
         .eq("id", masterId)
         .maybeSingle();

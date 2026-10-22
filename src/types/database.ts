@@ -1925,6 +1925,51 @@ export type Database = {
         Args: { p_order_id?: string; p_rating: number; p_target_id: string; p_text?: string }
         Returns: string
       }
+      /** Отзыв без задания (0254): status — "visible" сразу или "pending" на проверке. */
+      submit_direct_review: {
+        Args: { p_target_id: string; p_rating: number; p_text: string }
+        Returns: { id: string; status: "visible" | "pending" }
+      }
+      /** «Подозрительные» (0254): отзывы на проверке и с признаками; только персонал. */
+      admin_list_flagged_reviews: {
+        Args: never
+        Returns: {
+          id: string
+          created_at: string
+          status: string
+          rating: number
+          text: string | null
+          order_id: string | null
+          author_id: string
+          author_label: string | null
+          author_created_at: string | null
+          author_orders_count: number
+          author_status: string | null
+          target_id: string
+          target_label: string | null
+          flags: string[]
+        }[]
+      }
+      /** «Подозрительные» (0254): специалисты по баллу подозрительности; только персонал. */
+      admin_list_suspicious_specialists: {
+        Args: { p_days?: number }
+        Returns: {
+          target_id: string
+          target_label: string | null
+          rating_avg: number | null
+          rating_count: number | null
+          reviews_total: number
+          reviews_direct: number
+          reviews_pending: number
+          from_new_accounts: number
+          from_accounts_without_orders: number
+          shared_device: number
+          mutual: number
+          five_star_share: number
+          last_review_at: string
+          score: number
+        }[]
+      }
       submit_order_response: {
         Args: {
           p_contact_phone: string | null

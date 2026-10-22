@@ -26,6 +26,7 @@ import { Recovery } from "./pages/Recovery";
 import { Reports } from "./pages/Reports";
 import { Reviews } from "./pages/Reviews";
 import { Settings } from "./pages/Settings";
+import { Suspicious } from "./pages/Suspicious";
 import { Team } from "./pages/Team";
 import { Uncategorized } from "./pages/Uncategorized";
 import { UserCard } from "./pages/UserCard";
@@ -120,6 +121,7 @@ export function App() {
     reports: "reports",
     verifications: "verifications",
     recovery: "recovery",
+    suspicious: "suspicious",
     instagram: "instagram",
     companies: "companies",
     "experience-badges": "experienceBadges",
@@ -189,6 +191,9 @@ export function App() {
         break;
       case "recovery":
         page = <Recovery onOpen={openUser} />;
+        break;
+      case "suspicious":
+        page = <Suspicious onOpenUser={openUser} />;
         break;
       case "instagram":
         page = <Instagram onOpen={openUser} />;

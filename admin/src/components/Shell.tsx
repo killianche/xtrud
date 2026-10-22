@@ -17,6 +17,7 @@ export type Section =
   | "reports"
   | "verifications"
   | "recovery"
+  | "suspicious"
   | "instagram"
   | "companies"
   | "experienceBadges"
@@ -81,6 +82,10 @@ export const NAV: Array<{ title: string | null; items: NavItem[] }> = [
         icon: Icon.phone,
         count: (a) => a.recovery_new,
       },
+      // Отзывы без задания на проверке + специалисты по баллу подозрительности
+      // (0254, №356). Счётчик — не из admin_attention (его не трогаем): длина
+      // своего же списка, см. useFlaggedReviewsCount ниже.
+      { id: "suspicious", label: "Подозрительные", path: "/suspicious", icon: Icon.flag },
       {
         id: "instagram",
         label: "Instagram",
@@ -257,6 +262,33 @@ function useShadowHiddenCount(): number {
   return count;
 }
 
+/**
+ * Счётчик «Подозрительные» — не серверный admin_attention (его не меняем по
+ * заданию), а длина своего же списка admin_list_flagged_reviews (0254, №356).
+ */
+function useFlaggedReviewsCount(): number {
+  const [count, setCount] = useState(0);
+  const load = useCallback(() => {
+    api
+      .listFlaggedReviews()
+      .then((rows) => setCount(rows.length))
+      .catch(() => undefined);
+  }, []);
+  useEffect(() => {
+    load();
+    const timer = setInterval(load, 60_000);
+    const onFocus = () => load();
+    window.addEventListener("focus", onFocus);
+    window.addEventListener("xtrud-admin-refresh", onFocus);
+    return () => {
+      clearInterval(timer);
+      window.removeEventListener("focus", onFocus);
+      window.removeEventListener("xtrud-admin-refresh", onFocus);
+    };
+  }, [load]);
+  return count;
+}
+
 export function Shell({
   role,
   section,
@@ -276,6 +308,7 @@ export function Shell({
   const attention = useAttention();
   const uncategorizedCount = useUncategorizedCount();
   const shadowHiddenCount = useShadowHiddenCount();
+  const flaggedReviewsCount = useFlaggedReviewsCount();
   const [menuOpen, setMenuOpen] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [theme, setTheme] = useState<"light" | "dark">(initialTheme);
@@ -324,7 +357,8 @@ export function Shell({
         (attention.instagram_pending ?? 0)
       : 0) +
     uncategorizedCount +
-    shadowHiddenCount;
+    shadowHiddenCount +
+    flaggedReviewsCount;
 
   return (
     <div className={`shell ${menuOpen ? "menu-open" : ""}`}>
@@ -350,9 +384,11 @@ export function Shell({
                   ? uncategorizedCount
                   : item.id === "hiddenOrders"
                     ? shadowHiddenCount
-                    : attention && item.count
-                      ? (item.count(attention) ?? 0)
-                      : 0;
+                    : item.id === "suspicious"
+                      ? flaggedReviewsCount
+                      : attention && item.count
+                        ? (item.count(attention) ?? 0)
+                        : 0;
               return (
                 <button
                   key={item.id}

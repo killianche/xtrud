@@ -437,6 +437,42 @@ export interface ReviewRow {
   order_title: string | null;
 }
 
+/** Отзыв без задания на проверке или с признаками накрутки (0254, «Подозрительные»). */
+export interface FlaggedReviewRow {
+  id: string;
+  created_at: string;
+  status: string;
+  rating: number;
+  text: string | null;
+  order_id: string | null;
+  author_id: string;
+  author_label: string | null;
+  author_created_at: string | null;
+  author_orders_count: number;
+  author_status: string | null;
+  target_id: string;
+  target_label: string | null;
+  flags: string[];
+}
+
+/** Специалист по баллу подозрительности за период (0254, «Подозрительные»). */
+export interface SuspiciousSpecialistRow {
+  target_id: string;
+  target_label: string | null;
+  rating_avg: number | null;
+  rating_count: number | null;
+  reviews_total: number;
+  reviews_direct: number;
+  reviews_pending: number;
+  from_new_accounts: number;
+  from_accounts_without_orders: number;
+  shared_device: number;
+  mutual: number;
+  five_star_share: number;
+  last_review_at: string;
+  score: number;
+}
+
 export interface CategoryRow {
   l1_id: string;
   l1_name: string;
@@ -1101,6 +1137,11 @@ export const api = {
       p_status: status,
       p_reason: reason,
     }),
+  /** «Подозрительные» (0254): отзывы на проверке и с признаками накрутки. */
+  listFlaggedReviews: () => rpc<FlaggedReviewRow[]>("admin_list_flagged_reviews"),
+  /** «Подозрительные» (0254): специалисты по баллу за период, p_days — 30 по умолчанию. */
+  listSuspiciousSpecialists: (days = 30) =>
+    rpc<SuspiciousSpecialistRow[]>("admin_list_suspicious_specialists", { p_days: days }),
   listCategories: () => rpc<CategoryRow[]>("admin_list_categories"),
   /** Правка подкатегории (0238): null — поле не трогать; terms — полный новый набор. */
   updateCategory: (

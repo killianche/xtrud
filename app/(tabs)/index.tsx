@@ -29,6 +29,7 @@ import {
 } from "@/features/home/HomeStatusBarCover";
 import { MyOrdersShowcase } from "@/features/home/MyOrdersShowcase";
 import { PromoBannerCarousel } from "@/features/home/PromoBannerCarousel";
+import { SpecialistProfileNudge } from "@/features/home/SpecialistProfileNudge";
 import { usePullToRefresh } from "@/hooks/use-pull-to-refresh";
 import { useTabBarSpace } from "@/lib/tab-bar-space";
 import { scrollViewToTop, useTabScrollResetCounter } from "@/lib/tab-scroll-reset";
@@ -149,6 +150,9 @@ function ClientHome({ userId, refresh, onDescribeTask }: ClientHomeProps) {
         contentContainerStyle={{ paddingBottom: tabBarSpace }}
       >
         <CinematicHero onCreateTask={() => onDescribeTask()} />
+        {/* «Вы специалист?» — чек-лист заполненности профиля, пока не
+            заполнен достаточно (docs/SPECIALIST_PROFILE_REDESIGN_2026-10.md). */}
+        <SpecialistProfileNudge userId={userId} />
         {/* Свои открытые задания — первыми, если есть (владелец, 2026-10-03). */}
         <MyOrdersShowcase userId={userId} />
         <ActiveOrdersShowcase userId={userId} />

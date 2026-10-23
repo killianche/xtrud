@@ -21,9 +21,9 @@ describe("notificationTargetFromData", () => {
     }
   });
 
-  it("профиль скрыт или возвращён админом — в «Я специалист»", () => {
-    expect(notificationTargetFromData({ type: "master_hidden" }, ME)).toBe("/profile/specialist");
-    expect(notificationTargetFromData({ type: "master_shown" }, ME)).toBe("/profile/specialist");
+  it("профиль скрыт или возвращён админом — на вкладку профиля", () => {
+    expect(notificationTargetFromData({ type: "master_hidden" }, ME)).toBe("/(tabs)/profile");
+    expect(notificationTargetFromData({ type: "master_shown" }, ME)).toBe("/(tabs)/profile");
   });
 
   it("отклонённый отклик ведёт в задание", () => {

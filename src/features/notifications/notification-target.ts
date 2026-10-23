@@ -21,8 +21,9 @@ export function notificationTargetFromData(
   if (typeof d.type === "string" && d.type.startsWith("verification_")) {
     return "/profile/specialist/verify";
   }
-  // Админ скрыл или вернул профиль — в «Я специалист», там виден статус.
-  if (d.type === "master_hidden" || d.type === "master_shown") return "/profile/specialist";
+  // Админ скрыл или вернул профиль — на вкладку профиля, там видна видимость
+  // (слияние 2026-10-23: отдельного экрана-хаба «Я специалист» больше нет).
+  if (d.type === "master_hidden" || d.type === "master_shown") return "/(tabs)/profile";
   // Значок «Большой опыт» (0225) — в свой профиль, где его видят клиенты.
   if (d.type === "experience_badge") return userId ? `/master/${userId}` : null;
   // Решение по заявке на значок (0245, 0246, №318) — на экран заявки, где

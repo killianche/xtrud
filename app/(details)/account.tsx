@@ -1,7 +1,7 @@
 /**
- * /account — экран аккаунта переходом (из уведомлений, настроек и т.п.).
- * С 2026-10-03 то же содержимое — во вкладке «Профиль» (AccountBody); этот
- * маршрут оставлен для старых ссылок и «назад» из вложенных экранов.
+ * /account — экран профиля переходом (из уведомлений, настроек и т.п.).
+ * То же содержимое, что во вкладке «Профиль» (AccountBody); этот маршрут
+ * оставлен для старых ссылок и «назад» из вложенных экранов.
  */
 
 import { Redirect, useRouter } from "expo-router";
@@ -15,7 +15,7 @@ export default function AccountScreen() {
   const userId = session?.user?.id;
   if (!userId) return <Redirect href="/(auth)/phone" />;
   return (
-    <FormScreen title="Аккаунт" onBack={() => router.back()}>
+    <FormScreen title="Профиль" onBack={() => router.back()}>
       <AccountBody userId={userId} />
     </FormScreen>
   );

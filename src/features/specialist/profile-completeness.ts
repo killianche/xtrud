@@ -43,6 +43,8 @@ export type Completeness = {
   /** >= 3 из 4 (75%) И hasCategories. */
   isGoodEnough: boolean;
   nextStep: "categories" | SpecialistProfileStep | null;
+  /** Все незаполненные пункты по порядку — шаги заполнения (№362). */
+  missingSteps: Array<"categories" | SpecialistProfileStep>;
 };
 
 /** Порядок пунктов по влиянию на доверие клиента (§4.1). */
@@ -59,7 +61,7 @@ const STEPS: ReadonlyArray<{
 /** Куда ведёт кнопка «Заполнить профиль» / «Выбрать категории». */
 export const SPECIALIST_PROFILE_STEP_ROUTE: Record<"categories" | SpecialistProfileStep, string> = {
   categories: "/profile/specialist/categories",
-  avatar: "/profile/edit-client",
+  avatar: "/profile/specialist/photo",
   bio: "/profile/specialist/about",
   portfolio: "/profile/specialist/photos",
   contacts: "/profile/specialist/contacts",
@@ -67,6 +69,7 @@ export const SPECIALIST_PROFILE_STEP_ROUTE: Record<"categories" | SpecialistProf
 
 export function computeSpecialistProfileCompleteness(input: CompletenessInput): Completeness {
   const doneCount = STEPS.filter((s) => s.done(input)).length;
+  const missing = STEPS.filter((s) => !s.done(input)).map((s) => s.key);
   if (!input.hasCategories) {
     // Нечего делить на готовность, пока профиль не может быть найден в каталоге.
     return {
@@ -75,14 +78,15 @@ export function computeSpecialistProfileCompleteness(input: CompletenessInput): 
       total: 4,
       isGoodEnough: false,
       nextStep: "categories",
+      missingSteps: ["categories", ...missing],
     };
   }
-  const nextStep = STEPS.find((s) => !s.done(input))?.key ?? null;
   return {
     hasCategories: true,
     doneCount,
     total: 4,
     isGoodEnough: doneCount >= 3,
-    nextStep,
+    nextStep: missing[0] ?? null,
+    missingSteps: missing,
   };
 }

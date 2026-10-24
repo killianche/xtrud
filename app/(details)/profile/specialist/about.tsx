@@ -7,6 +7,8 @@ import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import { FormScreen, InsetGroup, InsetRow } from "@/components/ui";
 import { useAuthSession } from "@/features/auth/use-auth-session";
+import { fillPrimaryLabel, fillStepLabel } from "@/features/specialist/profile-fill-flow";
+import { useProfileFillFlow } from "@/features/specialist/use-profile-fill-flow";
 import {
   useMySpecialistProfile,
   useUpdateSpecialistAbout,
@@ -28,6 +30,7 @@ export default function SpecialistAboutScreen() {
   const userId = session?.user?.id;
   const profile = useMySpecialistProfile(userId);
   const update = useUpdateSpecialistAbout();
+  const { flow, next } = useProfileFillFlow();
   const [bio, setBio] = useState<string | null>(null);
   const [years, setYears] = useState<number | null>(null);
   useEffect(() => {
@@ -51,7 +54,7 @@ export default function SpecialistAboutScreen() {
       {
         onSuccess: () => {
           allowLeave();
-          router.back();
+          next();
         },
       },
     );
@@ -60,9 +63,15 @@ export default function SpecialistAboutScreen() {
   return (
     <FormScreen
       title="Расскажите о себе"
+      subtitle={flow ? fillStepLabel(flow) : undefined}
       onBack={() => router.back()}
-      primaryLabel="Готово"
+      primaryLabel={flow ? fillPrimaryLabel(flow) : "Готово"}
       onPrimary={save}
+      secondaryLabel={flow ? "Пропустить" : undefined}
+      onSecondary={() => {
+        allowLeave();
+        next();
+      }}
       primaryDisabled={bio === null}
       busy={update.isPending}
       error={update.error ? "Не удалось сохранить. Попробуйте ещё раз." : null}

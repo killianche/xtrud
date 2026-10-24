@@ -17,7 +17,7 @@ import { Pressable, View } from "react-native";
 import { AppText } from "@/components/AppText";
 import { useUserRecord } from "@/features/auth/use-user-record";
 import { ProfileProgressBar } from "@/features/specialist/ProfileProgressBar";
-import { SPECIALIST_PROFILE_STEP_ROUTE } from "@/features/specialist/profile-completeness";
+import { fillStartHref } from "@/features/specialist/profile-fill-flow";
 import { useMySpecialistProfile } from "@/features/specialist/use-specialist";
 import { useSpecialistProfileCompleteness } from "@/features/specialist/use-specialist-profile-completeness";
 import { CARD_SHADOW } from "@/lib/shadows";
@@ -44,14 +44,15 @@ export function SpecialistProfileNudge({ userId }: { userId: string | undefined 
     return null;
   }
 
-  const { hasCategories, doneCount, total, nextStep } = completeness;
+  const { hasCategories, doneCount, total, missingSteps } = completeness;
   // Коротко: «небольшой блок — „Вы специалист?“, указатель и кнопка»
   // (владелец, 2026-10-23). Пояснение в три строки было лишним.
   const subtitle = hasCategories
     ? `Профиль заполнен на ${doneCount} из ${total}`
     : "Выберите категории, чтобы клиенты нашли вас";
   const buttonLabel = hasCategories ? "Заполнить профиль" : "Выбрать категории";
-  const route = SPECIALIST_PROFILE_STEP_ROUTE[nextStep];
+  // Все незаполненные пункты подряд, а не один экран и назад на главную (№362).
+  const start = fillStartHref(missingSteps);
   const accessibilityLabel = `Вы специалист? ${subtitle}. ${buttonLabel}`;
 
   return (
@@ -59,7 +60,7 @@ export function SpecialistProfileNudge({ userId }: { userId: string | undefined 
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={accessibilityLabel}
-        onPress={() => router.push(route as never)}
+        onPress={() => start && router.push(start as never)}
         className="rounded-2xl bg-surface-card p-4 active:opacity-85"
         style={CARD_SHADOW}
       >

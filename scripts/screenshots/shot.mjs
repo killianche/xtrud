@@ -66,7 +66,7 @@ await mkdir(outDir, { recursive: true });
 const browser = await chromium.launch({
   executablePath:
     process.env.CHROMIUM_PATH ??
-    `${process.env.HOME}/.cache/ms-playwright/chromium_headless_shell-1234/chrome-headless-shell-linux64/chrome-headless-shell`,
+    `${process.env.HOME}/.cache/ms-playwright/chromium_headless_shell-1248/chrome-headless-shell-linux64/chrome-headless-shell`,
 });
 for (const scheme of ["light", "dark"]) {
   const ctx = await browser.newContext({

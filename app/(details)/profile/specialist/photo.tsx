@@ -1,10 +1,10 @@
 /**
- * /profile/specialist/photo — фото профиля как шаг заполнения (№362).
- * Раньше этот пункт открывал весь экран личных данных («Отмена / Профиль /
- * Сохранить»), и после него человек снова оказывался на главной. Здесь одно
- * действие — выбрать фото; оно сохраняется сразу после загрузки, как в
- * onboarding (master-photo.tsx). Имя и удаление фото — по-прежнему в
- * «Имя и фото» (edit-client.tsx).
+ * /profile/specialist/photo — «Фото профиля» в анкете специалиста (№362,
+ * №363). Раньше пункт открывал весь экран личных данных («Отмена / Профиль /
+ * Сохранить»), где фото — одно поле из пяти. Здесь одно действие — выбрать
+ * фото; оно сохраняется сразу после загрузки, как в onboarding
+ * (master-photo.tsx). Имя и удаление фото — в «Личные данные › Имя»
+ * (edit-client.tsx).
  */
 
 import { Image } from "expo-image";
@@ -17,8 +17,6 @@ import { SystemIcon } from "@/components/ui/SystemIcon";
 import { useAuthSession } from "@/features/auth/use-auth-session";
 import { useUserRecord } from "@/features/auth/use-user-record";
 import { useUpdateMyAvatar } from "@/features/profile/use-update-my-avatar";
-import { fillPrimaryLabel, fillStepLabel } from "@/features/specialist/profile-fill-flow";
-import { useProfileFillFlow } from "@/features/specialist/use-profile-fill-flow";
 import { realAvatarUrl } from "@/lib/avatar";
 import { useThemeColors } from "@/lib/use-theme-color";
 
@@ -30,7 +28,6 @@ export default function SpecialistPhotoScreen() {
   const userId = session?.user?.id;
   const { data: user } = useUserRecord(userId);
   const updateAvatar = useUpdateMyAvatar(userId);
-  const { flow, next } = useProfileFillFlow();
   const tc = useThemeColors(["accent"]);
 
   // Только настоящее фото: заглушка-генератор не считается (src/lib/avatar.ts).
@@ -41,13 +38,11 @@ export default function SpecialistPhotoScreen() {
   return (
     <FormScreen
       title="Фото профиля"
-      subtitle={flow ? fillStepLabel(flow) : "Настоящее фото, на котором видно лицо."}
+      subtitle="Настоящее фото, на котором видно лицо."
       onBack={() => router.back()}
-      primaryLabel={flow ? fillPrimaryLabel(flow) : "Готово"}
-      onPrimary={flow ? next : () => router.back()}
+      primaryLabel="Готово"
+      onPrimary={() => router.back()}
       primaryDisabled={!hasPhoto || busy}
-      secondaryLabel={flow && !hasPhoto ? "Пропустить" : undefined}
-      onSecondary={next}
       error={updateAvatar.error ? "Не удалось загрузить. Попробуйте ещё раз." : null}
     >
       <View className="items-center px-5 pt-4">

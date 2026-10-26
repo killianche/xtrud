@@ -66,6 +66,12 @@ export interface InsetRowProps {
   info?: boolean;
   /** Значение справа. */
   value?: string;
+  /**
+   * Пункт ещё не заполнен: значение — фирменным цветом и жирнее, как метка
+   * непрочитанного в Почте (анкета специалиста, №363). Плитку иконки
+   * выделяет вызывающий через `iconAccent`.
+   */
+  attention?: boolean;
   /** Переключатель справа вместо значения. */
   toggle?: { value: boolean; onChange: (next: boolean) => void };
   onPress?: () => void;
@@ -90,6 +96,7 @@ export function InsetRow({
   navigates = false,
   info = false,
   value,
+  attention = false,
   toggle,
   onPress,
   last = false,
@@ -155,7 +162,8 @@ export function InsetRow({
         </View>
         {value ? (
           <AppText
-            className="ml-3 max-w-[45%] text-right text-ios-body text-mute"
+            weight={attention ? "semibold" : "regular"}
+            className={`ml-3 max-w-[45%] text-right text-ios-body ${attention ? "text-accent" : "text-mute"}`}
             numberOfLines={1}
           >
             {value}

@@ -17,10 +17,10 @@ import { Pressable, View } from "react-native";
 import { AppText } from "@/components/AppText";
 import { useUserRecord } from "@/features/auth/use-user-record";
 import { ProfileProgressBar } from "@/features/specialist/ProfileProgressBar";
-import { fillStartHref } from "@/features/specialist/profile-fill-flow";
 import { useMySpecialistProfile } from "@/features/specialist/use-specialist";
 import { useSpecialistProfileCompleteness } from "@/features/specialist/use-specialist-profile-completeness";
 import { CARD_SHADOW } from "@/lib/shadows";
+import { triggerTabScrollReset } from "@/lib/tab-scroll-reset";
 import { useThemeColors } from "@/lib/use-theme-color";
 
 export function SpecialistProfileNudge({ userId }: { userId: string | undefined }) {
@@ -44,23 +44,28 @@ export function SpecialistProfileNudge({ userId }: { userId: string | undefined 
     return null;
   }
 
-  const { hasCategories, doneCount, total, missingSteps } = completeness;
+  const { hasCategories, doneCount, total } = completeness;
   // Коротко: «небольшой блок — „Вы специалист?“, указатель и кнопка»
   // (владелец, 2026-10-23). Пояснение в три строки было лишним.
   const subtitle = hasCategories
     ? `Профиль заполнен на ${doneCount} из ${total}`
     : "Выберите категории, чтобы клиенты нашли вас";
-  const buttonLabel = hasCategories ? "Заполнить профиль" : "Выбрать категории";
-  // Все незаполненные пункты подряд, а не один экран и назад на главную (№362).
-  const start = fillStartHref(missingSteps);
+  const buttonLabel = "Заполнить профиль";
   const accessibilityLabel = `Вы специалист? ${subtitle}. ${buttonLabel}`;
+  // Во вкладку «Профиль», к началу: там анкета, незаполненные строки
+  // выделены (владелец, 2026-10-25, №363). Без категорий выделена и
+  // строка «Категории» — отдельная кнопка «Выбрать категории» не нужна.
+  const openProfile = () => {
+    router.navigate("/(tabs)/profile" as never);
+    triggerTabScrollReset("profile");
+  };
 
   return (
     <View className="mt-10 px-4">
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={accessibilityLabel}
-        onPress={() => start && router.push(start as never)}
+        onPress={openProfile}
         className="rounded-2xl bg-surface-card p-4 active:opacity-85"
         style={CARD_SHADOW}
       >

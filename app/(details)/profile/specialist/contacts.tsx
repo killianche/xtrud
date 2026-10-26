@@ -10,14 +10,12 @@ import { FormScreen, InsetGroup, InsetRow } from "@/components/ui";
 import { useAuthSession } from "@/features/auth/use-auth-session";
 import { useUserRecord } from "@/features/auth/use-user-record";
 import { normalizeLinkUrl } from "@/features/specialist/link-url";
-import { fillPrimaryLabel, fillStepLabel } from "@/features/specialist/profile-fill-flow";
 import {
   isInstagramValid,
   normalizeInstagram,
   useMyInstagram,
   useSubmitInstagram,
 } from "@/features/specialist/use-my-instagram";
-import { useProfileFillFlow } from "@/features/specialist/use-profile-fill-flow";
 import {
   useMySpecialistProfile,
   useUpdateSpecialistContacts,
@@ -35,7 +33,6 @@ export default function SpecialistContactsScreen() {
   const { data: user } = useUserRecord(userId);
   const profile = useMySpecialistProfile(userId);
   const update = useUpdateSpecialistContacts();
-  const { flow, next } = useProfileFillFlow();
   const [phone, setPhone] = useState<string | null>(null);
   const [wa, setWa] = useState("");
   // Выключен по умолчанию: WhatsApp есть не у всех, а включённый переключатель
@@ -104,7 +101,7 @@ export default function SpecialistContactsScreen() {
             }
           }
           allowLeave();
-          next();
+          router.back();
         },
       },
     );
@@ -113,15 +110,9 @@ export default function SpecialistContactsScreen() {
   return (
     <FormScreen
       title="Как с вами связаться?"
-      subtitle={flow ? fillStepLabel(flow) : undefined}
       onBack={() => router.back()}
-      primaryLabel={flow ? fillPrimaryLabel(flow) : "Готово"}
+      primaryLabel="Готово"
       onPrimary={save}
-      secondaryLabel={flow ? "Пропустить" : undefined}
-      onSecondary={() => {
-        allowLeave();
-        next();
-      }}
       primaryDisabled={!valid}
       busy={update.isPending || submitInsta.isPending}
       error={update.error || submitInsta.error ? "Не удалось сохранить. Попробуйте ещё раз." : null}

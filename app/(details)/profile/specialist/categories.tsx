@@ -17,8 +17,6 @@ import { useVisibleCategories } from "@/features/categories/use-visible-categori
 import { useMyMasterCategories } from "@/features/master-categories/use-my-categories";
 import { useSetMasterCategories } from "@/features/master-categories/use-set-categories";
 import { respondEligibilityKey } from "@/features/orders/use-respond-eligibility";
-import { fillPrimaryLabel, fillStepLabel } from "@/features/specialist/profile-fill-flow";
-import { useProfileFillFlow } from "@/features/specialist/use-profile-fill-flow";
 import { useInvalidateSpecialistCounts } from "@/features/specialist/use-specialist";
 import { showAlert } from "@/lib/alert";
 import { getCategoryIcon } from "@/lib/category-icons";
@@ -39,7 +37,6 @@ export default function SpecialistCategoriesScreen() {
   const setCategories = useSetMasterCategories();
   const invalidate = useInvalidateSpecialistCounts();
   const qc = useQueryClient();
-  const { flow, next } = useProfileFillFlow();
   const [query, setQuery] = useState("");
   // ?add=<l2> — пришли из задания: «Нужна категория…» (№203). Её сразу
   // отмечаем — остаётся нажать «Готово».
@@ -111,7 +108,7 @@ export default function SpecialistCategoriesScreen() {
               params: { orderId: respondTo },
             } as never);
           } else {
-            next();
+            router.back();
           }
         },
       },
@@ -124,26 +121,11 @@ export default function SpecialistCategoriesScreen() {
       subtitle={
         respondTo
           ? "Нужная уже отмечена — нажмите «Готово», и откроется форма предложения."
-          : flow
-            ? `${fillStepLabel(flow)} · до ${MAX} категорий`
-            : `До ${MAX} категорий.`
+          : `До ${MAX} категорий.`
       }
       onBack={() => router.back()}
-      primaryLabel={
-        flow
-          ? chosen.length > 0
-            ? `${fillPrimaryLabel(flow)} · ${chosen.length}`
-            : fillPrimaryLabel(flow)
-          : chosen.length > 0
-            ? `Готово · ${chosen.length}`
-            : "Готово"
-      }
+      primaryLabel={chosen.length > 0 ? `Готово · ${chosen.length}` : "Готово"}
       onPrimary={save}
-      secondaryLabel={flow && !respondTo ? "Пропустить" : undefined}
-      onSecondary={() => {
-        allowLeave();
-        next();
-      }}
       primaryDisabled={selected === null}
       busy={setCategories.isPending}
       error={setCategories.error ? "Не удалось сохранить. Попробуйте ещё раз." : null}

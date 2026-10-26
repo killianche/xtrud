@@ -18,8 +18,6 @@ import {
   useDeletePortfolioItem,
   useMasterPortfolio,
 } from "@/features/profile/use-my-portfolio";
-import { fillPrimaryLabel, fillStepLabel } from "@/features/specialist/profile-fill-flow";
-import { useProfileFillFlow } from "@/features/specialist/use-profile-fill-flow";
 import { useInvalidateSpecialistCounts } from "@/features/specialist/use-specialist";
 import { showAlert } from "@/lib/alert";
 import { confirmAsync } from "@/lib/confirm";
@@ -40,7 +38,6 @@ export default function SpecialistPhotosScreen() {
   const addItem = useAddPortfolioItem(userId ?? null);
   const deleteItem = useDeletePortfolioItem(userId ?? null);
   const invalidate = useInvalidateSpecialistCounts();
-  const { flow, next } = useProfileFillFlow();
   const [rowWidth, setRowWidth] = useState(0);
   const [uploading, setUploading] = useState<{ done: number; total: number } | null>(null);
   const tile = rowWidth > 0 ? Math.floor((rowWidth - GAP * 2) / 3) : 0;
@@ -83,18 +80,7 @@ export default function SpecialistPhotosScreen() {
   };
 
   return (
-    <FormScreen
-      title="Фото работ"
-      subtitle={flow ? fillStepLabel(flow) : undefined}
-      onBack={() => router.back()}
-      // Фото сохраняются сразу при загрузке, поэтому «Далее» только ведёт
-      // дальше; вне заполнения кнопки нет, как раньше (№362).
-      primaryLabel={flow ? fillPrimaryLabel(flow) : undefined}
-      onPrimary={flow ? next : undefined}
-      primaryDisabled={!!uploading || items.length === 0}
-      secondaryLabel={flow && items.length === 0 ? "Пропустить" : undefined}
-      onSecondary={next}
-    >
+    <FormScreen title="Фото работ" onBack={() => router.back()}>
       <View className="px-4">
         <View className="mb-1.5 ml-4 flex-row items-baseline justify-between">
           <AppText className="text-ios-footnote uppercase text-mute">Фото</AppText>

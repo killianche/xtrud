@@ -14,6 +14,7 @@ description: Выложить сборку iOS в TestFlight (и при необ
 3. Список прогонов: `GET /repos/killianche/xtrud/actions/runs?per_page=3` (токен — `/root/.config/xtrud/github-token`). Если сборка в очереди — жди.
 4. Запуск: `POST .../actions/workflows/ios.yml/dispatches` с `{"ref":"main","inputs":{"notes":"<что нового>","group":"e7311a74-0939-4f53-aca3-fe8e71bde95b"}}`. Android: `android.yml`, `{"profile":"android-test"}`.
 5. Ждать завершения прогона (~20 мин), затем `node scripts/release/asc-build-status.mjs <номер>` → выход 0 = VALID.
+5а. Android: AAB и `mapping.txt` — из артефакта прогона `android.yml`, затем `python3 scripts/release/play-release.py <xtrud.aab> <mapping.txt> <notes.txt>` (production; заметки ru-RU до 500 символов).
 6. Только после VALID: `release/production.json` → `latestUploadedBuildNumber`, коммит «chore(release): сборка N выложена (ledger N)».
 
 ## Ловушки

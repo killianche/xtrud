@@ -24,6 +24,8 @@ const TABS: Array<{
   icon: () => ReactNode;
   adminOnly?: boolean;
 }> = [
+  // У админа первая вкладка — «Сводка» (цифры + что ждёт решения, №372),
+  // у управляющего — «Входящие»: общие цифры ему закрыты (STAFF_ROLES §2).
   { id: "inbox", label: "Входящие", path: "/inbox", icon: () => <Icon.inbox size={26} /> },
   { id: "orders", label: "Задания", path: "/orders", icon: () => <Icon.task size={26} /> },
   {
@@ -137,7 +139,11 @@ export function Shell({
     document.title = title ? `${title} · xtrud` : "xtrud";
   }, [title]);
 
-  const tabs = TABS.filter((t) => role === "admin" || !t.adminOnly);
+  const tabs = TABS.filter((t) => role === "admin" || !t.adminOnly).map((t) =>
+    t.id === "inbox" && role === "admin"
+      ? { ...t, label: "Сводка", path: "/summary", icon: () => <Icon.chart size={26} /> }
+      : t,
+  );
 
   return (
     <div className="app">

@@ -129,7 +129,11 @@ export function Inbox({ role, navigate }: { role: StaffRole; navigate: (path: st
 
   return (
     <>
-      <PageHead eyebrow={greeting()} title="Входящие" />
+      {role === "admin" ? (
+        <PageHead onBack={() => navigate("/summary")} backLabel="Сводка" title="Входящие" />
+      ) : (
+        <PageHead eyebrow={greeting()} title="Входящие" />
+      )}
 
       {push === "off" || push === "needs-install" ? (
         <button

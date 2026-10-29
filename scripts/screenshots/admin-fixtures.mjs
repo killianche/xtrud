@@ -287,24 +287,29 @@ export function fixture(path, args) {
         },
       ];
     case "admin_metrics_series":
-      return Array.from({ length: args.p_days ?? 30 }, (_, i) => ({
-        day: new Date(now - (29 - i) * 86_400_000).toISOString().slice(0, 10),
-        signups:
-          [
-            0, 1, 0, 2, 1, 0, 3, 1, 0, 0, 2, 1, 4, 2, 0, 1, 1, 0, 2, 3, 1, 0, 0, 2, 1, 3, 2, 1, 4,
-            2,
-          ][i] ?? 0,
-        orders:
-          [
-            1, 0, 2, 1, 0, 1, 3, 2, 1, 0, 1, 2, 2, 0, 1, 3, 1, 0, 2, 1, 0, 1, 2, 3, 1, 2, 0, 1, 3,
-            2,
-          ][i] ?? 0,
-        responses:
-          [
-            2, 1, 4, 3, 0, 2, 6, 4, 2, 1, 3, 5, 4, 1, 2, 6, 3, 1, 4, 3, 2, 2, 5, 7, 3, 4, 1, 3, 6,
-            5,
-          ][i] ?? 0,
-      }));
+      return Array.from({ length: args.p_days ?? 30 }, (_, k) => {
+        // Значения повторяются по кругу — для «Сводки» за 60/180 дней.
+        const len = args.p_days ?? 30;
+        const i = k % 30;
+        return {
+          day: new Date(now - (len - 1 - k) * 86_400_000).toISOString().slice(0, 10),
+          signups:
+            [
+              0, 1, 0, 2, 1, 0, 3, 1, 0, 0, 2, 1, 4, 2, 0, 1, 1, 0, 2, 3, 1, 0, 0, 2, 1, 3, 2, 1, 4,
+              2,
+            ][i] ?? 0,
+          orders:
+            [
+              1, 0, 2, 1, 0, 1, 3, 2, 1, 0, 1, 2, 2, 0, 1, 3, 1, 0, 2, 1, 0, 1, 2, 3, 1, 2, 0, 1, 3,
+              2,
+            ][i] ?? 0,
+          responses:
+            [
+              2, 1, 4, 3, 0, 2, 6, 4, 2, 1, 3, 5, 4, 1, 2, 6, 3, 1, 4, 3, 2, 2, 5, 7, 3, 4, 1, 3, 6,
+              5,
+            ][i] ?? 0,
+        };
+      });
     case "admin_list_categories":
       return [
         ["repair", "Ремонт и отделка", "wallpaper", "Обои", true, 3, 5],

@@ -29,6 +29,7 @@ import { Recovery } from "./pages/Recovery";
 import { Reports } from "./pages/Reports";
 import { Reviews } from "./pages/Reviews";
 import { Settings } from "./pages/Settings";
+import { Summary } from "./pages/Summary";
 import { Suspicious } from "./pages/Suspicious";
 import { Team } from "./pages/Team";
 import { UserCard } from "./pages/UserCard";
@@ -41,8 +42,6 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /** Старые адреса (закладки, ссылки в журнале) → новые. */
 const LEGACY: Record<string, string> = {
-  "/": "/inbox",
-  "": "/inbox",
   "/verifications": "/inbox/passport",
   "/companies": "/inbox/company",
   "/instagram": "/inbox/instagram",
@@ -158,6 +157,14 @@ export function App() {
   }
 
   const role: StaffRole = session;
+  // Главная: у админа «Сводка» (№372), у управляющего — «Входящие».
+  if (route === "/" || route === "") {
+    return (
+      <StaffRoleContext.Provider value={role}>
+        <RedirectHome navigate={navigate} to={role === "admin" ? "/summary" : "/inbox"} />
+      </StaffRoleContext.Provider>
+    );
+  }
   const allowed = role === "admin" || MANAGER_ROUTES.some((r) => r.test(route));
   const openUser = (id: string) => navigate(`/users/${id}`);
   const openOrder = (id: string) => navigate(`/orders/${id}`);
@@ -195,6 +202,10 @@ export function App() {
         </button>
       </div>
     );
+  } else if (head === "summary") {
+    tab = "inbox";
+    title = "Сводка";
+    page = <Summary navigate={navigate} />;
   } else if (head === "orders") {
     tab = "orders";
     if (sub && UUID.test(sub)) {
@@ -311,4 +322,11 @@ export function App() {
       </FeedbackProvider>
     </StaffRoleContext.Provider>
   );
+}
+
+function RedirectHome({ navigate, to }: { navigate: (path: string) => void; to: string }) {
+  useEffect(() => {
+    navigate(to);
+  }, [navigate, to]);
+  return null;
 }

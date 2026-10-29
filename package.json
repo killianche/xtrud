@@ -1,6 +1,6 @@
 {
   "name": "xtrud",
-  "version": "1.0.10",
+  "version": "1.0.11",
   "main": "expo-router/entry",
   "private": true,
   "packageManager": "npm@10.9.4",

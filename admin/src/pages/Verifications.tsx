@@ -1,64 +1,336 @@
-// Проверка личности: очередь фото паспортов, решение админа.
-// DECISION владельца 2026-09-07: «человек отправляет фото паспорта, оно
-// приходит в админку, админ подтверждает — появляется значок».
-// Фото — в приватном бакете, показывается по подписанной ссылке на 10 минут
-// и только администратору (RLS storage, 0174). Решение уходит человеку
-// уведомлением; отклонение требует причины.
+// Паспорта — проверка личности частного мастера (0174; редизайн №367/№368).
+//
+// DECISION владельца 2026-09-07: человек присылает фото паспорта, админ
+// подтверждает — у имени появляется значок. 2026-10-29: паспорт нужен
+// частному мастеру; компании — подтверждение компании (без логотипа). Если в
+// «Паспорта» прислали логотип или документы фирмы — «Это компания»: заявка
+// отклоняется с понятной причиной, профиль переводится в «Компания».
+//
+// Фото — приватное, по подписанной ссылке на 10 минут, только админу.
+// Открывается на весь экран с увеличением (раньше — крошечное превью).
+
 import { useCallback, useEffect, useState } from "react";
+import { useFeedback } from "../components/feedback";
+import { Icon } from "../components/icons";
+import { Sheet } from "../components/Sheet";
+import { refreshAttention } from "../components/Shell";
 import {
   EmptyState,
   ErrorState,
-  formatDate,
   formatPhone,
   fullName,
+  PageHead,
+  PhotoViewer,
+  RelativeTime,
+  Segmented,
   SkeletonRows,
 } from "../components/ui";
 import { api, type VerificationRow } from "../lib/api";
 
 type Tab = "pending" | "approved" | "rejected";
 
-const TAB_LABEL: Record<Tab, string> = {
-  pending: "Ждут проверки",
-  approved: "Подтверждены",
-  rejected: "Отклонены",
-};
+const TABS: Array<{ value: Tab; label: string }> = [
+  { value: "pending", label: "Ждут" },
+  { value: "approved", label: "Подтверждены" },
+  { value: "rejected", label: "Отклонены" },
+];
 
-function Photo({ path }: { path: string }) {
+const REJECT_REASONS = [
+  "Это не паспорт",
+  "Фото нечёткое — данные не читаются",
+  "Нужен разворот с фото",
+  "Имя в профиле не совпадает с паспортом",
+];
+
+const COMPANY_REASON =
+  "Это не паспорт. Похоже, вы компания — мы перевели профиль в «Компания». Укажите название и отправьте заявку на подтверждение компании: Профиль → Проверка.";
+
+function Photo({
+  path,
+  label,
+  onOpen,
+}: {
+  path: string;
+  label: string;
+  onOpen: (url: string) => void;
+}) {
   const [url, setUrl] = useState<string | null>(null);
   const [failed, setFailed] = useState(false);
   useEffect(() => {
     let cancelled = false;
     api
       .verificationPhotoUrl(path)
-      .then((u) => {
-        if (!cancelled) setUrl(u);
-      })
-      .catch(() => {
-        if (!cancelled) setFailed(true);
-      });
+      .then((u) => !cancelled && setUrl(u))
+      .catch(() => !cancelled && setFailed(true));
     return () => {
       cancelled = true;
     };
   }, [path]);
-  if (failed) return <span className="body-sm text-mute">Фото недоступно</span>;
-  if (!url) return <span className="body-sm text-mute">Загружаем…</span>;
   return (
-    <a href={url} target="_blank" rel="noreferrer" title="Открыть в полном размере">
-      <img
-        src={url}
-        alt="Разворот паспорта"
-        style={{ width: 160, height: 110, objectFit: "cover", borderRadius: 8, display: "block" }}
-      />
-    </a>
+    <button
+      type="button"
+      className="photo"
+      onClick={() => url && onOpen(url)}
+      disabled={!url}
+      aria-label={`${label} — открыть на весь экран`}
+    >
+      {url ? (
+        <img src={url} alt="" />
+      ) : (
+        <span className="empty footnote" style={{ height: "100%", padding: 8 }}>
+          {failed ? (
+            "Фото недоступно"
+          ) : (
+            <span className="skeleton" style={{ position: "absolute", inset: 0 }} />
+          )}
+        </span>
+      )}
+      <span className="photo-label">{label}</span>
+    </button>
   );
 }
 
-export function Verifications({ onOpen }: { onOpen: (userId: string) => void }) {
+/** Подтверждение: имя и фамилия — с документа, они закрепятся за профилем. */
+function ApproveSheet({
+  row,
+  onDone,
+}: {
+  row: VerificationRow;
+  onDone: (names: { first: string; last: string } | null) => void;
+}) {
+  const [last, setLast] = useState(row.last_name ?? "");
+  const [first, setFirst] = useState(row.first_name ?? "");
+  const ok = first.trim().length > 0 && last.trim().length > 0;
+  return (
+    <Sheet
+      title="Подтвердить личность"
+      subtitle="Впишите имя и фамилию как в паспорте — они закрепятся за профилем. Если человек сменит имя, значок снимется."
+      labelledBy="approve-title"
+      onClose={() => onDone(null)}
+      footer={
+        <>
+          <button
+            type="button"
+            className="btn btn-primary btn-block"
+            disabled={!ok}
+            onClick={() => onDone({ first: first.trim(), last: last.trim() })}
+          >
+            Подтвердить{ok ? `: ${first.trim()} ${last.trim()}` : ""}
+          </button>
+          <button type="button" className="btn btn-plain btn-block" onClick={() => onDone(null)}>
+            Отмена
+          </button>
+        </>
+      }
+    >
+      <label className="field">
+        <span className="field-label">Фамилия по паспорту</span>
+        <input
+          className="input"
+          value={last}
+          onChange={(e) => setLast(e.target.value)}
+          autoCapitalize="words"
+        />
+      </label>
+      <label className="field">
+        <span className="field-label">Имя по паспорту</span>
+        <input
+          className="input"
+          value={first}
+          onChange={(e) => setFirst(e.target.value)}
+          autoCapitalize="words"
+        />
+      </label>
+    </Sheet>
+  );
+}
+
+function RequestCard({
+  row,
+  onOpenUser,
+  onPhoto,
+  onDone,
+}: {
+  row: VerificationRow;
+  onOpenUser: (id: string) => void;
+  onPhoto: (url: string, title: string) => void;
+  onDone: () => void;
+}) {
+  const { confirm, toast } = useFeedback();
+  const [busy, setBusy] = useState(false);
+  const [approving, setApproving] = useState(false);
+  const name = fullName(row.first_name, row.last_name);
+
+  const run = async (fn: () => Promise<unknown>, done: string) => {
+    setBusy(true);
+    try {
+      await fn();
+      toast(done);
+      refreshAttention();
+      onDone();
+    } catch (e) {
+      toast(e instanceof Error ? e.message : "Не получилось", true);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const reject = async () => {
+    const reason = await confirm({
+      title: "Отклонить паспорт?",
+      text: "Причину человек увидит в уведомлении и сможет отправить фото заново.",
+      confirmLabel: "Отклонить",
+      danger: true,
+      reason: true,
+      reasons: REJECT_REASONS,
+    });
+    if (reason === null) return;
+    await run(() => api.reviewVerification(row.user_id, false, reason), "Отклонено");
+  };
+
+  const toCompany = async () => {
+    const ok = await confirm({
+      title: "Это компания?",
+      text: "Заявка на паспорт отклонится, профиль станет «Компания». Человеку придёт одно уведомление: указать название и отправить заявку компании.",
+      confirmLabel: "Перевести в «Компания»",
+    });
+    if (ok === null) return;
+    await run(async () => {
+      await api.reviewVerification(row.user_id, false, COMPANY_REASON);
+      await api.setAccountType(
+        row.user_id,
+        "company",
+        "Прислал документы компании вместо паспорта",
+        false,
+      );
+    }, "Переведён в «Компания»");
+  };
+
+  return (
+    <article className="card request">
+      <div className="request-head">
+        <button
+          type="button"
+          className="cell-main"
+          style={{ textAlign: "left" }}
+          onClick={() => onOpenUser(row.user_id)}
+        >
+          <span className="headline">{name}</span>
+          <span className="meta">
+            <span>{formatPhone(row.phone)}</span>
+            <RelativeTime iso={row.submitted_at} />
+          </span>
+        </button>
+        {row.status === "approved" ? (
+          <span className="badge badge-ok">Подтверждён</span>
+        ) : row.status === "rejected" ? (
+          <span className="badge badge-error">Отклонён</span>
+        ) : null}
+      </div>
+
+      <div className="photos">
+        <Photo
+          path={row.passport_main_path}
+          label="Паспорт"
+          onOpen={(u) => onPhoto(u, `Паспорт · ${name}`)}
+        />
+        {row.selfie_path ? (
+          <Photo
+            path={row.selfie_path}
+            label="Селфи"
+            onOpen={(u) => onPhoto(u, `Селфи · ${name}`)}
+          />
+        ) : null}
+      </div>
+
+      {row.status === "rejected" && row.rejection_reason ? (
+        <p className="footnote text-mute" style={{ margin: 0 }}>
+          Причина: {row.rejection_reason}
+        </p>
+      ) : null}
+
+      {row.status === "pending" ? (
+        <>
+          <p className="footnote text-mute" style={{ margin: 0 }}>
+            Сверьте имя в профиле — «{name}» — с паспортом.
+          </p>
+          <div className="actions">
+            <button
+              type="button"
+              className="btn btn-danger"
+              disabled={busy}
+              onClick={() => void reject()}
+            >
+              Отклонить
+            </button>
+            <button
+              type="button"
+              className="btn btn-primary"
+              disabled={busy}
+              onClick={() => setApproving(true)}
+            >
+              Подтвердить
+            </button>
+          </div>
+          <button
+            type="button"
+            className="btn btn-plain btn-sm"
+            disabled={busy}
+            onClick={() => void toCompany()}
+          >
+            <Icon.building size={18} /> Это компания, а не паспорт
+          </button>
+        </>
+      ) : row.status === "rejected" ? (
+        <button
+          type="button"
+          className="btn btn-ghost btn-block"
+          disabled={busy}
+          onClick={() => setApproving(true)}
+        >
+          Всё-таки подтвердить
+        </button>
+      ) : (
+        <button
+          type="button"
+          className="btn btn-ghost btn-block"
+          disabled={busy}
+          onClick={() => void reject()}
+        >
+          Снять подтверждение
+        </button>
+      )}
+
+      {approving ? (
+        <ApproveSheet
+          row={row}
+          onDone={(names) => {
+            setApproving(false);
+            if (names) {
+              void run(
+                () => api.reviewVerification(row.user_id, true, "", names.first, names.last),
+                "Личность подтверждена — значок у имени",
+              );
+            }
+          }}
+        />
+      ) : null}
+    </article>
+  );
+}
+
+export function Verifications({
+  onOpen,
+  onBack,
+}: {
+  onOpen: (userId: string) => void;
+  onBack: () => void;
+}) {
   const [tab, setTab] = useState<Tab>("pending");
   const [rows, setRows] = useState<VerificationRow[] | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [busyId, setBusyId] = useState<string | null>(null);
   const [tick, setTick] = useState(0);
+  const [viewer, setViewer] = useState<{ url: string; title: string } | null>(null);
   const reload = useCallback(() => setTick((n) => n + 1), []);
 
   useEffect(() => {
@@ -68,160 +340,48 @@ export function Verifications({ onOpen }: { onOpen: (userId: string) => void }) 
     setError(null);
     api
       .listVerifications(tab)
-      .then((data) => {
-        if (!cancelled) setRows(data);
-      })
-      .catch((e: Error) => {
-        if (!cancelled) setError(e.message);
-      });
+      .then((data) => !cancelled && setRows(data))
+      .catch((e: Error) => !cancelled && setError(e.message));
     return () => {
       cancelled = true;
     };
   }, [tab, tick]);
 
-  const decide = async (row: VerificationRow, approve: boolean) => {
-    let reason = "";
-    if (!approve) {
-      const answer = window.prompt(
-        "Причина отклонения — её увидит человек в уведомлении",
-        "Фото нечёткое, данные не читаются",
-      );
-      if (answer === null) return;
-      if (answer.trim().length < 3) {
-        window.alert("Укажите причину — минимум три символа.");
-        return;
-      }
-      reason = answer;
-    }
-    let firstName: string | undefined;
-    let lastName: string | undefined;
-    if (approve) {
-      // Имя закрепляется за человеком и попадёт в его профиль, поэтому
-      // вписываем его с документа, а не подтверждаем «как есть».
-      const last = window.prompt("Фамилия по документу", row.last_name ?? "");
-      if (last === null || last.trim().length === 0) return;
-      const first = window.prompt("Имя по документу", row.first_name ?? "");
-      if (first === null || first.trim().length === 0) return;
-      lastName = last;
-      firstName = first;
-      if (!window.confirm(`Подтвердить личность: ${first.trim()} ${last.trim()}?`)) return;
-    }
-    setBusyId(row.user_id);
-    try {
-      await api.reviewVerification(row.user_id, approve, reason, firstName, lastName);
-      reload();
-    } catch (e) {
-      window.alert((e as Error).message);
-    } finally {
-      setBusyId(null);
-    }
-  };
-
   return (
-    <section>
-      <div className="page-header">
-        <div>
-          <p className="mono-eyebrow">Проверка личности</p>
-          <h1 className="heading-lg" style={{ marginTop: 4 }}>
-            Паспорта
-          </h1>
-        </div>
-        <div style={{ display: "flex", gap: 8 }}>
-          {(Object.keys(TAB_LABEL) as Tab[]).map((key) => (
-            <button
-              key={key}
-              type="button"
-              className={key === tab ? "btn btn-primary" : "btn btn-ghost"}
-              onClick={() => setTab(key)}
-            >
-              {TAB_LABEL[key]}
-            </button>
-          ))}
-        </div>
-      </div>
-      <p className="body-md text-mute" style={{ marginTop: 8 }}>
-        Сверьте имя и фамилию в аккаунте с паспортом. Фото видно только здесь и открывается по
-        временной ссылке. После подтверждения у специалиста появляется значок в профиле.
-      </p>
-
+    <>
+      <PageHead
+        onBack={onBack}
+        backLabel="Входящие"
+        title="Паспорта"
+        lede="Только для частных мастеров. Компании подтверждаются в «Компаниях» — паспорт им не нужен."
+      />
+      <Segmented label="Заявки" value={tab} options={TABS} onChange={setTab} />
       {error ? (
         <ErrorState message={error} onRetry={reload} />
       ) : rows === null ? (
-        <SkeletonRows count={4} height={120} />
+        <SkeletonRows count={2} height={320} />
       ) : rows.length === 0 ? (
         <EmptyState
-          title={tab === "pending" ? "Заявок на проверку нет" : "Пока пусто"}
+          done={tab === "pending"}
+          title={tab === "pending" ? "Паспортов на проверке нет" : "Пока пусто"}
           hint={tab === "pending" ? "Новые фото появятся здесь сразу после отправки." : undefined}
         />
       ) : (
-        <div className="table-wrap">
-          <table className="table">
-            <thead>
-              <tr>
-                <th>Специалист</th>
-                <th>Фото паспорта</th>
-                <th>Отправлено</th>
-                <th>Решение</th>
-                <th aria-label="Действия" />
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((r) => (
-                <tr key={r.user_id}>
-                  <td>
-                    <button type="button" className="link" onClick={() => onOpen(r.user_id)}>
-                      {fullName(r.first_name, r.last_name)}
-                    </button>
-                    <div className="text-mute body-sm">{formatPhone(r.phone)}</div>
-                  </td>
-                  <td>
-                    <Photo path={r.passport_main_path} />
-                  </td>
-                  <td className="cell-mono">{formatDate(r.submitted_at)}</td>
-                  <td>
-                    {r.status === "approved" ? (
-                      <span className="badge badge-active">Подтверждён</span>
-                    ) : r.status === "rejected" ? (
-                      <>
-                        <span className="badge badge-error">Отклонён</span>
-                        {r.rejection_reason ? (
-                          <div className="text-mute body-sm" style={{ marginTop: 4 }}>
-                            {r.rejection_reason}
-                          </div>
-                        ) : null}
-                      </>
-                    ) : (
-                      <span className="badge badge-warn">Ждёт</span>
-                    )}
-                  </td>
-                  <td style={{ whiteSpace: "nowrap" }}>
-                    {r.status !== "approved" ? (
-                      <button
-                        type="button"
-                        className="btn btn-primary"
-                        disabled={busyId === r.user_id}
-                        onClick={() => void decide(r, true)}
-                      >
-                        Подтвердить
-                      </button>
-                    ) : null}{" "}
-                    {r.status !== "rejected" ? (
-                      <button
-                        type="button"
-                        className="btn btn-ghost"
-                        disabled={busyId === r.user_id}
-                        onClick={() => void decide(r, false)}
-                      >
-                        Отклонить
-                      </button>
-                    ) : null}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="stack">
+          {rows.map((r) => (
+            <RequestCard
+              key={r.user_id}
+              row={r}
+              onOpenUser={onOpen}
+              onPhoto={(url, title) => setViewer({ url, title })}
+              onDone={reload}
+            />
+          ))}
         </div>
       )}
-    </section>
+      {viewer ? (
+        <PhotoViewer src={viewer.url} title={viewer.title} onClose={() => setViewer(null)} />
+      ) : null}
+    </>
   );
 }

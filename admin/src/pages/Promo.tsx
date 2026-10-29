@@ -5,10 +5,11 @@
 // Главной нет вовсе.
 
 import { useEffect, useRef, useState } from "react";
-import { EmptyState, ErrorState, Field, SkeletonRows } from "../components/ui";
+import { useFeedback } from "../components/feedback";
+import { EmptyState, ErrorState, Field, PageHead, SkeletonRows } from "../components/ui";
 import { api, type PromoBannerRow } from "../lib/api";
 
-export function Promo() {
+export function Promo({ onBack }: { onBack: () => void }) {
   const [rows, setRows] = useState<PromoBannerRow[] | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
 
@@ -23,14 +24,12 @@ export function Promo() {
 
   return (
     <div className="stack" style={{ gap: 24 }}>
-      <div className="page-header">
-        <div>
-          <p className="mono-eyebrow">Главная приложения</p>
-          <h1 className="heading-lg" style={{ marginTop: 4 }}>
-            Реклама
-          </h1>
-        </div>
-      </div>
+      <PageHead
+        onBack={onBack}
+        backLabel="Ещё"
+        title="Реклама"
+        lede="Баннеры на Главной приложения."
+      />
 
       <AddBanner onAdded={load} />
 
@@ -168,6 +167,7 @@ function BannerCard({
   isLast: boolean;
   onChanged: () => void;
 }) {
+  const { confirm } = useFeedback();
   const [link, setLink] = useState(row.link_url ?? "");
   const [title, setTitle] = useState(row.title ?? "");
   const [busy, setBusy] = useState(false);
@@ -283,9 +283,14 @@ function BannerCard({
           className="btn btn-danger"
           disabled={busy}
           onClick={() => {
-            if (window.confirm("Удалить баннер вместе с фото?")) {
-              void run(() => api.deletePromoBanner(row.id));
-            }
+            void confirm({
+              title: "Удалить баннер?",
+              text: "Баннер пропадёт с Главной вместе с фото.",
+              confirmLabel: "Удалить",
+              danger: true,
+            }).then((ok) => {
+              if (ok !== null) void run(() => api.deletePromoBanner(row.id));
+            });
           }}
         >
           Удалить

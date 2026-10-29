@@ -175,7 +175,13 @@ function MemberRow({
   );
 }
 
-export function Team({ onOpenUser }: { onOpenUser: (id: string) => void }) {
+export function Team({
+  onOpenUser,
+  onBack,
+}: {
+  onOpenUser: (id: string) => void;
+  onBack: () => void;
+}) {
   const [rows, setRows] = useState<StaffRow[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -190,7 +196,7 @@ export function Team({ onOpenUser }: { onOpenUser: (id: string) => void }) {
 
   return (
     <div>
-      <PageHead eyebrow="Система" title="Команда" />
+      <PageHead onBack={onBack} backLabel="Ещё" title="Команда" />
       <p className="body-sm text-mute" style={{ margin: "0 0 16px" }}>
         Управляющий разбирает задания без категории и жалобы, блокирует нарушителей — в приложении и
         здесь. Каталог, паспорта, телефоны, рассылки и настройки остаются у администратора.

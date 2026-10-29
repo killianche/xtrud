@@ -8,15 +8,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useFeedback } from "../components/feedback";
 import { refreshAttention } from "../components/Shell";
-import {
-  Badge,
-  EmptyState,
-  ErrorState,
-  PageHead,
-  plural,
-  RelativeTime,
-  SkeletonRows,
-} from "../components/ui";
+import { EmptyState, ErrorState, plural, RelativeTime, SkeletonRows } from "../components/ui";
 import {
   type AiAssistProposal,
   type AiCategorySuggestionRow,
@@ -47,6 +39,14 @@ const ICON_OPTIONS: Array<{ name: string; label: string }> = [
   { name: "WashingMachine", label: "WashingMachine — стиральная машина" },
   { name: "Package", label: "Package — коробка" },
   { name: "Megaphone", label: "Megaphone — рупор" },
+];
+
+/** Готовые причины отказа — одним касанием (№367). Автор видит причину. */
+export const REJECT_REASONS = [
+  "Это реклама услуг, а не задание",
+  "Повтор задания",
+  "Запрещённая тема",
+  "Непонятно, что нужно сделать",
 ];
 
 function place(o: UncategorizedOrderRow): string {
@@ -278,33 +278,57 @@ function OrderRowCard({
     }
   };
 
+  // «Это не задание» (№367/№368): отклонить — автору уведомление с причиной,
+  // задание уходит в «Отклонённые», откуда его можно вернуть.
+  const reject = async () => {
+    const reason = await confirm({
+      title: "Отклонить задание?",
+      text: `«${order.title}» пропадёт из ленты. Автору придёт уведомление с причиной. Вернуть можно в «Отклонённых».`,
+      confirmLabel: "Отклонить",
+      danger: true,
+      reason: true,
+      reasons: REJECT_REASONS,
+    });
+    if (reason === null) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await api.hideOrder(order.id, reason, null);
+      toast("Отклонено — в «Отклонённых»");
+      refreshAttention();
+      onDone();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Не удалось отклонить.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
   return (
-    <div className="card stack">
-      <div className="row" style={{ justifyContent: "space-between", alignItems: "flex-start" }}>
-        <div style={{ minWidth: 0 }}>
-          <p className="heading-md">{order.title}</p>
-          {order.description_short ? (
-            <p className="body-sm text-mute" style={{ margin: "4px 0 0" }}>
-              {order.description_short}
-            </p>
-          ) : null}
-          <p className="body-sm text-mute" style={{ margin: "4px 0 0" }}>
-            {place(order)} · <RelativeTime iso={order.created_at} /> ·{" "}
-            {plural(order.responses_count, "предложение", "предложения", "предложений")}
-          </p>
-        </div>
-        <div style={{ textAlign: "right" }}>
-          <Badge status={order.status} />
-          <div style={{ marginTop: 6 }}>
-            <button type="button" className="link" onClick={() => onOpenOrder(order.id)}>
-              Открыть задание
-            </button>
+    <article className="card request">
+      <div className="request-head">
+        <div className="cell-main">
+          <button
+            type="button"
+            className="headline"
+            style={{ textAlign: "left" }}
+            onClick={() => onOpenOrder(order.id)}
+          >
+            {order.title}
+          </button>
+          <div className="meta">
+            <span>{place(order)}</span>
+            <RelativeTime iso={order.created_at} />
+            <span>
+              {plural(order.responses_count, "предложение", "предложения", "предложений")}
+            </span>
           </div>
         </div>
       </div>
+      {order.description_short ? <p className="quote">{order.description_short}</p> : null}
 
       {suggestion ? (
-        <p className="body-sm" style={{ margin: 0 }}>
+        <p className="banner body-sm" style={{ margin: 0 }}>
           {suggestion.status === "pending"
             ? "Нейросеть ещё смотрит задание…"
             : suggestion.suggested_l2
@@ -343,34 +367,46 @@ function OrderRowCard({
         </div>
       ) : null}
       {mode === null ? (
-        <div className="row" style={{ flexWrap: "wrap" }}>
+        <div className="stack" style={{ gap: 8 }}>
           {suggestion?.suggested_l2 && suggestion.status !== "pending" ? (
             <button
               type="button"
-              className="btn btn-primary"
+              className="btn btn-primary btn-block"
               disabled={busy}
               onClick={() => void acceptSuggestion()}
             >
-              Принять подсказку
+              В «{suggestion.l2_name ?? suggestion.suggested_l2}»
             </button>
           ) : null}
-          <button type="button" className="btn btn-ghost" onClick={openAssign}>
-            Назначить категорию
-          </button>
-          <button type="button" className="btn btn-ghost" onClick={openCreate}>
-            Создать новую категорию
-          </button>
-          <button
-            type="button"
-            className="btn btn-ghost"
-            onClick={() => {
-              setMode("ai");
-              setError(null);
-              setProposal(null);
-            }}
-          >
-            Спросить нейросеть
-          </button>
+          <div className="actions">
+            <button
+              type="button"
+              className="btn btn-danger"
+              disabled={busy}
+              onClick={() => void reject()}
+            >
+              Отклонить
+            </button>
+            <button type="button" className="btn btn-ghost" disabled={busy} onClick={openAssign}>
+              Категория
+            </button>
+          </div>
+          <div className="row" style={{ justifyContent: "center", gap: 4 }}>
+            <button type="button" className="btn btn-plain btn-sm" onClick={openCreate}>
+              Новая категория
+            </button>
+            <button
+              type="button"
+              className="btn btn-plain btn-sm"
+              onClick={() => {
+                setMode("ai");
+                setError(null);
+                setProposal(null);
+              }}
+            >
+              Спросить нейросеть
+            </button>
+          </div>
         </div>
       ) : mode === "ai" ? (
         <div className="stack">
@@ -586,10 +622,14 @@ function OrderRowCard({
           </div>
         </div>
       )}
-    </div>
+    </article>
   );
 }
 
+/**
+ * «На проверке» — открытые задания без категории (0255: без отменённых и
+ * скрытых). Встраивается сегментом во вкладку «Задания».
+ */
 export function Uncategorized({ onOpenOrder }: { onOpenOrder: (orderId: string) => void }) {
   const [rows, setRows] = useState<UncategorizedOrderRow[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -621,29 +661,16 @@ export function Uncategorized({ onOpenOrder }: { onOpenOrder: (orderId: string) 
   useEffect(loadCategories, [loadCategories]);
 
   return (
-    <div>
-      <PageHead
-        eyebrow="Площадка"
-        title="Без категории"
-        actions={
-          <button type="button" className="btn btn-ghost" onClick={load}>
-            Обновить
-          </button>
-        }
-      />
-      <p className="body-sm text-mute" style={{ margin: "0 0 16px" }}>
-        Сюда попадают задания, категорию которых не узнал словарь, а нейросеть не уверена. Примите
-        подсказку нейросети, назначьте существующую категорию или создайте новую — она сразу
-        закрепится за этим заданием и появится в каталоге.
-      </p>
+    <div className="stack">
       {error ? (
         <ErrorState message={error} onRetry={load} />
       ) : !rows ? (
-        <SkeletonRows count={3} height={140} />
+        <SkeletonRows count={3} height={160} />
       ) : rows.length === 0 ? (
         <EmptyState
-          title="Заданий без категории нет"
-          hint="Здесь появятся задания, которым при публикации не подошла ни одна категория."
+          done
+          title="Проверять нечего"
+          hint="Сюда попадают задания, которым при публикации не подошла ни одна категория: отнесите в категорию или отклоните."
         />
       ) : (
         <div className="stack">

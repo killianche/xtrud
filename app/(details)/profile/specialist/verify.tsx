@@ -1,20 +1,25 @@
 /**
- * /profile/specialist/verify — подтверждение личности по паспорту.
- * DECISION владельца 2026-09-07: «человек отправляет фото паспорта, оно
- * приходит в админку, админ подтверждает — появляется значок».
+ * /profile/specialist/verify — подтверждение личности по паспорту частного
+ * мастера. DECISION владельца 2026-09-07: «человек отправляет фото паспорта,
+ * оно приходит в админку, админ подтверждает — появляется значок».
  *
  * Состояния: не отправлено → «на проверке» → подтверждено | отклонено (с
  * причиной и возможностью отправить заново). Фото видит только администратор.
+ *
+ * У типа «Компания» сверху — подсказка на экран заявки компании (№368):
+ * человек путал этот экран с подтверждением компании и присылал сюда
+ * логотип вместо разворота своего паспорта.
  */
 
 import { useRouter } from "expo-router";
-import { IdentificationCard, SealCheck } from "phosphor-react-native";
+import { BuildingOffice, IdentificationCard, SealCheck } from "phosphor-react-native";
 import { useState } from "react";
 import { View } from "react-native";
 import { AppText } from "@/components/AppText";
 import { FormScreen, InsetGroup, InsetRow } from "@/components/ui";
 import { SystemIcon } from "@/components/ui/SystemIcon";
 import { useAuthSession } from "@/features/auth/use-auth-session";
+import { useMyCompany } from "@/features/specialist/use-company";
 import {
   useMyVerification,
   useSubmitVerification,
@@ -32,6 +37,8 @@ export default function VerifyIdentityScreen() {
   const { session } = useAuthSession();
   const userId = session?.user?.id;
   const tc = useThemeColors(["accent", "ink", "mute", "success"]);
+  const company = useMyCompany(!!userId);
+  const isCompany = company.data?.account_type === "company";
   const verification = useMyVerification(userId);
   const submit = useSubmitVerification(userId);
   const [error, setError] = useState<string | null>(null);
@@ -80,6 +87,18 @@ export default function VerifyIdentityScreen() {
       busy={submit.isPending}
       error={error}
     >
+      {isCompany ? (
+        <InsetGroup footer="Чтобы подтвердить компанию, отправьте заявку компании — паспорт не нужен.">
+          <InsetRow
+            title="Заявка компании"
+            icon={<BuildingOffice size={18} weight="bold" color={tc.ink} />}
+            navigates
+            onPress={() => router.push("/profile/specialist/company" as never)}
+            last
+          />
+        </InsetGroup>
+      ) : null}
+
       <InsetGroup
         title="Статус"
         footer={
@@ -113,7 +132,7 @@ export default function VerifyIdentityScreen() {
       <InsetGroup title="Как это работает">
         <InsetRow
           title="Сфотографируйте главный разворот паспорта"
-          subtitle="Фото должно быть чётким: имя, фамилия и фото читаются."
+          subtitle="Нужен чёткий разворот с вашим фото и именем — не логотип и не документы компании."
         />
         <InsetRow
           title="Фото видит только администратор"

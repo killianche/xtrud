@@ -39,9 +39,10 @@ import { useEffect, useRef } from "react";
 import { Pressable, View } from "react-native";
 import { AppText } from "@/components/AppText";
 import { Avatar } from "@/components/Avatar";
-import { InsetGroup, InsetRow } from "@/components/ui";
+import { InsetGroup, InsetRow, isVerifiedLevel, VerifiedBadge } from "@/components/ui";
 import { SystemIcon } from "@/components/ui/SystemIcon";
 import { SpecialistExtraGroup } from "@/features/account/SpecialistExtraGroup";
+import { SpecialistVerificationGroup } from "@/features/account/SpecialistVerificationGroup";
 import { SpecialistVisibilityGroup } from "@/features/account/SpecialistVisibilityGroup";
 import { SUPPORT_URL } from "@/features/auth/BannedScreen";
 import { formatRuPhone } from "@/features/auth/RegisterFormFields";
@@ -163,15 +164,24 @@ export function AccountBody({ userId }: { userId: string }) {
             клиенты» с тем же адресом убрана (№363). */}
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel={`${fullName}. Как вас видят клиенты`}
+          // Вся строка — один элемент VoiceOver: значок внутри своей
+          // метки не прочитается отдельно, поэтому «Подтверждён» — здесь.
+          accessibilityLabel={`${fullName}${isVerifiedLevel(m?.verification_level) ? ". Подтверждён" : ""}. Как вас видят клиенты`}
           onPress={() => router.push(`/master/${userId}` as never)}
           className="flex-row items-center gap-4 active:opacity-70"
         >
           <Avatar url={user?.avatar_url} name={fullName} seed={userId} size="xl" />
           <View className="min-w-0 flex-1">
-            <AppText weight="bold" className="text-ios-title2 text-ink" numberOfLines={1}>
-              {fullName}
-            </AppText>
+            <View className="flex-row items-center gap-1.5">
+              <AppText
+                weight="bold"
+                className="min-w-0 shrink text-ios-title2 text-ink"
+                numberOfLines={1}
+              >
+                {fullName}
+              </AppText>
+              {isVerifiedLevel(m?.verification_level) ? <VerifiedBadge size={18} /> : null}
+            </View>
             <AppText className="mt-0.5 text-ios-subheadline text-mute">
               Как вас видят клиенты
             </AppText>
@@ -253,6 +263,11 @@ export function AccountBody({ userId }: { userId: string }) {
           last
         />
       </InsetGroup>
+
+      {/* Тип аккаунта и подтверждение — сразу после анкеты, рядом друг с
+          другом: паспорт частного мастера и заявка компании не должны
+          путаться (№368, перенесено из «Дополнительно»). */}
+      <SpecialistVerificationGroup userId={userId} />
 
       {/* Видимость и «Принимаю задания» — после анкеты: пока она не
           заполнена, заполнение — главное дело на экране (основной агент,

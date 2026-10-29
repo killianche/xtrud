@@ -1,7 +1,7 @@
 // Мелкие общие детали панели. Ничего декоративного: значок состояния,
 // пустой экран, ошибка, скелет и формат величин.
 
-import type { ReactNode } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import { Icon } from "./icons";
 
 /** Подписи состояний всех объектов панели: техническое значение наружу не показываем. */
@@ -45,24 +45,44 @@ export function statusLabel(status: string): string {
   return STATUS[status]?.label ?? status;
 }
 
-export function EmptyState({ title, hint }: { title: string; hint?: string }) {
+export function EmptyState({
+  title,
+  hint,
+  done,
+}: {
+  title: string;
+  hint?: string;
+  /** «Всё разобрано» — спокойная зелёная галочка вместо пустоты. */
+  done?: boolean;
+}) {
   return (
-    <div className="state">
-      <p className="heading-md" style={{ color: "var(--ink)" }}>
+    <div className="empty">
+      {done ? (
+        <span className="empty-icon">
+          <Icon.check size={28} />
+        </span>
+      ) : null}
+      <p className="headline" style={{ color: "var(--ink)" }}>
         {title}
       </p>
-      {hint ? <p className="body-md text-mute">{hint}</p> : null}
+      {hint ? (
+        <p className="body-md text-mute" style={{ margin: 0, maxWidth: 360 }}>
+          {hint}
+        </p>
+      ) : null}
     </div>
   );
 }
 
 export function ErrorState({ message, onRetry }: { message: string; onRetry?: () => void }) {
   return (
-    <div className="state">
-      <p className="heading-md" style={{ color: "var(--ink)" }}>
+    <div className="empty" role="alert">
+      <p className="headline" style={{ color: "var(--ink)" }}>
         Не удалось загрузить
       </p>
-      <p className="body-md text-mute">{message}</p>
+      <p className="body-md text-mute" style={{ margin: 0 }}>
+        {message}
+      </p>
       {onRetry ? (
         <button type="button" className="btn btn-ghost" onClick={onRetry} style={{ marginTop: 8 }}>
           Повторить
@@ -177,32 +197,44 @@ export function relative(iso: string, now = Date.now()): string {
   });
 }
 
+/**
+ * Шапка страницы: «‹ Назад» (если есть), крупный заголовок как в iOS,
+ * подпись и действия. Заголовок дублируется в полоске навигации при
+ * прокрутке (Shell).
+ */
 export function PageHead({
   eyebrow,
   title,
+  lede,
   actions,
   onBack,
   backLabel,
 }: {
   eyebrow?: string;
   title: string;
+  lede?: ReactNode;
   actions?: ReactNode;
   onBack?: () => void;
   backLabel?: string;
 }) {
   return (
     <div className="page-head">
-      <div style={{ minWidth: 0 }}>
-        {onBack ? (
-          <button type="button" className="back-link" onClick={onBack}>
-            <Icon.chevronLeft />
-            {backLabel ?? "Назад"}
-          </button>
-        ) : eyebrow ? (
-          <p className="mono-eyebrow">{eyebrow}</p>
-        ) : null}
-        <h1 className="heading-lg">{title}</h1>
+      {onBack ? (
+        <button type="button" className="back-link" onClick={onBack} style={{ marginLeft: -6 }}>
+          <Icon.chevronLeft size={24} />
+          {backLabel ?? "Назад"}
+        </button>
+      ) : eyebrow ? (
+        <p className="caption" style={{ margin: 0 }}>
+          {eyebrow}
+        </p>
+      ) : null}
+      <div className="page-head-row">
+        <h1 className="large-title" data-page-title={title}>
+          {title}
+        </h1>
       </div>
+      {lede ? <p className="page-lede">{lede}</p> : null}
       {actions ? <div className="page-head-actions">{actions}</div> : null}
     </div>
   );
@@ -212,21 +244,25 @@ export function Segmented<T extends string>({
   value,
   options,
   onChange,
+  label,
 }: {
   value: T;
-  options: Array<{ value: T; label: string }>;
+  options: Array<{ value: T; label: string; count?: number | null }>;
   onChange: (next: T) => void;
+  label?: string;
 }) {
   return (
-    <div className="segmented">
+    <div className="segmented" role="tablist" aria-label={label}>
       {options.map((o) => (
         <button
           key={o.value}
           type="button"
-          aria-pressed={o.value === value}
+          role="tab"
+          aria-selected={o.value === value}
           onClick={() => onChange(o.value)}
         >
           {o.label}
+          {o.count ? <span className="count">{o.count}</span> : null}
         </button>
       ))}
     </div>
@@ -265,4 +301,205 @@ export function Sparkline({ values }: { values: number[] }) {
       />
     </svg>
   );
+}
+
+/** Ячейка сгруппированного списка — как строка в «Настройках» iPhone. */
+export function Cell({
+  icon,
+  iconBg,
+  title,
+  sub,
+  value,
+  count,
+  onClick,
+  chevron = true,
+  danger,
+}: {
+  icon?: ReactNode;
+  iconBg?: string;
+  title: ReactNode;
+  sub?: ReactNode;
+  value?: ReactNode;
+  count?: number | null;
+  onClick?: () => void;
+  chevron?: boolean;
+  danger?: boolean;
+}) {
+  const body = (
+    <>
+      {icon ? (
+        <span className="cell-icon" style={iconBg ? { background: iconBg } : undefined}>
+          {icon}
+        </span>
+      ) : null}
+      <span className="cell-main">
+        <span className="cell-title" style={danger ? { color: "var(--danger)" } : undefined}>
+          {title}
+        </span>
+        {sub ? <span className="cell-sub">{sub}</span> : null}
+      </span>
+      {value != null ? <span className="cell-value">{value}</span> : null}
+      {count ? <span className="count">{count}</span> : null}
+      {onClick && chevron ? (
+        <span className="chevron">
+          <Icon.chevronRight />
+        </span>
+      ) : null}
+    </>
+  );
+  const cls = `cell${icon ? " has-icon" : ""}`;
+  return onClick ? (
+    <button type="button" className={cls} onClick={onClick}>
+      {body}
+    </button>
+  ) : (
+    <div className={cls}>{body}</div>
+  );
+}
+
+/** Переключатель iOS. */
+export function Switch({
+  checked,
+  onChange,
+  label,
+  disabled,
+}: {
+  checked: boolean;
+  onChange: (next: boolean) => void;
+  label: string;
+  disabled?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      className="switch"
+      aria-checked={checked}
+      aria-label={label}
+      disabled={disabled}
+      onClick={() => onChange(!checked)}
+    />
+  );
+}
+
+export function initials(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "?";
+  return ((parts[0]?.[0] ?? "") + (parts[1]?.[0] ?? "")).toUpperCase();
+}
+
+export function Avatar({ name, src }: { name: string; src?: string | null }) {
+  return <span className="avatar">{src ? <img src={src} alt="" /> : initials(name)}</span>;
+}
+
+/** Ссылка на WhatsApp по номеру (только цифры). */
+export function waLink(phone: string, text?: string): string {
+  const digits = phone.replace(/\D/g, "");
+  const intl =
+    digits.length === 10
+      ? `7${digits}`
+      : digits.length === 11 && digits[0] === "8"
+        ? `7${digits.slice(1)}`
+        : digits;
+  return `https://wa.me/${intl}${text ? `?text=${encodeURIComponent(text)}` : ""}`;
+}
+
+/** Текст заявки целиком, ссылки нажимаются (№369: раньше обрезался «…»). */
+export function RichText({ text }: { text: string }) {
+  const parts = text.split(/(https?:\/\/[^\s]+)/g);
+  return (
+    <p className="quote">
+      {parts.map((part, i) =>
+        /^https?:\/\//.test(part) ? (
+          // biome-ignore lint/suspicious/noArrayIndexKey: части текста не переставляются
+          <a key={i} href={part} target="_blank" rel="noopener noreferrer">
+            {part.replace(/^https?:\/\//, "").replace(/\/$/, "")}
+          </a>
+        ) : (
+          // biome-ignore lint/suspicious/noArrayIndexKey: части текста не переставляются
+          <span key={i}>{part}</span>
+        ),
+      )}
+    </p>
+  );
+}
+
+/** Фото на весь экран с увеличением по касанию и щипком. */
+export function PhotoViewer({
+  src,
+  title,
+  onClose,
+}: {
+  src: string;
+  title?: string;
+  onClose: () => void;
+}) {
+  const [zoomed, setZoomed] = useState(false);
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKey);
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      document.body.style.overflow = prev;
+    };
+  }, [onClose]);
+  return (
+    <div className="viewer" role="dialog" aria-modal="true" aria-label={title ?? "Фото"}>
+      <div className="viewer-bar">
+        <button type="button" className="btn-icon" onClick={onClose} aria-label="Закрыть">
+          <Icon.x />
+        </button>
+        <span className="headline">{title}</span>
+        <a
+          className="btn-icon"
+          href={src}
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label="Открыть оригинал"
+        >
+          <Icon.external />
+        </a>
+      </div>
+      <button
+        type="button"
+        className={`viewer-stage${zoomed ? " is-zoomed" : ""}`}
+        onClick={() => setZoomed((z) => !z)}
+        aria-label={zoomed ? "Уменьшить" : "Увеличить"}
+      >
+        <img src={src} alt={title ?? ""} />
+      </button>
+      <p className="viewer-foot">
+        {zoomed ? "Коснитесь, чтобы уменьшить" : "Коснитесь, чтобы увеличить · можно щипком"}
+      </p>
+    </div>
+  );
+}
+
+/**
+ * Название города/района по id — тот же список, что в приложении
+ * (src/lib/location-config.ts). Раньше карточка показывала «nazran».
+ */
+const PLACE_NAME: Record<string, string> = {
+  "nazran-magas": "Назрань · Магас",
+  nazran: "Назрань",
+  magas: "Магас",
+  karabulak: "Карабулак",
+  malgobek: "Малгобек",
+  sunzha: "Сунжа",
+  ordzhonikidzevskaya: "Орджоникидзевская",
+  sernovodskaya: "Серноводская",
+  nesterovskaya: "Нестеровская",
+  nazranovsky: "Назрановский район",
+  sunzhensky: "Сунженский район",
+  malgobeksky: "Малгобекский район",
+  dzheirakhsky: "Джейрахский район",
+};
+
+export function placeName(id: string | null | undefined): string {
+  if (!id) return "—";
+  return PLACE_NAME[id] ?? id;
 }

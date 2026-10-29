@@ -117,6 +117,15 @@ export const RPC_ALLOWLIST = new Set([
   "admin_delete_promo_banner",
   // Задания без категории (0230, №251). С 0239 — is_staff_session() (админ или
   // управляющий) у функций из docs/STAFF_ROLES_2026-10.md §2.
+  // Админка на телефоне (0255, №367): тип аккаунта (только админ), Web Push
+  // (сотрудник — только свои подписки и настройки), «Большой опыт» — скрыть.
+  "admin_set_account_type",
+  "admin_push_subscribe",
+  "admin_push_unsubscribe",
+  "admin_push_settings",
+  "admin_set_push_kind",
+  "admin_push_test",
+  "admin_defer_experience_badge_request",
   "admin_list_uncategorized_orders",
   "admin_set_order_category",
   "admin_create_category",

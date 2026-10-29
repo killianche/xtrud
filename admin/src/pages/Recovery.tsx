@@ -5,7 +5,18 @@
 // Номер в заявке — номер АККАУНТА, а не введённый в форме.
 
 import { useEffect, useState } from "react";
-import { EmptyState, ErrorState, formatDate, formatPhone, SkeletonRows } from "../components/ui";
+import { useFeedback } from "../components/feedback";
+import { Icon } from "../components/icons";
+import { refreshAttention } from "../components/Shell";
+import {
+  EmptyState,
+  ErrorState,
+  formatPhone,
+  PageHead,
+  RelativeTime,
+  Segmented,
+  SkeletonRows,
+} from "../components/ui";
 import { api, type RecoveryRequestRow } from "../lib/api";
 
 const STATUS_LABEL: Record<RecoveryRequestRow["status"], string> = {
@@ -23,6 +34,7 @@ function RequestCard({
   onOpen: (userId: string) => void;
   onDone: () => void;
 }) {
+  const { toast } = useFeedback();
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -38,6 +50,8 @@ function RequestCard({
     setError(null);
     try {
       await api.resolveRecoveryRequest(request.id, status, note.trim());
+      toast(status === "done" ? "Заявка закрыта" : "Заявка отклонена");
+      refreshAttention();
       onDone();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Не удалось закрыть заявку.");
@@ -47,56 +61,53 @@ function RequestCard({
   };
 
   return (
-    <div className="card stack">
-      <div className="row" style={{ justifyContent: "space-between", alignItems: "flex-start" }}>
-        <div>
-          <p className="mono-eyebrow">{formatDate(request.created_at)}</p>
-          <p className="heading-md" style={{ marginTop: 6 }}>
-            {request.user_label?.trim() || "Без имени"}
-          </p>
-          <p className="body-md" style={{ margin: "4px 0 0" }}>
-            <a href={`tel:${request.phone}`}>{formatPhone(request.phone)}</a>
-          </p>
-        </div>
-        <span className={`badge ${open ? "badge-warn" : ""}`}>{STATUS_LABEL[request.status]}</span>
+    <article className="card request">
+      <div className="request-head">
+        <button
+          type="button"
+          className="cell-main"
+          style={{ textAlign: "left" }}
+          onClick={() => onOpen(request.user_id)}
+        >
+          <span className="headline">{request.user_label?.trim() || "Без имени"}</span>
+          <span className="meta">
+            <RelativeTime iso={request.created_at} />
+          </span>
+        </button>
+        <span
+          className={`badge ${open ? "badge-warn" : request.status === "done" ? "badge-ok" : ""}`}
+        >
+          {STATUS_LABEL[request.status]}
+        </span>
       </div>
 
-      {request.note ? (
-        <p className="body-sm text-mute" style={{ margin: 0 }}>
-          {request.note}
-        </p>
-      ) : null}
+      {request.note ? <p className="quote">{request.note}</p> : null}
 
       {open ? (
         <>
-          <p className="body-sm text-mute" style={{ margin: 0 }}>
-            Позвоните на этот номер, убедитесь, что это владелец аккаунта, задайте временный пароль
-            в карточке и закройте заявку.
+          <a className="btn btn-success btn-block" href={`tel:${request.phone}`}>
+            <Icon.phone size={20} /> Позвонить {formatPhone(request.phone)}
+          </a>
+          <p className="footnote text-mute" style={{ margin: 0 }}>
+            Убедитесь, что это владелец аккаунта (имя, что публиковал), задайте временный пароль в
+            карточке человека и закройте заявку.
           </p>
           <input
             className="input"
             value={note}
             onChange={(e) => setNote(e.target.value)}
-            placeholder="Заметка — попадёт в журнал (для отказа обязательна)"
+            placeholder="Заметка — в журнал (для отказа обязательна)"
             disabled={busy}
           />
           {error ? (
-            <div className="banner-error body-md" role="alert">
+            <div className="banner-error" role="alert">
               {error}
             </div>
           ) : null}
-          <div className="row" style={{ flexWrap: "wrap" }}>
+          <div className="actions">
             <button
               type="button"
-              className="btn btn-ghost"
-              disabled={busy}
-              onClick={() => onOpen(request.user_id)}
-            >
-              Открыть карточку
-            </button>
-            <button
-              type="button"
-              className="btn btn-ghost"
+              className="btn btn-danger"
               disabled={busy}
               onClick={() => void resolve("rejected")}
             >
@@ -108,16 +119,30 @@ function RequestCard({
               disabled={busy}
               onClick={() => void resolve("done")}
             >
-              Доступ восстановлен
+              Восстановлен
             </button>
           </div>
+          <button
+            type="button"
+            className="btn btn-plain btn-sm"
+            disabled={busy}
+            onClick={() => onOpen(request.user_id)}
+          >
+            Открыть карточку — сменить пароль
+          </button>
         </>
       ) : null}
-    </div>
+    </article>
   );
 }
 
-export function Recovery({ onOpen }: { onOpen: (userId: string) => void }) {
+export function Recovery({
+  onOpen,
+  onBack,
+}: {
+  onOpen: (userId: string) => void;
+  onBack: () => void;
+}) {
   const [rows, setRows] = useState<RecoveryRequestRow[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [onlyNew, setOnlyNew] = useState(true);
@@ -133,30 +158,29 @@ export function Recovery({ onOpen }: { onOpen: (userId: string) => void }) {
   useEffect(load, [onlyNew]);
 
   return (
-    <div>
-      <div className="page-header">
-        <div>
-          <p className="mono-eyebrow">Поддержка</p>
-          <h1 className="heading-lg" style={{ marginTop: 4 }}>
-            Восстановление пароля
-          </h1>
-        </div>
-        <div className="row">
-          <button type="button" className="btn btn-ghost" onClick={() => setOnlyNew((v) => !v)}>
-            {onlyNew ? "Показать все" : "Только новые"}
-          </button>
-          <button type="button" className="btn btn-ghost" onClick={load}>
-            Обновить
-          </button>
-        </div>
-      </div>
-
+    <>
+      <PageHead
+        onBack={onBack}
+        backLabel="Входящие"
+        title="Восстановление"
+        lede="Человек нажал «Забыли пароль?» и оставил номер. Номер в заявке — номер аккаунта."
+      />
+      <Segmented
+        label="Заявки"
+        value={onlyNew ? "new" : "all"}
+        options={[
+          { value: "new", label: "Ждут звонка" },
+          { value: "all", label: "Все" },
+        ]}
+        onChange={(v) => setOnlyNew(v === "new")}
+      />
       {error ? (
         <ErrorState message={error} onRetry={load} />
       ) : !rows ? (
         <SkeletonRows count={3} height={140} />
       ) : rows.length === 0 ? (
         <EmptyState
+          done={onlyNew}
           title={onlyNew ? "Новых заявок нет" : "Заявок нет"}
           hint="Здесь появятся заявки «Забыли пароль?» из приложения — о каждой приходит push."
         />
@@ -167,6 +191,6 @@ export function Recovery({ onOpen }: { onOpen: (userId: string) => void }) {
           ))}
         </div>
       )}
-    </div>
+    </>
   );
 }

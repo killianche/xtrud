@@ -1,467 +1,184 @@
-// Каркас панели (2026-10-04): боковая панель с группами и счётчиками очередей,
-// на узком экране — шапка с поиском и выезжающее меню. Счётчики обновляются
-// раз в минуту и при возврате на вкладку.
+// Каркас админки (№367, 2026-10-29): «приложение на iPhone», а не сайт.
+//
+// Четыре вкладки внизу вместо бокового меню на 22 пункта:
+//   Входящие — всё, что ждёт решения (очереди со счётчиками);
+//   Задания  — на проверке, опубликованные, отклонённые, скрытые;
+//   Люди     — поиск человека, карточка;
+//   Ещё      — аналитика, каталог, рассылка, журнал, настройки, уведомления.
+// Сверху — полупрозрачная полоска с коротким заголовком, который появляется,
+// когда крупный заголовок страницы уехал вверх (как в iOS).
+//
+// Счётчик «Входящих» — из admin_attention (0255: без отменённых и скрытых);
+// он же — число на иконке приложения на экране «Домой» (Badging API, iOS 16.4+).
 
 import { type ReactNode, useCallback, useEffect, useState } from "react";
 import { type Attention, api, type StaffRole } from "../lib/api";
-import { CommandPalette } from "./CommandPalette";
 import { Icon } from "./icons";
 
-export type Section =
-  | "overview"
-  | "analytics"
-  | "users"
-  | "masters"
-  | "orders"
-  | "reviews"
-  | "reports"
-  | "verifications"
-  | "recovery"
-  | "suspicious"
-  | "instagram"
-  | "companies"
-  | "experienceBadges"
-  | "uncategorized"
-  | "hiddenOrders"
-  | "catalog"
-  | "promo"
-  | "broadcast"
-  | "settings"
-  | "team"
-  | "journal";
+export type Tab = "inbox" | "orders" | "users" | "more";
 
-interface NavItem {
-  id: Section;
+const TABS: Array<{
+  id: Tab;
   label: string;
   path: string;
   icon: () => ReactNode;
-  count?: (a: Attention) => number | null;
-}
-
-export const NAV: Array<{ title: string | null; items: NavItem[] }> = [
+  adminOnly?: boolean;
+}> = [
+  { id: "inbox", label: "Входящие", path: "/inbox", icon: () => <Icon.inbox size={26} /> },
+  { id: "orders", label: "Задания", path: "/orders", icon: () => <Icon.task size={26} /> },
   {
-    title: null,
-    items: [
-      { id: "overview", label: "Обзор", path: "/", icon: Icon.home },
-      // Аналитика (0243, №299): задания, специалисты, клиенты, по дням.
-      { id: "analytics", label: "Аналитика", path: "/analytics", icon: Icon.star },
-    ],
+    id: "users",
+    label: "Люди",
+    path: "/users",
+    icon: () => <Icon.users size={26} />,
+    adminOnly: true,
   },
-  {
-    title: "Площадка",
-    items: [
-      { id: "users", label: "Люди", path: "/users", icon: Icon.users },
-      // Без счётчика: master_profiles.status='pending' — «нет категорий»,
-      // а не «ждёт одобрения» (отчёт xtrud-backend 2026-10-04).
-      { id: "masters", label: "Специалисты", path: "/masters", icon: Icon.tool },
-      { id: "orders", label: "Задания", path: "/orders", icon: Icon.task },
-      { id: "reviews", label: "Отзывы", path: "/reviews", icon: Icon.star },
-    ],
-  },
-  {
-    title: "Модерация",
-    items: [
-      {
-        id: "reports",
-        label: "Жалобы",
-        path: "/reports",
-        icon: Icon.flag,
-        count: (a) => a.reports_open,
-      },
-      {
-        id: "verifications",
-        label: "Паспорта",
-        path: "/verifications",
-        icon: Icon.id,
-        count: (a) => a.verifications_pending,
-      },
-      {
-        id: "recovery",
-        label: "Восстановление",
-        path: "/recovery",
-        icon: Icon.phone,
-        count: (a) => a.recovery_new,
-      },
-      // Отзывы без задания на проверке + специалисты по баллу подозрительности
-      // (0254, №356). Счётчик — не из admin_attention (его не трогаем): длина
-      // своего же списка, см. useFlaggedReviewsCount ниже.
-      { id: "suspicious", label: "Подозрительные", path: "/suspicious", icon: Icon.flag },
-      {
-        id: "instagram",
-        label: "Instagram",
-        path: "/instagram",
-        icon: Icon.image,
-        count: (a) => a.instagram_pending ?? 0,
-      },
-      // Подтверждение компаний (0245, №308) — только админ: WhatsApp и ИНН.
-      { id: "companies", label: "Компании", path: "/companies", icon: Icon.users },
-      // Заявки на значок «Большой опыт» (0246, №318) — только админ: WhatsApp.
-      {
-        id: "experienceBadges",
-        label: "Большой опыт",
-        path: "/experience-badges",
-        icon: Icon.star,
-      },
-      // Счётчик — не из admin_attention (его не трогаем): длина своего же
-      // списка, см. useUncategorizedCount ниже (0230, №251).
-      { id: "uncategorized", label: "Без категории", path: "/uncategorized", icon: Icon.grid },
-      // Счётчик — длина своего же списка, см. useShadowHiddenCount ниже
-      // (0231, №253): admin_attention не трогаем.
-      {
-        id: "hiddenOrders",
-        label: "Скрытые задания",
-        path: "/hidden-orders",
-        icon: Icon.flag,
-      },
-    ],
-  },
-  {
-    title: "Контент",
-    items: [
-      { id: "catalog", label: "Каталог", path: "/catalog", icon: Icon.grid },
-      { id: "promo", label: "Реклама", path: "/promo", icon: Icon.image },
-      { id: "broadcast", label: "Рассылка", path: "/broadcast", icon: Icon.megaphone },
-    ],
-  },
-  {
-    title: "Система",
-    items: [
-      { id: "settings", label: "Настройки", path: "/settings", icon: Icon.settings },
-      { id: "team", label: "Команда", path: "/team", icon: Icon.users },
-      { id: "journal", label: "Журнал", path: "/journal", icon: Icon.journal },
-    ],
-  },
+  { id: "more", label: "Ещё", path: "/more", icon: () => <Icon.more size={26} /> },
 ];
 
-/**
- * Разделы управляющего (docs/STAFF_ROLES_2026-10.md §2): задания без
- * категории, «красный флаг», жалобы. Остальное — только админ; база
- * всё равно ответит forbidden, меню лишь не показывает лишнего.
- */
-const MANAGER_SECTIONS: ReadonlySet<Section> = new Set([
-  "uncategorized",
-  "hiddenOrders",
-  "reports",
-  // Аналитика — цифры без телефонов (0243, №299).
-  "analytics",
-]);
-
-export function canOpenSection(role: StaffRole, id: Section): boolean {
-  return role === "admin" || MANAGER_SECTIONS.has(id);
+/** Сколько всего ждёт решения — по тем очередям, что видит роль. */
+export function inboxTotal(a: Attention | null): number {
+  if (!a) return 0;
+  return (
+    (a.reports_open ?? 0) +
+    (a.uncategorized_open ?? 0) +
+    (a.verifications_pending ?? 0) +
+    (a.recovery_new ?? 0) +
+    (a.instagram_pending ?? 0) +
+    (a.companies_pending ?? 0) +
+    (a.experience_pending ?? 0)
+  );
 }
 
-/** Первая страница после входа: у управляющего нет «Обзора» (метрики — админу). */
-export function homePath(role: StaffRole): string {
-  return role === "admin" ? "/" : "/uncategorized";
-}
-
-export function navFor(role: StaffRole): typeof NAV {
-  return NAV.map((g) => ({
-    ...g,
-    items: g.items.filter((i) => canOpenSection(role, i.id)),
-  })).filter((g) => g.items.length > 0);
-}
-
-export function sectionLabel(id: Section): string {
-  for (const g of NAV) for (const i of g.items) if (i.id === id) return i.label;
-  return "";
-}
-
-const THEME_KEY = "xtrud-admin-theme";
-
-function initialTheme(): "light" | "dark" {
-  try {
-    const saved = window.localStorage.getItem(THEME_KEY);
-    if (saved === "light" || saved === "dark") return saved;
-  } catch {
-    /* хранилище недоступно — по системе */
-  }
-  return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
-}
+let attentionCache: Attention | null = null;
 
 export function useAttention(): Attention | null {
-  const [attention, setAttention] = useState<Attention | null>(null);
+  const [attention, setAttention] = useState<Attention | null>(attentionCache);
   const load = useCallback(() => {
     api
       .attention()
-      .then(setAttention)
+      .then((a) => {
+        attentionCache = a;
+        setAttention(a);
+      })
       .catch(() => undefined);
   }, []);
   useEffect(() => {
     load();
     const timer = setInterval(load, 60_000);
-    const onFocus = () => load();
-    window.addEventListener("focus", onFocus);
-    window.addEventListener("xtrud-admin-refresh", onFocus);
+    const onVisible = () => {
+      if (document.visibilityState === "visible") load();
+    };
+    window.addEventListener("focus", load);
+    window.addEventListener("xtrud-admin-refresh", load);
+    document.addEventListener("visibilitychange", onVisible);
     return () => {
       clearInterval(timer);
-      window.removeEventListener("focus", onFocus);
-      window.removeEventListener("xtrud-admin-refresh", onFocus);
+      window.removeEventListener("focus", load);
+      window.removeEventListener("xtrud-admin-refresh", load);
+      document.removeEventListener("visibilitychange", onVisible);
     };
   }, [load]);
   return attention;
 }
 
-/** После действия, меняющего очередь, — обновить счётчики в меню. */
+/** После действия, меняющего очередь, — обновить счётчики. */
 export function refreshAttention(): void {
   window.dispatchEvent(new Event("xtrud-admin-refresh"));
 }
 
-/**
- * Счётчик «Без категории» — не серверный admin_attention (его не меняем по
- * заданию), а длина своего же списка admin_list_uncategorized_orders.
- */
-function useUncategorizedCount(): number {
-  const [count, setCount] = useState(0);
-  const load = useCallback(() => {
-    api
-      .listUncategorizedOrders(200)
-      .then((rows) => setCount(rows.length))
-      .catch(() => undefined);
-  }, []);
+/** Число на иконке приложения (экран «Домой»). Без поддержки — ничего. */
+function useAppBadge(total: number) {
   useEffect(() => {
-    load();
-    const timer = setInterval(load, 60_000);
-    const onFocus = () => load();
-    window.addEventListener("focus", onFocus);
-    window.addEventListener("xtrud-admin-refresh", onFocus);
-    return () => {
-      clearInterval(timer);
-      window.removeEventListener("focus", onFocus);
-      window.removeEventListener("xtrud-admin-refresh", onFocus);
+    const nav = navigator as Navigator & {
+      setAppBadge?: (n?: number) => Promise<void>;
+      clearAppBadge?: () => Promise<void>;
     };
-  }, [load]);
-  return count;
+    try {
+      if (total > 0) void nav.setAppBadge?.(total)?.catch(() => undefined);
+      else void nav.clearAppBadge?.()?.catch(() => undefined);
+    } catch {
+      /* не поддерживается */
+    }
+  }, [total]);
 }
 
-/**
- * Счётчик «Скрытые задания» — не серверный admin_attention (его не меняем по
- * заданию), а длина своего же списка admin_list_shadow_hidden_orders (0231,
- * №253).
- */
-function useShadowHiddenCount(): number {
-  const [count, setCount] = useState(0);
-  const load = useCallback(() => {
-    api
-      .listShadowHiddenOrders(200)
-      .then((rows) => setCount(rows.length))
-      .catch(() => undefined);
-  }, []);
+/** Полоска сверху получает линию и короткий заголовок после прокрутки. */
+function useScrolled(): boolean {
+  const [scrolled, setScrolled] = useState(false);
   useEffect(() => {
-    load();
-    const timer = setInterval(load, 60_000);
-    const onFocus = () => load();
-    window.addEventListener("focus", onFocus);
-    window.addEventListener("xtrud-admin-refresh", onFocus);
-    return () => {
-      clearInterval(timer);
-      window.removeEventListener("focus", onFocus);
-      window.removeEventListener("xtrud-admin-refresh", onFocus);
-    };
-  }, [load]);
-  return count;
-}
-
-/**
- * Счётчик «Подозрительные» — не серверный admin_attention (его не меняем по
- * заданию), а длина своего же списка admin_list_flagged_reviews (0254, №356).
- */
-function useFlaggedReviewsCount(): number {
-  const [count, setCount] = useState(0);
-  const load = useCallback(() => {
-    api
-      .listFlaggedReviews()
-      .then((rows) => setCount(rows.length))
-      .catch(() => undefined);
+    const on = () => setScrolled(window.scrollY > 44);
+    on();
+    window.addEventListener("scroll", on, { passive: true });
+    return () => window.removeEventListener("scroll", on);
   }, []);
-  useEffect(() => {
-    load();
-    const timer = setInterval(load, 60_000);
-    const onFocus = () => load();
-    window.addEventListener("focus", onFocus);
-    window.addEventListener("xtrud-admin-refresh", onFocus);
-    return () => {
-      clearInterval(timer);
-      window.removeEventListener("focus", onFocus);
-      window.removeEventListener("xtrud-admin-refresh", onFocus);
-    };
-  }, [load]);
-  return count;
+  return scrolled;
 }
 
 export function Shell({
   role,
-  section,
+  tab,
   title,
   navigate,
-  onSignOut,
   children,
 }: {
   role: StaffRole;
-  section: Section;
+  tab: Tab;
   title: string;
   navigate: (path: string) => void;
-  onSignOut: () => void;
   children: ReactNode;
 }) {
-  const nav = navFor(role);
   const attention = useAttention();
-  const uncategorizedCount = useUncategorizedCount();
-  const shadowHiddenCount = useShadowHiddenCount();
-  const flaggedReviewsCount = useFlaggedReviewsCount();
-  const [menuOpen, setMenuOpen] = useState(false);
-  const [paletteOpen, setPaletteOpen] = useState(false);
-  const [theme, setTheme] = useState<"light" | "dark">(initialTheme);
+  const total = inboxTotal(attention);
+  const scrolled = useScrolled();
+  useAppBadge(total);
 
   useEffect(() => {
-    document.documentElement.dataset.theme = theme;
-  }, [theme]);
+    document.title = title ? `${title} · xtrud` : "xtrud";
+  }, [title]);
 
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      const typing =
-        e.target instanceof HTMLElement &&
-        (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA");
-      if (e.key === "Escape") {
-        setMenuOpen(false);
-      } else if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
-        e.preventDefault();
-        setPaletteOpen((v) => !v);
-      } else if (e.key === "/" && !typing) {
-        e.preventDefault();
-        setPaletteOpen(true);
-      }
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, []);
-
-  const go = (path: string) => {
-    setMenuOpen(false);
-    navigate(path);
-  };
-  const toggleTheme = () => {
-    const next = theme === "dark" ? "light" : "dark";
-    setTheme(next);
-    try {
-      window.localStorage.setItem(THEME_KEY, next);
-    } catch {
-      /* без сохранения — только на эту вкладку */
-    }
-  };
-  const totalQueue =
-    (attention
-      ? attention.reports_open +
-        (attention.verifications_pending ?? 0) +
-        (attention.recovery_new ?? 0) +
-        (attention.instagram_pending ?? 0)
-      : 0) +
-    uncategorizedCount +
-    shadowHiddenCount +
-    flaggedReviewsCount;
+  const tabs = TABS.filter((t) => role === "admin" || !t.adminOnly);
 
   return (
-    <div className={`shell ${menuOpen ? "menu-open" : ""}`}>
-      <aside className="sidebar" aria-label="Разделы">
-        <div className="sidebar-brand">
-          <span className="brand-mark">x</span>
-          <div>
-            <div className="brand-name">xtrud</div>
-            <div className="brand-tag">{role === "admin" ? "админка" : "управление"}</div>
-          </div>
+    <div className="app">
+      <header className={`navbar${scrolled ? " is-scrolled" : ""}`}>
+        <span className="navbar-title" aria-hidden={!scrolled}>
+          {title}
+        </span>
+      </header>
+      <main className="page" id="main">
+        {children}
+      </main>
+      <nav className="tabbar" aria-label="Разделы">
+        <div className="tabbar-inner">
+          {tabs.map((t) => {
+            const active = t.id === tab;
+            return (
+              <button
+                key={t.id}
+                type="button"
+                className="tab"
+                aria-current={active ? "page" : undefined}
+                aria-label={
+                  t.id === "inbox" && total > 0 ? `${t.label}, ждут решения: ${total}` : t.label
+                }
+                onClick={() => {
+                  if (active) window.scrollTo({ top: 0, behavior: "smooth" });
+                  navigate(t.path);
+                }}
+              >
+                {t.icon()}
+                <span>{t.label}</span>
+                {t.id === "inbox" && total > 0 ? (
+                  <span className="count" aria-hidden="true">
+                    {total > 99 ? "99+" : total}
+                  </span>
+                ) : null}
+              </button>
+            );
+          })}
         </div>
-        <button type="button" className="search-trigger" onClick={() => setPaletteOpen(true)}>
-          <Icon.search />
-          Поиск
-          <span className="kbd">⌘K</span>
-        </button>
-        {nav.map((group) => (
-          <nav key={group.title ?? "top"} className="nav-group" aria-label={group.title ?? "Обзор"}>
-            {group.title ? <div className="nav-group-title">{group.title}</div> : null}
-            {group.items.map((item) => {
-              const count =
-                item.id === "uncategorized"
-                  ? uncategorizedCount
-                  : item.id === "hiddenOrders"
-                    ? shadowHiddenCount
-                    : item.id === "suspicious"
-                      ? flaggedReviewsCount
-                      : attention && item.count
-                        ? (item.count(attention) ?? 0)
-                        : 0;
-              return (
-                <button
-                  key={item.id}
-                  type="button"
-                  className="nav-item"
-                  aria-current={section === item.id ? "page" : undefined}
-                  onClick={() => go(item.path)}
-                >
-                  <item.icon />
-                  {item.label}
-                  {count > 0 ? (
-                    <span className="nav-count">{count > 99 ? "99+" : count}</span>
-                  ) : null}
-                </button>
-              );
-            })}
-          </nav>
-        ))}
-        <div className="sidebar-footer">
-          <button type="button" className="nav-item" onClick={toggleTheme}>
-            {theme === "dark" ? <Icon.sun /> : <Icon.moon />}
-            {theme === "dark" ? "Светлая тема" : "Тёмная тема"}
-          </button>
-          <button type="button" className="nav-item" onClick={onSignOut}>
-            <Icon.logout />
-            Выйти
-          </button>
-        </div>
-      </aside>
-      {menuOpen ? (
-        <button
-          type="button"
-          className="scrim"
-          aria-label="Закрыть меню"
-          onClick={() => setMenuOpen(false)}
-        />
-      ) : null}
-
-      <div className="main">
-        <header className="topbar">
-          <button
-            type="button"
-            className="icon-btn"
-            aria-label="Меню"
-            onClick={() => setMenuOpen(true)}
-          >
-            <Icon.menu />
-            {totalQueue > 0 ? <span className="dot" /> : null}
-          </button>
-          <span className="topbar-title">{title}</span>
-          <button
-            type="button"
-            className="icon-btn"
-            aria-label="Поиск"
-            onClick={() => setPaletteOpen(true)}
-          >
-            <Icon.search />
-          </button>
-        </header>
-        <main className="main-inner">{children}</main>
-      </div>
-
-      {paletteOpen ? (
-        <CommandPalette
-          nav={nav}
-          searchPeople={role === "admin"}
-          onClose={() => setPaletteOpen(false)}
-          onGo={(path) => {
-            setPaletteOpen(false);
-            go(path);
-          }}
-        />
-      ) : null}
+      </nav>
     </div>
   );
 }

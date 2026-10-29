@@ -31,6 +31,7 @@ export type SpecialistProfile = Pick<
   | "rating_overall_avg"
   | "rating_overall_count"
   | "link_url"
+  | "verification_level"
 >;
 
 /** Моя запись master_profiles; null — режим специалиста не включён. */
@@ -42,7 +43,7 @@ export function useMySpecialistProfile(userId: string | undefined) {
       const { data, error } = await supabase
         .from("master_profiles")
         .select(
-          "user_id, bio, experience_years, status, is_hidden_from_search, hidden_by_owner, whatsapp_phone, whatsapp_same_as_phone, rating_overall_avg, rating_overall_count, link_url",
+          "user_id, bio, experience_years, status, is_hidden_from_search, hidden_by_owner, whatsapp_phone, whatsapp_same_as_phone, rating_overall_avg, rating_overall_count, link_url, verification_level",
         )
         .eq("user_id", userId)
         .maybeSingle();

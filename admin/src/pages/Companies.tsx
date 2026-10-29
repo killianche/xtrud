@@ -6,6 +6,8 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useFeedback } from "../components/feedback";
+import { Icon } from "../components/icons";
+import { refreshAttention } from "../components/Shell";
 import {
   EmptyState,
   ErrorState,
@@ -13,6 +15,7 @@ import {
   RelativeTime,
   Segmented,
   SkeletonRows,
+  waLink,
 } from "../components/ui";
 import { api, type CompanyRequestRow } from "../lib/api";
 
@@ -22,7 +25,13 @@ const STATUS: Record<CompanyRequestRow["status"], string> = {
   rejected: "Не подтверждена",
 };
 
-export function Companies({ onOpen }: { onOpen: (userId: string) => void }) {
+export function Companies({
+  onOpen,
+  onBack,
+}: {
+  onOpen: (userId: string) => void;
+  onBack: () => void;
+}) {
   const { toast, confirm } = useFeedback();
   const [filter, setFilter] = useState<"pending" | "approved" | "all">("pending");
   const [rows, setRows] = useState<CompanyRequestRow[] | null>(null);
@@ -56,6 +65,17 @@ export function Companies({ onOpen }: { onOpen: (userId: string) => void }) {
       confirmLabel: kind === "approve" ? "Подтвердить" : kind === "reject" ? "Отклонить" : "Снять",
       danger: kind !== "approve",
       reason: kind !== "approve",
+      reasons:
+        kind === "reject"
+          ? [
+              "Instagram не этой компании",
+              "Не ответили в WhatsApp",
+              "Чужая известная марка",
+              "В Instagram нет работ",
+            ]
+          : kind === "revoke"
+            ? ["Компания сменилась", "Жалобы клиентов"]
+            : undefined,
     });
     if (reason === null) return;
     setBusyId(r.user_id);
@@ -69,6 +89,7 @@ export function Companies({ onOpen }: { onOpen: (userId: string) => void }) {
             ? "Заявка отклонена"
             : "Значок снят",
       );
+      refreshAttention();
       load();
     } catch (e) {
       toast(e instanceof Error ? e.message : "Не удалось сохранить", true);
@@ -78,67 +99,100 @@ export function Companies({ onOpen }: { onOpen: (userId: string) => void }) {
   };
 
   return (
-    <div>
-      <PageHead eyebrow="Модерация" title="Компании" />
-      <div className="toolbar">
-        <Segmented
-          value={filter}
-          options={[
-            { value: "pending", label: "На проверке" },
-            { value: "approved", label: "Подтверждённые" },
-            { value: "all", label: "Все" },
-          ]}
-          onChange={setFilter}
-        />
-      </div>
-      <p className="body-sm text-mute" style={{ margin: "0 0 16px" }}>
-        Откройте Instagram: он должен принадлежать этой компании и показывать её работы. При
-        сомнении напишите в WhatsApp. Название известной марки без подтверждения — отклоняйте.
-      </p>
+    <>
+      <PageHead
+        onBack={onBack}
+        backLabel="Входящие"
+        title="Компании"
+        lede="Instagram должен принадлежать компании и показывать её работы. Сомневаетесь — напишите в WhatsApp. Известную марку без подтверждения — отклоняйте."
+      />
+      <Segmented
+        label="Заявки"
+        value={filter}
+        options={[
+          { value: "pending", label: "На проверке" },
+          { value: "approved", label: "Подтверждённые" },
+          { value: "all", label: "Все" },
+        ]}
+        onChange={setFilter}
+      />
       {error ? (
         <ErrorState message={error} onRetry={load} />
       ) : !rows ? (
-        <SkeletonRows count={3} height={88} />
+        <SkeletonRows count={2} height={200} />
       ) : rows.length === 0 ? (
         <EmptyState
+          done={filter === "pending"}
           title={filter === "pending" ? "Новых заявок нет" : "Заявок нет"}
           hint="Заявка появляется, когда специалист отправляет компанию на проверку."
         />
       ) : (
-        <div className="list">
+        <div className="stack">
           {rows.map((r) => (
-            <div
-              key={r.user_id}
-              className="list-row"
-              style={{ gridTemplateColumns: "minmax(0,1fr) auto" }}
-            >
-              <div style={{ minWidth: 0 }}>
-                <div className="cell-title">{r.legal_name}</div>
-                <div className="cell-sub">
-                  <a href={`https://instagram.com/${r.instagram}`} target="_blank" rel="noreferrer">
-                    @{r.instagram}
-                  </a>
-                  {" · "}
-                  <a href={`https://wa.me/${r.whatsapp}`} target="_blank" rel="noreferrer">
-                    WhatsApp
-                  </a>
-                  {r.inn ? ` · ИНН ${r.inn}` : ""}
+            <article key={r.user_id} className="card request">
+              <div className="request-head">
+                <span
+                  className="cell-icon"
+                  style={{
+                    background: "var(--tint-indigo)",
+                    width: 44,
+                    height: 44,
+                    borderRadius: 12,
+                  }}
+                >
+                  <Icon.building size={22} />
+                </span>
+                <div className="cell-main">
+                  <span className="headline">{r.legal_name}</span>
+                  <span className="meta">
+                    <button type="button" className="link" onClick={() => onOpen(r.user_id)}>
+                      {r.user_label ?? "Без имени"}
+                    </button>
+                    <RelativeTime iso={r.submitted_at} />
+                  </span>
                 </div>
-                <div className="cell-sub">
-                  <button type="button" className="link" onClick={() => onOpen(r.user_id)}>
-                    {r.user_label ?? "Без имени"}
-                  </button>
-                  {" · "}
-                  <RelativeTime iso={r.submitted_at} />
-                  {r.status !== "pending" ? ` · ${STATUS[r.status]}` : ""}
-                  {r.reason ? ` · ${r.reason}` : ""}
-                </div>
+                {r.status !== "pending" ? (
+                  <span className={`badge ${r.status === "approved" ? "badge-ok" : "badge-error"}`}>
+                    {STATUS[r.status]}
+                  </span>
+                ) : null}
+              </div>
+              {r.reason && r.status === "rejected" ? (
+                <p className="footnote text-mute" style={{ margin: 0 }}>
+                  Причина: {r.reason}
+                </p>
+              ) : null}
+              {r.inn ? (
+                <p className="footnote text-mute" style={{ margin: 0 }}>
+                  ИНН {r.inn}
+                </p>
+              ) : null}
+              <div className="actions">
+                <a
+                  className="btn btn-ghost"
+                  href={`https://instagram.com/${r.instagram}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <Icon.instagram size={20} /> @{r.instagram}
+                </a>
+                <a
+                  className="btn btn-success"
+                  href={waLink(
+                    r.whatsapp,
+                    `Здравствуйте! Это xtrud, по заявке компании «${r.legal_name}».`,
+                  )}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <Icon.whatsapp size={20} /> WhatsApp
+                </a>
               </div>
               {r.status === "pending" ? (
-                <div className="row" style={{ gap: 8 }}>
+                <div className="actions">
                   <button
                     type="button"
-                    className="btn btn-ghost"
+                    className="btn btn-danger"
                     disabled={busyId === r.user_id}
                     onClick={() => void act(r, "reject")}
                   >
@@ -156,19 +210,17 @@ export function Companies({ onOpen }: { onOpen: (userId: string) => void }) {
               ) : r.status === "approved" ? (
                 <button
                   type="button"
-                  className="btn btn-ghost"
+                  className="btn btn-ghost btn-block"
                   disabled={busyId === r.user_id}
                   onClick={() => void act(r, "revoke")}
                 >
                   Снять значок
                 </button>
-              ) : (
-                <span className="badge">{STATUS[r.status]}</span>
-              )}
-            </div>
+              ) : null}
+            </article>
           ))}
         </div>
       )}
-    </div>
+    </>
   );
 }

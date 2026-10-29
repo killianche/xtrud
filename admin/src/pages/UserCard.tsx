@@ -3,28 +3,25 @@
 // адрес у них синтетический (DECISION владельца 2026-09-03).
 
 import { type FormEvent, useEffect, useState } from "react";
+import { useFeedback } from "../components/feedback";
+import { Icon } from "../components/icons";
 import {
   Badge,
+  Cell,
   ErrorState,
   Field,
   formatDate,
   formatPhone,
   fullName,
+  PageHead,
+  placeName,
+  RelativeTime,
   SkeletonRows,
+  statusLabel,
+  waLink,
 } from "../components/ui";
 import { api, type UserCard as UserCardData, type UserStatus } from "../lib/api";
 import { useStaffRole } from "../lib/role";
-
-function Row({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="row" style={{ justifyContent: "space-between", gap: 16 }}>
-      <span className="body-md text-mute">{label}</span>
-      <span className="body-md" style={{ color: "var(--ink)", textAlign: "right" }}>
-        {value}
-      </span>
-    </div>
-  );
-}
 
 /** Пароль без похожих символов: его диктуют вслух и переписывают руками. */
 function generatePassword(): string {
@@ -350,7 +347,127 @@ function Sanctions({
   );
 }
 
-export function UserCard({ userId, onBack }: { userId: string; onBack: () => void }) {
+const PASSPORT_LABEL: Record<string, string> = {
+  none: "Не отправлял",
+  pending: "На проверке",
+  approved: "Подтверждён",
+  rejected: "Отклонён",
+};
+
+const COMPANY_LABEL: Record<string, string> = {
+  none: "Заявки нет",
+  pending: "На проверке",
+  approved: "Подтверждена",
+  rejected: "Отклонена",
+  withdrawn: "Заявки нет",
+};
+
+/**
+ * Тип аккаунта специалиста (№368, 0255): «Частный мастер» ↔ «Компания».
+ * Бригада = компания. Админ переводит сам, если человек перепутал (например,
+ * прислал логотип фирмы в «Паспорт»). Человеку — уведомление, что делать.
+ */
+function MasterSection({
+  userId,
+  master,
+  canEdit,
+  onDone,
+}: {
+  userId: string;
+  master: NonNullable<UserCardData["master"]>;
+  canEdit: boolean;
+  onDone: () => void;
+}) {
+  const { confirm, toast } = useFeedback();
+  const [busy, setBusy] = useState(false);
+  const isCompany = master.account_type !== "solo";
+
+  const switchTo = async (type: "solo" | "company") => {
+    const reason = await confirm({
+      title: type === "company" ? "Перевести в «Компания»?" : "Перевести в «Частный мастер»?",
+      text:
+        type === "company"
+          ? "Человеку придёт уведомление: указать название и отправить заявку на подтверждение компании. Паспорт ему не нужен."
+          : master.company_verified
+            ? "Значок «Компания» снимется, название и заявка компании удалятся. Человеку предложат подтвердить личность паспортом."
+            : "Название компании удалится. Человеку предложат подтвердить личность паспортом.",
+      confirmLabel: "Перевести",
+      danger: type === "solo" && master.company_verified,
+      reason: true,
+      reasons:
+        type === "company"
+          ? ["Прислал документы компании вместо паспорта", "Работает бригадой", "Попросил сам"]
+          : ["Работает один", "Попросил сам"],
+    });
+    if (reason === null) return;
+    setBusy(true);
+    try {
+      await api.setAccountType(userId, type, reason);
+      toast(type === "company" ? "Теперь «Компания»" : "Теперь «Частный мастер»");
+      onDone();
+    } catch (e) {
+      toast(e instanceof Error ? e.message : "Не получилось", true);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <section className="section">
+      <h2 className="section-title">Специалист</h2>
+      {canEdit ? (
+        <fieldset className="segmented" aria-label="Тип аккаунта" style={{ border: 0, margin: 0 }}>
+          <button
+            type="button"
+            aria-pressed={!isCompany}
+            className={!isCompany ? "is-active" : undefined}
+            disabled={busy || !isCompany}
+            onClick={() => void switchTo("solo")}
+          >
+            Частный мастер
+          </button>
+          <button
+            type="button"
+            aria-pressed={isCompany}
+            className={isCompany ? "is-active" : undefined}
+            disabled={busy || isCompany}
+            onClick={() => void switchTo("company")}
+          >
+            Компания
+          </button>
+        </fieldset>
+      ) : null}
+      <div className="group">
+        {!canEdit ? <Cell title="Тип" value={isCompany ? "Компания" : "Частный мастер"} /> : null}
+        {isCompany ? <Cell title="Название" value={master.legal_name ?? "не указано"} /> : null}
+        {isCompany ? (
+          <Cell
+            title="Компания"
+            value={master.company_verified ? "Подтверждена" : COMPANY_LABEL[master.company_status]}
+          />
+        ) : null}
+        <Cell
+          title={isCompany ? "Паспорт · по желанию" : "Паспорт"}
+          value={master.verified ? "Подтверждён" : PASSPORT_LABEL[master.passport_status]}
+        />
+        <Cell title="Большой опыт" value={master.experience_badge ? "Есть значок" : "Нет"} />
+      </div>
+      <p className="section-footer">
+        Частному мастеру — паспорт, компании (и бригаде) — подтверждение компании.
+      </p>
+    </section>
+  );
+}
+
+export function UserCard({
+  userId,
+  onBack,
+  onOpenOrder,
+}: {
+  userId: string;
+  onBack: () => void;
+  onOpenOrder: (id: string) => void;
+}) {
   // Управляющему пароль и номер входа закрыты, телефон база не отдаёт (0239).
   const isAdminSession = useStaffRole() === "admin";
   const [card, setCard] = useState<UserCardData | null>(null);
@@ -371,41 +488,99 @@ export function UserCard({ userId, onBack }: { userId: string; onBack: () => voi
   if (!card) return <SkeletonRows count={4} height={80} />;
 
   const user = card.user;
+  const name = fullName(user.first_name, user.last_name);
 
   return (
-    <div>
-      <div className="page-header">
-        <div>
-          <button type="button" className="nav-link" onClick={onBack} style={{ paddingLeft: 0 }}>
-            {isAdminSession ? "← Все люди" : "← Назад"}
-          </button>
-          <h1 className="heading-lg" style={{ marginTop: 4 }}>
-            {fullName(user.first_name, user.last_name)}
-          </h1>
-          <div className="row" style={{ marginTop: 8 }}>
-            <Badge status={user.status} />
-            {user.is_admin ? <span className="badge">админ</span> : null}
-            {user.is_master ? <span className="badge">исполнитель</span> : null}
-          </div>
-        </div>
+    <>
+      <PageHead onBack={onBack} title={name} />
+      <div className="row" style={{ marginTop: -8 }}>
+        <Badge status={user.status} />
+        {user.is_admin ? <span className="badge">админ</span> : null}
+        {user.is_master ? (
+          <span className="badge">специалист</span>
+        ) : (
+          <span className="badge">клиент</span>
+        )}
       </div>
 
-      <div className="grid-two">
-        <div className="card stack">
-          <p className="mono-eyebrow">Профиль</p>
+      {isAdminSession && user.phone ? (
+        <div className="actions">
+          <a className="btn btn-ghost" href={`tel:${user.phone}`}>
+            <Icon.phone size={20} /> Позвонить
+          </a>
+          <a
+            className="btn btn-success"
+            href={waLink(user.phone)}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <Icon.whatsapp size={20} /> WhatsApp
+          </a>
+        </div>
+      ) : null}
+
+      {card.master ? (
+        <MasterSection
+          userId={user.id}
+          master={card.master}
+          canEdit={isAdminSession}
+          onDone={load}
+        />
+      ) : null}
+
+      <section className="section">
+        <h2 className="section-title">Профиль</h2>
+        <div className="group">
           {isAdminSession ? (
             <>
-              <Row label="Номер" value={formatPhone(user.phone)} />
-              <Row label="Адрес входа" value={user.login_email ?? "—"} />
+              <Cell title="Номер" value={formatPhone(user.phone)} />
+              <Cell title="Вход" value={user.login_email ?? "—"} />
             </>
           ) : null}
-          <Row label="Юзернейм" value={user.username ? `@${user.username}` : "—"} />
-          <Row label="Город" value={user.city_id ?? "—"} />
-          <Row label="Район" value={user.district ?? "—"} />
-          <Row label="Регистрация" value={formatDate(user.created_at)} />
-          <Row label="Последний вход" value={formatDate(user.last_sign_in_at)} />
+          <Cell title="Город" value={placeName(user.city_id)} />
+          {user.district ? <Cell title="Район" value={placeName(user.district)} /> : null}
+          <Cell title="Регистрация" value={formatDate(user.created_at)} />
+          <Cell title="Последний вход" value={formatDate(user.last_sign_in_at)} />
         </div>
+      </section>
 
+      <section className="section">
+        <h2 className="section-title">Задания · {card.orders.length}</h2>
+        <div className="group">
+          {card.orders.length === 0 ? (
+            <Cell title={<span className="text-mute">Нет заданий</span>} />
+          ) : (
+            card.orders.map((order) => (
+              <Cell
+                key={order.id}
+                title={order.title}
+                sub={<RelativeTime iso={order.created_at} />}
+                value={<Badge status={order.status} />}
+                onClick={() => onOpenOrder(order.id)}
+              />
+            ))
+          )}
+        </div>
+      </section>
+
+      {card.responses.length > 0 ? (
+        <section className="section">
+          <h2 className="section-title">Предложения · {card.responses.length}</h2>
+          <div className="group">
+            {card.responses.map((response) => (
+              <Cell
+                key={response.id}
+                title={statusLabel(response.status)}
+                sub={<RelativeTime iso={response.created_at} />}
+                onClick={() => onOpenOrder(response.order_id)}
+              />
+            ))}
+          </div>
+        </section>
+      ) : null}
+
+      <section className="section">
+        <h2 className="section-title">Действия</h2>
         <div className="stack">
           {isAdminSession ? (
             <>
@@ -426,43 +601,7 @@ export function UserCard({ userId, onBack }: { userId: string; onBack: () => voi
             />
           </div>
         </div>
-      </div>
-
-      <div className="grid-two" style={{ marginTop: 16 }}>
-        <div className="card">
-          <p className="mono-eyebrow">Задания · {card.orders.length}</p>
-          <div className="stack" style={{ marginTop: 12, gap: 8 }}>
-            {card.orders.length === 0 ? (
-              <p className="body-md text-mute">Нет заданий</p>
-            ) : (
-              card.orders.map((order) => (
-                <div key={order.id} className="row" style={{ justifyContent: "space-between" }}>
-                  <span className="body-md" style={{ color: "var(--ink)" }}>
-                    {order.title}
-                  </span>
-                  <span className="body-sm text-mute">{formatDate(order.created_at)}</span>
-                </div>
-              ))
-            )}
-          </div>
-        </div>
-
-        <div className="card">
-          <p className="mono-eyebrow">Предложения · {card.responses.length}</p>
-          <div className="stack" style={{ marginTop: 12, gap: 8 }}>
-            {card.responses.length === 0 ? (
-              <p className="body-md text-mute">Нет предложений</p>
-            ) : (
-              card.responses.map((response) => (
-                <div key={response.id} className="row" style={{ justifyContent: "space-between" }}>
-                  <span className="cell-mono">{response.status}</span>
-                  <span className="body-sm text-mute">{formatDate(response.created_at)}</span>
-                </div>
-              ))
-            )}
-          </div>
-        </div>
-      </div>
-    </div>
+      </section>
+    </>
   );
 }

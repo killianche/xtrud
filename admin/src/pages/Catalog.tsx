@@ -79,8 +79,8 @@ interface Section {
   items: CategoryRow[];
 }
 
-export function Catalog() {
-  const { toast, confirm } = useFeedback();
+export function Catalog({ onBack }: { onBack: () => void }) {
+  const { toast, confirm, ask } = useFeedback();
   const [rows, setRows] = useState<CategoryRow[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
@@ -194,7 +194,14 @@ export function Catalog() {
     });
   };
   const renameSection = async (s: Section) => {
-    const name = window.prompt("Новое название раздела", s.name)?.trim();
+    const name = (
+      await ask({
+        title: "Название раздела",
+        initial: s.name,
+        confirmLabel: "Дальше",
+        validate: (v) => (v.length < 2 ? "Минимум 2 символа" : null),
+      })
+    )?.trim();
     if (!name || name === s.name) return;
     await run(
       { title: `Переименовать «${s.name}» в «${name}»?`, confirmLabel: "Переименовать" },
@@ -207,7 +214,7 @@ export function Catalog() {
 
   return (
     <div>
-      <PageHead eyebrow="Контент" title="Каталог" />
+      <PageHead onBack={onBack} backLabel="Ещё" title="Каталог" />
       <div className="toolbar">
         <input
           className="input"

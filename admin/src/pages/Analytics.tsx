@@ -504,7 +504,9 @@ function Daily({ days }: { days: number }) {
 export function Analytics({
   onOpenOrder,
   onOpenUser,
+  onBack,
 }: {
+  onBack: () => void;
   onOpenOrder: (id: string) => void;
   onOpenUser: (id: string) => void;
 }) {
@@ -514,7 +516,8 @@ export function Analytics({
   return (
     <div>
       <PageHead
-        eyebrow="Площадка"
+        onBack={onBack}
+        backLabel="Ещё"
         title="Аналитика"
         actions={
           <Segmented

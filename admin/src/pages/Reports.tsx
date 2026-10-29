@@ -6,7 +6,17 @@
 // человека, и наказать можно без жалобы — из его карточки.
 
 import { useEffect, useState } from "react";
-import { EmptyState, ErrorState, formatDate, SkeletonRows } from "../components/ui";
+import { useFeedback } from "../components/feedback";
+import { Icon } from "../components/icons";
+import { refreshAttention } from "../components/Shell";
+import {
+  EmptyState,
+  ErrorState,
+  PageHead,
+  RelativeTime,
+  Segmented,
+  SkeletonRows,
+} from "../components/ui";
 import { api, type ReportRow, type UserStatus } from "../lib/api";
 
 const REASON_LABEL: Record<string, string> = {
@@ -34,146 +44,190 @@ const STATUS_LABEL: Record<string, string> = {
   dismissed: "Отклонена",
 };
 
-function ReportCard({ report, onDone }: { report: ReportRow; onDone: () => void }) {
-  const [reason, setReason] = useState("");
+function ReportCard({
+  report,
+  onDone,
+  onOpenUser,
+  onOpenOrder,
+}: {
+  report: ReportRow;
+  onDone: () => void;
+  onOpenUser: (id: string) => void;
+  onOpenOrder: (id: string) => void;
+}) {
+  const { confirm, choose, toast } = useFeedback();
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const pending = report.status === "pending";
+  const target = TARGET_LABEL[report.target_type] ?? report.target_type;
 
-  const run = async (action: () => Promise<unknown>) => {
-    if (busy) return;
-    if (reason.trim().length < 3) {
-      setError("Сначала напишите причину — она попадёт в журнал.");
-      return;
-    }
+  const run = async (action: () => Promise<unknown>, done: string) => {
     setBusy(true);
-    setError(null);
     try {
       await action();
+      toast(done);
+      refreshAttention();
       onDone();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Не удалось выполнить действие.");
+      toast(e instanceof Error ? e.message : "Не удалось выполнить действие.", true);
     } finally {
       setBusy(false);
     }
   };
 
-  const sanction = (status: UserStatus) => {
-    if (!report.target_user_id) {
-      setError("У этой жалобы не найден человек — санкция неприменима.");
-      return;
-    }
-    return run(() =>
-      api.setUserStatus(report.target_user_id as string, status, reason.trim(), report.id),
-    );
+  const dismiss = async () => {
+    const reason = await confirm({
+      title: "Жалоба необоснованна?",
+      text: "Жалоба закроется без последствий для человека.",
+      confirmLabel: "Закрыть жалобу",
+      reason: true,
+      reasons: ["Нарушения нет", "Спор между сторонами", "Повторная жалоба"],
+    });
+    if (reason === null) return;
+    await run(() => api.resolveReport(report.id, "dismissed", reason), "Жалоба закрыта");
   };
 
-  const pending = report.status === "pending";
+  const act = async () => {
+    const userId = report.target_user_id;
+    const options = [
+      ...(report.target_type === "order"
+        ? [
+            {
+              value: "hide",
+              label: "Снять задание",
+              hint: "Автору — уведомление с причиной",
+              danger: true,
+            },
+          ]
+        : []),
+      ...(userId
+        ? [
+            { value: "warn", label: "Предупредить", hint: "Человеку придёт предупреждение" },
+            {
+              value: "suspend",
+              label: "Приостановить",
+              hint: "Не сможет публиковать и откликаться",
+            },
+            {
+              value: "ban",
+              label: "Заблокировать",
+              hint: "Навсегда, можно снять в карточке",
+              danger: true,
+            },
+          ]
+        : []),
+      { value: "resolve", label: "Закрыть как решённую", hint: "Меры приняты вне админки" },
+    ];
+    const pick = await choose({
+      title: "Что сделать?",
+      text: `${target}: ${report.target_label?.trim() || "—"}`,
+      options,
+    });
+    if (pick === null) return;
+    const label = options.find((o) => o.value === pick)?.label ?? "";
+    const reason = await confirm({
+      title: `${label}?`,
+      confirmLabel: label,
+      danger: pick === "ban" || pick === "hide",
+      reason: true,
+      reasons: [REASON_LABEL[report.reason] ?? "Нарушение правил", "Повторное нарушение"],
+    });
+    if (reason === null) return;
+    if (pick === "hide")
+      await run(() => api.hideOrder(report.target_id, reason, report.id), "Задание снято");
+    else if (pick === "warn" && userId)
+      await run(() => api.warnUser(userId, reason, report.id), "Предупреждение отправлено");
+    else if (pick === "suspend" && userId)
+      await run(
+        () => api.setUserStatus(userId, "suspended" as UserStatus, reason, report.id),
+        "Приостановлен",
+      );
+    else if (pick === "ban" && userId)
+      await run(
+        () => api.setUserStatus(userId, "banned" as UserStatus, reason, report.id),
+        "Заблокирован",
+      );
+    else if (pick === "resolve")
+      await run(() => api.resolveReport(report.id, "resolved", reason), "Жалоба решена");
+  };
+
+  const openTarget = () => {
+    if (report.target_type === "order") onOpenOrder(report.target_id);
+    else if (report.target_user_id) onOpenUser(report.target_user_id);
+  };
 
   return (
-    <div className="card stack">
-      <div className="row" style={{ justifyContent: "space-between", alignItems: "flex-start" }}>
-        <div>
-          <p className="mono-eyebrow">
-            {TARGET_LABEL[report.target_type] ?? report.target_type} ·{" "}
-            {REASON_LABEL[report.reason] ?? report.reason}
-          </p>
-          <p className="heading-md" style={{ marginTop: 6 }}>
-            {report.target_label?.trim() || "Предмет жалобы не найден"}
-          </p>
-        </div>
-        <span className={`badge ${pending ? "badge-warn" : ""}`}>
-          {STATUS_LABEL[report.status] ?? report.status}
+    <article className="card request">
+      <div className="request-head">
+        <span
+          className="cell-icon"
+          style={{ background: "var(--tint-red)", width: 44, height: 44, borderRadius: 12 }}
+        >
+          <Icon.flag size={22} />
         </span>
+        <button
+          type="button"
+          className="cell-main"
+          style={{ textAlign: "left" }}
+          onClick={openTarget}
+        >
+          <span className="caption">
+            {target} · {REASON_LABEL[report.reason] ?? report.reason}
+          </span>
+          <span className="headline">
+            {report.target_label?.trim() || "Предмет жалобы не найден"}
+          </span>
+        </button>
+        {!pending ? (
+          <span className="badge">{STATUS_LABEL[report.status] ?? report.status}</span>
+        ) : null}
       </div>
 
-      {report.description ? (
-        <p className="body-md text-body" style={{ margin: 0 }}>
-          {report.description}
-        </p>
-      ) : null}
+      {report.description ? <p className="quote">{report.description}</p> : null}
 
-      <div className="row body-sm text-mute" style={{ gap: 16, flexWrap: "wrap" }}>
-        <span>Пожаловался: {report.reporter_label?.trim() || "неизвестно"}</span>
-        <span>Жалоб на объект: {report.reports_on_target}</span>
-        <span>Жалоб от автора: {report.reports_by_reporter}</span>
-        <span>{formatDate(report.created_at)}</span>
+      <div className="meta">
+        <span>от {report.reporter_label?.trim() || "неизвестно"}</span>
+        <RelativeTime iso={report.created_at} />
+        {report.reports_on_target > 1 ? (
+          <span style={{ color: "var(--danger)" }}>жалоб на это: {report.reports_on_target}</span>
+        ) : null}
+        {report.reports_by_reporter > 3 ? (
+          <span>автор жаловался {report.reports_by_reporter} раз</span>
+        ) : null}
       </div>
 
       {pending ? (
-        <>
-          <input
-            className="input"
-            value={reason}
-            onChange={(e) => setReason(e.target.value)}
-            placeholder="Причина решения — попадёт в журнал"
+        <div className="actions">
+          <button
+            type="button"
+            className="btn btn-ghost"
             disabled={busy}
-          />
-          {error ? (
-            <div className="banner-error body-md" role="alert">
-              {error}
-            </div>
-          ) : null}
-          <div className="row" style={{ flexWrap: "wrap" }}>
-            <button
-              type="button"
-              className="btn btn-ghost"
-              disabled={busy}
-              onClick={() => run(() => api.resolveReport(report.id, "dismissed", reason.trim()))}
-            >
-              Отклонить жалобу
-            </button>
-            <button
-              type="button"
-              className="btn btn-ghost"
-              disabled={busy || !report.target_user_id}
-              onClick={() =>
-                run(() => api.warnUser(report.target_user_id as string, reason.trim(), report.id))
-              }
-            >
-              Предупредить
-            </button>
-            <button
-              type="button"
-              className="btn btn-ghost"
-              disabled={busy || !report.target_user_id}
-              onClick={() => sanction("suspended")}
-            >
-              Приостановить
-            </button>
-            <button
-              type="button"
-              className="btn btn-danger"
-              disabled={busy || !report.target_user_id}
-              onClick={() => sanction("banned")}
-            >
-              Заблокировать
-            </button>
-            {report.target_type === "order" ? (
-              <button
-                type="button"
-                className="btn btn-danger"
-                disabled={busy}
-                onClick={() => run(() => api.hideOrder(report.target_id, reason.trim(), report.id))}
-              >
-                Скрыть задание
-              </button>
-            ) : null}
-            <button
-              type="button"
-              className="btn btn-primary"
-              disabled={busy}
-              onClick={() => run(() => api.resolveReport(report.id, "resolved", reason.trim()))}
-            >
-              Закрыть как решённую
-            </button>
-          </div>
-        </>
+            onClick={() => void dismiss()}
+          >
+            Необоснованна
+          </button>
+          <button
+            type="button"
+            className="btn btn-primary"
+            disabled={busy}
+            onClick={() => void act()}
+          >
+            Принять меры
+          </button>
+        </div>
       ) : null}
-    </div>
+    </article>
   );
 }
 
-export function Reports() {
+export function Reports({
+  onBack,
+  onOpenUser,
+  onOpenOrder,
+}: {
+  onBack: () => void;
+  onOpenUser: (id: string) => void;
+  onOpenOrder: (id: string) => void;
+}) {
   const [rows, setRows] = useState<ReportRow[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [onlyPending, setOnlyPending] = useState(true);
@@ -189,40 +243,40 @@ export function Reports() {
   useEffect(load, [onlyPending]);
 
   return (
-    <div>
-      <div className="page-header">
-        <div>
-          <p className="mono-eyebrow">Модерация</p>
-          <h1 className="heading-lg" style={{ marginTop: 4 }}>
-            Жалобы
-          </h1>
-        </div>
-        <div className="row">
-          <button type="button" className="btn btn-ghost" onClick={() => setOnlyPending((v) => !v)}>
-            {onlyPending ? "Показать все" : "Только новые"}
-          </button>
-          <button type="button" className="btn btn-ghost" onClick={load}>
-            Обновить
-          </button>
-        </div>
-      </div>
-
+    <>
+      <PageHead onBack={onBack} backLabel="Входящие" title="Жалобы" />
+      <Segmented
+        label="Жалобы"
+        value={onlyPending ? "pending" : "all"}
+        options={[
+          { value: "pending", label: "Ждут разбора" },
+          { value: "all", label: "Все" },
+        ]}
+        onChange={(v) => setOnlyPending(v === "pending")}
+      />
       {error ? (
         <ErrorState message={error} onRetry={load} />
       ) : !rows ? (
         <SkeletonRows count={3} height={160} />
       ) : rows.length === 0 ? (
         <EmptyState
+          done={onlyPending}
           title={onlyPending ? "Новых жалоб нет" : "Жалоб нет"}
           hint="Здесь появятся обращения из приложения."
         />
       ) : (
         <div className="stack">
           {rows.map((report) => (
-            <ReportCard key={report.id} report={report} onDone={load} />
+            <ReportCard
+              key={report.id}
+              report={report}
+              onDone={load}
+              onOpenUser={onOpenUser}
+              onOpenOrder={onOpenOrder}
+            />
           ))}
         </div>
       )}
-    </div>
+    </>
   );
 }

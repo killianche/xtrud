@@ -5,14 +5,14 @@
 
 import { useEffect, useState } from "react";
 import { useFeedback } from "../components/feedback";
-import { ErrorState, Field, Segmented, SkeletonRows } from "../components/ui";
+import { ErrorState, Field, PageHead, Segmented, SkeletonRows } from "../components/ui";
 import { api, type OrderLimits } from "../lib/api";
 
 function describeLimit(value: number, noun: string): string {
   return value === 0 ? "без ограничения" : `${value} ${noun}`;
 }
 
-export function Settings() {
+export function Settings({ onBack }: { onBack: () => void }) {
   const [limits, setLimits] = useState<OrderLimits | null>(null);
   const [daily, setDaily] = useState("0");
   const [active, setActive] = useState("0");
@@ -63,14 +63,12 @@ export function Settings() {
 
   return (
     <div className="stack" style={{ gap: 24 }}>
-      <div className="page-header">
-        <div>
-          <p className="mono-eyebrow">Площадка</p>
-          <h1 className="heading-lg" style={{ marginTop: 4 }}>
-            Настройки
-          </h1>
-        </div>
-      </div>
+      <PageHead
+        onBack={onBack}
+        backLabel="Ещё"
+        title="Настройки"
+        lede="Как работает приложение у всех пользователей."
+      />
 
       <FlagCards />
 

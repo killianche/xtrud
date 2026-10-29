@@ -8,15 +8,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useFeedback } from "../components/feedback";
 import { refreshAttention } from "../components/Shell";
-import {
-  Badge,
-  EmptyState,
-  ErrorState,
-  PageHead,
-  plural,
-  RelativeTime,
-  SkeletonRows,
-} from "../components/ui";
+import { EmptyState, ErrorState, plural, RelativeTime, SkeletonRows } from "../components/ui";
 import { api, type ShadowHiddenOrderRow } from "../lib/api";
 
 const DEFAULT_UNHIDE_REASON = "Проверено — можно показывать";
@@ -85,43 +77,41 @@ function HiddenOrderRow({
   };
 
   return (
-    <div className="card stack">
-      <div className="row" style={{ justifyContent: "space-between", alignItems: "flex-start" }}>
-        <div style={{ minWidth: 0 }}>
-          <p className="heading-md">{order.title}</p>
-          {order.description_short ? (
-            <p className="body-sm text-mute" style={{ margin: "4px 0 0" }}>
-              {order.description_short}
-            </p>
-          ) : null}
-          <p className="body-sm text-mute" style={{ margin: "4px 0 0" }}>
-            {topicLabel} ·{" "}
-            {order.source === "admin"
-              ? `причина: ${order.matched ?? "—"}`
-              : `нашлось: «${order.matched ?? "—"}»`}{" "}
-            · {sourceLabel}
-          </p>
-          <p className="body-sm text-mute" style={{ margin: "4px 0 0" }}>
-            {place(order)} · скрыто <RelativeTime iso={order.hidden_at} /> ·{" "}
-            {plural(order.responses_count, "предложение", "предложения", "предложений")}
-          </p>
-        </div>
-        <div style={{ textAlign: "right" }}>
-          <Badge status={order.status} />
-          <div style={{ marginTop: 6 }}>
-            <button type="button" className="link" onClick={() => onOpenOrder(order.id)}>
-              Открыть карточку
-            </button>
+    <article className="card request">
+      <div className="request-head">
+        <div className="cell-main">
+          <button
+            type="button"
+            className="headline"
+            style={{ textAlign: "left" }}
+            onClick={() => onOpenOrder(order.id)}
+          >
+            {order.title}
+          </button>
+          <div className="meta">
+            <span>{place(order)}</span>
+            <span>
+              скрыто <RelativeTime iso={order.hidden_at} />
+            </span>
+            <span>
+              {plural(order.responses_count, "предложение", "предложения", "предложений")}
+            </span>
           </div>
         </div>
+        <span className="badge badge-warn">{topicLabel}</span>
       </div>
+      {order.description_short ? <p className="quote">{order.description_short}</p> : null}
+      <p className="footnote text-mute" style={{ margin: 0 }}>
+        {order.source === "admin"
+          ? `Причина: ${order.matched ?? "—"}`
+          : `Нашлось слово: «${order.matched ?? "—"}»`}{" "}
+        · {sourceLabel}
+      </p>
 
       {!open ? (
-        <div className="row">
-          <button type="button" className="btn btn-primary" onClick={() => setOpen(true)}>
-            Открыть
-          </button>
-        </div>
+        <button type="button" className="btn btn-ghost btn-block" onClick={() => setOpen(true)}>
+          Показать в ленте
+        </button>
       ) : (
         <div className="stack">
           <input
@@ -136,7 +126,7 @@ function HiddenOrderRow({
               {error}
             </div>
           ) : null}
-          <div className="row" style={{ justifyContent: "flex-end" }}>
+          <div className="actions">
             <button
               type="button"
               className="btn btn-ghost"
@@ -159,7 +149,7 @@ function HiddenOrderRow({
           </div>
         </div>
       )}
-    </div>
+    </article>
   );
 }
 
@@ -178,19 +168,10 @@ export function HiddenOrders({ onOpenOrder }: { onOpenOrder: (orderId: string) =
   useEffect(load, [load]);
 
   return (
-    <div>
-      <PageHead
-        eyebrow="Модерация"
-        title="Скрытые задания"
-        actions={
-          <button type="button" className="btn btn-ghost" onClick={load}>
-            Обновить
-          </button>
-        }
-      />
-      <p className="body-sm text-mute" style={{ margin: "0 0 16px" }}>
-        Задания на запрещённые темы скрываются автоматически. Автор видит задание как обычно и не
-        знает, что оно скрыто.
+    <div className="stack">
+      <p className="page-lede" style={{ padding: "0 4px" }}>
+        Задания на запрещённые темы скрываются сами. Автор видит своё задание как обычно,
+        специалисты — нет.
       </p>
       {error ? (
         <ErrorState message={error} onRetry={load} />
@@ -198,6 +179,7 @@ export function HiddenOrders({ onOpenOrder }: { onOpenOrder: (orderId: string) =
         <SkeletonRows count={3} height={140} />
       ) : rows.length === 0 ? (
         <EmptyState
+          done
           title="Скрытых заданий нет"
           hint="Сюда попадают задания на запрещённые темы — красота, пластика, тату, музыка."
         />

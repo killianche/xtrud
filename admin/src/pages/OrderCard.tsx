@@ -4,6 +4,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useFeedback } from "../components/feedback";
+import { Icon } from "../components/icons";
 import { refreshAttention } from "../components/Shell";
 import {
   Badge,
@@ -16,6 +17,7 @@ import {
   Stars,
 } from "../components/ui";
 import { api, type OrderCardData } from "../lib/api";
+import { REJECT_REASONS } from "./Uncategorized";
 
 const CONTACT_MODE: Record<string, string> = {
   chat_only: "Через предложения",
@@ -91,18 +93,21 @@ export function OrderCard({
   const foreignPhotos = (o.photo_urls ?? []).length - photos.length;
 
   const hide = async () => {
+    // «Это не задание» (№367): отклонить — автору причина, задание в
+    // «Отклонённых», можно вернуть.
     const reason = await confirm({
-      title: "Скрыть задание?",
-      text: "Задание пропадёт из ленты, клиент получит уведомление с причиной.",
-      confirmLabel: "Скрыть",
+      title: "Отклонить задание?",
+      text: "Задание пропадёт из ленты, автору придёт уведомление с причиной. Вернуть можно в «Отклонённых».",
+      confirmLabel: "Отклонить",
       danger: true,
       reason: true,
+      reasons: REJECT_REASONS,
     });
     if (!reason) return;
     setBusy(true);
     try {
       await api.hideOrder(o.id, reason, null);
-      toast("Задание скрыто");
+      toast("Отклонено — в «Отклонённых»");
       refreshAttention();
       load();
     } catch (e) {
@@ -122,6 +127,7 @@ export function OrderCard({
       confirmLabel: "Скрыть тихо",
       danger: true,
       reason: true,
+      reasons: ["Красота", "Пластика", "Тату", "Музыка"],
     });
     if (!reason) return;
     setBusy(true);
@@ -143,12 +149,14 @@ export function OrderCard({
       text: "Задание снова станет открытым, клиент получит уведомление.",
       confirmLabel: "Вернуть",
       reason: true,
+      reasons: ["Отклонено по ошибке", "Автор исправил"],
     });
     if (!reason) return;
     setBusy(true);
     try {
       await api.restoreOrder(o.id, reason);
       toast("Задание снова в ленте");
+      refreshAttention();
       load();
     } catch (e) {
       toast(e instanceof Error ? e.message : "Не удалось вернуть", true);
@@ -159,58 +167,62 @@ export function OrderCard({
 
   return (
     <div>
-      <PageHead
-        title={o.title}
-        onBack={onBack}
-        backLabel="Задания"
-        actions={
-          <>
-            <Badge status={o.status} />
-            {canRestore ? (
-              <button
-                type="button"
-                className="btn btn-primary"
-                disabled={busy}
-                onClick={() => void restore()}
-              >
-                {busy ? "Сохраняем…" : "Вернуть в ленту"}
-              </button>
-            ) : null}
-            {canHide ? (
+      <PageHead title={o.title} onBack={onBack} backLabel="Назад" />
+      <div className="row" style={{ marginTop: -8 }}>
+        <Badge status={canRestore ? "hidden" : o.status} />
+        {canRestore ? <span className="badge badge-error">Отклонено модерацией</span> : null}
+      </div>
+      {canRestore || canHide ? (
+        <div className="stack" style={{ gap: 8 }}>
+          {canRestore ? (
+            <button
+              type="button"
+              className="btn btn-primary btn-block"
+              disabled={busy}
+              onClick={() => void restore()}
+            >
+              <Icon.undo size={20} /> Вернуть в ленту
+            </button>
+          ) : null}
+          {canHide ? (
+            <div className="actions">
               <button
                 type="button"
                 className="btn btn-danger"
                 disabled={busy}
                 onClick={() => void hide()}
               >
-                {busy ? "Сохраняем…" : "Скрыть задание"}
+                Отклонить
               </button>
-            ) : null}
-            {o.status === "open" ? (
-              <button
-                type="button"
-                className="btn btn-ghost"
-                disabled={busy}
-                onClick={() => void hideShadow()}
-              >
-                {busy ? "Сохраняем…" : "Скрыть тихо"}
-              </button>
-            ) : null}
-          </>
-        }
-      />
+              {o.status === "open" ? (
+                <button
+                  type="button"
+                  className="btn btn-ghost"
+                  disabled={busy}
+                  onClick={() => void hideShadow()}
+                >
+                  Скрыть тихо
+                </button>
+              ) : null}
+            </div>
+          ) : null}
+        </div>
+      ) : null}
 
       <div className="detail-grid">
         <div className="stack" style={{ gap: 16 }}>
           <section className="card stack">
             <p className="mono-eyebrow">Описание</p>
-            <p className="body-lg" style={{ margin: 0, whiteSpace: "pre-wrap" }}>
+            <p
+              className="body-md"
+              style={{ margin: 0, whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}
+            >
               {o.description?.trim() || "Без описания"}
             </p>
             {photos.length > 0 ? (
-              <div className="photo-strip">
+              <div className="photos">
                 {photos.map((url) => (
-                  <a key={url} href={url} target="_blank" rel="noreferrer">
+                  <a key={url} className="photo" href={url} target="_blank" rel="noreferrer">
                     <img src={url} alt="Фото задания" loading="lazy" />
                   </a>
                 ))}
@@ -224,7 +236,7 @@ export function OrderCard({
             {o.cancel_reason ? (
               <div className="banner-error body-md">
                 {canRestore
-                  ? `Скрыто модерацией: ${o.cancel_reason.replace(/^moderation:\s*/, "")}`
+                  ? `Причина отклонения: ${o.cancel_reason.replace(/^moderation:\s*/, "")}`
                   : `Причина отмены: ${o.cancel_reason}`}
               </div>
             ) : null}

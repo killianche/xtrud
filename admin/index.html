@@ -2,15 +2,20 @@
 <html lang="ru">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- viewport-fit=cover: шапка и вкладки под вырез и полоску «Домой» (env(safe-area-*)). Масштаб не запрещаем. -->
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content" />
     <meta name="robots" content="noindex, nofollow" />
+    <meta name="color-scheme" content="light" />
+    <meta name="theme-color" content="#f9f9fb" />
+    <!-- Экран «Домой» на iPhone: открывается как приложение, без строки Safari. -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="xtrud админ" />
+    <link rel="apple-touch-icon" href="/admin/apple-touch-icon.png" />
+    <link rel="icon" type="image/png" sizes="192x192" href="/admin/icon-192.png" />
+    <link rel="manifest" href="/admin/manifest.webmanifest" />
     <title>xtrud — админка</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500&family=Geist:wght@400;500;600&display=swap"
-      rel="stylesheet"
-    />
   </head>
   <body>
     <div id="root"></div>

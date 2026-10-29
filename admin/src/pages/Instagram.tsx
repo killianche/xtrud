@@ -5,6 +5,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useFeedback } from "../components/feedback";
+import { Icon } from "../components/icons";
 import { refreshAttention } from "../components/Shell";
 import {
   EmptyState,
@@ -22,7 +23,13 @@ const STATUS: Record<InstagramRequestRow["status"], string> = {
   rejected: "Отклонён",
 };
 
-export function Instagram({ onOpen }: { onOpen: (userId: string) => void }) {
+export function Instagram({
+  onOpen,
+  onBack,
+}: {
+  onOpen: (userId: string) => void;
+  onBack: () => void;
+}) {
   const { toast, confirm } = useFeedback();
   const [filter, setFilter] = useState<"pending" | "all">("pending");
   const [rows, setRows] = useState<InstagramRequestRow[] | null>(null);
@@ -48,6 +55,9 @@ export function Instagram({ onOpen }: { onOpen: (userId: string) => void }) {
       confirmLabel: approve ? "Одобрить" : "Отклонить",
       danger: !approve,
       reason: !approve,
+      reasons: approve
+        ? undefined
+        : ["Профиль не этого специалиста", "Нет работ в профиле", "Профиль закрыт"],
     });
     if (reason === null) return;
     setBusyId(r.user_id);
@@ -64,61 +74,80 @@ export function Instagram({ onOpen }: { onOpen: (userId: string) => void }) {
   };
 
   return (
-    <div>
-      <PageHead eyebrow="Модерация" title="Instagram" />
-      <div className="toolbar">
-        <Segmented
-          value={filter}
-          options={[
-            { value: "pending", label: "На проверке" },
-            { value: "all", label: "Все" },
-          ]}
-          onChange={setFilter}
-        />
-      </div>
-      <p className="body-sm text-mute" style={{ margin: "0 0 16px" }}>
-        Откройте профиль, проверьте, что он принадлежит специалисту и показывает его работы. В
-        приложении рядом стоит пометка: Instagram принадлежит Meta — организация признана
-        экстремистской и запрещена в России.
-      </p>
+    <>
+      <PageHead
+        onBack={onBack}
+        backLabel="Входящие"
+        title="Instagram"
+        lede="Профиль должен принадлежать специалисту и показывать его работы."
+      />
+      <Segmented
+        label="Заявки"
+        value={filter}
+        options={[
+          { value: "pending", label: "На проверке" },
+          { value: "all", label: "Все" },
+        ]}
+        onChange={setFilter}
+      />
       {error ? (
         <ErrorState message={error} onRetry={load} />
       ) : !rows ? (
-        <SkeletonRows count={3} height={72} />
+        <SkeletonRows count={3} height={120} />
       ) : rows.length === 0 ? (
         <EmptyState
+          done={filter === "pending"}
           title={filter === "pending" ? "Новых заявок нет" : "Заявок нет"}
           hint="Заявка появляется, когда специалист указывает Instagram."
         />
       ) : (
-        <div className="list">
+        <div className="stack">
           {rows.map((r) => (
-            <div
-              key={r.user_id}
-              className="list-row"
-              style={{ gridTemplateColumns: "minmax(0,1fr) auto" }}
-            >
-              <div style={{ minWidth: 0 }}>
-                <div className="cell-title">
-                  <a href={`https://instagram.com/${r.handle}`} target="_blank" rel="noreferrer">
+            <article key={r.user_id} className="card request">
+              <div className="request-head">
+                <span
+                  className="cell-icon"
+                  style={{
+                    background: "var(--tint-pink)",
+                    width: 44,
+                    height: 44,
+                    borderRadius: 12,
+                  }}
+                >
+                  <Icon.instagram size={22} />
+                </span>
+                <div className="cell-main">
+                  <a
+                    className="headline"
+                    href={`https://instagram.com/${r.handle}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
                     @{r.handle}
                   </a>
+                  <span className="meta">
+                    <button type="button" className="link" onClick={() => onOpen(r.user_id)}>
+                      {r.user_label ?? "Без имени"}
+                    </button>
+                    <RelativeTime iso={r.submitted_at} />
+                  </span>
                 </div>
-                <div className="cell-sub">
-                  <button type="button" className="link" onClick={() => onOpen(r.user_id)}>
-                    {r.user_label ?? "Без имени"}
-                  </button>
-                  {" · "}
-                  <RelativeTime iso={r.submitted_at} />
-                  {r.status !== "pending" ? ` · ${STATUS[r.status]}` : ""}
-                  {r.reason ? ` · ${r.reason}` : ""}
-                </div>
+                {r.status !== "pending" ? (
+                  <span className={`badge ${r.status === "approved" ? "badge-ok" : "badge-error"}`}>
+                    {STATUS[r.status]}
+                  </span>
+                ) : null}
               </div>
+              {r.reason && r.status === "rejected" ? (
+                <p className="footnote text-mute" style={{ margin: 0 }}>
+                  Причина: {r.reason}
+                </p>
+              ) : null}
               {r.status === "pending" ? (
-                <div className="row" style={{ gap: 8 }}>
+                <div className="actions">
                   <button
                     type="button"
-                    className="btn btn-ghost"
+                    className="btn btn-danger"
                     disabled={busyId === r.user_id}
                     onClick={() => void review(r, false)}
                   >
@@ -133,13 +162,11 @@ export function Instagram({ onOpen }: { onOpen: (userId: string) => void }) {
                     Одобрить
                   </button>
                 </div>
-              ) : (
-                <span className="badge">{STATUS[r.status]}</span>
-              )}
-            </div>
+              ) : null}
+            </article>
           ))}
         </div>
       )}
-    </div>
+    </>
   );
 }

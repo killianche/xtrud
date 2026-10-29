@@ -110,6 +110,17 @@ export function fixture(path, args) {
           city_id: "nazran",
           district: null,
         },
+        master: u.is_master
+          ? {
+              account_type: "solo",
+              legal_name: null,
+              company_verified: false,
+              verified: false,
+              passport_status: "pending",
+              company_status: "none",
+              experience_badge: false,
+            }
+          : null,
         orders: orders
           .slice(0, 3)
           .map((o) => ({ id: o.id, title: o.title, status: o.status, created_at: o.created_at })),
@@ -143,6 +154,14 @@ export function fixture(path, args) {
           rating_count: i * 3,
           created_at: u.created_at,
         }));
+    case "/v2/files/sign":
+      return {
+        url:
+          "data:image/svg+xml," +
+          encodeURIComponent(
+            '<svg xmlns="http://www.w3.org/2000/svg" width="600" height="800"><rect width="600" height="800" fill="#c9d6c3"/><rect x="60" y="80" width="480" height="300" rx="16" fill="#e8efe3"/><rect x="90" y="120" width="140" height="180" fill="#aab8a2"/><text x="260" y="170" font-size="28" fill="#445">ПАСПОРТ</text></svg>',
+          ),
+      };
     case "admin_list_verifications":
       return [
         {
@@ -481,7 +500,17 @@ export function fixture(path, args) {
             recovery_new: null,
             masters_pending: null,
           }
-        : { reports_open: 2, verifications_pending: 1, recovery_new: 1, masters_pending: 1 };
+        : {
+            reports_open: 2,
+            verifications_pending: 1,
+            recovery_new: 1,
+            masters_pending: 1,
+            instagram_pending: 0,
+            uncategorized_open: 2,
+            shadow_hidden: 1,
+            companies_pending: 1,
+            experience_pending: 3,
+          };
     // Роль входа (0239): SHOT_ROLE=manager снимает вид управляющего.
     case "my_staff_role":
       return process.env.SHOT_ROLE === "manager" ? "manager" : "admin";
@@ -508,6 +537,123 @@ export function fixture(path, args) {
           last_active_at: new Date(Date.now() - 86400e3).toISOString(),
         },
       ];
+    // Админка на телефоне (№367): новые очереди и уведомления.
+    case "admin_list_uncategorized_orders":
+      return [
+        {
+          id: id(301),
+          title: "Нужно повесить люстру и две бра",
+          description_short:
+            "Потолок натяжной, люстра тяжёлая — нужен крепёж. Бра на стене у кровати. Желательно в субботу.",
+          status: "open",
+          created_at: ago(1),
+          city_id: "nazran",
+          city_name: "Назрань",
+          district: null,
+          village: null,
+          responses_count: 0,
+          client_id: users[1].id,
+        },
+        {
+          id: id(302),
+          title: "Делаем любую мужскую работу",
+          description_short:
+            "Мы обладаем высокой квалификацией и способны осуществить любые технические работы, включая сварку и сборку мебели и оборудования.",
+          status: "open",
+          created_at: ago(3),
+          city_id: null,
+          city_name: null,
+          district: null,
+          village: null,
+          responses_count: 0,
+          client_id: users[2].id,
+        },
+      ];
+    case "admin_list_ai_category_suggestions":
+      return [
+        {
+          order_id: id(301),
+          status: "done",
+          suggested_l2: "electric",
+          l2_name: "Электрика",
+          confidence: 0.62,
+          suggested_new: null,
+        },
+      ];
+    case "admin_list_shadow_hidden_orders":
+      return [];
+    case "admin_list_flagged_reviews":
+      return [];
+    case "admin_list_experience_badge_requests":
+      return args.p_status === "deferred"
+        ? []
+        : [
+            {
+              user_id: users[0].id,
+              user_label: "Исмаил Кузьгов",
+              about:
+                "Сайты, программы, веб-приложения, мобильные приложения. В сфере IT уже 4 года. Примеры: https://example-portfolio.ru https://github.com/example",
+              whatsapp: "79280000101",
+              status: "pending",
+              reason: null,
+              submitted_at: ago(2),
+              reviewed_at: null,
+              granted_at: null,
+              revision: 1,
+              categories: ["Компьютерная помощь", "Сайты"],
+              is_verified: true,
+            },
+            {
+              user_id: users[2].id,
+              user_label: "Азраил Арсамаков",
+              about:
+                "Год работаю, посмотреть можно по всей Ингушетии. Бетонные работы, кладка, отмостка.",
+              whatsapp: "79280000103",
+              status: "pending",
+              reason: null,
+              submitted_at: ago(20),
+              reviewed_at: null,
+              granted_at: null,
+              revision: 1,
+              categories: ["Бетонные работы", "Каменщик"],
+              is_verified: false,
+            },
+          ];
+    case "admin_list_company_verifications":
+      return [
+        {
+          user_id: users[4].id,
+          user_label: "Руслан Барахоев",
+          legal_name: "СтройДом Ингушетия",
+          instagram: "stroydom_ing",
+          whatsapp: "79280000105",
+          inn: null,
+          status: "pending",
+          reason: null,
+          submitted_at: ago(5),
+          reviewed_at: null,
+          verified_at: null,
+          revision: 1,
+        },
+      ];
+    case "admin_list_instagram_requests":
+      return [];
+    case "admin_push_settings":
+      return {
+        kinds: [
+          { kind: "report", enabled: true },
+          { kind: "order_review", enabled: true },
+          { kind: "order_new", enabled: false },
+          { kind: "passport", enabled: true },
+          { kind: "company", enabled: true },
+          { kind: "instagram", enabled: true },
+          { kind: "experience", enabled: true },
+          { kind: "recovery", enabled: true },
+          { kind: "specialist_new", enabled: false },
+        ],
+        devices: 1,
+        this_device: false,
+      };
     default:
       return undefined;
   }

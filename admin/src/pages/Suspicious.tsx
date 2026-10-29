@@ -249,12 +249,18 @@ function SuspiciousSpecialists({ onOpen }: { onOpen: (userId: string) => void })
   );
 }
 
-export function Suspicious({ onOpenUser }: { onOpenUser: (userId: string) => void }) {
+export function Suspicious({
+  onOpenUser,
+  onBack,
+}: {
+  onOpenUser: (userId: string) => void;
+  onBack: () => void;
+}) {
   const [tab, setTab] = useState<Tab>("flagged");
 
   return (
     <div>
-      <PageHead eyebrow="Модерация" title="Подозрительные" />
+      <PageHead onBack={onBack} backLabel="Входящие" title="Подозрительные" />
       <div className="toolbar">
         <Segmented
           value={tab}

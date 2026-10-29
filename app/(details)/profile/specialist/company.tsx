@@ -1,7 +1,8 @@
 /**
- * /profile/specialist/company — «Как вас показывать» и подтверждение
- * компании (0245, №308, docs/COMPANY_VERIFICATION_2026-10.md). ИНН не
- * спрашиваем (владелец, 2026-10-08: «ИНН не надо»).
+ * /profile/specialist/company — «Кто вы?» (частный мастер/компания) и
+ * подтверждение компании (0245, №308,
+ * docs/COMPANY_VERIFICATION_2026-10.md). ИНН не спрашиваем (владелец,
+ * 2026-10-08: «ИНН не надо»).
  *
  * «Частный мастер» — в каталоге имя. «Компания» — название вместо имени;
  * значок «Компания подтверждена» — после заявки (Instagram, WhatsApp) и
@@ -105,7 +106,7 @@ export default function CompanyScreen() {
 
   return (
     <FormScreen
-      title="Как вас показывать?"
+      title="Кто вы?"
       onBack={() => router.back()}
       primaryLabel={primaryLabel}
       onPrimary={save}
@@ -122,7 +123,7 @@ export default function CompanyScreen() {
         />
         <InsetRow
           title="Компания"
-          subtitle="В каталоге — название компании"
+          subtitle="Бригада, мастерская или фирма · в каталоге — название"
           checked={isCompany === true}
           onPress={() => setIsCompany(true)}
           last

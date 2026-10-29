@@ -30,7 +30,7 @@ const AUDIENCE_LABEL: Record<BroadcastAudience, string> = {
   masters: "специалистам",
 };
 
-export function Broadcast() {
+export function Broadcast({ onBack }: { onBack: () => void }) {
   const { toast, confirm } = useFeedback();
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
@@ -93,7 +93,7 @@ export function Broadcast() {
 
   return (
     <div>
-      <PageHead eyebrow="Контент" title="Рассылка" />
+      <PageHead onBack={onBack} backLabel="Ещё" title="Рассылка" />
       <div className="detail-grid">
         <form
           className="card stack"

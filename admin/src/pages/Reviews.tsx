@@ -18,7 +18,13 @@ import { api, type ReviewRow } from "../lib/api";
 
 type Filter = "all" | "visible" | "hidden";
 
-export function Reviews({ onOpenUser }: { onOpenUser: (userId: string) => void }) {
+export function Reviews({
+  onOpenUser,
+  onBack,
+}: {
+  onOpenUser: (userId: string) => void;
+  onBack: () => void;
+}) {
   const { toast, confirm } = useFeedback();
   const [filter, setFilter] = useState<Filter>("all");
   const [rows, setRows] = useState<ReviewRow[] | null>(null);
@@ -62,7 +68,7 @@ export function Reviews({ onOpenUser }: { onOpenUser: (userId: string) => void }
 
   return (
     <div>
-      <PageHead eyebrow="Площадка" title="Отзывы" />
+      <PageHead onBack={onBack} backLabel="Ещё" title="Отзывы" />
       <div className="toolbar">
         <Segmented
           value={filter}

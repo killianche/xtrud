@@ -2,6 +2,7 @@
 // «8 928…», «+7 928…» и «928…» находят одного и того же человека.
 
 import { useEffect, useState } from "react";
+import { Icon } from "../components/icons";
 import {
   Badge,
   EmptyState,
@@ -42,12 +43,14 @@ export function Users({ onOpen }: { onOpen: (userId: string) => void }) {
 
   const COLS = "minmax(0,2fr) minmax(0,1.2fr) 130px 80px 80px 120px";
   return (
-    <div>
-      <PageHead eyebrow="Площадка" title="Люди" />
-      <div className="toolbar">
+    <>
+      <PageHead title="Люди" />
+      <div className="search">
+        <Icon.search size={18} />
         <input
           className="input"
           type="search"
+          enterKeyHint="search"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Имя, фамилия или номер"
@@ -108,6 +111,6 @@ export function Users({ onOpen }: { onOpen: (userId: string) => void }) {
           ))}
         </div>
       )}
-    </div>
+    </>
   );
 }

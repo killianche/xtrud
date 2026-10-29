@@ -12,6 +12,7 @@ import {
   loadConfig,
   rustorePushConfigured,
   s3Configured,
+  webPushConfigured,
 } from "./config.js";
 import { Db } from "./db.js";
 import { EventHub } from "./events/hub.js";
@@ -25,6 +26,7 @@ import { ApnsClient } from "./push/apns.js";
 import { FcmClient, readFcmServiceAccount } from "./push/fcm.js";
 import { registerPushRoutes } from "./push/routes.js";
 import { RuStorePushClient } from "./push/rustore.js";
+import { startAdminPushListener, webPushSender } from "./push/webpush.js";
 import { registerRestProxy } from "./rest/routes.js";
 import { registerRpcRoutes } from "./rpc/routes.js";
 
@@ -101,6 +103,21 @@ app.addContentTypeParser("*", { parseAs: "buffer" }, (_req, body, done) => done(
 const hub = new EventHub();
 startEventListener(cfg.DATABASE_URL, hub, app.log);
 
+// Web Push веб-админки (0255, №367): база сообщает о новой заявке в очереди,
+// сервер рассылает уведомления подпискам сотрудников.
+if (webPushConfigured(cfg)) {
+  startAdminPushListener(
+    cfg.DATABASE_URL,
+    db,
+    webPushSender({
+      publicKey: cfg.VAPID_PUBLIC_KEY as string,
+      privateKey: cfg.VAPID_PRIVATE_KEY as string,
+      subject: cfg.VAPID_SUBJECT as string,
+    }),
+    app.log,
+  );
+}
+
 // Подбор категории заданию «Без категории» (0236, №279) — только с ключом
 // DeepSeek. Без ключа база по-прежнему зовёт админов сама.
 if (cfg.DEEPSEEK_API_KEY !== undefined) {
@@ -128,8 +145,13 @@ app.get("/v2/health", async () => {
     storage: s3 === null ? "disk" : "s3",
     phoneCall: cfg.SMSRU_API_ID !== undefined,
     aiClassifier: cfg.DEEPSEEK_API_KEY !== undefined,
+    webPush: webPushConfigured(cfg),
   };
 });
+
+// Открытый ключ VAPID — браузер админки подписывается им на уведомления.
+// Ключ публичный по определению; null — Web Push не настроен.
+app.get("/v2/admin-push/key", async () => ({ publicKey: cfg.VAPID_PUBLIC_KEY ?? null }));
 
 await app.register(
   async (scope) => {

@@ -184,6 +184,16 @@ export interface UserCard {
   orders: Array<{ id: string; title: string; status: string; created_at: string }>;
   responses: Array<{ id: string; order_id: string; status: string; created_at: string }>;
   reviews: Array<{ id: string; rating: number | null; status: string; created_at: string }>;
+  /** Специалист (0256): null — не специалист. */
+  master?: {
+    account_type: "solo" | "brigade" | "company";
+    legal_name: string | null;
+    company_verified: boolean;
+    verified: boolean;
+    passport_status: "none" | "pending" | "approved" | "rejected";
+    company_status: "none" | "pending" | "approved" | "rejected" | "withdrawn";
+    experience_badge: boolean;
+  } | null;
 }
 
 /** Очереди «Требует внимания» (admin_attention, 0215). */
@@ -195,6 +205,13 @@ export interface Attention {
   masters_pending: number | null;
   /** Заявки Instagram на проверке (0218). */
   instagram_pending?: number | null;
+  /** Открытые без категории, без тихо скрытых (0255). */
+  uncategorized_open?: number | null;
+  /** «Красный флаг» — тихо скрытые (0239). */
+  shadow_hidden?: number | null;
+  /** Заявки компаний и «Большой опыт» (0255, только админу). */
+  companies_pending?: number | null;
+  experience_pending?: number | null;
 }
 
 /** Аналитика (0243, №299). Нажатие ≠ звонок: считаем только нажатия. */
@@ -296,6 +313,13 @@ export interface AnalyticsDailyRow {
   active_users: number;
 }
 
+/** Настройки Web Push сотрудника (0255). */
+export interface PushSettings {
+  kinds: Array<{ kind: string; enabled: boolean }>;
+  devices: number;
+  this_device: boolean;
+}
+
 /** Заявка на подтверждение компании (0245, №308). */
 export interface CompanyRequestRow {
   user_id: string;
@@ -318,7 +342,8 @@ export interface ExperienceBadgeRequestRow {
   user_label: string | null;
   about: string;
   whatsapp: string;
-  status: "pending" | "approved" | "rejected";
+  /** deferred — скрыта админом «посмотреть позже» (0255, №370). */
+  status: "pending" | "deferred" | "approved" | "rejected";
   reason: string | null;
   submitted_at: string;
   reviewed_at: string | null;
@@ -1058,7 +1083,7 @@ export const api = {
     }),
   revokeCompany: (userId: string, reason: string) =>
     rpc<{ user_id: string }>("admin_revoke_company", { p_user_id: userId, p_reason: reason }),
-  listExperienceBadgeRequests: (status: "pending" | "approved" | "rejected" | null) =>
+  listExperienceBadgeRequests: (status: "pending" | "deferred" | "approved" | "rejected" | null) =>
     rpc<ExperienceBadgeRequestRow[]>("admin_list_experience_badge_requests", {
       p_status: status,
       p_limit: 100,
@@ -1119,6 +1144,32 @@ export const api = {
       p_reason: reason,
     }),
   metricsSeries: (days = 30) => rpc<SeriesPoint[]>("admin_metrics_series", { p_days: days }),
+  /** «Скрыть» заявку «Большой опыт», чтобы вернуться позже (0255, №370). */
+  deferExperienceBadge: (userId: string, deferred: boolean) =>
+    rpc<null>("admin_defer_experience_badge_request", { p_user_id: userId, p_deferred: deferred }),
+  /** Частный мастер ↔ Компания (0255, №368). Только админ. */
+  setAccountType: (userId: string, type: "solo" | "company", reason: string, notify = true) =>
+    rpc<{ account_type: string; status: string }>("admin_set_account_type", {
+      p_user_id: userId,
+      p_type: type,
+      p_reason: reason,
+      p_notify: notify,
+    }),
+  // Web Push админки (0255, №367).
+  pushSettings: (endpoint: string | null) =>
+    rpc<PushSettings>("admin_push_settings", { p_endpoint: endpoint }),
+  pushSubscribe: (endpoint: string, p256dh: string, auth: string, label: string) =>
+    rpc<null>("admin_push_subscribe", {
+      p_endpoint: endpoint,
+      p_p256dh: p256dh,
+      p_auth: auth,
+      p_label: label,
+    }),
+  pushUnsubscribe: (endpoint: string) =>
+    rpc<null>("admin_push_unsubscribe", { p_endpoint: endpoint }),
+  setPushKind: (kind: string, enabled: boolean) =>
+    rpc<null>("admin_set_push_kind", { p_kind: kind, p_enabled: enabled }),
+  pushTest: () => rpc<null>("admin_push_test", {}),
   listOrders: (search: string, status: string | null, limit = 50, offset = 0) =>
     rpc<OrderRow[]>("admin_list_orders", {
       p_search: search.trim() === "" ? null : search.trim(),

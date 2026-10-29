@@ -80,6 +80,24 @@ const schema = z.object({
     .default("deepseek-flash"),
   /** Порог уверенности, с которого категория ставится без админа. */
   AI_CONFIDENCE_MIN: z.coerce.number().min(0).max(1).default(0.8),
+  /**
+   * Web Push веб-админки (0255, №367): ключи VAPID (base64url, `npx web-push
+   * generate-vapid-keys`) и контакт отправителя (mailto:). Необязательны —
+   * без них админка работает без уведомлений. Половинчатая настройка
+   * отвергается.
+   */
+  VAPID_PUBLIC_KEY: z
+    .string()
+    .regex(/^[A-Za-z0-9_-]{80,100}$/)
+    .optional(),
+  VAPID_PRIVATE_KEY: z
+    .string()
+    .regex(/^[A-Za-z0-9_-]{40,50}$/)
+    .optional(),
+  VAPID_SUBJECT: z
+    .string()
+    .regex(/^(mailto:|https:\/\/)/)
+    .optional(),
 });
 
 export type Config = z.infer<typeof schema>;
@@ -118,6 +136,13 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
   if (cfg.FCM_SERVICE_ACCOUNT_PATH !== undefined && cfg.NOTIFY_SECRET === undefined) {
     throw new Error(
       "Некорректная конфигурация: с FCM обязателен NOTIFY_SECRET — иначе отправку push мог бы вызвать кто угодно",
+    );
+  }
+  const vapidParts = [cfg.VAPID_PUBLIC_KEY, cfg.VAPID_PRIVATE_KEY, cfg.VAPID_SUBJECT];
+  const vapidFilled = vapidParts.filter((v) => v !== undefined).length;
+  if (vapidFilled > 0 && vapidFilled < vapidParts.length) {
+    throw new Error(
+      "Некорректная конфигурация: Web Push задан наполовину — нужны VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY и VAPID_SUBJECT вместе",
     );
   }
   const s3Parts = [
@@ -168,5 +193,14 @@ export function apnsConfigured(cfg: Config): boolean {
     cfg.APNS_KEY_ID !== undefined &&
     cfg.APNS_TEAM_ID !== undefined &&
     cfg.NOTIFY_SECRET !== undefined
+  );
+}
+
+/** Настроен ли Web Push админки целиком. Частичная настройка отвергается выше. */
+export function webPushConfigured(cfg: Config): boolean {
+  return (
+    cfg.VAPID_PUBLIC_KEY !== undefined &&
+    cfg.VAPID_PRIVATE_KEY !== undefined &&
+    cfg.VAPID_SUBJECT !== undefined
   );
 }

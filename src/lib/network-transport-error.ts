@@ -41,3 +41,15 @@ export function isNetworkTransportError(error: unknown): boolean {
     .toLocaleLowerCase("en-US");
   return TRANSPORT_MESSAGE_MARKERS.some((marker) => text.includes(marker));
 }
+
+/**
+ * Запрос повис и оборван таймаутом (fetch-with-timeout или системным). Такой
+ * сбой react-query сразу не повторяет: каждая попытка — ещё 12 с ожидания
+ * (№378).
+ */
+export function isTimeoutError(error: unknown): boolean {
+  if (!error || typeof error !== "object") return false;
+  const record = error as { code?: unknown; message?: unknown };
+  if (typeof record.code === "string" && record.code.toUpperCase() === "ETIMEDOUT") return true;
+  return typeof record.message === "string" && /timed out/i.test(record.message);
+}

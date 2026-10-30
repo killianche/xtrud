@@ -1,5 +1,15 @@
 import { describe, expect, it } from "vitest";
-import { isNetworkTransportError } from "./network-transport-error";
+import { isNetworkTransportError, isTimeoutError } from "./network-transport-error";
+
+describe("isTimeoutError", () => {
+  it("таймаут — да, мгновенный обрыв и ошибка сервера — нет (№378)", () => {
+    expect(isTimeoutError({ code: "ETIMEDOUT", message: "Сервер не ответил за 12 с." })).toBe(true);
+    expect(isTimeoutError(new Error("The request timed out."))).toBe(true);
+    expect(isTimeoutError({ code: "ENETUNREACH", message: "Network request failed" })).toBe(false);
+    expect(isTimeoutError({ code: "42501", message: "permission denied" })).toBe(false);
+    expect(isTimeoutError(null)).toBe(false);
+  });
+});
 
 describe("isNetworkTransportError", () => {
   it("recognizes native fetch, DNS and timeout failures", () => {

@@ -21,6 +21,17 @@ export interface Transport {
 
 type Method = "GET" | "HEAD" | "POST" | "PATCH" | "DELETE";
 
+/**
+ * Код ошибки, когда сервер не ответил вовсе. Нет сети — fetch бросает
+ * TypeError «Network request failed» без кода; раньше кодом становилось имя
+ * «TypeError», и такой сбой не считался сбоем связи (isNetworkTransportError):
+ * экран не повторял запрос сам (№378). Отмену вызывающей стороной не трогаем.
+ */
+export function transportCode(err: { code?: string; name?: string }): string {
+  if (err.code) return err.code;
+  return err.name === "AbortError" ? "AbortError" : "ENETUNREACH";
+}
+
 const RESERVED = /[,()."\s]/;
 
 function literal(value: unknown): string {
@@ -222,7 +233,7 @@ export class QueryBuilder<Row = any, Result = Row[]> implements PromiseLike<Quer
       const err = e as { message?: string; code?: string; name?: string };
       return {
         data: null,
-        error: { message: err.message ?? "Нет связи с сервером", code: err.code ?? err.name },
+        error: { message: err.message ?? "Нет связи с сервером", code: transportCode(err) },
         count: null,
         status: 0,
       };

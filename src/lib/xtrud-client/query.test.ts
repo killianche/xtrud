@@ -1,5 +1,25 @@
 import { describe, expect, it } from "vitest";
-import { QueryBuilder, type Transport } from "./query";
+import { isNetworkTransportError } from "../network-transport-error";
+import { QueryBuilder, type Transport, transportCode } from "./query";
+
+describe("QueryBuilder — нет сети", () => {
+  it("сбой fetch без кода помечается как сбой связи (№378)", async () => {
+    const transport: Transport = {
+      async request() {
+        throw new TypeError("Network request failed");
+      },
+    };
+    const { error, status } = await new QueryBuilder(transport, "orders").select("id");
+    expect(status).toBe(0);
+    expect(error?.code).toBe("ENETUNREACH");
+    expect(isNetworkTransportError(error)).toBe(true);
+  });
+
+  it("код таймаута сохраняется, отмена остаётся отменой", () => {
+    expect(transportCode({ code: "ETIMEDOUT", name: "TimeoutError" })).toBe("ETIMEDOUT");
+    expect(transportCode({ name: "AbortError" })).toBe("AbortError");
+  });
+});
 
 function capture() {
   const calls: Array<{

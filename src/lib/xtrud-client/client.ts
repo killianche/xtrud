@@ -5,7 +5,7 @@
  */
 
 import type { Database } from "@/types/database";
-import { QueryBuilder, type Transport } from "./query";
+import { QueryBuilder, type Transport, transportCode } from "./query";
 import { SessionManager, type SessionStorage, sessionFromTokens, toApiError } from "./session";
 import type { ApiError, AuthEvent, QueryResult, Session } from "./types";
 
@@ -353,7 +353,7 @@ export function createXtrudClient(opts: XtrudClientOptions) {
       const err = e as { message?: string; code?: string; name?: string };
       return {
         data: null,
-        error: { message: err.message ?? "Нет связи с сервером", code: err.code ?? err.name },
+        error: { message: err.message ?? "Нет связи с сервером", code: transportCode(err) },
         count: null,
         status: 0,
       };

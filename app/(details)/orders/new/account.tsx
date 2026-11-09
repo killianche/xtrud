@@ -25,12 +25,13 @@ import { Pressable, View } from "react-native";
 import { AppText } from "@/components/AppText";
 import { ORDER_CREATE_RETURN_TO } from "@/features/auth/auth-return";
 import { RegisterFormFields } from "@/features/auth/RegisterFormFields";
+import { usePasswordLogin } from "@/features/auth/use-auth-options";
 import { useAuthSession } from "@/features/auth/use-auth-session";
 import { useRegisterWithCode } from "@/features/auth/use-register-with-code";
 import {
   normalizeRuPhoneDigits,
   type RegisterFormValues,
-  registerFormSchema,
+  registerSchemaFor,
 } from "@/features/auth/validation";
 import { ComposerScreen } from "@/features/task-composer/ComposerScreen";
 import { useComposer } from "@/features/task-composer/composer-store";
@@ -56,6 +57,10 @@ export default function TaskAccountScreen() {
   const publish = usePublishTask(mode, userId);
   // Подтверждение номера звонком — если сервер его требует (№206).
   const register = useRegisterWithCode();
+  // Пароль — только если сервер вернул вход по паролю (№380).
+  const withPassword = usePasswordLogin();
+  const withPasswordRef = useRef(withPassword);
+  withPasswordRef.current = withPassword;
   const [serverError, setServerError] = useState<string | null>(null);
   const [acceptedTerms, setAcceptedTerms] = useState(true);
   const [started, setStarted] = useState(false);
@@ -86,7 +91,8 @@ export default function TaskAccountScreen() {
     handleSubmit,
     formState: { errors, isValid },
   } = useForm<RegisterFormValues>({
-    resolver: zodResolver(registerFormSchema),
+    resolver: (values, context, options) =>
+      zodResolver(registerSchemaFor(withPasswordRef.current))(values, context, options),
     defaultValues: { firstName: "", lastName: "", phone: "", password: "" },
     mode: "onChange",
   });
@@ -113,7 +119,7 @@ export default function TaskAccountScreen() {
     try {
       const result = await register.run({
         phone: `+7${normalizeRuPhoneDigits(form.phone)}`,
-        password: form.password,
+        ...(withPassword ? { password: form.password } : {}),
         firstName: form.firstName,
         lastName: form.lastName,
       });
@@ -173,6 +179,7 @@ export default function TaskAccountScreen() {
           acceptedTerms={acceptedTerms}
           onToggleTerms={() => setAcceptedTerms((v) => !v)}
           serverError={serverError}
+          withPassword={withPassword}
         />
         <View className="mt-6 flex-row flex-wrap items-center justify-center">
           <AppText className="text-body-md text-mute">Уже есть аккаунт? </AppText>

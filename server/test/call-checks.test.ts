@@ -18,6 +18,7 @@ import {
   parseStatus,
   type StatusResult,
 } from "../src/auth/smsru-callcheck.js";
+import { parseTestPhones } from "../src/auth/test-phones.js";
 import type { Config } from "../src/config.js";
 import type { Db } from "../src/db.js";
 
@@ -331,6 +332,8 @@ describe("маршруты обратного звонка", () => {
     const opts = await off.inject({ method: "GET", url: "/auth/options" });
     expect(opts.json()).toEqual({
       phoneCallAtRegistration: false,
+      phoneCallLogin: false,
+      passwordLogin: false,
       phoneCallRecovery: false,
       phoneCallPhoneChange: false,
     });
@@ -343,6 +346,7 @@ describe("маршруты обратного звонка", () => {
 function fakeAuthDb() {
   const accounts = new Map<string, Record<string, unknown>>();
   const calls: { sql: string; params: unknown[] }[] = [];
+  const staff = new Set<string>();
   const row = (id: string, phone: string) => ({
     id,
     email: `${phone.slice(1)}@phone.xtrud.pro`,
@@ -371,15 +375,23 @@ function fakeAuthDb() {
         if (a) a.phone = params[1];
         return { rows: [] };
       }
+      if (sql.includes("account_is_staff")) {
+        return { rows: [{ account_is_staff: staff.has(String(params[0])) }] };
+      }
+      if (sql.includes("register_account")) {
+        const id = `u${accounts.size + 1}`;
+        accounts.set(id, { ...row(id, String(params[2])), encrypted_password: params[1] });
+        return { rows: [{ register_account: id }] };
+      }
       if (sql.includes("INSERT INTO xtrud_api.refresh_tokens")) return { rows: [{ id: "s1" }] };
       return { rows: [] };
     },
   };
   const db = { asService: async (fn: (c: unknown) => unknown) => fn(client) } as unknown as Db;
-  return { db, accounts, calls, row };
+  return { db, accounts, calls, row, staff };
 }
 
-async function buildAuthApp(provider: FakeProvider) {
+async function buildAuthApp(provider: FakeProvider, extra: Partial<Config> = {}) {
   const app = Fastify();
   const fake = fakeAuthDb();
   fake.accounts.set("u1", fake.row("u1", "+79280000001"));
@@ -393,6 +405,7 @@ async function buildAuthApp(provider: FakeProvider) {
     CALLCHECK_HOURLY_CAP: 100,
     REFRESH_TTL_DAYS: 30,
     PHONE_EMAIL_DOMAIN: "phone.xtrud.pro",
+    ...extra,
   } as Config;
   let t = 1_000_000;
   const calls = new CallChecks(100, 100, () => t);
@@ -508,6 +521,196 @@ describe("смена номера звонком", () => {
     expect(ok.statusCode).toBe(200);
     expect(fake.accounts.get("u1")?.phone).toBe("+79283333333");
     expect(ok.json().user.phone).toBe("+79283333333");
+    await app.close();
+  });
+});
+
+describe("вход по номеру звонком, без пароля (№380)", () => {
+  it("звонок с целью «вход» → сессия; подтверждение одноразовое и только своего аккаунта", async () => {
+    const provider = new FakeProvider();
+    const { app, confirmFor } = await buildAuthApp(provider);
+    const none = await app.inject({
+      method: "POST",
+      url: "/auth/call/start",
+      payload: { phone: "+79289999999", purpose: "login" },
+    });
+    expect(none.statusCode).toBe(404);
+    expect(none.json().code).toBe("account_not_found");
+
+    // Подтверждение регистрации и восстановления для входа не годится.
+    const recoverToken = await confirmFor("+79280000001", "recover");
+    const wrong = await app.inject({
+      method: "POST",
+      url: "/auth/call/login",
+      payload: { phone: "+79280000001", verificationToken: recoverToken },
+    });
+    expect(wrong.statusCode).toBe(428);
+
+    // Подтверждение чужого номера не открывает другой аккаунт.
+    const otherToken = await confirmFor("+79280000002", "login");
+    const stolen = await app.inject({
+      method: "POST",
+      url: "/auth/call/login",
+      payload: { phone: "+79280000001", verificationToken: otherToken },
+    });
+    expect(stolen.statusCode).toBe(428);
+
+    const token = await confirmFor("+79280000001", "login");
+    const ok = await app.inject({
+      method: "POST",
+      url: "/auth/call/login",
+      payload: { phone: "+7 928 000-00-01", verificationToken: token },
+    });
+    expect(ok.statusCode).toBe(200);
+    expect(ok.json().user.id).toBe("u1");
+    const again = await app.inject({
+      method: "POST",
+      url: "/auth/call/login",
+      payload: { phone: "+79280000001", verificationToken: token },
+    });
+    expect(again.statusCode).toBe(428);
+    await app.close();
+  });
+
+  it("заблокированный аккаунт звонком не входит", async () => {
+    const provider = new FakeProvider();
+    const { app, fake, confirmFor } = await buildAuthApp(provider);
+    const u1 = fake.accounts.get("u1");
+    if (u1) u1.user_status = "banned";
+    const token = await confirmFor("+79280000001", "login");
+    const res = await app.inject({
+      method: "POST",
+      url: "/auth/call/login",
+      payload: { phone: "+79280000001", verificationToken: token },
+    });
+    expect(res.statusCode).toBe(403);
+    expect(res.json().code).toBe("account_blocked");
+    await app.close();
+  });
+
+  it("пароль выключен: вход по паролю — 403 с подсказкой, нет номера — 404 для старых сборок", async () => {
+    const provider = new FakeProvider();
+    const { app } = await buildAuthApp(provider);
+    const res = await app.inject({
+      method: "POST",
+      url: "/auth/login",
+      payload: { login: "+79280000001", password: "whatever1" },
+    });
+    expect(res.statusCode).toBe(403);
+    expect(res.json().code).toBe("password_login_disabled");
+    expect(res.json().error).toContain("Забыли пароль?");
+    const unknown = await app.inject({
+      method: "POST",
+      url: "/auth/login",
+      payload: { login: "+79289999999", password: "whatever1" },
+    });
+    expect(unknown.statusCode).toBe(404);
+    expect(unknown.json().code).toBe("account_not_found");
+    const opts = await app.inject({ method: "GET", url: "/auth/options" });
+    expect(opts.json()).toMatchObject({ phoneCallLogin: true, passwordLogin: false });
+    await app.close();
+  });
+
+  it("флаг возвращает вход по паролю", async () => {
+    const provider = new FakeProvider();
+    const { app } = await buildAuthApp(provider, { PASSWORD_LOGIN_ENABLED: true });
+    const res = await app.inject({
+      method: "POST",
+      url: "/auth/login",
+      payload: { login: "+79280000001", password: "wrong-pass" },
+    });
+    expect(res.statusCode).toBe(401);
+    const opts = await app.inject({ method: "GET", url: "/auth/options" });
+    expect(opts.json().passwordLogin).toBe(true);
+    await app.close();
+  });
+
+  it("регистрация без пароля: аккаунт с хешем, которым не войти", async () => {
+    const provider = new FakeProvider();
+    const { app, fake, confirmFor } = await buildAuthApp(provider);
+    const token = await confirmFor("+79285555555", "register");
+    const res = await app.inject({
+      method: "POST",
+      url: "/auth/register",
+      payload: { firstName: "Ада", phone: "+79285555555", verificationToken: token },
+    });
+    expect(res.statusCode).toBe(201);
+    const call = fake.calls.find((c) => c.sql.includes("register_account"));
+    expect(String(call?.params[1])).toMatch(/^\$2[ab]\$10\$/);
+    await app.close();
+  });
+});
+
+describe("тестовые номера без звонка (№380)", () => {
+  it("разбор списка: только мобильные номера России", () => {
+    expect([...parseTestPhones("+7 928 000-00-00, 89281112233, 123, 79281112233")]).toEqual([
+      "+79280000000",
+      "+79281112233",
+    ]);
+  });
+
+  it("номер ревьюера входит без звонка и без провайдера; о входе — уведомление", async () => {
+    const provider = new FakeProvider();
+    const { app, fake } = await buildAuthApp(provider, {
+      CALLCHECK_TEST_PHONES: "+79280000001",
+    });
+    const start = await app.inject({
+      method: "POST",
+      url: "/auth/call/start",
+      payload: { phone: "+79280000001", purpose: "login" },
+    });
+    expect(start.statusCode).toBe(200);
+    expect(start.json().callPhonePretty).toBe("Звонить не нужно");
+    expect(provider.adds).toBe(0);
+    const status = await app.inject({
+      method: "POST",
+      url: "/auth/call/status",
+      payload: { phone: "+79280000001", secret: start.json().secret },
+    });
+    expect(status.json().confirmed).toBe(true);
+    const login = await app.inject({
+      method: "POST",
+      url: "/auth/call/login",
+      payload: { phone: "+79280000001", verificationToken: status.json().verificationToken },
+    });
+    expect(login.statusCode).toBe(200);
+    expect(
+      fake.calls.some(
+        (c) => c.sql.includes("notify_security_event") && c.params[1] === "new_sign_in",
+      ),
+    ).toBe(true);
+    await app.close();
+  });
+
+  it("тестовый номер: не вход и не в аккаунт сотрудника — отказ", async () => {
+    const provider = new FakeProvider();
+    const { app, fake } = await buildAuthApp(provider, {
+      CALLCHECK_TEST_PHONES: "+79280000001, +79280000002, +79287777777",
+    });
+    for (const purpose of ["register", "recover", "change_phone"]) {
+      const res = await app.inject({
+        method: "POST",
+        url: "/auth/call/start",
+        payload: { phone: "+79280000001", purpose },
+        headers: { authorization: "Bearer access-u1" },
+      });
+      expect(res.statusCode).toBe(403);
+      expect(res.json().code).toBe("phone_not_allowed");
+    }
+    fake.staff.add("u2");
+    const admin = await app.inject({
+      method: "POST",
+      url: "/auth/call/start",
+      payload: { phone: "+79280000002", purpose: "login" },
+    });
+    expect(admin.statusCode).toBe(403);
+    const none = await app.inject({
+      method: "POST",
+      url: "/auth/call/start",
+      payload: { phone: "+79287777777", purpose: "login" },
+    });
+    expect(none.statusCode).toBe(403);
+    expect(provider.adds).toBe(0);
     await app.close();
   });
 });

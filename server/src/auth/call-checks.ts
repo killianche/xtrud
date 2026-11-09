@@ -43,8 +43,11 @@ const HOUR_MS = 60 * 60_000;
 const MAX_ENTRIES = 50_000;
 const SWEEP_EVERY_MS = 60_000;
 
-/** Зачем подтверждают номер (владелец, 2026-10-04: №209, №215, №220). */
-export type CallPurpose = "register" | "recover" | "change_phone";
+/**
+ * Зачем подтверждают номер (владелец, 2026-10-04: №209, №215, №220;
+ * 2026-11-09, №380: вход по номеру без пароля).
+ */
+export type CallPurpose = "register" | "login" | "recover" | "change_phone";
 
 export type StartCheck =
   | { ok: true }
@@ -54,8 +57,8 @@ export interface PendingCheck {
   secret: string;
   purpose: CallPurpose;
   /**
-   * Чей аккаунт: смена номера — кто начал (вход), восстановление — аккаунт
-   * этого номера на момент старта (ревью L4: номер не уйдёт к другому).
+   * Чей аккаунт: смена номера — кто начал (вход), вход и восстановление —
+   * аккаунт этого номера на момент старта (ревью L4: номер не уйдёт к другому).
    */
   userId: string | null;
   checkId: string;
@@ -63,6 +66,8 @@ export interface PendingCheck {
   callPhonePretty: string;
   expiresAt: number;
   lastPollAt: number;
+  /** Тестовый номер (auth/test-phones.ts): без звонка и вне общих лимитов. */
+  test?: boolean;
 }
 
 /** Адрес для лимита: IPv6 — по сети /56. */
@@ -167,7 +172,7 @@ export class CallChecks {
   remember(
     phone: string,
     check: Omit<PendingCheck, "secret" | "expiresAt" | "lastPollAt" | "purpose" | "userId"> &
-      Partial<Pick<PendingCheck, "purpose" | "userId">>,
+      Partial<Pick<PendingCheck, "purpose" | "userId" | "test">>,
   ): PendingCheck {
     const held = this.pending.get(phone);
     const entry: PendingCheck = {
@@ -203,8 +208,11 @@ export class CallChecks {
     const held = this.pending.get(phone);
     if (!held || (polled !== undefined && held !== polled)) return null;
     this.pending.delete(phone);
-    this.confirmedDay = this.tick(this.confirmedDay, DAY_MS);
-    this.confirmedHour = this.tick(this.confirmedHour, HOUR_MS);
+    // Тестовый номер общий потолок подтверждений не тратит (ревью M2).
+    if (!held.test) {
+      this.confirmedDay = this.tick(this.confirmedDay, DAY_MS);
+      this.confirmedHour = this.tick(this.confirmedHour, HOUR_MS);
+    }
     const token = randomBytes(32).toString("base64url");
     this.tokens.set(token, {
       phone,

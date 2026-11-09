@@ -201,6 +201,16 @@ export function normalizeRuPhoneDigits(input: string): string {
 
 export type RegisterFormValues = z.infer<typeof registerFormSchema>;
 
+/**
+ * Регистрация без пароля (№380): вход — по номеру со звонком. Поле пароля
+ * в форме остаётся пустым и не проверяется; вернётся вместе с флагом сервера.
+ */
+export const registerFormSchemaNoPassword = registerFormSchema.extend({ password: z.string() });
+
+export function registerSchemaFor(withPassword: boolean) {
+  return withPassword ? registerFormSchema : registerFormSchemaNoPassword;
+}
+
 /** Схема экрана «Забыли пароль» — только почта. */
 export const forgotPasswordSchema = z.object({
   email: z.string().min(1, "Введите почту").email("Некорректная почта"),

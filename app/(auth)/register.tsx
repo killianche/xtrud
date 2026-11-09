@@ -1,9 +1,8 @@
 // Экран РЕГИСТРАЦИИ (route /(auth)/register).
 //
-// «Тестовая регистрация» — DECISION владельца 2026-09-03: имя, фамилия, номер
-// телефона и пароль. Ни SMS, ни почты, ни подтверждения: нажал «Создать
-// аккаунт» — аккаунт есть. Подтверждение номера по SMS вернём отдельным
-// этапом, когда будет провайдер.
+// Имя, фамилия и номер телефона; номер подтверждается звонком (№206, №217).
+// Пароля нет (№380, владелец 2026-11-09: «полностью убери пароль»): поле
+// появится, только если сервер вернёт вход по паролю (passwordLogin).
 //
 // Номер — единственный формат: код страны зафиксирован на +7 и не
 // выбирается, в поле ровно 10 цифр. Раньше здесь был CountryCodeSelect, и
@@ -18,7 +17,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useLocalSearchParams, useNavigation, useRouter } from "expo-router";
 import { CaretLeft } from "phosphor-react-native";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { Pressable, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -30,11 +29,12 @@ import { SystemIcon } from "@/components/ui/SystemIcon";
 import { ORDER_CREATE_RETURN_TO, parseAuthReturnTo } from "@/features/auth/auth-return";
 import { formatRuPhone, RegisterFormFields } from "@/features/auth/RegisterFormFields";
 import { clearRegisterPrefill, peekRegisterPrefill } from "@/features/auth/register-prefill";
+import { usePasswordLogin } from "@/features/auth/use-auth-options";
 import { useRegisterWithCode } from "@/features/auth/use-register-with-code";
 import {
   normalizeRuPhoneDigits,
   type RegisterFormValues,
-  registerFormSchema,
+  registerSchemaFor,
 } from "@/features/auth/validation";
 import { useAuthReturnUrlStore } from "@/lib/auth-return-url-store";
 import {
@@ -67,7 +67,10 @@ export default function RegisterScreen() {
   // Подтверждение номера звонком — если сервер его требует (№206).
   const register = useRegisterWithCode();
   const [serverError, setServerError] = useState<string | null>(null);
-  const [_showPassword, _setShowPassword] = useState(false);
+  const withPassword = usePasswordLogin();
+  // Схема — по текущему флагу: ответ сервера может прийти после открытия.
+  const withPasswordRef = useRef(withPassword);
+  withPasswordRef.current = withPassword;
   // Галочка стоит сразу (DECISION владельца 2026-09-12: «ставь»): человек
   // видит ссылки на условия рядом с кнопкой и может снять отметку.
   const [acceptedTerms, setAcceptedTerms] = useState(true);
@@ -130,7 +133,8 @@ export default function RegisterScreen() {
     watch,
     formState: { errors, isValid },
   } = useForm<RegisterFormValues>({
-    resolver: zodResolver(registerFormSchema),
+    resolver: (values, context, options) =>
+      zodResolver(registerSchemaFor(withPasswordRef.current))(values, context, options),
     defaultValues: {
       firstName: "",
       lastName: "",
@@ -156,7 +160,7 @@ export default function RegisterScreen() {
       const result = await register.run(
         {
           phone,
-          password: values.password,
+          ...(withPassword ? { password: values.password } : {}),
           firstName: values.firstName,
           lastName: values.lastName,
         },
@@ -220,9 +224,11 @@ export default function RegisterScreen() {
                     номер — подтверждения для нового нет, спросим звонок). */}
                 {prefill.verificationToken &&
                 normalizeRuPhoneDigits(watch("phone") ?? "") === prefill.phone
-                  ? `Номер +7 ${formatRuPhone(prefill.phone)} подтверждён. Осталось имя и пароль.`
+                  ? `Номер +7 ${formatRuPhone(prefill.phone)} подтверждён. Осталось ${
+                      withPassword ? "имя и пароль" : "имя"
+                    }.`
                   : `Аккаунта с номером +7 ${formatRuPhone(prefill.phone)} ещё нет. ${
-                      prefill.password
+                      prefill.password || !withPassword
                         ? "Укажите имя — и он будет создан."
                         : "Укажите имя и придумайте пароль — и он будет создан."
                     }`}
@@ -238,6 +244,7 @@ export default function RegisterScreen() {
             onToggleTerms={() => setAcceptedTerms((v) => !v)}
             serverError={serverError}
             autoFocusName={!!prefill}
+            withPassword={withPassword}
           />
         </View>
 

@@ -22,7 +22,8 @@ import {
 
 export interface RegisterInput {
   phone: string;
-  password: string;
+  /** Только если сервер включил вход по паролю (№380). */
+  password?: string;
   firstName: string;
   lastName: string;
   /** Подтверждение номера обратным звонком (CallConfirmSheet), если сервер требует. */

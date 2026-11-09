@@ -37,6 +37,8 @@ const INSET_AWARE_WRAPPERS = [
   "<FilterSheetScreen",
   // Подразделы каталога: внутри useLargeTitle + LargeTitleBar.
   "<SubcategoryScreen",
+  // «Ваш номер» — вход по номеру (№380): paddingTop из useSafeAreaInsets.
+  "<PhoneSignInForm",
 ];
 const SATISFIES = [
   "insets.top",

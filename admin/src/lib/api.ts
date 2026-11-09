@@ -134,6 +134,72 @@ export async function login(email: string, password: string): Promise<{ error: s
   return { error: null };
 }
 
+/** Что включено для входа: с №380 пароль выключен, вход — номером и звонком. */
+export async function authOptions(): Promise<{ passwordLogin: boolean; phoneCallLogin: boolean }> {
+  try {
+    const res = await fetch(`${await baseUrl()}/v2/auth/options`, {
+      signal: AbortSignal.timeout(15_000),
+    });
+    const j = (await res.json()) as Record<string, unknown>;
+    return { passwordLogin: j.passwordLogin === true, phoneCallLogin: j.phoneCallLogin === true };
+  } catch {
+    return { passwordLogin: false, phoneCallLogin: true };
+  }
+}
+
+export interface CallCheck {
+  secret: string;
+  callPhone: string;
+  callPhonePretty: string;
+  expiresInSec: number;
+}
+
+/** Номер, на который звонят со своего телефона, чтобы войти (№380). */
+export async function callStart(
+  phone: string,
+  secret?: string,
+): Promise<{ call: CallCheck } | { call: null; error: string }> {
+  const { status, json } = await postJson("/v2/auth/call/start", {
+    phone,
+    secret,
+    purpose: "login",
+  });
+  const j = (json ?? {}) as Partial<CallCheck> & { error?: string };
+  if (status >= 400 || typeof j.secret !== "string" || typeof j.callPhone !== "string") {
+    return { call: null, error: j.error ?? "Не удалось получить номер для звонка." };
+  }
+  return { call: j as CallCheck };
+}
+
+/** Был ли звонок: да — одноразовое подтверждение; expired — номер истёк. */
+export async function callStatus(
+  phone: string,
+  secret: string,
+): Promise<{ token: string | null; expired: boolean }> {
+  const { status, json } = await postJson("/v2/auth/call/status", { phone, secret });
+  if (status === 410) return { token: null, expired: true };
+  const token = (json as { verificationToken?: unknown } | null)?.verificationToken;
+  return { token: typeof token === "string" ? token : null, expired: false };
+}
+
+/** Вход по номеру после подтверждения звонком. */
+export async function loginWithCall(
+  phone: string,
+  verificationToken: string,
+): Promise<{ error: string | null }> {
+  const { status, json } = await postJson("/v2/auth/call/login", { phone, verificationToken });
+  if (status >= 400) {
+    return { error: (json as { error?: string } | null)?.error ?? "Не удалось войти." };
+  }
+  const t = json as TokenResponse;
+  writeSession({
+    accessToken: t.accessToken,
+    refreshToken: t.refreshToken,
+    expiresAt: t.expiresAt,
+  });
+  return { error: null };
+}
+
 export async function logout(): Promise<void> {
   const s = readSession();
   writeSession(null);

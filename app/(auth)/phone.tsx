@@ -1,6 +1,7 @@
 // Экран ВХОДА (route /(auth)/phone — имя сохранено: на него ведут ссылки по
-// проекту и LoginWall). Модель с 2026-06-05: «почта ИЛИ телефон» + пароль
-// (SMS-OTP убран — платный). См. src/features/auth/use-auth-mutations.ts.
+// проекту и LoginWall). С 2026-11-09 (№380, владелец: «полностью убери
+// пароль») — номер и подтверждение звонком (PhoneSignInForm). Прежний вход
+// «почта ИЛИ телефон» + пароль остаётся за флагом сервера passwordLogin.
 //
 // При обычном входе навигацию делает AuthGate. Если вход начат из формы
 // задания, allowlist return-intent возвращает пользователя в сохранённый
@@ -9,7 +10,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useLocalSearchParams, useNavigation, useRouter } from "expo-router";
 import { CaretLeft, Eye, EyeSlash } from "phosphor-react-native";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { Pressable, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -19,8 +20,10 @@ import { FormScrollView } from "@/components/ui/KeyboardAware";
 import { NavCircleButton } from "@/components/ui/LargeTitle";
 import { SystemIcon } from "@/components/ui/SystemIcon";
 import { ORDER_CREATE_RETURN_TO, parseAuthReturnTo } from "@/features/auth/auth-return";
+import { PhoneSignInForm } from "@/features/auth/PhoneSignInForm";
 import { setRegisterPrefill } from "@/features/auth/register-prefill";
 import { useLogin } from "@/features/auth/use-auth-mutations";
+import { usePasswordLogin } from "@/features/auth/use-auth-options";
 import {
   type LoginFormValues,
   loginFormSchema,
@@ -39,7 +42,14 @@ import { useSafeBack } from "@/lib/use-safe-back";
 import { useThemeColors } from "@/lib/use-theme-color";
 
 export default function LoginScreen() {
-  const insets = useSafeAreaInsets();
+  return usePasswordLogin() ? <PasswordLoginScreen /> : <PhoneLoginScreen />;
+}
+
+/**
+ * Общее для обоих видов входа: возврат к черновику задания гостя и к экрану,
+ * с которого пришли (return intent), «Назад» и переход в регистрацию.
+ */
+function useLoginJourney(isBusy: () => boolean) {
   const router = useRouter();
   const navigation = useNavigation();
   const params = useLocalSearchParams<{
@@ -50,10 +60,6 @@ export default function LoginScreen() {
   const draftJourney = Array.isArray(params.draftJourney)
     ? params.draftJourney[0]
     : params.draftJourney;
-  const login = useLogin();
-  const [serverError, setServerError] = useState<string | null>(null);
-  const [showPassword, setShowPassword] = useState(false);
-  const tc = useThemeColors(["ink", "mute"]);
   const safeGoBack = useSafeBack("/" as const);
 
   const abandonDraftJourney = useCallback((shouldAbandon: boolean) => {
@@ -74,7 +80,7 @@ export default function LoginScreen() {
         // usePreventRemove blocks the actual transition while login is in
         // flight; the observer must not revoke the draft for that prevented
         // gesture/action.
-        if (login.isPending) return;
+        if (isBusy()) return;
         const action = event.data.action as { type: string; payload?: { name?: string } };
         abandonDraftJourney(
           shouldAbandonGuestDraftAuthJourney("phone", {
@@ -83,7 +89,7 @@ export default function LoginScreen() {
           }),
         );
       }),
-    [abandonDraftJourney, login.isPending, navigation],
+    [abandonDraftJourney, isBusy, navigation],
   );
 
   useEffect(() => {
@@ -100,17 +106,6 @@ export default function LoginScreen() {
     safeGoBack();
   };
 
-  const {
-    control,
-    handleSubmit,
-    getValues,
-    formState: { errors, isValid },
-  } = useForm<LoginFormValues>({
-    resolver: zodResolver(loginFormSchema),
-    defaultValues: { login: "", password: "" },
-    mode: "onChange",
-  });
-
   const openRegister = () => {
     router.push(
       requestedReturnTo
@@ -126,6 +121,84 @@ export default function LoginScreen() {
     );
   };
 
+  const afterSignIn = async (userId: string) => {
+    await completeGuestDraftAuthJourney(draftJourney, userId);
+    const returnUrl = useAuthReturnUrlStore.getState().peekReturnUrl();
+    // Intent пока не consume: целевой экран проверит onboarding и только
+    // после этого одноразово очистит return. Так AuthGate и network timing не
+    // могут ни потерять возврат, ни пропустить обязательный onboarding.
+    if (useAuthReturnUrlStore.getState().isPerformerOnboardingRequested()) {
+      // AuthGate — единственный владелец performer branch/consume/redirect.
+      // Здесь не конкурируем с ним за одноразовый return intent.
+      return;
+    } else if (returnUrl) {
+      router.replace(returnUrl as never);
+    }
+  };
+
+  return { abandonDraftJourney, goBack, openRegister, afterSignIn };
+}
+
+/** Номер → звонок → вход или регистрация (№380). */
+function PhoneLoginScreen() {
+  const router = useRouter();
+  const tc = useThemeColors(["ink"]);
+  const busy = useRef(false);
+  const journey = useLoginJourney(useCallback(() => busy.current, []));
+
+  return (
+    <PhoneSignInForm
+      topBar={(isBusy) => {
+        busy.current = isBusy;
+        return (
+          <NavCircleButton label="Назад" onPress={journey.goBack} disabled={isBusy}>
+            <SystemIcon
+              sf="chevron.left"
+              fallback={CaretLeft}
+              size={20}
+              weight="semibold"
+              color={tc.ink}
+            />
+          </NavCircleButton>
+        );
+      }}
+      onSignedIn={journey.afterSignIn}
+      onNewUser={(phone, token) => {
+        setRegisterPrefill(phone, "", token);
+        journey.openRegister();
+      }}
+      onPasswordNeeded={(phone) =>
+        router.push({ pathname: "/(auth)/sign-in", params: { phone } } as never)
+      }
+    />
+  );
+}
+
+/** Прежний вход по паролю — только если сервер его вернул (passwordLogin). */
+function PasswordLoginScreen() {
+  const insets = useSafeAreaInsets();
+  const router = useRouter();
+  const login = useLogin();
+  const [serverError, setServerError] = useState<string | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
+  const tc = useThemeColors(["ink", "mute"]);
+  const pending = useRef(false);
+  pending.current = login.isPending;
+  const { abandonDraftJourney, goBack, openRegister, afterSignIn } = useLoginJourney(
+    useCallback(() => pending.current, []),
+  );
+
+  const {
+    control,
+    handleSubmit,
+    getValues,
+    formState: { errors, isValid },
+  } = useForm<LoginFormValues>({
+    resolver: zodResolver(loginFormSchema),
+    defaultValues: { login: "", password: "" },
+    mode: "onChange",
+  });
+
   const onSubmit = handleSubmit(async (values) => {
     setServerError(null);
     try {
@@ -133,18 +206,7 @@ export default function LoginScreen() {
         login: values.login.trim(),
         password: values.password,
       });
-      await completeGuestDraftAuthJourney(draftJourney, result.userId);
-      const returnUrl = useAuthReturnUrlStore.getState().peekReturnUrl();
-      // Intent пока не consume: целевой экран проверит onboarding и только
-      // после этого одноразово очистит return. Так AuthGate и network timing не
-      // могут ни потерять возврат, ни пропустить обязательный onboarding.
-      if (useAuthReturnUrlStore.getState().isPerformerOnboardingRequested()) {
-        // AuthGate — единственный владелец performer branch/consume/redirect.
-        // Здесь не конкурируем с ним за одноразовый return intent.
-        return;
-      } else if (returnUrl) {
-        router.replace(returnUrl as never);
-      }
+      await afterSignIn(result.userId);
     } catch (e) {
       // Такого номера нет — не заставляем набирать всё заново: регистрация
       // откроется с этим номером и паролем, останется имя и фамилия.

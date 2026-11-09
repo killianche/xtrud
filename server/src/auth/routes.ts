@@ -1,6 +1,7 @@
 // Вход и регистрация — замена GoTrue. Данные совместимы: строки auth.users и
 // auth.identities создаются так же, как их создавал GoTrue (bcrypt, синтетическая
 // почта phone@…), поэтому при откате старый стек видит те же аккаунты.
+import { randomBytes, randomUUID } from "node:crypto";
 import bcrypt from "bcryptjs";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
@@ -11,28 +12,33 @@ import { hashRefresh, newRefreshToken, type Tokens } from "./jwt.js";
 import { FailureWindow, LoginAttempts, loginAttemptKey } from "./login-attempts.js";
 import { canonicalPhone, isPhoneLogin, phoneKey, phoneToAuthEmail } from "./phone.js";
 import type { CallCheckProvider } from "./smsru-callcheck.js";
+import { parseTestPhones, TEST_CALL } from "./test-phones.js";
 
 const registerSchema = z.object({
   firstName: z.string().trim().min(1).max(60),
   // Фамилия необязательна (DECISION владельца 2026-09-22); пустая → NULL.
   lastName: z.string().trim().max(60).optional().default(""),
   phone: z.string().trim().min(10).max(20),
-  // 8 знаков — как в приложении (2026-09-12). Вход старых паролей
-  // не ломается: при входе длина не проверяется.
-  password: z.string().min(8).max(200),
+  // Пароль — только от старых сборок (№380: регистрация без пароля). 8 знаков —
+  // как в приложении (2026-09-12); при входе длина не проверяется.
+  password: z.string().min(8).max(200).optional(),
   /** Подтверждение номера обратным звонком (/auth/call/status), если включено. */
   verificationToken: z.string().min(20).max(100).optional(),
 });
 const callStartSchema = z.object({
   phone: z.string().trim().min(10).max(20),
   secret: z.string().max(64).optional(),
-  /** Регистрация (по умолчанию), восстановление пароля, смена номера. */
-  purpose: z.enum(["register", "recover", "change_phone"]).optional().default("register"),
+  /** Регистрация (по умолчанию), вход, восстановление пароля, смена номера. */
+  purpose: z.enum(["register", "login", "recover", "change_phone"]).optional().default("register"),
 });
 const recoverSchema = z.object({
   phone: z.string().trim().min(10).max(20),
   verificationToken: z.string().min(20).max(100),
   newPassword: z.string().min(8).max(200),
+});
+const callLoginSchema = z.object({
+  phone: z.string().trim().min(10).max(20),
+  verificationToken: z.string().min(20).max(100),
 });
 const changePhoneSchema = z.object({
   phone: z.string().trim().min(10).max(20),
@@ -55,6 +61,8 @@ const loginSchema = z.object({
 });
 const recoverySchema = z.object({ phone: z.string().trim().min(10).max(20) });
 const phoneStatusSchema = z.object({ phone: z.string().trim().min(10).max(20) });
+/** Входов по тестовым номерам — не больше 30 в час на весь сервер. */
+const TEST_STARTS_PER_HOUR = 30;
 /** Проверок номера с одного адреса — не больше 30 в час. */
 const PHONE_STATUS_PER_IP = 30;
 /** Заявок с одного адреса — не больше 5 в час: форма без входа. */
@@ -81,6 +89,13 @@ interface AuthUserRow {
 // по времени ответа нельзя было перечислять номера.
 const DUMMY_HASH = "$2a$10$CwTycUXWue0Thq9StjUM0uJ8Y7p4E7g0vX3s6f1G9o7z4h1j2k3l4";
 
+/**
+ * Старые сборки (iOS ≤174, Android ≤43) спрашивают пароль. С выключенным
+ * паролем (№380) вход у них — через «Забыли пароль?»: звонок и сразу вход.
+ */
+const PASSWORD_DISABLED_TEXT =
+  "Вход по паролю отключён. Нажмите «Забыли пароль?» — подтвердите номер звонком и сразу войдёте. Или обновите приложение.";
+
 function blockedMessage(user: AuthUserRow): string | null {
   if (user.deleted_at) return "Аккаунт удалён";
   if (user.user_status === "banned" || user.user_status === "deleted") {
@@ -105,6 +120,20 @@ export function registerAuthRoutes(
 ) {
   // С ключом SMS.ru регистрация требует подтверждения номера звонком.
   const callRequired = callProvider !== null;
+  const passwordLogin = cfg.PASSWORD_LOGIN_ENABLED === true;
+  // Тестовые номера (ревьюер магазинов) — без звонка, только вход (№380).
+  const testPhones = parseTestPhones(cfg.CALLCHECK_TEST_PHONES);
+  if (testPhones.size > 0) app.log.info({ count: testPhones.size }, "call check test phones");
+  const testStarts = new FailureWindow(TEST_STARTS_PER_HOUR, RECOVERY_WINDOW_MS);
+  /** Админ или управляющий (0257): тестовый номер в их аккаунт не пускает. */
+  const isStaff = async (userId: string) =>
+    db.asService(async (c) => {
+      const r = await c.query<{ account_is_staff: boolean }>(
+        "SELECT xtrud_private.account_is_staff($1)",
+        [userId],
+      );
+      return r.rows[0]?.account_is_staff !== false;
+    });
   const issueSession = async (user: AuthUserRow) => {
     const refresh = newRefreshToken();
     const sessionId = await db.asService(async (c) => {
@@ -138,7 +167,10 @@ export function registerAuthRoutes(
   // Push владельцу «Пароль изменён / Номер изменён — если не вы, в
   // поддержку» (ревью xtrud-security, M1: восстановление одним звонком).
   // Тексты — в базе (0220); сбой уведомления не отменяет само действие.
-  const notifySecurity = async (userId: string, kind: "password_changed" | "phone_changed") => {
+  const notifySecurity = async (
+    userId: string,
+    kind: "password_changed" | "phone_changed" | "new_sign_in",
+  ) => {
     try {
       await db.asService(async (c) => {
         await c.query("SELECT xtrud_private.notify_security_event($1, $2)", [userId, kind]);
@@ -158,7 +190,7 @@ export function registerAuthRoutes(
     if (!parsed.success)
       return reply
         .code(422)
-        .send({ error: "Заполните имя, фамилию, телефон и пароль (от 8 символов)" });
+        .send({ error: "Заполните имя и телефон (пароль, если он есть, — от 8 символов)" });
     const input = parsed.data;
     const phone = canonicalPhone(input.phone);
     const key = phoneKey(phone);
@@ -181,7 +213,9 @@ export function registerAuthRoutes(
       }
     }
     const email = phoneToAuthEmail(phone, cfg.PHONE_EMAIL_DOMAIN);
-    const hash = await bcrypt.hash(input.password, 10);
+    // Без пароля — случайный хеш, которым не войти: строка auth.users та же,
+    // что у GoTrue (№380).
+    const hash = await bcrypt.hash(input.password ?? randomBytes(32).toString("base64url"), 10);
     try {
       const user = await db.asService(async (c) => {
         // Одна функция от владельца базы: auth.users, auth.identities, имя и
@@ -238,6 +272,12 @@ export function registerAuthRoutes(
       return reply
         .code(404)
         .send({ error: "Аккаунта с этим номером нет", code: "account_not_found" });
+    }
+    // Пароль выключен (№380) — ответ один, верен пароль или нет.
+    if (!passwordLogin) {
+      return reply
+        .code(403)
+        .send({ error: PASSWORD_DISABLED_TEXT, code: "password_login_disabled" });
     }
     if (!user || !ok) {
       loginAttempts.fail(attemptKey, req.ip);
@@ -313,6 +353,9 @@ export function registerAuthRoutes(
   /** Что включено: приложение по этому решает, спрашивать ли звонок. */
   app.get("/auth/options", async () => ({
     phoneCallAtRegistration: callRequired,
+    // Вход звонком (№380); пароль — только если его вернули флагом.
+    phoneCallLogin: callRequired,
+    passwordLogin,
     // С тем же ключом SMS.ru — восстановление пароля и смена номера звонком
     // (№215, №220); без него — заявка «Перезвоните мне» и смена номера
     // недоступна.
@@ -346,21 +389,29 @@ export function registerAuthRoutes(
     phoneStatusWindow.fail(req.ip);
     const purpose: CallPurpose = parsed.data.purpose;
     const account = await findByLogin(phone);
+    const isTest = testPhones.has(phone);
+    // Тестовый номер — только вход в аккаунт без прав сотрудника (ревью H1).
+    if (isTest && (purpose !== "login" || !account || (await isStaff(account.id)))) {
+      return reply
+        .code(403)
+        .send({ error: "Для этого номера вход недоступен.", code: "phone_not_allowed" });
+    }
     let userId: string | null = null;
     if (purpose === "register" && account) {
       return reply
         .code(409)
         .send({ error: "Этот номер уже зарегистрирован. Войдите.", code: "phone_taken" });
     }
-    if (purpose === "recover") {
+    if (purpose === "recover" || purpose === "login") {
       if (!account) {
         return reply.code(404).send({
           error: "Аккаунта с этим номером нет. Зарегистрируйтесь.",
           code: "account_not_found",
         });
       }
-      // Блокировку не раскрываем до звонка (ревью L5) — её проверит
-      // /auth/recover. Подтверждение — только этому аккаунту (ревью L4).
+      // Блокировку не раскрываем до звонка (ревью L5) — её проверят
+      // /auth/recover и /auth/call/login. Подтверждение — только этому
+      // аккаунту (ревью L4).
       userId = account.id;
     }
     if (purpose === "change_phone") {
@@ -407,6 +458,21 @@ export function registerAuthRoutes(
           retryInSec,
         });
       }
+    }
+    // Тестовый номер: без звонка и вне общих лимитов (ревью M2), свой потолок.
+    if (isTest) {
+      if (testStarts.blocked("all")) {
+        return reply.code(429).send({ error: CALL_LIMIT_TEXT.global, code: "call_rate_limited" });
+      }
+      testStarts.fail("all");
+      const entry = calls.remember(phone, {
+        checkId: `test:${randomUUID()}`,
+        ...TEST_CALL,
+        purpose,
+        userId,
+        test: true,
+      });
+      return reply.send(toClient(entry));
     }
     const can = calls.canStart(phone, req.ip);
     if (!can.ok) {
@@ -464,7 +530,7 @@ export function registerAuthRoutes(
           .send({ error: "Время вышло — получите новый номер", code: "call_expired" });
       }
       if (!calls.shouldPoll(entry)) return reply.send({ confirmed: false });
-      const status = await callProvider.status(entry.checkId);
+      const status = entry.test ? "confirmed" : await callProvider.status(entry.checkId);
       if (status === "confirmed") {
         const verificationToken = calls.confirm(phone, entry);
         if (!verificationToken) {
@@ -487,6 +553,43 @@ export function registerAuthRoutes(
       return reply.send({ confirmed: false });
     },
   );
+
+  /**
+   * Вход по номеру после подтверждения звонком (№380, 2026-11-09): пароля
+   * нет. Подтверждение привязано к аккаунту номера на момент звонка.
+   */
+  app.post("/auth/call/login", async (req, reply) => {
+    if (!callProvider) {
+      return reply
+        .code(503)
+        .send({ error: "Подтверждение звонком выключено", code: "call_disabled" });
+    }
+    const parsed = callLoginSchema.safeParse(req.body);
+    if (!parsed.success) return reply.code(422).send({ error: "Введите номер полностью" });
+    const phone = canonicalPhone(parsed.data.phone);
+    if (!RU_MOBILE.test(phone)) return reply.code(422).send({ error: "Введите номер полностью" });
+    const user = await findByLogin(phone);
+    if (!user || !calls.tokenValid(parsed.data.verificationToken, phone, "login", user.id)) {
+      return reply.code(428).send({
+        error: "Подтвердите номер звонком ещё раз.",
+        code: "phone_verification_required",
+      });
+    }
+    calls.consumeToken(parsed.data.verificationToken, phone, "login", user.id);
+    const blocked = blockedMessage(user);
+    if (blocked) return reply.code(403).send({ error: blocked, code: "account_blocked" });
+    // Права сотрудника могли появиться после звонка — тестовый номер не пускает.
+    if (testPhones.has(phone) && (await isStaff(user.id))) {
+      return reply
+        .code(403)
+        .send({ error: "Для этого номера вход недоступен.", code: "phone_not_allowed" });
+    }
+    loginAttempts.succeed(loginAttemptKey(phone), req.ip);
+    // Вход звонком заменил пароль: о входе с нового устройства — push (ревью M4).
+    await notifySecurity(user.id, "new_sign_in");
+    req.log.info({ tail: phone.slice(-2) }, "signed in by call");
+    return reply.send(await issueSession(user));
+  });
 
   /**
    * Восстановление пароля после подтверждения номера звонком (№215):
@@ -656,6 +759,12 @@ export function registerAuthRoutes(
   app.post("/auth/password", async (req, reply) => {
     const claims = await tokens.verify(bearer(req.headers.authorization));
     if (!claims) return reply.code(401).send({ error: "Нужен вход" });
+    if (!passwordLogin) {
+      return reply.code(403).send({
+        error: "Пароль больше не нужен: вход — по номеру.",
+        code: "password_login_disabled",
+      });
+    }
     const parsed = passwordSchema.safeParse(req.body);
     if (!parsed.success) return reply.code(422).send({ error: "Новый пароль — от 8 символов" });
     const user = await findById(claims.sub);

@@ -53,7 +53,7 @@ const FINAL_ERRORS = new Set([
   "account_blocked",
 ]);
 
-export type CallPurpose = "register" | "recover" | "change_phone";
+export type CallPurpose = "register" | "login" | "recover" | "change_phone";
 
 interface Request {
   phone: string;

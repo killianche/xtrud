@@ -67,7 +67,8 @@ async function signInWithDemoPhone(
  */
 export async function registerWithCredentials(input: {
   phone: string;
-  password: string;
+  /** Только если сервер включил вход по паролю (№380). */
+  password?: string;
   firstName: string;
   lastName: string;
   verificationToken?: string;
@@ -76,12 +77,28 @@ export async function registerWithCredentials(input: {
     firstName: input.firstName.trim(),
     lastName: input.lastName.trim(),
     phone: normalizePhone(input.phone),
-    password: input.password,
+    ...(input.password ? { password: input.password } : {}),
     ...(input.verificationToken ? { verificationToken: input.verificationToken } : {}),
   });
   if (error || !data.user) {
     return { ok: false, error: error?.message ?? "Не удалось создать аккаунт", code: error?.code };
   }
+  return { ok: true, userId: data.user.id };
+}
+
+/** Вход по номеру после подтверждения звонком — без пароля (№380). */
+export async function loginWithPhoneCall(
+  phone: string,
+  verificationToken: string,
+): Promise<{ ok: true; userId: string } | { ok: false; error: string; code?: string }> {
+  const { data, error } = await supabase.auth.signInWithCall(
+    normalizePhone(phone),
+    verificationToken,
+  );
+  if (error || !data.session || !data.user) {
+    return { ok: false, error: error?.message ?? "Не удалось войти", code: error?.code };
+  }
+  await markMasterRole(data.user.id);
   return { ok: true, userId: data.user.id };
 }
 

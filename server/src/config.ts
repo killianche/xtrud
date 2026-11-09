@@ -63,6 +63,20 @@ const schema = z.object({
    * бесплатный номер. Без ключа регистрация идёт без подтверждения.
    */
   SMSRU_API_ID: z.string().min(20).optional(),
+  /**
+   * Номера, которые подтверждаются без звонка (auth/test-phones.ts): аккаунт
+   * ревьюера магазинов. Через запятую; только служебные аккаунты без прав.
+   */
+  CALLCHECK_TEST_PHONES: z.string().optional(),
+  /**
+   * Вход по паролю (№380, владелец 2026-11-09: «пока отключи систему
+   * паролей»). Выключен: вход и регистрация — по номеру с подтверждением
+   * звонком. "true" возвращает пароль без новой сборки приложения.
+   */
+  PASSWORD_LOGIN_ENABLED: z
+    .enum(["true", "false"])
+    .default("false")
+    .transform((v) => v === "true"),
   /** Потолок новых проверок на весь сервер — сутки и час (всплеск). */
   CALLCHECK_DAILY_CAP: z.coerce.number().int().min(1).default(300),
   CALLCHECK_HOURLY_CAP: z.coerce.number().int().min(1).default(60),

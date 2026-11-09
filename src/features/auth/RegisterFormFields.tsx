@@ -1,5 +1,6 @@
 /**
- * Поля регистрации: имя, фамилия, телефон (+7), пароль, согласие с условиями,
+ * Поля регистрации: имя, фамилия, телефон (+7), пароль (только если сервер
+ * вернул вход по паролю, №380), согласие с условиями,
  * ошибка сервера. Общие для экрана «Создать аккаунт» (app/(auth)/register.tsx)
  * и шага «Ваш аккаунт» в создании задания гостем
  * (app/(details)/orders/new/account.tsx, владелец 2026-10-03: «регистрация в
@@ -37,6 +38,7 @@ export function RegisterFormFields({
   onToggleTerms,
   serverError,
   autoFocusName = false,
+  withPassword,
 }: {
   control: Control<RegisterFormValues>;
   errors: FieldErrors<RegisterFormValues>;
@@ -45,6 +47,8 @@ export function RegisterFormFields({
   onToggleTerms: () => void;
   serverError: string | null;
   autoFocusName?: boolean;
+  /** Вход по паролю включён на сервере (usePasswordLogin); с №380 — нет. */
+  withPassword: boolean;
 }) {
   const router = useRouter();
   const tc = useThemeColors(["mute", "on-accent"]);
@@ -144,43 +148,45 @@ export function RegisterFormFields({
 
       {/* «Минимум 8 символов» — лейбл ПОЛЯ (не subtitle под H1), §G не
         нарушается. */}
-      <View className="mt-5">
-        <Controller
-          control={control}
-          name="password"
-          render={({ field: { value, onChange, onBlur } }) => (
-            <Input
-              size="lg"
-              label="Пароль · минимум 8 символов"
-              value={value}
-              onBlur={onBlur}
-              onChangeText={onChange}
-              placeholder="Придумайте пароль"
-              secureTextEntry={!showPassword}
-              autoCapitalize="none"
-              autoCorrect={false}
-              autoComplete="new-password"
-              editable={!isBusy}
-              error={errors.password?.message}
-              rightIcon={
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel={showPassword ? "Скрыть пароль" : "Показать пароль"}
-                  onPress={() => setShowPassword((v) => !v)}
-                  hitSlop={12}
-                  className="h-11 w-11 items-center justify-center"
-                >
-                  {showPassword ? (
-                    <EyeSlash size={22} weight="bold" color={tc.mute} />
-                  ) : (
-                    <Eye size={22} weight="bold" color={tc.mute} />
-                  )}
-                </Pressable>
-              }
-            />
-          )}
-        />
-      </View>
+      {withPassword ? (
+        <View className="mt-5">
+          <Controller
+            control={control}
+            name="password"
+            render={({ field: { value, onChange, onBlur } }) => (
+              <Input
+                size="lg"
+                label="Пароль · минимум 8 символов"
+                value={value}
+                onBlur={onBlur}
+                onChangeText={onChange}
+                placeholder="Придумайте пароль"
+                secureTextEntry={!showPassword}
+                autoCapitalize="none"
+                autoCorrect={false}
+                autoComplete="new-password"
+                editable={!isBusy}
+                error={errors.password?.message}
+                rightIcon={
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={showPassword ? "Скрыть пароль" : "Показать пароль"}
+                    onPress={() => setShowPassword((v) => !v)}
+                    hitSlop={12}
+                    className="h-11 w-11 items-center justify-center"
+                  >
+                    {showPassword ? (
+                      <EyeSlash size={22} weight="bold" color={tc.mute} />
+                    ) : (
+                      <Eye size={22} weight="bold" color={tc.mute} />
+                    )}
+                  </Pressable>
+                }
+              />
+            )}
+          />
+        </View>
+      ) : null}
 
       {/* Согласие с условиями — отмечено по умолчанию, без него кнопка неактивна. */}
       <Pressable

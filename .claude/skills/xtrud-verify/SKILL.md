@@ -11,7 +11,7 @@ description: Проверить, что изменение в xtrud действ
 
 - Код: `npm run quality:check` (типы, токены, biome, 334+ тестов, каталог, версии) — после последней правки. Сервер: `cd server && npm run check`. Админка: `cd admin && npx tsc --noEmit -p . && npm run build`.
 - Бандл: `npm run ios:bundle:check` (рост веса — с причиной).
-- API вживую (без записи): `curl https://api.xtrud.pro/v2/health`; гость — `GET /v2/rest/<таблица>?select=...`; пользователь — вход тестовым аккаунтом Apple Review (`POST /v2/auth/login` с `{"login":"+79280000000","password":"Review2026xtrud"}`), токен в `Authorization: Bearer`. Проверять и запрет: не-админ на admin_* → 403, гость на запись → 401.
+- API вживую (без записи): `curl https://api.xtrud.pro/v2/health`; гость — `GET /v2/rest/<таблица>?select=...`; пользователь — вход тестовым аккаунтом Apple Review без звонка (с №380 пароля нет): номер — `CALLCHECK_TEST_PHONES` в `/opt/xtrud/xtrud-api.env` (в Git его нет); `POST /v2/auth/call/start` `{"phone":…,"purpose":"login"}` → `/v2/auth/call/status` `{"phone":…,"secret":…}` → `/v2/auth/call/login` `{"phone":…,"verificationToken":…}`, токен в `Authorization: Bearer`. Проверять и запрет: не-админ на admin_* → 403, гость на запись → 401.
 - База: только SELECT; изменения проверять пробным прогоном с ROLLBACK (навык xtrud-db-migration).
 - Скриншоты владельца: вырезать нужную часть и смотреть крупно (`PIL crop`), сравнивать со старыми скриншотами в той же папке. Не делать вывод по уменьшенной картинке.
 

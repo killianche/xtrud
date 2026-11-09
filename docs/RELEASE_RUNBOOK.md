@@ -81,9 +81,11 @@ node /tmp/.../scratchpad/asc48.mjs   # печатает «сборка: N | VALI
    `usesNonExemptEncryption: false`).
 2. Тексты: `appStoreVersionLocalizations` (ru) — `whatsNew` обязателен,
    описание переносится из прошлой версии — сверить с приложением.
-3. Проверка Apple: `appStoreReviewDetails` — демо-аккаунт (+79280000000) и
-   заметки о том, как войти сейчас; перед подачей проверить вход демо-аккаунта
-   через `/v2/auth/login`.
+3. Проверка Apple: `appStoreReviewDetails` — номер демо-аккаунта (тестовый
+   номер из `CALLCHECK_TEST_PHONES` в `/opt/xtrud/xtrud-api.env`, в Git его
+   нет — DEMO_ACCOUNTS.md) и заметки: «ввести номер → Продолжить, звонок не
+   нужен». Перед подачей проверить вход этим номером через
+   `/v2/auth/call/start` (purpose login) → `/call/status` → `/call/login`.
 4. Заявка: `POST /v1/reviewSubmissions` → `POST /v1/reviewSubmissionItems`
    (appStoreVersion) → `PATCH reviewSubmissions/{id}` `submitted: true` →
    `WAITING_FOR_REVIEW`.

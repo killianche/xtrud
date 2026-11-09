@@ -51,8 +51,10 @@ production-содержимое и показывать актуальные к�
 или Maestro YAML.
 
 - Login: `[PASSWORD_MANAGER: xtrud/store-review/client-login]`
-- Password: `[PASSWORD_MANAGER: xtrud/store-review/client-password]`
-- Способ входа: email или телефон + пароль; SMS/OTP не требуется.
+- Password: не нужен — вход по номеру (с 2026-11-09, №380).
+- Способ входа (с №380, 2026-11-09): номер телефона → подтверждение звонком;
+  для номера ревьюера звонок не нужен, окно закрывается само
+  ([`DEMO_ACCOUNTS.md`](DEMO_ACCOUNTS.md)).
 
 Review Notes должны объяснять актуальный сценарий объявления и внешнего
 контакта. Аккаунт ревьюера должен быть отдельным production-аккаунтом клиента с

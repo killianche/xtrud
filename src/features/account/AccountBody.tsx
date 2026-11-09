@@ -46,6 +46,7 @@ import { SpecialistVerificationGroup } from "@/features/account/SpecialistVerifi
 import { SpecialistVisibilityGroup } from "@/features/account/SpecialistVisibilityGroup";
 import { SUPPORT_URL } from "@/features/auth/BannedScreen";
 import { formatRuPhone } from "@/features/auth/RegisterFormFields";
+import { usePasswordLogin } from "@/features/auth/use-auth-options";
 import { useUserRecord } from "@/features/auth/use-user-record";
 import { useMyMasterCategories } from "@/features/master-categories/use-my-categories";
 import { useUnreadReviewsCount } from "@/features/notifications/use-notifications";
@@ -76,6 +77,7 @@ export function AccountBody({ userId }: { userId: string }) {
   const phoneDigits = (userPrivate?.phone ?? "").replace(/\D/g, "").slice(-10);
   const phoneValue = phoneDigits.length === 10 ? `+7 ${formatRuPhone(phoneDigits)}` : undefined;
   const tc = useThemeColors(["ink", "mute", "on-accent", "error"]);
+  const withPassword = usePasswordLogin();
   const fullName = [user?.first_name, user?.last_name].filter(Boolean).join(" ") || "Вы";
 
   // Каждый аккаунт — специалист (DECISION владельца 2026-09-11): «Я
@@ -330,14 +332,18 @@ export function AccountBody({ userId }: { userId: string }) {
           icon={<Phone size={18} weight="bold" color={tc.ink} />}
           navigates
           onPress={() => router.push("/profile/change-phone" as never)}
+          last={!withPassword}
         />
-        <InsetRow
-          title="Пароль"
-          icon={<LockKey size={18} weight="bold" color={tc.ink} />}
-          navigates
-          onPress={() => router.push("/profile/change-password" as never)}
-          last
-        />
+        {/* Пароля нет (№380): строка вернётся вместе с флагом сервера. */}
+        {withPassword ? (
+          <InsetRow
+            title="Пароль"
+            icon={<LockKey size={18} weight="bold" color={tc.ink} />}
+            navigates
+            onPress={() => router.push("/profile/change-password" as never)}
+            last
+          />
+        ) : null}
       </InsetGroup>
 
       <InsetGroup>

@@ -145,7 +145,8 @@ export function createXtrudClient(opts: XtrudClientOptions) {
       firstName: string;
       lastName: string;
       phone: string;
-      password: string;
+      /** Только если включён вход по паролю (№380). */
+      password?: string;
       /** Подтверждение номера звонком, если сервер его требует (№206). */
       verificationToken?: string;
     }): Promise<AuthResult> {
@@ -166,6 +167,10 @@ export function createXtrudClient(opts: XtrudClientOptions) {
      */
     async options(): Promise<{
       phoneCallAtRegistration: boolean;
+      /** Вход по номеру звонком (№380). */
+      phoneCallLogin: boolean;
+      /** Вход по паролю включён на сервере (с №380 — выключен). */
+      passwordLogin: boolean;
       phoneCallRecovery: boolean;
       phoneCallPhoneChange: boolean;
     }> {
@@ -175,6 +180,9 @@ export function createXtrudClient(opts: XtrudClientOptions) {
         const j = (await res.json()) as Record<string, unknown>;
         return {
           phoneCallAtRegistration: j.phoneCallAtRegistration === true,
+          phoneCallLogin: j.phoneCallLogin === true,
+          // Сервер до №380 поля не знает — там пароль был всегда.
+          passwordLogin: j.passwordLogin !== false,
           phoneCallRecovery: j.phoneCallRecovery === true,
           phoneCallPhoneChange: j.phoneCallPhoneChange === true,
         };
@@ -183,6 +191,8 @@ export function createXtrudClient(opts: XtrudClientOptions) {
         // всё же требует его, регистрация ответит 428 и шаг откроется.
         return {
           phoneCallAtRegistration: false,
+          phoneCallLogin: false,
+          passwordLogin: false,
           phoneCallRecovery: false,
           phoneCallPhoneChange: false,
         };
@@ -196,7 +206,7 @@ export function createXtrudClient(opts: XtrudClientOptions) {
     async callStart(
       phone: string,
       secret?: string,
-      purpose: "register" | "recover" | "change_phone" = "register",
+      purpose: "register" | "login" | "recover" | "change_phone" = "register",
     ): Promise<
       | {
           call: {
@@ -247,6 +257,23 @@ export function createXtrudClient(opts: XtrudClientOptions) {
       }
       const token = (json as { verificationToken?: unknown } | null)?.verificationToken;
       return { token: typeof token === "string" ? token : null, error: null };
+    },
+    /** Вход по номеру после подтверждения звонком, без пароля (№380). */
+    async signInWithCall(phone: string, verificationToken: string): Promise<AuthResult> {
+      const { status, json } = await postJson(
+        "/v2/auth/call/login",
+        { phone, verificationToken },
+        false,
+      );
+      if (failed(status)) {
+        return {
+          data: { session: null, user: null },
+          error: toApiError(status, json, "Не удалось войти"),
+        };
+      }
+      const session = sessionFromTokens(json as Parameters<typeof sessionFromTokens>[0]);
+      await sessions.set(session, "SIGNED_IN");
+      return { data: { session, user: session.user }, error: null };
     },
     /** Новый пароль после подтверждения номера звонком — и сразу вход (№215). */
     async recover(
